@@ -2,12 +2,16 @@
 
 FIDScript Deploy - AI Development Constitution
 
+> **Operating mode (from 2026-06-16):** Hardening, not feature-chasing. The platform is being rebuilt dependency-first from Phase 0, with every phase verified on the VPS before advancing. See `docs/AUDIT.md` for why.
+
 ---
 
 ## Navigation
 
 | Need | Go To |
 |------|-------|
+| Why we reset + current honest state | `docs/AUDIT.md` |
+| Roadmap, phase sequence, template, verification rubric | `docs/phases/README.md` |
 | Current phase and status | `AGENT_STATUS.md` |
 | Architecture decisions | `DECISIONS.md` |
 | System architecture | `ARCHITECTURE.md` |
@@ -39,19 +43,34 @@ FIDScript Deploy - AI Development Constitution
 
 ---
 
-## Phase Documents
+## Phase Documents (restructured, dependency-correct)
 
-| Phase | Document |
-|-------|----------|
-| Phase 00 (Architecture First) | `docs/phases/phase-00.md` |
-| Phase 01 (Repository Architecture) | `docs/phases/phase-01.md` |
-| Phase 02 (Installer System) | `docs/phases/phase-02.md` |
-| Phase 03 (Identity & Access) | `docs/phases/phase-03.md` |
-| Phase 04 (Projects Engine) | `docs/phases/phase-04.md` |
-| Phase 05 (Infrastructure Foundation) | `docs/phases/phase-05.md` |
-| Phase 06 (Deployment Engine) | `docs/phases/phase-06.md` |
-| Phase 07 (Domain Management) | `docs/phases/phase-07.md` |
-| Phase 08-23 | `docs/phases/phase-XX.md` |
+| Phase | Title | Document |
+|------:|-------|----------|
+| 00 | Architecture & Build Foundation | `docs/phases/phase-00.md` |
+| 01 | Installer & Infrastructure Stack | `docs/phases/phase-01.md` |
+| 02 | Event Bus & Service Registry | `docs/phases/phase-02.md` |
+| 03 | Identity & Access (platform auth) | `docs/phases/phase-03.md` |
+| 04 | Projects Engine | `docs/phases/phase-04.md` |
+| 05 | Storage Platform | `docs/phases/phase-05.md` |
+| 06 | Deployment Engine | `docs/phases/phase-06.md` |
+| 07 | Domains & TLS | `docs/phases/phase-07.md` |
+| 08 | Database Platform | `docs/phases/phase-08.md` |
+| 09 | Email Platform (Stalwart) | `docs/phases/phase-09.md` |
+| 10 | Functions Runtime | `docs/phases/phase-10.md` |
+| 11 | Queues Platform | `docs/phases/phase-11.md` |
+| 12 | Scheduler Platform | `docs/phases/phase-12.md` |
+| 13 | Realtime Platform | `docs/phases/phase-13.md` |
+| 14 | Monitoring Platform | `docs/phases/phase-14.md` |
+| 15 | Logging Platform | `docs/phases/phase-15.md` |
+| 16 | SDK Platform | `docs/phases/phase-16.md` |
+| 17 | MCP Platform | `docs/phases/phase-17.md` |
+| 18 | CLI Platform | `docs/phases/phase-18.md` |
+| 19 | Dashboard Platform | `docs/phases/phase-19.md` |
+| 20 | Skills Platform | `docs/phases/phase-20.md` |
+| 21 | Templates Platform | `docs/phases/phase-21.md` |
+| 22 | AI Layer | `docs/phases/phase-22.md` |
+| 23 | Marketplace | `docs/phases/phase-23.md` |
 
 ---
 
@@ -72,43 +91,51 @@ FIDScript Deploy - AI Development Constitution
 
 ## Development Rules
 
-1. **API First** - Every feature accessible via API before dashboard
-2. **Event Driven** - All platform actions generate events
-3. **Documentation First** - Read existing docs before implementing
-4. **Provider Abstraction** - Never hardcode external services
-5. **MCP Compatible** - All features have MCP tools
-6. **SDK Compatible** - All features have SDK methods
+1. **Verify Before "Done"** - Nothing is complete until it compiles, runs, and passes its prove-it tests on the VPS. No exceptions.
+2. **API First** - Every feature accessible via API before dashboard
+3. **Event Driven** - All platform actions emit events; events must have real consumers (see Phase 02)
+4. **Integration is a Deliverable** - Every phase declares its events, service-registry entry, and SDK/MCP/CLI/dashboard touchpoints
+5. **Provider Abstraction** - Never hardcode external services
+6. **MCP + SDK Compatible** - All features have MCP tools and SDK methods
 7. **150 Line Limit** - Split files exceeding 150 lines
 8. **Feature-Based Structure** - Files organized by feature
 9. **No Emojis in UI** - Use text or icon components only
-10. **Backend First** - Test backend before frontend components
+10. **No Secrets in Code/History** - Secrets via `_FILE` env or a secrets manager; never committed
+11. **Tenant Isolation** - Every query scoped by project/owner; isolation is tested
 
 ---
 
 ## Startup Sequence
 
-1. Read `AGENT_STATUS.md` - Know current phase
-2. Read `docs/phases/phase-XX.md` - Know phase deliverables
-3. Read relevant `docs/services/[service].md` - Know service spec
-4. Read related ADRs in `DECISIONS.md` - Know decisions made
-5. Implement feature
-6. Write tests
-7. Update `AGENT_STATUS.md`
-8. Update `DECISIONS.md` if new ADR created
+1. Read `docs/AUDIT.md` - Know the honest current state
+2. Read `AGENT_STATUS.md` - Know which phase is `In Progress` / `Verified`
+3. Read `docs/phases/README.md` - Know the roadmap and verification rubric
+4. Read `docs/phases/phase-XX.md` - Know this phase's deliverables and exit criterion
+5. Read relevant `docs/services/[service].md` - Know the service contract
+6. Read related ADRs in `DECISIONS.md` - Know decisions made
+7. Implement against the phase spec
+8. **Verify on the VPS** against the phase's `## Verification` section
+9. Commit the verified phase
+10. Update `AGENT_STATUS.md`; update `DECISIONS.md` if a new ADR was created
 
 ---
 
 ## Source Structure
 
 ```
-src/
-  pages/          # Route pages
-  components/     # Shared components
-  services/       # API service layer
-  hooks/          # React hooks
-  types/          # TypeScript types
-  utils/          # Utility functions
-  features/       # Feature-based modules
+apps/
+  api/            # NestJS API (23 modules) - the core
+  dashboard/      # Next.js dashboard (Phase 19)
+  mcp-server/     # MCP server for AI agents (Phase 17)
+  sdk/            # TypeScript SDK (Phase 16; consolidate with packages/sdk)
+packages/
+  types/ shared/ events/ config/ ui/ eslint-config/   # shared workspace packages
+installer/
+  docker/ traefik/ config/ scripts/   # VPS install (Phase 01)
+docs/
+  AUDIT.md        # honest current state
+  phases/         # roadmap + phase specs
+  services/       # service contracts
 ```
 
 ---
@@ -117,7 +144,7 @@ src/
 
 **Cloudflare Domain:** deploy.fidscript.com
 
-Configured during Phase 07 (Domain Management).
+Configured during Phase 07 (Domains & TLS). DNS credentials are in Cloudflare (see memory: `cloudflare-config`) and must be wired into code in Phase 07 — they are **not** wired today.
 
 ---
 

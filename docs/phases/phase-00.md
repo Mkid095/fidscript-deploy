@@ -1,99 +1,75 @@
-# Phase 00: Architecture First
+# Phase 00: Architecture & Build Foundation
 
-**Status:** Complete
-
-**Start Date:** 2026-06-16
-
----
+> **Status:** Planned  |  **Track:** Foundation  |  **Depends on:** nothing (this is the root)
 
 ## Objective
 
-Define every contract before coding. Create all specification documents needed for AI agents to build the platform without guessing.
+Make the monorepo **compile, type-check, and containerize**. Nothing downstream can be verified until this is true, so this is Phase 0. The exit criterion is mechanical: `pnpm install` → `pnpm build` → `docker build` all succeed with zero type errors.
 
----
+## Current State
 
-## Deliverables
+**Does not compile or build.** See `docs/AUDIT.md` §A (blockers #1–#5, #9). Specific defects:
 
-| Deliverable | Status | File |
-|-------------|--------|------|
-| System Architecture | Complete | ARCHITECTURE.md |
-| Database Architecture | Complete | ARCHITECTURE.md |
-| API Architecture | Complete | ARCHITECTURE.md |
-| Event Architecture | Complete | docs/EVENT_CATALOG.md |
-| SDK Architecture | Complete | ARCHITECTURE.md |
-| MCP Architecture | Complete | ARCHITECTURE.md |
-| Service Boundaries | Complete | docs/PLATFORM_BOUNDARIES.md |
-| Product Requirements | Complete | docs/PRODUCT_REQUIREMENTS.md |
-| Service Catalog | Complete | docs/SERVICE_CATALOG.md |
-| Data Model | Complete | docs/DATA_MODEL.md |
-| Event Catalog | Complete | docs/EVENT_CATALOG.md |
-| Design System | Complete | docs/DESIGN_SYSTEM.md |
-| Integration Hub | Complete | docs/INTEGRATION_HUB.md |
-| API Specification | Complete | docs/API_SPEC.md |
-| SDK Specification | Complete | docs/SDK_SPEC.md |
-| MCP Specification | Complete | docs/MCP_SPEC.md |
-| Service Specifications | Complete | docs/services/*.md |
-| AI Development Guide | Complete | CLAUDE.md |
-| Agent Status | Complete | AGENT_STATUS.md |
-| Decisions Log | Complete | DECISIONS.md |
-
----
-
-## Success Criteria
-
-- [x] Architecture document covers all system layers
-- [x] Database schemas defined for all entities
-- [x] API routes defined for all services
-- [x] Events catalogued with schemas
-- [x] SDK methods defined
-- [x] MCP tools defined
-- [x] Service specifications complete
-- [x] Design system defined
-- [x] Integration hub documented
-- [x] Phase documents created for all 23 phases
-- [x] ADRs recorded for key decisions
-
----
+- `apps/api` is `module: commonjs` + `package.json "type": "module"` + every import uses `.js` extensions → emitted `require('./x.js')` resolves to files that do not exist.
+- Workspace packages (`@fidscript/types`, `@fidscript/shared`, `@fidscript/events`) declare `main: ./dist/index.js` but `dist/` is never built → imports resolve to nothing.
+- `ai.service.ts` and `marketplace.service.ts` import a non-existent `EventsService`/`events.service.js` (real file is `event.service.ts`, class `EventService`) → **compile failure**.
+- `ai.service.ts` injects `@Inject('AI_PROVIDER')` but `ai.module.ts` provides `AIProvider` (symbol) → DI mismatch.
+- No `Dockerfile` for the API or the dashboard → `docker compose up` cannot build them.
+- `@modelcontextprotocol/sdk` is absent from `pnpm-lock.yaml` → the MCP server cannot start.
+- Literal `{dto}` directories (unexpanded brace from a generator) exist under several modules.
 
 ## Dependencies
 
-None. This is the foundation phase.
+None. Every later phase depends on this one.
 
----
+## Deliverables
 
-## Testing Requirements
+- [ ] **Module-system decision, applied consistently.** Pick CommonJS for the API (NestJS's comfort zone): `apps/api` `package.json` → `"type": "commonjs"`; `tsconfig.json` → `module: commonjs`, `moduleResolution: node`; **remove all `.js` extensions** from local imports across `apps/api/src`. (ESM/nodenext is recorded as a future option in `DECISIONS.md`, not adopted now.)
+- [ ] **Workspace build pipeline.** `turbo.json` `build` emits `packages/*/dist` before `apps/*` build (`dependsOn: ["^build"]` + sane `inputs`/`outputs`). `pnpm build` from the root produces all `dist/` artifacts. Fix any `package.json` `main`/`exports`/`types` fields to point at built output.
+- [ ] **All modules compile.** Fix the two import bugs (`EventsService` → `EventService`, `events.service.js` → `event.service.ts`) and the AI DI token (align `provide:` and `@Inject()`). `pnpm typecheck` is clean repo-wide. (Full AI/Marketplace *logic* is Phases 22/23; here we only make them compile.)
+- [ ] **Delete the literal `{dto}` directories**; confirm the real `dto/` dirs are intact.
+- [ ] **`apps/api/Dockerfile`** — multi-stage: (1) install + `prisma generate` + `nest build`; (2) slim runtime with only `dist/` + `node_modules` + `prisma/`. Non-root user.
+- [ ] **`apps/dashboard/Dockerfile`** — Next.js standalone output (`output: 'standalone'` in `next.config.ts`), multi-stage, non-root.
+- [ ] **Lockfile reconciled.** `pnpm install` regenerates `pnpm-lock.yaml` including `@modelcontextprotocol/sdk` and all current workspace deps; `--frozen-lockfile` succeeds.
+- [ ] **Canonical frontend decided.** `apps/dashboard` is the dashboard (Phase 19). Archive/remove the orphan root `src/` Vite scaffold (missing `main.tsx`, missing deps). Record the decision in `DECISIONS.md`.
+- [ ] `pnpm typecheck` and `pnpm build` pass locally.
 
-None for this phase (documentation only).
+## Technical Design
 
----
+- **CommonJS rationale:** NestJS 10, Prisma, and most of the Nest ecosystem are CommonJS-first. The scaffold is currently half-CJS / half-ESM, which is the worst case (broken resolution). Standardizing on CommonJS removes the entire class of errors at the cost of ESM purity (acceptable; revisit later).
+- **Turbo build order:** packages have no app dependency; apps depend on packages. `^build` guarantees a package's `dist` exists before an app that imports it builds.
+- **Docker multi-stage** keeps images small and keeps the build toolchain out of the runtime image. Prisma needs the schema + generated client at runtime.
 
-## Documentation Updates Required
+## Integration Points
 
-- [x] ARCHITECTURE.md created
-- [x] docs/PRODUCT_REQUIREMENTS.md created
-- [x] docs/SERVICE_CATALOG.md created
-- [x] docs/DATA_MODEL.md created
-- [x] docs/EVENT_CATALOG.md created
-- [x] docs/DESIGN_SYSTEM.md created
-- [x] docs/INTEGRATION_HUB.md created
-- [x] docs/PLATFORM_BOUNDARIES.md created
-- [x] docs/API_SPEC.md created
-- [x] docs/SDK_SPEC.md created
-- [x] docs/MCP_SPEC.md created
-- [x] docs/services/*.md created (12 service docs)
-- [x] docs/phases/*.md created (23 phase docs)
-- [x] CLAUDE.md created
-- [x] AGENT_STATUS.md created
-- [x] DECISIONS.md created
+- **Events:** none yet (the bus is Phase 02).
+- **Service registry:** none yet (Phase 02).
+- **SDK / MCP / CLI / Dashboard:** these apps must exist in the build graph and compile, but their *content* is built in their own phases (16–20). Phase 00 only guarantees they build (the dashboard builds its placeholder page; the MCP server builds and can start; the SDK builds).
 
----
+## Verification (VPS)
 
-## Phase Completion
+```bash
+pnpm install --frozen-lockfile          # lockfile reconciled
+pnpm typecheck                          # 0 errors across all workspaces
+pnpm build                              # all dist/ artifacts produced
+docker build -f apps/api/Dockerfile       apps/api        # succeeds
+docker build -f apps/dashboard/Dockerfile apps/dashboard  # succeeds
+```
 
-Phase 00 is complete when all architecture documents exist and have been reviewed. An AI agent reading these documents should be able to implement any service without guessing.
+**Exit criterion:** all of the above succeed with no errors. The app still does not *run end-to-end* (that needs Phase 01's infra + migrations), but it is now a buildable artifact.
 
----
+## Out of Scope / Future
+
+- Running the app, the database, or any infra (Phase 01).
+- Any feature logic — modules only need to *compile*, not work.
+- ESM migration (future ADR).
+
+## Risks
+
+- Prisma generated-client path discovery in the slim runtime image (verify it finds `schema.prisma`).
+- Next.js standalone mode requires all imported packages flagged in `next.config.ts`.
+- Removing `.js` extensions is a large mechanical sweep — do it with a codemod and verify via `typecheck`, not by hand.
 
 ## Next Phase
 
-[Phase 01: Repository Architecture](./phase-01.md)
+[Phase 01: Installer & Infrastructure Stack](./phase-01.md)
