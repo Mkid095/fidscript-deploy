@@ -1,0 +1,878 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id           String    @id @default(uuid())
+  email        String    @unique @db.VarChar(255)
+  passwordHash String?   @map("password_hash") @db.VarChar(255)
+  name         String?   @db.VarChar(255)
+  avatarUrl    String?   @map("avatar_url") @db.Text
+  role         Role      @default(USER)
+  mfaEnabled   Boolean   @default(false) @map("mfa_enabled")
+  mfaSecret    String?   @map("mfa_secret") @db.VarChar(255)
+  lastLoginAt  DateTime? @map("last_login_at") @db.Timestamptz
+  createdAt    DateTime  @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt    DateTime  @updatedAt @map("updated_at") @db.Timestamptz
+
+  sessions   Session[]
+  apiKeys    ApiKey[]
+  auditLogs  AuditLog[]
+  projects   Project[]  @relation("ProjectOwner")
+  memberships ProjectMember[]
+
+  @@map("identity.users")
+}
+
+enum Role {
+  USER
+  ADMIN
+  OWNER
+}
+
+model Session {
+  id        String   @id @default(uuid())
+  userId    String   @map("user_id")
+  tokenHash String   @map("token_hash") @db.VarChar(255)
+  expiresAt DateTime @map("expires_at") @db.Timestamptz
+  ipAddress String?  @map("ip_address") @db.VarChar(45)
+  userAgent String?  @map("user_agent") @db.Text
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("identity.sessions")
+}
+
+model ApiKey {
+  id          String    @id @default(uuid())
+  userId      String    @map("user_id")
+  name        String    @db.VarChar(255)
+  keyHash     String    @map("key_hash") @db.VarChar(255)
+  permissions Json      @default("[]")
+  lastUsedAt  DateTime? @map("last_used_at") @db.Timestamptz
+  expiresAt   DateTime? @map("expires_at") @db.Timestamptz
+  createdAt   DateTime  @default(now()) @map("created_at") @db.Timestamptz
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("identity.api_keys")
+}
+
+model AuditLog {
+  id           String   @id @default(uuid())
+  userId       String?  @map("user_id")
+  action       String   @db.VarChar(100)
+  resourceType String?  @map("resource_type") @db.VarChar(100)
+  resourceId   String?  @map("resource_id") @db.VarChar(100)
+  metadata     Json     @default("{}")
+  ipAddress    String?  @map("ip_address") @db.VarChar(45)
+  createdAt    DateTime @default(now()) @map("created_at") @db.Timestamptz
+
+  user User? @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@map("identity.audit_logs")
+}
+
+// =============================================
+// PROJECTS SCHEMA
+// =============================================
+
+model Project {
+  id                 String        @id @default(uuid())
+  name               String        @db.VarChar(255)
+  slug               String        @unique @db.VarChar(255)
+  description        String?       @db.Text
+  type               ProjectType   @default(FRONTEND)
+  status             ProjectStatus @default(CREATING)
+  ownerId            String        @map("owner_id")
+  region             String?       @db.VarChar(100)
+  subdomain          String?       @db.VarChar(255)
+  customDomains      Json          @default("[]") @map("custom_domains")
+  envVars            Json          @default("{}") @map("env_vars")
+  buildSettings      Json          @default("{}") @map("build_settings")
+  deploymentStrategy String        @default("buildpack") @map("deployment_strategy")
+  sourceProvider     String?       @map("source_provider") @db.VarChar(50)
+  sourceRepo         String?       @map("source_repo") @db.VarChar(500)
+  sourceBranch       String        @default("main") @map("source_branch")
+  lastDeployAt       DateTime?     @map("last_deploy_at") @db.Timestamptz
+  createdAt          DateTime      @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt          DateTime      @updatedAt @map("updated_at") @db.Timestamptz
+
+  owner     User               @relation("ProjectOwner", fields: [ownerId], references: [id], onDelete: Cascade)
+  members   ProjectMember[]
+  settings  ProjectSettings?
+  buckets   Bucket[]
+  deployments Deployment[]
+  buildConfig BuildConfig?
+  domains    Domain[]
+  appUsers   AppUser[]
+  appRoles   AppRole[]
+  mailboxes  Mailbox[]
+  aliases    EmailAlias[]
+  emailLogs  EmailLog[]
+  domainVerifications DomainVerification[]
+  channels  RealtimeChannel[]
+  databases ManagedDatabase[]
+  functions Function[]
+  queues    Queue[]
+  cronJobs  CronJob[]
+  metrics   Metric[]
+  alertRules AlertRule[]
+  alerts    Alert[]
+  notificationChannels NotificationChannel[]
+  logStreams          LogStream[]
+  templates           Template[]
+
+  @@map("projects.projects")
+}
+
+enum ProjectType {
+  FRONTEND
+  BACKEND
+  WORKER
+  CRON
+  DOCKER
+  STATIC
+}
+
+enum ProjectStatus {
+  CREATING
+  ACTIVE
+  SUSPENDED
+  ARCHIVED
+  DELETED
+}
+
+model ProjectMember {
+  id        String   @id @default(uuid())
+  projectId String   @map("project_id")
+  userId    String   @map("user_id")
+  role      String   @db.VarChar(100)
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz
+
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([projectId, userId])
+  @@map("projects.project_members")
+}
+
+model ProjectSettings {
+  id        String   @id @default(uuid())
+  projectId String   @unique @map("project_id")
+  settings  Json     @default("{}")
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz
+
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@map("projects.project_settings")
+}
+
+// =============================================
+// STORAGE SCHEMA
+// =============================================
+
+model Bucket {
+  id        String   @id @default(uuid())
+  projectId String   @map("project_id")
+  name      String   @db.VarChar(255)
+  provider  String   @default("internal") @db.VarChar(50)
+  region    String?  @db.VarChar(100)
+  isPublic  Boolean  @default(false) @map("is_public")
+  maxSizeBytes BigInt? @map("max_size_bytes")
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz
+
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  files  File[]
+
+  @@map("storage.buckets")
+}
+
+model File {
+  id           String   @id @default(uuid())
+  bucketId    String   @map("bucket_id")
+  key         String   @db.VarChar(1024)
+  originalName String?  @map("original_name") @db.VarChar(255)
+  mimeType    String?  @map("mime_type") @db.VarChar(255)
+  sizeBytes   BigInt   @default(0) @map("size_bytes")
+  etag        String?  @db.VarChar(255)
+  metadata    Json     @default("{}")
+  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz
+
+  bucket Bucket @relation(fields: [bucketId], references: [id], onDelete: Cascade)
+
+  @@map("storage.files")
+}
+
+// =============================================
+// DEPLOYMENTS SCHEMA
+// =============================================
+
+model Deployment {
+  id             String            @id @default(uuid())
+  projectId      String            @map("project_id")
+  version        String            @db.VarChar(50)
+  status         DeploymentStatus  @default(PENDING)
+  commitSha      String?           @map("commit_sha") @db.VarChar(40)
+  commitMessage  String?          @map("commit_message") @db.Text
+  buildLogs      String?          @map("build_logs") @db.Text
+  buildDurationMs Int?           @map("build_duration_ms")
+  deploymentUrl  String?          @map("deployment_url") @db.Text
+  rolledBackToId String?          @map("rolled_back_to")
+  createdAt      DateTime         @default(now()) @map("created_at") @db.Timestamptz
+  completedAt    DateTime?        @map("completed_at") @db.Timestamptz
+
+  project     Project      @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  rolledBackTo Deployment? @relation("Rollback", fields: [rolledBackToId], references: [id])
+  rollbacks   Deployment[] @relation("Rollback")
+
+  @@map("projects.deployments")
+}
+
+enum DeploymentStatus {
+  PENDING
+  BUILDING
+  DEPLOYING
+  SUCCESS
+  FAILED
+  ROLLED_BACK
+}
+
+model BuildConfig {
+  id              String   @id @default(uuid())
+  projectId       String   @unique @map("project_id")
+  strategy        String   @default("buildpack")
+  buildCommand    String?  @map("build_command") @db.Text
+  outputDirectory String?  @map("output_directory") @db.VarChar(255)
+  healthCheckPath String?  @map("health_check_path") @db.VarChar(255)
+  healthCheckPort Int      @default(3000) @map("health_check_port")
+  createdAt       DateTime @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt       DateTime @updatedAt @map("updated_at") @db.Timestamptz
+
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@map("projects.build_configs")
+}
+
+// =============================================
+// DOMAINS SCHEMA
+// =============================================
+
+model Domain {
+  id            String      @id @default(uuid())
+  projectId     String      @map("project_id")
+  domain        String      @db.VarChar(255)
+  isCustom      Boolean     @default(false) @map("is_custom")
+  sslEnabled    Boolean     @default(true) @map("ssl_enabled")
+  sslCertArn    String?     @map("ssl_cert_arn") @db.VarChar(255)
+  dnsStatus     DomainStatus @default(PENDING) @map("dns_status")
+  dnsVerifiedAt DateTime?   @map("dns_verified_at") @db.Timestamptz
+  createdAt     DateTime    @default(now()) @map("created_at") @db.Timestamptz
+
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@unique([projectId, domain])
+  @@map("projects.domains")
+}
+
+enum DomainStatus {
+  PENDING
+  VALIDATING
+  VALID
+  FAILED
+}
+
+// =============================================
+// APP AUTH SCHEMA (Application-level Auth)
+// =============================================
+
+model AppUser {
+  id           String    @id @default(uuid())
+  projectId    String    @map("project_id")
+  email        String    @db.VarChar(255)
+  passwordHash String?   @map("password_hash") @db.VarChar(255)
+  name         String?   @db.VarChar(255)
+  emailVerified Boolean  @default(false) @map("email_verified")
+  verificationToken String? @map("verification_token") @db.VarChar(255)
+  resetToken   String?   @map("reset_token") @db.VarChar(255)
+  resetTokenExpiry DateTime? @map("reset_token_expiry") @db.Timestamptz
+  createdAt    DateTime  @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt    DateTime  @updatedAt @map("updated_at") @db.Timestamptz
+
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  sessions AppSession[]
+  roles    AppUserRole[]
+
+  @@unique([projectId, email])
+  @@map("projects.app_users")
+}
+
+model AppSession {
+  id           String   @id @default(uuid())
+  userId       String   @map("user_id")
+  tokenHash    String   @map("token_hash") @db.VarChar(255)
+  expiresAt   DateTime @map("expires_at") @db.Timestamptz
+  ipAddress    String?  @map("ip_address") @db.VarChar(45)
+  userAgent    String?  @map("user_agent") @db.Text
+  createdAt    DateTime @default(now()) @map("created_at") @db.Timestamptz
+
+  user AppUser @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("projects.app_sessions")
+}
+
+model AppRole {
+  id        String   @id @default(uuid())
+  projectId String   @map("project_id")
+  name      String   @db.VarChar(100)
+  permissions Json   @default("[]")
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz
+
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  users   AppUserRole[]
+
+  @@unique([projectId, name])
+  @@map("projects.app_roles")
+}
+
+model AppUserRole {
+  userId    String   @map("user_id")
+  roleId    String   @map("role_id")
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz
+
+  user AppUser @relation(fields: [userId], references: [id], onDelete: Cascade)
+  role AppRole @relation(fields: [roleId], references: [id], onDelete: Cascade)
+
+  @@id([userId, roleId])
+  @@map("projects.app_user_roles")
+}
+
+// =============================================
+// EMAIL SCHEMA
+// =============================================
+
+model Mailbox {
+  id        String   @id @default(uuid())
+  projectId String   @map("project_id")
+  email     String   @db.VarChar(255)
+  name      String?  @db.VarChar(255)
+  quota     BigInt   @default(10737418240)
+  isActive  Boolean  @default(true) @map("is_active")
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz
+
+  project Project    @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  logs    EmailLog[]
+
+  @@unique([projectId, email])
+  @@map("email.mailboxes")
+}
+
+model EmailAlias {
+  id         String   @id @default(uuid())
+  projectId  String   @map("project_id")
+  alias      String   @db.VarChar(255)
+  forwardsTo Json     @default("[]")
+  description String? @db.Text
+  isActive   Boolean  @default(true) @map("is_active")
+  createdAt  DateTime @default(now()) @map("created_at") @db.Timestamptz
+
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@unique([projectId, alias])
+  @@map("email.aliases")
+}
+
+model EmailLog {
+  id         String        @id @default(uuid())
+  projectId  String        @map("project_id")
+  mailboxId  String?       @map("mailbox_id")
+  messageId  String        @map("message_id") @db.VarChar(255)
+  from       String        @db.VarChar(255)
+  to         String        @db.VarChar(255)
+  subject    String        @db.VarChar(500)
+  status     EmailStatus   @default(PENDING)
+  error      String?       @db.Text
+  readAt     DateTime?     @map("read_at") @db.Timestamptz
+  createdAt  DateTime      @default(now()) @map("created_at") @db.Timestamptz
+
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  mailbox Mailbox? @relation(fields: [mailboxId], references: [id], onDelete: SetNull)
+
+  @@map("email.logs")
+}
+
+enum EmailStatus {
+  PENDING
+  SENT
+  DELIVERED
+  BOUNCED
+  FAILED
+}
+
+model DomainVerification {
+  id           String   @id @default(uuid())
+  projectId    String   @map("project_id")
+  domain       String   @db.VarChar(255)
+  dkimVerified Boolean  @default(false) @map("dkim_verified")
+  spfVerified  Boolean  @default(false) @map("spf_verified")
+  dmarcVerified Boolean @default(false) @map("dmarc_verified")
+  verifiedAt   DateTime? @map("verified_at") @db.Timestamptz
+  createdAt    DateTime @default(now()) @map("created_at") @db.Timestamptz
+
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@unique([projectId, domain])
+  @@map("email.domain_verifications")
+}
+
+// =============================================
+// REALTIME SCHEMA
+// =============================================
+
+model RealtimeChannel {
+  id          String   @id @default(uuid())
+  projectId   String   @map("project_id")
+  name        String   @db.VarChar(255)
+  isPrivate   Boolean  @default(false) @map("is_private")
+  metadata    Json     @default("{}")
+  accessToken String?  @map("access_token") @db.VarChar(255)
+  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz
+
+  project  Project             @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  messages RealtimeMessage[]
+  presence RealtimePresence[]
+
+  @@unique([projectId, name])
+  @@map("realtime.channels")
+}
+
+model RealtimeMessage {
+  id        String   @id @default(uuid())
+  channelId String   @map("channel_id")
+  userId    String   @db.VarChar(255)
+  content   String   @db.Text
+  event     String   @default("message") @db.VarChar(100)
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz
+
+  channel RealtimeChannel @relation(fields: [channelId], references: [id], onDelete: Cascade)
+
+  @@map("realtime.messages")
+}
+
+model RealtimePresence {
+  id        String   @id @default(uuid())
+  projectId String   @map("project_id")
+  channelId String   @map("channel_id")
+  userId    String   @db.VarChar(255)
+  status    String   @default("online") @db.VarChar(50)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz
+
+  channel RealtimeChannel @relation(fields: [channelId], references: [id], onDelete: Cascade)
+
+  @@unique([projectId, userId, channelId])
+  @@map("realtime.presence")
+}
+
+// =============================================
+// MANAGED DATABASES SCHEMA
+// =============================================
+
+model ManagedDatabase {
+  id                   String   @id @default(uuid())
+  projectId            String   @map("project_id")
+  name                 String   @db.VarChar(255)
+  type                 String   @default("postgresql") @db.VarChar(50)
+  version              String   @default("15") @db.VarChar(20)
+  size                 String   @default("small") @db.VarChar(50)
+  status               String   @default("provisioning") @db.VarChar(50)
+  host                 String?  @db.VarChar(255)
+  port                 Int?     @map("port")
+  username             String?  @db.VarChar(255)
+  connectionInfo        String?  @map("connection_info") @db.Text
+  settings             Json     @default("{}")
+  backupRetentionDays  Int      @default(7) @map("backup_retention_days")
+  createdAt            DateTime @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt            DateTime @updatedAt @map("updated_at") @db.Timestamptz
+
+  project Project          @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  backups DatabaseBackup[]
+
+  @@unique([projectId, name])
+  @@map("databases.managed")
+}
+
+model DatabaseBackup {
+  id          String    @id @default(uuid())
+  databaseId  String    @map("database_id")
+  filename    String?   @db.VarChar(500)
+  size        BigInt    @default(0)
+  status      String    @default("in_progress") @db.VarChar(50)
+  description String?   @db.Text
+  createdAt   DateTime  @default(now()) @map("created_at") @db.Timestamptz
+  completedAt DateTime? @map("completed_at") @db.Timestamptz
+
+  database ManagedDatabase @relation(fields: [databaseId], references: [id], onDelete: Cascade)
+
+  @@map("databases.backups")
+}
+
+// =============================================
+// FUNCTIONS SCHEMA
+// =============================================
+
+model Function {
+  id              String   @id @default(uuid())
+  projectId       String   @map("project_id")
+  name            String   @db.VarChar(255)
+  runtime         String   @default("nodejs") @db.VarChar(50)
+  entryPoint      String   @default("handler") @db.VarChar(100)
+  memoryMb        Int      @default(256)
+  timeoutSeconds  Int      @default(30)
+  envVars         Json     @default("{}")
+  settings        Json     @default("{}")
+  currentVersion  String?  @map("current_version") @db.VarChar(100)
+  status          String   @default("created") @db.VarChar(50)
+  createdAt       DateTime @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt       DateTime @updatedAt @map("updated_at") @db.Timestamptz
+
+  project Project       @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  logs    FunctionLog[]
+
+  @@unique([projectId, name])
+  @@map("functions.instances")
+}
+
+model FunctionLog {
+  id              String   @id @default(uuid())
+  functionId      String   @map("function_id")
+  version         String   @db.VarChar(100)
+  status          String   @db.VarChar(50)
+  durationMs      Int      @default(0) @map("duration_ms")
+  memoryUsedMb    Int?     @map("memory_used_mb")
+  requestPayload  String?  @map("request_payload") @db.Text
+  responseOutput  String?  @map("response_output") @db.Text
+  errorMessage    String?  @map("error_message") @db.Text
+  createdAt       DateTime @default(now()) @map("created_at") @db.Timestamptz
+
+  function Function @relation(fields: [functionId], references: [id], onDelete: Cascade)
+
+  @@map("functions.logs")
+}
+
+// =============================================
+// QUEUES SCHEMA
+// =============================================
+
+model Queue {
+  id                 String   @id @default(uuid())
+  projectId          String   @map("project_id")
+  name               String   @db.VarChar(255)
+  type               String   @default("stream") @db.VarChar(50)
+  retentionDays      Int      @default(7)
+  maxMessages        Int      @default(100000)
+  maxBytes           Int      @default(1073741824)
+  replicas           Int      @default(1)
+  status             String   @default("active") @db.VarChar(50)
+  deadLetterQueue    String?  @map("dead_letter_queue") @db.VarChar(255)
+  retryAttempts      Int      @default(3)
+  retryDelaySeconds  Int      @default(60)
+  createdAt          DateTime @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt          DateTime @updatedAt @map("updated_at") @db.Timestamptz
+
+  project Project         @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  messages QueueMessage[]
+
+  @@unique([projectId, name])
+  @@map("queues.instances")
+}
+
+model QueueMessage {
+  id             String    @id @default(uuid())
+  queueId        String    @map("queue_id")
+  body           String    @db.Text
+  headers        Json      @default("{}")
+  status         String    @default("pending") @db.VarChar(50)
+  attempts       Int       @default(0)
+  scheduledAt    DateTime  @default(now()) @map("scheduled_at") @db.Timestamptz
+  deliveredAt    DateTime? @map("delivered_at") @db.Timestamptz
+  acknowledgedAt DateTime? @map("acknowledged_at") @db.Timestamptz
+  failedAt       DateTime? @map("failed_at") @db.Timestamptz
+  errorMessage   String?   @map("error_message") @db.Text
+  createdAt      DateTime  @default(now()) @map("created_at") @db.Timestamptz
+
+  queue Queue @relation(fields: [queueId], references: [id], onDelete: Cascade)
+
+  @@map("queues.messages")
+}
+
+// =============================================
+// SCHEDULER SCHEMA
+// =============================================
+
+model CronJob {
+  id                String   @id @default(uuid())
+  projectId         String   @map("project_id")
+  name              String   @db.VarChar(255)
+  cronExpression    String   @db.VarChar(100)
+  timezone          String   @default("UTC") @db.VarChar(50)
+  endpoint          String?  @db.VarChar(500)
+  functionId        String?  @map("function_id") @db.VarChar(255)
+  payload           Json     @default("{}")
+  enabled           Boolean  @default(true)
+  retryAttempts     Int      @default(3)
+  retryDelaySeconds Int      @default(60)
+  timeoutSeconds   Int      @default(300)
+  lastRunAt        DateTime? @map("last_run_at") @db.Timestamptz
+  nextRunAt        DateTime? @map("next_run_at") @db.Timestamptz
+  createdAt        DateTime @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt        DateTime @updatedAt @map("updated_at") @db.Timestamptz
+
+  project Project      @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  runs    CronJobRun[]
+
+  @@unique([projectId, name])
+  @@map("scheduler.cron_jobs")
+}
+
+model CronJobRun {
+  id           String    @id @default(uuid())
+  cronJobId    String    @map("cron_job_id")
+  status       String    @default("running") @db.VarChar(50)
+  startedAt    DateTime  @default(now()) @map("started_at") @db.Timestamptz
+  completedAt  DateTime? @map("completed_at") @db.Timestamptz
+  errorMessage String?   @map("error_message") @db.Text
+  createdAt   DateTime  @default(now()) @map("created_at") @db.Timestamptz
+
+  cronJob CronJob @relation(fields: [cronJobId], references: [id], onDelete: Cascade)
+
+  @@map("scheduler.runs")
+}
+
+// =============================================
+// MONITORING SCHEMA
+// =============================================
+
+model Metric {
+  id        String   @id @default(uuid())
+  projectId String   @map("project_id")
+  metric   String   @db.VarChar(255)
+  value    Float    @db.DoublePrecision
+  labels   Json     @default("{}")
+  timestamp DateTime @default(now()) @db.Timestamptz
+
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@index([projectId, metric, timestamp])
+  @@map("monitoring.metrics")
+}
+
+model AlertRule {
+  id              String   @id @default(uuid())
+  projectId       String   @map("project_id")
+  name            String   @db.VarChar(255)
+  metric          String   @db.VarChar(255)
+  condition       String   @db.VarChar(50)
+  threshold       Float    @db.DoublePrecision
+  durationSeconds Int      @default(60)
+  severity        String   @default("warning") @db.VarChar(50)
+  channels        Json     @default("[]")
+  enabled         Boolean  @default(true)
+  createdAt       DateTime @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt       DateTime @updatedAt @map("updated_at") @db.Timestamptz
+
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  alerts  Alert[]
+
+  @@map("monitoring.alert_rules")
+}
+
+model Alert {
+  id          String    @id @default(uuid())
+  projectId   String    @map("project_id")
+  ruleId      String    @map("rule_id")
+  severity    String    @db.VarChar(50)
+  status      String    @default("firing") @db.VarChar(50)
+  message     String    @db.Text
+  acknowledgedAt DateTime? @map("acknowledged_at") @db.Timestamptz
+  resolvedAt  DateTime? @map("resolved_at") @db.Timestamptz
+  createdAt   DateTime  @default(now()) @map("created_at") @db.Timestamptz
+
+  project Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  rule   AlertRule @relation(fields: [ruleId], references: [id], onDelete: Cascade)
+
+  @@map("monitoring.alerts")
+}
+
+model NotificationChannel {
+  id        String   @id @default(uuid())
+  projectId String   @map("project_id")
+  name      String   @db.VarChar(255)
+  type      String   @db.VarChar(50)
+  config    Json
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz
+
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@map("monitoring.notification_channels")
+}
+
+// =============================================
+// LOGGING SCHEMA
+// =============================================
+
+model LogStream {
+  id            String   @id @default(uuid())
+  projectId     String   @map("project_id")
+  name          String   @db.VarChar(255)
+  type          String   @default("application") @db.VarChar(50)
+  retentionDays Int      @default(30)
+  createdAt     DateTime @default(now()) @map("created_at") @db.Timestamptz
+
+  project Project     @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  entries LogEntry[]
+
+  @@unique([projectId, name])
+  @@map("logging.streams")
+}
+
+model LogEntry {
+  id        String   @id @default(uuid())
+  streamId  String   @map("stream_id")
+  level     String   @db.VarChar(20)
+  message   String   @db.Text
+  metadata  Json     @default("{}")
+  timestamp DateTime @default(now()) @map("timestamp") @db.Timestamptz
+
+  stream LogStream @relation(fields: [streamId], references: [id], onDelete: Cascade)
+
+  @@index([streamId, timestamp])
+  @@index([streamId, level])
+  @@map("logging.entries")
+}
+
+// =============================================
+// TEMPLATES SCHEMA
+// =============================================
+
+model Template {
+  id          String   @id @default(uuid())
+  projectId   String   @map("project_id")
+  name        String   @db.VarChar(255)
+  description String?  @db.Text
+  category    String   @db.VarChar(100)
+  content     String   @db.Text
+  variables   Json     @default("[]")
+  isPublic    Boolean  @default(false) @map("is_public")
+  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt   DateTime @updatedAt @map("updated_at") @db.Timestamptz
+
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@unique([projectId, name])
+  @@map("templates.instances")
+}
+
+// =============================================
+// AI SCHEMA
+// =============================================
+
+model AIConversation {
+  id          String    @id @default(uuid())
+  projectId   String    @map("project_id")
+  userId      String?   @map("user_id")
+  type        String    @default("general") @db.VarChar(50)
+  model       String    @db.VarChar(100)
+  metadata    Json      @default("{}")
+  tokenCount  Int       @default(0) @map("token_count")
+  createdAt   DateTime  @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt   DateTime  @updatedAt @map("updated_at") @db.Timestamptz
+
+  project  Project      @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  messages AIMessage[]
+
+  @@index([projectId, createdAt])
+  @@map("ai.conversations")
+}
+
+model AIMessage {
+  id             String   @id @default(uuid())
+  conversationId String   @map("conversation_id")
+  role           String   @db.VarChar(50)
+  content        String   @db.Text
+  model          String   @db.VarChar(100)
+  tokenCount     Int      @default(0) @map("token_count")
+  latencyMs      Int?     @map("latency_ms")
+  metadata       Json     @default("{}")
+  createdAt      DateTime @default(now()) @map("created_at") @db.Timestamptz
+
+  conversation AIConversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+
+  @@map("ai.messages")
+}
+
+// =============================================
+// MARKETPLACE SCHEMA
+// =============================================
+
+model MarketplaceItem {
+  id          String   @id @default(uuid())
+  type        String   @db.VarChar(50) // 'skill' | 'template' | 'integration'
+  name        String   @db.VarChar(255)
+  slug        String   @unique @db.VarChar(255)
+  description String?  @db.Text
+  category    String   @db.VarChar(100)
+  subcategory String?  @db.VarChar(100)
+  content     String?  @db.Text // skill code, template content, integration config
+  metadata    Json     @default("{}")
+  authorId    String?  @map("author_id") @db.VarChar(255)
+  authorName  String?  @map("author_name") @db.VarChar(255)
+  website     String?  @db.VarChar(500)
+  githubUrl   String?  @map("github_url") @db.VarChar(500)
+  npmPackage  String?  @map("npm_package") @db.VarChar(255)
+  version     String   @default("1.0.0") @db.VarChar(50)
+  downloads   Int      @default(0)
+  rating      Float    @default(0) @db.DoublePrecision
+  reviewCount Int      @default(0) @map("review_count")
+  isFeatured  Boolean  @default(false) @map("is_featured")
+  isVerified  Boolean  @default(false) @map("is_verified")
+  isActive    Boolean  @default(true) @map("is_active")
+  status      String   @default("pending") @db.VarChar(50) // pending, approved, rejected
+  submittedAt DateTime @default(now()) @map("submitted_at") @db.Timestamptz
+  approvedAt  DateTime? @map("approved_at") @db.Timestamptz
+  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt   DateTime @updatedAt @map("updated_at") @db.Timestamptz
+
+  reviews MarketplaceReview[]
+
+  @@index([type, status, isActive])
+  @@index([type, category])
+  @@index([authorId])
+  @@map("marketplace.items")
+}
+
+model MarketplaceReview {
+  id          String   @id @default(uuid())
+  itemId      String   @map("item_id")
+  userId      String?  @map("user_id") @db.VarChar(255)
+  userName    String?  @map("user_name") @db.VarChar(255)
+  rating      Int
+  title       String?  @db.VarChar(255)
+  content     String?  @db.Text
+  isVerified  Boolean  @default(false) @map("is_verified")
+  helpful     Int       @default(0)
+  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt   DateTime @updatedAt @map("updated_at") @db.Timestamptz
+
+  item MarketplaceItem @relation(fields: [itemId], references: [id], onDelete: Cascade)
+
+  @@unique([itemId, userId])
+  @@map("marketplace.reviews")
+}

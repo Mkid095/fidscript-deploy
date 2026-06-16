@@ -1,0 +1,58 @@
+http:
+  middlewares:
+    security-headers:
+      headers:
+        frameDeny: true
+        browserXssFilter: true
+        contentTypeNosniff: true
+        sslRedirect: true
+        stsSeconds: 31536000
+        stsIncludeSubdomains: true
+        stsPreload: true
+
+    compress:
+      compress: {}
+
+  routers:
+    dashboard:
+      rule: "Host(`{{ .Domain }}`)"
+      service: dashboard
+      middlewares:
+        - security-headers
+        - compress
+      tls:
+        certResolver: letsencrypt
+
+    api:
+      rule: "Host(`api.{{ .Domain }}`)"
+      service: api
+      middlewares:
+        - security-headers
+        - compress
+      tls:
+        certResolver: letsencrypt
+
+    minio-console:
+      rule: "Host(`storage.{{ .Domain }}`)"
+      service: minio-console
+      middlewares:
+        - security-headers
+        - compress
+      tls:
+        certResolver: letsencrypt
+
+  services:
+    dashboard:
+      loadBalancer:
+        servers:
+          - url: "http://fidscript_dashboard:3000"
+
+    api:
+      loadBalancer:
+        servers:
+          - url: "http://fidscript_api:3001"
+
+    minio-console:
+      loadBalancer:
+        servers:
+          - url: "http://fidscript_minio:9001"

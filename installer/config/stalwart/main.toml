@@ -1,0 +1,37 @@
+[server]
+  hostname = "mail.${DOMAIN}"
+  protocol.log = true
+  trust-x-client-id = true
+
+[server.tls]
+  certificate = "/certs/fullchain.pem"
+  private-key = "/certs/privkey.pem"
+
+[server.inbound]
+  hostname = "${DOMAIN}"
+  protocols = ["smtp", "imap", "manage"]
+
+[server.outbound]
+  next-hop = ["127.0.0.1:10025"]
+
+[jmap]
+  hostname = "jmap.${DOMAIN}"
+  push.enabled = true
+
+[storage]
+  type = "sqlite"
+  path = "/data/db"
+
+[storage.blob]
+  type = "filesystem"
+  path = "/data/blobs"
+
+[auth]
+  rate-limit = 10
+  verify-host = true
+  callback = "https://${DOMAIN}/auth/verify"
+
+[report]
+  dkim = true
+  dmarc = true
+  disposition = ["none", "quarantine", "reject"]

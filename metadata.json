@@ -2,5 +2,9 @@
   "name": "FIDScript Deploy",
   "description": "A self-hosted Developer Operating System that transforms any VPS into a private application cloud with hosting, auth, storage, database, queues, cron, notifications, and AI agents.",
   "requestFramePermissions": [],
-  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"],
+  "version": "1.0.0-alpha",
+  "phase": "0 - Architecture First",
+  "architecture": "./ARCHITECTURE.md",
+  "developmentGuide": "./MASTER_DEVELOPMENT_GUIDE.md"
 }

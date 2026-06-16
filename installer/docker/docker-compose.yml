@@ -1,0 +1,217 @@
+version: "3.9"
+
+services:
+  traefik:
+    image: traefik:v3.0
+    container_name: fidscript_traefik
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+      - "127.0.0.1:8080:8080"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - ./traefik/traefik.yml:/etc/traefik/traefik.yml:ro
+      - ./traefik/dynamic.yml:/etc/traefik/dynamic.yml:ro
+      - ./traefik/certs:/certs:ro
+      - fidscript_acme:/acme
+    networks:
+      - fidscript
+
+  postgres:
+    image: postgres:16-alpine
+    container_name: fidscript_postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: fidscript
+      POSTGRES_USER: fidscript
+      POSTGRES_PASSWORD_FILE: /run/secrets/postgres_password
+    secrets:
+      - postgres_password
+    volumes:
+      - fidscript_postgres:/var/lib/postgresql/data
+    networks:
+      - fidscript
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U fidscript -d fidscript"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    container_name: fidscript_redis
+    restart: unless-stopped
+    command: redis-server --requirepass-file /run/secrets/redis_password --appendonly yes
+    secrets:
+      - redis_password
+    volumes:
+      - fidscript_redis:/data
+    networks:
+      - fidscript
+    healthcheck:
+      test: ["CMD", "redis-cli", "-a", "$$(cat /run/secrets/redis_password)", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  nats:
+    image: nats:2.10-alpine
+    container_name: fidscript_nats
+    restart: unless-stopped
+    command: ["-c", "/etc/nats/nats-server.conf"]
+    volumes:
+      - ./config/nats-server.conf:/etc/nats/nats-server.conf:ro
+      - fidscript_nats:/data
+    networks:
+      - fidscript
+    healthcheck:
+      test: ["CMD", "nats", "server", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  minio:
+    image: minio/minio:latest
+    container_name: fidscript_minio
+    restart: unless-stopped
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER_FILE: /run/secrets/minio_access_key
+      MINIO_ROOT_PASSWORD_FILE: /run/secrets/minio_secret_key
+    secrets:
+      - minio_access_key
+      - minio_secret_key
+    volumes:
+      - fidscript_minio:/data
+    networks:
+      - fidscript
+    healthcheck:
+      test: ["CMD", "mc", "ready", "local"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  stalwart:
+    image: stalwartlabs/mail-server:latest
+    container_name: fidscript_stalwart
+    restart: unless-stopped
+    environment:
+      - STA_LICENSE_KEY=
+      - STA_DATA_DIR=/data
+      - STA_CONFIG_FILE=/etc/stalwart/main.toml
+    volumes:
+      - ./config/stalwart:/etc/stalwart:ro
+      - fidscript_stalwart:/data
+    networks:
+      - fidscript
+
+  api:
+    build:
+      context: ./api
+      dockerfile: Dockerfile
+    container_name: fidscript_api
+    restart: unless-stopped
+    environment:
+      DATABASE_URL: postgresql://fidscript:$$(cat /run/secrets/postgres_password)@postgres:5432/fidscript
+      REDIS_URL: redis://:$$(cat /run/secrets/redis_password)@redis:6379
+      NATS_URL: nats://nats:4222
+      MINIO_ENDPOINT: minio:9000
+      MINIO_ACCESS_KEY: $$(cat /run/secrets/minio_access_key)
+      MINIO_SECRET_KEY: $$(cat /run/secrets/minio_secret_key)
+      JWT_SECRET_FILE: /run/secrets/jwt_secret
+    secrets:
+      - postgres_password
+      - redis_password
+      - minio_access_key
+      - minio_secret_key
+      - jwt_secret
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+    networks:
+      - fidscript
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      nats:
+        condition: service_healthy
+      minio:
+        condition: service_healthy
+
+  dashboard:
+    build:
+      context: ./dashboard
+      dockerfile: Dockerfile
+    container_name: fidscript_dashboard
+    restart: unless-stopped
+    environment:
+      NEXT_PUBLIC_API_URL: https://api.${DOMAIN}
+      NEXT_PUBLIC_PLATFORM_URL: https://${DOMAIN}
+    networks:
+      - fidscript
+    depends_on:
+      - api
+
+  bootstrap:
+    image: alpine:3.19
+    container_name: fidscript_bootstrap
+    restart: "no"
+    volumes:
+      - fidscript_secrets:/secrets
+      - fidscript_config:/config
+    networks:
+      - fidscript
+    depends_on:
+      postgres:
+        condition: service_healthy
+    entrypoint: ["/bin/sh", "-c"]
+    command:
+      - |
+        set -e
+        apk add --no-cache postgresql-client > /dev/null 2>&1
+
+        # Wait for postgres to be fully ready
+        echo "Waiting for PostgreSQL..."
+        until pg_isready -h postgres -U fidscript -d fidscript > /dev/null 2>&1; do
+          sleep 1
+        done
+
+        echo "Database ready. Bootstrap complete."
+        exit 0
+
+networks:
+  fidscript:
+    name: fidscript
+    driver: bridge
+
+volumes:
+  fidscript_postgres:
+    name: fidscript_postgres
+  fidscript_redis:
+    name: fidscript_redis
+  fidscript_nats:
+    name: fidscript_nats
+  fidscript_minio:
+    name: fidscript_minio
+  fidscript_stalwart:
+    name: fidscript_stalwart
+  fidscript_acme:
+    name: fidscript_acme
+  fidscript_secrets:
+    name: fidscript_secrets
+  fidscript_config:
+    name: fidscript_config
+
+secrets:
+  postgres_password:
+    file: ./secrets/postgres_password.txt
+  redis_password:
+    file: ./secrets/redis_password.txt
+  minio_access_key:
+    file: ./secrets/minio_access_key.txt
+  minio_secret_key:
+    file: ./secrets/minio_secret_key.txt
+  jwt_secret:
+    file: ./secrets/jwt_secret.txt
