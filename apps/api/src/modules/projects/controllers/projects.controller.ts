@@ -1,30 +1,14 @@
 import {
-  Controller,
-  Get,
-  Post,
-  Patch,
-  Put,
-  Delete,
-  Body,
-  Param,
-  Query,
-  UseGuards,
-  Req,
-  HttpCode,
-  HttpStatus,
+  Controller, Get, Post, Patch, Put, Delete, Body,
+  Param, Query, UseGuards, Req, HttpCode, HttpStatus,
 } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiBearerAuth, ApiResponse } from '@nestjs/swagger';
-import { JwtAuthGuard } from '../auth/jwt-auth.guard';
-import { ProjectsService } from './projects.service';
+import { JwtAuthGuard } from '@/modules/auth/jwt-auth.guard';
+import { ProjectsService } from '@/modules/projects/services/projects.service';
 import {
-  CreateProjectDto,
-  UpdateProjectDto,
-  CloneProjectDto,
-  AddMemberDto,
-  UpdateEnvVarsDto,
-  CreateInvitationDto,
-  AcceptInvitationDto,
-} from './dto/index';
+  CreateProjectDto, UpdateProjectDto, CloneProjectDto,
+  AddMemberDto, UpdateEnvVarsDto, CreateInvitationDto,
+} from '@/modules/projects/dto/index';
 import { Request } from 'express';
 
 @ApiTags('projects')
@@ -36,18 +20,9 @@ export class ProjectsController {
 
   @Get()
   @ApiOperation({ summary: 'List all projects' })
-  async list(
-    @Req() req: Request,
-    @Query('status') status?: string,
-    @Query('page') page?: string,
-    @Query('limit') limit?: string,
-  ) {
+  async list(@Req() req: Request, @Query('status') status?: string, @Query('page') page?: string, @Query('limit') limit?: string) {
     const user = req.user as { userId: string };
-    return this.projectsService.list(user.userId, {
-      status,
-      page: page ? parseInt(page) : undefined,
-      limit: limit ? parseInt(limit) : undefined,
-    });
+    return this.projectsService.list(user.userId, { status, page: page ? parseInt(page) : undefined, limit: limit ? parseInt(limit) : undefined });
   }
 
   @Post()
@@ -61,7 +36,6 @@ export class ProjectsController {
 
   @Get(':id')
   @ApiOperation({ summary: 'Get project by ID' })
-  @ApiResponse({ status: 404, description: 'Project not found' })
   async get(@Req() req: Request, @Param('id') id: string) {
     const user = req.user as { userId: string };
     return this.projectsService.get(user.userId, id);
@@ -113,7 +87,6 @@ export class ProjectsController {
     return this.projectsService.clone(user.userId, id, dto);
   }
 
-  // Members
   @Get(':id/members')
   @ApiOperation({ summary: 'List project members' })
   async listMembers(@Req() req: Request, @Param('id') id: string) {
@@ -122,7 +95,7 @@ export class ProjectsController {
   }
 
   @Post(':id/members')
-  @ApiOperation({ summary: 'Add project member (by email, user must exist)' })
+  @ApiOperation({ summary: 'Add project member' })
   async addMember(@Req() req: Request, @Param('id') id: string, @Body() dto: AddMemberDto) {
     const user = req.user as { userId: string };
     return this.projectsService.addMember(user.userId, id, dto);
@@ -136,7 +109,6 @@ export class ProjectsController {
     return this.projectsService.removeMember(currentUser.userId, id, userId);
   }
 
-  // Invitations
   @Get(':id/invitations')
   @ApiOperation({ summary: 'List pending invitations' })
   async listInvitations(@Req() req: Request, @Param('id') id: string) {
@@ -146,7 +118,6 @@ export class ProjectsController {
 
   @Post(':id/invitations')
   @ApiOperation({ summary: 'Create an invitation' })
-  @ApiResponse({ status: 201, description: 'Returns the raw token (shown once)' })
   async createInvitation(@Req() req: Request, @Param('id') id: string, @Body() dto: CreateInvitationDto) {
     const user = req.user as { userId: string };
     return this.projectsService.createInvitation(user.userId, id, dto);
@@ -160,7 +131,6 @@ export class ProjectsController {
     return this.projectsService.revokeInvitation(user.userId, id, invitationId);
   }
 
-  // Environment variables (encrypted)
   @Get(':id/env-vars')
   @ApiOperation({ summary: 'Get environment variables (decrypted)' })
   async getEnvVars(@Req() req: Request, @Param('id') id: string) {
@@ -184,7 +154,6 @@ export class ProjectsController {
     return this.projectsService.deleteEnvVar(user.userId, id, key);
   }
 
-  // Project API keys
   @Get(':id/api-keys')
   @ApiOperation({ summary: 'List project API keys' })
   async listProjectApiKeys(@Req() req: Request, @Param('id') id: string) {
@@ -194,7 +163,6 @@ export class ProjectsController {
 
   @Post(':id/api-keys')
   @ApiOperation({ summary: 'Create a project API key (key shown once)' })
-  @ApiResponse({ status: 201, description: 'Returns the raw key (shown once)' })
   async createProjectApiKey(@Req() req: Request, @Param('id') id: string, @Body() dto: any) {
     const user = req.user as { userId: string };
     return this.projectsService.createProjectApiKey(user.userId, id, dto);
@@ -206,19 +174,5 @@ export class ProjectsController {
   async revokeProjectApiKey(@Req() req: Request, @Param('id') id: string, @Param('keyId') keyId: string) {
     const user = req.user as { userId: string };
     return this.projectsService.revokeProjectApiKey(user.userId, id, keyId);
-  }
-}
-
-// Public invitation acceptance (no auth required)
-@ApiTags('invitations')
-@Controller('invitations')
-export class InvitationsController {
-  constructor(private projectsService: ProjectsService) {}
-
-  @Post('accept')
-  @HttpCode(HttpStatus.OK)
-  @ApiOperation({ summary: 'Accept an invitation' })
-  async acceptInvitation(@Body() dto: AcceptInvitationDto) {
-    return this.projectsService.acceptInvitation(dto);
   }
 }
