@@ -2,6 +2,8 @@ import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { execSync } from 'child_process';
 import { DeploymentProfile, RuntimeEnv } from '../types/deployment-profile';
+import { DockerLifecycleService } from './docker-lifecycle.service';
+import { DockerBuildArgsService } from './docker-build-args.service';
 
 export interface DeployResult {
   containerId: string;
@@ -16,7 +18,11 @@ export class DockerRunService {
   private readonly logger = new Logger(DockerRunService.name);
   private readonly APP_NETWORK = 'fidscript-app';
 
-  constructor(private configService: ConfigService) {}
+  constructor(
+    private configService: ConfigService,
+    private lifecycle: DockerLifecycleService,
+    private buildArgs: DockerBuildArgsService,
+  ) {}
 
   async deployContainer(opts: {
     imageTag: string;
@@ -35,8 +41,8 @@ export class DockerRunService {
     const addLog = (l: string) => { logs.push(l); onLog(l); };
 
     try {
-      this.ensureNetwork();
-      const runArgs = this.buildRunArgs({ imageTag, containerName, projectSlug, envVars, profile, domain, addLog });
+      this.lifecycle.ensureNetwork();
+      const runArgs = this.buildArgs.buildRunArgs({ imageTag, containerName, projectSlug, envVars, profile, domain });
       addLog(`[runner] Starting container: ${containerName}`);
       if (profile.requiresRoute) addLog(`[runner] Route: https://${domain} → port ${profile.defaultPort}`);
       else addLog(`[runner] No route (${profile.label} does not require HTTP routing)`);
@@ -84,9 +90,9 @@ export class DockerRunService {
     const addLog = (l: string) => { logs.push(l); onLog(l); };
 
     try {
-      try { this.exec(`docker rm -f ${containerName}`); } catch { /* ignore */ }
-      this.ensureNetwork();
-      const runArgs = this.buildRunArgs({ imageTag, containerName, projectSlug, envVars, profile, domain, addLog });
+      try { this.lifecycle.teardown(containerName); } catch { /* ignore */ }
+      this.lifecycle.ensureNetwork();
+      const runArgs = this.buildArgs.buildRunArgs({ imageTag, containerName, projectSlug, envVars, profile, domain });
       addLog(`[runner] Rollback: re-running ${imageTag} (no rebuild)`);
       this.exec(runArgs.join(' '));
 
@@ -112,53 +118,9 @@ export class DockerRunService {
     }
   }
 
-  async teardown(containerName: string): Promise<void> {
-    try { this.exec(`docker rm -f ${containerName}`); } catch { /* already gone */ }
-  }
-
-  async restart(containerName: string): Promise<void> {
-    this.exec(`docker restart ${containerName}`);
-  }
-
-  async stop(containerName: string): Promise<void> {
-    this.exec(`docker stop ${containerName}`);
-  }
-
-  private buildRunArgs(opts: {
-    imageTag: string;
-    containerName: string;
-    projectSlug: string;
-    envVars: RuntimeEnv[];
-    profile: DeploymentProfile;
-    domain: string;
-    addLog: (line: string) => void;
-  }): string[] {
-    const { imageTag, containerName, envVars, profile, domain } = opts;
-    const args = ['docker run', '--name', containerName, '--restart', 'unless-stopped',
-      '--security-opt', 'no-new-privileges', '--read-only',
-      '--tmpfs', '/tmp:rw,noexec,nosuid,size=64m', '--tmpfs', '/storage:rw,noexec,nosuid,size=128m',
-      '--memory', '512m', '--cpus', '1', '--network', this.APP_NETWORK];
-    for (const { key, value } of envVars) args.push('-e', `${key}=${value}`);
-    if (!profile.requiresPort) { args.push('--detach', imageTag); return args; }
-    args.push('-e', `PORT=${profile.defaultPort}`);
-    if (profile.requiresRoute) {
-      args.push('-l', 'traefik.enable=true',
-        '-l', `traefik.http.routers.${containerName}.rule=Host(\`${domain}\`)`,
-        '-l', `traefik.http.routers.${containerName}.entrypoints=websecure`,
-        '-l', `traefik.http.routers.${containerName}.tls=true`,
-        '-l', `traefik.http.services.${containerName}.loadbalancer.server.port=${profile.defaultPort}`,
-        '-l', `traefik.docker.network=${this.APP_NETWORK}`);
-    }
-    args.push('--detach', imageTag);
-    return args;
-  }
-
-  private ensureNetwork(): void {
-    try {
-      this.exec(`docker network create ${this.APP_NETWORK} 2>/dev/null || true`);
-      this.exec(`docker network connect ${this.APP_NETWORK} fidscript_traefik 2>/dev/null || true`);
-    } catch { /* ignore */ }
-  }
+  teardown(containerName: string) { return this.lifecycle.teardown(containerName); }
+  restart(containerName: string) { return this.lifecycle.restart(containerName); }
+  stop(containerName: string) { return this.lifecycle.stop(containerName); }
 
   private async waitForHealth(containerName: string, healthCheckPath: string, port: number, timeoutMs: number): Promise<boolean> {
     const deadline = Date.now() + timeoutMs;

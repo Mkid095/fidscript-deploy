@@ -1,13 +1,18 @@
 import { Module, Global, OnModuleInit } from '@nestjs/common';
 import { EventEmitterModule } from '@nestjs/event-emitter';
 import { EventService } from './event.service';
+import { EventNatsConsumerService } from './event-nats-consumer.service';
 import { AuditEventConsumer } from './audit-event.consumer';
 import { RegistryService } from '../registry/registry.service';
 
 @Global()
 @Module({
   imports: [EventEmitterModule.forRoot()],
-  providers: [EventService, AuditEventConsumer],
+  providers: [
+    EventService,
+    EventNatsConsumerService,
+    AuditEventConsumer,
+  ],
   exports: [EventService],
 })
 export class EventsModule implements OnModuleInit {

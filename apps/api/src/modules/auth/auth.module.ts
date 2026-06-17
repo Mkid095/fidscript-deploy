@@ -5,6 +5,9 @@ import { ConfigModule, ConfigService } from '@nestjs/config';
 import { AuthController } from '@/modules/auth/controllers/auth.controller';
 import { AuthService } from '@/modules/auth/services/auth.service';
 import { AuthSessionService } from '@/modules/auth/services/auth-session.service';
+import { AuthRegisterService } from '@/modules/auth/services/auth-register.service';
+import { AuthLoginService } from '@/modules/auth/services/auth-login.service';
+import { AuthTokenService } from '@/modules/auth/services/auth-token.service';
 import { AuthProfileService } from '@/modules/auth/services/auth-profile.service';
 import { AuthSessionMgmtService } from '@/modules/auth/services/auth-session-mgmt.service';
 import { AuthApiKeyService } from '@/modules/auth/services/auth-api-key.service';
@@ -31,6 +34,9 @@ import { PlatformAdminGuard } from '@/modules/auth/guards/platform-admin.guard';
   providers: [
     AuthService,
     AuthSessionService,
+    AuthRegisterService,
+    AuthLoginService,
+    AuthTokenService,
     AuthProfileService,
     AuthSessionMgmtService,
     AuthApiKeyService,

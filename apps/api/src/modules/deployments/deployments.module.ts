@@ -8,7 +8,10 @@ import { DeploymentWorkerService } from './runner/deployment-worker.service';
 import { DeploymentStateService } from './runner/deployment-state.service';
 import { DeploymentLifecycleService } from './runner/deployment-lifecycle.service';
 import { DeploymentRollbackService } from './runner/deployment-rollback.service';
+import { DockerLifecycleService } from './runner/docker-lifecycle.service';
+import { DockerBuildArgsService } from './runner/docker-build-args.service';
 import { DockerfileBuildProvider } from './providers/dockerfile-build.provider';
+import { DockerBuildWorkspaceService } from './providers/docker-build-workspace.service';
 import { StorageModule } from '@/modules/storage/storage.module';
 
 @Module({
@@ -23,6 +26,9 @@ import { StorageModule } from '@/modules/storage/storage.module';
     DeploymentStateService,
     DeploymentLifecycleService,
     DeploymentRollbackService,
+    DockerLifecycleService,
+    DockerBuildArgsService,
+    DockerBuildWorkspaceService,
     DockerfileBuildProvider,
     { provide: 'BUILD_PROVIDER', useExisting: DockerfileBuildProvider },
   ],

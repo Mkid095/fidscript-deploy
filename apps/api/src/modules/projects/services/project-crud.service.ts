@@ -1,8 +1,9 @@
-import { Injectable, NotFoundException, ForbiddenException, ConflictException } from '@nestjs/common';
+import { Injectable, NotFoundException, ForbiddenException } from '@nestjs/common';
 import { PrismaService } from '@/prisma/prisma.service';
 import { EventService } from '@/modules/events/event.service';
-import { CreateProjectDto, UpdateProjectDto, CloneProjectDto } from '@/modules/projects/dto/index';
 import { ProjectAccessService } from './project-access.service';
+import { ProjectFormatService } from './project-format.service';
+import { ProjectCreateService } from './project-create.service';
 import * as crypto from 'crypto';
 
 @Injectable()
@@ -10,33 +11,13 @@ export class ProjectCrudService {
   constructor(
     private prisma: PrismaService,
     private eventService: EventService,
-    private projectAccessService: ProjectAccessService,
+    private access: ProjectAccessService,
+    private format: ProjectFormatService,
+    private createService: ProjectCreateService,
   ) {}
 
-  async create(userId: string, dto: CreateProjectDto) {
-    const slug = this.generateSlug(dto.name);
-    const existing = await this.prisma.project.findUnique({ where: { slug } });
-    if (existing) throw new ConflictException('Project with this name already exists');
-
-    const project = await this.prisma.project.create({
-      data: {
-        name: dto.name, slug, description: dto.description,
-        type: dto.type.toUpperCase() as any, ownerId: userId,
-        region: dto.region, subdomain: slug,
-      },
-      include: { settings: true },
-    });
-
-    await this.prisma.projectSettings.create({ data: { projectId: project.id } });
-
-    await this.eventService.emit('projects.project.created', {
-      id: crypto.randomUUID(), type: 'projects.project.created',
-      timestamp: new Date(), actorId: userId, actorType: 'user',
-      resourceType: 'project', resourceId: project.id,
-      metadata: { name: project.name, slug: project.slug },
-    });
-
-    return this.formatProject(project);
+  async create(userId: string, dto: any) {
+    return this.createService.create(userId, dto);
   }
 
   async list(userId: string, options: { status?: string; page?: number; limit?: number } = {}) {
@@ -55,18 +36,18 @@ export class ProjectCrudService {
     ]);
 
     return {
-      projects: projects.map(p => this.formatProject(p)),
+      projects: projects.map(p => this.format.formatProject(p)),
       pagination: { page, limit, total, pages: Math.ceil(total / limit) },
     };
   }
 
   async get(userId: string, projectId: string) {
-    const project = await this.projectAccessService.findProjectWithAccess(userId, projectId);
-    return this.formatProject(project);
+    const project = await this.access.findProjectWithAccess(userId, projectId);
+    return this.format.formatProject(project);
   }
 
-  async update(userId: string, projectId: string, dto: UpdateProjectDto) {
-    await this.projectAccessService.checkPermission(userId, projectId, ['admin', 'owner']);
+  async update(userId: string, projectId: string, dto: any) {
+    await this.access.checkPermission(userId, projectId, ['admin', 'owner']);
     const project = await this.prisma.project.update({
       where: { id: projectId },
       data: {
@@ -80,7 +61,7 @@ export class ProjectCrudService {
       timestamp: new Date(), actorId: userId, actorType: 'user',
       resourceType: 'project', resourceId: projectId, metadata: dto,
     });
-    return this.formatProject(project);
+    return this.format.formatProject(project);
   }
 
   async delete(userId: string, projectId: string) {
@@ -98,7 +79,7 @@ export class ProjectCrudService {
   }
 
   async suspend(userId: string, projectId: string) {
-    await this.projectAccessService.checkPermission(userId, projectId, ['admin', 'owner']);
+    await this.access.checkPermission(userId, projectId, ['admin', 'owner']);
     const project = await this.prisma.project.update({
       where: { id: projectId }, data: { status: 'SUSPENDED' },
     });
@@ -107,11 +88,11 @@ export class ProjectCrudService {
       timestamp: new Date(), actorId: userId, actorType: 'user',
       resourceType: 'project', resourceId: projectId, metadata: {},
     });
-    return this.formatProject(project);
+    return this.format.formatProject(project);
   }
 
   async archive(userId: string, projectId: string) {
-    await this.projectAccessService.checkPermission(userId, projectId, ['admin', 'owner']);
+    await this.access.checkPermission(userId, projectId, ['admin', 'owner']);
     const project = await this.prisma.project.update({
       where: { id: projectId }, data: { status: 'ARCHIVED' },
     });
@@ -120,11 +101,11 @@ export class ProjectCrudService {
       timestamp: new Date(), actorId: userId, actorType: 'user',
       resourceType: 'project', resourceId: projectId, metadata: {},
     });
-    return this.formatProject(project);
+    return this.format.formatProject(project);
   }
 
   async restore(userId: string, projectId: string) {
-    await this.projectAccessService.checkPermission(userId, projectId, ['admin', 'owner']);
+    await this.access.checkPermission(userId, projectId, ['admin', 'owner']);
     const project = await this.prisma.project.update({
       where: { id: projectId }, data: { status: 'ACTIVE' },
     });
@@ -133,61 +114,10 @@ export class ProjectCrudService {
       timestamp: new Date(), actorId: userId, actorType: 'user',
       resourceType: 'project', resourceId: projectId, metadata: {},
     });
-    return this.formatProject(project);
+    return this.format.formatProject(project);
   }
 
-  async clone(userId: string, projectId: string, dto: CloneProjectDto) {
-    const source = await this.projectAccessService.findProjectWithAccess(userId, projectId);
-    const slug = this.generateSlug(dto.name);
-    const existing = await this.prisma.project.findUnique({ where: { slug } });
-    if (existing) throw new ConflictException('Project with this name already exists');
-
-    const project = await this.prisma.project.create({
-      data: {
-        name: dto.name, slug, description: source.description,
-        type: source.type, ownerId: userId, region: source.region,
-        buildSettings: source.buildSettings as any,
-        deploymentStrategy: source.deploymentStrategy,
-        sourceProvider: source.sourceProvider,
-        sourceRepo: source.sourceRepo,
-        sourceBranch: source.sourceBranch,
-      },
-    });
-
-    await this.prisma.projectSettings.create({ data: { projectId: project.id } });
-
-    const envVars = await this.prisma.projectEnv.findMany({ where: { projectId } });
-    for (const envVar of envVars) {
-      await this.prisma.projectEnv.create({
-        data: { projectId: project.id, key: envVar.key, value: envVar.value },
-      });
-    }
-
-    await this.eventService.emit('projects.project.cloned', {
-      id: crypto.randomUUID(), type: 'projects.project.cloned',
-      timestamp: new Date(), actorId: userId, actorType: 'user',
-      resourceType: 'project', resourceId: project.id,
-      metadata: { sourceProjectId: projectId },
-    });
-
-    return this.formatProject(project);
-  }
-
-  formatProject(project: any) {
-    return {
-      id: project.id, name: project.name, slug: project.slug,
-      description: project.description, type: project.type?.toLowerCase(),
-      status: project.status?.toLowerCase(), ownerId: project.ownerId,
-      owner: project.owner, region: project.region, subdomain: project.subdomain,
-      customDomains: project.customDomains || [], buildSettings: project.buildSettings || {},
-      deploymentStrategy: project.deploymentStrategy, sourceProvider: project.sourceProvider,
-      sourceRepo: project.sourceRepo, sourceBranch: project.sourceBranch,
-      lastDeployAt: project.lastDeployAt, createdAt: project.createdAt, updatedAt: project.updatedAt,
-    };
-  }
-
-  private generateSlug(name: string): string {
-    const base = name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').substring(0, 50);
-    return `${base}-${Math.random().toString(36).substring(2, 8)}`;
+  async clone(userId: string, projectId: string, dto: any) {
+    return this.createService.clone(userId, projectId, dto, this.access.findProjectWithAccess.bind(this.access));
   }
 }

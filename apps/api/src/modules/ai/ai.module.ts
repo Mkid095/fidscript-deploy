@@ -1,6 +1,7 @@
 import { Module } from '@nestjs/common';
 import { AIController } from '@/modules/ai/controllers/ai.controller';
 import { AIConversationService } from '@/modules/ai/services/ai-conversation.service';
+import { AIChatHandlerService } from '@/modules/ai/services/ai-chat-handler.service';
 import { AIAssistantService } from '@/modules/ai/services/ai-assistant.service';
 import { GeminiProvider } from '@/modules/ai/providers/gemini.provider';
 import { AI_PROVIDER } from '@/modules/ai/providers/ai-provider.interface';
@@ -9,12 +10,10 @@ import { AI_PROVIDER } from '@/modules/ai/providers/ai-provider.interface';
   controllers: [AIController],
   providers: [
     AIConversationService,
+    AIChatHandlerService,
     AIAssistantService,
     GeminiProvider,
-    {
-      provide: AI_PROVIDER,
-      useExisting: GeminiProvider,
-    },
+    { provide: AI_PROVIDER, useExisting: GeminiProvider },
   ],
   exports: [AIConversationService, AIAssistantService],
 })

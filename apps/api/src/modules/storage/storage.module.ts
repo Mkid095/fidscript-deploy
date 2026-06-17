@@ -7,6 +7,7 @@ import { StorageUrlService } from '@/modules/storage/services/storage-url.servic
 import { StorageAccessService } from '@/modules/storage/services/storage-access.service';
 import { StorageCredentialsService } from '@/modules/storage/services/storage-credentials.service';
 import { MinioProvider } from '@/modules/storage/providers/minio.provider';
+import { MinioBucketService } from '@/modules/storage/providers/minio-bucket.service';
 import { CloudinaryProvider } from '@/modules/storage/providers/cloudinary.provider';
 import { TelegramProvider } from '@/modules/storage/providers/telegram.provider';
 import { StorageProviderFactory } from '@/modules/storage/providers/storage-provider.factory';
@@ -21,6 +22,7 @@ import { StorageProviderFactory } from '@/modules/storage/providers/storage-prov
     StorageAccessService,
     StorageCredentialsService,
     MinioProvider,
+    MinioBucketService,
     CloudinaryProvider,
     TelegramProvider,
     StorageProviderFactory,
