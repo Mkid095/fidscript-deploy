@@ -8,7 +8,7 @@ Provision a **real** database per project that an app can actually connect to, w
 
 ## Current State
 
-**IN PROGRESS.** As of 2026-06-17:
+**VERIFIED.** As of 2026-06-17:
 
 - **Real provisioning**: `CREATE DATABASE` + `CREATE ROLE` (NOINHERIT NOLOGIN) + grants — `pg` Pool bypasses PgBouncer for admin ops
 - **Multi-environment**: a project can own many DBs across `production | staging | preview | development` environments; unique constraint is `(project_id, environment, name)`
