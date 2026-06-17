@@ -192,46 +192,46 @@ The platform needs a frontend framework for:
 
 ---
 
-## ADR-005: Buildpack-First Deployment Strategy
+## ADR-005: Dockerfile-First Deployment Strategy
 
-**Date:** 2026-06-16
+**Date:** 2026-06-17 (revised from 2026-06-16)
 
 **Status:** Accepted
 
 **Context:**
-The platform needs deployment automation for:
-- Node.js applications
-- Python applications
-- PHP applications
-- Static sites
+The deployment engine must produce predictable, reproducible builds on a single VPS. We need to minimize variables while still supporting the full range of application types.
 
 **Options Considered:**
 
 1. **Dockerfile Required**
-   - Pros: Full control, predictable builds
+   - Pros: Full control, predictable builds, no magic, reproducible anywhere
    - Cons: Users must write Dockerfiles
 
 2. **Buildpacks Only**
    - Pros: Zero config for standard apps
-   - Cons: Limited customization
+   - Cons: Unpredictable build behavior, version drift, vendor lock-in to pack version, hard to debug
 
 3. **Buildpack-First, Dockerfile-Fallback**
    - Pros: Best developer experience, escape hatch
-   - Cons: Two systems to maintain
+   - Cons: Two systems to maintain; buildpack behavior varies by version; harder to debug
 
-**Decision:** Buildpack-first with Dockerfile fallback
+**Decision:** Dockerfile-first. Buildpacks are future pluggable providers.
 
 **Rationale:**
-- Most projects need zero configuration
-- 80/20 rule: standard stacks cover most use cases
-- Dockerfile fallback for edge cases
-- Auto-detection of runtime and dependencies
-- No buildpack knowledge required for standard apps
+- An infrastructure platform needs **reliability before convenience**. Dockerfile produces byte-for-byte identical images regardless of build environment.
+- Buildpacks introduce version skew (heroku/16 → heroku/22 behaves differently), hidden dependency resolution, and are hard to debug when they fail.
+- The `BuildProvider` interface (Phase 06) makes adding buildpack providers a future mechanical change — no architectural risk.
+- All cloud platforms (Vercel, Railway, Render, Fly.io) that started "simple" eventually moved toward Dockerfile or explicit build config because buildpacks couldn't express enough complexity.
+- Users who want zero-config can use a base image + multi-stage build in a committed Dockerfile.
+
+**Phase 06–15 (current):** `DockerfileBuildProvider` is the only provider. Git repository required. Dockerfile must exist in source root.
+
+**Future (Phase N, not yet scheduled):** `NodeBuildpackProvider`, `PythonBuildpackProvider`, etc. implement `BuildProvider` interface and slot in without changing `BuildRunnerService`.
 
 **Consequences:**
-- Must support multiple buildpack families
-- Dockerfile detection logic needed
-- Build cache strategy important
+- Users must provide a Dockerfile (or use a standard template)
+- Build logs are deterministic
+- Images are reproducible from source at any point in time
 
 ---
 
@@ -542,6 +542,196 @@ Phase 06+ projects MUST NOT hard-code assumptions that prevent a future "one pro
 - Hardcoding `project.type` as a single value per project (use deployment-level profile instead)
 - Assuming one Traefik route per project
 - Coupling env vars to a single deployment's container
+
+---
+
+## ADR-014: Git Repository Is The Canonical Source Of Truth
+
+**Date:** 2026-06-17
+
+**Status:** Accepted
+
+**Context:**
+Deployment source can come from many places: GitHub, GitLab, Bitbucket, manual ZIP uploads, CLI pushes. We need a single authoritative source that all other system parts can reference.
+
+**Decision:** The Git commit SHA is the canonical source identifier. FIDScript does not permanently store source archives, git history, or repository snapshots on the VPS.
+
+**What FIDScript stores:**
+- Docker image tags (build artifacts, not source)
+- Commit SHA and branch name (references, not history)
+- Deployment metadata (who deployed, when, from which branch)
+
+**What FIDScript does NOT store on the VPS:**
+- Source archives (ZIP, tar)
+- Git history (beyond the shallow clone used for building)
+- Repository snapshots
+- Backup copies of source code
+
+**Source providers (all map to a git commit):**
+
+| Provider | How it works |
+|----------|-------------|
+| `GitSourceProvider` | Clone git repo → shallow clone of specified SHA → build |
+| `GitHubWebhookProvider` | GitHub webhook → trigger build of specified ref |
+| `ZipSourceProvider` (future) | Upload ZIP → create ephemeral git commit → treat as git source |
+| `CliSourceProvider` (future) | `fidscript deploy` → push to internal git ref → treat as git source |
+
+**Benefits:**
+- Unlimited deployment history (GitHub is the source, not the VPS disk)
+- Rollback always refers to a git SHA — no orphaned snapshots
+- Disk usage stays bounded: only Docker images, not source code
+- Simpler backups: only database + image registry need to be backed up
+
+**Rollback always goes through git:**
+- Fast rollback (≤2 versions back): re-run existing Docker image tag directly
+- Historical rollback (3+ versions back): checkout git SHA → rebuild → deploy
+
+---
+
+## ADR-015: Release-Based Deployment Model
+
+**Date:** 2026-06-17
+
+**Status:** Accepted (Architectural Direction)
+
+**Context:**
+`Deployment` is currently doing two jobs: recording a build artifact AND representing a deployable unit. This creates confusion in rollback, dashboard, and monitoring. We need explicit separation.
+
+**Decision:** Introduce the `Release` concept as the layer between a git commit and a deployment.
+
+```
+Project
+ └─ Release (source snapshot)
+     └─ Deployment (running instance of a Release)
+```
+
+**Release record fields:**
+```typescript
+interface Release {
+  id: string;
+  projectId: string;
+  commitSha: string;       // Canonical git SHA
+  branch: string;          // e.g. "main"
+  imageTag: string;        // e.g. "fidscript/project:v3"
+  buildDurationMs: number;
+  buildLogs: string;
+  createdBy: string;       // userId or system
+  createdAt: Date;
+}
+```
+
+**Deployment record fields (current):**
+```typescript
+interface Deployment {
+  id: string;
+  releaseId?: string;      // FK to Release (future)
+  projectId: string;
+  version: string;         // e.g. "rollback-abc123" or release imageTag
+  status: DeploymentStatus;
+  deploymentUrl: string;
+  // ...
+}
+```
+
+**Rollback becomes:**
+```
+Rollback to Release v3
+  → Find Release v3 by id
+  → docker run fidscript/project:v3  (existing image, no rebuild)
+  → Create new Deployment with releaseId = v3.id
+```
+
+**Why this matters for the dashboard:**
+- A user sees "Release v3 deployed 3 times (active, then 2 rollbacks)" not "3 deployments with confusing version names"
+- Rollback history is a Release tree, not a flat deployment list
+- Phase 19 (Dashboard) can render release timelines without custom logic
+
+**Not implemented yet (Phase N):** `Release` model does not exist in the schema today. This ADR establishes the direction so `Deployment` is not designed in a way that makes `Release` impossible to add later.
+
+---
+
+## ADR-016: Two-Image Artifact Retention Policy
+
+**Date:** 2026-06-17
+
+**Status:** Accepted
+
+**Context:**
+Docker images consume significant disk space. Storing every build forever will eventually fill the VPS disk. We need a retention policy that balances fast rollback capability against storage cost.
+
+**Decision:** Keep at most two Docker images per project on the VPS.
+
+```
+Build N     ← Active (current deployment uses this)
+Build N-1   ← Rollback target (previous successful deployment)
+Build N-2   ← Deleted (older than rollback window)
+Build N-3   ← Deleted
+...
+```
+
+**Retention rules:**
+- When a new build succeeds: delete the image for the second-oldest successful deployment (keep current + previous only)
+- When a rollback occurs: the rolled-back-to image becomes the active target, no new image is created
+- Failed builds: their images are deleted immediately after the failure is recorded
+
+**VPS storage bound:**
+```
+Max local images per project = 2
+Max image size per project = ~2 GB (typical Node.js app with deps)
+Max total storage for 50 projects = ~100 GB
+```
+
+**Historical rollback (3+ versions back):**
+```
+User requests: "rollback to deployment from 2 months ago"
+  → Lookup deployment's commitSha
+  → git checkout <sha> locally
+  → docker build -t fidscript/project:<sha> <workspace>
+  → docker run (temporary image, deleted after deployment settles)
+  → Image becomes the new "previous" target for future fast rollbacks
+```
+
+**Implementation notes:**
+- Image deletion must run asynchronously (never block the deployment response)
+- The cleanup job should run on a cron (Phase 12) or as part of the worker loop
+- Images should be tagged with both `<slug>:<version>` AND `<slug>:latest` to enable simple identification
+
+---
+
+## ADR-017: Project Resource Limits
+
+**Date:** 2026-06-17
+
+**Status:** Accepted (Architectural Direction)
+
+**Context:**
+A single bad deployment (e.g. infinite loop, memory leak, fork bomb) can consume all CPU, RAM, or disk on a shared VPS, affecting all other projects. We need per-project resource boundaries before multi-tenant production use.
+
+**Decision:** Every project has configurable resource limits enforced at the container and host level.
+
+**Limit categories:**
+
+| Resource | Per-project default | Per-container default | Future hard cap |
+|----------|--------------------|-----------------------|-----------------|
+| CPU | 1 core | 1 core | 4 cores |
+| Memory | 512 MB | 512 MB | 2 GB |
+| Storage (images) | 2 GB | — | 10 GB |
+| Containers (running) | 3 | — | 10 |
+| Deployments (total) | unlimited | — | — |
+| Bandwidth (out) | unmeasured | — | — |
+
+**Implementation approach:**
+- Container-level: `docker run --memory`, `--cpus` flags (already in place for 512MB/1CPU)
+- Project-level: cgroups or a project-specific Docker resource limit applied at deploy time
+- Aggregate host limits: daemon-level resource quotas managed by the API service account
+
+**Future enforcement (Phase N):**
+- A `ProjectResourceQuota` model in the database
+- `ProjectGuard` checks quota before allowing new deployments
+- A cleanup job kills containers that exceed their memory limit (OOMKilled)
+- Monitoring (Phase 14) tracks per-project resource usage and alerts before hard cap is hit
+
+**This ADR does NOT require code changes today.** It prevents the platform from being designed in a way that makes per-project quotas impossible to add later.
 
 ---
 

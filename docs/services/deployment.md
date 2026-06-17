@@ -12,14 +12,15 @@ The Deployment Engine is the core product promise: a project deploys and serves 
 
 How each `ProjectType` is deployed:
 
-| Type     | Traefik Route | HTTP Health Check | Port Required | Container Lifecycle | Notes |
-|----------|--------------|-------------------|---------------|---------------------|-------|
+| Type       | Traefik Route | HTTP Health Check | Port Required | Container Lifecycle | Notes |
+|------------|--------------|-------------------|---------------|---------------------|-------|
 | `FRONTEND` | ✅ Yes | ✅ Yes (`/`) | ✅ Yes (default 3000) | Detached + health probe | Standard web app |
 | `BACKEND`  | ✅ Yes | ✅ Yes (`/health`) | ✅ Yes (default 3000) | Detached + health probe | API service |
 | `STATIC`   | ✅ Yes | ✅ Yes (`/`) | ✅ Yes (default 8080) | Detached + health probe | Static file server |
 | `DOCKER`   | ✅ Yes | ✅ Yes (configurable) | ✅ Yes (configurable) | Detached + health probe | User controls everything |
 | `WORKER`   | ❌ No  | ❌ No | ❌ No | Detached, no probe | Background process; no HTTP |
 | `CRON`     | ❌ No  | ❌ No | ❌ No | Detached, no probe | Background; future scheduler Phase 12 will enable |
+| `FUNCTION` | ❌ No  | ❌ No | ❌ No | On-demand (event-driven) | Reserved for Phase 14/15; same as WORKER today |
 
 ### Key Behaviour by Type
 
@@ -67,9 +68,32 @@ The profile is resolved from `Project.type` at deploy time. Unknown types defaul
 
 ## Build System
 
-### Architecture: `BuildProvider` Interface
+### Architecture: `SourceProvider` + `BuildProvider`
 
-Build strategies are pluggable via the `BuildProvider` interface:
+The build pipeline has two pluggable layers:
+
+```
+SourceProvider    →  BuildProvider    →  Deploy
+(git clone, zip)     (dockerfile)        (docker run)
+```
+
+**`SourceProvider`** — fetches source code into a workspace:
+
+```typescript
+export interface SourceProvider {
+  name: string;
+  fetch(context: SourceContext): Promise<SourceWorkspace>;
+}
+```
+
+| Provider | Status | Description |
+|----------|--------|-------------|
+| `GitSourceProvider` | ✅ Implemented | Shallow git clone of specified ref |
+| `StorageSourceProvider` | Future | Fetch archive from MinIO (Phase 05) |
+| `ZipSourceProvider` | Future | Accept ZIP upload, create ephemeral git commit |
+| `CliSourceProvider` | Future | `fidscript deploy` streams source over HTTP |
+
+**`BuildProvider`** — builds source into a Docker image:
 
 ```typescript
 export interface BuildProvider {
@@ -78,6 +102,13 @@ export interface BuildProvider {
   build(context: BuildContext): Promise<BuildResult>;
 }
 ```
+
+| Provider | Status | Trigger |
+|----------|--------|---------|
+| `DockerfileBuildProvider` | ✅ Implemented | `strategy: 'dockerfile'` or default |
+| `NodeBuildpackProvider` | Future | Phase N |
+| `PythonBuildpackProvider` | Future | Phase N |
+| `StaticBuildpackProvider` | Future | Phase N |
 
 ### Phase 06 Implementation: `DockerfileBuildProvider`
 

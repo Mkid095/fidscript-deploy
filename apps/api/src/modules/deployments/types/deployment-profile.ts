@@ -78,6 +78,16 @@ export const DEPLOYMENT_PROFILES: Record<string, DeploymentProfile> = {
     isWorker: false,
     isCron: false,
   },
+  FUNCTION: {
+    label: 'Serverless Function',
+    requiresRoute: false,
+    requiresPort: false,
+    defaultPort: 0,
+    requiresHealthCheck: false,
+    healthCheckPath: '',
+    isWorker: true,  // Same as WORKER: no route, no port, no HTTP
+    isCron: false,
+  },
   WORKER: {
     label: 'Background Worker',
     requiresRoute: false,
