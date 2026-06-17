@@ -1,7 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import axios, { AxiosInstance } from 'axios';
-import { DnsProvider, DnsRecord } from './dns-provider.interface';
+import { DnsProvider, DnsRecord } from '@/modules/domains/providers/dns-provider.interface';
 
 /**
  * Cloudflare implementation of DnsProvider.
