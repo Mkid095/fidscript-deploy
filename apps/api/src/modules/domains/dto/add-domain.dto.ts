@@ -10,18 +10,18 @@ export class AddDomainDto {
   @IsUUID()
   deploymentId: string;
 
-  @ApiPropertyOptional({ description: 'Enable automatic TLS via Let\'s Encrypt', default: true })
-  @IsBoolean()
-  @IsOptional()
-  sslEnabled?: boolean;
-
   @ApiPropertyOptional({ description: "DNS configuration mode: 'manual' (default) or 'cloudflare_auto'", default: 'manual' })
   @IsIn(['manual', 'cloudflare_auto'])
   @IsOptional()
   dnsMode?: 'manual' | 'cloudflare_auto';
 
-  @ApiPropertyOptional({ description: 'Set as the primary domain for this deployment', default: false })
+  @ApiPropertyOptional({ description: "Automatic WWW redirect: 'none' (default), 'www_to_root', or 'root_to_www'", default: 'none' })
+  @IsIn(['none', 'www_to_root', 'root_to_www'])
+  @IsOptional()
+  redirectMode?: 'none' | 'www_to_root' | 'root_to_www';
+
+  @ApiPropertyOptional({ description: 'Enable automatic TLS via Let\'s Encrypt', default: true })
   @IsBoolean()
   @IsOptional()
-  isPrimary?: boolean;
+  sslEnabled?: boolean;
 }

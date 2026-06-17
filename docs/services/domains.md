@@ -4,46 +4,40 @@
 
 ## Overview
 
-Domain registration, DNS validation, and automatic TLS via Let's Encrypt.
+Domain registration, DNS validation, SSL provisioning, and health monitoring.
 
 ### Two DNS Configuration Modes
 
 | Mode | Trigger | How it works |
 |------|---------|-------------|
-| **Mode A — Manual DNS (default)** | `dnsMode: 'manual'` | Platform shows DNS records user must configure manually. No Cloudflare API calls. |
-| **Mode B — Cloudflare Auto** | `dnsMode: 'cloudflare_auto'` | Platform creates DNS records via Cloudflare API automatically. |
+| **Mode A — Manual DNS (default)** | `dnsMode: 'manual'` | Platform shows DNS records user configures manually. No Cloudflare API calls. |
+| **Mode B — Cloudflare Auto** | `dnsMode: 'cloudflare_auto'` | Platform creates DNS records via Cloudflare API automatically. Opt-in only. |
 
-Mode A is always the default. Mode B is opt-in and requires connecting a Cloudflare account first.
+### Verification Pipeline
 
-### Three Verification Checks
+Every domain goes through 5 mandatory steps before reaching `ACTIVE`:
 
-Every domain goes through three verification checks before reaching `ACTIVE`:
+```
+1. PENDING            → Domain added, no verification yet
+2. OWNERSHIP_PENDING → TXT record _fidscript.<domain> confirmed (proves ownership)
+3. VALIDATING         → DNS propagation + resolution checks
+4. ACTIVE             → DNS + routing + SSL all verified
+```
 
-1. **DNS Propagation** — the required DNS records exist in Cloudflare (Mode B) or public DNS (Mode A)
-2. **DNS Resolution** — the domain actually resolves (confirmed via Cloudflare DoH or `dig`)
-3. **HTTP Routing** — `GET http://<domain>/.well-known/fidscript` reaches the platform
-
-Only when all three pass does `dnsStatus` become `ACTIVE`.
+If any check fails: `FAILED` (permanent). If an active domain later fails a health check: `BROKEN`.
 
 ### Domain Lifecycle
 
-```
-PENDING → VALIDATING → ACTIVE
-                     ↘ FAILED (verification failed)
-                     ↘ BROKEN (was ACTIVE but routing dropped)
-```
-
 | Status | Meaning |
 |--------|---------|
-| `PENDING` | Added, verification not yet attempted |
-| `VALIDATING` | Verification in progress (propagation + resolution + routing) |
+| `PENDING` | Added, no verification attempted |
+| `OWNERSHIP_PENDING` | TXT record created, waiting for user to confirm (Mode B) or for user to add TXT (Mode A) |
+| `VALIDATING` | Ownership confirmed, checking DNS propagation + routing |
 | `ACTIVE` | All checks passed, serving traffic |
-| `BROKEN` | Was ACTIVE but HTTP routing check failed (e.g. user deleted CNAME) |
+| `BROKEN` | Was ACTIVE but failed a health check (e.g. CNAME deleted) |
 | `FAILED` | Verification failed permanently |
 
-### SSL Status
-
-SSL is tracked independently of DNS:
+### SSL Status (independent of DNS)
 
 | Status | Meaning |
 |--------|---------|
@@ -51,30 +45,37 @@ SSL is tracked independently of DNS:
 | `ISSUING` | ACME certificate in flight |
 | `ACTIVE` | Certificate issued and serving |
 | `FAILED` | Certificate issuance or renewal failed |
-| `EXPIRED` | Certificate was valid but has expired |
+| `EXPIRED` | Certificate has expired |
+
+### WWW Redirects
+
+When adding a domain, user can specify `redirectMode`:
+
+| Value | Behaviour |
+|-------|-----------|
+| `'none'` | No redirect |
+| `'www_to_root'` | `www.example.com` → `example.com` |
+| `'root_to_www'` | `example.com` → `www.example.com` |
 
 ### Email Safety
 
 Before auto-creating DNS records (Mode B), the platform checks for MX records. If found:
 
-- `emailWarning: true` is set on the domain
-- Only CNAME and TXT records are created
-- MX/SPF/DKIM/DMARC records are **never touched or overwritten**
-- User is warned in the API response and dashboard
-
-Common email providers detected: Google Workspace, Microsoft 365, Zoho, Amazon SES, Mailgun.
+- `emailWarning: true` and `emailProvider` are set
+- Only CNAME/TXT/A records are created
+- **MX/SPF/DKIM/DMARC are never touched**
+- Known providers: `GOOGLE_WORKSPACE`, `MICROSOFT_365`, `ZOHO`, `SES`, `MAILGUN`, `CUSTOM`
 
 ### Apex Domain Support
 
-Root domains (e.g. `example.com`) cannot use CNAME records. For apex domains:
+Root domains (e.g. `example.com`) cannot use CNAME records:
+
 - **Mode A**: Platform instructs user to create an **A record** pointing to `SERVER_IP`
-- **Mode B**: Platform creates an **A record** (not CNAME) automatically
+- **Mode B**: Platform creates an **A record** automatically
 
 ### Multiple Domains Per Deployment
 
-A deployment can have multiple domains simultaneously:
-- One domain is marked `isPrimary: true` (first added, or explicitly set)
-- Used for redirects (e.g. redirect `www.example.com` → `example.com`)
+A deployment supports multiple domains simultaneously. One is marked `isPrimary: true` (first added). Used for redirect logic.
 
 ---
 
@@ -84,23 +85,39 @@ A deployment can have multiple domains simultaneously:
 
 | Column | Type | Notes |
 |--------|------|-------|
-| `id` | UUID | Primary key |
-| `project_id` | UUID FK | Which project owns this domain |
+| `id` | UUID PK | |
+| `project_id` | UUID FK | |
 | `deployment_id` | UUID FK (nullable) | Which deployment this domain routes to |
 | `domain` | VARCHAR(255) | Full domain, e.g. `app.example.com` |
-| `is_custom` | BOOLEAN | `true` for user-owned domains, `false` for platform subdomains |
-| `is_primary` | BOOLEAN | `true` for the primary domain on a deployment |
-| `apex_domain` | BOOLEAN | `true` for root domains (no subdomain part) |
+| `is_custom` | BOOLEAN | `true` for user-owned domains |
+| `is_primary` | BOOLEAN | Primary domain for redirect logic |
+| `apex_domain` | BOOLEAN | `true` for root domains |
 | `dns_mode` | VARCHAR(50) | `'manual'` (default) or `'cloudflare_auto'` |
-| `ssl_enabled` | BOOLEAN | Kill-switch for TLS |
+| `redirect_mode` | VARCHAR(50) | `'none'` (default), `'www_to_root'`, `'root_to_www'` |
+| `ssl_enabled` | BOOLEAN | Kill-switch |
 | `ssl_status` | ENUM | `PENDING \| ISSUING \| ACTIVE \| FAILED \| EXPIRED` |
 | `ssl_method` | VARCHAR(50) | `'letsencrypt'` (default), `'custom'`, `'disabled'` |
-| `dns_status` | ENUM | `PENDING \| VALIDATING \| ACTIVE \| BROKEN \| FAILED` |
-| `dns_verified_at` | TIMESTAMPTZ | When DNS check passed |
-| `routing_verified_at` | TIMESTAMPTZ | When HTTP routing check passed |
-| `email_warning` | BOOLEAN | `true` if MX records were detected |
+| `dns_status` | ENUM | `PENDING \| OWNERSHIP_PENDING \| VALIDATING \| ACTIVE \| BROKEN \| FAILED` |
+| `dns_verified_at` | TIMESTAMPTZ | |
+| `routing_verified_at` | TIMESTAMPTZ | When HTTP routing confirmed |
+| `email_warning` | BOOLEAN | MX records were detected |
+| `email_provider` | VARCHAR(100) | `GOOGLE_WORKSPACE`, `MICROSOFT_365`, etc. |
 
-**Indexes:** `(project_id, domain)` unique; `(deployment_id)` for reverse lookup; `(dns_status)`; `(ssl_status)`
+### projects.domain_health_checks
+
+Written every ~10 minutes by the background monitor. Enables uptime history, analytics, and future status pages.
+
+| Column | Type | Notes |
+|--------|------|-------|
+| `id` | UUID PK | |
+| `domain_id` | UUID FK | |
+| `checked_at` | TIMESTAMPTZ | |
+| `dns_ok` | BOOLEAN | |
+| `routing_ok` | BOOLEAN | |
+| `ssl_ok` | BOOLEAN | |
+| `response_time_ms` | INT | |
+| `status` | VARCHAR(20) | `'ok' \| 'degraded' \| 'broken'` |
+| `error_message` | TEXT | |
 
 ---
 
@@ -108,48 +125,65 @@ A deployment can have multiple domains simultaneously:
 
 | Method | Path | Description |
 |--------|------|-------------|
-| `GET` | `/api/v1/projects/:projectId/domains` | List all domains for a project |
-| `POST` | `/api/v1/projects/:projectId/domains` | Add domain (`dnsMode`, `deploymentId`, `sslEnabled`) |
+| `GET` | `/api/v1/projects/:projectId/domains` | List domains |
+| `POST` | `/api/v1/projects/:projectId/domains` | Add domain (`dnsMode`, `deploymentId`, `redirectMode`, `sslEnabled`) |
 | `GET` | `/api/v1/projects/:projectId/domains/:id/instructions` | Get DNS instructions (Mode A) |
-| `POST` | `/api/v1/projects/:projectId/domains/:id/verify` | Full verification (DNS + resolution + routing) |
+| `POST` | `/api/v1/projects/:projectId/domains/:id/verify` | Run full verification pipeline |
 | `POST` | `/api/v1/projects/:projectId/domains/connect-cloudflare` | Connect Cloudflare account (Mode B) |
-| `DELETE` | `/api/v1/projects/:projectId/domains/:id` | Delete domain + clean up DNS |
+| `DELETE` | `/api/v1/projects/:projectId/domains/:id` | Delete domain |
 
 `POST /domains` body:
 ```json
 {
   "domain": "app.example.com",
   "deploymentId": "uuid",
-  "sslEnabled": true,
   "dnsMode": "manual",
-  "isPrimary": false
+  "redirectMode": "www_to_root",
+  "sslEnabled": true
 }
 ```
-
-`POST /connect-cloudflare` body: `{ "apiToken": "cfut_..." }`
 
 ---
 
 ## Verification Flow
 
 ```
-add(domain, deploymentId)
-  → isApex = (domain has no dot-split parts > 2)
-  → emailWarning = checkMxRecords(domain).hasMx   // for Mode B and info
-  → if Mode A: return { instructions } (CNAME/TXT/A records user must create)
+add(domain)
+  → isApex = (split('.').length === 2)
+  → emailWarning = checkMxRecords(domain)
+  → dnsStatus = PENDING
   → if Mode B:
-       create TXT _fidscript-verification.<domain> via Cloudflare API
-       create CNAME (or A for apex) via Cloudflare API
-       dnsStatus = VALIDATING
+       createPlatformSubdomain() — TXT + CNAME/A
+       dnsStatus = OWNERSHIP_PENDING
 
 verify(domainId)
-  → dnsStatus = VALIDATING
-  → checkDnsPropagation()    → dig / Cloudflare API
-  → checkDnsResolution()     → Cloudflare DoH + dig
-  → checkHttpRouting()        → GET http://<domain>/.well-known/fidscript
-  → all pass → dnsStatus = ACTIVE, sslStatus = ISSUING
-  → routing fails → dnsStatus = FAILED
+  → dnsStatus = OWNERSHIP_PENDING:
+       checkOwnership() — verifies TXT record
+       → fail → dnsStatus = FAILED
+       → pass → dnsStatus = VALIDATING
+
+  → dnsStatus = VALIDATING:
+       checkDnsPropagation() + checkDnsResolution()
+       → fail → dnsStatus = FAILED
+       → pass → checkHttpRouting()
+
+  → checkHttpRouting():
+       → fail → dnsStatus = FAILED
+       → pass → dnsStatus = ACTIVE, sslStatus = ISSUING
 ```
+
+---
+
+## Background Health Monitoring
+
+Called every ~10 minutes by the scheduler (Phase 14). Records a `DomainHealthCheck` row per domain, then transitions:
+
+```
+ACTIVE  → BROKEN  (dnsOk=false OR routingOk=false)
+BROKEN  → ACTIVE  (routingOk=true on next run)
+```
+
+Events emitted: `domain.broken`, `domain.recovered`.
 
 ---
 
@@ -158,10 +192,11 @@ verify(domainId)
 | Event | When |
 |-------|------|
 | `domain.added` | Domain record created |
-| `domain.verified` | All three checks passed, dnsStatus = ACTIVE |
-| `domain.failed` | DNS or routing check failed |
-| `domain.broken` | Previously ACTIVE domain failed a health check |
-| `domain.recovered` | BROKEN domain passed a subsequent health check |
+| `domain.pending_ownership` | Ownership check not yet passed |
+| `domain.verified` | dnsStatus = ACTIVE |
+| `domain.failed` | dnsStatus = FAILED |
+| `domain.broken` | ACTIVE → BROKEN |
+| `domain.recovered` | BROKEN → ACTIVE |
 | `domain.deleted` | Domain removed |
 
 ---
@@ -170,25 +205,15 @@ verify(domainId)
 
 | File | Role |
 |------|------|
-| `apps/api/src/modules/domains/domains.service.ts` | All domain operations, verification checks, Mode A/B |
+| `apps/api/src/modules/domains/domains.service.ts` | All operations + 5-step verify pipeline + health monitor |
 | `apps/api/src/modules/domains/domains.controller.ts` | REST endpoints |
 | `apps/api/src/modules/domains/domains.module.ts` | DI module |
 | `apps/api/src/modules/domains/providers/dns-provider.interface.ts` | DnsProvider interface |
 | `apps/api/src/modules/domains/providers/cloudflare-dns.provider.ts` | Cloudflare API v4 implementation |
 | `apps/api/src/modules/verification/verification.controller.ts` | `GET /.well-known/fidscript` public endpoint |
-| `apps/api/prisma/schema.prisma` | Domain model + SslStatus enum |
-| `apps/api/prisma/migrations/20260619000000_domains_tls_real/` | All new columns + BROKEN status + SslStatus |
+| `apps/api/prisma/schema.prisma` | Domain + DomainHealthCheck models + enums |
+| `apps/api/prisma/migrations/20260619000000_domains_tls_real/` | Full migration |
 | `installer/traefik/traefik.yml` | ACME DNS-01 + HTTP-01 resolvers |
-| `installer/traefik/dynamic.yml` | Platform routes with letsencrypt-dns |
-| `installer/docker/docker-compose.yml` | CF_API_TOKEN_FILE, SERVER_IP |
-| `installer/scripts/setup-wizard.sh` | Prompts for Cloudflare token + SERVER_IP |
-
----
-
-## Out of Scope
-
-- Buying/registering domains
-- Automatic WWW redirects (Phase 19 dashboard)
-- Domain monitoring background worker (Phase 14 — `checkHealth()` method exists, needs scheduler)
-- Custom SSL certificate upload
-- Additional DNS providers beyond Cloudflare (interface-ready, implementation deferred)
+| `installer/traefik/dynamic.yml` | letsencrypt-dns on platform routes |
+| `installer/docker/docker-compose.yml` | CF_API_TOKEN_FILE, SERVER_IP wired |
+| `installer/scripts/setup-wizard.sh` | Prompts for CF token + SERVER_IP |

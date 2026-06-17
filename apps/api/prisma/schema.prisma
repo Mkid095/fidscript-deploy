@@ -356,6 +356,7 @@ model Domain {
   isPrimary     Boolean     @default(false) @map("is_primary")  // primary domain for this deployment
   apexDomain    Boolean     @default(false) @map("apex_domain")  // true for root domains (example.com)
   dnsMode       String      @default("manual") @map("dns_mode")  // 'manual' | 'cloudflare_auto'
+  redirectMode  String      @default("none") @map("redirect_mode")  // 'none' | 'www_to_root' | 'root_to_www'
   sslEnabled    Boolean     @default(true) @map("ssl_enabled")
   sslStatus     SslStatus   @default(PENDING) @map("ssl_status")
   sslMethod     String      @default("letsencrypt") @map("ssl_method")  // 'letsencrypt' | 'custom' | 'disabled'
@@ -364,21 +365,46 @@ model Domain {
   dnsVerifiedAt DateTime?   @map("dns_verified_at") @db.Timestamptz
   routingVerifiedAt DateTime? @map("routing_verified_at") @db.Timestamptz  // HTTP routing confirmed
   emailWarning  Boolean     @default(false) @map("email_warning")  // MX records detected
+  emailProvider String?     @map("email_provider") @db.VarChar(100)  // GOOGLE_WORKSPACE | MICROSOFT_365 | ZOHO | SES | MAILGUN | CUSTOM
   createdAt     DateTime    @default(now()) @map("created_at") @db.Timestamptz
 
-  project    Project     @relation(fields: [projectId], references: [id], onDelete: Cascade)
-  deployment Deployment? @relation(fields: [deploymentId], references: [id])
+  project       Project          @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  deployment    Deployment?      @relation(fields: [deploymentId], references: [id])
+  healthChecks  DomainHealthCheck[]
 
   @@unique([projectId, domain])
   @@map("projects.domains")
 }
 
+// Tracks operational history of every domain check.
+// Written by the background health monitor every 10 minutes.
+model DomainHealthCheck {
+  id          String   @id @default(uuid())
+  domainId   String   @map("domain_id")
+  checkedAt  DateTime @default(now()) @map("checked_at") @db.Timestamptz
+
+  dnsOk       Boolean  @default(false) @map("dns_ok")
+  routingOk   Boolean  @default(false) @map("routing_ok")
+  sslOk       Boolean  @default(false) @map("ssl_ok")
+
+  responseTimeMs Int?    @map("response_time_ms")
+
+  status      String   @db.VarChar(20)  // 'ok' | 'degraded' | 'broken'
+  errorMessage String?  @map("error_message") @db.Text
+
+  domain      Domain   @relation(fields: [domainId], references: [id], onDelete: Cascade)
+
+  @@index([domainId, checkedAt])
+  @@map("projects.domain_health_checks")
+}
+
 enum DomainStatus {
-  PENDING     // Domain added, no verification attempted yet
-  VALIDATING  // Verification in progress
-  ACTIVE      // DNS + routing verified, cert issued, serving traffic
-  BROKEN      // Was ACTIVE but DNS/routing/cert has failed
-  FAILED      // Verification failed (permanent)
+  PENDING           // Domain added, no verification attempted yet
+  OWNERSHIP_PENDING // TXT record created, waiting for ownership confirmation
+  VALIDATING        // Ownership confirmed, checking DNS propagation + routing
+  ACTIVE            // All checks passed, serving traffic
+  BROKEN            // Was ACTIVE but DNS/routing/cert has failed
+  FAILED            // Verification failed (permanent)
 }
 
 enum SslStatus {

@@ -12,16 +12,17 @@ Custom domains with real DNS verification and automatic TLS. Attach a custom dom
 
 - **Mode A (Manual DNS) as default**: `dnsMode: 'manual'` — platform returns DNS instructions user configures manually, no external API calls
 - **Mode B (Cloudflare Auto)**: `dnsMode: 'cloudflare_auto'` — creates records via Cloudflare API
-- **Three-step verification**: DNS propagation + DNS resolution + HTTP routing (`GET /.well-known/fidscript`)
-- **ACTIVE/BROKEN lifecycle**: BROKEN when previously-active domain fails a health check; recovers to ACTIVE
-- **sslStatus field**: PENDING | ISSUING | ACTIVE | FAILED | EXPIRED
-- **Email safety**: MX record detection before Mode B auto-DNS; MX/SPF/DKIM/DMARC never overwritten
+- **5-step verification pipeline**: PENDING → OWNERSHIP_PENDING (TXT) → VALIDATING (DNS) → ACTIVE (routing)
+- **ACTIVE/BROKEN lifecycle**: BROKEN when previously-active domain fails health check; recovers automatically
+- **sslStatus field**: PENDING | ISSUING | ACTIVE | FAILED | EXPIRED (independent of DNS status)
+- **emailProvider field**: GOOGLE_WORKSPACE | MICROSOFT_365 | ZOHO | SES | MAILGUN | CUSTOM | NONE
+- **Email safety**: MX detection before Mode B auto-DNS; MX/SPF/DKIM/DMARC never overwritten
+- **redirectMode**: 'none' | 'www_to_root' | 'root_to_www' — automatic WWW redirects
 - **Apex domain support**: A record instruction/creation for root domains (no CNAME possible)
-- **isPrimary flag**: first domain is primary; multiple domains per deployment supported
-- **routingVerifiedAt**: timestamp when HTTP routing was confirmed working
-- **Cloudflare account connection**: `POST /domains/connect-cloudflare` stores encrypted API token
-- **DnsProvider interface**: Cloudflare only today, Route53/etc. drop in without service changes
-- **ADR-022** (TLS/ACME approach) reflects Mode A/B, three-check verification, email safety
+- **DomainHealthChecks table**: operational history for all domain checks (uptime history, status page foundation)
+- **checkHealth(domainId)**: background health method; records DomainHealthCheck row; transitions BROKEN/ACTIVE
+- **DnsProvider interface**: Cloudflare only today, others drop in without service changes
+- **ADR-022** (updated): Mode A/B, 5-step verify, email safety, WWW redirect, health table
 
 ## Dependencies
 
