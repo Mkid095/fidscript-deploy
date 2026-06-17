@@ -31,6 +31,10 @@ export class EventsModule implements OnModuleInit {
         'queue.created', 'queue.message_published',
         'cron.created', 'cron.executed', 'cron.failed',
         'storage.created', 'storage.uploaded', 'storage.deleted',
+        'deployments.deployment.created', 'deployments.deployment.queued',
+        'deployments.deployment.building', 'deployments.deployment.deploying',
+        'deployments.deployment.succeeded', 'deployments.deployment.failed',
+        'deployments.deployment.stopped', 'deployments.deployment.rolled_back',
       ],
     });
   }

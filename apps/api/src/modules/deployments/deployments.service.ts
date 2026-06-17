@@ -4,27 +4,32 @@ import {
   ForbiddenException,
   BadRequestException,
 } from '@nestjs/common';
-import { ConfigService } from '@nestjs/config';
 import { PrismaService } from '../../prisma/prisma.service';
 import { EventService } from '../events/event.service';
-import { AuditService } from '../audit/audit.service';
-import { CreateDeploymentDto, BuildStrategy, UpdateBuildConfigDto } from './dto/index';
+import { DeploymentWorkerService } from './runner/deployment-worker.service';
+import {
+  CreateDeploymentDto,
+  BuildStrategy,
+  UpdateBuildConfigDto,
+} from './dto/index';
+import * as crypto from 'crypto';
 
 @Injectable()
 export class DeploymentsService {
   constructor(
     private prisma: PrismaService,
-    private configService: ConfigService,
     private eventService: EventService,
-    private auditService: AuditService,
+    private worker: DeploymentWorkerService,
   ) {}
+
+  // ─────────────────────────────────────────────────────────────
+  // Create — queues the deployment, worker picks it up async
+  // ─────────────────────────────────────────────────────────────
 
   async create(userId: string, projectId: string, dto: CreateDeploymentDto) {
     const project = await this.prisma.project.findUnique({ where: { id: projectId } });
     if (!project) throw new NotFoundException('Project not found');
-
-    const hasAccess = await this.checkAccess(userId, projectId);
-    if (!hasAccess) throw new ForbiddenException('Access denied');
+    await this.checkAccessOrThrow(userId, projectId);
 
     const version = this.generateVersion();
 
@@ -38,29 +43,33 @@ export class DeploymentsService {
       },
     });
 
-    await this.eventService.emit('deployment.started', {
-      deploymentId: deployment.id,
-      projectId,
-      userId,
-    });
-
-    await this.auditService.log({
-      userId,
-      action: 'deployment.created',
+    // Emit the event the worker listens on — fire-and-forget from the HTTP thread.
+    // The worker drives all subsequent state transitions (QUEUED → BUILDING → DEPLOYING → SUCCESS/FAILED).
+    await this.eventService.emit('deployments.deployment.created', {
+      id: crypto.randomUUID(),
+      type: 'deployments.deployment.created',
+      timestamp: new Date(),
+      actorId: userId,
+      actorType: 'user',
       resourceType: 'deployment',
       resourceId: deployment.id,
-      metadata: { projectId, version },
+      metadata: {
+        deploymentId: deployment.id,
+        projectId,
+        userId,
+        strategy: dto.strategy,
+        branch: dto.branch,
+        source: dto.source,
+      },
     });
 
     return this.formatDeployment(deployment);
   }
 
   async list(userId: string, projectId: string, page = 1, limit = 20) {
-    const hasAccess = await this.checkAccess(userId, projectId);
-    if (!hasAccess) throw new ForbiddenException('Access denied');
+    await this.checkAccessOrThrow(userId, projectId);
 
     const skip = (page - 1) * limit;
-
     const [deployments, total] = await Promise.all([
       this.prisma.deployment.findMany({
         where: { projectId },
@@ -78,131 +87,136 @@ export class DeploymentsService {
   }
 
   async get(userId: string, projectId: string, deploymentId: string) {
-    const hasAccess = await this.checkAccess(userId, projectId);
-    if (!hasAccess) throw new ForbiddenException('Access denied');
-
+    await this.checkAccessOrThrow(userId, projectId);
     const deployment = await this.prisma.deployment.findUnique({
       where: { id: deploymentId },
     });
-
     if (!deployment || deployment.projectId !== projectId) {
       throw new NotFoundException('Deployment not found');
     }
-
     return this.formatDeployment(deployment);
   }
 
   async getLogs(userId: string, projectId: string, deploymentId: string) {
-    const hasAccess = await this.checkAccess(userId, projectId);
-    if (!hasAccess) throw new ForbiddenException('Access denied');
-
+    await this.checkAccessOrThrow(userId, projectId);
     const deployment = await this.prisma.deployment.findUnique({
       where: { id: deploymentId },
     });
-
     if (!deployment || deployment.projectId !== projectId) {
       throw new NotFoundException('Deployment not found');
     }
-
     return { logs: deployment.buildLogs || '' };
   }
 
+  // ─────────────────────────────────────────────────────────────
+  // Lifecycle ops — delegate to worker
+  // ─────────────────────────────────────────────────────────────
+
+  async stop(userId: string, projectId: string, deploymentId: string) {
+    await this.checkAccessOrThrow(userId, projectId);
+    await this.worker.stopDeployment(deploymentId, userId);
+    return this.get(userId, projectId, deploymentId);
+  }
+
+  async restart(userId: string, projectId: string, deploymentId: string) {
+    await this.checkAccessOrThrow(userId, projectId);
+    await this.worker.restartDeployment(deploymentId, userId);
+    return this.get(userId, projectId, deploymentId);
+  }
+
+  async destroy(userId: string, projectId: string, deploymentId: string) {
+    await this.checkAccessOrThrow(userId, projectId);
+    await this.worker.destroyDeployment(deploymentId, userId);
+    return { success: true };
+  }
+
+  // ─────────────────────────────────────────────────────────────
+  // Rollback — creates a new deployment that re-uses the previous image
+  // ─────────────────────────────────────────────────────────────
+
   async rollback(userId: string, projectId: string, deploymentId: string) {
-    const hasAccess = await this.checkAccess(userId, projectId);
-    if (!hasAccess) throw new ForbiddenException('Access denied');
+    await this.checkAccessOrThrow(userId, projectId);
 
     const deployment = await this.prisma.deployment.findUnique({
       where: { id: deploymentId },
     });
-
     if (!deployment || deployment.projectId !== projectId) {
       throw new NotFoundException('Deployment not found');
     }
-
     if (deployment.status !== 'SUCCESS') {
       throw new BadRequestException('Can only rollback successful deployments');
     }
 
     const previousDeployment = await this.prisma.deployment.findFirst({
-      where: {
-        projectId,
-        status: 'SUCCESS',
-        createdAt: { lt: deployment.createdAt },
-      },
+      where: { projectId, status: 'SUCCESS', createdAt: { lt: deployment.createdAt } },
       orderBy: { createdAt: 'desc' },
     });
-
     if (!previousDeployment) {
       throw new BadRequestException('No previous deployment to rollback to');
     }
 
+    // Create a new deployment that re-runs the previous successful build
     const rollbackDeployment = await this.prisma.deployment.create({
       data: {
         projectId,
         version: this.generateVersion(),
-        status: 'SUCCESS',
+        status: 'PENDING',
         commitSha: deployment.commitSha,
         commitMessage: `Rollback to ${deployment.version}`,
         rolledBackToId: deployment.id,
-        deploymentUrl: previousDeployment.deploymentUrl,
-        completedAt: new Date(),
       },
     });
 
-    await this.prisma.deployment.update({
-      where: { id: deploymentId },
-      data: { status: 'ROLLED_BACK' },
-    });
-
-    await this.eventService.emit('deployment.rolled_back', {
-      deploymentId: rollbackDeployment.id,
-      rolledBackToId: deploymentId,
-      projectId,
-      userId,
-    });
-
-    await this.auditService.log({
-      userId,
-      action: 'deployment.rolled_back',
+    await this.eventService.emit('deployments.deployment.created', {
+      id: crypto.randomUUID(),
+      type: 'deployments.deployment.created',
+      timestamp: new Date(),
+      actorId: userId,
+      actorType: 'user',
       resourceType: 'deployment',
       resourceId: rollbackDeployment.id,
-      metadata: { projectId, rolledBackToId: deploymentId },
+      metadata: {
+        deploymentId: rollbackDeployment.id,
+        projectId,
+        userId,
+        rollback: true,
+        rolledBackToId: deploymentId,
+      },
+    });
+
+    await this.eventService.emit('deployments.deployment.rolled_back', {
+      id: crypto.randomUUID(),
+      type: 'deployments.deployment.rolled_back',
+      timestamp: new Date(),
+      actorId: userId,
+      actorType: 'user',
+      resourceType: 'deployment',
+      resourceId: rollbackDeployment.id,
+      metadata: { deploymentId: rollbackDeployment.id, projectId, rolledBackToId: deploymentId },
     });
 
     return this.formatDeployment(rollbackDeployment);
   }
 
+  // ─────────────────────────────────────────────────────────────
+  // Build config
+  // ─────────────────────────────────────────────────────────────
+
   async getBuildConfig(userId: string, projectId: string) {
-    const hasAccess = await this.checkAccess(userId, projectId);
-    if (!hasAccess) throw new ForbiddenException('Access denied');
-
-    let config = await this.prisma.buildConfig.findUnique({
-      where: { projectId },
-    });
-
+    await this.checkAccessOrThrow(userId, projectId);
+    let config = await this.prisma.buildConfig.findUnique({ where: { projectId } });
     if (!config) {
-      config = await this.prisma.buildConfig.create({
-        data: { projectId },
-      });
+      config = await this.prisma.buildConfig.create({ data: { projectId } });
     }
-
     return this.formatBuildConfig(config);
   }
 
   async updateBuildConfig(userId: string, projectId: string, dto: UpdateBuildConfigDto) {
-    const hasAccess = await this.checkAccess(userId, projectId);
-    if (!hasAccess) throw new ForbiddenException('Access denied');
-
-    let config = await this.prisma.buildConfig.findUnique({
-      where: { projectId },
-    });
-
+    await this.checkAccessOrThrow(userId, projectId);
+    let config = await this.prisma.buildConfig.findUnique({ where: { projectId } });
     if (!config) {
-      config = await this.prisma.buildConfig.create({
-        data: { projectId },
-      });
+      config = await this.prisma.buildConfig.create({ data: { projectId } });
     }
-
     config = await this.prisma.buildConfig.update({
       where: { projectId },
       data: {
@@ -213,65 +227,21 @@ export class DeploymentsService {
         ...(dto.healthCheckPort !== undefined && { healthCheckPort: dto.healthCheckPort }),
       },
     });
-
-    await this.auditService.log({
-      userId,
-      action: 'build_config.updated',
-      resourceType: 'build_config',
-      resourceId: config.id,
-      metadata: dto,
-    });
-
     return this.formatBuildConfig(config);
   }
 
-  async triggerBuild(deploymentId: string) {
-    const deployment = await this.prisma.deployment.update({
-      where: { id: deploymentId },
-      data: { status: 'BUILDING' },
-    });
+  // ─────────────────────────────────────────────────────────────
+  // Helpers
+  // ─────────────────────────────────────────────────────────────
 
-    await this.eventService.emit('deployment.building', {
-      deploymentId,
-      projectId: deployment.projectId,
-    });
-
-    return this.formatDeployment(deployment);
-  }
-
-  async completeBuild(deploymentId: string, success: boolean, logs?: string, durationMs?: number) {
-    const deployment = await this.prisma.deployment.update({
-      where: { id: deploymentId },
-      data: {
-        status: success ? 'SUCCESS' : 'FAILED',
-        buildLogs: logs,
-        buildDurationMs: durationMs,
-        completedAt: new Date(),
-      },
-    });
-
-    await this.eventService.emit(
-      success ? 'deployment.succeeded' : 'deployment.failed',
-      { deploymentId, projectId: deployment.projectId },
-    );
-
-    return this.formatDeployment(deployment);
-  }
-
-  private async checkAccess(userId: string, projectId: string): Promise<boolean> {
-    const project = await this.prisma.project.findUnique({
-      where: { id: projectId },
-    });
-
-    if (!project) return false;
-
-    if (project.ownerId === userId) return true;
-
+  private async checkAccessOrThrow(userId: string, projectId: string): Promise<void> {
+    const project = await this.prisma.project.findUnique({ where: { id: projectId } });
+    if (!project) throw new NotFoundException('Project not found');
+    if (project.ownerId === userId) return;
     const member = await this.prisma.projectMember.findUnique({
       where: { projectId_userId: { projectId, userId } },
     });
-
-    return !!member;
+    if (!member) throw new ForbiddenException('Access denied');
   }
 
   private generateVersion(): string {

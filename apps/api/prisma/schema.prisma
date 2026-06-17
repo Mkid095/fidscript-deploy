@@ -292,10 +292,12 @@ model Deployment {
 
 enum DeploymentStatus {
   PENDING
+  QUEUED
   BUILDING
   DEPLOYING
   SUCCESS
   FAILED
+  STOPPED
   ROLLED_BACK
 }
 

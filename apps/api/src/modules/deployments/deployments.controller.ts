@@ -3,11 +3,14 @@ import {
   Get,
   Post,
   Patch,
+  Delete,
   Body,
   Param,
   Query,
   UseGuards,
   Req,
+  HttpCode,
+  HttpStatus,
 } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
@@ -40,7 +43,8 @@ export class DeploymentsController {
   }
 
   @Post('deployments')
-  @ApiOperation({ summary: 'Create a new deployment' })
+  @HttpCode(HttpStatus.ACCEPTED)
+  @ApiOperation({ summary: 'Create a new deployment (async — polls status for result)' })
   async create(
     @Req() req: Request,
     @Param('projectId') projectId: string,
@@ -62,7 +66,7 @@ export class DeploymentsController {
   }
 
   @Get('deployments/:id/logs')
-  @ApiOperation({ summary: 'Get deployment logs' })
+  @ApiOperation({ summary: 'Get deployment build logs' })
   async getLogs(
     @Req() req: Request,
     @Param('projectId') projectId: string,
@@ -72,8 +76,45 @@ export class DeploymentsController {
     return this.deploymentsService.getLogs(user.userId, projectId, deploymentId);
   }
 
+  @Post('deployments/:id/stop')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Stop a running deployment' })
+  async stop(
+    @Req() req: Request,
+    @Param('projectId') projectId: string,
+    @Param('id') deploymentId: string,
+  ) {
+    const user = req.user as { userId: string };
+    return this.deploymentsService.stop(user.userId, projectId, deploymentId);
+  }
+
+  @Post('deployments/:id/restart')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Restart a stopped deployment' })
+  async restart(
+    @Req() req: Request,
+    @Param('projectId') projectId: string,
+    @Param('id') deploymentId: string,
+  ) {
+    const user = req.user as { userId: string };
+    return this.deploymentsService.restart(user.userId, projectId, deploymentId);
+  }
+
+  @Delete('deployments/:id')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Destroy a deployment (remove container, image, and record)' })
+  async destroy(
+    @Req() req: Request,
+    @Param('projectId') projectId: string,
+    @Param('id') deploymentId: string,
+  ) {
+    const user = req.user as { userId: string };
+    return this.deploymentsService.destroy(user.userId, projectId, deploymentId);
+  }
+
   @Post('deployments/:id/rollback')
-  @ApiOperation({ summary: 'Rollback deployment' })
+  @HttpCode(HttpStatus.ACCEPTED)
+  @ApiOperation({ summary: 'Rollback to a previous successful deployment' })
   async rollback(
     @Req() req: Request,
     @Param('projectId') projectId: string,

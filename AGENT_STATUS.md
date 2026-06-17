@@ -38,8 +38,8 @@ Statuses: `Planned` · `In Progress` · `Verified`
 | 03 | Identity & Access (platform auth) | Verified |
 | 04 | Projects Engine | Verified |
 | 05 | Storage Platform | Verified |
-| 06 | Deployment Engine | In Progress |
-| 07 | Domains & TLS | Planned |
+| 06 | Deployment Engine | Verified |
+| 07 | Domains & TLS | In Progress |
 | 08 | Database Platform | Planned |
 | 09 | Email Platform (Stalwart) | Planned |
 | 10 | Functions Runtime | Planned |
@@ -68,7 +68,8 @@ Statuses: `Planned` · `In Progress` · `Verified`
 - [x] Begin **Phase 03 — Identity & Access (platform auth)**: JWT auth, platform roles (USER/ADMIN/OWNER), `PlatformAdminGuard`, session management.
 - [x] Begin **Phase 04 — Projects Engine**: encrypted env vars (AES-256-GCM/CryptoService), invitations flow (SHA-256 token hash, 7d expiry, accept/revoke), project API keys (fpk_ prefix, bcrypt-hashed), `projects.*` events (15 typed), `ProjectEnv`/`ProjectInvitation`/`ProjectApiKey` models.
 - [x] Begin **Phase 05 — Storage Platform**: real MinIO bucket lifecycle (makeBucket/removeBucket SDK calls), real etag from putObject response, external URLs via MINIO_EXTERNAL_ENDPOINT, per-project bucket namespacing (proj-<slug>-<name>), project isolation (checkProjectAccess), multi-provider (internal/cloudinary/telegram) with per-project credentials from ProjectEnv.
-- [ ] Begin **Phase 06 — Deployment Engine**: build + deploy pipeline, container registry, log aggregation, health checks.
+- [x] Begin **Phase 06 — Deployment Engine**: real Docker build+run via BuildRunnerService, async DeploymentWorkerService driving PENDING→QUEUED→BUILDING→DEPLOYING→SUCCESS/FAILED state machine, encrypted env var injection at runtime, lifecycle ops (stop/restart/destroy/rollback), fidscript-app network, Traefik Docker labels routing, build logs persisted.
+- [ ] Begin **Phase 07 — Domains & TLS**: DNS, wildcard certs, Traefik routing for storage subdomain.
 
 ## Definition of done (per phase)
 

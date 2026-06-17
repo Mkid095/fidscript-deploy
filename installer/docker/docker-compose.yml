@@ -17,6 +17,7 @@ services:
       - fidscript_acme:/acme
     networks:
       - fidscript
+      - fidscript-app
 
   postgres:
     image: postgres:16-alpine
@@ -138,6 +139,7 @@ services:
       - ./secrets:/run/secrets:ro
     networks:
       - fidscript
+      - fidscript-app
     depends_on:
       postgres:
         condition: service_healthy
@@ -198,6 +200,9 @@ services:
 networks:
   fidscript:
     name: fidscript
+    driver: bridge
+  fidscript-app:
+    name: fidscript-app
     driver: bridge
 
 volumes:

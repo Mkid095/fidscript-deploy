@@ -49,7 +49,16 @@ export type EventType =
   | 'project.archived'
   | 'project.restored'
   | 'project.cloned'
-  // Deployment events
+  // Deployment events (Phase 06) — dot notation
+  | 'deployments.deployment.created'
+  | 'deployments.deployment.queued'
+  | 'deployments.deployment.building'
+  | 'deployments.deployment.deploying'
+  | 'deployments.deployment.succeeded'
+  | 'deployments.deployment.failed'
+  | 'deployments.deployment.stopped'
+  | 'deployments.deployment.rolled_back'
+  // Legacy aliases (backwards-compat)
   | 'deployment.started'
   | 'deployment.building'
   | 'deployment.succeeded'
