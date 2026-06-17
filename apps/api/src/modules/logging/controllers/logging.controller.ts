@@ -9,42 +9,46 @@ import {
   UseGuards,
 } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
-import { JwtAuthGuard } from '../auth/jwt-auth.guard';
-import { LoggingService } from './logging.service';
-import { CreateLogStreamDto, GetLogsDto, WriteLogDto, WriteBatchLogsDto } from './dto/index';
+import { JwtAuthGuard } from '@/modules/auth/jwt-auth.guard';
+import { LogStreamService } from '@/modules/logging/services/log-stream.service';
+import { LogEntryService } from '@/modules/logging/services/log-entry.service';
+import { CreateLogStreamDto, GetLogsDto, WriteLogDto, WriteBatchLogsDto } from '@/modules/logging/dto/index';
 
 @ApiTags('logging')
 @Controller('projects/:projectId/logs')
 @UseGuards(JwtAuthGuard)
 @ApiBearerAuth()
 export class LoggingController {
-  constructor(private loggingService: LoggingService) {}
+  constructor(
+    private logStreamService: LogStreamService,
+    private logEntryService: LogEntryService,
+  ) {}
 
   // ===== Log Streams =====
 
   @Post('streams')
   @ApiOperation({ summary: 'Create log stream' })
   async createLogStream(@Param('projectId') projectId: string, @Body() dto: CreateLogStreamDto) {
-    return this.loggingService.createLogStream(projectId, dto);
+    return this.logStreamService.createLogStream(projectId, dto);
   }
 
   @Get('streams')
   @ApiOperation({ summary: 'List log streams' })
   async listLogStreams(@Param('projectId') projectId: string) {
-    const streams = await this.loggingService.listLogStreams(projectId);
+    const streams = await this.logStreamService.listLogStreams(projectId);
     return { streams };
   }
 
   @Get('streams/:streamId')
   @ApiOperation({ summary: 'Get log stream' })
   async getLogStream(@Param('projectId') projectId: string, @Param('streamId') streamId: string) {
-    return this.loggingService.getLogStream(projectId, streamId);
+    return this.logStreamService.getLogStream(projectId, streamId);
   }
 
   @Delete('streams/:streamId')
   @ApiOperation({ summary: 'Delete log stream' })
   async deleteLogStream(@Param('projectId') projectId: string, @Param('streamId') streamId: string) {
-    return this.loggingService.deleteLogStream(projectId, streamId);
+    return this.logStreamService.deleteLogStream(projectId, streamId);
   }
 
   // ===== Log Entries =====
@@ -52,19 +56,19 @@ export class LoggingController {
   @Post()
   @ApiOperation({ summary: 'Write log entry' })
   async writeLog(@Param('projectId') projectId: string, @Body() dto: WriteLogDto) {
-    return this.loggingService.writeLog(projectId, dto);
+    return this.logEntryService.writeLog(projectId, dto);
   }
 
   @Post('batch')
   @ApiOperation({ summary: 'Write batch logs' })
   async writeBatchLogs(@Param('projectId') projectId: string, @Body() dto: WriteBatchLogsDto) {
-    return this.loggingService.writeBatchLogs(projectId, dto);
+    return this.logEntryService.writeBatchLogs(projectId, dto);
   }
 
   @Get()
   @ApiOperation({ summary: 'Get logs' })
   async getLogs(@Param('projectId') projectId: string, @Query() dto: GetLogsDto) {
-    return this.loggingService.getLogs(projectId, dto);
+    return this.logEntryService.getLogs(projectId, dto);
   }
 
   @Get('streams/:streamName')
@@ -74,7 +78,7 @@ export class LoggingController {
     @Param('streamName') streamName: string,
     @Query() dto: GetLogsDto,
   ) {
-    return this.loggingService.getLogsByStream(projectId, streamName, dto);
+    return this.logEntryService.getLogsByStream(projectId, streamName, dto);
   }
 
   @Get('streams/:streamName/timeline')
@@ -84,12 +88,12 @@ export class LoggingController {
     @Param('streamName') streamName: string,
     @Query('interval') interval?: string,
   ) {
-    return this.loggingService.getLogTimeline(projectId, streamName, interval);
+    return this.logEntryService.getLogTimeline(projectId, streamName, interval);
   }
 
   @Get('stats')
   @ApiOperation({ summary: 'Get log stats' })
   async getLogStats(@Param('projectId') projectId: string, @Query('stream') stream?: string) {
-    return this.loggingService.getLogStats(projectId, stream);
+    return this.logEntryService.getLogStats(projectId, stream);
   }
 }

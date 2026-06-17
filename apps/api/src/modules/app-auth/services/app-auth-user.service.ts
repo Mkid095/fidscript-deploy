@@ -1,34 +1,25 @@
 import {
   Injectable,
-  NotFoundException,
   UnauthorizedException,
   ConflictException,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { PrismaService } from '../../prisma/prisma.service';
-import { EventService } from '../events/event.service';
+import { PrismaService } from '@/prisma/prisma.service';
+import { EventService } from '@/modules/events/event.service';
 import * as bcrypt from 'bcrypt';
 import * as crypto from 'crypto';
-import {
-  RegisterAppUserDto,
-  LoginAppUserDto,
-  MagicLinkDto,
-  VerifyMagicLinkDto,
-  CreateRoleDto,
-  AssignRoleDto,
-} from './dto/index';
 
 const BCRYPT_ROUNDS = 12;
 
 @Injectable()
-export class AppAuthService {
+export class AppAuthUserService {
   constructor(
     private prisma: PrismaService,
     private configService: ConfigService,
     private eventService: EventService,
   ) {}
 
-  async register(projectId: string, dto: RegisterAppUserDto) {
+  async register(projectId: string, dto: any) {
     const existing = await this.prisma.appUser.findFirst({
       where: { projectId, email: dto.email },
     });
@@ -55,7 +46,7 @@ export class AppAuthService {
     return this.formatUser(user);
   }
 
-  async login(projectId: string, dto: LoginAppUserDto) {
+  async login(projectId: string, dto: any) {
     const user = await this.prisma.appUser.findFirst({
       where: { projectId, email: dto.email },
     });
@@ -96,7 +87,7 @@ export class AppAuthService {
     };
   }
 
-  async magicLink(projectId: string, dto: MagicLinkDto) {
+  async magicLink(projectId: string, dto: any) {
     const user = await this.prisma.appUser.findFirst({
       where: { projectId, email: dto.email },
     });
@@ -112,7 +103,7 @@ export class AppAuthService {
     return { sent: true };
   }
 
-  async verifyMagicLink(projectId: string, dto: VerifyMagicLinkDto) {
+  async verifyMagicLink(projectId: string, dto: any) {
     const user = await this.prisma.appUser.findFirst({
       where: { projectId, verificationToken: dto.token },
     });
@@ -149,58 +140,6 @@ export class AppAuthService {
     };
   }
 
-  async createRole(projectId: string, dto: CreateRoleDto) {
-    const existing = await this.prisma.appRole.findFirst({
-      where: { projectId, name: dto.name },
-    });
-    if (existing) throw new ConflictException('Role already exists');
-
-    const role = await this.prisma.appRole.create({
-      data: {
-        projectId,
-        name: dto.name,
-        permissions: dto.permissions || [],
-      },
-    });
-
-    return role;
-  }
-
-  async listRoles(projectId: string) {
-    return this.prisma.appRole.findMany({
-      where: { projectId },
-      orderBy: { name: 'asc' },
-    });
-  }
-
-  async assignRole(projectId: string, dto: AssignRoleDto) {
-    const user = await this.prisma.appUser.findFirst({
-      where: { projectId, email: dto.email },
-    });
-    if (!user) throw new NotFoundException('User not found');
-
-    const role = await this.prisma.appRole.findFirst({
-      where: { projectId, name: dto.roleName },
-    });
-    if (!role) throw new NotFoundException('Role not found');
-
-    await this.prisma.appUserRole.upsert({
-      where: { userId_roleId: { userId: user.id, roleId: role.id } },
-      create: { userId: user.id, roleId: role.id },
-      update: {},
-    });
-
-    return { userId: user.id, roleId: role.id, roleName: role.name };
-  }
-
-  async getUserRoles(userId: string) {
-    const roles = await this.prisma.appUserRole.findMany({
-      where: { userId },
-      include: { role: true },
-    });
-    return roles.map(r => r.role);
-  }
-
   async validateToken(token: string) {
     const sessions = await this.prisma.appSession.findMany({
       where: { expiresAt: { gt: new Date() } },
@@ -231,7 +170,7 @@ export class AppAuthService {
     return { success: true };
   }
 
-  private formatUser(user: any) {
+  formatUser(user: any) {
     return {
       id: user.id,
       projectId: user.projectId,

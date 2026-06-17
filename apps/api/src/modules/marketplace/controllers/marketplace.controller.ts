@@ -3,42 +3,48 @@ import {
   Body, Param, Query, UseGuards, Req,
 } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
-import { JwtAuthGuard } from '../auth/jwt-auth.guard';
-import { MarketplaceService } from './marketplace.service';
+import { JwtAuthGuard } from '@/modules/auth/jwt-auth.guard';
+import { MarketplaceCatalogService } from '@/modules/marketplace/services/marketplace-catalog.service';
+import { MarketplaceReviewService } from '@/modules/marketplace/services/marketplace-review.service';
+import { MarketplaceSubmissionService } from '@/modules/marketplace/services/marketplace-submission.service';
 import {
   SubmitMarketplaceItemDto,
   UpdateMarketplaceItemDto,
   CreateReviewDto,
   ListMarketplaceDto,
-} from './dto/index';
+} from '@/modules/marketplace/dto/index';
 
 @ApiTags('marketplace')
 @Controller('marketplace')
 export class MarketplaceController {
-  constructor(private marketplaceService: MarketplaceService) {}
+  constructor(
+    private catalog: MarketplaceCatalogService,
+    private reviews: MarketplaceReviewService,
+    private submissions: MarketplaceSubmissionService,
+  ) {}
 
   @Get()
   @ApiOperation({ summary: 'List marketplace items' })
   async listItems(@Query() query: ListMarketplaceDto) {
-    return this.marketplaceService.listItems(query);
+    return this.catalog.listItems(query);
   }
 
   @Get('featured')
   @ApiOperation({ summary: 'Get featured items' })
   async getFeatured() {
-    return this.marketplaceService.getFeatured();
+    return this.catalog.getFeatured();
   }
 
   @Get('categories')
   @ApiOperation({ summary: 'Get categories' })
   async getCategories() {
-    return this.marketplaceService.getCategories();
+    return this.catalog.getCategories();
   }
 
   @Get(':slug')
   @ApiOperation({ summary: 'Get marketplace item' })
   async getItem(@Param('slug') slug: string) {
-    return this.marketplaceService.getItem(slug);
+    return this.catalog.getItem(slug);
   }
 
   @Post(':slug/reviews')
@@ -50,13 +56,13 @@ export class MarketplaceController {
     @Req() req: any,
     @Body() dto: CreateReviewDto,
   ) {
-    return this.marketplaceService.createReview(slug, req.user?.id, req.user?.name, dto);
+    return this.reviews.createReview(slug, req.user?.id, req.user?.name, dto);
   }
 
   @Post(':slug/download')
   @ApiOperation({ summary: 'Record download' })
   async incrementDownloads(@Param('slug') slug: string) {
-    return this.marketplaceService.incrementDownloads(slug);
+    return this.reviews.incrementDownloads(slug);
   }
 
   @Post('submit')
@@ -64,7 +70,7 @@ export class MarketplaceController {
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Submit item to marketplace' })
   async submitItem(@Req() req: any, @Body() dto: SubmitMarketplaceItemDto) {
-    return this.marketplaceService.submitItem(req.user?.id, req.user?.name, dto);
+    return this.submissions.submitItem(req.user?.id, req.user?.name, dto);
   }
 
   @Get('my/submissions')
@@ -72,7 +78,7 @@ export class MarketplaceController {
   @ApiBearerAuth()
   @ApiOperation({ summary: 'My submissions' })
   async getMySubmissions(@Req() req: any) {
-    return this.marketplaceService.getMySubmissions(req.user?.id);
+    return this.submissions.getMySubmissions(req.user?.id);
   }
 
   @Patch('items/:id')
@@ -80,7 +86,7 @@ export class MarketplaceController {
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Update my item' })
   async updateItem(@Param('id') id: string, @Req() req: any, @Body() dto: UpdateMarketplaceItemDto) {
-    return this.marketplaceService.updateItem(id, dto);
+    return this.submissions.updateItem(id, dto);
   }
 
   @Post('items/:id/approve')
@@ -88,7 +94,7 @@ export class MarketplaceController {
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Approve item (admin)' })
   async approveItem(@Param('id') id: string) {
-    return this.marketplaceService.approveItem(id);
+    return this.submissions.approveItem(id);
   }
 
   @Post('items/:id/reject')
@@ -96,7 +102,7 @@ export class MarketplaceController {
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Reject item (admin)' })
   async rejectItem(@Param('id') id: string) {
-    return this.marketplaceService.rejectItem(id);
+    return this.submissions.rejectItem(id);
   }
 
   @Post('items/:id/featured')
@@ -104,7 +110,7 @@ export class MarketplaceController {
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Toggle featured (admin)' })
   async markFeatured(@Param('id') id: string, @Body() body: { featured: boolean }) {
-    return this.marketplaceService.markFeatured(id, body.featured);
+    return this.submissions.markFeatured(id, body.featured);
   }
 
   @Post('items/:id/verify')
@@ -112,6 +118,6 @@ export class MarketplaceController {
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Verify item (admin)' })
   async verifyItem(@Param('id') id: string) {
-    return this.marketplaceService.verifyItem(id);
+    return this.submissions.verifyItem(id);
   }
 }

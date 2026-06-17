@@ -7,10 +7,12 @@ import { DomainHealthService } from '@/modules/domains/services/domain-health.se
 import { DomainCleanupService } from '@/modules/domains/services/domain-cleanup.service';
 import { DomainDnsService } from '@/modules/domains/services/domain-dns.service';
 import { CloudflareDnsProvider } from '@/modules/domains/providers/cloudflare-dns.provider';
+import { CloudflareZoneService } from '@/modules/domains/providers/cloudflare-zone.service';
 
 @Module({
   controllers: [DomainsController],
   providers: [
+    CloudflareZoneService,
     CloudflareDnsProvider,
     { provide: 'DNS_PROVIDER', useExisting: CloudflareDnsProvider },
     DomainsService,
@@ -27,6 +29,7 @@ import { CloudflareDnsProvider } from '@/modules/domains/providers/cloudflare-dn
     DomainHealthService,
     DomainCleanupService,
     DomainDnsService,
+    CloudflareZoneService,
     CloudflareDnsProvider,
     'DNS_PROVIDER',
   ],

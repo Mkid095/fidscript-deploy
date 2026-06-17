@@ -3,8 +3,9 @@ import {
   Body, Param, Query, UseGuards, Req,
 } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
-import { JwtAuthGuard } from '../auth/jwt-auth.guard';
-import { AIService } from './ai.service';
+import { JwtAuthGuard } from '@/modules/auth/jwt-auth.guard';
+import { AIConversationService } from '@/modules/ai/services/ai-conversation.service';
+import { AIAssistantService } from '@/modules/ai/services/ai-assistant.service';
 import {
   CreateConversationDto,
   SendMessageDto,
@@ -12,14 +13,17 @@ import {
   GetRecommendationsDto,
   AssistDeploymentDto,
   GenerateProjectDto,
-} from './dto/index';
+} from '@/modules/ai/dto/index';
 
 @ApiTags('ai')
 @Controller('projects/:projectId/ai')
 @UseGuards(JwtAuthGuard)
 @ApiBearerAuth()
 export class AIController {
-  constructor(private aiService: AIService) {}
+  constructor(
+    private conversation: AIConversationService,
+    private assistant: AIAssistantService,
+  ) {}
 
   @Post('conversations')
   @ApiOperation({ summary: 'Create conversation' })
@@ -28,7 +32,7 @@ export class AIController {
     @Req() req: any,
     @Body() dto: CreateConversationDto,
   ) {
-    return this.aiService.createConversation(projectId, req.user?.id, dto);
+    return this.conversation.createConversation(projectId, req.user?.id, dto);
   }
 
   @Get('conversations')
@@ -37,7 +41,7 @@ export class AIController {
     @Param('projectId') projectId: string,
     @Query('limit') limit?: number,
   ) {
-    return this.aiService.listConversations(projectId, limit);
+    return this.conversation.listConversations(projectId, limit);
   }
 
   @Get('conversations/:conversationId')
@@ -46,7 +50,7 @@ export class AIController {
     @Param('projectId') projectId: string,
     @Param('conversationId') conversationId: string,
   ) {
-    return this.aiService.getConversation(projectId, conversationId);
+    return this.conversation.getConversation(projectId, conversationId);
   }
 
   @Post('conversations/:conversationId/messages')
@@ -56,7 +60,7 @@ export class AIController {
     @Param('conversationId') conversationId: string,
     @Body() dto: SendMessageDto,
   ) {
-    return this.aiService.sendMessage(projectId, conversationId, dto);
+    return this.conversation.sendMessage(projectId, conversationId, dto);
   }
 
   @Delete('conversations/:conversationId')
@@ -65,7 +69,7 @@ export class AIController {
     @Param('projectId') projectId: string,
     @Param('conversationId') conversationId: string,
   ) {
-    return this.aiService.deleteConversation(projectId, conversationId);
+    return this.conversation.deleteConversation(projectId, conversationId);
   }
 
   @Post('chat')
@@ -75,13 +79,13 @@ export class AIController {
     @Req() req: any,
     @Body() dto: { content: string },
   ) {
-    return this.aiService.chat(projectId, req.user?.id, dto.content);
+    return this.conversation.chat(projectId, req.user?.id, dto.content);
   }
 
   @Post('diagnose')
   @ApiOperation({ summary: 'Diagnose error' })
   async diagnoseError(@Param('projectId') projectId: string, @Body() dto: DiagnoseErrorDto) {
-    return this.aiService.diagnoseError(projectId, dto);
+    return this.assistant.diagnoseError(projectId, dto);
   }
 
   @Post('recommendations')
@@ -90,7 +94,7 @@ export class AIController {
     @Param('projectId') projectId: string,
     @Body() dto: GetRecommendationsDto,
   ) {
-    return this.aiService.getInfrastructureRecommendations(projectId, dto);
+    return this.assistant.getInfrastructureRecommendations(projectId, dto);
   }
 
   @Post('deploy')
@@ -99,7 +103,7 @@ export class AIController {
     @Param('projectId') projectId: string,
     @Body() dto: AssistDeploymentDto,
   ) {
-    return this.aiService.assistDeployment(projectId, dto);
+    return this.assistant.assistDeployment(projectId, dto);
   }
 
   @Post('generate')
@@ -108,6 +112,6 @@ export class AIController {
     @Param('projectId') projectId: string,
     @Body() dto: GenerateProjectDto,
   ) {
-    return this.aiService.assistProjectGeneration(projectId, dto);
+    return this.assistant.assistProjectGeneration(projectId, dto);
   }
 }

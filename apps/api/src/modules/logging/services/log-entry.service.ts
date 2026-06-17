@@ -1,68 +1,11 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
-import { ConfigService } from '@nestjs/config';
-import { PrismaService } from '../../prisma/prisma.service';
-import { EventService } from '../events/event.service';
-import { CreateLogStreamDto, GetLogsDto, WriteLogDto, WriteBatchLogsDto } from './dto/index';
+import { PrismaService } from '@/prisma/prisma.service';
 
 @Injectable()
-export class LoggingService {
-  constructor(
-    private prisma: PrismaService,
-    private configService: ConfigService,
-    private eventService: EventService,
-  ) {}
+export class LogEntryService {
+  constructor(private prisma: PrismaService) {}
 
-  // ===== Log Streams =====
-
-  async createLogStream(projectId: string, dto: CreateLogStreamDto) {
-    const existing = await this.prisma.logStream.findFirst({
-      where: { projectId, name: dto.name },
-    });
-    if (existing) throw new Error('Log stream already exists');
-
-    const stream = await this.prisma.logStream.create({
-      data: {
-        projectId,
-        name: dto.name,
-        type: dto.type,
-        retentionDays: dto.retentionDays || 30,
-      },
-    });
-
-    return stream;
-  }
-
-  async listLogStreams(projectId: string) {
-    return this.prisma.logStream.findMany({
-      where: { projectId },
-      orderBy: { createdAt: 'desc' },
-    });
-  }
-
-  async getLogStream(projectId: string, streamId: string) {
-    const stream = await this.prisma.logStream.findFirst({
-      where: { id: streamId, projectId },
-    });
-    if (!stream) throw new NotFoundException('Log stream not found');
-    return stream;
-  }
-
-  async deleteLogStream(projectId: string, streamId: string) {
-    const stream = await this.prisma.logStream.findFirst({
-      where: { id: streamId, projectId },
-    });
-    if (!stream) throw new NotFoundException('Log stream not found');
-
-    await this.prisma.logStream.delete({ where: { id: streamId } });
-    await this.prisma.logEntry.deleteMany({ where: { streamId } });
-
-    return { deleted: true };
-  }
-
-  // ===== Log Entries =====
-
-  async writeLog(projectId: string, dto: WriteLogDto) {
-    // Get or create stream
+  async writeLog(projectId: string, dto: { stream: string; level: string; message: string; metadata?: Record<string, any> }) {
     let stream = await this.prisma.logStream.findFirst({
       where: { projectId, name: dto.stream },
     });
@@ -90,8 +33,7 @@ export class LoggingService {
     return { entryId: entry.id };
   }
 
-  async writeBatchLogs(projectId: string, dto: WriteBatchLogsDto) {
-    // Get or create streams
+  async writeBatchLogs(projectId: string, dto: { logs: Array<{ stream: string; level: string; message: string; metadata?: Record<string, any> }> }) {
     const streamMap = new Map<string, string>();
 
     for (const log of dto.logs) {
@@ -131,8 +73,7 @@ export class LoggingService {
     return { entryCount: entries.length };
   }
 
-  async getLogs(projectId: string, dto: GetLogsDto) {
-    // Build where clause
+  async getLogs(projectId: string, dto: { stream?: string; level?: string; startTime?: Date; endTime?: Date; search?: string; limit?: number; cursor?: string }) {
     const where: any = { stream: { projectId } };
 
     if (dto.stream) {
@@ -172,7 +113,7 @@ export class LoggingService {
     };
   }
 
-  async getLogsByStream(projectId: string, streamName: string, dto: GetLogsDto) {
+  async getLogsByStream(projectId: string, streamName: string, dto: { level?: string; startTime?: Date; endTime?: Date; search?: string; limit?: number; cursor?: string }) {
     const stream = await this.prisma.logStream.findFirst({
       where: { projectId, name: streamName },
     });
@@ -263,7 +204,6 @@ export class LoggingService {
       orderBy: { timestamp: 'asc' },
     });
 
-    // Group by time bucket
     const buckets = new Map<string, { debug: number; info: number; warn: number; error: number; fatal: number }>();
 
     for (const log of logs) {

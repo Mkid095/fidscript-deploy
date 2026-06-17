@@ -10,8 +10,9 @@ import {
   HttpStatus,
 } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
-import { JwtAuthGuard } from '../auth/jwt-auth.guard';
-import { AppAuthService } from './app-auth.service';
+import { JwtAuthGuard } from '@/modules/auth/jwt-auth.guard';
+import { AppAuthUserService } from '@/modules/app-auth/services/app-auth-user.service';
+import { AppAuthRoleService } from '@/modules/app-auth/services/app-auth-role.service';
 import {
   RegisterAppUserDto,
   LoginAppUserDto,
@@ -19,13 +20,15 @@ import {
   VerifyMagicLinkDto,
   CreateRoleDto,
   AssignRoleDto,
-} from './dto/index';
-import { Request } from 'express';
+} from '@/modules/app-auth/dto/index';
 
 @ApiTags('app-auth')
 @Controller('projects/:projectId/auth')
 export class AppAuthController {
-  constructor(private appAuthService: AppAuthService) {}
+  constructor(
+    private userService: AppAuthUserService,
+    private roleService: AppAuthRoleService,
+  ) {}
 
   @Post('register')
   @HttpCode(HttpStatus.CREATED)
@@ -34,7 +37,7 @@ export class AppAuthController {
     @Param('projectId') projectId: string,
     @Body() dto: RegisterAppUserDto,
   ) {
-    return this.appAuthService.register(projectId, dto);
+    return this.userService.register(projectId, dto);
   }
 
   @Post('login')
@@ -44,7 +47,7 @@ export class AppAuthController {
     @Param('projectId') projectId: string,
     @Body() dto: LoginAppUserDto,
   ) {
-    return this.appAuthService.login(projectId, dto);
+    return this.userService.login(projectId, dto);
   }
 
   @Post('magic-link')
@@ -54,7 +57,7 @@ export class AppAuthController {
     @Param('projectId') projectId: string,
     @Body() dto: MagicLinkDto,
   ) {
-    return this.appAuthService.magicLink(projectId, dto);
+    return this.userService.magicLink(projectId, dto);
   }
 
   @Post('verify-magic-link')
@@ -64,7 +67,7 @@ export class AppAuthController {
     @Param('projectId') projectId: string,
     @Body() dto: VerifyMagicLinkDto,
   ) {
-    return this.appAuthService.verifyMagicLink(projectId, dto);
+    return this.userService.verifyMagicLink(projectId, dto);
   }
 
   @Post('roles')
@@ -75,7 +78,7 @@ export class AppAuthController {
     @Param('projectId') projectId: string,
     @Body() dto: CreateRoleDto,
   ) {
-    return this.appAuthService.createRole(projectId, dto);
+    return this.roleService.createRole(projectId, dto);
   }
 
   @Get('roles')
@@ -83,7 +86,7 @@ export class AppAuthController {
   @ApiBearerAuth()
   @ApiOperation({ summary: 'List roles' })
   async listRoles(@Param('projectId') projectId: string) {
-    const roles = await this.appAuthService.listRoles(projectId);
+    const roles = await this.roleService.listRoles(projectId);
     return { roles };
   }
 
@@ -96,6 +99,6 @@ export class AppAuthController {
     @Param('projectId') projectId: string,
     @Body() dto: AssignRoleDto,
   ) {
-    return this.appAuthService.assignRole(projectId, dto);
+    return this.roleService.assignRole(projectId, dto);
   }
 }

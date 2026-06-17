@@ -10,16 +10,9 @@ import {
   UseGuards,
 } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
-import { JwtAuthGuard } from '../auth/jwt-auth.guard';
-import { DatabasesService } from './databases.service';
-import {
-  CreateDatabaseDto,
-  UpdateDatabaseDto,
-  CreateBackupDto,
-  RestoreBackupDto,
-  RotateCredentialsDto,
-  GetConnectionInfoDto,
-} from './dto/index';
+import { JwtAuthGuard } from '@/modules/auth/jwt-auth.guard';
+import { DatabasesService } from '@/modules/databases/services/databases.service';
+import { CreateDatabaseDto, UpdateDatabaseDto, CreateBackupDto, RestoreBackupDto, RotateCredentialsDto, GetConnectionInfoDto } from '@/modules/databases/dto/index';
 
 @ApiTags('databases')
 @Controller('projects/:projectId/databases')
@@ -86,7 +79,7 @@ export class DatabasesController {
     @Param('databaseId') databaseId: string,
     @Body() dto: RotateCredentialsDto,
   ) {
-    return this.databasesService.rotateCredentials(projectId, databaseId, dto);
+    return this.databasesService.rotateCredentials(projectId, databaseId);
   }
 
   @Post(':databaseId/backups')
