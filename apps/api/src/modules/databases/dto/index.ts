@@ -1,8 +1,10 @@
 export class CreateDatabaseDto {
   name!: string;
+  environment?: 'production' | 'staging' | 'preview' | 'development';
   type?: 'postgresql' | 'mysql' | 'redis';
   version?: string;
   size?: string;
+  maxConnections?: number;
 }
 
 export class UpdateDatabaseDto {

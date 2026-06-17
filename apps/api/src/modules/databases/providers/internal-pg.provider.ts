@@ -97,15 +97,15 @@ export class InternalPgProvider implements DatabaseProvider, OnModuleInit {
 
   // ─── Provision ────────────────────────────────────────────────────────────
 
-  async provision(databaseId: string, name: string, _options?: Record<string, unknown>): Promise<DatabaseCredentials> {
+  async provision(databaseId: string, name: string, options?: Record<string, unknown>): Promise<DatabaseCredentials> {
     const slug = name.replace(/[^a-zA-Z0-9_]/g, '_').toLowerCase().slice(0, 20);
     const prefix = databaseId.replace(/-/g, '').slice(0, 8);
     const dbName = `proj_${prefix}_${slug}`;
     const dbUser = `proj_${prefix}_${slug}`;
     const password = crypto.randomBytes(24).toString('base64url');
 
-    // Sensible single-VPS defaults: enough for a busy app, not enough to saturate the cluster
-    const CONNECTION_LIMIT = 20;
+    // Allow per-database override; sensible single-VPS default
+    const connLimit = (options?.['maxConnections'] as number) || 20;
     const STATEMENT_TIMEOUT = '60s';
 
     const pool = await this.getAdminPool();
@@ -120,7 +120,7 @@ export class InternalPgProvider implements DatabaseProvider, OnModuleInit {
 
     // 2. Create the role with connection limits and statement timeout
     await pool.query(
-      `CREATE ROLE ${quotedUser} WITH PASSWORD '${safePass}' NOSUPERUSER NOCREATEDB NOCREATEROLE NOINHERIT NOLOGIN CONNECTION LIMIT ${CONNECTION_LIMIT} SET statement_timeout TO '${STATEMENT_TIMEOUT}'`,
+      `CREATE ROLE ${quotedUser} WITH PASSWORD '${safePass}' NOSUPERUSER NOCREATEDB NOCREATEROLE NOINHERIT NOLOGIN CONNECTION LIMIT ${connLimit} SET statement_timeout TO '${STATEMENT_TIMEOUT}'`,
     );
 
     // 3. Grant CONNECT on the database

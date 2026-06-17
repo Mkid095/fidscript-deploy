@@ -11,7 +11,8 @@ Provision a **real** database per project that an app can actually connect to, w
 **IN PROGRESS.** As of 2026-06-17:
 
 - **Real provisioning**: `CREATE DATABASE` + `CREATE ROLE` (NOINHERIT NOLOGIN) + grants — `pg` Pool bypasses PgBouncer for admin ops
-- **Connection limits**: `CONNECTION LIMIT 20` + `statement_timeout='60s'` on every role (sensible single-VPS defaults)
+- **Multi-environment**: a project can own many DBs across `production | staging | preview | development` environments; unique constraint is `(project_id, environment, name)`
+- **Connection limits**: `CONNECTION LIMIT` (user-configurable, default 20) + `statement_timeout='60s'` on every role
 - **SSL enforcement**: `?sslmode=require` appended to all connection strings handed to apps
 - **Encrypted credentials**: connection string stored encrypted at rest via `CryptoService` (AES-256-GCM)
 - **DATABASE_URL auto-injection**: on `provision()`, `DATABASE_URL` + `DB_HOST/DB_PORT/DB_NAME/DB_USER/DB_PASSWORD` are upserted into `project_env_vars` so deployed apps pick it up automatically
@@ -20,7 +21,8 @@ Provision a **real** database per project that an app can actually connect to, w
 - **Database size tracking**: `used_bytes` column updated from `pg_database_size()` on provision and on health checks
 - **Backup**: `pg_dump --format=custom | gzip` → MinIO bucket `backups-<dbname>` (buffered via temp file, then uploaded)
 - **Restore**: MinIO → temp file → `pg_restore --clean --if-exists`
-- **Credential rotation**: `ALTER ROLE ... WITH PASSWORD` + re-encrypts stored connection string
+- **Credential rotation**: `ALTER ROLE ... WITH PASSWORD` + re-encrypts + re-injects DATABASE_URL env vars
+- **DatabaseMetric table**: `infrastructure.database_metrics` — for Phase 14 scheduler to collect size, connections, queries/sec, backup age, and `backup_verified` flag
 - **Isolation**: per-database roles with `NOINHERIT NOLOGIN`, `REVOKE` on `public` schema
 - **Pg npm package**: `pg@^8.21` + `@types/pg@^8.20`
 - **MinioProvider**: exported from `StorageModule` alongside `StorageService` for backup bucket access

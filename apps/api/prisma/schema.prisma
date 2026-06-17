@@ -640,10 +640,12 @@ model ManagedDatabase {
   id                   String   @id @default(uuid())
   projectId            String   @map("project_id")
   name                 String   @db.VarChar(255)
+  environment          String   @default("production") @db.VarChar(50)  // production | staging | preview | development
   type                 String   @default("postgresql") @db.VarChar(50)
   version              String   @default("15") @db.VarChar(20)
   size                 String   @default("small") @db.VarChar(50)
   usedBytes            BigInt   @default(0) @map("used_bytes")
+  maxConnections       Int      @default(20) @map("max_connections")
   status               String   @default("provisioning") @db.VarChar(50)
   host                 String?  @db.VarChar(255)
   port                 Int?     @map("port")
@@ -656,8 +658,9 @@ model ManagedDatabase {
 
   project Project          @relation(fields: [projectId], references: [id], onDelete: Cascade)
   backups DatabaseBackup[]
+  metrics  DatabaseMetric[]
 
-  @@unique([projectId, name])
+  @@unique([projectId, environment, name])
   @@map("databases.managed")
 }
 
@@ -674,6 +677,29 @@ model DatabaseBackup {
   database ManagedDatabase @relation(fields: [databaseId], references: [id], onDelete: Cascade)
 
   @@map("databases.backups")
+}
+
+// Per-database metrics snapshot written by the scheduler (Phase 14).
+// Enables dashboard graphs, alerts, and billing attribution.
+model DatabaseMetric {
+  id           String   @id @default(uuid())
+  databaseId   String   @map("database_id")
+  recordedAt   DateTime @default(now()) @map("recorded_at") @db.Timestamptz
+
+  usedBytes       BigInt @default(0) @map("used_bytes")
+  activeConns    Int    @default(0) @map("active_conns")
+  maxConns       Int    @default(0) @map("max_conns")
+  queriesPerSec  Float  @default(0) @map("queries_per_sec")
+
+  // Latest backup age (null if no backup yet)
+  lastBackupAt    DateTime? @map("last_backup_at") @db.Timestamptz
+  lastBackupSize  BigInt    @default(0) @map("last_backup_size")
+  backupVerified  Boolean   @default(false) @map("backup_verified")
+
+  database ManagedDatabase @relation(fields: [databaseId], references: [id], onDelete: Cascade)
+
+  @@index([databaseId, recordedAt])
+  @@map("infrastructure.database_metrics")
 }
 
 // =============================================

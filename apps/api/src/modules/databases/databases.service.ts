@@ -33,15 +33,19 @@ export class DatabasesService {
       data: {
         projectId,
         name: dto.name,
+        environment: dto.environment || 'production',
         type: dto.type || 'postgresql',
         version: dto.version || '15',
         size: dto.size || 'small',
+        maxConnections: dto.maxConnections || 20,
         status: 'provisioning',
       },
     });
 
     try {
-      const credentials = await this.dbProvider.provision(database.id, dto.name);
+      const credentials = await this.dbProvider.provision(database.id, dto.name, {
+        maxConnections: dto.maxConnections || 20,
+      });
       const connectionInfo = this.formatConnectionInfo(credentials);
 
       // Track actual database size
