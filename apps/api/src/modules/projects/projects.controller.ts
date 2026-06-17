@@ -22,6 +22,8 @@ import {
   CloneProjectDto,
   AddMemberDto,
   UpdateEnvVarsDto,
+  CreateInvitationDto,
+  AcceptInvitationDto,
 } from './dto/index';
 import { Request } from 'express';
 
@@ -111,6 +113,7 @@ export class ProjectsController {
     return this.projectsService.clone(user.userId, id, dto);
   }
 
+  // Members
   @Get(':id/members')
   @ApiOperation({ summary: 'List project members' })
   async listMembers(@Req() req: Request, @Param('id') id: string) {
@@ -119,7 +122,7 @@ export class ProjectsController {
   }
 
   @Post(':id/members')
-  @ApiOperation({ summary: 'Add project member' })
+  @ApiOperation({ summary: 'Add project member (by email, user must exist)' })
   async addMember(@Req() req: Request, @Param('id') id: string, @Body() dto: AddMemberDto) {
     const user = req.user as { userId: string };
     return this.projectsService.addMember(user.userId, id, dto);
@@ -133,8 +136,33 @@ export class ProjectsController {
     return this.projectsService.removeMember(currentUser.userId, id, userId);
   }
 
+  // Invitations
+  @Get(':id/invitations')
+  @ApiOperation({ summary: 'List pending invitations' })
+  async listInvitations(@Req() req: Request, @Param('id') id: string) {
+    const user = req.user as { userId: string };
+    return this.projectsService.listInvitations(user.userId, id);
+  }
+
+  @Post(':id/invitations')
+  @ApiOperation({ summary: 'Create an invitation' })
+  @ApiResponse({ status: 201, description: 'Returns the raw token (shown once)' })
+  async createInvitation(@Req() req: Request, @Param('id') id: string, @Body() dto: CreateInvitationDto) {
+    const user = req.user as { userId: string };
+    return this.projectsService.createInvitation(user.userId, id, dto);
+  }
+
+  @Delete(':id/invitations/:invitationId')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Revoke an invitation' })
+  async revokeInvitation(@Req() req: Request, @Param('id') id: string, @Param('invitationId') invitationId: string) {
+    const user = req.user as { userId: string };
+    return this.projectsService.revokeInvitation(user.userId, id, invitationId);
+  }
+
+  // Environment variables (encrypted)
   @Get(':id/env-vars')
-  @ApiOperation({ summary: 'Get environment variables' })
+  @ApiOperation({ summary: 'Get environment variables (decrypted)' })
   async getEnvVars(@Req() req: Request, @Param('id') id: string) {
     const user = req.user as { userId: string };
     return this.projectsService.getEnvVars(user.userId, id);
@@ -142,7 +170,7 @@ export class ProjectsController {
 
   @Put(':id/env-vars')
   @HttpCode(HttpStatus.OK)
-  @ApiOperation({ summary: 'Update environment variables' })
+  @ApiOperation({ summary: 'Set environment variables (encrypted at rest)' })
   async updateEnvVars(@Req() req: Request, @Param('id') id: string, @Body() dto: UpdateEnvVarsDto) {
     const user = req.user as { userId: string };
     return this.projectsService.updateEnvVars(user.userId, id, dto);
@@ -150,9 +178,47 @@ export class ProjectsController {
 
   @Delete(':id/env-vars/:key')
   @HttpCode(HttpStatus.OK)
-  @ApiOperation({ summary: 'Delete environment variable' })
+  @ApiOperation({ summary: 'Delete an environment variable' })
   async deleteEnvVar(@Req() req: Request, @Param('id') id: string, @Param('key') key: string) {
     const user = req.user as { userId: string };
     return this.projectsService.deleteEnvVar(user.userId, id, key);
+  }
+
+  // Project API keys
+  @Get(':id/api-keys')
+  @ApiOperation({ summary: 'List project API keys' })
+  async listProjectApiKeys(@Req() req: Request, @Param('id') id: string) {
+    const user = req.user as { userId: string };
+    return this.projectsService.listProjectApiKeys(user.userId, id);
+  }
+
+  @Post(':id/api-keys')
+  @ApiOperation({ summary: 'Create a project API key (key shown once)' })
+  @ApiResponse({ status: 201, description: 'Returns the raw key (shown once)' })
+  async createProjectApiKey(@Req() req: Request, @Param('id') id: string, @Body() dto: any) {
+    const user = req.user as { userId: string };
+    return this.projectsService.createProjectApiKey(user.userId, id, dto);
+  }
+
+  @Delete(':id/api-keys/:keyId')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Revoke a project API key' })
+  async revokeProjectApiKey(@Req() req: Request, @Param('id') id: string, @Param('keyId') keyId: string) {
+    const user = req.user as { userId: string };
+    return this.projectsService.revokeProjectApiKey(user.userId, id, keyId);
+  }
+}
+
+// Public invitation acceptance (no auth required)
+@ApiTags('invitations')
+@Controller('invitations')
+export class InvitationsController {
+  constructor(private projectsService: ProjectsService) {}
+
+  @Post('accept')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Accept an invitation' })
+  async acceptInvitation(@Body() dto: AcceptInvitationDto) {
+    return this.projectsService.acceptInvitation(dto);
   }
 }

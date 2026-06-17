@@ -124,6 +124,7 @@ services:
       MINIO_ACCESS_KEY: ${MINIO_ACCESS_KEY}
       MINIO_SECRET_KEY: ${MINIO_SECRET_KEY}
       JWT_SECRET_FILE: /run/secrets/jwt_secret
+      ENCRYPTION_KEY_FILE: /run/secrets/encryption_key
       API_PORT: "3001"
     secrets:
       - postgres_password
@@ -131,6 +132,7 @@ services:
       - minio_access_key
       - minio_secret_key
       - jwt_secret
+      - encryption_key
     volumes:
       - ./secrets:/run/secrets:ro
     networks:
@@ -226,3 +228,5 @@ secrets:
     file: ./secrets/minio_secret_key.txt
   jwt_secret:
     file: ./secrets/jwt_secret.txt
+  encryption_key:
+    file: ./secrets/encryption_key.txt

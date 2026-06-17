@@ -23,10 +23,12 @@ import { LoggingModule } from './modules/logging/logging.module';
 import { TemplatesModule } from './modules/templates/templates.module';
 import { AIModule } from './modules/ai/ai.module';
 import { MarketplaceModule } from './modules/marketplace/marketplace.module';
+import { CryptoModule } from './modules/crypto/crypto.module';
 
 @Module({
   imports: [
     ConfigModule.forRoot({ isGlobal: true }),
+    CryptoModule,
     PrismaModule,
     RegistryModule,
     EventsModule,
