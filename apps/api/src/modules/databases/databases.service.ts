@@ -219,12 +219,17 @@ export class DatabasesService {
     const credentials = this.parseConnectionInfo(database.connectionInfo!);
     const { password } = await this.dbProvider.rotatePassword(credentials);
 
-    const newConnectionInfo = this.formatConnectionInfo({ ...credentials, password });
+    const newCredentials = { ...credentials, password };
+    const newConnectionInfo = this.formatConnectionInfo(newCredentials);
 
     await this.prisma.managedDatabase.update({
       where: { id: databaseId },
       data: { connectionInfo: newConnectionInfo },
     });
+
+    // Refresh the DATABASE_URL env var with the new credentials so deployed
+    // apps pick up the new connection string on next start
+    await this.injectDatabaseUrl(projectId, newCredentials);
 
     return { rotated: true };
   }
