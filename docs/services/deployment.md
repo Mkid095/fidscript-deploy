@@ -123,13 +123,31 @@ All deployed containers run with:
 ```
 --security-opt no-new-privileges
 --read-only
---tmpfs /tmp:rw,noexec,nosuid,size=64m
+--tmpfs /tmp:rw,noexec,nosuid,size=64m    # Next.js, Laravel, Python cache dirs
+--tmpfs /storage:rw,noexec,nosuid,size=128m  # framework writable storage
 --memory 512m
 --cpus 1
 --restart unless-stopped
 ```
 
+> **Note:** `--read-only` is used for security. The `--tmpfs` mounts provide writable space for framework cache directories (Next.js `.next/cache`, Laravel `storage/framework`, Python `__pycache__`, etc.) without persisting them to a volume or making the root filesystem writable.
+
 The Docker socket is held by the **API container** (via the `docker.sock` bind mount). User containers **never** receive the socket. This is the primary host-compromise mitigation.
+
+---
+
+## Container Naming Convention
+
+```
+fidscript-deploy-<deploymentId>
+```
+
+Example: `fidscript-deploy-dpl_abc123xyz`
+
+This convention is:
+- **Unique per deployment** — no collisions when re-deploying
+- **Predictable** — Monitoring, Logs, and CLI can target a container by deployment ID
+- **Scoped** — all deployment containers share the `fidscript-` prefix for easy identification
 
 ---
 
@@ -175,7 +193,23 @@ The `fidscript-app` Docker network is shared between Traefik and all deployed co
 | Stop | `POST /projects/:pid/deployments/:id/stop` | `docker stop`, status → `STOPPED` |
 | Restart | `POST /projects/:pid/deployments/:id/restart` | `docker restart`, status → `SUCCESS` |
 | Destroy | `DELETE /projects/:pid/deployments/:id` | `docker rm -f`, image NOT removed, row deleted |
-| Rollback | `POST /projects/:pid/deployments/:id/rollback` | New `PENDING` deployment re-running previous image |
+| Rollback | `POST /projects/:pid/deployments/:id/rollback` | Re-deploys previous SUCCESS image directly (no rebuild) |
+
+### Rollback Strategy
+
+Rollback uses the **previous successful deployment's Docker image** directly — no git pull, no rebuild.
+
+```
+Previous SUCCESS deployment
+  → Find its image tag  fidscript/<slug>:<version>
+  → docker run that image (same env vars, same profile)
+  → New deployment record with status SUCCESS
+  → Target deployment marked ROLLED_BACK
+```
+
+This is instantaneous and predictable — even if the git commit no longer builds (e.g. npm package removed, Node version changed).
+
+**Local build retention:** only the current and previous image are kept on the VPS. Older images are rebuilt from git if needed.
 
 ---
 

@@ -227,7 +227,9 @@ export class BuildRunnerService {
     // Security hardening
     args.push('--security-opt', 'no-new-privileges');
     args.push('--read-only');
+    // Writable tmpfs mounts for framework cache dirs (Next.js, Laravel, Python, etc.)
     args.push('--tmpfs', '/tmp:rw,noexec,nosuid,size=64m');
+    args.push('--tmpfs', '/storage:rw,noexec,nosuid,size=128m');
 
     // Resource limits
     args.push('--memory', '512m');
@@ -284,6 +286,81 @@ export class BuildRunnerService {
 
   async stop(containerName: string): Promise<void> {
     this.exec(`docker stop ${containerName}`);
+  }
+
+  /**
+   * Re-run an already-built image tag (rollback path).
+   * Does NOT rebuild — uses the existing image directly.
+   * Returns the new container info after re-running.
+   */
+  async redeployExistingImage(opts: {
+    imageTag: string;
+    deploymentId: string;
+    projectSlug: string;
+    projectType: string;
+    envVars: RuntimeEnv[];
+    profile: DeploymentProfile;
+    onLog: (line: string) => void;
+  }): Promise<DeployResult> {
+    const { imageTag, deploymentId, projectSlug, projectType, envVars, profile, onLog } = opts;
+    const containerName = `fidscript-deploy-${deploymentId}`;
+    const domain = `${projectSlug}.apps.deploy.fidscript.com`;
+    const startTime = Date.now();
+    const logs: string[] = [];
+
+    const addLog = (l: string) => { logs.push(l); onLog(l); };
+
+    try {
+      // Remove any existing container with this name first
+      try { this.exec(`docker rm -f ${containerName}`); } catch { /* ignore */ }
+
+      this.ensureNetwork();
+
+      const runArgs = this.buildRunArgs({
+        imageTag,
+        containerName,
+        projectSlug,
+        envVars,
+        profile,
+        domain,
+        addLog,
+      });
+
+      addLog(`[runner] Rollback: re-running existing image ${imageTag} (no rebuild)`);
+      this.exec(runArgs.join(' '));
+
+      if (profile.requiresHealthCheck) {
+        addLog(`[runner] Waiting for container to be healthy…`);
+        const healthy = await this.waitForHealth(
+          containerName,
+          profile.healthCheckPath,
+          profile.defaultPort,
+          60_000,
+        );
+        if (!healthy) {
+          let containerLogs = '';
+          try { containerLogs = this.exec(`docker logs ${containerName} 2>&1 | tail -20`); } catch { /* ignore */ }
+          throw new Error(`Rollback container health check failed.\nContainer logs:\n${containerLogs}`);
+        }
+      } else {
+        const status = this.exec(`docker inspect -f '{{.State.Running}}' ${containerName} 2>/dev/null`).trim();
+        if (status !== 'true') {
+          throw new Error(`Rollback container ${containerName} failed to start.`);
+        }
+      }
+
+      const deploymentUrl = profile.requiresRoute ? `https://${domain}` : '';
+      return {
+        containerId: containerName,
+        deploymentUrl,
+        deployDurationMs: Date.now() - startTime,
+        success: true,
+      };
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      addLog(`[runner] Rollback error: ${msg}`);
+      return { containerId: containerName, deploymentUrl: '', deployDurationMs: Date.now() - startTime, success: false, error: msg };
+    }
   }
 
   // ─────────────────────────────────────────────────────────────

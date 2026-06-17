@@ -4,6 +4,7 @@ import { PrismaService } from '../../../prisma/prisma.service';
 import { BuildRunnerService } from './build-runner.service';
 import { CryptoService } from '../../crypto/crypto.service';
 import { BuildProvider } from '../providers/build-provider.interface';
+import { getProfile } from '../types/deployment-profile';
 import type { PlatformEvent } from '@fidscript/events';
 
 @Injectable()
@@ -218,6 +219,96 @@ export class DeploymentWorkerService implements OnModuleInit {
     await this.prisma.deployment.delete({ where: { id: deploymentId } });
 
     await this.emit(deploymentId, deployment.projectId, userId, 'deployments.deployment.stopped', {});
+  }
+
+  /**
+   * Rollback to the previous successful deployment's image — no rebuild.
+   * Finds the previous SUCCESS deployment, re-runs its image via docker run,
+   * creates a new SUCCESS rollback deployment record.
+   */
+  async rollbackToPreviousImage(
+    targetDeploymentId: string,
+    userId: string,
+  ): Promise<void> {
+    const target = await this.prisma.deployment.findUnique({
+      where: { id: targetDeploymentId },
+      include: { project: true },
+    });
+    if (!target) throw new Error('Deployment not found');
+    if (target.status !== 'SUCCESS') {
+      throw new Error('Can only rollback successful deployments');
+    }
+
+    const previous = await this.prisma.deployment.findFirst({
+      where: {
+        projectId: target.projectId,
+        status: 'SUCCESS',
+        id: { not: targetDeploymentId },
+        createdAt: { lt: target.createdAt },
+      },
+      orderBy: { createdAt: 'desc' },
+    });
+    if (!previous) throw new Error('No previous successful deployment to rollback to');
+
+    const projectType = target.project.type || 'DOCKER';
+    const profile = getProfile(projectType);
+
+    const projectEnv = await this.prisma.projectEnv.findMany({ where: { projectId: target.projectId } });
+    const runtimeEnv = this.decryptEnvVars(projectEnv);
+
+    const rollbackDeployment = await this.prisma.deployment.create({
+      data: {
+        projectId: target.projectId,
+        version: `rollback-${Date.now().toString(36)}`,
+        status: 'PENDING',
+        commitSha: target.commitSha,
+        commitMessage: `Rollback to ${target.version}`,
+        rolledBackToId: target.id,
+      },
+    });
+
+    const imageTag = `fidscript/${target.project.slug}:${previous.version}`;
+    const containerName = `fidscript-deploy-${rollbackDeployment.id}`;
+    const domain = `${target.project.slug}.apps.deploy.fidscript.com`;
+
+    const logs: string[] = [];
+    const onLog = (line: string) => logs.push(line);
+
+    this.logger.log(`[worker] Rollback ${rollbackDeployment.id} → image ${imageTag} (no rebuild)`);
+
+    const deployResult = await this.buildRunner.redeployExistingImage({
+      imageTag,
+      deploymentId: rollbackDeployment.id,
+      projectSlug: target.project.slug,
+      projectType,
+      envVars: runtimeEnv,
+      profile,
+      onLog,
+    });
+
+    await this.prisma.deployment.update({
+      where: { id: rollbackDeployment.id },
+      data: {
+        status: deployResult.success ? 'SUCCESS' : 'FAILED',
+        deploymentUrl: deployResult.deploymentUrl,
+        buildLogs: logs.join('\n'),
+        buildDurationMs: deployResult.deployDurationMs,
+        completedAt: new Date(),
+      },
+    });
+
+    await this.prisma.deployment.update({
+      where: { id: targetDeploymentId },
+      data: { status: 'ROLLED_BACK' },
+    });
+
+    await this.emit(rollbackDeployment.id, target.projectId, userId, 'deployments.deployment.succeeded', {
+      deploymentUrl: deployResult.deploymentUrl,
+      rolledBackToId: targetDeploymentId,
+    });
+    await this.emit(targetDeploymentId, target.projectId, userId, 'deployments.deployment.rolled_back', {
+      rollbackDeploymentId: rollbackDeployment.id,
+    });
   }
 
   // ─────────────────────────────────────────────────────────────

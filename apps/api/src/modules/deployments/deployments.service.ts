@@ -131,7 +131,7 @@ export class DeploymentsService {
   }
 
   // ─────────────────────────────────────────────────────────────
-  // Rollback — creates a new deployment that re-uses the previous image
+  // Rollback — re-deploys the previous deployment's image (no rebuild)
   // ─────────────────────────────────────────────────────────────
 
   async rollback(userId: string, projectId: string, deploymentId: string) {
@@ -147,55 +147,10 @@ export class DeploymentsService {
       throw new BadRequestException('Can only rollback successful deployments');
     }
 
-    const previousDeployment = await this.prisma.deployment.findFirst({
-      where: { projectId, status: 'SUCCESS', createdAt: { lt: deployment.createdAt } },
-      orderBy: { createdAt: 'desc' },
-    });
-    if (!previousDeployment) {
-      throw new BadRequestException('No previous deployment to rollback to');
-    }
+    // Delegate to worker — finds previous SUCCESS image, re-runs it without rebuild
+    await this.worker.rollbackToPreviousImage(deploymentId, userId);
 
-    // Create a new deployment that re-runs the previous successful build
-    const rollbackDeployment = await this.prisma.deployment.create({
-      data: {
-        projectId,
-        version: this.generateVersion(),
-        status: 'PENDING',
-        commitSha: deployment.commitSha,
-        commitMessage: `Rollback to ${deployment.version}`,
-        rolledBackToId: deployment.id,
-      },
-    });
-
-    await this.eventService.emit('deployments.deployment.created', {
-      id: crypto.randomUUID(),
-      type: 'deployments.deployment.created',
-      timestamp: new Date(),
-      actorId: userId,
-      actorType: 'user',
-      resourceType: 'deployment',
-      resourceId: rollbackDeployment.id,
-      metadata: {
-        deploymentId: rollbackDeployment.id,
-        projectId,
-        userId,
-        rollback: true,
-        rolledBackToId: deploymentId,
-      },
-    });
-
-    await this.eventService.emit('deployments.deployment.rolled_back', {
-      id: crypto.randomUUID(),
-      type: 'deployments.deployment.rolled_back',
-      timestamp: new Date(),
-      actorId: userId,
-      actorType: 'user',
-      resourceType: 'deployment',
-      resourceId: rollbackDeployment.id,
-      metadata: { deploymentId: rollbackDeployment.id, projectId, rolledBackToId: deploymentId },
-    });
-
-    return this.formatDeployment(rollbackDeployment);
+    return this.get(userId, projectId, deploymentId);
   }
 
   // ─────────────────────────────────────────────────────────────

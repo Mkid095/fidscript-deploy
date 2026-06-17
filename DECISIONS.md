@@ -495,6 +495,56 @@ Three ambiguities blocked a clean build: (1) a broken orphan Vite scaffold at th
 
 ---
 
+## ADR-013: Multi-Service Project Architecture (Future)
+
+**Date:** 2026-06-17
+
+**Status:** Accepted (Architectural Direction — not yet implemented)
+
+**Context:**
+
+Today a FIDScript "project" maps to one deployed container. A real-world SaaS, for example, requires multiple concurrent processes:
+
+```
+My SaaS
+├── Frontend (Next.js)
+├── Backend API (Node.js/Fastify)
+├── Worker (queue consumer)
+└── Cron (scheduled tasks)
+```
+
+Under the current model, this is 4 separate FIDScript projects — each with its own Git repo, deployments, env vars, domains. This works but creates operational fragmentation at scale.
+
+**Decision:**
+
+Phase 06+ projects MUST NOT hard-code assumptions that prevent a future "one project, many services" model. Specifically:
+
+1. **A `Project` can have multiple `Deployment` records** — one per service. Each deployment has its own `DeploymentProfile` (web vs worker vs cron). The `Project.slug` is the namespace; individual services are identified by `deployment.version` or a future `serviceName` field.
+
+2. **No single-service hardcoding in `BuildRunnerService`** — the `DeploymentProfile` system (Phase 06) already branches correctly on type. Adding a `serviceName` field to `Deployment` in the future requires no changes to `BuildRunnerService`.
+
+3. **Env vars are project-scoped** — all services in a project share the same `ProjectEnv`. Each service's container receives all env vars; services ignore what they don't need. This avoids per-service secret management complexity.
+
+4. **Routing is `<service>.<slug>.apps.deploy.fidscript.com`** — a service named `api` gets `api.mysaas.apps.deploy.fidscript.com`. The Traefik router key includes `serviceName` (future).
+
+5. **The `Release` concept (future):** a `Release` is a named snapshot of a project's deployments at a point in time. A rollback rolls back to a `Release`, not a single `Deployment`.
+
+**Not decided yet (future phases):**
+- Whether a service has its own git repo or all services share one monorepo
+- How service-to-service communication works (internal DNS? shared network?)
+- Whether workers/cron share the same container or run as separate containers
+- How to express service dependencies and startup ordering
+
+**This ADR does NOT require any code changes today.** It exists to prevent architectural decisions that would make the multi-service model impossible to add later without a breaking change.
+
+**Examples of what NOT to do (would violate this ADR):**
+- `Deployment.projectSlug` uniqueness that implies one deployment per project
+- Hardcoding `project.type` as a single value per project (use deployment-level profile instead)
+- Assuming one Traefik route per project
+- Coupling env vars to a single deployment's container
+
+---
+
 ## Future ADRs Needed
 
 These decisions are pending and will be documented as ADRs:
