@@ -203,6 +203,7 @@ services:
       - stalwart_webhook_secret
     volumes:
       - ./secrets:/run/secrets:ro
+      - /var/run/docker.sock:/var/run/docker.sock
     networks:
       - fidscript
       - fidscript-app

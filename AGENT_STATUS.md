@@ -42,6 +42,7 @@ Statuses: `Planned` · `In Progress` · `Verified`
 | 07 | Domains & TLS | Verified |
 | 08 | Database Platform | Verified |
 | 09 | Email Platform (Stalwart) | In Progress |
+| 10 | Functions Runtime | In Progress |
 | 10 | Functions Runtime | Planned |
 | 11 | Queues Platform | Planned |
 | 12 | Scheduler Platform | Planned |

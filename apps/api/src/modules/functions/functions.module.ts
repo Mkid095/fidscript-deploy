@@ -3,20 +3,9 @@ import { FunctionsController } from './functions.controller';
 import { FunctionsService } from './functions.service';
 import { FunctionsCrudService } from './services/functions-crud.service';
 import { FunctionsRuntimeService } from './services/functions-runtime.service';
+import { SandboxedRunnerService } from './services/sandboxed-runner.service';
 import { NodeJsRuntime } from './runtimes/nodejs.runtime';
 import { PythonRuntime } from './runtimes/python.runtime';
-import { RUNTIME } from './runtimes/runtime.interface';
-import { ConfigService } from '@nestjs/config';
-
-const RUNTIME_TOKEN = {
-  provide: RUNTIME,
-  useFactory: (configService: ConfigService) => {
-    const runtimeType = configService.get('DEFAULT_RUNTIME', 'nodejs');
-    if (runtimeType === 'python') return new PythonRuntime();
-    return new NodeJsRuntime();
-  },
-  inject: [ConfigService],
-};
 
 @Module({
   controllers: [FunctionsController],
@@ -24,9 +13,9 @@ const RUNTIME_TOKEN = {
     FunctionsService,
     FunctionsCrudService,
     FunctionsRuntimeService,
+    SandboxedRunnerService,
     NodeJsRuntime,
     PythonRuntime,
-    RUNTIME_TOKEN,
   ],
   exports: [FunctionsService],
 })

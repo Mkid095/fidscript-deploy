@@ -1,10 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { Runtime, InvocationResult } from './runtime.interface';
-import * as path from 'path';
-import { exec } from 'child_process';
-import { promisify } from 'util';
-
-const execAsync = promisify(exec);
+import { SandboxedRunnerService } from '../services/sandboxed-runner.service';
 
 @Injectable()
 export class PythonRuntime implements Runtime {
@@ -12,35 +8,32 @@ export class PythonRuntime implements Runtime {
   version = '3.11';
   supportedExtensions = ['.py'];
 
+  constructor(private sandbox: SandboxedRunnerService) {}
+
   async build(functionPath: string, _envVars: Record<string, string>): Promise<string> {
-    // In production, this would install dependencies
     return functionPath;
   }
 
   async invoke(functionPath: string, payload: string, timeoutSeconds: number): Promise<InvocationResult> {
-    const start = Date.now();
-    try {
-      const handlerPath = path.join(functionPath, 'handler.py');
-      const { stdout, stderr } = await execAsync(
-        `python3 ${handlerPath} '${payload.replace(/'/g, "'\"'\"'")}'`,
-        { timeout: timeoutSeconds * 1000 }
-      );
-      return {
-        success: true,
-        output: stdout || 'ok',
-        durationMs: Date.now() - start,
-      };
-    } catch (error: any) {
-      return {
-        success: false,
-        error: (error as Error).message,
-        durationMs: Date.now() - start,
-      };
-    }
+    const { readFile, readdir } = await import('fs/promises');
+    const files = await readdir(functionPath);
+    const handlerFile = files.find(f => f.startsWith('handler') && f.endsWith('.py'));
+    if (!handlerFile) return { success: false, error: 'No handler.py found', durationMs: 0 };
+
+    const code = await readFile(`${functionPath}/${handlerFile}`, 'utf8');
+    return this.sandbox.run({
+      code,
+      runtime: 'python',
+      entryPoint: 'handler',
+      payload,
+      envVars: {},
+      memoryMb: 256,
+      timeoutSeconds,
+    });
   }
 
   validateCode(code: string): boolean {
-    // Basic Python syntax check would go here
+    // Basic heuristic — a def keyword suggests a function definition
     return code.includes('def');
   }
 }

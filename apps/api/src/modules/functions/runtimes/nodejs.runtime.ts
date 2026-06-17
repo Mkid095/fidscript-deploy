@@ -1,11 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { Runtime, InvocationResult } from './runtime.interface';
-import * as fs from 'fs/promises';
-import * as path from 'path';
-import { exec } from 'child_process';
-import { promisify } from 'util';
-
-const execAsync = promisify(exec);
+import { SandboxedRunnerService } from '../services/sandboxed-runner.service';
 
 @Injectable()
 export class NodeJsRuntime implements Runtime {
@@ -13,33 +8,31 @@ export class NodeJsRuntime implements Runtime {
   version = '18';
   supportedExtensions = ['.js', '.mjs'];
 
+  constructor(private sandbox: SandboxedRunnerService) {}
+
   async build(functionPath: string, _envVars: Record<string, string>): Promise<string> {
-    const outputPath = path.join(functionPath, 'dist');
-    await fs.mkdir(outputPath, { recursive: true });
-    // In production, this would bundle the code
-    return outputPath;
+    // Code written to functionPath by FunctionsRuntimeService.deployFunction
+    return functionPath;
   }
 
   async invoke(functionPath: string, payload: string, timeoutSeconds: number): Promise<InvocationResult> {
-    const start = Date.now();
-    try {
-      const handlerPath = path.join(functionPath, 'handler.js');
-      const { stdout, stderr } = await execAsync(
-        `node -e "require('${handlerPath}').handler(${payload})"`,
-        { timeout: timeoutSeconds * 1000 }
-      );
-      return {
-        success: true,
-        output: stdout || 'ok',
-        durationMs: Date.now() - start,
-      };
-    } catch (error: any) {
-      return {
-        success: false,
-        error: (error as Error).message,
-        durationMs: Date.now() - start,
-      };
-    }
+    const { readFile } = await import('fs/promises');
+    const { readdir } = await import('fs/promises');
+    // Find handler file — written by deployFunction as handler.{js,mjs}
+    const files = await readdir(functionPath);
+    const handlerFile = files.find(f => f.startsWith('handler') && (f.endsWith('.js') || f.endsWith('.mjs')));
+    if (!handlerFile) return { success: false, error: 'No handler file found', durationMs: 0 };
+
+    const code = await readFile(`${functionPath}/${handlerFile}`, 'utf8');
+    return this.sandbox.run({
+      code,
+      runtime: 'nodejs',
+      entryPoint: 'handler',
+      payload,
+      envVars: {},
+      memoryMb: 256,
+      timeoutSeconds,
+    });
   }
 
   validateCode(code: string): boolean {
