@@ -126,6 +126,13 @@ echo "$CLOUDFLARE_API_TOKEN" > "$SECRETS_DIR/cf_api_token.txt"
 openssl rand -base64 32 > "$SECRETS_DIR/stalwart_admin_token.txt"
 # Stalwart webhook HMAC secret for inbound email/bounce webhooks
 openssl rand -base64 32 > "$SECRETS_DIR/stalwart_webhook_secret.txt"
+# Platform SMTP submission credentials (used for all outbound mail via API)
+SMTP_SUBMISSION_USER="submission@$DOMAIN"
+SMTP_SUBMISSION_PASS=$(openssl rand -base64 32)
+echo "$SMTP_SUBMISSION_USER" > "$SECRETS_DIR/smtp_submission_user.txt"
+echo "$SMTP_SUBMISSION_PASS" > "$SECRETS_DIR/smtp_submission_pass.txt"
+# Stalwart credentials file for SMTP submission port auth (format: user password)
+echo "$SMTP_SUBMISSION_USER $SMTP_SUBMISSION_PASS" > "$SECRETS_DIR/stalwart_credentials.txt"
 
 # Set permissions
 chmod 600 "$SECRETS_DIR/"*.txt
@@ -139,6 +146,9 @@ STORAGE_PATH=$STORAGE_PATH
 AUTO_SSL=$AUTO_SSL
 SERVER_IP=$SERVER_IP
 PLATFORM_DOMAIN=deploy.fidscript.com
+PLATFORM_MAIL_HOST=mail.$DOMAIN
+SMTP_SUBMISSION_USER=submission@$DOMAIN
+SMTP_SUBMISSION_PASS=$SMTP_SUBMISSION_PASS
 EOF
 
 # Generate api.env with secret values (api container reads these via env_file)
@@ -152,10 +162,12 @@ POSTGRES_PASSWORD=$POSTGRES_PASSWORD
 REDIS_PASSWORD=$REDIS_PASSWORD
 MINIO_ACCESS_KEY=$MINIO_ACCESS_KEY
 MINIO_SECRET_KEY=$MINIO_SECRET_KEY
+SMTP_SUBMISSION_USER=$SMTP_SUBMISSION_USER
+SMTP_SUBMISSION_PASS=$SMTP_SUBMISSION_PASS
 EOF
 
-# Generate Traefik dynamic.yml with the real domain
-cat > "$TRAEFIK_DIR/dynamic.yml" << EOF
+# Generate Traefik dynamic.yml with the real domain + Stalwart routes
+cat > "$TRAEFIK_DIR/dynamic.yml" << 'HEREDOC'
 http:
   middlewares:
     security-headers:
@@ -173,7 +185,7 @@ http:
 
   routers:
     dashboard:
-      rule: "Host(\`$DOMAIN\`)"
+      rule: "Host(`deploy.fidscript.com`)"
       service: dashboard
       middlewares:
         - security-headers
@@ -182,7 +194,7 @@ http:
         certResolver: letsencrypt-dns
 
     api:
-      rule: "PathPrefix(\`/api\`)"
+      rule: "PathPrefix(`/api`)"
       service: api
       middlewares:
         - security-headers
@@ -191,13 +203,38 @@ http:
         certResolver: letsencrypt-dns
 
     minio-console:
-      rule: "Host(\`storage.$DOMAIN\`)"
+      rule: "Host(`storage.deploy.fidscript.com`)"
       service: minio-console
       middlewares:
         - security-headers
         - compress
       tls:
         certResolver: letsencrypt-dns
+
+    # Stalwart JMAP / management HTTP — port 8443 inside container
+    jmap:
+      rule: "Host(`jmap.deploy.fidscript.com`)"
+      service: stalwart-jmap
+      middlewares:
+        - security-headers
+      tls:
+        certResolver: letsencrypt-dns
+
+    # Stalwart IMAPS — port 993 inside container
+    imap:
+      rule: "Host(`imap.deploy.fidscript.com`)"
+      service: stalwart-imap
+      middlewares:
+        - security-headers
+      tls:
+        certResolver: letsencrypt-dns
+
+    # ACME HTTP-01 challenge proxy — routes to Stalwart's internal ACME listener
+    acme-challenge:
+      rule: "PathPrefix(`/.well-known/acme-challenge/`)"
+      service: stalwart-acme
+      middlewares:
+        - security-headers
 
   services:
     dashboard:
@@ -214,7 +251,22 @@ http:
       loadBalancer:
         servers:
           - url: "http://fidscript_minio:9001"
-EOF
+
+    stalwart-jmap:
+      loadBalancer:
+        servers:
+          - url: "http://fidscript_stalwart:8443"
+
+    stalwart-imap:
+      loadBalancer:
+        servers:
+          - url: "http://fidscript_stalwart:993"
+
+    stalwart-acme:
+      loadBalancer:
+        servers:
+          - url: "http://127.0.0.1:8080"
+HEREDOC
 
 # Generate Traefik static config with real email and ACME DNS-01 challenge
 cat > "$TRAEFIK_DIR/traefik.yml" << EOF

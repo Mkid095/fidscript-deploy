@@ -134,16 +134,20 @@ services:
       - "127.0.0.1:587:587"      # SMTP submission (submission)
       - "127.0.0.1:993:993"      # IMAPS
       - "127.0.0.1:8443:443"     # JMAP / management HTTP(S)
+      - "127.0.0.1:8080:80"      # ACME HTTP-01 challenge listener
     volumes:
       - ./config/stalwart:/etc/stalwart:ro
       - ./config/stalwart/tls:/certs:ro   # TLS certs mounted here
       - fidscript_stalwart:/data
       - ./secrets/stalwart_admin_token.txt:/run/secrets/stalwart_admin_token:ro
+      - ./secrets/stalwart_credentials.txt:/run/secrets/stalwart_credentials:ro
     networks:
       - fidscript
     depends_on:
       postgres:
         condition: service_healthy
+    secrets:
+      - stalwart_credentials
 
   api:
     build:
@@ -184,6 +188,8 @@ services:
       STALWART_SMTP_PORT: "587"
       PLATFORM_MAIL_HOST: ${PLATFORM_MAIL_HOST:-mail.deploy.fidscript.com}
       SMTP_FROM: noreply@${PLATFORM_MAIL_HOST:-deploy.fidscript.com}
+      SMTP_SUBMISSION_USER: ${SMTP_SUBMISSION_USER}
+      SMTP_SUBMISSION_PASS: ${SMTP_SUBMISSION_PASS}
       STALWART_WEBHOOK_SECRET_FILE: /run/secrets/stalwart_webhook_secret
     secrets:
       - postgres_password
@@ -306,3 +312,5 @@ secrets:
     file: ./secrets/stalwart_admin_token.txt
   stalwart_webhook_secret:
     file: ./secrets/stalwart_webhook_secret.txt
+  stalwart_credentials:
+    file: ./secrets/stalwart_credentials.txt

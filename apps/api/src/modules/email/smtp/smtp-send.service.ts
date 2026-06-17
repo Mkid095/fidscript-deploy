@@ -62,7 +62,12 @@ export class SmtpSendService {
       host: smtpHost,
       port: smtpPort,
       secure: smtpPort === 465,
-      auth: dto.from ? { user: dto.from, pass: dto.smtpPassword ?? '' } : undefined,
+      auth: dto.from
+        ? { user: dto.from, pass: dto.smtpPassword ?? '' }
+        : {
+            user: this.configService.get('SMTP_SUBMISSION_USER', 'submission@localhost'),
+            pass: this.configService.get('SMTP_SUBMISSION_PASS', ''),
+          },
     });
 
     let messageId = `<${Date.now()}-${crypto.randomBytes(6).toString('hex')}@${

@@ -41,6 +41,31 @@ http:
       tls:
         certResolver: letsencrypt-dns
 
+    # Stalwart JMAP / management HTTP — internal port 8443
+    jmap:
+      rule: "Host(`jmap.deploy.fidscript.com`)"
+      service: stalwart-jmap
+      middlewares:
+        - security-headers
+      tls:
+        certResolver: letsencrypt-dns
+
+    # Stalwart IMAPS — internal port 993
+    imap:
+      rule: "Host(`imap.deploy.fidscript.com`)"
+      service: stalwart-imap
+      middlewares:
+        - security-headers
+      tls:
+        certResolver: letsencrypt-dns
+
+    # ACME HTTP-01 challenge — routes to Stalwart's internal ACME listener
+    acme-challenge:
+      rule: "PathPrefix(`/.well-known/acme-challenge/`)"
+      service: stalwart-acme
+      middlewares:
+        - security-headers
+
   services:
     dashboard:
       loadBalancer:
@@ -56,3 +81,18 @@ http:
       loadBalancer:
         servers:
           - url: "http://fidscript_minio:9001"
+
+    stalwart-jmap:
+      loadBalancer:
+        servers:
+          - url: "http://fidscript_stalwart:8443"
+
+    stalwart-imap:
+      loadBalancer:
+        servers:
+          - url: "http://fidscript_stalwart:993"
+
+    stalwart-acme:
+      loadBalancer:
+        servers:
+          - url: "http://127.0.0.1:8080"
