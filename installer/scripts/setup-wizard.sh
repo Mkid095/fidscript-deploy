@@ -122,6 +122,8 @@ openssl rand -base64 32 > "$SECRETS_DIR/minio_secret_key.txt"
 openssl rand -base64 64 > "$SECRETS_DIR/jwt_secret.txt"
 # Cloudflare API token for DNS management and Traefik ACME DNS-01 challenge
 echo "$CLOUDFLARE_API_TOKEN" > "$SECRETS_DIR/cf_api_token.txt"
+# Stalwart admin token for management API
+openssl rand -base64 32 > "$SECRETS_DIR/stalwart_admin_token.txt"
 
 # Set permissions
 chmod 600 "$SECRETS_DIR/"*.txt

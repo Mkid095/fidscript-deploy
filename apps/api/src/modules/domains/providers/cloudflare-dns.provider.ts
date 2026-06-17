@@ -77,19 +77,27 @@ export class CloudflareDnsProvider implements DnsProvider {
     content: string;
     ttl?: number;
     proxied?: boolean;
+    priority?: number;
   }): Promise<DnsRecord> {
-    const { zoneId, type, name, content, ttl = 300, proxied = false } = opts;
+    const { zoneId, type, name, content, ttl = 300, proxied = false, priority } = opts;
     const normalizedName = this.stripTrailingDot(name);
 
     this.logger.log(`[cloudflare] Creating ${type} record: ${normalizedName} -> ${content} (zone=${zoneId})`);
 
-    const response = await this.client.post(`/zones/${zoneId}/dns_records`, {
+    const payload: Record<string, unknown> = {
       type,
       name: normalizedName,
       content,
       ttl,
       proxied,
-    });
+    };
+
+    // MX records require a priority field
+    if (type === 'MX' && priority !== undefined) {
+      payload['priority'] = priority;
+    }
+
+    const response = await this.client.post(`/zones/${zoneId}/dns_records`, payload);
 
     if (!response.data.success) {
       const errors = response.data.errors?.map((e: any) => e.message).join(', ') || 'unknown';

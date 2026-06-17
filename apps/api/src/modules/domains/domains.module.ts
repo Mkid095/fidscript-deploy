@@ -13,6 +13,6 @@ import { CloudflareDnsProvider } from './providers/cloudflare-dns.provider';
     },
     DomainsService,
   ],
-  exports: [DomainsService],
+  exports: [DomainsService, CloudflareDnsProvider, 'DNS_PROVIDER'],
 })
 export class DomainsModule {}

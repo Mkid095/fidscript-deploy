@@ -3,6 +3,7 @@ import { ConfigService } from '@nestjs/config';
 import { PrismaService } from '../../prisma/prisma.service';
 import { EventService } from '../events/event.service';
 import { EmailProvider, SendEmailOptions, EMAIL_PROVIDER } from './providers/index';
+import { MailDnsService } from './mail-dns.service';
 import {
   SendEmailDto,
   CreateMailboxDto,
@@ -18,6 +19,7 @@ export class EmailService {
     private configService: ConfigService,
     private eventService: EventService,
     @Inject(EMAIL_PROVIDER) private emailProvider: EmailProvider,
+    private mailDnsService: MailDnsService,
   ) {}
 
   async sendEmail(projectId: string, dto: SendEmailDto) {
@@ -127,8 +129,8 @@ export class EmailService {
   }
 
   async verifyDomain(projectId: string, dto: VerifyDomainDto) {
-    const result = await this.emailProvider.verifyDomain?.(dto.domain);
-    if (!result) throw new Error('Domain verification not supported by provider');
+    // Real DNS verification via MailDnsService (queries Cloudflare API for actual records)
+    const result = await this.mailDnsService.verifyEmailDns(dto.domain);
 
     const domainVerification = await this.prisma.domainVerification.upsert({
       where: { projectId_domain: { projectId, domain: dto.domain } },

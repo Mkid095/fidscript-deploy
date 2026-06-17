@@ -30,6 +30,7 @@ export interface DnsProvider {
     content: string;
     ttl?: number;
     proxied?: boolean;
+    priority?: number;  // MX records require a priority
   }): Promise<DnsRecord>;
 
   /**

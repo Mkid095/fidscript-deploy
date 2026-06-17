@@ -1,9 +1,11 @@
 import { Module } from '@nestjs/common';
 import { EmailController } from './email.controller';
 import { EmailService } from './email.service';
+import { MailDnsService } from './mail-dns.service';
 import { SmtpProvider } from './providers/smtp.provider';
 import { ResendProvider } from './providers/resend.provider';
 import { EMAIL_PROVIDER } from './providers/email-provider.interface';
+import { DomainsModule } from '../domains/domains.module';
 import { ConfigService } from '@nestjs/config';
 
 const EMAIL_PROVIDER_TOKEN = {
@@ -19,8 +21,9 @@ const EMAIL_PROVIDER_TOKEN = {
 };
 
 @Module({
+  imports: [DomainsModule],
   controllers: [EmailController],
-  providers: [EmailService, SmtpProvider, ResendProvider, EMAIL_PROVIDER_TOKEN],
-  exports: [EmailService],
+  providers: [EmailService, MailDnsService, SmtpProvider, ResendProvider, EMAIL_PROVIDER_TOKEN],
+  exports: [EmailService, MailDnsService],
 })
 export class EmailModule {}

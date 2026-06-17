@@ -127,11 +127,23 @@ services:
       - STA_LICENSE_KEY=
       - STA_DATA_DIR=/data
       - STA_CONFIG_FILE=/etc/stalwart/main.toml
+      - STA_ADMIN_TOKEN_FILE=/run/secrets/stalwart_admin_token
+    ports:
+      - "127.0.0.1:25:25"       # SMTP inbound (VPS firewall must allow)
+      - "127.0.0.1:465:465"      # SMTPS submission
+      - "127.0.0.1:587:587"      # SMTP submission (submission)
+      - "127.0.0.1:993:993"      # IMAPS
+      - "127.0.0.1:8443:443"     # JMAP / management HTTP(S)
     volumes:
       - ./config/stalwart:/etc/stalwart:ro
+      - ./config/stalwart/tls:/certs:ro   # TLS certs mounted here
       - fidscript_stalwart:/data
+      - ./secrets/stalwart_admin_token.txt:/run/secrets/stalwart_admin_token:ro
     networks:
       - fidscript
+    depends_on:
+      postgres:
+        condition: service_healthy
 
   api:
     build:
@@ -280,3 +292,5 @@ secrets:
     file: ./secrets/encryption_key.txt
   cf_api_token:
     file: ./secrets/cf_api_token.txt
+  stalwart_admin_token:
+    file: ./secrets/stalwart_admin_token.txt
