@@ -111,6 +111,7 @@ model Project {
   buckets   Bucket[]
   deployments Deployment[]
   buildConfig BuildConfig?
+  releases Release[]
   domains    Domain[]
   appUsers   AppUser[]
   appRoles   AppRole[]
@@ -272,24 +273,42 @@ model File {
 // DEPLOYMENTS SCHEMA
 // =============================================
 
+model Release {
+  id              String   @id @default(uuid())
+  projectId       String   @map("project_id")
+  commitSha        String   @db.VarChar(40)
+  branch           String   @default("main") @map("source_branch")
+  imageTag         String   @db.VarChar(255)  // e.g. "fidscript/<slug>:<version>"
+  version          String   @db.VarChar(50)  // e.g. "2023-abc123" — immutable once set
+  buildLogs        String?  @db.Text  // full build log output
+  buildDurationMs  Int?     @map("build_duration_ms")
+  createdBy        String?  @map("created_by")  // userId or "system"
+  createdAt        DateTime @default(now()) @map("created_at") @db.Timestamptz
+
+  project    Project       @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  deployments Deployment[]
+
+  @@unique([projectId, version])
+  @@index([projectId, createdAt])
+  @@map("projects.releases")
+}
+
 model Deployment {
   id             String            @id @default(uuid())
   projectId      String            @map("project_id")
-  version        String            @db.VarChar(50)
+  releaseId      String?           @map("release_id")  // FK to Release (build artifact record)
   status         DeploymentStatus  @default(PENDING)
-  commitSha      String?           @map("commit_sha") @db.VarChar(40)
-  commitMessage  String?          @map("commit_message") @db.Text
-  buildLogs      String?          @map("build_logs") @db.Text
-  buildDurationMs Int?           @map("build_duration_ms")
   deploymentUrl  String?          @map("deployment_url") @db.Text
-  rolledBackToId String?          @map("rolled_back_to")
+  rolledBackToId String?          @map("rolled_back_to")  // Deployment this rolled back
+  // Build artifact data lives in Release.releaseId (see above)
   createdAt      DateTime         @default(now()) @map("created_at") @db.Timestamptz
   completedAt    DateTime?        @map("completed_at") @db.Timestamptz
 
-  project     Project      @relation(fields: [projectId], references: [id], onDelete: Cascade)
-  rolledBackTo Deployment? @relation("Rollback", fields: [rolledBackToId], references: [id])
-  rollbacks   Deployment[] @relation("Rollback")
-  activeFor   ProjectSettings? @relation("ActiveDeployment")
+  project      Project      @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  release      Release?     @relation(fields: [releaseId], references: [id])
+  rolledBackTo  Deployment?  @relation("Rollback", fields: [rolledBackToId], references: [id])
+  rollbacks    Deployment[]  @relation("Rollback")
+  activeFor    ProjectSettings? @relation("ActiveDeployment")
 
   @@map("projects.deployments")
 }
@@ -307,15 +326,16 @@ enum DeploymentStatus {
 }
 
 model BuildConfig {
-  id              String   @id @default(uuid())
-  projectId       String   @unique @map("project_id")
-  strategy        String   @default("buildpack")
-  buildCommand    String?  @map("build_command") @db.Text
-  outputDirectory String?  @map("output_directory") @db.VarChar(255)
-  healthCheckPath String?  @map("health_check_path") @db.VarChar(255)
-  healthCheckPort Int      @default(3000) @map("health_check_port")
-  createdAt       DateTime @default(now()) @map("created_at") @db.Timestamptz
-  updatedAt       DateTime @updatedAt @map("updated_at") @db.Timestamptz
+  id                  String   @id @default(uuid())
+  projectId           String   @unique @map("project_id")
+  strategy            String   @default("dockerfile")
+  buildCommand        String?  @map("build_command") @db.Text
+  outputDirectory     String?  @map("output_directory") @db.VarChar(255)
+  healthCheckPath     String?  @map("health_check_path") @db.VarChar(255)
+  healthCheckPort     Int      @default(3000) @map("health_check_port")
+  startupTimeoutSeconds Int    @default(120) @map("startup_timeout_seconds")
+  createdAt           DateTime @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt           DateTime @updatedAt @map("updated_at") @db.Timestamptz
 
   project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
 

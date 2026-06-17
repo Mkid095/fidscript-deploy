@@ -20,10 +20,10 @@ export interface RuntimeEnv {
 
 export interface BuildAndDeployOptions {
   deploymentId: string;
+  releaseId: string;
   projectId: string;
   projectSlug: string;
   projectType: string;
-  version: string;
   source: {
     type: 'git' | 'archive';
     url?: string;
@@ -32,6 +32,7 @@ export interface BuildAndDeployOptions {
     dockerfilePath?: string;
   };
   envVars: RuntimeEnv[];
+  startupTimeoutSeconds: number;
   onLog: (line: string) => void;
 }
 
@@ -62,7 +63,14 @@ export class BuildRunnerService {
     provider: BuildProvider,
     opts: BuildAndDeployOptions,
   ): Promise<{ buildResult: BuildResult; deployResult: DeployResult }> {
-    const { deploymentId, projectSlug, projectType, version, source, envVars, onLog } = opts;
+    const { deploymentId, releaseId, projectSlug, projectType, source, envVars, startupTimeoutSeconds, onLog } = opts;
+
+    // Fetch the Release to get the immutable version string for the image tag
+    const { PrismaService } = await import('../../../prisma/prisma.service');
+    const prisma = new PrismaService();
+    const release = await prisma.release.findUnique({ where: { id: releaseId } });
+    if (!release) throw new Error(`Release ${releaseId} not found`);
+    const releaseVersion = release.version;
 
     const profile = getProfile(projectType);
     this.logger.log(`[runner] Profile for ${projectType}: route=${profile.requiresRoute} hc=${profile.requiresHealthCheck} worker=${profile.isWorker} cron=${profile.isCron}`);
@@ -71,10 +79,11 @@ export class BuildRunnerService {
     this.log(onLog, `[runner] Validating source with ${provider.name} provider…`);
     await provider.validate({
       deploymentId,
+      releaseId,
       projectId: opts.projectId,
       projectSlug,
       projectType,
-      version,
+      releaseVersion,
       source,
       buildCommand: opts.source.url ? undefined : undefined,
       outputDirectory: undefined,
@@ -86,10 +95,11 @@ export class BuildRunnerService {
     this.log(onLog, `[runner] Building image…`);
     const buildResult = await provider.build({
       deploymentId,
+      releaseId,
       projectId: opts.projectId,
       projectSlug,
       projectType,
-      version,
+      releaseVersion,
       source,
       buildCommand: undefined,
       outputDirectory: undefined,
@@ -119,6 +129,7 @@ export class BuildRunnerService {
       projectSlug,
       envVars,
       profile,
+      startupTimeoutSeconds,
       onLog,
     });
 
@@ -135,9 +146,10 @@ export class BuildRunnerService {
     projectSlug: string;
     envVars: RuntimeEnv[];
     profile: DeploymentProfile;
+    startupTimeoutSeconds: number;
     onLog: (line: string) => void;
   }): Promise<DeployResult> {
-    const { imageTag, deploymentId, projectSlug, envVars, profile, onLog } = opts;
+    const { imageTag, deploymentId, projectSlug, envVars, profile, startupTimeoutSeconds, onLog } = opts;
     const startTime = Date.now();
     const containerName = `fidscript-${projectSlug}-${deploymentId}`;
     const domain = `${projectSlug}.apps.deploy.fidscript.com`;
@@ -172,18 +184,18 @@ export class BuildRunnerService {
 
       // ── Health check (only for routed services) ───────────────
       if (profile.requiresHealthCheck) {
-        addLog(`[runner] Waiting for container to be healthy…`);
+        addLog(`[runner] Waiting for container to be healthy (timeout: ${startupTimeoutSeconds}s)…`);
         const healthy = await this.waitForHealth(
           containerName,
           profile.healthCheckPath,
           profile.defaultPort,
-          60_000,
+          startupTimeoutSeconds * 1000,
         );
         if (!healthy) {
           let containerLogs = '';
           try { containerLogs = this.exec(`docker logs ${containerName} 2>&1 | tail -20`); } catch { /* ignore */ }
           throw new Error(
-            `Container health check failed after 60s.\n` +
+            `Container health check failed after ${startupTimeoutSeconds}s.\n` +
             `Health check: GET localhost:${profile.defaultPort}${profile.healthCheckPath}\n` +
             `Container logs:\n${containerLogs}`,
           );
@@ -300,9 +312,10 @@ export class BuildRunnerService {
     projectType: string;
     envVars: RuntimeEnv[];
     profile: DeploymentProfile;
+    startupTimeoutSeconds: number;
     onLog: (line: string) => void;
   }): Promise<DeployResult> {
-    const { imageTag, deploymentId, projectSlug, projectType, envVars, profile, onLog } = opts;
+    const { imageTag, deploymentId, projectSlug, projectType, envVars, profile, startupTimeoutSeconds, onLog } = opts;
     const containerName = `fidscript-${projectSlug}-${deploymentId}`;
     const domain = `${projectSlug}.apps.deploy.fidscript.com`;
     const startTime = Date.now();
@@ -330,17 +343,17 @@ export class BuildRunnerService {
       this.exec(runArgs.join(' '));
 
       if (profile.requiresHealthCheck) {
-        addLog(`[runner] Waiting for container to be healthy…`);
+        addLog(`[runner] Waiting for container to be healthy (timeout: ${startupTimeoutSeconds}s)…`);
         const healthy = await this.waitForHealth(
           containerName,
           profile.healthCheckPath,
           profile.defaultPort,
-          60_000,
+          startupTimeoutSeconds * 1000,
         );
         if (!healthy) {
           let containerLogs = '';
           try { containerLogs = this.exec(`docker logs ${containerName} 2>&1 | tail -20`); } catch { /* ignore */ }
-          throw new Error(`Rollback container health check failed.\nContainer logs:\n${containerLogs}`);
+          throw new Error(`Rollback container health check failed after ${startupTimeoutSeconds}s.\nContainer logs:\n${containerLogs}`);
         }
       } else {
         const status = this.exec(`docker inspect -f '{{.State.Running}}' ${containerName} 2>/dev/null`).trim();

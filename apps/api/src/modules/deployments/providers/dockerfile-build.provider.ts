@@ -100,7 +100,7 @@ export class DockerfileBuildProvider implements BuildProvider {
       // ── Docker build ──────────────────────────────────────────
       // --secret id=envfile,src=.fidscript.env mounts the secret for the build
       // --build-arg BUILDKIT=1 enables BuildKit for caching + secret mounts
-      const imageTag = `fidscript/${context.projectSlug}:${context.version}`;
+      const imageTag = `fidscript/${context.projectSlug}:${context.releaseVersion}`;
       let buildCmd = `docker build -t "${imageTag}" -f "${dockerfilePath}" "${workspace}"`;
 
       if (envVars.length > 0) {
@@ -121,7 +121,7 @@ export class DockerfileBuildProvider implements BuildProvider {
       const msg = err instanceof Error ? err.message : String(err);
       addLog(`[DockerfileBuildProvider] Build error: ${msg}`);
       return {
-        imageTag: `fidscript/${context.projectSlug}:${context.version}`,
+        imageTag: `fidscript/${context.projectSlug}:${context.releaseVersion}`,
         buildDurationMs: Date.now() - startTime,
         buildLogs: logs.join('\n'),
         success: false,

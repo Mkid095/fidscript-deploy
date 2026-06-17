@@ -31,15 +31,25 @@ export class DeploymentsService {
     if (!project) throw new NotFoundException('Project not found');
     await this.checkAccessOrThrow(userId, projectId);
 
+    // Create an immutable Release for this build
     const version = this.generateVersion();
-
-    const deployment = await this.prisma.deployment.create({
+    const release = await this.prisma.release.create({
       data: {
         projectId,
         version,
+        commitSha: dto.commitSha || '',
+        branch: dto.branch || project.sourceBranch || 'main',
+        imageTag: `fidscript/${project.slug}:${version}`, // placeholder until worker fills it
+        createdBy: userId,
+      },
+    });
+
+    // Create the Deployment record referencing the Release
+    const deployment = await this.prisma.deployment.create({
+      data: {
+        projectId,
+        releaseId: release.id,
         status: 'PENDING',
-        commitSha: dto.commitSha,
-        commitMessage: dto.commitMessage,
       },
     });
 
@@ -55,6 +65,7 @@ export class DeploymentsService {
       resourceId: deployment.id,
       metadata: {
         deploymentId: deployment.id,
+        releaseId: release.id,
         projectId,
         userId,
         strategy: dto.strategy,
@@ -101,11 +112,12 @@ export class DeploymentsService {
     await this.checkAccessOrThrow(userId, projectId);
     const deployment = await this.prisma.deployment.findUnique({
       where: { id: deploymentId },
+      include: { release: true },
     });
     if (!deployment || deployment.projectId !== projectId) {
       throw new NotFoundException('Deployment not found');
     }
-    return { logs: deployment.buildLogs || '' };
+    return { logs: deployment.release?.buildLogs || '' };
   }
 
   // ─────────────────────────────────────────────────────────────
@@ -209,16 +221,12 @@ export class DeploymentsService {
     return {
       id: deployment.id,
       projectId: deployment.projectId,
-      version: deployment.version,
+      releaseId: deployment.releaseId || null,
       status: deployment.status.toLowerCase(),
-      commitSha: deployment.commitSha,
-      commitMessage: deployment.commitMessage,
-      buildLogs: deployment.buildLogs,
-      buildDurationMs: deployment.buildDurationMs,
-      deploymentUrl: deployment.deploymentUrl,
-      rolledBackToId: deployment.rolledBackToId,
+      deploymentUrl: deployment.deploymentUrl || null,
+      rolledBackToId: deployment.rolledBackToId || null,
       createdAt: deployment.createdAt,
-      completedAt: deployment.completedAt,
+      completedAt: deployment.completedAt || null,
     };
   }
 
@@ -231,6 +239,7 @@ export class DeploymentsService {
       outputDirectory: config.outputDirectory,
       healthCheckPath: config.healthCheckPath,
       healthCheckPort: config.healthCheckPort,
+      startupTimeoutSeconds: config.startupTimeoutSeconds,
       createdAt: config.createdAt,
       updatedAt: config.updatedAt,
     };

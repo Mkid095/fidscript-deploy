@@ -66,6 +66,30 @@ The profile is resolved from `Project.type` at deploy time. Unknown types defaul
 
 ---
 
+## Release Model
+
+A `Release` is an immutable build artifact record — the output of a successful build. It sits between the git commit and the running `Deployment`:
+
+```
+Project
+  └─ Release (immutable build artifact)
+       commitSha, branch, imageTag, version, buildLogs
+       └─ Deployment (running instance of a Release)
+```
+
+**Why this matters:**
+- **Rollback** targets a Release's image tag — no rebuild needed
+- **Build logs** stored on Release, not Deployment (avoids unbounded TEXT growth on the deployment row)
+- **Two-image retention (ADR-016)** is per Release — active + previous Release images on VPS
+- **Artifact registry (ADR-019)** pushes Release images to `registry.fidscript.com`
+
+**Schema (Phase 06, implemented now):**
+- `Release`: `commitSha`, `branch`, `imageTag`, `version`, `buildLogs`, `buildDurationMs`
+- `Deployment.releaseId`: FK to Release (build artifact reference)
+- `Deployment` no longer holds build fields — those live on Release
+
+---
+
 ## Build System
 
 ### Architecture: `SourceProvider` + `BuildProvider`
@@ -171,6 +195,10 @@ All deployed containers run with:
   { "path": "/cache", "sizeMb": 128 }
 ]
 ```
+
+**Startup timeout (configurable via `BuildConfig.startupTimeoutSeconds`):**
+
+Default: 120 seconds. Some frameworks (Laravel, Django, Rails, Spring) can take 60–180s to start. Configure this in `BuildConfig` before deploying. Health check only runs after the timeout window — if the container is healthy before timeout, it proceeds early.
 
 Each entry generates a `--tmpfs <path>:rw,noexec,nosuid,size=<sizeMb>m` flag. Defaults to `/tmp` and `/storage` only.
 
@@ -323,7 +351,8 @@ All events are typed in `EventType` union (`packages/events/src/index.ts`).
 | `apps/api/src/modules/deployments/providers/build-provider.interface.ts` | `BuildProvider` interface |
 | `apps/api/src/modules/deployments/providers/dockerfile-build.provider.ts` | Dockerfile-based build strategy |
 | `apps/api/src/modules/deployments/types/deployment-profile.ts` | `DeploymentProfile` type + all project type profiles |
-| `apps/api/prisma/schema.prisma` | `Deployment`, `BuildConfig` models |
-| `apps/api/prisma/migrations/20260617170000_*/migration.sql` | `QUEUED`, `STOPPED` added to enum |
+| `apps/api/prisma/schema.prisma` | `Release`, `Deployment`, `BuildConfig` models |
+| `apps/api/prisma/migrations/20260617170000_*/migration.sql` | `QUEUED`, `STOPPED`, `BLOCKED` added to enum |
+| `apps/api/prisma/migrations/20260618000000_*/migration.sql` | `Release` model + `startupTimeoutSeconds` + strategy default to dockerfile |
 | `installer/docker/docker-compose.yml` | `fidscript-app` network added |
 | `packages/events/src/index.ts` | `deployments.deployment.*` events in `EventType` union |

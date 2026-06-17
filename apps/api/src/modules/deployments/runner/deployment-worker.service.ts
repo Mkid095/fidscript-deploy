@@ -58,7 +58,7 @@ export class DeploymentWorkerService implements OnModuleInit {
   ) {
     const deployment = await this.prisma.deployment.findUnique({
       where: { id: deploymentId },
-      include: { project: true },
+      include: { project: true, release: true },
     });
 
     if (!deployment) {
@@ -125,6 +125,11 @@ export class DeploymentWorkerService implements OnModuleInit {
     const projectEnv = await this.prisma.projectEnv.findMany({ where: { projectId } });
     const runtimeEnv = this.decryptEnvVars(projectEnv);
 
+    // ── Build config (startup timeout, health check) ─────────────
+    const buildConfig = await this.prisma.buildConfig.findUnique({
+      where: { projectId },
+    });
+
     // ── Source resolution ──────────────────────────────────────
     const source = this.parseSource(deployment);
 
@@ -136,24 +141,28 @@ export class DeploymentWorkerService implements OnModuleInit {
       this.buildProvider,
       {
         deploymentId,
+        releaseId: deployment.releaseId!,
         projectId,
         projectSlug: deployment.project.slug,
         projectType,
-        version: deployment.version,
         source,
         envVars: runtimeEnv,
+        startupTimeoutSeconds: buildConfig?.startupTimeoutSeconds ?? 120,
         onLog,
       },
     );
 
-    // ── Persist build logs ─────────────────────────────────────
-    await this.prisma.deployment.update({
-      where: { id: deploymentId },
-      data: {
-        buildLogs: logs.join('\n'),
-        buildDurationMs: buildResult.buildDurationMs,
-      },
-    });
+    // ── Persist build artifacts to Release ──────────────────────
+    if (deployment.releaseId) {
+      await this.prisma.release.update({
+        where: { id: deployment.releaseId },
+        data: {
+          buildLogs: logs.join('\n'),
+          buildDurationMs: buildResult.buildDurationMs,
+          imageTag: buildResult.imageTag, // update placeholder with real tag
+        },
+      });
+    }
 
     // ── DEPLOYING → SUCCESS or FAILED ──────────────────────────
     if (deployResult.success) {
@@ -182,13 +191,11 @@ export class DeploymentWorkerService implements OnModuleInit {
   }
 
   private async markFailed(deploymentId: string, projectId: string, error: string) {
-    const existing = await this.prisma.deployment.findUnique({ where: { id: deploymentId } });
     await this.prisma.deployment.update({
       where: { id: deploymentId },
       data: {
         status: 'FAILED',
         completedAt: new Date(),
-        buildLogs: existing?.buildLogs || error,
       },
     });
     await this.emit(deploymentId, projectId, '', 'deployments.deployment.failed', { error });
@@ -246,12 +253,12 @@ export class DeploymentWorkerService implements OnModuleInit {
   async destroyDeployment(deploymentId: string, userId: string): Promise<void> {
     const deployment = await this.prisma.deployment.findUnique({
       where: { id: deploymentId },
-      include: { project: true },
+      include: { project: true, release: true },
     });
     if (!deployment) throw new Error('Deployment not found');
 
     const containerName = `fidscript-${deployment.project.slug}-${deploymentId}`;
-    const imageTag = `fidscript/${deployment.project.slug}:${deployment.version}`;
+    const imageTag = deployment.release?.imageTag || `fidscript/${deployment.project.slug}:unknown`;
 
     await this.buildRunner.teardown(containerName, imageTag);
     await this.prisma.deployment.delete({ where: { id: deploymentId } });
@@ -261,8 +268,8 @@ export class DeploymentWorkerService implements OnModuleInit {
 
   /**
    * Rollback to the previous successful deployment's image — no rebuild.
-   * Finds the previous SUCCESS deployment, re-runs its image via docker run,
-   * creates a new SUCCESS rollback deployment record.
+   * Finds the previous SUCCESS deployment's Release (image tag), creates a new
+   * Release + Deployment pointing to the same image, marks target as ROLLED_BACK.
    */
   async rollbackToPreviousImage(
     targetDeploymentId: string,
@@ -270,13 +277,14 @@ export class DeploymentWorkerService implements OnModuleInit {
   ): Promise<void> {
     const target = await this.prisma.deployment.findUnique({
       where: { id: targetDeploymentId },
-      include: { project: true },
+      include: { project: true, release: true },
     });
     if (!target) throw new Error('Deployment not found');
     if (target.status !== 'SUCCESS') {
       throw new Error('Can only rollback successful deployments');
     }
 
+    // Find the previous SUCCESS deployment and its Release (image tag)
     const previous = await this.prisma.deployment.findFirst({
       where: {
         projectId: target.projectId,
@@ -285,27 +293,43 @@ export class DeploymentWorkerService implements OnModuleInit {
         createdAt: { lt: target.createdAt },
       },
       orderBy: { createdAt: 'desc' },
+      include: { release: true },
     });
-    if (!previous) throw new Error('No previous successful deployment to rollback to');
+    if (!previous || !previous.release) {
+      throw new Error('No previous successful deployment to rollback to');
+    }
 
     const projectType = target.project.type || 'DOCKER';
     const profile = getProfile(projectType);
-
     const projectEnv = await this.prisma.projectEnv.findMany({ where: { projectId: target.projectId } });
     const runtimeEnv = this.decryptEnvVars(projectEnv);
+    const buildConfig = await this.prisma.buildConfig.findUnique({ where: { projectId: target.projectId } });
+    const startupTimeout = buildConfig?.startupTimeoutSeconds ?? 120;
 
+    // Create a new Release that re-uses the previous image tag (no rebuild)
+    const rollbackVersion = `rollback-${Date.now().toString(36)}`;
+    const rollbackRelease = await this.prisma.release.create({
+      data: {
+        projectId: target.projectId,
+        commitSha: previous.release.commitSha,
+        branch: previous.release.branch,
+        imageTag: previous.release.imageTag, // same image as the previous deployment
+        version: rollbackVersion,
+        createdBy: userId,
+      },
+    });
+
+    // Create a new Deployment referencing the rollback Release
     const rollbackDeployment = await this.prisma.deployment.create({
       data: {
         projectId: target.projectId,
-        version: `rollback-${Date.now().toString(36)}`,
+        releaseId: rollbackRelease.id,
         status: 'PENDING',
-        commitSha: target.commitSha,
-        commitMessage: `Rollback to ${target.version}`,
         rolledBackToId: target.id,
       },
     });
 
-    const imageTag = `fidscript/${target.project.slug}:${previous.version}`;
+    const imageTag = previous.release.imageTag;
     const containerName = `fidscript-${target.project.slug}-${rollbackDeployment.id}`;
     const domain = `${target.project.slug}.apps.deploy.fidscript.com`;
 
@@ -321,6 +345,7 @@ export class DeploymentWorkerService implements OnModuleInit {
       projectType,
       envVars: runtimeEnv,
       profile,
+      startupTimeoutSeconds: startupTimeout,
       onLog,
     });
 
@@ -329,8 +354,6 @@ export class DeploymentWorkerService implements OnModuleInit {
       data: {
         status: deployResult.success ? 'SUCCESS' : 'FAILED',
         deploymentUrl: deployResult.deploymentUrl,
-        buildLogs: logs.join('\n'),
-        buildDurationMs: deployResult.deployDurationMs,
         completedAt: new Date(),
       },
     });

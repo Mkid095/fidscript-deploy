@@ -27,10 +27,11 @@ export interface DeployResult {
  */
 export interface BuildContext {
   deploymentId: string;
+  releaseId: string;
   projectId: string;
   projectSlug: string;
   projectType: string;
-  version: string;
+  releaseVersion: string;  // immutable version string for Docker image tag
   source: {
     type: 'git' | 'archive';
     url?: string;
