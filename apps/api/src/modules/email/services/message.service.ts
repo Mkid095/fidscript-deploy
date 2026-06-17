@@ -1,10 +1,10 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
-import { PrismaService } from '../../prisma/prisma.service';
-import { SmtpSendService } from './smtp-send.service';
-import { ListMessagesDto } from './dto/list-messages.dto';
-import { MarkMessagesReadDto } from './dto/mark-messages-read.dto';
-import { DeleteMessagesDto } from './dto/delete-messages.dto';
-import { SendEmailDto } from './dto/send-email.dto';
+import { PrismaService } from '@/prisma/prisma.service';
+import { SmtpSendService } from '@/modules/email/smtp/smtp-send.service';
+import { ListMessagesDto } from '@/modules/email/dto/list-messages.dto';
+import { MarkMessagesReadDto } from '@/modules/email/dto/mark-messages-read.dto';
+import { DeleteMessagesDto } from '@/modules/email/dto/delete-messages.dto';
+import { SendEmailDto } from '@/modules/email/dto/send-email.dto';
 
 /**
  * Message metadata operations: list, get, mark read/starred, delete.

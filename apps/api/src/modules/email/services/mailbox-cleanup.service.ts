@@ -1,7 +1,7 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
-import { PrismaService } from '../../prisma/prisma.service';
-import { EventService } from '../events/event.service';
-import { StalwartAccountService } from './stalwart-account.service';
+import { PrismaService } from '@/prisma/prisma.service';
+import { EventService } from '@/modules/events/event.service';
+import { StalwartAccountService } from '@/modules/email/stalwart/stalwart-account.service';
 
 /**
  * Mailbox cleanup operations: delete mailbox + Stalwart account teardown.

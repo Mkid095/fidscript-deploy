@@ -2,12 +2,12 @@ import {
   Controller, Get, Post, Patch, Delete, Body, Param, Query, UseGuards, HttpCode, HttpStatus,
 } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
-import { JwtAuthGuard } from '../auth/jwt-auth.guard';
-import { EmailMessageService } from './message.service';
-import { SendEmailDto } from './dto/send-email.dto';
-import { ListMessagesDto } from './dto/list-messages.dto';
-import { MarkMessagesReadDto } from './dto/mark-messages-read.dto';
-import { DeleteMessagesDto } from './dto/delete-messages.dto';
+import { JwtAuthGuard } from '@/modules/auth/jwt-auth.guard';
+import { EmailMessageService } from '@/modules/email/services/message.service';
+import { SendEmailDto } from '@/modules/email/dto/send-email.dto';
+import { ListMessagesDto } from '@/modules/email/dto/list-messages.dto';
+import { MarkMessagesReadDto } from '@/modules/email/dto/mark-messages-read.dto';
+import { DeleteMessagesDto } from '@/modules/email/dto/delete-messages.dto';
 
 @ApiTags('email-messages')
 @Controller('projects/:projectId/email')

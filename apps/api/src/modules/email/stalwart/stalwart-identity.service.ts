@@ -1,5 +1,5 @@
 import { Injectable, InternalServerErrorException } from '@nestjs/common';
-import { StalwartJmapService } from './stalwart-core.service';
+import { StalwartJmapService } from '@/modules/email/stalwart/stalwart-core.service';
 
 /**
  * Stalwart sender identity (JmapIdentity) management.

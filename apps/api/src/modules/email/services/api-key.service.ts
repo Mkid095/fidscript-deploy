@@ -1,7 +1,7 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
-import { PrismaService } from '../../prisma/prisma.service';
-import { EventService } from '../events/event.service';
-import { CreateEmailApiKeyDto } from './dto/create-email-api-key.dto';
+import { PrismaService } from '@/prisma/prisma.service';
+import { EventService } from '@/modules/events/event.service';
+import { CreateEmailApiKeyDto } from '@/modules/email/dto/create-email-api-key.dto';
 import * as crypto from 'crypto';
 import * as bcrypt from 'bcrypt';
 

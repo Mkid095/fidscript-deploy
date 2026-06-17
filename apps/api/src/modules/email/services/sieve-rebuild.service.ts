@@ -1,6 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
-import { PrismaService } from '../../prisma/prisma.service';
-import { StalwartSieveService } from './stalwart-sieve.service';
+import { PrismaService } from '@/prisma/prisma.service';
+import { StalwartSieveService } from '@/modules/email/stalwart/stalwart-sieve.service';
 
 /**
  * Builds and syncs the Sieve routing script for a mailbox.

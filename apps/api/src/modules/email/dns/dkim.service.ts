@@ -1,6 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { DnsProvider } from '../domains/providers/dns-provider.interface';
+import { DnsProvider } from '@/modules/domains/providers/dns-provider.interface';
 import * as crypto from 'crypto';
 import * as fs from 'fs/promises';
 import * as path from 'path';

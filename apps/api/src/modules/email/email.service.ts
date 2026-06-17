@@ -2,13 +2,13 @@ import { Injectable } from '@nestjs/common';
 
 // Re-exports for backwards-compatibility during migration.
 // New code should import from the specific service files directly.
-export { EmailDomainService } from './domain.service';
-export { EmailMailboxService } from './mailbox.service';
-export { EmailAliasService } from './alias.service';
-export { EmailSenderIdentityService } from './sender-identity.service';
-export { EmailApiKeyService } from './api-key.service';
-export { EmailMessageService } from './message.service';
-export { EmailInboundService } from './inbound.service';
+export { EmailDomainService } from './services/domain.service';
+export { EmailMailboxService } from './services/mailbox.service';
+export { EmailAliasService } from './services/alias.service';
+export { EmailSenderIdentityService } from './services/sender-identity.service';
+export { EmailApiKeyService } from './services/api-key.service';
+export { EmailMessageService } from './services/message.service';
+export { EmailInboundService } from './services/inbound.service';
 
 @Injectable()
 export class EmailService {

@@ -1,8 +1,8 @@
 import { Controller, Get, Post, Delete, Body, Param, UseGuards } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
-import { JwtAuthGuard } from '../auth/jwt-auth.guard';
-import { EmailApiKeyService } from './api-key.service';
-import { CreateEmailApiKeyDto } from './dto/create-email-api-key.dto';
+import { JwtAuthGuard } from '@/modules/auth/jwt-auth.guard';
+import { EmailApiKeyService } from '@/modules/email/services/api-key.service';
+import { CreateEmailApiKeyDto } from '@/modules/email/dto/create-email-api-key.dto';
 
 @ApiTags('email-api-keys')
 @Controller('projects/:projectId/email/api-keys')

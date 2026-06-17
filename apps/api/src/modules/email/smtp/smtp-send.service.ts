@@ -1,9 +1,9 @@
 import { Injectable, NotFoundException, BadRequestException, ForbiddenException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { PrismaService } from '../../prisma/prisma.service';
-import { EventService } from '../events/event.service';
-import { RateLimitService } from './rate-limit.service';
-import { SendEmailDto } from './dto/send-email.dto';
+import { PrismaService } from '@/prisma/prisma.service';
+import { EventService } from '@/modules/events/event.service';
+import { RateLimitService } from '@/modules/email/services/rate-limit.service';
+import { SendEmailDto } from '@/modules/email/dto/send-email.dto';
 import * as crypto from 'crypto';
 
 /**

@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import { StalwartJmapService } from './stalwart-core.service';
+import { StalwartJmapService } from '@/modules/email/stalwart/stalwart-core.service';
 
 /**
  * Stalwart Sieve script management.

@@ -2,11 +2,11 @@ import {
   Controller, Get, Post, Patch, Delete, Body, Param, Query, UseGuards, HttpCode, HttpStatus,
 } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
-import { JwtAuthGuard } from '../auth/jwt-auth.guard';
-import { EmailMailboxService } from './mailbox.service';
-import { CreateMailboxDto } from './dto/create-mailbox.dto';
-import { UpdateMailboxDto } from './dto/update-mailbox.dto';
-import { ResetMailboxPasswordDto } from './dto/reset-mailbox-password.dto';
+import { JwtAuthGuard } from '@/modules/auth/jwt-auth.guard';
+import { EmailMailboxService } from '@/modules/email/services/mailbox.service';
+import { CreateMailboxDto } from '@/modules/email/dto/create-mailbox.dto';
+import { UpdateMailboxDto } from '@/modules/email/dto/update-mailbox.dto';
+import { ResetMailboxPasswordDto } from '@/modules/email/dto/reset-mailbox-password.dto';
 
 @ApiTags('email-mailboxes')
 @Controller('projects/:projectId/email/mailboxes')

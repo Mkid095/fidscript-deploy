@@ -2,9 +2,9 @@ import {
   Controller, Get, Post, Delete, Body, Param, Query, UseGuards,
 } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
-import { JwtAuthGuard } from '../auth/jwt-auth.guard';
-import { EmailSenderIdentityService } from './sender-identity.service';
-import { CreateSenderIdentityDto } from './dto/create-sender-identity.dto';
+import { JwtAuthGuard } from '@/modules/auth/jwt-auth.guard';
+import { EmailSenderIdentityService } from '@/modules/email/services/sender-identity.service';
+import { CreateSenderIdentityDto } from '@/modules/email/dto/create-sender-identity.dto';
 
 @ApiTags('email-sender-identities')
 @Controller('projects/:projectId/email/sender-identities')

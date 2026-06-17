@@ -1,12 +1,12 @@
 import { Injectable, NotFoundException, BadRequestException, InternalServerErrorException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { PrismaService } from '../../prisma/prisma.service';
-import { EventService } from '../events/event.service';
-import { StalwartAccountService } from './stalwart-account.service';
-import { MailboxCleanupService } from './mailbox-cleanup.service';
-import { CreateMailboxDto } from './dto/create-mailbox.dto';
-import { UpdateMailboxDto } from './dto/update-mailbox.dto';
-import { ResetMailboxPasswordDto } from './dto/reset-mailbox-password.dto';
+import { PrismaService } from '@/prisma/prisma.service';
+import { EventService } from '@/modules/events/event.service';
+import { StalwartAccountService } from '@/modules/email/stalwart/stalwart-account.service';
+import { MailboxCleanupService } from '@/modules/email/services/mailbox-cleanup.service';
+import { CreateMailboxDto } from '@/modules/email/dto/create-mailbox.dto';
+import { UpdateMailboxDto } from '@/modules/email/dto/update-mailbox.dto';
+import { ResetMailboxPasswordDto } from '@/modules/email/dto/reset-mailbox-password.dto';
 import * as crypto from 'crypto';
 
 @Injectable()

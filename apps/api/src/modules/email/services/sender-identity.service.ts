@@ -1,8 +1,8 @@
 import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
-import { PrismaService } from '../../prisma/prisma.service';
-import { EventService } from '../events/event.service';
-import { StalwartIdentityService } from './stalwart-identity.service';
-import { CreateSenderIdentityDto } from './dto/create-sender-identity.dto';
+import { PrismaService } from '@/prisma/prisma.service';
+import { EventService } from '@/modules/events/event.service';
+import { StalwartIdentityService } from '@/modules/email/stalwart/stalwart-identity.service';
+import { CreateSenderIdentityDto } from '@/modules/email/dto/create-sender-identity.dto';
 
 @Injectable()
 export class EmailSenderIdentityService {

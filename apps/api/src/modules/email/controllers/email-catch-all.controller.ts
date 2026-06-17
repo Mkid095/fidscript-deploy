@@ -1,7 +1,7 @@
 import { Controller, Post, Delete, Body, Param, UseGuards } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
-import { JwtAuthGuard } from '../auth/jwt-auth.guard';
-import { EmailInboundService } from './inbound.service';
+import { JwtAuthGuard } from '@/modules/auth/jwt-auth.guard';
+import { EmailInboundService } from '@/modules/email/services/inbound.service';
 
 @ApiTags('email-catch-all')
 @Controller('projects/:projectId/email/domains')

@@ -1,9 +1,9 @@
 import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
-import { PrismaService } from '../../prisma/prisma.service';
-import { EventService } from '../events/event.service';
-import { MailDnsService } from './mail-dns.service';
-import { DomainCleanupService } from './domain-cleanup.service';
-import { CreateEmailDomainDto } from './dto/create-email-domain.dto';
+import { PrismaService } from '@/prisma/prisma.service';
+import { EventService } from '@/modules/events/event.service';
+import { MailDnsService } from '@/modules/email/dns/mail-dns.service';
+import { DomainCleanupService } from '@/modules/email/services/domain-cleanup.service';
+import { CreateEmailDomainDto } from '@/modules/email/dto/create-email-domain.dto';
 import * as crypto from 'crypto';
 
 @Injectable()

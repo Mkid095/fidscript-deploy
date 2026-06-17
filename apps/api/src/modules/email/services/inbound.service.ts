@@ -1,8 +1,8 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
-import { PrismaService } from '../../prisma/prisma.service';
-import { EventService } from '../events/event.service';
-import { WebhookService } from './webhook.service';
-import { BounceHandlerService } from './bounce-handler.service';
+import { PrismaService } from '@/prisma/prisma.service';
+import { EventService } from '@/modules/events/event.service';
+import { WebhookService } from '@/modules/email/services/webhook.service';
+import { BounceHandlerService } from '@/modules/email/services/bounce-handler.service';
 
 /**
  * Inbound email ingestion: receives mail from Stalwart sieve notify,

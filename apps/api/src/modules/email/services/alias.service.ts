@@ -1,9 +1,9 @@
 import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
-import { PrismaService } from '../../prisma/prisma.service';
-import { EventService } from '../events/event.service';
-import { SieveRebuildService } from './sieve-rebuild.service';
-import { CreateAliasDto } from './dto/create-alias.dto';
-import { UpdateAliasDto } from './dto/update-alias.dto';
+import { PrismaService } from '@/prisma/prisma.service';
+import { EventService } from '@/modules/events/event.service';
+import { SieveRebuildService } from '@/modules/email/services/sieve-rebuild.service';
+import { CreateAliasDto } from '@/modules/email/dto/create-alias.dto';
+import { UpdateAliasDto } from '@/modules/email/dto/update-alias.dto';
 
 @Injectable()
 export class EmailAliasService {

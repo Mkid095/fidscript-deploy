@@ -1,6 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { DkimService } from './dkim.service';
+import { DnsProvider, DnsRecord } from '@/modules/domains/providers/dns-provider.interface';
+import { DkimService } from '@/modules/email/dns/dkim.service';
 
 /**
  * Email DNS orchestration: owns setup and verification of all email DNS records.

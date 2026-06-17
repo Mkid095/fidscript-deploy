@@ -3,7 +3,7 @@ import {
 } from '@nestjs/common';
 import { ApiTags, ApiOperation } from '@nestjs/swagger';
 import { ConfigService } from '@nestjs/config';
-import { EmailInboundService } from './inbound.service';
+import { EmailInboundService } from '@/modules/email/services/inbound.service';
 import * as crypto from 'crypto';
 
 @ApiTags('email-events')
