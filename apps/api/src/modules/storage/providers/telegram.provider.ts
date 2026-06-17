@@ -1,70 +1,72 @@
 import { Injectable, Logger } from '@nestjs/common';
-import { ConfigService } from '@nestjs/config';
-import { StorageProvider, UploadResult } from './storage-provider.interface';
+import { StorageProvider, UploadResult, ProviderCredentials } from './storage-provider.interface';
+
+export interface TelegramCredentials {
+  botToken: string;
+  chatId: string;
+}
 
 @Injectable()
 export class TelegramProvider implements StorageProvider {
   name = 'telegram';
   private readonly logger = new Logger(TelegramProvider.name);
-  private botToken: string = '';
-  private chatId: string = '';
 
-  constructor(private configService: ConfigService) {
-    this.botToken = this.configService.get<string>('TELEGRAM_BOT_TOKEN', '');
-    this.chatId = this.configService.get<string>('TELEGRAM_CHAT_ID', '');
-    if (!this.botToken) {
-      this.logger.warn('Telegram bot token not configured');
-    }
-  }
+  async makeBucket(_bucketName: string): Promise<void> {}
+  async removeBucket(_bucketName: string): Promise<void> {}
 
-  async upload(key: string, data: Buffer, mimeType?: string): Promise<UploadResult> {
-    if (!this.botToken) throw new Error('Telegram not configured');
+  async upload(
+    key: string,
+    data: Buffer,
+    mimeType?: string,
+    _projectSlug?: string,
+    _bucketDisplayName?: string,
+    credentials?: ProviderCredentials,
+  ): Promise<UploadResult> {
+    const creds = credentials as TelegramCredentials | undefined;
+    if (!creds) throw new Error('Telegram credentials required');
 
     const formData = new FormData();
-    formData.append('chat_id', this.chatId);
+    formData.append('chat_id', creds.chatId);
     formData.append('document', new Blob([data], { type: mimeType || 'application/octet-stream' }), key);
 
-    const response = await fetch(`https://api.telegram.org/bot${this.botToken}/sendDocument`, {
+    const resp = await fetch(`https://api.telegram.org/bot${creds.botToken}/sendDocument`, {
       method: 'POST',
       body: formData,
     });
-
-    const result: any = await response.json();
+    const result: any = await resp.json();
     if (!result.ok) throw new Error(result.description);
 
-    const fileId = result.result.document.file_id;
-
-    return {
-      key,
-      etag: fileId,
-      size: data.length,
-      mimeType,
-    };
+    return { key, etag: result.result.document.file_id, size: data.length, mimeType };
   }
 
-  async download(key: string): Promise<Buffer> {
-    if (!this.botToken) throw new Error('Telegram not configured');
+  async download(key: string, _projectSlug?: string, _bucketDisplay?: string, credentials?: ProviderCredentials): Promise<Buffer> {
+    const creds = credentials as TelegramCredentials | undefined;
+    if (!creds) throw new Error('Telegram credentials required');
 
-    const response = await fetch(`https://api.telegram.org/bot${this.botToken}/getFile?file_id=${key}`);
-    const result: any = await response.json();
+    const fileResp = await fetch(
+      `https://api.telegram.org/bot${creds.botToken}/getFile?file_id=${key}`,
+    );
+    const fileResult: any = await fileResp.json();
+    if (!fileResult.ok) throw new Error(fileResult.description);
 
-    if (!result.ok) throw new Error(result.description);
-
-    const filePath = result.result.file_path;
-    const fileResponse = await fetch(`https://api.telegram.org/file/bot${this.botToken}/${filePath}`);
-    return Buffer.from(await fileResponse.arrayBuffer());
+    const fileContent = await fetch(
+      `https://api.telegram.org/file/bot${creds.botToken}/${fileResult.result.file_path}`,
+    );
+    return Buffer.from(await fileContent.arrayBuffer());
   }
 
-  async delete(key: string): Promise<void> {
+  async delete(_key: string): Promise<void> {
     this.logger.warn('Telegram provider does not support file deletion');
   }
 
-  async list(prefix?: string): Promise<string[]> {
+  async list(_prefix?: string): Promise<string[]> {
     this.logger.warn('Telegram provider does not support listing');
     return [];
   }
 
-  async getSignedUrl(key: string): Promise<string> {
-    return `https://api.telegram.org/bot${this.botToken}/getFile?file_id=${key}`;
+  async getSignedUrl(key: string, _expiresInSeconds?: number, credentials?: ProviderCredentials): Promise<string> {
+    const creds = credentials as TelegramCredentials | undefined;
+    if (!creds) throw new Error('Telegram credentials required');
+    return `https://api.telegram.org/bot${creds.botToken}/getFile?file_id=${key}`;
   }
 }

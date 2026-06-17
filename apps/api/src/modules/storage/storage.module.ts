@@ -4,6 +4,7 @@ import { StorageService } from './storage.service';
 import { MinioProvider } from './providers/minio.provider';
 import { CloudinaryProvider } from './providers/cloudinary.provider';
 import { TelegramProvider } from './providers/telegram.provider';
+import { StorageProviderFactory } from './providers/storage-provider.factory';
 
 @Module({
   controllers: [StorageController],
@@ -12,6 +13,7 @@ import { TelegramProvider } from './providers/telegram.provider';
     MinioProvider,
     CloudinaryProvider,
     TelegramProvider,
+    StorageProviderFactory,
   ],
   exports: [StorageService],
 })

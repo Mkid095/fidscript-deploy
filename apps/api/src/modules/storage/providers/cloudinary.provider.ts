@@ -1,95 +1,95 @@
 import { Injectable, Logger } from '@nestjs/common';
-import { ConfigService } from '@nestjs/config';
-import { StorageProvider, UploadResult } from './storage-provider.interface';
+import { StorageProvider, UploadResult, ProviderCredentials } from './storage-provider.interface';
+
+export interface CloudinaryCredentials {
+  cloudName: string;
+  apiKey: string;
+  apiSecret: string;
+}
 
 @Injectable()
 export class CloudinaryProvider implements StorageProvider {
   name = 'cloudinary';
   private readonly logger = new Logger(CloudinaryProvider.name);
-  private cloudinary: any = null;
 
-  constructor(private configService: ConfigService) {
-    this.initClient();
-  }
+  async makeBucket(_bucketName: string): Promise<void> {}
+  async removeBucket(_bucketName: string): Promise<void> {}
 
-  private async initClient() {
-    const cloudName = this.configService.get<string>('CLOUDINARY_CLOUD_NAME');
-    const apiKey = this.configService.get<string>('CLOUDINARY_API_KEY');
-    const apiSecret = this.configService.get<string>('CLOUDINARY_API_SECRET');
+  async upload(
+    key: string,
+    data: Buffer,
+    mimeType?: string,
+    _projectSlug?: string,
+    _bucketDisplayName?: string,
+    credentials?: ProviderCredentials,
+  ): Promise<UploadResult> {
+    const creds = credentials as CloudinaryCredentials | undefined;
+    if (!creds) throw new Error('Cloudinary credentials required');
 
-    if (!cloudName || !apiKey || !apiSecret) {
-      this.logger.warn('Cloudinary credentials not configured');
-      return;
-    }
-
-    try {
-      const cloudinaryModule = await import('cloudinary');
-      this.cloudinary = cloudinaryModule.v2;
-      this.cloudinary.config({
-        cloud_name: cloudName,
-        api_key: apiKey,
-        api_secret: apiSecret,
-      });
-      this.logger.log('Cloudinary client initialized');
-    } catch (error) {
-      this.logger.warn('Cloudinary client initialization failed:', (error as Error).message);
-    }
-  }
-
-  async upload(key: string, data: Buffer, mimeType?: string): Promise<UploadResult> {
-    if (!this.cloudinary) throw new Error('Cloudinary not initialized');
+    const cloudinary = await import('cloudinary');
+    const v2 = cloudinary.v2;
+    v2.config({ cloud_name: creds.cloudName, api_key: creds.apiKey, api_secret: creds.apiSecret });
 
     return new Promise((resolve, reject) => {
-      const uploadStream = this.cloudinary.uploader.upload_stream(
-        {
-          folder: 'fidscript',
-          public_id: key.replace(/\//g, '_'),
-          resource_type: 'auto',
-        },
-        (error: any, result: any) => {
-          if (error) return reject(error);
-          resolve({
-            key,
-            etag: result.etag || result.public_id,
-            size: result.bytes,
-            mimeType: result.format,
-          });
+      const stream = v2.uploader.upload_stream(
+        { folder: 'fidscript', public_id: key.replace(/\//g, '_'), resource_type: 'auto' },
+        (err: any, result: any) => {
+          if (err) return reject(err);
+          resolve({ key, etag: result.etag || result.public_id, size: result.bytes, mimeType: result.format });
         },
       );
-      uploadStream.write(data);
-      uploadStream.end();
+      stream.write(data);
+      stream.end();
     });
   }
 
-  async download(key: string): Promise<Buffer> {
-    if (!this.cloudinary) throw new Error('Cloudinary not initialized');
+  async download(key: string, _projectSlug?: string, _bucketDisplay?: string, credentials?: ProviderCredentials): Promise<Buffer> {
+    const creds = credentials as CloudinaryCredentials | undefined;
+    if (!creds) throw new Error('Cloudinary credentials required');
 
-    const result = await this.cloudinary.api.resource(key, { resource_type: 'auto' });
-    const response = await fetch(result.secure_url);
-    return Buffer.from(await response.arrayBuffer());
+    const cloudinary = await import('cloudinary');
+    const v2 = cloudinary.v2;
+    v2.config({ cloud_name: creds.cloudName, api_key: creds.apiKey, api_secret: creds.apiSecret });
+
+    const result = await v2.api.resource(key, { resource_type: 'auto' });
+    const resp = await fetch(result.secure_url);
+    return Buffer.from(await resp.arrayBuffer());
   }
 
-  async delete(key: string): Promise<void> {
-    if (!this.cloudinary) throw new Error('Cloudinary not initialized');
-    await this.cloudinary.uploader.destroy(key);
+  async delete(key: string, _projectSlug?: string, _bucketDisplay?: string, credentials?: ProviderCredentials): Promise<void> {
+    const creds = credentials as CloudinaryCredentials | undefined;
+    if (!creds) throw new Error('Cloudinary credentials required');
+
+    const cloudinary = await import('cloudinary');
+    const v2 = cloudinary.v2;
+    v2.config({ cloud_name: creds.cloudName, api_key: creds.apiKey, api_secret: creds.apiSecret });
+    await v2.uploader.destroy(key);
   }
 
-  async list(prefix?: string): Promise<string[]> {
-    if (!this.cloudinary) throw new Error('Cloudinary not initialized');
+  async list(prefix?: string, _projectSlug?: string, _bucketDisplay?: string, credentials?: ProviderCredentials): Promise<string[]> {
+    const creds = credentials as CloudinaryCredentials | undefined;
+    if (!creds) throw new Error('Cloudinary credentials required');
 
-    const result = await this.cloudinary.api.resources({
-      type: 'upload',
-      prefix: prefix || 'fidscript',
-    });
+    const cloudinary = await import('cloudinary');
+    const v2 = cloudinary.v2;
+    v2.config({ cloud_name: creds.cloudName, api_key: creds.apiKey, api_secret: creds.apiSecret });
+    const result = await v2.api.resources({ type: 'upload', prefix: prefix || 'fidscript' });
     return result.resources.map((r: any) => r.public_id);
   }
 
-  async getSignedUrl(key: string, expiresInSeconds = 3600): Promise<string> {
-    if (!this.cloudinary) throw new Error('Cloudinary not initialized');
+  async getSignedUrl(
+    key: string,
+    expiresInSeconds = 3600,
+    _projectSlug?: string,
+    _bucketDisplay?: string,
+    credentials?: ProviderCredentials,
+  ): Promise<string> {
+    const creds = credentials as CloudinaryCredentials | undefined;
+    if (!creds) throw new Error('Cloudinary credentials required');
 
-    return this.cloudinary.url(key, {
-      sign_url: true,
-      expire_seconds: expiresInSeconds,
-    });
+    const cloudinary = await import('cloudinary');
+    const v2 = cloudinary.v2;
+    v2.config({ cloud_name: creds.cloudName, api_key: creds.apiKey, api_secret: creds.apiSecret });
+    return v2.url(key, { sign_url: true, expire_seconds: expiresInSeconds });
   }
 }

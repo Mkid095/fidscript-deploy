@@ -86,11 +86,11 @@ export type EventType =
   | 'cron.job_run_started'
   | 'cron.job_run_completed'
   | 'cron.job_run_failed'
-  // Storage events
-  | 'storage.bucket_created'
-  | 'storage.bucket_deleted'
-  | 'storage.file_uploaded'
-  | 'storage.file_deleted'
+  // Storage events (Phase 05)
+  | 'storage.bucket.created'
+  | 'storage.bucket.deleted'
+  | 'storage.file.uploaded'
+  | 'storage.file.deleted'
   // Realtime events
   | 'realtime.channel_created'
   | 'realtime.channel_deleted'
