@@ -1,11 +1,18 @@
 import { Module } from '@nestjs/common';
 import { QueuesController } from './queues.controller';
-import { QueueCrudService } from './services/queue-crud.service';
-import { QueueMessagesService } from './services/queue-messages.service';
+import { QueuesService } from './queues.service';
+import { QueueCrudService } from '@/modules/queues/services/queue-crud.service';
+import { QueueProducerService } from '@/modules/queues/services/queue-producer.service';
+import { QueueConsumerService } from '@/modules/queues/services/queue-consumer.service';
 
 @Module({
   controllers: [QueuesController],
-  providers: [QueueCrudService, QueueMessagesService],
-  exports: [QueueCrudService, QueueMessagesService],
+  providers: [
+    QueuesService,
+    QueueCrudService,
+    QueueProducerService,
+    QueueConsumerService,
+  ],
+  exports: [QueuesService, QueueCrudService, QueueProducerService, QueueConsumerService],
 })
 export class QueuesModule {}

@@ -1,6 +1,7 @@
 import { Module } from '@nestjs/common';
 import { DeploymentsController } from './deployments.controller';
 import { DeploymentsService } from './deployments.service';
+import { DeploymentCrudService } from './services/deployment-crud.service';
 import { BuildRunnerService } from './runner/build-runner.service';
 import { DockerRunService } from './runner/docker-run.service';
 import { DeploymentWorkerService } from './runner/deployment-worker.service';
@@ -15,6 +16,7 @@ import { StorageModule } from '@/modules/storage/storage.module';
   controllers: [DeploymentsController],
   providers: [
     DeploymentsService,
+    DeploymentCrudService,
     BuildRunnerService,
     DockerRunService,
     DeploymentWorkerService,

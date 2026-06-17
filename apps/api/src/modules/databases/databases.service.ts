@@ -1,328 +1,62 @@
-import { Injectable, Inject, NotFoundException } from '@nestjs/common';
-import { ConfigService } from '@nestjs/config';
-import { PrismaService } from '../../prisma/prisma.service';
-import { EventService } from '../events/event.service';
-import { CryptoService } from '../crypto/crypto.service';
-import { DatabaseProvider, DATABASE_PROVIDER, DatabaseCredentials } from './providers/index';
-import {
-  CreateDatabaseDto,
-  UpdateDatabaseDto,
-  CreateBackupDto,
-  RestoreBackupDto,
-  RotateCredentialsDto,
-  GetConnectionInfoDto,
-} from './dto/index';
+import { Injectable, Inject } from '@nestjs/common';
+import { DatabaseProvider, DATABASE_PROVIDER } from '@/modules/databases/providers/index';
+import { DbCrudService } from '@/modules/databases/services/db-crud.service';
+import { DbBackupService } from '@/modules/databases/services/db-backup.service';
+import { DbCredentialsService } from '@/modules/databases/services/db-credentials.service';
+
+export { DbCrudService } from '@/modules/databases/services/db-crud.service';
 
 @Injectable()
 export class DatabasesService {
   constructor(
-    private prisma: PrismaService,
-    private configService: ConfigService,
-    private eventService: EventService,
-    private cryptoService: CryptoService,
     @Inject(DATABASE_PROVIDER) private dbProvider: DatabaseProvider,
+    private crud: DbCrudService,
+    private backup: DbBackupService,
+    private credentials: DbCredentialsService,
   ) {}
 
-  async createDatabase(projectId: string, dto: CreateDatabaseDto) {
-    const existing = await this.prisma.managedDatabase.findFirst({
-      where: { projectId, name: dto.name },
-    });
-    if (existing) throw new Error('Database already exists');
-
-    const database = await this.prisma.managedDatabase.create({
-      data: {
-        projectId,
-        name: dto.name,
-        environment: dto.environment || 'production',
-        type: dto.type || 'postgresql',
-        version: dto.version || '15',
-        size: dto.size || 'small',
-        maxConnections: dto.maxConnections || 20,
-        provider: dto.provider || 'internal-postgres',
-        status: 'provisioning',
-      },
-    });
-
-    try {
-      const credentials = await this.dbProvider.provision(database.id, dto.name, {
-        maxConnections: dto.maxConnections || 20,
-      });
-      const connectionInfo = this.formatConnectionInfo(credentials);
-
-      // Track actual database size
-      const usedBytes = await this.dbProvider.getSize(credentials);
-
-      await this.prisma.managedDatabase.update({
-        where: { id: database.id },
-        data: {
-          status: 'ready',
-          host: credentials.host,
-          port: credentials.port,
-          username: credentials.username,
-          connectionInfo,
-          usedBytes,
-        },
-      });
-
-      // Auto-inject DATABASE_URL into the project's env vars so deployed apps can access it
-      await this.injectDatabaseUrl(projectId, credentials);
-
-      await this.eventService.emit('database.provisioned', {
-        databaseId: database.id,
-        projectId,
-        name: dto.name,
-      });
-
-      return this.getDatabase(projectId, database.id);
-    } catch (error) {
-      await this.prisma.managedDatabase.update({
-        where: { id: database.id },
-        data: { status: 'failed' },
-      });
-      throw error;
-    }
+  createDatabase(projectId: string, dto: any) {
+    return this.crud.createDatabase(this.dbProvider, projectId, dto);
   }
 
-  async listDatabases(projectId: string) {
-    const databases = await this.prisma.managedDatabase.findMany({
-      where: { projectId },
-      orderBy: { createdAt: 'desc' },
-    });
-    return databases.map((db) => this.formatDatabase(db as Record<string, unknown>));
+  listDatabases(projectId: string) {
+    return this.crud.listDatabases(projectId);
   }
 
-  async getDatabase(projectId: string, databaseId: string) {
-    const database = await this.prisma.managedDatabase.findFirst({
-      where: { id: databaseId, projectId },
-    });
-    if (!database) throw new NotFoundException('Database not found');
-    return this.formatDatabase(database as Record<string, unknown>);
+  getDatabase(projectId: string, databaseId: string) {
+    return this.crud.getDatabase(projectId, databaseId);
   }
 
-  async updateDatabase(projectId: string, databaseId: string, dto: UpdateDatabaseDto) {
-    const database = await this.prisma.managedDatabase.findFirst({
-      where: { id: databaseId, projectId },
-    });
-    if (!database) throw new NotFoundException('Database not found');
-
-    const updated = await this.prisma.managedDatabase.update({
-      where: { id: databaseId },
-      data: {
-        settings: (dto.settings) as any,
-        backupRetentionDays: dto.backupRetentionDays,
-      },
-    });
-
-    await this.eventService.emit('database.updated', { databaseId, projectId });
-    return updated;
+  updateDatabase(projectId: string, databaseId: string, dto: any) {
+    return this.crud.updateDatabase(projectId, databaseId, dto);
   }
 
   async deleteDatabase(projectId: string, databaseId: string) {
-    const database = await this.prisma.managedDatabase.findFirst({
-      where: { id: databaseId, projectId },
-    });
-    if (!database) throw new NotFoundException('Database not found');
-
-    try {
-      const credentials = this.parseConnectionInfo(database.connectionInfo!);
-      await this.dbProvider.delete(credentials);
-    } catch { /* Continue with deletion */ }
-
-    await this.prisma.managedDatabase.delete({ where: { id: databaseId } });
-    await this.prisma.databaseBackup.deleteMany({ where: { databaseId } });
-
-    await this.eventService.emit('database.deleted', { databaseId, projectId });
-    return { deleted: true };
+    const database = await this.crud.getDatabase(projectId, databaseId);
+    return this.crud.deleteDatabase(this.dbProvider, projectId, databaseId, (database as any).connectionInfo);
   }
 
-  async createBackup(projectId: string, databaseId: string, dto: CreateBackupDto) {
-    const database = await this.prisma.managedDatabase.findFirst({
-      where: { id: databaseId, projectId },
-    });
-    if (!database) throw new NotFoundException('Database not found');
-
-    const backup = await this.prisma.databaseBackup.create({
-      data: { databaseId, status: 'in_progress', description: dto.description },
-    });
-
-    await this.eventService.emit('database.backup_started', { backupId: backup.id, databaseId, projectId });
-    this.runBackup(backup.id, database).catch(console.error);
-
-    return backup;
+  createBackup(projectId: string, databaseId: string, dto: any) {
+    return this.backup.createBackup(projectId, databaseId, dto);
   }
 
-  private async runBackup(backupId: string, database: any) {
-    try {
-      const credentials = this.parseConnectionInfo(database.connectionInfo!);
-      const backupInfo = await this.dbProvider.backup(credentials, database.description);
-
-      await this.prisma.databaseBackup.update({
-        where: { id: backupId },
-        data: {
-          status: 'completed',
-          filename: backupInfo.filename,
-          size: backupInfo.size,
-          completedAt: new Date(),
-        },
-      });
-
-      await this.eventService.emit('database.backup_completed', { backupId, databaseId: database.id });
-    } catch {
-      await this.prisma.databaseBackup.update({
-        where: { id: backupId },
-        data: { status: 'failed' },
-      });
-    }
+  listBackups(projectId: string, databaseId: string) {
+    return this.backup.listBackups(projectId, databaseId);
   }
 
-  async listBackups(projectId: string, databaseId: string) {
-    const database = await this.prisma.managedDatabase.findFirst({
-      where: { id: databaseId, projectId },
-    });
-    if (!database) throw new NotFoundException('Database not found');
-
-    return this.prisma.databaseBackup.findMany({
-      where: { databaseId },
-      orderBy: { createdAt: 'desc' },
-    });
+  restoreBackup(projectId: string, databaseId: string, dto: any) {
+    return this.backup.restoreBackup(projectId, databaseId, dto);
   }
 
-  async restoreBackup(projectId: string, databaseId: string, dto: RestoreBackupDto) {
-    const backup = await this.prisma.databaseBackup.findFirst({
-      where: { id: dto.backupId, databaseId },
-    });
-    if (!backup) throw new NotFoundException('Backup not found');
-
-    const database = await this.prisma.managedDatabase.findFirst({
-      where: { id: databaseId, projectId },
-    });
-    if (!database) throw new NotFoundException('Database not found');
-
-    const credentials = this.parseConnectionInfo(database.connectionInfo!);
-    const backupInfo = {
-      id: backup.id,
-      databaseId: backup.databaseId,
-      filename: backup.filename || '',
-      size: Number(backup.size),
-      status: backup.status as 'completed' | 'failed' | 'in_progress',
-      createdAt: backup.createdAt,
-      completedAt: backup.completedAt || undefined,
-    };
-
-    await this.dbProvider.restore(backupInfo, credentials);
-    await this.eventService.emit('database.restored', { backupId: backup.id, databaseId, projectId });
-
-    return { restored: true };
+  rotateCredentials(projectId: string, databaseId: string) {
+    return this.credentials.rotateCredentials(projectId, databaseId);
   }
 
-  async rotateCredentials(projectId: string, databaseId: string, _dto: RotateCredentialsDto) {
-    const database = await this.prisma.managedDatabase.findFirst({
-      where: { id: databaseId, projectId },
-    });
-    if (!database) throw new NotFoundException('Database not found');
-
-    const credentials = this.parseConnectionInfo(database.connectionInfo!);
-    const { password } = await this.dbProvider.rotatePassword(credentials);
-
-    const newCredentials = { ...credentials, password };
-    const newConnectionInfo = this.formatConnectionInfo(newCredentials);
-
-    await this.prisma.managedDatabase.update({
-      where: { id: databaseId },
-      data: { connectionInfo: newConnectionInfo },
-    });
-
-    // Refresh the DATABASE_URL env var with the new credentials so deployed
-    // apps pick up the new connection string on next start
-    await this.injectDatabaseUrl(projectId, newCredentials);
-
-    return { rotated: true };
+  getConnectionInfo(projectId: string, databaseId: string, dto: any) {
+    return this.credentials.getConnectionInfo(projectId, databaseId, dto);
   }
 
-  async getConnectionInfo(projectId: string, databaseId: string, dto: GetConnectionInfoDto) {
-    const database = await this.prisma.managedDatabase.findFirst({
-      where: { id: databaseId, projectId },
-    });
-    if (!database) throw new NotFoundException('Database not found');
-
-    const credentials = this.parseConnectionInfo(database.connectionInfo!);
-
-    if (dto.poolOnly) {
-      return {
-        host: credentials.pgbouncerHost || credentials.host,
-        port: credentials.pgbouncerPort || credentials.port,
-        database: credentials.database,
-        connectionString: credentials.pgbouncerConnectionString || credentials.connectionString,
-      };
-    }
-
-    return {
-      host: credentials.host,
-      port: credentials.port,
-      database: credentials.database,
-      username: credentials.username,
-      connectionString: credentials.connectionString,
-    };
-  }
-
-  async getDatabaseStatus(projectId: string, databaseId: string) {
-    const database = await this.prisma.managedDatabase.findFirst({
-      where: { id: databaseId, projectId },
-    });
-    if (!database) throw new NotFoundException('Database not found');
-
-    const credentials = this.parseConnectionInfo(database.connectionInfo!);
-    const status = await this.dbProvider.getStatus(credentials);
-
-    await this.prisma.managedDatabase.update({
-      where: { id: databaseId },
-      data: { status: status.status === 'healthy' ? 'ready' : 'unhealthy' },
-    });
-
-    return { status: status.status };
-  }
-
-  private formatConnectionInfo(creds: DatabaseCredentials): string {
-    // Encrypt the full credential set before storing
-    return this.cryptoService.encrypt(JSON.stringify(creds));
-  }
-
-  private parseConnectionInfo(info: string | null | undefined): DatabaseCredentials {
-    if (!info) throw new Error('No connection info stored');
-    // Decrypt before parsing — throws if tampered
-    return JSON.parse(this.cryptoService.decrypt(info));
-  }
-
-  private formatDatabase(db: Record<string, unknown>) {
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    const { connectionInfo: _ci, ...safe } = db;
-    return safe;
-  }
-
-  /**
-   * Injects DATABASE_URL + related env vars into the project's runtime environment.
-   * Called after a DB is provisioned so deployed apps automatically pick it up.
-   */
-  private async injectDatabaseUrl(projectId: string, credentials: DatabaseCredentials): Promise<void> {
-    // The pooled connection string (via PgBouncer) is preferred for deployed apps
-    const dbUrl = credentials.pgbouncerConnectionString || credentials.connectionString;
-
-    const envVars = [
-      { key: 'DATABASE_URL', value: dbUrl },
-      { key: 'DB_HOST', value: credentials.pgbouncerHost || credentials.host },
-      { key: 'DB_PORT', value: String(credentials.pgbouncerPort || credentials.port) },
-      { key: 'DB_NAME', value: credentials.database },
-      { key: 'DB_USER', value: credentials.username },
-      { key: 'DB_PASSWORD', value: credentials.password },
-    ];
-
-    for (const { key, value } of envVars) {
-      const encrypted = this.cryptoService.encrypt(value);
-      await this.prisma.projectEnv.upsert({
-        where: { projectId_key: { projectId, key } },
-        create: { projectId, key, value: encrypted },
-        update: { value: encrypted },
-      });
-    }
+  getDatabaseStatus(projectId: string, databaseId: string) {
+    return this.credentials.getStatus(projectId, databaseId);
   }
 }
