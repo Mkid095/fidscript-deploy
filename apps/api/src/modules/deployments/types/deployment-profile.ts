@@ -1,4 +1,12 @@
 /**
+ * Runtime env var passed to the container at deploy time.
+ */
+export interface RuntimeEnv {
+  key: string;
+  value: string;
+}
+
+/**
  * DeploymentProfile defines how a project type is deployed.
  *
  * Used by BuildRunnerService to branch on:

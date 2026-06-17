@@ -1,4 +1,4 @@
-import { RuntimeEnv } from '../runner/build-runner.service';
+import { RuntimeEnv } from '../types/deployment-profile';
 
 /**
  * Result of a build operation.

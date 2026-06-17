@@ -2,9 +2,13 @@ import { Module } from '@nestjs/common';
 import { DeploymentsController } from './deployments.controller';
 import { DeploymentsService } from './deployments.service';
 import { BuildRunnerService } from './runner/build-runner.service';
+import { DockerRunService } from './runner/docker-run.service';
 import { DeploymentWorkerService } from './runner/deployment-worker.service';
+import { DeploymentStateService } from './runner/deployment-state.service';
+import { DeploymentLifecycleService } from './runner/deployment-lifecycle.service';
+import { DeploymentRollbackService } from './runner/deployment-rollback.service';
 import { DockerfileBuildProvider } from './providers/dockerfile-build.provider';
-import { StorageModule } from '../storage/storage.module';
+import { StorageModule } from '@/modules/storage/storage.module';
 
 @Module({
   imports: [StorageModule],
@@ -12,14 +16,14 @@ import { StorageModule } from '../storage/storage.module';
   providers: [
     DeploymentsService,
     BuildRunnerService,
+    DockerRunService,
     DeploymentWorkerService,
+    DeploymentStateService,
+    DeploymentLifecycleService,
+    DeploymentRollbackService,
     DockerfileBuildProvider,
-    // Provide BuildProvider interface via factory that returns DockerfileBuildProvider
-    {
-      provide: 'BUILD_PROVIDER',
-      useExisting: DockerfileBuildProvider,
-    },
+    { provide: 'BUILD_PROVIDER', useExisting: DockerfileBuildProvider },
   ],
-  exports: [DeploymentsService],
+  exports: [DeploymentsService, DeploymentWorkerService],
 })
 export class DeploymentsModule {}
