@@ -351,6 +351,7 @@ model Domain {
   id            String      @id @default(uuid())
   projectId     String      @map("project_id")
   deploymentId  String?     @map("deployment_id")  // which deployment this domain routes to
+  dnsConnectionId String?   @map("dns_connection_id")  // which DNS connection to use (Mode B)
   domain        String      @db.VarChar(255)
   isCustom      Boolean     @default(false) @map("is_custom")
   isPrimary     Boolean     @default(false) @map("is_primary")  // primary domain for this deployment
@@ -361,19 +362,42 @@ model Domain {
   sslStatus     SslStatus   @default(PENDING) @map("ssl_status")
   sslMethod     String      @default("letsencrypt") @map("ssl_method")  // 'letsencrypt' | 'custom' | 'disabled'
   sslCertArn    String?     @map("ssl_cert_arn") @db.VarChar(255)
+  sslExpiresAt  DateTime?   @map("ssl_expires_at") @db.Timestamptz  // cert expiry date
+  sslIssuedAt   DateTime?   @map("ssl_issued_at") @db.Timestamptz   // when cert was issued
+  sslLastCheckedAt DateTime? @map("ssl_last_checked_at") @db.Timestamptz  // last SSL check
+  sslLastError   String?     @map("ssl_last_error") @db.Text         // last SSL error
   dnsStatus     DomainStatus @default(PENDING) @map("dns_status")
   dnsVerifiedAt DateTime?   @map("dns_verified_at") @db.Timestamptz
-  routingVerifiedAt DateTime? @map("routing_verified_at") @db.Timestamptz  // HTTP routing confirmed
-  emailWarning  Boolean     @default(false) @map("email_warning")  // MX records detected
-  emailProvider String?     @map("email_provider") @db.VarChar(100)  // GOOGLE_WORKSPACE | MICROSOFT_365 | ZOHO | SES | MAILGUN | CUSTOM
+  routingVerifiedAt DateTime? @map("routing_verified_at") @db.Timestamptz
+  emailWarning  Boolean     @default(false) @map("email_warning")
+  emailProvider String?     @map("email_provider") @db.VarChar(100)
   createdAt     DateTime    @default(now()) @map("created_at") @db.Timestamptz
 
-  project       Project          @relation(fields: [projectId], references: [id], onDelete: Cascade)
-  deployment    Deployment?      @relation(fields: [deploymentId], references: [id])
-  healthChecks  DomainHealthCheck[]
+  project          Project          @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  deployment       Deployment?      @relation(fields: [deploymentId], references: [id])
+  dnsConnection    DomainConnection? @relation(fields: [dnsConnectionId], references: [id])
+  healthChecks     DomainHealthCheck[]
 
   @@unique([projectId, domain])
   @@map("projects.domains")
+}
+
+// Stored DNS provider connections for Mode B (Cloudflare Auto) and future providers.
+// Credentials are encrypted; the plain-text token is never stored after initial verification.
+model DomainConnection {
+  id          String   @id @default(uuid())
+  projectId   String   @map("project_id")
+  provider    String   @db.VarChar(50)  // 'CLOUDLARE' | 'ROUTE53' | 'DIGITALOCEAN'
+  encryptedToken String @map("encrypted_token") @db.Text  // AES-256-GCM ciphertext
+  tokenId     String?  @map("token_id") @db.VarChar(255)  // provider's token ID (for audit/invalidation)
+  permissions  Json     @default("{}")  // granted permissions (Zone:Read, DNS:Edit, etc.)
+  email       String?  @db.VarChar(255)  // provider account email (cloudflare)
+  lastVerifiedAt DateTime @map("last_verified_at") @db.Timestamptz
+  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz
+
+  domains     Domain[]
+
+  @@map("projects.dns_connections")
 }
 
 // Tracks operational history of every domain check.
@@ -389,6 +413,7 @@ model DomainHealthCheck {
 
   responseTimeMs Int?    @map("response_time_ms")
 
+  sslExpiresInDays Int?   @map("ssl_expires_in_days")
   status      String   @db.VarChar(20)  // 'ok' | 'degraded' | 'broken'
   errorMessage String?  @map("error_message") @db.Text
 
@@ -402,7 +427,8 @@ enum DomainStatus {
   PENDING           // Domain added, no verification attempted yet
   OWNERSHIP_PENDING // TXT record created, waiting for ownership confirmation
   VALIDATING        // Ownership confirmed, checking DNS propagation + routing
-  ACTIVE            // All checks passed, serving traffic
+  TLS_PENDING       // DNS + routing verified, SSL certificate in flight
+  ACTIVE            // All checks passed: DNS + routing + SSL all done, serving traffic
   BROKEN            // Was ACTIVE but DNS/routing/cert has failed
   FAILED            // Verification failed (permanent)
 }
