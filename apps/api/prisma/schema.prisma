@@ -643,6 +643,7 @@ model ManagedDatabase {
   type                 String   @default("postgresql") @db.VarChar(50)
   version              String   @default("15") @db.VarChar(20)
   size                 String   @default("small") @db.VarChar(50)
+  usedBytes            BigInt   @default(0) @map("used_bytes")
   status               String   @default("provisioning") @db.VarChar(50)
   host                 String?  @db.VarChar(255)
   port                 Int?     @map("port")

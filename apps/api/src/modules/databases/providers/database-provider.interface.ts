@@ -27,6 +27,7 @@ export interface DatabaseProvider {
   restore(backup: BackupInfo, targetCredentials: DatabaseCredentials): Promise<void>;
   rotatePassword(credentials: DatabaseCredentials): Promise<{ password: string }>;
   getStatus(credentials: DatabaseCredentials): Promise<{ status: 'healthy' | 'unhealthy' | 'unknown' }>;
+  getSize(credentials: DatabaseCredentials): Promise<bigint>;
 }
 
 export const DATABASE_PROVIDER = Symbol('DATABASE_PROVIDER');

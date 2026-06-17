@@ -97,12 +97,16 @@ export class InternalPgProvider implements DatabaseProvider, OnModuleInit {
 
   // ─── Provision ────────────────────────────────────────────────────────────
 
-  async provision(databaseId: string, name: string): Promise<DatabaseCredentials> {
+  async provision(databaseId: string, name: string, _options?: Record<string, unknown>): Promise<DatabaseCredentials> {
     const slug = name.replace(/[^a-zA-Z0-9_]/g, '_').toLowerCase().slice(0, 20);
     const prefix = databaseId.replace(/-/g, '').slice(0, 8);
     const dbName = `proj_${prefix}_${slug}`;
     const dbUser = `proj_${prefix}_${slug}`;
     const password = crypto.randomBytes(24).toString('base64url');
+
+    // Sensible single-VPS defaults: enough for a busy app, not enough to saturate the cluster
+    const CONNECTION_LIMIT = 20;
+    const STATEMENT_TIMEOUT = '60s';
 
     const pool = await this.getAdminPool();
 
@@ -114,9 +118,9 @@ export class InternalPgProvider implements DatabaseProvider, OnModuleInit {
     // 1. Create the database
     await pool.query(`CREATE DATABASE ${quotedDb}`);
 
-    // 2. Create the role: NOLOGIN so it can only connect through this app
+    // 2. Create the role with connection limits and statement timeout
     await pool.query(
-      `CREATE ROLE ${quotedUser} WITH PASSWORD '${safePass}' NOSUPERUSER NOCREATEDB NOCREATEROLE NOINHERIT NOLOGIN`,
+      `CREATE ROLE ${quotedUser} WITH PASSWORD '${safePass}' NOSUPERUSER NOCREATEDB NOCREATEROLE NOINHERIT NOLOGIN CONNECTION LIMIT ${CONNECTION_LIMIT} SET statement_timeout TO '${STATEMENT_TIMEOUT}'`,
     );
 
     // 3. Grant CONNECT on the database
@@ -150,8 +154,12 @@ export class InternalPgProvider implements DatabaseProvider, OnModuleInit {
   }
 
   private buildCredentials(database: string, username: string, password: string): DatabaseCredentials {
-    const connStr = `postgresql://${username}:${password}@${this.adminHost}:${this.adminPort}/${database}`;
-    const pgbouncerConnStr = `postgresql://${username}:${password}@${this.pgbouncerHost}:${this.pgbouncerPort}/${database}`;
+    // sslmode=require on the connection strings handed to deployed apps.
+    // Internal admin/provisioning connections (pg_dump, pg_restore) bypass this
+    // by setting PG* env vars directly without sslmode.
+    const sslSuffix = '?sslmode=require';
+    const connStr = `postgresql://${username}:${password}@${this.adminHost}:${this.adminPort}/${database}${sslSuffix}`;
+    const pgbouncerConnStr = `postgresql://${username}:${password}@${this.pgbouncerHost}:${this.pgbouncerPort}/${database}${sslSuffix}`;
     return {
       host: this.adminHost,
       port: this.adminPort,
@@ -286,6 +294,15 @@ export class InternalPgProvider implements DatabaseProvider, OnModuleInit {
     } catch {
       return { status: 'unhealthy' };
     }
+  }
+
+  async getSize(credentials: DatabaseCredentials): Promise<bigint> {
+    const pool = await this.getAdminPool();
+    const result = await pool.query(
+      `SELECT pg_database_size($1) as size`,
+      [credentials.database],
+    );
+    return BigInt(result.rows[0].size);
   }
 
   // ─── Helpers ─────────────────────────────────────────────────────────────

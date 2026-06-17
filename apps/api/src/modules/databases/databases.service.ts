@@ -44,6 +44,9 @@ export class DatabasesService {
       const credentials = await this.dbProvider.provision(database.id, dto.name);
       const connectionInfo = this.formatConnectionInfo(credentials);
 
+      // Track actual database size
+      const usedBytes = await this.dbProvider.getSize(credentials);
+
       await this.prisma.managedDatabase.update({
         where: { id: database.id },
         data: {
@@ -52,8 +55,12 @@ export class DatabasesService {
           port: credentials.port,
           username: credentials.username,
           connectionInfo,
+          usedBytes,
         },
       });
+
+      // Auto-inject DATABASE_URL into the project's env vars so deployed apps can access it
+      await this.injectDatabaseUrl(projectId, credentials);
 
       await this.eventService.emit('database.provisioned', {
         databaseId: database.id,
@@ -280,5 +287,32 @@ export class DatabasesService {
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const { connectionInfo: _ci, ...safe } = db;
     return safe;
+  }
+
+  /**
+   * Injects DATABASE_URL + related env vars into the project's runtime environment.
+   * Called after a DB is provisioned so deployed apps automatically pick it up.
+   */
+  private async injectDatabaseUrl(projectId: string, credentials: DatabaseCredentials): Promise<void> {
+    // The pooled connection string (via PgBouncer) is preferred for deployed apps
+    const dbUrl = credentials.pgbouncerConnectionString || credentials.connectionString;
+
+    const envVars = [
+      { key: 'DATABASE_URL', value: dbUrl },
+      { key: 'DB_HOST', value: credentials.pgbouncerHost || credentials.host },
+      { key: 'DB_PORT', value: String(credentials.pgbouncerPort || credentials.port) },
+      { key: 'DB_NAME', value: credentials.database },
+      { key: 'DB_USER', value: credentials.username },
+      { key: 'DB_PASSWORD', value: credentials.password },
+    ];
+
+    for (const { key, value } of envVars) {
+      const encrypted = this.cryptoService.encrypt(value);
+      await this.prisma.projectEnv.upsert({
+        where: { projectId_key: { projectId, key } },
+        create: { projectId, key, value: encrypted },
+        update: { value: encrypted },
+      });
+    }
   }
 }
