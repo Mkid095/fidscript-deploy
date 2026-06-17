@@ -3,9 +3,9 @@ import {
   Body, Param, Query, UseGuards,
 } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
-import { JwtAuthGuard } from '../auth/jwt-auth.guard.js';
-import { TemplatesService } from './templates.service.js';
-import { CreateTemplateDto, UpdateTemplateDto, GenerateProjectDto } from './dto/index.js';
+import { JwtAuthGuard } from '../auth/jwt-auth.guard';
+import { TemplatesService } from './templates.service';
+import { CreateTemplateDto, UpdateTemplateDto, GenerateProjectDto } from './dto/index';
 
 @ApiTags('templates')
 @Controller('projects/:projectId/templates')

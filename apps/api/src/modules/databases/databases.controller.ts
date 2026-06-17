@@ -10,8 +10,8 @@ import {
   UseGuards,
 } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
-import { JwtAuthGuard } from '../auth/jwt-auth.guard.js';
-import { DatabasesService } from './databases.service.js';
+import { JwtAuthGuard } from '../auth/jwt-auth.guard';
+import { DatabasesService } from './databases.service';
 import {
   CreateDatabaseDto,
   UpdateDatabaseDto,
@@ -19,7 +19,7 @@ import {
   RestoreBackupDto,
   RotateCredentialsDto,
   GetConnectionInfoDto,
-} from './dto/index.js';
+} from './dto/index';
 
 @ApiTags('databases')
 @Controller('projects/:projectId/databases')

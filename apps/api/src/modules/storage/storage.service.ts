@@ -1,12 +1,12 @@
 import { Injectable, NotFoundException, Inject, forwardRef } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { PrismaService } from '../../../prisma/prisma.service.js';
-import { EventService } from '../../events/event.service.js';
-import { AuditService } from '../../audit/audit.service.js';
-import { MinioProvider } from './providers/minio.provider.js';
-import { CloudinaryProvider } from './providers/cloudinary.provider.js';
-import { TelegramProvider } from './providers/telegram.provider.js';
-import { StorageProvider } from './providers/storage-provider.interface.js';
+import { PrismaService } from '../../prisma/prisma.service';
+import { EventService } from '../events/event.service';
+import { AuditService } from '../audit/audit.service';
+import { MinioProvider } from './providers/minio.provider';
+import { CloudinaryProvider } from './providers/cloudinary.provider';
+import { TelegramProvider } from './providers/telegram.provider';
+import { StorageProvider } from './providers/storage-provider.interface';
 
 @Injectable()
 export class StorageService {
@@ -125,7 +125,7 @@ export class StorageService {
       try {
         await provider.delete(file.key);
       } catch (error) {
-        console.error(`Failed to delete file from provider: ${error.message}`);
+        console.error(`Failed to delete file from provider: ${(error as Error).message}`);
       }
     }
 

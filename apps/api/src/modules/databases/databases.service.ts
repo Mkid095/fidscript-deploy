@@ -1,8 +1,8 @@
 import { Injectable, Inject, NotFoundException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { PrismaService } from '../../../prisma/prisma.service.js';
-import { EventService } from '../events/event.service.js';
-import { DatabaseProvider, DATABASE_PROVIDER, DatabaseCredentials } from './providers/index.js';
+import { PrismaService } from '../../prisma/prisma.service';
+import { EventService } from '../events/event.service';
+import { DatabaseProvider, DATABASE_PROVIDER, DatabaseCredentials } from './providers/index';
 import {
   CreateDatabaseDto,
   UpdateDatabaseDto,
@@ -10,7 +10,7 @@ import {
   RestoreBackupDto,
   RotateCredentialsDto,
   GetConnectionInfoDto,
-} from './dto/index.js';
+} from './dto/index';
 import * as crypto from 'crypto';
 
 @Injectable()
@@ -94,7 +94,7 @@ export class DatabasesService {
     const updated = await this.prisma.managedDatabase.update({
       where: { id: databaseId },
       data: {
-        settings: dto.settings,
+        settings: (dto.settings) as any,
         backupRetentionDays: dto.backupRetentionDays,
       },
     });
@@ -110,7 +110,7 @@ export class DatabasesService {
     if (!database) throw new NotFoundException('Database not found');
 
     try {
-      const credentials = this.parseConnectionInfo(database.connectionInfo);
+      const credentials = this.parseConnectionInfo(database.connectionInfo!);
       await this.dbProvider.delete(credentials);
     } catch { /* Continue with deletion */ }
 
@@ -139,7 +139,7 @@ export class DatabasesService {
 
   private async runBackup(backupId: string, database: any) {
     try {
-      const credentials = this.parseConnectionInfo(database.connectionInfo);
+      const credentials = this.parseConnectionInfo(database.connectionInfo!);
       const backupInfo = await this.dbProvider.backup(credentials, database.description);
 
       await this.prisma.databaseBackup.update({
@@ -184,7 +184,7 @@ export class DatabasesService {
     });
     if (!database) throw new NotFoundException('Database not found');
 
-    const credentials = this.parseConnectionInfo(database.connectionInfo);
+    const credentials = this.parseConnectionInfo(database.connectionInfo!);
     const backupInfo = {
       id: backup.id,
       databaseId: backup.databaseId,
@@ -207,7 +207,7 @@ export class DatabasesService {
     });
     if (!database) throw new NotFoundException('Database not found');
 
-    const credentials = this.parseConnectionInfo(database.connectionInfo);
+    const credentials = this.parseConnectionInfo(database.connectionInfo!);
     const { password } = await this.dbProvider.rotatePassword(credentials);
 
     const newConnectionInfo = this.formatConnectionInfo({ ...credentials, password });
@@ -226,7 +226,7 @@ export class DatabasesService {
     });
     if (!database) throw new NotFoundException('Database not found');
 
-    const credentials = this.parseConnectionInfo(database.connectionInfo);
+    const credentials = this.parseConnectionInfo(database.connectionInfo!);
 
     if (dto.poolOnly) {
       return {
@@ -252,7 +252,7 @@ export class DatabasesService {
     });
     if (!database) throw new NotFoundException('Database not found');
 
-    const credentials = this.parseConnectionInfo(database.connectionInfo);
+    const credentials = this.parseConnectionInfo(database.connectionInfo!);
     const status = await this.dbProvider.getStatus(credentials);
 
     await this.prisma.managedDatabase.update({

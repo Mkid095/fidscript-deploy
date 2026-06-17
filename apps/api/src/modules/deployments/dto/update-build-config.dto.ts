@@ -1,6 +1,6 @@
 import { IsString, IsOptional, IsNumber, IsEnum } from 'class-validator';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { BuildStrategy } from './create-deployment.dto.js';
+import { BuildStrategy } from './create-deployment.dto';
 
 export class UpdateBuildConfigDto {
   @ApiPropertyOptional({ enum: BuildStrategy })

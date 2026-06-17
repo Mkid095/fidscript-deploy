@@ -1,2 +1,2 @@
-export * from './create-deployment.dto.js';
-export * from './update-build-config.dto.js';
+export * from './create-deployment.dto';
+export * from './update-build-config.dto';

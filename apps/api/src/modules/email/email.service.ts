@@ -1,15 +1,15 @@
 import { Injectable, Inject, NotFoundException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { PrismaService } from '../../../prisma/prisma.service.js';
-import { EventService } from '../events/event.service.js';
-import { EmailProvider, SendEmailOptions, EMAIL_PROVIDER } from './providers/index.js';
+import { PrismaService } from '../../prisma/prisma.service';
+import { EventService } from '../events/event.service';
+import { EmailProvider, SendEmailOptions, EMAIL_PROVIDER } from './providers/index';
 import {
   SendEmailDto,
   CreateMailboxDto,
   CreateAliasDto,
   VerifyDomainDto,
   GetEmailsDto,
-} from './dto/index.js';
+} from './dto/index';
 
 @Injectable()
 export class EmailService {
@@ -41,7 +41,7 @@ export class EmailService {
         from: dto.from || this.configService.get('SMTP_FROM', 'noreply@localhost'),
         to: dto.to,
         subject: dto.subject,
-        status: 'sent',
+        status: 'SENT',
       },
     });
 

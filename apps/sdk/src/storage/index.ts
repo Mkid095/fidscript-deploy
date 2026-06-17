@@ -30,7 +30,8 @@ export class StorageModule {
 
   async uploadFile(projectId: string, bucketId: string, file: Buffer | Blob, name: string, options?: { contentType?: string }) {
     const formData = new FormData();
-    formData.append('file', file, name);
+    const blob = file instanceof Blob ? file : new Blob([new Uint8Array(file)]);
+    formData.append('file', blob, name);
     if (options?.contentType) {
       formData.append('contentType', options.contentType);
     }

@@ -9,9 +9,9 @@ import {
   UseGuards,
 } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
-import { JwtAuthGuard } from '../auth/jwt-auth.guard.js';
-import { RealtimeService } from './realtime.service.js';
-import { CreateChannelDto, SetPresenceDto, GetChannelMessagesDto } from './dto/index.js';
+import { JwtAuthGuard } from '../auth/jwt-auth.guard';
+import { RealtimeService } from './realtime.service';
+import { CreateChannelDto, SetPresenceDto, GetChannelMessagesDto } from './dto/index';
 
 @ApiTags('realtime')
 @Controller('projects/:projectId/realtime')

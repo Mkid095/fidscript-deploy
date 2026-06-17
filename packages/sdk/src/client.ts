@@ -13,7 +13,7 @@ const DEFAULT_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:30
 
 export class FIDScriptClient {
   private baseUrl: string;
-  private headers: HeadersInit;
+  private headers: Record<string, string>;
 
   constructor(options: { baseUrl?: string; apiKey?: string } = {}) {
     this.baseUrl = options.baseUrl || DEFAULT_BASE_URL;
@@ -30,7 +30,7 @@ export class FIDScriptClient {
       headers: this.headers,
       body: JSON.stringify({ email, password }),
     });
-    return res.json();
+    return res.json() as any;
   }
 
   async register(email: string, password: string, name: string): Promise<ApiResponse<{ user: User }>> {
@@ -39,18 +39,18 @@ export class FIDScriptClient {
       headers: this.headers,
       body: JSON.stringify({ email, password, name }),
     });
-    return res.json();
+    return res.json() as any;
   }
 
   // Projects
   async getProjects(): Promise<PaginatedResponse<Project>> {
     const res = await fetch(`${this.baseUrl}/api/v1/projects`, { headers: this.headers });
-    return res.json();
+    return res.json() as any;
   }
 
   async getProject(id: string): Promise<ApiResponse<Project>> {
     const res = await fetch(`${this.baseUrl}/api/v1/projects/${id}`, { headers: this.headers });
-    return res.json();
+    return res.json() as any;
   }
 
   async createProject(data: Partial<Project>): Promise<ApiResponse<Project>> {
@@ -59,7 +59,7 @@ export class FIDScriptClient {
       headers: this.headers,
       body: JSON.stringify(data),
     });
-    return res.json();
+    return res.json() as any;
   }
 
   async deleteProject(id: string): Promise<ApiResponse<void>> {
@@ -67,13 +67,13 @@ export class FIDScriptClient {
       method: 'DELETE',
       headers: this.headers,
     });
-    return res.json();
+    return res.json() as any;
   }
 
   // Deployments
   async getDeployments(projectId: string): Promise<PaginatedResponse<Deployment>> {
     const res = await fetch(`${this.baseUrl}/api/v1/projects/${projectId}/deployments`, { headers: this.headers });
-    return res.json();
+    return res.json() as any;
   }
 
   async createDeployment(projectId: string): Promise<ApiResponse<Deployment>> {
@@ -81,13 +81,13 @@ export class FIDScriptClient {
       method: 'POST',
       headers: this.headers,
     });
-    return res.json();
+    return res.json() as any;
   }
 
   // Databases
   async getDatabases(): Promise<PaginatedResponse<Database>> {
     const res = await fetch(`${this.baseUrl}/api/v1/databases`, { headers: this.headers });
-    return res.json();
+    return res.json() as any;
   }
 
   async createDatabase(data: Partial<Database>): Promise<ApiResponse<Database>> {
@@ -96,13 +96,13 @@ export class FIDScriptClient {
       headers: this.headers,
       body: JSON.stringify(data),
     });
-    return res.json();
+    return res.json() as any;
   }
 
   // Domains
   async getDomains(): Promise<PaginatedResponse<Domain>> {
     const res = await fetch(`${this.baseUrl}/api/v1/domains`, { headers: this.headers });
-    return res.json();
+    return res.json() as any;
   }
 
   async createDomain(data: Partial<Domain>): Promise<ApiResponse<Domain>> {
@@ -111,7 +111,7 @@ export class FIDScriptClient {
       headers: this.headers,
       body: JSON.stringify(data),
     });
-    return res.json();
+    return res.json() as any;
   }
 
   async verifyDomain(id: string): Promise<ApiResponse<Domain>> {
@@ -119,7 +119,7 @@ export class FIDScriptClient {
       method: 'POST',
       headers: this.headers,
     });
-    return res.json();
+    return res.json() as any;
   }
 }
 

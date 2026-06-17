@@ -1,14 +1,14 @@
 import { Injectable, Inject, NotFoundException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { PrismaService } from '../../../prisma/prisma.service.js';
-import { EventService } from '../events/event.service.js';
-import { Runtime, RUNTIME } from './runtimes/runtime.interface.js';
+import { PrismaService } from '../../prisma/prisma.service';
+import { EventService } from '../events/event.service';
+import { Runtime, RUNTIME } from './runtimes/runtime.interface';
 import {
   CreateFunctionDto,
   UpdateFunctionDto,
   DeployFunctionDto,
   InvokeFunctionDto,
-} from './dto/index.js';
+} from './dto/index';
 import * as fs from 'fs/promises';
 import * as path from 'path';
 
@@ -74,8 +74,8 @@ export class FunctionsService {
       data: {
         memoryMb: dto.memoryMb ?? func.memoryMb,
         timeoutSeconds: dto.timeoutSeconds ?? func.timeoutSeconds,
-        envVars: dto.envVars ?? func.envVars,
-        settings: dto.settings ?? func.settings,
+        envVars: (dto.envVars ?? func.envVars) as any,
+        settings: (dto.settings ?? func.settings) as any,
       },
     });
   }

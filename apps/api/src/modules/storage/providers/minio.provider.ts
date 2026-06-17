@@ -1,6 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { StorageProvider, UploadResult } from './storage-provider.interface.js';
+import { StorageProvider, UploadResult } from './storage-provider.interface';
 
 @Injectable()
 export class MinioProvider implements StorageProvider {
@@ -30,7 +30,7 @@ export class MinioProvider implements StorageProvider {
       });
       this.logger.log(`MinIO client initialized for ${endpoint}`);
     } catch (error) {
-      this.logger.warn('MinIO client initialization failed:', error.message);
+      this.logger.warn('MinIO client initialization failed:', (error as Error).message);
     }
   }
 
@@ -54,7 +54,7 @@ export class MinioProvider implements StorageProvider {
 
     return new Promise((resolve, reject) => {
       const chunks: Buffer[] = [];
-      this.client.getObject(this.bucket, key, (err, stream: any) => {
+      this.client.getObject(this.bucket, key, (err: any, stream: any) => {
         if (err) return reject(err);
         stream.on('data', (chunk: Buffer) => chunks.push(chunk));
         stream.on('end', () => resolve(Buffer.concat(chunks)));

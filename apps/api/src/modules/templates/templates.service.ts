@@ -1,8 +1,8 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { PrismaService } from '../../../prisma/prisma.service.js';
-import { EventService } from '../events/event.service.js';
-import { CreateTemplateDto, UpdateTemplateDto, GenerateProjectDto } from './dto/index.js';
+import { PrismaService } from '../../prisma/prisma.service';
+import { EventService } from '../events/event.service';
+import { CreateTemplateDto, UpdateTemplateDto, GenerateProjectDto } from './dto/index';
 
 @Injectable()
 export class TemplatesService {
@@ -20,7 +20,7 @@ export class TemplatesService {
         description: dto.description,
         category: dto.category,
         content: dto.content,
-        variables: dto.variables || [],
+        variables: (dto.variables || []) as any,
         isPublic: dto.isPublic || false,
       },
     });
@@ -65,7 +65,7 @@ export class TemplatesService {
         name: dto.name ?? template.name,
         description: dto.description ?? template.description,
         content: dto.content ?? template.content,
-        variables: dto.variables ?? template.variables,
+        variables: (dto.variables ?? template.variables) as any,
         isPublic: dto.isPublic ?? template.isPublic,
       },
     });
@@ -99,10 +99,9 @@ export class TemplatesService {
       data: {
         name: dto.name,
         slug: dto.name.toLowerCase().replace(/\s+/g, '-'),
-        projectId,
         type: 'FRONTEND',
         status: 'ACTIVE',
-      },
+      } as any,
     });
 
     await this.eventService.emit('template.project_generated', {

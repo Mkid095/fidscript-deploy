@@ -3,6 +3,10 @@
   "compilerOptions": {
     "module": "commonjs",
     "moduleResolution": "node",
+    "experimentalDecorators": true,
+    "emitDecoratorMetadata": true,
+    "strictPropertyInitialization": false,
+    "noEmit": false,
     "outDir": "./dist",
     "baseUrl": ".",
     "paths": {

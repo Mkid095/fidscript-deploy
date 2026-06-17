@@ -1,9 +1,9 @@
 import { Module } from '@nestjs/common';
-import { StorageController } from './storage.controller.js';
-import { StorageService } from './storage.service.js';
-import { MinioProvider } from './providers/minio.provider.js';
-import { CloudinaryProvider } from './providers/cloudinary.provider.js';
-import { TelegramProvider } from './providers/telegram.provider.js';
+import { StorageController } from './storage.controller';
+import { StorageService } from './storage.service';
+import { MinioProvider } from './providers/minio.provider';
+import { CloudinaryProvider } from './providers/cloudinary.provider';
+import { TelegramProvider } from './providers/telegram.provider';
 
 @Module({
   controllers: [StorageController],

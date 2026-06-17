@@ -14,15 +14,15 @@ import {
   HttpStatus,
 } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiBearerAuth, ApiResponse } from '@nestjs/swagger';
-import { JwtAuthGuard } from '../auth/jwt-auth.guard.js';
-import { ProjectsService } from './projects.service.js';
+import { JwtAuthGuard } from '../auth/jwt-auth.guard';
+import { ProjectsService } from './projects.service';
 import {
   CreateProjectDto,
   UpdateProjectDto,
   CloneProjectDto,
   AddMemberDto,
   UpdateEnvVarsDto,
-} from './dto/index.js';
+} from './dto/index';
 import { Request } from 'express';
 
 @ApiTags('projects')

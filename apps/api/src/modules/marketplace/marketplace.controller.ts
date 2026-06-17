@@ -3,14 +3,14 @@ import {
   Body, Param, Query, UseGuards, Req,
 } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
-import { JwtAuthGuard } from '../auth/jwt-auth.guard.js';
-import { MarketplaceService } from './marketplace.service.js';
+import { JwtAuthGuard } from '../auth/jwt-auth.guard';
+import { MarketplaceService } from './marketplace.service';
 import {
   SubmitMarketplaceItemDto,
   UpdateMarketplaceItemDto,
   CreateReviewDto,
   ListMarketplaceDto,
-} from './dto/index.js';
+} from './dto/index';
 
 @ApiTags('marketplace')
 @Controller('marketplace')

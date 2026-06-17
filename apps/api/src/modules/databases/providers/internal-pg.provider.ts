@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { DatabaseProvider, DatabaseCredentials, BackupInfo } from './database-provider.interface.js';
+import { DatabaseProvider, DatabaseCredentials, BackupInfo } from './database-provider.interface';
 import * as crypto from 'crypto';
 
 @Injectable()

@@ -1,7 +1,7 @@
 import { Module } from '@nestjs/common';
-import { RealtimeController } from './realtime.controller.js';
-import { RealtimeService } from './realtime.service.js';
-import { RealtimeGateway } from './gateways/realtime.gateway.js';
+import { RealtimeController } from './realtime.controller';
+import { RealtimeService } from './realtime.service';
+import { RealtimeGateway } from './gateways/realtime.gateway';
 
 @Module({
   controllers: [RealtimeController],

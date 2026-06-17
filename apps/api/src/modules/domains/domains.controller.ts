@@ -11,9 +11,9 @@ import {
   HttpStatus,
 } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
-import { JwtAuthGuard } from '../auth/jwt-auth.guard.js';
-import { DomainsService } from './domains.service.js';
-import { AddDomainDto } from './dto/index.js';
+import { JwtAuthGuard } from '../auth/jwt-auth.guard';
+import { DomainsService } from './domains.service';
+import { AddDomainDto } from './dto/index';
 import { Request } from 'express';
 
 @ApiTags('domains')

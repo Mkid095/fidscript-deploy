@@ -10,9 +10,9 @@ Current state of FIDScript Deploy development.
 
 | | |
 |---|---|
-| **Current phase** | Phase 00 — Architecture & Build Foundation (Not started) |
-| **Last verified phase** | None — no phase has passed VPS verification yet |
-| **Phase docs** | All 24 rewritten to v2 — commit `51f1aee` (local; push pending) |
+| **Current phase** | Phase 01 — Installer & Infrastructure Stack (next) |
+| **Last verified phase** | Phase 00 — Architecture & Build Foundation (build + containerize) |
+| **Phase docs** | All 24 rewritten to v2 |
 | **Snapshot baseline** | Commit `f1dd6f2` (Phase 00-23 scaffold, pre-hardening) |
 | **Reset date** | 2026-06-16 |
 
@@ -32,7 +32,7 @@ Statuses: `Planned` · `In Progress` · `Verified`
 
 | Phase | Title | Status |
 |------:|-------|--------|
-| 00 | Architecture & Build Foundation | Planned |
+| 00 | Architecture & Build Foundation | Verified |
 | 01 | Installer & Infrastructure Stack | Planned |
 | 02 | Event Bus & Service Registry | Planned |
 | 03 | Identity & Access (platform auth) | Planned |
@@ -61,9 +61,10 @@ Statuses: `Planned` · `In Progress` · `Verified`
 
 ## Current focus
 
-- [x] Rewrite all phase docs (`docs/phases/phase-XX.md`) to the v2 template — committed `51f1aee`
-- [ ] Begin Phase 00 implementation (make it compile + containerize), verified on the VPS
-- [ ] User: `git push origin main` (push is pending credentials — both `f1dd6f2` and `51f1aee` are local)
+- [x] Rewrite all phase docs to v2
+- [x] **Phase 00 — verified:** repo compiles, `pnpm typecheck` clean (13/13), `pnpm build` emits all `dist/` (10/10), `docker build` succeeds for both `apps/api` and `apps/dashboard` (CommonJS standardization, decorator flags, Prisma schema fixed, Dockerfiles + `.dockerignore`). See ADR-011/012.
+- [ ] Begin **Phase 01 — Installer & Infrastructure Stack**: first Prisma migration baseline, `prisma/seed.ts`, compose `_FILE` secrets + env wiring, `install.sh` actually deploys, Traefik/firewall fixes, health checks.
+- [ ] User: `git push origin main` (push pending credentials — `f1dd6f2`, the docs commit, and the Phase 00 commit are local)
 
 ## Definition of done (per phase)
 
@@ -71,4 +72,4 @@ A phase moves to **Verified** only when, on the VPS: it builds, it runs, its pro
 
 ---
 
-*Last updated: 2026-06-16*
+*Last updated: 2026-06-17*

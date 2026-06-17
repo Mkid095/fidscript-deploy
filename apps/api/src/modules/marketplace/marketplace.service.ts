@@ -1,12 +1,12 @@
 import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
-import { PrismaService } from '../../prisma/prisma.service.js';
-import { EventsService } from '../events/events.service.js';
+import { PrismaService } from '../../prisma/prisma.service';
+import { EventService } from '../events/event.service';
 
 @Injectable()
 export class MarketplaceService {
   constructor(
     private prisma: PrismaService,
-    private events: EventsService,
+    private events: EventService,
   ) {}
 
   async submitItem(userId: string | null, userName: string | null, dto: any) {

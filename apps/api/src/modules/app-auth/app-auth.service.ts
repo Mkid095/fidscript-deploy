@@ -5,8 +5,8 @@ import {
   ConflictException,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { PrismaService } from '../../../prisma/prisma.service.js';
-import { EventService } from '../../events/event.service.js';
+import { PrismaService } from '../../prisma/prisma.service';
+import { EventService } from '../events/event.service';
 import * as bcrypt from 'bcrypt';
 import * as crypto from 'crypto';
 import {
@@ -16,7 +16,7 @@ import {
   VerifyMagicLinkDto,
   CreateRoleDto,
   AssignRoleDto,
-} from './dto/index.js';
+} from './dto/index';
 
 const BCRYPT_ROUNDS = 12;
 

@@ -1,7 +1,7 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { PrismaService } from '../../../prisma/prisma.service.js';
-import { EventService } from '../events/event.service.js';
+import { PrismaService } from '../../prisma/prisma.service';
+import { EventService } from '../events/event.service';
 import {
   CreateQueueDto,
   UpdateQueueDto,
@@ -11,7 +11,7 @@ import {
   AcknowledgeMessageDto,
   RetryMessageDto,
   MoveToDeadLetterDto,
-} from './dto/index.js';
+} from './dto/index';
 import { Prisma } from '@prisma/client';
 
 interface QueueMessage {
@@ -278,7 +278,7 @@ export class QueuesService {
           data: {
             queueId: dlq.id,
             body: m.body,
-            headers: { ...m.headers, originalQueueId: queueId, reason: dto.reason || 'failed' },
+            headers: { ...(m.headers as any), originalQueueId: queueId, reason: dto.reason || 'failed' },
             status: 'pending',
             scheduledAt: new Date(),
           },

@@ -8,10 +8,10 @@ import {
   ConnectedSocket,
 } from '@nestjs/websockets';
 import { Server, Socket } from 'socket.io';
-import { JwtAuthGuard } from '../../auth/jwt-auth.guard.js';
+import { JwtAuthGuard } from '../../auth/jwt-auth.guard';
 import { UseGuards } from '@nestjs/common';
-import { EventService } from '../../events/event.service.js';
-import { PrismaService } from '../../../prisma/prisma.service.js';
+import { EventService } from '../../events/event.service';
+import { PrismaService } from '../../../prisma/prisma.service';
 
 interface ChannelClient {
   socketId: string;
@@ -318,7 +318,7 @@ export class RealtimeGateway implements OnGatewayConnection, OnGatewayDisconnect
   // Admin methods for channel management
   async createChannel(projectId: string, name: string, isPrivate = false, metadata?: Record<string, unknown>) {
     const channel = await this.prisma.realtimeChannel.create({
-      data: { projectId, name, isPrivate, metadata: metadata || {} },
+      data: { projectId, name, isPrivate, metadata: (metadata || {}) as any },
     });
 
     await this.eventService.emit('realtime.channel_created', {

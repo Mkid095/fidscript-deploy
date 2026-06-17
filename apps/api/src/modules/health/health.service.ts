@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { PrismaService } from '../../../prisma/prisma.service.js';
+import { PrismaService } from '../../prisma/prisma.service';
 
 export interface HealthStatus {
   status: 'healthy' | 'degraded' | 'unhealthy';
@@ -50,7 +50,7 @@ export class HealthService {
       await this.prisma.$queryRaw`SELECT 1`;
       return { status: 'up', latencyMs: Date.now() - start };
     } catch (error) {
-      return { status: 'down', latencyMs: Date.now() - start, error: error.message };
+      return { status: 'down', latencyMs: Date.now() - start, error: (error as Error).message };
     }
   }
 
@@ -65,7 +65,7 @@ export class HealthService {
       });
       return { status: response.ok ? 'up' : 'down', latencyMs: Date.now() - start };
     } catch (error) {
-      return { status: 'down', latencyMs: Date.now() - start, error: error.message };
+      return { status: 'down', latencyMs: Date.now() - start, error: (error as Error).message };
     }
   }
 
@@ -80,7 +80,7 @@ export class HealthService {
       await nc.close();
       return { status: 'up', latencyMs: Date.now() - start };
     } catch (error) {
-      return { status: 'down', latencyMs: Date.now() - start, error: error.message };
+      return { status: 'down', latencyMs: Date.now() - start, error: (error as Error).message };
     }
   }
 
@@ -95,7 +95,7 @@ export class HealthService {
       });
       return { status: response.ok ? 'up' : 'down', latencyMs: Date.now() - start };
     } catch (error) {
-      return { status: 'down', latencyMs: Date.now() - start, error: error.message };
+      return { status: 'down', latencyMs: Date.now() - start, error: (error as Error).message };
     }
   }
 }

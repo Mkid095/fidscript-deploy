@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { EmailProvider, SendEmailOptions } from './email-provider.interface.js';
+import { EmailProvider, SendEmailOptions } from './email-provider.interface';
 
 interface ResendConfig {
   apiKey: string;

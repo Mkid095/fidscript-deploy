@@ -4,9 +4,9 @@ import {
   ForbiddenException,
   ConflictException,
 } from '@nestjs/common';
-import { PrismaService } from '../../../prisma/prisma.service.js';
-import { EventService } from '../../events/event.service.js';
-import { AuditService } from '../../audit/audit.service.js';
+import { PrismaService } from '../../prisma/prisma.service';
+import { EventService } from '../events/event.service';
+import { AuditService } from '../audit/audit.service';
 import {
   CreateProjectDto,
   UpdateProjectDto,
@@ -14,7 +14,7 @@ import {
   AddMemberDto,
   UpdateEnvVarsDto,
   ProjectRole,
-} from './dto/index.js';
+} from './dto/index';
 
 @Injectable()
 export class ProjectsService {

@@ -1,6 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { StorageProvider, UploadResult } from './storage-provider.interface.js';
+import { StorageProvider, UploadResult } from './storage-provider.interface';
 
 @Injectable()
 export class CloudinaryProvider implements StorageProvider {
@@ -32,7 +32,7 @@ export class CloudinaryProvider implements StorageProvider {
       });
       this.logger.log('Cloudinary client initialized');
     } catch (error) {
-      this.logger.warn('Cloudinary client initialization failed:', error.message);
+      this.logger.warn('Cloudinary client initialization failed:', (error as Error).message);
     }
   }
 

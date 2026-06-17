@@ -1,9 +1,9 @@
 import { Module } from '@nestjs/common';
-import { EmailController } from './email.controller.js';
-import { EmailService } from './email.service.js';
-import { SmtpProvider } from './providers/smtp.provider.js';
-import { ResendProvider } from './providers/resend.provider.js';
-import { EMAIL_PROVIDER } from './providers/email-provider.interface.js';
+import { EmailController } from './email.controller';
+import { EmailService } from './email.service';
+import { SmtpProvider } from './providers/smtp.provider';
+import { ResendProvider } from './providers/resend.provider';
+import { EMAIL_PROVIDER } from './providers/email-provider.interface';
 import { ConfigService } from '@nestjs/config';
 
 const EMAIL_PROVIDER_TOKEN = {

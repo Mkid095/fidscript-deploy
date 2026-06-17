@@ -1,5 +1,5 @@
 import { Module, Global } from '@nestjs/common';
-import { EventService } from './event.service.js';
+import { EventService } from './event.service';
 
 @Global()
 @Module({

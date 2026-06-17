@@ -1,6 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { StorageProvider, UploadResult } from './storage-provider.interface.js';
+import { StorageProvider, UploadResult } from './storage-provider.interface';
 
 @Injectable()
 export class TelegramProvider implements StorageProvider {
@@ -29,7 +29,7 @@ export class TelegramProvider implements StorageProvider {
       body: formData,
     });
 
-    const result = await response.json();
+    const result: any = await response.json();
     if (!result.ok) throw new Error(result.description);
 
     const fileId = result.result.document.file_id;
@@ -46,7 +46,7 @@ export class TelegramProvider implements StorageProvider {
     if (!this.botToken) throw new Error('Telegram not configured');
 
     const response = await fetch(`https://api.telegram.org/bot${this.botToken}/getFile?file_id=${key}`);
-    const result = await response.json();
+    const result: any = await response.json();
 
     if (!result.ok) throw new Error(result.description);
 

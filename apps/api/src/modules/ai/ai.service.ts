@@ -1,22 +1,22 @@
 import { Injectable, Inject, NotFoundException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { PrismaService } from '../../prisma/prisma.service.js';
-import { EventsService } from '../events/events.service.js';
-import { AIProvider } from './providers/ai-provider.interface.js';
-import { GeminiProvider } from './providers/gemini.provider.js';
+import { PrismaService } from '../../prisma/prisma.service';
+import { EventService } from '../events/event.service';
+import { AIProvider } from './providers/ai-provider.interface';
+import { GeminiProvider } from './providers/gemini.provider';
 
 @Injectable()
 export class AIService {
   constructor(
     private prisma: PrismaService,
     private configService: ConfigService,
-    private events: EventsService,
+    private events: EventService,
     @Inject('AI_PROVIDER') private aiProvider: AIProvider,
   ) {}
 
   async createConversation(projectId: string, userId: string | null, dto: any) {
     const model = dto.model || 'gemini-1.5-flash';
-    const conversation = await this.prisma.aiConversation.create({
+    const conversation = await this.prisma.aIConversation.create({
       data: {
         projectId,
         userId,
@@ -30,7 +30,7 @@ export class AIService {
   }
 
   async listConversations(projectId: string, limit = 50) {
-    return this.prisma.aiConversation.findMany({
+    return this.prisma.aIConversation.findMany({
       where: { projectId },
       orderBy: { updatedAt: 'desc' },
       take: limit,
@@ -51,7 +51,7 @@ export class AIService {
   }
 
   async getConversation(projectId: string, conversationId: string) {
-    const conversation = await this.prisma.aiConversation.findFirst({
+    const conversation = await this.prisma.aIConversation.findFirst({
       where: { id: conversationId, projectId },
       include: { messages: { orderBy: { createdAt: 'asc' } } },
     });
@@ -104,7 +104,7 @@ export class AIService {
       },
     });
 
-    await this.prisma.aiConversation.update({
+    await this.prisma.aIConversation.update({
       where: { id: conversationId },
       data: { tokenCount: { increment: response.tokenCount } },
     });
@@ -227,7 +227,7 @@ Format response as JSON with: structure, template, features (array), setupSteps 
   }
 
   async chat(projectId: string, userId: string | null, content: string) {
-    let conversation = await this.prisma.aiConversation.findFirst({
+    let conversation = await this.prisma.aIConversation.findFirst({
       where: { projectId, userId, type: 'general' },
       orderBy: { updatedAt: 'desc' },
     });
@@ -240,13 +240,13 @@ Format response as JSON with: structure, template, features (array), setupSteps 
   }
 
   async deleteConversation(projectId: string, conversationId: string) {
-    const conversation = await this.prisma.aiConversation.findFirst({
+    const conversation = await this.prisma.aIConversation.findFirst({
       where: { id: conversationId, projectId },
     });
     if (!conversation) throw new NotFoundException('Conversation not found');
 
-    await this.prisma.aiMessage.deleteMany({ where: { conversationId } });
-    await this.prisma.aiConversation.delete({ where: { id: conversationId } });
+    await this.prisma.aIMessage.deleteMany({ where: { conversationId } });
+    await this.prisma.aIConversation.delete({ where: { id: conversationId } });
     this.events.emit('ai.conversation.deleted', { conversationId, projectId });
     return { deleted: true };
   }

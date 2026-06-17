@@ -458,6 +458,43 @@ Code files can grow arbitrarily large:
 
 ---
 
+## ADR-011: CommonJS Module System for the API and Workspace Packages
+
+**Date:** 2026-06-17
+
+**Status:** Accepted (Phase 00)
+
+**Context:**
+The scaffold was half CommonJS / half ESM: `apps/api` compiled to CommonJS but declared `"type": "module"`, used `.js` import extensions everywhere, and the workspace packages were ESM while the API `require()`d them. This produced a class of resolution failures (emitted `require('./x.js')` interpreted as ESM, `ERR_REQUIRE_ESM` on workspace imports) and was the largest single build blocker.
+
+**Decision:** Standardize the API and all `packages/*` on **CommonJS** (`"type": "commonjs"`, `module: commonjs`, `moduleResolution: node`, `noEmit: false`). The MCP server and `apps/sdk` stay ESM (the `@modelcontextprotocol/sdk` is ESM-only; their `.js` imports are correct under `moduleResolution: bundler`). Next.js keeps its own bundler resolution.
+
+**Rationale:** NestJS 10, Prisma, and the Nest ecosystem are CommonJS-first. Standardizing removes the entire ESM/CJS ambiguity at the cost of ESM purity. ESM can be revisited later as a separate, deliberate migration.
+
+**Consequences:** Workspace packages are consumable from the CJS API via `require()`. The `.js` import extensions were stripped from `apps/api/src` (235 sites). An ESM migration is recorded as a future option, not adopted now.
+
+---
+
+## ADR-012: Canonical Frontend, SDK Consolidation, and Scaffold Cleanup
+
+**Date:** 2026-06-17
+
+**Status:** Accepted (Phase 00)
+
+**Context:**
+Three ambiguities blocked a clean build: (1) a broken orphan Vite scaffold at the repo root (`src/`) with no entry point competed with `apps/dashboard`; (2) two packages were both named `@fidscript/sdk` (`apps/sdk` axios-based, `packages/sdk` fetch-based), causing arbitrary resolution and a turbo "duplicate workspace" build failure; (3) literal `{src}` / `{dto}` directories from a generator brace-expansion bug littered the tree.
+
+**Decision:**
+- `apps/dashboard` (Next.js 15 App Router) is the **one** frontend. The orphan root `src/` is removed (recoverable from commit `f1dd6f2`).
+- To unblock the build without prejudicing Phase 16, the duplicate `apps/sdk` is **renamed to `@fidscript/sdk-node`**; `packages/sdk` keeps the canonical `@fidscript/sdk` name. Phase 16 will merge the stronger of the two into one canonical package and delete the other.
+- Literal brace-bug directories deleted.
+
+**Rationale:** One frontend removes "which UI?" confusion; the SDK rename is the minimal change that lets turbo build proceed while preserving both implementations for the Phase 16 consolidation decision; the brace dirs were pure generator noise.
+
+**Consequences:** A future Phase 16 task consolidates `@fidscript/sdk-node` + `@fidscript/sdk` into one. Anyone wanting the removed root scaffold retrieves it from `git show f1dd6f2 -- src/`.
+
+---
+
 ## Future ADRs Needed
 
 These decisions are pending and will be documented as ADRs:

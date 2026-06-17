@@ -1,7 +1,7 @@
 import { Injectable, Inject } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import axios from 'axios';
-import { AIProvider, AICompletionRequest, AICompletionResponse } from './ai-provider.interface.js';
+import { AIProvider, AICompletionRequest, AICompletionResponse } from './ai-provider.interface';
 
 @Injectable()
 export class GeminiProvider implements AIProvider {
@@ -52,7 +52,7 @@ export class GeminiProvider implements AIProvider {
         finishReason: candidate?.finishReason,
       };
     } catch (error: any) {
-      throw new Error(`Gemini API error: ${error.response?.data?.error?.message || error.message}`);
+      throw new Error(`Gemini API error: ${(error as any).response?.data?.error?.message || (error as Error).message}`);
     }
   }
 }

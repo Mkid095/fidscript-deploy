@@ -13,8 +13,8 @@ import {
   HttpStatus,
 } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiBearerAuth, ApiResponse } from '@nestjs/swagger';
-import { AuthService, AuthResponse } from './auth.service.js';
-import { JwtAuthGuard } from './jwt-auth.guard.js';
+import { AuthService, AuthResponse } from './auth.service';
+import { JwtAuthGuard } from './jwt-auth.guard';
 import {
   RegisterDto,
   LoginDto,
@@ -22,7 +22,7 @@ import {
   VerifyMagicLinkDto,
   CreateApiKeyDto,
   UpdateProfileDto,
-} from './dto/index.js';
+} from './dto/index';
 import { Request } from 'express';
 
 @ApiTags('auth')

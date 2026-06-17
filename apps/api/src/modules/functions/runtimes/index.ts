@@ -1,3 +1,3 @@
-export * from './runtime.interface.js';
-export * from './nodejs.runtime.js';
-export * from './python.runtime.js';
+export * from './runtime.interface';
+export * from './nodejs.runtime';
+export * from './python.runtime';

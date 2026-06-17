@@ -10,8 +10,8 @@ import {
   UseGuards,
 } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
-import { JwtAuthGuard } from '../auth/jwt-auth.guard.js';
-import { MonitoringService } from './monitoring.service.js';
+import { JwtAuthGuard } from '../auth/jwt-auth.guard';
+import { MonitoringService } from './monitoring.service';
 import {
   CreateAlertRuleDto,
   UpdateAlertRuleDto,
@@ -19,7 +19,7 @@ import {
   GetAlertsDto,
   CreateNotificationChannelDto,
   UpdateNotificationChannelDto,
-} from './dto/index.js';
+} from './dto/index';
 
 @ApiTags('monitoring')
 @Controller('projects/:projectId/monitoring')

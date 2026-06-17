@@ -1,8 +1,8 @@
 import { Module } from '@nestjs/common';
-import { AIController } from './ai.controller.js';
-import { AIService } from './ai.service.js';
-import { GeminiProvider } from './providers/gemini.provider.js';
-import { AIProvider } from './providers/ai-provider.interface.js';
+import { AIController } from './ai.controller';
+import { AIService } from './ai.service';
+import { GeminiProvider } from './providers/gemini.provider';
+import { AI_PROVIDER } from './providers/ai-provider.interface';
 
 @Module({
   controllers: [AIController],
@@ -10,7 +10,7 @@ import { AIProvider } from './providers/ai-provider.interface.js';
     AIService,
     GeminiProvider,
     {
-      provide: AIProvider,
+      provide: AI_PROVIDER,
       useExisting: GeminiProvider,
     },
   ],

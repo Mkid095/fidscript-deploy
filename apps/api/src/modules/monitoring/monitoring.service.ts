@@ -1,7 +1,7 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { PrismaService } from '../../../prisma/prisma.service.js';
-import { EventService } from '../events/event.service.js';
+import { PrismaService } from '../../prisma/prisma.service';
+import { EventService } from '../events/event.service';
 import {
   CreateAlertRuleDto,
   UpdateAlertRuleDto,
@@ -9,7 +9,7 @@ import {
   GetAlertsDto,
   CreateNotificationChannelDto,
   UpdateNotificationChannelDto,
-} from './dto/index.js';
+} from './dto/index';
 
 @Injectable()
 export class MonitoringService {
@@ -134,7 +134,7 @@ export class MonitoringService {
         threshold: dto.threshold ?? rule.threshold,
         durationSeconds: dto.durationSeconds ?? rule.durationSeconds,
         severity: dto.severity ?? rule.severity,
-        channels: dto.channels ?? rule.channels,
+        channels: (dto.channels ?? rule.channels) as any,
         enabled: dto.enabled ?? rule.enabled,
       },
     });
@@ -234,7 +234,7 @@ export class MonitoringService {
       where: { id: channelId },
       data: {
         name: dto.name ?? channel.name,
-        config: dto.config ?? channel.config,
+        config: (dto.config ?? channel.config) as any,
       },
     });
   }

@@ -34,7 +34,7 @@ export class RealtimeModule {
     onClientJoined?: (data: any) => void;
     onClientLeft?: (data: any) => void;
     onPresence?: (data: any) => void;
-  }) {
+  }): Promise<Socket | undefined> {
     this.socket = io('/realtime', {
       auth: { token },
       transports: ['websocket'],
@@ -44,10 +44,10 @@ export class RealtimeModule {
       console.log('Connected to realtime');
     });
 
-    this.socket.on('message', (data) => handlers.onMessage?.(data));
-    this.socket.on('client_joined', (data) => handlers.onClientJoined?.(data));
-    this.socket.on('client_left', (data) => handlers.onClientLeft?.(data));
-    this.socket.on('presence', (data) => handlers.onPresence?.(data));
+    this.socket.on('message', (data: any) => handlers.onMessage?.(data));
+    this.socket.on('client_joined', (data: any) => handlers.onClientJoined?.(data));
+    this.socket.on('client_left', (data: any) => handlers.onClientLeft?.(data));
+    this.socket.on('presence', (data: any) => handlers.onPresence?.(data));
 
     return this.socket;
   }

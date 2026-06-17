@@ -10,8 +10,8 @@ import {
   UseGuards,
 } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
-import { JwtAuthGuard } from '../auth/jwt-auth.guard.js';
-import { QueuesService } from './queues.service.js';
+import { JwtAuthGuard } from '../auth/jwt-auth.guard';
+import { QueuesService } from './queues.service';
 import {
   CreateQueueDto,
   UpdateQueueDto,
@@ -21,7 +21,7 @@ import {
   AcknowledgeMessageDto,
   RetryMessageDto,
   MoveToDeadLetterDto,
-} from './dto/index.js';
+} from './dto/index';
 
 @ApiTags('queues')
 @Controller('projects/:projectId/queues')

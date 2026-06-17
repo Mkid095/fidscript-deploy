@@ -1,8 +1,8 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { PrismaService } from '../../../prisma/prisma.service.js';
-import { EventService } from '../events/event.service.js';
-import { CreateCronJobDto, UpdateCronJobDto, TriggerCronJobDto } from './dto/index.js';
+import { PrismaService } from '../../prisma/prisma.service';
+import { EventService } from '../events/event.service';
+import { CreateCronJobDto, UpdateCronJobDto, TriggerCronJobDto } from './dto/index';
 import * as cron from 'cron';
 
 @Injectable()
@@ -31,7 +31,7 @@ export class SchedulerService {
         timezone: dto.timezone || 'UTC',
         endpoint: dto.endpoint,
         functionId: dto.functionId,
-        payload: dto.payload || {},
+        payload: (dto.payload || {}) as any,
         enabled: dto.enabled ?? true,
         retryAttempts: dto.retryAttempts || 3,
         retryDelaySeconds: dto.retryDelaySeconds || 60,
@@ -92,7 +92,7 @@ export class SchedulerService {
         timezone: dto.timezone ?? job.timezone,
         endpoint: dto.endpoint ?? job.endpoint,
         functionId: dto.functionId ?? job.functionId,
-        payload: dto.payload ?? job.payload,
+        payload: (dto.payload ?? job.payload) as any,
         enabled: dto.enabled ?? job.enabled,
         retryAttempts: dto.retryAttempts ?? job.retryAttempts,
         retryDelaySeconds: dto.retryDelaySeconds ?? job.retryDelaySeconds,
@@ -169,7 +169,7 @@ export class SchedulerService {
     try {
       const cronTime = new cron.CronTime(job.cronExpression, job.timezone);
       const nextDate = cronTime.sendAt();
-      return { nextRunAt: nextDate.toISOString() };
+      return { nextRunAt: (nextDate as any).toISOString() };
     } catch {
       return { nextRunAt: null };
     }
@@ -257,7 +257,7 @@ export class SchedulerService {
         data: {
           status: 'failed',
           completedAt: new Date(),
-          errorMessage: error.message,
+          errorMessage: (error as Error).message,
         },
       });
 
@@ -265,7 +265,7 @@ export class SchedulerService {
         runId: run.id,
         jobId: job.id,
         projectId: job.projectId,
-        error: error.message,
+        error: (error as Error).message,
       });
 
       // Retry logic
@@ -273,7 +273,7 @@ export class SchedulerService {
         // Would schedule retry here
       }
 
-      return { runId: run.id, status: 'failed', error: error.message };
+      return { runId: run.id, status: 'failed', error: (error as Error).message };
     }
   }
 }

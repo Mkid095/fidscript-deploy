@@ -6,9 +6,9 @@ import {
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
-import { PrismaService } from '../../../prisma/prisma.service.js';
-import { EventService } from '../../events/event.service.js';
-import { AuditService } from '../audit/audit.service.js';
+import { PrismaService } from '../../prisma/prisma.service';
+import { EventService } from '../events/event.service';
+import { AuditService } from '../audit/audit.service';
 import * as bcrypt from 'bcrypt';
 import * as crypto from 'crypto';
 import {
@@ -18,7 +18,7 @@ import {
   VerifyMagicLinkDto,
   CreateApiKeyDto,
   UpdateProfileDto,
-} from './dto/index.js';
+} from './dto/index';
 
 const BCRYPT_ROUNDS = 12;
 const SESSION_DAYS = 7;
@@ -104,7 +104,6 @@ export class AuthService {
       userId: user.id,
       action: 'user.login',
       ipAddress,
-      userAgent,
     });
 
     return this.buildAuthResponse(user, session);

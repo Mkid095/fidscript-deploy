@@ -1,8 +1,8 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { PrismaService } from '../../../prisma/prisma.service.js';
-import { EventService } from '../events/event.service.js';
-import { CreateLogStreamDto, GetLogsDto, WriteLogDto, WriteBatchLogsDto } from './dto/index.js';
+import { PrismaService } from '../../prisma/prisma.service';
+import { EventService } from '../events/event.service';
+import { CreateLogStreamDto, GetLogsDto, WriteLogDto, WriteBatchLogsDto } from './dto/index';
 
 @Injectable()
 export class LoggingService {
@@ -82,7 +82,7 @@ export class LoggingService {
         streamId: stream.id,
         level: dto.level,
         message: dto.message,
-        metadata: dto.metadata || {},
+        metadata: (dto.metadata || {}) as any,
         timestamp: new Date(),
       },
     });
@@ -121,7 +121,7 @@ export class LoggingService {
             streamId: streamMap.get(log.stream)!,
             level: log.level,
             message: log.message,
-            metadata: log.metadata || {},
+            metadata: (log.metadata || {}) as any,
             timestamp: new Date(),
           },
         }),
@@ -276,7 +276,7 @@ export class LoggingService {
       if (!buckets.has(key)) {
         buckets.set(key, { debug: 0, info: 0, warn: 0, error: 0, fatal: 0 });
       }
-      buckets.get(key)![log.level]++;
+      (buckets.get(key)! as Record<string, number>)[log.level]++;
     }
 
     return {

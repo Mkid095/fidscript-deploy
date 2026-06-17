@@ -10,9 +10,9 @@ import {
   Req,
 } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
-import { JwtAuthGuard } from '../auth/jwt-auth.guard.js';
-import { DeploymentsService } from './deployments.service.js';
-import { CreateDeploymentDto, UpdateBuildConfigDto } from './dto/index.js';
+import { JwtAuthGuard } from '../auth/jwt-auth.guard';
+import { DeploymentsService } from './deployments.service';
+import { CreateDeploymentDto, UpdateBuildConfigDto } from './dto/index';
 import { Request } from 'express';
 
 @ApiTags('deployments')

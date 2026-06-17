@@ -5,10 +5,10 @@ import {
   BadRequestException,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { PrismaService } from '../../../prisma/prisma.service.js';
-import { EventService } from '../../events/event.service.js';
-import { AuditService } from '../../audit/audit.service.js';
-import { CreateDeploymentDto, BuildStrategy, UpdateBuildConfigDto } from './dto/index.js';
+import { PrismaService } from '../../prisma/prisma.service';
+import { EventService } from '../events/event.service';
+import { AuditService } from '../audit/audit.service';
+import { CreateDeploymentDto, BuildStrategy, UpdateBuildConfigDto } from './dto/index';
 
 @Injectable()
 export class DeploymentsService {

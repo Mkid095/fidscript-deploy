@@ -1,0 +1,17 @@
+# Everything that should not enter a Docker build context.
+# The images run their own `pnpm install` + build, so host build artifacts
+# and dependencies must be excluded (keeps context small, avoids stale code).
+**/node_modules
+**/dist
+**/.next
+**/.turbo
+**/coverage
+.git
+.gitignore
+*.log
+.env
+.env.*
+!.env.example
+Dockerfile*
+.dockerignore
+docs

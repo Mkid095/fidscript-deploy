@@ -9,9 +9,9 @@ import {
   UseGuards,
 } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
-import { JwtAuthGuard } from '../auth/jwt-auth.guard.js';
-import { LoggingService } from './logging.service.js';
-import { CreateLogStreamDto, GetLogsDto, WriteLogDto, WriteBatchLogsDto } from './dto/index.js';
+import { JwtAuthGuard } from '../auth/jwt-auth.guard';
+import { LoggingService } from './logging.service';
+import { CreateLogStreamDto, GetLogsDto, WriteLogDto, WriteBatchLogsDto } from './dto/index';
 
 @ApiTags('logging')
 @Controller('projects/:projectId/logs')

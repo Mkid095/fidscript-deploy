@@ -21,4 +21,9 @@ export class CreateDeploymentDto {
   @IsEnum(BuildStrategy)
   @IsOptional()
   strategy?: BuildStrategy;
+
+  @ApiPropertyOptional()
+  @IsString()
+  @IsOptional()
+  commitMessage?: string;
 }

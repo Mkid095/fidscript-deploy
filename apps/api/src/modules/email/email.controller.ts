@@ -9,9 +9,9 @@ import {
   UseGuards,
 } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
-import { JwtAuthGuard } from '../auth/jwt-auth.guard.js';
-import { EmailService } from './email.service.js';
-import { SendEmailDto, CreateMailboxDto, CreateAliasDto, VerifyDomainDto, GetEmailsDto } from './dto/index.js';
+import { JwtAuthGuard } from '../auth/jwt-auth.guard';
+import { EmailService } from './email.service';
+import { SendEmailDto, CreateMailboxDto, CreateAliasDto, VerifyDomainDto, GetEmailsDto } from './dto/index';
 
 @ApiTags('email')
 @Controller('projects/:projectId/email')

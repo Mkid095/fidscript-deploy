@@ -1,3 +1,3 @@
-export * from './email-provider.interface.js';
-export * from './smtp.provider.js';
-export * from './resend.provider.js';
+export * from './email-provider.interface';
+export * from './smtp.provider';
+export * from './resend.provider';

@@ -1,7 +1,8 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
-import { PrismaService } from '../../../prisma/prisma.service.js';
-import { EventService } from '../events/event.service.js';
-import { CreateChannelDto, SetPresenceDto } from './dto/index.js';
+import * as crypto from "crypto";
+import { PrismaService } from '../../prisma/prisma.service';
+import { EventService } from '../events/event.service';
+import { CreateChannelDto, SetPresenceDto } from './dto/index';
 
 @Injectable()
 export class RealtimeService {
@@ -16,7 +17,7 @@ export class RealtimeService {
         projectId,
         name: dto.name,
         isPrivate: dto.isPrivate || false,
-        metadata: dto.metadata || {},
+        metadata: (dto.metadata || {}) as any,
       },
     });
 

@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import { Runtime, InvocationResult } from './runtime.interface.js';
+import { Runtime, InvocationResult } from './runtime.interface';
 import * as fs from 'fs/promises';
 import * as path from 'path';
 import { exec } from 'child_process';
@@ -36,7 +36,7 @@ export class NodeJsRuntime implements Runtime {
     } catch (error: any) {
       return {
         success: false,
-        error: error.message,
+        error: (error as Error).message,
         durationMs: Date.now() - start,
       };
     }

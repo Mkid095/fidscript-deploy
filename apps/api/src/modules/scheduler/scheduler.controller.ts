@@ -10,9 +10,9 @@ import {
   UseGuards,
 } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
-import { JwtAuthGuard } from '../auth/jwt-auth.guard.js';
-import { SchedulerService } from './scheduler.service.js';
-import { CreateCronJobDto, UpdateCronJobDto, TriggerCronJobDto } from './dto/index.js';
+import { JwtAuthGuard } from '../auth/jwt-auth.guard';
+import { SchedulerService } from './scheduler.service';
+import { CreateCronJobDto, UpdateCronJobDto, TriggerCronJobDto } from './dto/index';
 
 @ApiTags('scheduler')
 @Controller('projects/:projectId/cron')

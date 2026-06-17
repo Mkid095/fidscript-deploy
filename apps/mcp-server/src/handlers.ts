@@ -21,7 +21,7 @@ export async function handleToolCall(name: string, args: any) {
       case 'add_project_member': return handleResponse(await apiRequest('POST', `/projects/${args.projectId}/members`, args));
       case 'remove_project_member': return handleResponse(await apiRequest('DELETE', `/projects/${args.projectId}/members/${args.userId}`));
       case 'get_project_env_vars': return handleResponse(await apiRequest('GET', `/projects/${args.projectId}/env`));
-      case 'set_project_env_vars': return handleResponse(await apiRequest('PUT', `/projects/${args.projectId}/env`, { envVars: args.envVars })));
+      case 'set_project_env_vars': return handleResponse(await apiRequest('PUT', `/projects/${args.projectId}/env`, { envVars: args.envVars }));
 
       // Deployments
       case 'list_deployments': return handleResponse(await apiRequest('GET', `/projects/${args.projectId}/deployments`));
@@ -38,7 +38,7 @@ export async function handleToolCall(name: string, args: any) {
       case 'list_files': return handleResponse(await apiRequest('GET', `/projects/${args.projectId}/storage/buckets/${args.bucketId}/files`));
       case 'upload_file': return handleResponse(await apiRequest('POST', `/projects/${args.projectId}/storage/buckets/${args.bucketId}/files`, args));
       case 'delete_file': return handleResponse(await apiRequest('DELETE', `/projects/${args.projectId}/storage/buckets/${args.bucketId}/files/${args.fileId}`));
-      case 'get_signed_url': return handleResponse(await apiRequest('GET', `/projects/${args.projectId}/storage/buckets/${args.bucketId}/files/${args.fileId}/url`, { expiresIn: args.expiresIn })));
+      case 'get_signed_url': return handleResponse(await apiRequest('GET', `/projects/${args.projectId}/storage/buckets/${args.bucketId}/files/${args.fileId}/url`, { expiresIn: args.expiresIn }));
 
       // Databases
       case 'list_databases': return handleResponse(await apiRequest('GET', `/projects/${args.projectId}/databases`));
@@ -58,7 +58,7 @@ export async function handleToolCall(name: string, args: any) {
       case 'list_email_aliases': return handleResponse(await apiRequest('GET', `/projects/${args.projectId}/email/aliases`));
       case 'create_email_alias': return handleResponse(await apiRequest('POST', `/projects/${args.projectId}/email/aliases`, args));
       case 'verify_email_domain': return handleResponse(await apiRequest('POST', `/projects/${args.projectId}/email/verify-domain`, args));
-      case 'get_email_logs': return handleResponse(await apiRequest('GET', `/projects/${args.projectId}/email/logs`, { limit: args.limit })));
+      case 'get_email_logs': return handleResponse(await apiRequest('GET', `/projects/${args.projectId}/email/logs`, { limit: args.limit }));
 
       // Functions
       case 'list_functions': return handleResponse(await apiRequest('GET', `/projects/${args.projectId}/functions`));
@@ -67,8 +67,8 @@ export async function handleToolCall(name: string, args: any) {
       case 'update_function': return handleResponse(await apiRequest('PATCH', `/projects/${args.projectId}/functions/${args.functionId}`, args));
       case 'delete_function': return handleResponse(await apiRequest('DELETE', `/projects/${args.projectId}/functions/${args.functionId}`));
       case 'deploy_function': return handleResponse(await apiRequest('POST', `/projects/${args.projectId}/functions/${args.functionId}/deploy`, args));
-      case 'invoke_function': return handleResponse(await apiRequest('POST', `/projects/${args.projectId}/functions/${args.functionId}/invoke`, { payload: args.payload })));
-      case 'get_function_logs': return handleResponse(await apiRequest('GET', `/projects/${args.projectId}/functions/${args.functionId}/logs`, { limit: args.limit })));
+      case 'invoke_function': return handleResponse(await apiRequest('POST', `/projects/${args.projectId}/functions/${args.functionId}/invoke`, { payload: args.payload }));
+      case 'get_function_logs': return handleResponse(await apiRequest('GET', `/projects/${args.projectId}/functions/${args.functionId}/logs`, { limit: args.limit }));
       case 'get_function_versions': return handleResponse(await apiRequest('GET', `/projects/${args.projectId}/functions/${args.functionId}/versions`));
 
       // Queues
@@ -78,8 +78,8 @@ export async function handleToolCall(name: string, args: any) {
       case 'publish_message': return handleResponse(await apiRequest('POST', `/projects/${args.projectId}/queues/${args.queueId}/messages`, args));
       case 'publish_batch_messages': return handleResponse(await apiRequest('POST', `/projects/${args.projectId}/queues/${args.queueId}/messages/batch`, args));
       case 'consume_messages': return handleResponse(await apiRequest('POST', `/projects/${args.projectId}/queues/${args.queueId}/consume`, args));
-      case 'acknowledge_messages': return handleResponse(await apiRequest('POST', `/projects/${args.projectId}/queues/${args.queueId}/ack`, { messageIds: args.messageIds })));
-      case 'retry_messages': return handleResponse(await apiRequest('POST', `/projects/${args.projectId}/queues/${args.queueId}/retry`, { messageIds: args.messageIds })));
+      case 'acknowledge_messages': return handleResponse(await apiRequest('POST', `/projects/${args.projectId}/queues/${args.queueId}/ack`, { messageIds: args.messageIds }));
+      case 'retry_messages': return handleResponse(await apiRequest('POST', `/projects/${args.projectId}/queues/${args.queueId}/retry`, { messageIds: args.messageIds }));
       case 'get_queue_stats': return handleResponse(await apiRequest('GET', `/projects/${args.projectId}/queues/${args.queueId}/stats`));
 
       // Cron
@@ -88,8 +88,8 @@ export async function handleToolCall(name: string, args: any) {
       case 'create_cron_job': return handleResponse(await apiRequest('POST', `/projects/${args.projectId}/cron`, args));
       case 'update_cron_job': return handleResponse(await apiRequest('PATCH', `/projects/${args.projectId}/cron/${args.jobId}`, args));
       case 'delete_cron_job': return handleResponse(await apiRequest('DELETE', `/projects/${args.projectId}/cron/${args.jobId}`));
-      case 'trigger_cron_job': return handleResponse(await apiRequest('POST', `/projects/${args.projectId}/cron/${args.jobId}/trigger`, { payload: args.payload })));
-      case 'get_cron_job_runs': return handleResponse(await apiRequest('GET', `/projects/${args.projectId}/cron/${args.jobId}/runs`, { limit: args.limit })));
+      case 'trigger_cron_job': return handleResponse(await apiRequest('POST', `/projects/${args.projectId}/cron/${args.jobId}/trigger`, { payload: args.payload }));
+      case 'get_cron_job_runs': return handleResponse(await apiRequest('GET', `/projects/${args.projectId}/cron/${args.jobId}/runs`, { limit: args.limit }));
       case 'get_cron_job_next_run': return handleResponse(await apiRequest('GET', `/projects/${args.projectId}/cron/${args.jobId}/next-run`));
 
       // Realtime
@@ -101,7 +101,7 @@ export async function handleToolCall(name: string, args: any) {
       // Monitoring
       case 'record_metric': return handleResponse(await apiRequest('POST', `/projects/${args.projectId}/monitoring/metrics`, args));
       case 'get_metrics': return handleResponse(await apiRequest('GET', `/projects/${args.projectId}/monitoring/metrics`, args));
-      case 'get_metric_summary': return handleResponse(await apiRequest('GET', `/projects/${args.projectId}/monitoring/metrics/${args.metric}/summary`, { interval: args.interval })));
+      case 'get_metric_summary': return handleResponse(await apiRequest('GET', `/projects/${args.projectId}/monitoring/metrics/${args.metric}/summary`, { interval: args.interval }));
       case 'create_alert_rule': return handleResponse(await apiRequest('POST', `/projects/${args.projectId}/monitoring/alerts/rules`, args));
       case 'list_alert_rules': return handleResponse(await apiRequest('GET', `/projects/${args.projectId}/monitoring/alerts/rules`));
       case 'delete_alert_rule': return handleResponse(await apiRequest('DELETE', `/projects/${args.projectId}/monitoring/alerts/rules/${args.ruleId}`));
@@ -114,8 +114,8 @@ export async function handleToolCall(name: string, args: any) {
       case 'write_log': return handleResponse(await apiRequest('POST', `/projects/${args.projectId}/logs`, args));
       case 'write_batch_logs': return handleResponse(await apiRequest('POST', `/projects/${args.projectId}/logs/batch`, args));
       case 'get_logs': return handleResponse(await apiRequest('GET', `/projects/${args.projectId}/logs`, args));
-      case 'get_log_stats': return handleResponse(await apiRequest('GET', `/projects/${args.projectId}/logs/stats`, { stream: args.stream })));
-      case 'get_log_timeline': return handleResponse(await apiRequest('GET', `/projects/${args.projectId}/logs/streams/${args.stream}/timeline`, { interval: args.interval })));
+      case 'get_log_stats': return handleResponse(await apiRequest('GET', `/projects/${args.projectId}/logs/stats`, { stream: args.stream }));
+      case 'get_log_timeline': return handleResponse(await apiRequest('GET', `/projects/${args.projectId}/logs/streams/${args.stream}/timeline`, { interval: args.interval }));
       case 'list_log_streams': return handleResponse(await apiRequest('GET', `/projects/${args.projectId}/logs/streams`));
 
       // App Auth
@@ -128,12 +128,12 @@ export async function handleToolCall(name: string, args: any) {
       case 'app_auth_assign_role': return handleResponse(await apiRequest('POST', `/projects/${args.projectId}/auth/roles/assign`, args));
 
       // AI
-      case 'ai_chat': return handleResponse(await apiRequest('POST', `/projects/${args.projectId}/ai/chat`, { content: args.content })));
+      case 'ai_chat': return handleResponse(await apiRequest('POST', `/projects/${args.projectId}/ai/chat`, { content: args.content }));
       case 'ai_create_conversation': return handleResponse(await apiRequest('POST', `/projects/${args.projectId}/ai/conversations`, args));
-      case 'ai_list_conversations': return handleResponse(await apiRequest('GET', `/projects/${args.projectId}/ai/conversations`, { limit: args.limit })));
-      case 'ai_get_conversation': return handleResponse(await apiRequest('GET', `/projects/${args.projectId}/ai/conversations/${args.conversationId}`)));
+      case 'ai_list_conversations': return handleResponse(await apiRequest('GET', `/projects/${args.projectId}/ai/conversations`, { limit: args.limit }));
+      case 'ai_get_conversation': return handleResponse(await apiRequest('GET', `/projects/${args.projectId}/ai/conversations/${args.conversationId}`));
       case 'ai_send_message': return handleResponse(await apiRequest('POST', `/projects/${args.projectId}/ai/conversations/${args.conversationId}/messages`, args));
-      case 'ai_delete_conversation': return handleResponse(await apiRequest('DELETE', `/projects/${args.projectId}/ai/conversations/${args.conversationId}`)));
+      case 'ai_delete_conversation': return handleResponse(await apiRequest('DELETE', `/projects/${args.projectId}/ai/conversations/${args.conversationId}`));
       case 'ai_diagnose_error': return handleResponse(await apiRequest('POST', `/projects/${args.projectId}/ai/diagnose`, args));
       case 'ai_get_recommendations': return handleResponse(await apiRequest('POST', `/projects/${args.projectId}/ai/recommendations`, args));
       case 'ai_assist_deployment': return handleResponse(await apiRequest('POST', `/projects/${args.projectId}/ai/deploy`, args));
@@ -141,13 +141,13 @@ export async function handleToolCall(name: string, args: any) {
 
       // Marketplace
       case 'marketplace_list_items': return handleResponse(await apiRequest('GET', '/marketplace', args));
-      case 'marketplace_get_item': return handleResponse(await apiRequest('GET', `/marketplace/${args.slug}`)));
-      case 'marketplace_get_featured': return handleResponse(await apiRequest('GET', '/marketplace/featured')));
-      case 'marketplace_get_categories': return handleResponse(await apiRequest('GET', '/marketplace/categories')));
+      case 'marketplace_get_item': return handleResponse(await apiRequest('GET', `/marketplace/${args.slug}`));
+      case 'marketplace_get_featured': return handleResponse(await apiRequest('GET', '/marketplace/featured'));
+      case 'marketplace_get_categories': return handleResponse(await apiRequest('GET', '/marketplace/categories'));
       case 'marketplace_submit_item': return handleResponse(await apiRequest('POST', '/marketplace/submit', args));
       case 'marketplace_create_review': return handleResponse(await apiRequest('POST', `/marketplace/${args.slug}/reviews`, args));
-      case 'marketplace_record_download': return handleResponse(await apiRequest('POST', `/marketplace/${args.slug}/download')));
-      case 'marketplace_get_my_submissions': return handleResponse(await apiRequest('GET', '/marketplace/my/submissions')));
+      case 'marketplace_record_download': return handleResponse(await apiRequest('POST', `/marketplace/${args.slug}/download`));
+      case 'marketplace_get_my_submissions': return handleResponse(await apiRequest('GET', '/marketplace/my/submissions'));
       case 'marketplace_update_item': return handleResponse(await apiRequest('PATCH', `/marketplace/items/${args.id}`, args));
 
       default:

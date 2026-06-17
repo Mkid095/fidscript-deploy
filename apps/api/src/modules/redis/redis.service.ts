@@ -24,7 +24,7 @@ export class RedisService implements OnModuleDestroy {
       await this.client.connect();
       this.logger.log('Connected to Redis');
     } catch (error) {
-      this.logger.warn('Failed to connect to Redis:', error.message);
+      this.logger.warn('Failed to connect to Redis:', (error as Error).message);
     }
   }
 
@@ -34,7 +34,7 @@ export class RedisService implements OnModuleDestroy {
       const value = await this.client.get(key);
       return value ? JSON.parse(value) : null;
     } catch (error) {
-      this.logger.error(`Redis GET error for ${key}:`, error.message);
+      this.logger.error(`Redis GET error for ${key}:`, (error as Error).message);
       return null;
     }
   }
@@ -49,7 +49,7 @@ export class RedisService implements OnModuleDestroy {
         await this.client.set(key, serialized);
       }
     } catch (error) {
-      this.logger.error(`Redis SET error for ${key}:`, error.message);
+      this.logger.error(`Redis SET error for ${key}:`, (error as Error).message);
     }
   }
 
@@ -58,7 +58,7 @@ export class RedisService implements OnModuleDestroy {
     try {
       await this.client.del(key);
     } catch (error) {
-      this.logger.error(`Redis DEL error for ${key}:`, error.message);
+      this.logger.error(`Redis DEL error for ${key}:`, (error as Error).message);
     }
   }
 
@@ -70,7 +70,7 @@ export class RedisService implements OnModuleDestroy {
         await this.client.del(keys);
       }
     } catch (error) {
-      this.logger.error(`Redis DEL pattern error for ${pattern}:`, error.message);
+      this.logger.error(`Redis DEL pattern error for ${pattern}:`, (error as Error).message);
     }
   }
 

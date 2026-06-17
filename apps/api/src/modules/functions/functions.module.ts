@@ -1,9 +1,9 @@
 import { Module } from '@nestjs/common';
-import { FunctionsController } from './functions.controller.js';
-import { FunctionsService } from './functions.service.js';
-import { NodeJsRuntime } from './runtimes/nodejs.runtime.js';
-import { PythonRuntime } from './runtimes/python.runtime.js';
-import { RUNTIME } from './runtimes/runtime.interface.js';
+import { FunctionsController } from './functions.controller';
+import { FunctionsService } from './functions.service';
+import { NodeJsRuntime } from './runtimes/nodejs.runtime';
+import { PythonRuntime } from './runtimes/python.runtime';
+import { RUNTIME } from './runtimes/runtime.interface';
 import { ConfigService } from '@nestjs/config';
 
 const RUNTIME_TOKEN = {

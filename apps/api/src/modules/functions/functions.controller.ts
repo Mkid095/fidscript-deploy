@@ -10,15 +10,15 @@ import {
   UseGuards,
 } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
-import { JwtAuthGuard } from '../auth/jwt-auth.guard.js';
-import { FunctionsService } from './functions.service.js';
+import { JwtAuthGuard } from '../auth/jwt-auth.guard';
+import { FunctionsService } from './functions.service';
 import {
   CreateFunctionDto,
   UpdateFunctionDto,
   DeployFunctionDto,
   InvokeFunctionDto,
   GetFunctionLogsDto,
-} from './dto/index.js';
+} from './dto/index';
 
 @ApiTags('functions')
 @Controller('projects/:projectId/functions')
