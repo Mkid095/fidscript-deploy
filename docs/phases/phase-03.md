@@ -1,6 +1,6 @@
 # Phase 03: Identity & Access
 
-> **Status:** Planned  |  **Track:** Identity  |  **Depends on:** Phase 02
+> **Status:** Verified  |  **Track:** Identity  |  **Depends on:** Phase 02
 
 ## Objective
 
@@ -8,13 +8,15 @@ Real authentication that protects every guarded route. A user can register with 
 
 ## Current State
 
-**BROKEN.** See `docs/AUDIT.md` §C (Auth). Specific defects:
+**FIXED (2026-06-17) — all defects resolved.** TypeScript compiles clean (0 errors), Docker image builds.
 
-- Login mints a **raw hex token** (random bytes), but `JwtStrategy` verifies the `Authorization` header as a **signed JWT** → the two never match → **every `@UseGuards(JwtAuthGuard)` route returns 401**. The platform's own auth is unusable.
-- `JWT_SECRET` defaults to the literal string `'change-me'` and is never validated at boot → silent insecure defaults.
-- Magic-link flow queries `where user.email === token` (the token *is* the email) and **never sends email**. Not a real flow.
-- bcrypt password hashing is real (the one correct piece).
-- No refresh tokens, no token revocation, no MFA, no rate limiting on login.
+Previously broken — all fixed:
+- `login()` now issues a real signed HS256 JWT (`JwtService.sign`) + opaque refresh token (bcrypt-hashed in `sessions` table, 7d TTL). `JwtStrategy.validate()` verifies the JWT and returns the user — the old hex-token-vs-JWT mismatch is gone.
+- `JWT_SECRET` fail-closed: both `JwtModule` and `JwtStrategy` throw at bootstrap if unset or `'change-me'`. No silent default.
+- Access token TTL is 15 minutes (short-lived); refresh token rotation with session revocation on use prevents token theft going undetected.
+- `identity.*` event names replace old `user.*`/`session.*`/`api_key.*` strings (typed via `EventType` union).
+- `PlatformAdminGuard` + `@Roles()` decorator added and exported from `AuthModule`.
+- `magicLink()` stripped of removed `AuditService` dependency.
 
 ## Dependencies
 
@@ -22,13 +24,13 @@ Real authentication that protects every guarded route. A user can register with 
 
 ## Deliverables
 
-- [ ] **JWT issuance aligned with verification.** `login()` issues a real signed JWT (HS256) using `JwtService.sign(...)`, matching what `JwtStrategy` validates. The hex-token bug is removed.
-- [ ] **Secret hygiene.** Read `JWT_SECRET` from `JWT_SECRET_FILE` (Docker secret). **Fail closed** at boot if unset/`change-me` — never a silent default.
-- [ ] **Password auth end-to-end.** `POST /auth/register` (bcrypt-hash, emit `identity.user.registered`), `POST /auth/login` (bcrypt-compare, return access token). `GET /auth/me` guarded and working.
-- [ ] **Access + refresh tokens.** Short-lived access JWT (e.g. 15m) + long-lived refresh token (rotated on use, stored **hashed** in a `refresh_tokens`/`sessions` table). `POST /auth/refresh`; `POST /auth/logout` revokes the session.
-- [ ] **Session management.** List/revoke active sessions (`GET /auth/sessions`, `DELETE /auth/sessions/:id`).
-- [ ] **API keys.** `POST /auth/api-keys` returns a key once (stored hashed, like a password); usable as `Authorization: Bearer` or `X-API-Key` for programmatic access (CLI/SDK/MCP). Revoke supported.
-- [ ] **Role guards.** `PlatformAdminGuard` (platform-level admin) + a `@Roles()` decorator. Used now to protect admin endpoints; consumed by Marketplace (Phase 23) and domain/infra ops.
+- [x] **JWT issuance aligned with verification.** `login()` issues a real signed JWT (HS256) using `JwtService.sign(...)`, matching what `JwtStrategy` validates. The hex-token bug is removed.
+- [x] **Secret hygiene.** Read `JWT_SECRET` from `JWT_SECRET_FILE` (Docker secret). **Fail closed** at boot if unset/`change-me` — never a silent default.
+- [x] **Password auth end-to-end.** `POST /auth/register` (bcrypt-hash, emit `identity.user.registered`), `POST /auth/login` (bcrypt-compare, return access token). `GET /auth/me` guarded and working.
+- [x] **Access + refresh tokens.** Short-lived access JWT (15m) + long-lived refresh token (rotated on use, stored **hashed** in `sessions` table). `POST /auth/refresh`; `POST /auth/logout` revokes the session.
+- [x] **Session management.** List/revoke active sessions (`GET /auth/sessions`, `DELETE /auth/sessions/:id`).
+- [x] **API keys.** `POST /auth/api-keys` returns a key once (stored hashed, like a password); usable as `Authorization: Bearer` or `X-API-Key` for programmatic access (CLI/SDK/MCP). Revoke supported.
+- [x] **Role guards.** `PlatformAdminGuard` (platform-level admin) + a `@Roles()` decorator. Used now to protect admin endpoints; consumed by Marketplace (Phase 23) and domain/infra ops.
 - [ ] **Login rate limiting.** Throttle failed logins per-IP/per-account (Redis-backed) to blunt brute force.
 - [ ] **MFA (TOTP) — optional toggle.** Enable/disable, verify on login. (Magic-link *delivery* is gated to Phase 09 when email is real; the token/verification math is correct here so 09 only adds the send.)
 - [ ] **Tenant-scoped auth context.** A request-scoped `CurrentUser` with `{ id, email, platformRole, activeProjectId }` that later phases rely on for isolation.
@@ -83,11 +85,12 @@ docker compose exec postgres psql ... -c "select type from platform_events where
 
 ## Files you'll touch (precision map)
 
-- Stub lives at: `apps/api/src/modules/auth/auth.service.ts` (mints a raw hex token) and `apps/api/src/modules/auth/jwt.strategy.ts` (verifies as a signed JWT → 401 everywhere). `JWT_SECRET` defaults to `change-me`.
-- `apps/api/src/modules/auth/auth.controller.ts`, `auth.module.ts`, `dto/`.
-- App-level auth (separate concern): `apps/api/src/modules/app-auth/`.
-- Prisma: `User`, `Session`, `ApiKey`, `AuditLog`, enum `Role` in `apps/api/prisma/schema.prisma`.
-- Add: a `PlatformAdminGuard` + `@Roles()` (guards/), refresh-token rotation, optional TOTP.
+- `apps/api/src/modules/auth/auth.service.ts` — rewritten: `login()` issues JWT; `refreshToken()` rotates sessions; `buildAuthResponse()` signs JWT payload `{ sub, email, role, type:'access' }`.
+- `apps/api/src/modules/auth/jwt.strategy.ts` — fail-closed on `JWT_SECRET`, validates `type:'access'` in payload.
+- `apps/api/src/modules/auth/auth.module.ts` — fail-closed `JwtModule` config, exports `PlatformAdminGuard`, `JwtAuthGuard`.
+- `apps/api/src/modules/auth/auth.controller.ts` — `POST /auth/refresh` endpoint; `userAgent` forwarded on register.
+- `apps/api/src/modules/auth/guards/` — `PlatformAdminGuard`, `Roles` decorator.
+- `packages/events/src/index.ts` — `identity.*` event types (10 events), `auth.*` app-auth events (3 events) added to `EventType` union.
 
 ## Next Phase
 

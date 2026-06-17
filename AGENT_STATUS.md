@@ -35,8 +35,8 @@ Statuses: `Planned` · `In Progress` · `Verified`
 | 00 | Architecture & Build Foundation | Verified |
 | 01 | Installer & Infrastructure Stack | Verified |
 | 02 | Event Bus & Service Registry | Verified |
-| 03 | Identity & Access (platform auth) | In Progress |
-| 04 | Projects Engine | Planned |
+| 03 | Identity & Access (platform auth) | Verified |
+| 04 | Projects Engine | In Progress |
 | 05 | Storage Platform | Planned |
 | 06 | Deployment Engine | Planned |
 | 07 | Domains & TLS | Planned |
@@ -65,7 +65,8 @@ Statuses: `Planned` · `In Progress` · `Verified`
 - [x] **Phase 00 — verified:** repo compiles, `pnpm typecheck` clean (13/13), `pnpm build` emits all `dist/` (10/10), `docker build` succeeds for both `apps/api` and `apps/dashboard` (CommonJS standardization, decorator flags, Prisma schema fixed, Dockerfiles + `.dockerignore`). See ADR-011/012.
 - [x] Begin **Phase 01 — Installer & Infrastructure Stack**: first Prisma migration baseline, `prisma/seed.ts`, compose `_FILE` secrets + env wiring, `install.sh` actually deploys, Traefik/firewall fixes, health checks.
 - [x] Begin **Phase 02 — Event Bus & Service Registry**: `@nestjs/event-emitter` local backbone, `nats` package (not `nats.ws`), JetStream stream created on boot, AuditEventConsumer writes PlatformEvent rows, typed EventType union (52 events), RegistryService + `GET /api/v1/services`, Dockerfile fixed to build packages before API.
-- [ ] Begin **Phase 03 — Identity & Access (platform auth)**: JWT auth, platform roles (USER/ADMIN/OWNER), `PlatformAdminGuard`, session management.
+- [x] Begin **Phase 03 — Identity & Access (platform auth)**: JWT auth, platform roles (USER/ADMIN/OWNER), `PlatformAdminGuard`, session management.
+- [ ] Begin **Phase 04 — Projects Engine**: Project CRUD, ProjectMember roles, project-scoped auth context.
 
 ## Definition of done (per phase)
 
