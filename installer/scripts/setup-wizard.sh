@@ -6,6 +6,8 @@ ADMIN_EMAIL=""
 ADMIN_PASSWORD=""
 STORAGE_PATH="/data/fidscript"
 AUTO_SSL=true
+CLOUDFLARE_API_TOKEN=""
+SERVER_IP=""
 
 echo ""
 echo "╔═══════════════════════════════════════════════════════════╗"
@@ -63,15 +65,32 @@ done
 read -p "Storage path [/data/fidscript]: " STORAGE_PATH_INPUT
 STORAGE_PATH="${STORAGE_PATH_INPUT:-$STORAGE_PATH}"
 
+# Cloudflare API token (for DNS-01 challenge + DNS management)
+echo ""
+read -p "Cloudflare API token (Zone:DNS:Edit for deploy.fidscript.com): " CLOUDFLARE_API_TOKEN
+while [[ -z "$CLOUDFLARE_API_TOKEN" ]]; do
+    echo "Cloudflare API token is required for DNS management."
+    read -p "Cloudflare API token: " CLOUDFLARE_API_TOKEN
+done
+
+# Server public IP
+read -p "This server's public IP address: " SERVER_IP
+while [[ -z "$SERVER_IP" || ! "$SERVER_IP" =~ ^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$ ]]; do
+    echo "A valid public IP address is required."
+    read -p "This server's public IP address: " SERVER_IP
+done
+
 echo ""
 echo "╔═══════════════════════════════════════════════════════════╗"
 echo "║              Configuration Summary                        ║"
 echo "╚═══════════════════════════════════════════════════════════╝"
 echo ""
-echo "  Domain:        $DOMAIN"
-echo "  Admin Email:   $ADMIN_EMAIL"
-echo "  Storage Path:  $STORAGE_PATH"
-echo "  Auto SSL:      $AUTO_SSL"
+echo "  Domain:           $DOMAIN"
+echo "  Admin Email:      $ADMIN_EMAIL"
+echo "  Storage Path:     $STORAGE_PATH"
+echo "  Auto SSL:         $AUTO_SSL"
+echo "  Cloudflare Token: [configured]"
+echo "  Server IP:        $SERVER_IP"
 echo ""
 
 read -p "Proceed with installation? [Y/n]: " CONFIRM
@@ -101,6 +120,8 @@ openssl rand -base64 32 > "$SECRETS_DIR/redis_password.txt"
 openssl rand -base64 32 > "$SECRETS_DIR/minio_access_key.txt"
 openssl rand -base64 32 > "$SECRETS_DIR/minio_secret_key.txt"
 openssl rand -base64 64 > "$SECRETS_DIR/jwt_secret.txt"
+# Cloudflare API token for DNS management and Traefik ACME DNS-01 challenge
+echo "$CLOUDFLARE_API_TOKEN" > "$SECRETS_DIR/cf_api_token.txt"
 
 # Set permissions
 chmod 600 "$SECRETS_DIR/"*.txt
@@ -112,6 +133,8 @@ ADMIN_EMAIL=$ADMIN_EMAIL
 ADMIN_PASSWORD=$ADMIN_PASSWORD
 STORAGE_PATH=$STORAGE_PATH
 AUTO_SSL=$AUTO_SSL
+SERVER_IP=$SERVER_IP
+PLATFORM_DOMAIN=deploy.fidscript.com
 EOF
 
 # Generate api.env with secret values (api container reads these via env_file)
@@ -152,7 +175,7 @@ http:
         - security-headers
         - compress
       tls:
-        certResolver: letsencrypt
+        certResolver: letsencrypt-dns
 
     api:
       rule: "PathPrefix(\`/api\`)"
@@ -161,7 +184,7 @@ http:
         - security-headers
         - compress
       tls:
-        certResolver: letsencrypt
+        certResolver: letsencrypt-dns
 
     minio-console:
       rule: "Host(\`storage.$DOMAIN\`)"
@@ -170,7 +193,7 @@ http:
         - security-headers
         - compress
       tls:
-        certResolver: letsencrypt
+        certResolver: letsencrypt-dns
 
   services:
     dashboard:
@@ -189,7 +212,7 @@ http:
           - url: "http://fidscript_minio:9001"
 EOF
 
-# Generate Traefik static config with real email
+# Generate Traefik static config with real email and ACME DNS-01 challenge
 cat > "$TRAEFIK_DIR/traefik.yml" << EOF
 api:
   dashboard: true
@@ -206,17 +229,41 @@ entryPoints:
 
   websecure:
     address: ":443"
-    http:
-      tls:
-        certResolver: letsencrypt
 
+# ─────────────────────────────────────────────────────────────
+# Certificate resolvers
+# ─────────────────────────────────────────────────────────────
+#
+# 1. letsencrypt-dns — DNS-01 challenge via Cloudflare
+#    Issues wildcards (*.apps.deploy.fidscript.com) and any
+#    domain where we control DNS (deploy.fidscript.com zone).
+#    Requires CF_API_TOKEN env var in the Traefik container.
+#
+# 2. letsencrypt-http — HTTP-01 challenge fallback
+#    For custom domains where the user points their DNS CNAME
+#    to our server IP but we don't control their zone.
+#    Requires port 80 to be reachable from Let's Encrypt servers.
+#
 certificatesResolvers:
-  letsencrypt:
+  letsencrypt-dns:
     acme:
       email: $ADMIN_EMAIL
-      storage: /acme/acme.json
+      storage: /acme-dns/acme-dns.json
+      dnsChallenge:
+        provider: cloudflare
+        resolvers:
+          - "1.1.1.1"
+          - "1.0.0.1"
+      # Use staging while iterating to avoid rate limits
+      caServer: https://acme-staging-v02.api.letsencrypt.org/directory
+
+  letsencrypt-http:
+    acme:
+      email: $ADMIN_EMAIL
+      storage: /acme-http/acme-http.json
       httpChallenge:
         entryPoint: web
+      caServer: https://acme-staging-v02.api.letsencrypt.org/directory
 
 providers:
   docker:

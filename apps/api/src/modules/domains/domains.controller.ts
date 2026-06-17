@@ -31,14 +31,15 @@ export class DomainsController {
   }
 
   @Post()
-  @ApiOperation({ summary: 'Add a domain to project' })
+  @HttpCode(HttpStatus.CREATED)
+  @ApiOperation({ summary: 'Add a domain to a deployment' })
   async add(
     @Req() req: Request,
     @Param('projectId') projectId: string,
     @Body() dto: AddDomainDto,
   ) {
     const user = req.user as { userId: string };
-    return this.domainsService.add(user.userId, projectId, dto);
+    return this.domainsService.add(user.userId, projectId, dto, dto.deploymentId);
   }
 
   @Delete(':id')
@@ -54,6 +55,7 @@ export class DomainsController {
   }
 
   @Post(':id/verify')
+  @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Verify domain DNS configuration' })
   async verify(
     @Req() req: Request,

@@ -897,6 +897,43 @@ Telemetry pipelines:
 
 ---
 
+## ADR-022: TLS — Traefik ACME with DNS-01 Challenge via Cloudflare
+
+**Date:** 2026-06-19
+
+**Status:** Accepted
+
+**Context:**
+The platform needs TLS for:
+1. Its own infrastructure: `deploy.fidscript.com`, `storage.fidscript.com`, `api.*` routes
+2. Wildcard for user-deployed apps: `*.apps.deploy.fidscript.com`
+3. Custom domains attached by users: `app.example.com`
+
+HTTP-01 challenge (Let's Encrypt makes an HTTP request to port 80) cannot issue wildcards and fails behind firewalls. DNS-01 challenge (Let's Encrypt checks a TXT record via DNS) works for wildcards and doesn't need port 80 — but requires a DNS provider API.
+
+**Decision:**
+- **DNS-01 as the primary resolver** via Cloudflare API (`letsencrypt-dns`):
+  - Wildcards (`*.apps.deploy.fidscript.com`) issued via DNS-01
+  - Platform infra routes all use DNS-01
+  - Custom domains on the `deploy.fidscript.com` Cloudflare zone use DNS-01
+- **HTTP-01 as fallback** for custom domains where the user controls DNS but we don't have API access (`letsencrypt-http`):
+  - User adds CNAME pointing to our IP
+  - Let's Encrypt reaches port 80 on our VPS
+- **Staging ACME** while iterating; flip to production after initial verification
+- **Cloudflare token** passed via `CF_API_TOKEN_FILE` (not env var) — stored in Docker secret
+- **Two separate ACME storages** (`/acme-dns/` and `/acme-http/`) to avoid resolver conflicts
+
+**Implementation (Phase 07):**
+- `DnsProvider` interface — `CloudflareDnsProvider` is the only impl today; others drop in later
+- Token from `CLOUDFLARE_API_TOKEN_FILE` — never in environment variables or code
+- `SERVER_IP` env var drives A record values
+- `installer/traefik/traefik.yml` has both resolvers; `installer/traefik/dynamic.yml` uses `letsencrypt-dns` for platform routes
+- `setup-wizard.sh` prompts for Cloudflare token and server IP, writes them as Docker secrets
+
+**Why not cert-manager?** Kubernetes-native; adds operational complexity inappropriate for a single-VPS self-hosted platform. Traefik ACME is sufficient.
+
+---
+
 ## Future ADRs Needed
 
 These decisions are pending and will be documented as ADRs:

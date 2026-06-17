@@ -21,7 +21,7 @@ http:
         - security-headers
         - compress
       tls:
-        certResolver: letsencrypt
+        certResolver: letsencrypt-dns
 
     api:
       rule: "PathPrefix(`/api`)"
@@ -30,7 +30,7 @@ http:
         - security-headers
         - compress
       tls:
-        certResolver: letsencrypt
+        certResolver: letsencrypt-dns
 
     minio-console:
       rule: "Host(`storage.fidscript.com`)"
@@ -39,7 +39,7 @@ http:
         - security-headers
         - compress
       tls:
-        certResolver: letsencrypt
+        certResolver: letsencrypt-dns
 
   services:
     dashboard:

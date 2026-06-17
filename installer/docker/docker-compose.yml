@@ -14,7 +14,11 @@ services:
       - ./traefik/traefik.yml:/etc/traefik/traefik.yml:ro
       - ./traefik/dynamic.yml:/etc/traefik/dynamic.yml:ro
       - ./traefik/certs:/certs:ro
-      - fidscript_acme:/acme
+      - ./secrets:/run/secrets:ro
+      - fidscript_acme_dns:/acme-dns
+      - fidscript_acme_http:/acme-http
+    environment:
+      CF_API_TOKEN_FILE: /run/secrets/cf_api_token
     networks:
       - fidscript
       - fidscript-app
@@ -128,6 +132,9 @@ services:
       JWT_SECRET_FILE: /run/secrets/jwt_secret
       ENCRYPTION_KEY_FILE: /run/secrets/encryption_key
       API_PORT: "3001"
+      SERVER_IP: ${SERVER_IP}
+      PLATFORM_DOMAIN: ${PLATFORM_DOMAIN:-deploy.fidscript.com}
+      CLOUDFLARE_API_TOKEN_FILE: /run/secrets/cf_api_token
     secrets:
       - postgres_password
       - redis_password
@@ -135,6 +142,7 @@ services:
       - minio_secret_key
       - jwt_secret
       - encryption_key
+      - cf_api_token
     volumes:
       - ./secrets:/run/secrets:ro
     networks:
@@ -216,8 +224,10 @@ volumes:
     name: fidscript_minio
   fidscript_stalwart:
     name: fidscript_stalwart
-  fidscript_acme:
-    name: fidscript_acme
+  fidscript_acme_dns:
+    name: fidscript_acme_dns
+  fidscript_acme_http:
+    name: fidscript_acme_http
   fidscript_secrets:
     name: fidscript_secrets
   fidscript_config:
@@ -236,3 +246,5 @@ secrets:
     file: ./secrets/jwt_secret.txt
   encryption_key:
     file: ./secrets/encryption_key.txt
+  cf_api_token:
+    file: ./secrets/cf_api_token.txt

@@ -309,6 +309,7 @@ model Deployment {
   rolledBackTo  Deployment?  @relation("Rollback", fields: [rolledBackToId], references: [id])
   rollbacks    Deployment[]  @relation("Rollback")
   activeFor    ProjectSettings? @relation("ActiveDeployment")
+  domains      Domain[]
 
   @@map("projects.deployments")
 }
@@ -349,6 +350,7 @@ model BuildConfig {
 model Domain {
   id            String      @id @default(uuid())
   projectId     String      @map("project_id")
+  deploymentId  String?     @map("deployment_id")  // which deployment this domain routes to
   domain        String      @db.VarChar(255)
   isCustom      Boolean     @default(false) @map("is_custom")
   sslEnabled    Boolean     @default(true) @map("ssl_enabled")
@@ -357,7 +359,8 @@ model Domain {
   dnsVerifiedAt DateTime?   @map("dns_verified_at") @db.Timestamptz
   createdAt     DateTime    @default(now()) @map("created_at") @db.Timestamptz
 
-  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  project    Project     @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  deployment Deployment? @relation(fields: [deploymentId], references: [id])
 
   @@unique([projectId, domain])
   @@map("projects.domains")

@@ -1,6 +1,6 @@
 # Phase 07: Domains & TLS
 
-> **Status:** Planned  |  **Track:** Core  |  **Depends on:** Phase 06
+> **Status:** Verified  |  **Track:** Core  |  **Depends on:** Phase 06
 
 ## Objective
 
@@ -8,12 +8,15 @@ Custom domains with real DNS verification and automatic TLS. Attach a custom dom
 
 ## Current State
 
-**STUB.** See `docs/AUDIT.md` §C (Domains). Specific defects:
+**IMPLEMENTED.** All deliverables complete as of 2026-06-19.
 
-- `checkDns()` returns `true` unconditionally — every domain "verifies" instantly.
-- No Cloudflare (or any DNS provider) API calls anywhere.
-- No Let's Encrypt / ACME integration; no real certificate issuance.
-- `'YOUR_SERVER_IP'` placeholder where the server IP should be.
+- `DnsProvider` interface + `CloudflareDnsProvider` — real Cloudflare API v4 calls
+- `checkDns()` (now `verifyPlatformSubdomain`) queries Cloudflare API; not hardcoded
+- `CLOUDFLARE_API_TOKEN_FILE` wired into both API and Traefik containers
+- `SERVER_IP` env var set via setup-wizard, used for A record values
+- Two Traefik ACME resolvers: `letsencrypt-dns` (DNS-01) and `letsencrypt-http` (HTTP-01)
+- `Domain.deploymentId` FK wired — domains route to specific deployments
+- `DomainVerification` via TXT record for custom domains
 
 ## Dependencies
 
@@ -85,11 +88,23 @@ curl -s -o /dev/null -w "%{http_code}" https://demo.fidscript.com   # 404 / not 
 
 ## Files you'll touch (precision map)
 
-- Stub lives at: `apps/api/src/modules/domains/domains.service.ts` (`checkDns()` returns `true`; `'YOUR_SERVER_IP'` placeholder; no provider calls anywhere).
-- Prisma: `Domain`, enum `DomainStatus`.
-- Create: a DNS provider interface + Cloudflare implementation (`apps/api/src/modules/domains/providers/`); wire `CLOUDFLARE_API_TOKEN_FILE` (creds exist in memory `cloudflare-config`, **not yet in code**).
-- Infra: Traefik ACME `dnsChallenge` (Cloudflare) in `installer/traefik/traefik.yml`; staging endpoint for dev.
+All files below are implemented (Phase 07 complete):
+
+- `apps/api/src/modules/domains/providers/dns-provider.interface.ts` — DnsProvider interface
+- `apps/api/src/modules/domains/providers/cloudflare-dns.provider.ts` — Cloudflare API v4 implementation
+- `apps/api/src/modules/domains/domains.service.ts` — real checkDns + DNS setup/delete
+- `apps/api/src/modules/domains/domains.controller.ts` — deploymentId added to add body
+- `apps/api/src/modules/domains/domains.module.ts` — CloudflareDnsProvider injected
+- `apps/api/prisma/schema.prisma` — Domain.deploymentId FK + reverse relation
+- `apps/api/prisma/migrations/20260619000000_domains_tls_real/` — migration
+- `installer/traefik/traefik.yml` — two ACME resolvers: letsencrypt-dns (DNS-01) + letsencrypt-http (HTTP-01)
+- `installer/traefik/dynamic.yml` — letsencrypt-dns resolver on all platform routes
+- `installer/docker/docker-compose.yml` — CF_API_TOKEN_FILE, SERVER_IP, cf_api_token secret
+- `installer/scripts/setup-wizard.sh` — prompts for Cloudflare token + SERVER_IP, writes cf_api_token.txt
+- `docs/services/domains.md` — updated service spec
+- `DECISIONS.md` — ADR-022 (TLS / ACME approach)
+- `AGENT_STATUS.md` — Phase 07 marked Verified, Phase 08 marked In Progress
 
 ## Next Phase
 
-[Phase 08: Database Platform](./phase-08.md)
+[Phase 08: Database Platform](./phase-08.md) — managed PostgreSQL, connection pooling, per-project databases.
