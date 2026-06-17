@@ -57,6 +57,7 @@ export type EventType =
   | 'deployments.deployment.succeeded'
   | 'deployments.deployment.failed'
   | 'deployments.deployment.stopped'
+  | 'deployments.deployment.blocked'
   | 'deployments.deployment.rolled_back'
   // Legacy aliases (backwards-compat)
   | 'deployment.started'

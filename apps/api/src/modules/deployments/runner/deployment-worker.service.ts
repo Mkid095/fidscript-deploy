@@ -71,6 +71,40 @@ export class DeploymentWorkerService implements OnModuleInit {
       return;
     }
 
+    // ── Concurrency lock: one active deployment per project ─────
+    // Set activeDeploymentId if not already set; if another deployment
+    // is already active, block this one until it completes.
+    const settings = await this.prisma.projectSettings.findUnique({
+      where: { projectId },
+    });
+
+    if (settings?.activeDeploymentId) {
+      // Check if the active deployment is still running
+      const activeDeployment = await this.prisma.deployment.findUnique({
+        where: { id: settings.activeDeploymentId },
+      });
+      if (activeDeployment && ['QUEUED', 'BUILDING', 'DEPLOYING'].includes(activeDeployment.status)) {
+        // Another deployment is in progress — block this one
+        this.logger.log(`[worker] Deployment ${deploymentId} blocked — ${activeDeployment.id} is still active`);
+        await this.prisma.deployment.update({
+          where: { id: deploymentId },
+          data: { status: 'BLOCKED' },
+        });
+        await this.emit(deploymentId, projectId, userId, 'deployments.deployment.blocked', {
+          blockedBy: settings.activeDeploymentId,
+        });
+        return;
+      }
+      // Active deployment is done — clear the lock and proceed
+    }
+
+    // Acquire lock
+    await this.prisma.projectSettings.upsert({
+      where: { projectId },
+      create: { projectId, activeDeploymentId: deploymentId },
+      update: { activeDeploymentId: deploymentId },
+    });
+
     const projectType: string = deployment.project.type || 'DOCKER';
 
     // ── QUEUED ─────────────────────────────────────────────────
@@ -142,6 +176,9 @@ export class DeploymentWorkerService implements OnModuleInit {
     } else {
       await this.markFailed(deploymentId, projectId, deployResult.error || 'Deploy failed');
     }
+
+    // Release the concurrency lock
+    await this.releaseLock(projectId, deploymentId);
   }
 
   private async markFailed(deploymentId: string, projectId: string, error: string) {
@@ -155,6 +192,7 @@ export class DeploymentWorkerService implements OnModuleInit {
       },
     });
     await this.emit(deploymentId, projectId, '', 'deployments.deployment.failed', { error });
+    await this.releaseLock(projectId, deploymentId);
   }
 
   // ─────────────────────────────────────────────────────────────
@@ -171,7 +209,7 @@ export class DeploymentWorkerService implements OnModuleInit {
       throw new Error(`Cannot stop deployment with status: ${deployment.status}`);
     }
 
-    const containerName = `fidscript-deploy-${deploymentId}`;
+    const containerName = `fidscript-${deployment.project.slug}-${deploymentId}`;
     await this.buildRunner.stop(containerName);
 
     await this.prisma.deployment.update({
@@ -192,7 +230,7 @@ export class DeploymentWorkerService implements OnModuleInit {
       throw new Error(`Cannot restart deployment with status: ${deployment.status}`);
     }
 
-    const containerName = `fidscript-deploy-${deploymentId}`;
+    const containerName = `fidscript-${deployment.project.slug}-${deploymentId}`;
     await this.buildRunner.restart(containerName);
 
     await this.prisma.deployment.update({
@@ -212,7 +250,7 @@ export class DeploymentWorkerService implements OnModuleInit {
     });
     if (!deployment) throw new Error('Deployment not found');
 
-    const containerName = `fidscript-deploy-${deploymentId}`;
+    const containerName = `fidscript-${deployment.project.slug}-${deploymentId}`;
     const imageTag = `fidscript/${deployment.project.slug}:${deployment.version}`;
 
     await this.buildRunner.teardown(containerName, imageTag);
@@ -268,7 +306,7 @@ export class DeploymentWorkerService implements OnModuleInit {
     });
 
     const imageTag = `fidscript/${target.project.slug}:${previous.version}`;
-    const containerName = `fidscript-deploy-${rollbackDeployment.id}`;
+    const containerName = `fidscript-${target.project.slug}-${rollbackDeployment.id}`;
     const domain = `${target.project.slug}.apps.deploy.fidscript.com`;
 
     const logs: string[] = [];
@@ -314,6 +352,14 @@ export class DeploymentWorkerService implements OnModuleInit {
   // ─────────────────────────────────────────────────────────────
   // Helpers
   // ─────────────────────────────────────────────────────────────
+
+  /** Release the concurrency lock for the project if this deployment holds it. */
+  private async releaseLock(projectId: string, deploymentId: string): Promise<void> {
+    await this.prisma.projectSettings.updateMany({
+      where: { projectId, activeDeploymentId: deploymentId },
+      data: { activeDeploymentId: null },
+    });
+  }
 
   private decryptEnvVars(envVars: { key: string; value: string }[]): { key: string; value: string }[] {
     return envVars.map(({ key, value }) => {

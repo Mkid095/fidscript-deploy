@@ -163,6 +163,17 @@ All deployed containers run with:
 
 > **Note:** `--read-only` is used for security. The `--tmpfs` mounts provide writable space for framework cache directories (Next.js `.next/cache`, Laravel `storage/framework`, Python `__pycache__`, etc.) without persisting them to a volume or making the root filesystem writable.
 
+**Writable mounts (configurable via `BuildConfig`):**
+
+```json
+[
+  { "path": "/uploads", "sizeMb": 256 },
+  { "path": "/cache", "sizeMb": 128 }
+]
+```
+
+Each entry generates a `--tmpfs <path>:rw,noexec,nosuid,size=<sizeMb>m` flag. Defaults to `/tmp` and `/storage` only.
+
 The Docker socket is held by the **API container** (via the `docker.sock` bind mount). User containers **never** receive the socket. This is the primary host-compromise mitigation.
 
 ---
@@ -170,14 +181,15 @@ The Docker socket is held by the **API container** (via the `docker.sock` bind m
 ## Container Naming Convention
 
 ```
-fidscript-deploy-<deploymentId>
+fidscript-<projectSlug>-<deploymentId>
 ```
 
-Example: `fidscript-deploy-dpl_abc123xyz`
+Example: `fidscript-myapp-dpl_abc123xyz`
 
 This convention is:
+- **Slug-qualified** — future multi-service (ADR-013) containers will include service name: `fidscript-myapp-api-dpl_abc123xyz`
 - **Unique per deployment** — no collisions when re-deploying
-- **Predictable** — Monitoring, Logs, and CLI can target a container by deployment ID
+- **Predictable** — Monitoring, Logs, and CLI can target a container by project + deployment ID
 - **Scoped** — all deployment containers share the `fidscript-` prefix for easy identification
 
 ---
@@ -192,10 +204,24 @@ PENDING → QUEUED → BUILDING → DEPLOYING → SUCCESS
                   (retry → PENDING)
 
 SUCCESS → STOPPED → SUCCESS (restart)
-SUCCESS → ROLLED_BACK (via rollback → new deployment)
+SUCCESS → ROLLED_BACK
+
+PENDING → BLOCKED (another deployment in progress — auto-unblocks)
 ```
 
-`QUEUED` and `STOPPED` were added to `DeploymentStatus` in Phase 06.
+`QUEUED`, `STOPPED`, and `BLOCKED` were added to `DeploymentStatus` in Phase 06.
+
+### Concurrency Lock
+
+Only **one active deployment per project** at a time. The `ProjectSettings.activeDeploymentId` field is the lock.
+
+When a new deployment is created while another is `QUEUED | BUILDING | DEPLOYING`:
+- The new deployment immediately transitions to `BLOCKED`
+- An event `deployments.deployment.blocked` is emitted with `blockedBy: <activeDeploymentId>`
+- When the active deployment completes (SUCCESS/FAILED), the lock is released
+- The next `PENDING` deployment (if any) is picked up by the worker normally
+
+This prevents a user clicking "Deploy" 5 times from spawning 5 concurrent builds.
 
 ---
 

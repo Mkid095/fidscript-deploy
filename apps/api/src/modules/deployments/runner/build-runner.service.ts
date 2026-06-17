@@ -139,7 +139,7 @@ export class BuildRunnerService {
   }): Promise<DeployResult> {
     const { imageTag, deploymentId, projectSlug, envVars, profile, onLog } = opts;
     const startTime = Date.now();
-    const containerName = `fidscript-deploy-${deploymentId}`;
+    const containerName = `fidscript-${projectSlug}-${deploymentId}`;
     const domain = `${projectSlug}.apps.deploy.fidscript.com`;
     const logs: string[] = [];
 
@@ -303,7 +303,7 @@ export class BuildRunnerService {
     onLog: (line: string) => void;
   }): Promise<DeployResult> {
     const { imageTag, deploymentId, projectSlug, projectType, envVars, profile, onLog } = opts;
-    const containerName = `fidscript-deploy-${deploymentId}`;
+    const containerName = `fidscript-${projectSlug}-${deploymentId}`;
     const domain = `${projectSlug}.apps.deploy.fidscript.com`;
     const startTime = Date.now();
     const logs: string[] = [];

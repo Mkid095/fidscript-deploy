@@ -735,6 +735,168 @@ A single bad deployment (e.g. infinite loop, memory leak, fork bomb) can consume
 
 ---
 
+## ADR-018: Service-Based Deployment Profiles
+
+**Date:** 2026-06-17
+
+**Status:** Accepted (Architectural Direction)
+
+**Context:**
+Today a `Project` has a single `type` (FRONTEND, BACKEND, WORKER, CRON, DOCKER, FUNCTION) and `DeploymentProfile` resolves from that type. But ADR-013 establishes that a Project can have multiple services (frontend, backend, worker, cron). Each service needs its own deployment profile. A project cannot be simultaneously FRONTEND and WORKER.
+
+**Decision:** `DeploymentProfile` resolves from `Service.type`, not `Project.type`. A `Service` model will be introduced (future phase) between `Project` and `Deployment`.
+
+```
+Project
+  id: string
+  slug: string
+
+Service (future)
+  id: string
+  projectId: string
+  name: string         # e.g. "frontend", "api", "worker"
+  type: ProjectType    # FRONTEND | BACKEND | WORKER | CRON | FUNCTION | DOCKER
+  config: Json         # service-specific config (health check, port, etc.)
+
+Deployment (future)
+  id: string
+  serviceId: string    # FK to Service (not projectId directly)
+  releaseId: string
+  status: DeploymentStatus
+```
+
+`DeploymentProfile` is determined by `Service.type` at deploy time.
+
+**Current implementation (Phase 06):** `Project.type` is used as a temporary stand-in. This ADR exists so no code is written that would make the `Service` migration impossible. Specifically:
+- `DeploymentWorkerService` must NOT hard-code `deployment.project.type` as the final word — it must be possible to look up `service.type` in the future
+- `BuildRunnerService.buildAndDeploy()` accepts `projectType` as a parameter — rename to `serviceType` when Service model is introduced (non-breaking)
+
+**This ADR does NOT require any code changes today.**
+
+---
+
+## ADR-019: Artifact Registry Strategy
+
+**Date:** 2026-06-17
+
+**Status:** Accepted (Architectural Direction)
+
+**Context:**
+Today Docker images are built and stored locally on the VPS. If the VPS dies, all image history is lost. Rebuilding from git may fail if npm packages have been removed, Docker base images have changed, or the git history has been rewritten. This breaks historical rollback.
+
+**Decision:** A registry is the canonical artifact store. The local VPS image cache is a performance optimization, not the source of truth.
+
+```
+Registry (canonical source of truth)
+  registry.fidscript.com/<projectSlug>:<imageTag>
+  All successful release images are pushed here.
+  Retention: all releases (indefinite).
+
+VPS Local Cache (ephemeral performance cache)
+  docker images ls (local)
+  Max 2 images per project (active + previous, per ADR-016)
+  Eviction: automatic after new deployment succeeds
+```
+
+**Push flow:**
+```
+docker build
+  → docker tag fidscript/<slug>:<version>
+  → docker push registry.fidscript.com/<slug>:<version>
+  → docker run from local cache (no push required for deploy)
+```
+
+**Pull flow (VPS restart or image evicted):**
+```
+docker pull registry.fidscript.com/<slug>:<version>
+  → docker tag local
+  → docker run
+```
+
+**Registry implementation options (not yet chosen):**
+1. Self-hosted Docker Registry (on the VPS, backed by MinIO) — simple, no external dependency
+2. Cloudflare R2 + Docker Registry plugin — no egress costs
+3. GitHub Packages / GHCR — free for public repos, free for private with CI
+
+This ADR does NOT require any code changes today. `BuildRunnerService` should be designed so that pushing to a registry is a configuration option, not a hard requirement.
+
+---
+
+## ADR-020: Deployment Concurrency & Project Locks
+
+**Date:** 2026-06-17
+
+**Status:** Accepted
+
+**Context:**
+Without concurrency control, a user clicking "Deploy" 5 times creates 5 concurrent builds — consuming CPU, RAM, disk, and potentially corrupting state (deploy B finishing before deploy A starts, but both writing to the same volume).
+
+**Decision:** One active deployment per project at a time. Implemented via `ProjectSettings.activeDeploymentId` as a pessimistic lock.
+
+```
+When a new deployment is created:
+  IF ProjectSettings.activeDeploymentId IS NULL
+    → acquire lock (set to new deploymentId)
+    → proceed to QUEUED → BUILDING → DEPLOYING → SUCCESS/FAILED
+    → release lock (set to NULL)
+  ELSE
+    → check if active deployment is still running (QUEUED|BUILDING|DEPLOYING)
+    → IF yes: new deployment goes to BLOCKED immediately, event emitted
+    → IF no:  acquire lock, proceed
+
+When a BLOCKED deployment sees the lock released:
+  → it automatically transitions from BLOCKED → PENDING
+  → next worker poll picks it up normally
+```
+
+**Schema (Phase 06, implemented now):**
+- `ProjectSettings.activeDeploymentId` — the lock (UNIQUE, FK to Deployment)
+- `DeploymentStatus.BLOCKED` — deployment is queued but waiting on the lock
+
+**Events (Phase 06, implemented now):**
+- `deployments.deployment.blocked` — emitted when a deployment is blocked, includes `blockedBy: <deploymentId>`
+
+**Rollback and concurrency:** Rollback creates a new deployment that competes for the lock normally. Only one rollback runs at a time.
+
+---
+
+## ADR-021: Observability Foundation — OpenTelemetry Everywhere
+
+**Date:** 2026-06-17
+
+**Status:** Accepted (Architectural Direction)
+
+**Context:**
+Phase 14 (Monitoring) and Phase 15 (Logging) will need structured traces, metrics, and logs from every service. Retrofitting this later (after 20+ services are running) is expensive and error-prone. We need a platform-wide decision now.
+
+**Decision:** OpenTelemetry (OTel) is the observability substrate for all FIDScript platform services.
+
+```
+OpenTelemetry SDK (instrumented in every service)
+         ↓
+NATS JetStream (exported events, traces via OTLP)
+         ↓
+Telemetry pipelines:
+  Traces  → Jaeger / Tempo (Phase 14)
+  Metrics → Prometheus scrape endpoint / OpenTelemetry Collector (Phase 14)
+  Logs    → Loki (Phase 15)
+```
+
+**Implementation requirements (Phase 06 established):**
+- All `DeploymentWorkerService` build/deploy operations emit structured events (already done — `deployments.deployment.*` events)
+- All events include: `deploymentId`, `projectId`, `actorId`, `timestamp`, `duration`
+- Build logs are stored as plain text strings (attachable to spans as log records)
+- Container metrics (CPU, memory, restart count) scraped by Prometheus via cAdvisor or the Docker stats API
+
+**NestJS integration:**
+- `@opentelemetry/instrumentation-nestjs` for HTTP trace propagation
+- `@opentelemetry/instrumentation-http` for incoming request spans
+- Custom `@Injectable` wrappers for Prisma (query spans), NATS (publish spans)
+
+**This ADR does NOT require code changes in Phase 06.** It prevents the platform from being built in a way that makes OTel instrumentation impossible (e.g. non-instrumented HTTP libraries, binary event formats without metadata).
+
+---
+
 ## Future ADRs Needed
 
 These decisions are pending and will be documented as ADRs:

@@ -218,13 +218,16 @@ model ProjectMember {
 }
 
 model ProjectSettings {
-  id        String   @id @default(uuid())
-  projectId String   @unique @map("project_id")
-  settings  Json     @default("{}")
-  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz
-  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz
+  id                   String    @id @default(uuid())
+  projectId            String    @unique @map("project_id")
+  settings             Json      @default("{}")
+  activeDeploymentId   String?   @unique @map("active_deployment_id")  // prevents concurrent deployments
+  writableMounts       Json      @default("[]") @map("writable_mounts")
+  createdAt            DateTime  @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt            DateTime  @updatedAt @map("updated_at") @db.Timestamptz
 
-  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  project            Project     @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  activeDeployment   Deployment? @relation("ActiveDeployment", fields: [activeDeploymentId], references: [id])
 
   @@map("projects.project_settings")
 }
@@ -286,6 +289,7 @@ model Deployment {
   project     Project      @relation(fields: [projectId], references: [id], onDelete: Cascade)
   rolledBackTo Deployment? @relation("Rollback", fields: [rolledBackToId], references: [id])
   rollbacks   Deployment[] @relation("Rollback")
+  activeFor   ProjectSettings? @relation("ActiveDeployment")
 
   @@map("projects.deployments")
 }
@@ -298,6 +302,7 @@ enum DeploymentStatus {
   SUCCESS
   FAILED
   STOPPED
+  BLOCKED
   ROLLED_BACK
 }
 
