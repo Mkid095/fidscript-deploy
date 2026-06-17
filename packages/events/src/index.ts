@@ -6,15 +6,21 @@
 // Add new types here — never emit strings outside this union (gate behind typecheck).
 
 export type EventType =
-  // Auth / Identity events
+  // Identity events (Phase 03)
+  | 'identity.user.registered'
+  | 'identity.user.updated'
+  | 'identity.user.login_failed'
+  | 'identity.user.logged_in'
+  | 'identity.user.logged_out'
+  | 'identity.session.created'
+  | 'identity.session.revoked'
+  | 'identity.api_key.created'
+  | 'identity.api_key.revoked'
+  | 'identity.token.refreshed'
+  // Legacy aliases (backwards-compat)
   | 'user.created'
-  | 'user.updated'
-  | 'user.deleted'
   | 'user.login'
-  | 'session.created'
-  | 'session.revoked'
-  | 'api_key.created'
-  | 'api_key.revoked'
+  // App-level auth events (project-scoped)
   | 'auth.user_created'
   | 'auth.login_succeeded'
   | 'auth.login_failed'

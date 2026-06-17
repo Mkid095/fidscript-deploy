@@ -13,7 +13,7 @@ import {
   HttpStatus,
 } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiBearerAuth, ApiResponse } from '@nestjs/swagger';
-import { AuthService, AuthResponse } from './auth.service';
+import { AuthService } from './auth.service';
 import { JwtAuthGuard } from './jwt-auth.guard';
 import {
   RegisterDto,
@@ -22,6 +22,7 @@ import {
   VerifyMagicLinkDto,
   CreateApiKeyDto,
   UpdateProfileDto,
+  RefreshTokenDto,
 } from './dto/index';
 import { Request } from 'express';
 
@@ -37,8 +38,9 @@ export class AuthController {
   async register(
     @Body() dto: RegisterDto,
     @Headers('x-forwarded-for') ip?: string,
+    @Headers('user-agent') userAgent?: string,
   ) {
-    return this.authService.register(dto, ip);
+    return this.authService.register(dto, ip, userAgent);
   }
 
   @Post('login')
@@ -52,6 +54,15 @@ export class AuthController {
     @Headers('user-agent') userAgent?: string,
   ) {
     return this.authService.login(dto, ip, userAgent);
+  }
+
+  @Post('refresh')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Refresh access token' })
+  @ApiResponse({ status: 200, type: Object })
+  @ApiResponse({ status: 401, description: 'Invalid or expired refresh token' })
+  async refresh(@Body() dto: RefreshTokenDto) {
+    return this.authService.refreshToken(dto.refreshToken);
   }
 
   @Post('logout')

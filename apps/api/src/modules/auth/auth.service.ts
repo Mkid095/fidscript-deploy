@@ -3,12 +3,12 @@ import {
   UnauthorizedException,
   ConflictException,
   NotFoundException,
+  InternalServerErrorException,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
 import { PrismaService } from '../../prisma/prisma.service';
 import { EventService } from '../events/event.service';
-import { AuditService } from '../audit/audit.service';
 import * as bcrypt from 'bcrypt';
 import * as crypto from 'crypto';
 import {
@@ -21,7 +21,8 @@ import {
 } from './dto/index';
 
 const BCRYPT_ROUNDS = 12;
-const SESSION_DAYS = 7;
+const ACCESS_TOKEN_TTL_SECONDS = 15 * 60; // 15 minutes
+const REFRESH_TOKEN_DAYS = 7;
 
 export interface AuthResponse {
   user: {
@@ -30,11 +31,22 @@ export interface AuthResponse {
     name: string | null;
     role: string;
   };
-  session: {
-    id: string;
-    expiresAt: Date;
-  };
-  token: string;
+  accessToken: string;
+  refreshToken: string;
+  expiresIn: number;
+}
+
+export interface JwtPayload {
+  sub: string;
+  email: string;
+  role: string;
+  type: 'access';
+}
+
+export interface RefreshTokenPayload {
+  sub: string;
+  type: 'refresh';
+  sessionId: string;
 }
 
 @Injectable()
@@ -44,10 +56,9 @@ export class AuthService {
     private jwtService: JwtService,
     private configService: ConfigService,
     private eventService: EventService,
-    private auditService: AuditService,
   ) {}
 
-  async register(dto: RegisterDto, ipAddress?: string): Promise<AuthResponse> {
+  async register(dto: RegisterDto, ipAddress?: string, userAgent?: string): Promise<AuthResponse> {
     const existing = await this.prisma.user.findUnique({
       where: { email: dto.email },
     });
@@ -66,13 +77,19 @@ export class AuthService {
       },
     });
 
-    const session = await this.createSession(user.id, ipAddress);
+    const session = await this.createSession(user.id, ipAddress, userAgent);
 
-    await this.eventService.emit('user.created', { userId: user.id, email: user.email });
-    await this.auditService.log({
-      userId: user.id,
-      action: 'user.registered',
+    await this.eventService.emit('identity.user.registered', {
+      id: crypto.randomUUID(),
+      type: 'identity.user.registered',
+      timestamp: new Date(),
+      actorId: user.id,
+      actorType: 'user',
+      resourceType: 'user',
+      resourceId: user.id,
+      metadata: { email: user.email, name: user.name },
       ipAddress,
+      userAgent,
     });
 
     return this.buildAuthResponse(user, session);
@@ -84,11 +101,34 @@ export class AuthService {
     });
 
     if (!user || !user.passwordHash) {
+      await this.eventService.emit('identity.user.login_failed', {
+        id: crypto.randomUUID(),
+        type: 'identity.user.login_failed',
+        timestamp: new Date(),
+        actorType: 'user',
+        resourceType: 'user',
+        resourceId: 'unknown',
+        metadata: { email: dto.email, reason: 'user_not_found' },
+        ipAddress,
+        userAgent,
+      });
       throw new UnauthorizedException('Invalid credentials');
     }
 
     const valid = await bcrypt.compare(dto.password, user.passwordHash);
     if (!valid) {
+      await this.eventService.emit('identity.user.login_failed', {
+        id: crypto.randomUUID(),
+        type: 'identity.user.login_failed',
+        timestamp: new Date(),
+        actorId: user.id,
+        actorType: 'user',
+        resourceType: 'user',
+        resourceId: user.id,
+        metadata: { email: user.email, reason: 'invalid_password' },
+        ipAddress,
+        userAgent,
+      });
       throw new UnauthorizedException('Invalid credentials');
     }
 
@@ -99,22 +139,45 @@ export class AuthService {
 
     const session = await this.createSession(user.id, ipAddress, userAgent);
 
-    await this.eventService.emit('user.login', { userId: user.id, email: user.email });
-    await this.auditService.log({
-      userId: user.id,
-      action: 'user.login',
+    await this.eventService.emit('identity.user.logged_in', {
+      id: crypto.randomUUID(),
+      type: 'identity.user.logged_in',
+      timestamp: new Date(),
+      actorId: user.id,
+      actorType: 'user',
+      resourceType: 'user',
+      resourceId: user.id,
+      metadata: { email: user.email },
       ipAddress,
+      userAgent,
     });
 
     return this.buildAuthResponse(user, session);
   }
 
   async logout(sessionId: string, userId: string): Promise<void> {
-    await this.prisma.session.delete({
-      where: { id: sessionId },
-    }).catch(() => {});
+    const session = await this.prisma.session.findFirst({
+      where: { id: sessionId, userId },
+    });
 
-    await this.eventService.emit('session.revoked', { sessionId, userId });
+    if (session) {
+      // Invalidate the refresh token family by marking session as revoked
+      await this.prisma.session.update({
+        where: { id: sessionId },
+        data: { expiresAt: new Date(0) },
+      }).catch(() => {});
+    }
+
+    await this.eventService.emit('identity.user.logged_out', {
+      id: crypto.randomUUID(),
+      type: 'identity.user.logged_out',
+      timestamp: new Date(),
+      actorId: userId,
+      actorType: 'user',
+      resourceType: 'session',
+      resourceId: sessionId,
+      metadata: {},
+    });
   }
 
   async magicLink(dto: MagicLinkDto): Promise<{ sent: boolean }> {
@@ -135,11 +198,6 @@ export class AuthService {
         tokenHash: await bcrypt.hash(token, BCRYPT_ROUNDS),
         expiresAt,
       },
-    });
-
-    await this.auditService.log({
-      userId: user.id,
-      action: 'magic_link.requested',
     });
 
     return { sent: true };
@@ -213,10 +271,14 @@ export class AuthService {
       },
     });
 
-    await this.eventService.emit('user.updated', { userId: user.id });
-    await this.auditService.log({
-      userId,
-      action: 'user.profile_updated',
+    await this.eventService.emit('identity.user.updated', {
+      id: crypto.randomUUID(),
+      type: 'identity.user.updated',
+      timestamp: new Date(),
+      actorId: userId,
+      actorType: 'user',
+      resourceType: 'user',
+      resourceId: user.id,
       metadata: dto,
     });
 
@@ -246,23 +308,43 @@ export class AuthService {
       throw new NotFoundException('Session not found');
     }
 
-    await this.prisma.session.delete({ where: { id: sessionId } });
+    await this.prisma.session.update({
+      where: { id: sessionId },
+      data: { expiresAt: new Date(0) },
+    });
 
-    await this.eventService.emit('session.revoked', { sessionId, userId });
-    await this.auditService.log({
-      userId,
-      action: 'session.revoked',
-      metadata: { revokedSessionId: sessionId },
+    await this.eventService.emit('identity.session.revoked', {
+      id: crypto.randomUUID(),
+      type: 'identity.session.revoked',
+      timestamp: new Date(),
+      actorId: userId,
+      actorType: 'user',
+      resourceType: 'session',
+      resourceId: sessionId,
+      metadata: { all: false },
     });
   }
 
   async revokeAllSessions(userId: string) {
-    await this.prisma.session.deleteMany({ where: { userId } });
+    const sessions = await this.prisma.session.findMany({
+      where: { userId },
+      select: { id: true },
+    });
 
-    await this.eventService.emit('session.revoked', { userId, all: true });
-    await this.auditService.log({
-      userId,
-      action: 'sessions.revoked_all',
+    await this.prisma.session.updateMany({
+      where: { userId },
+      data: { expiresAt: new Date(0) },
+    });
+
+    await this.eventService.emit('identity.session.revoked', {
+      id: crypto.randomUUID(),
+      type: 'identity.session.revoked',
+      timestamp: new Date(),
+      actorId: userId,
+      actorType: 'user',
+      resourceType: 'session',
+      resourceId: userId,
+      metadata: { all: true, sessionCount: sessions.length },
     });
   }
 
@@ -280,10 +362,14 @@ export class AuthService {
       },
     });
 
-    await this.eventService.emit('api_key.created', { keyId: apiKey.id, userId });
-    await this.auditService.log({
-      userId,
-      action: 'api_key.created',
+    await this.eventService.emit('identity.api_key.created', {
+      id: crypto.randomUUID(),
+      type: 'identity.api_key.created',
+      timestamp: new Date(),
+      actorId: userId,
+      actorType: 'user',
+      resourceType: 'api_key',
+      resourceId: apiKey.id,
       metadata: { name: dto.name },
     });
 
@@ -316,11 +402,15 @@ export class AuthService {
 
     await this.prisma.apiKey.delete({ where: { id: keyId } });
 
-    await this.eventService.emit('api_key.revoked', { keyId, userId });
-    await this.auditService.log({
-      userId,
-      action: 'api_key.revoked',
-      metadata: { revokedKeyId: keyId },
+    await this.eventService.emit('identity.api_key.revoked', {
+      id: crypto.randomUUID(),
+      type: 'identity.api_key.revoked',
+      timestamp: new Date(),
+      actorId: userId,
+      actorType: 'user',
+      resourceType: 'api_key',
+      resourceId: keyId,
+      metadata: { name: apiKey.name },
     });
   }
 
@@ -344,31 +434,101 @@ export class AuthService {
     return null;
   }
 
+  async refreshToken(refreshToken: string): Promise<AuthResponse> {
+    let payload: RefreshTokenPayload;
+    try {
+      payload = this.jwtService.verify<RefreshTokenPayload>(refreshToken);
+    } catch {
+      throw new UnauthorizedException('Invalid or expired refresh token');
+    }
+
+    if (payload.type !== 'refresh') {
+      throw new UnauthorizedException('Invalid token type');
+    }
+
+    // Find session — it must not be expired (we set expiresAt to epoch on revocation)
+    const session = await this.prisma.session.findFirst({
+      where: {
+        id: payload.sessionId,
+        userId: payload.sub,
+        expiresAt: { gt: new Date() },
+      },
+    });
+
+    if (!session) {
+      throw new UnauthorizedException('Session revoked or expired');
+    }
+
+    const user = await this.prisma.user.findUnique({
+      where: { id: payload.sub },
+      select: { id: true, email: true, name: true, role: true },
+    });
+
+    if (!user) {
+      throw new UnauthorizedException('User not found');
+    }
+
+    // Rotate: revoke old session, create new one
+    await this.prisma.session.update({
+      where: { id: session.id },
+      data: { expiresAt: new Date(0) },
+    });
+
+    const newSession = await this.createSession(user.id, session.ipAddress ?? undefined, session.userAgent ?? undefined);
+
+    await this.eventService.emit('identity.token.refreshed', {
+      id: crypto.randomUUID(),
+      type: 'identity.token.refreshed',
+      timestamp: new Date(),
+      actorId: user.id,
+      actorType: 'user',
+      resourceType: 'session',
+      resourceId: newSession.id,
+      metadata: { rotatedFrom: session.id },
+    });
+
+    return this.buildAuthResponse(user, newSession);
+  }
+
   private async createSession(
     userId: string,
     ipAddress?: string,
     userAgent?: string,
   ) {
-    const token = crypto.randomBytes(32).toString('hex');
-    const tokenHash = await bcrypt.hash(token, BCRYPT_ROUNDS);
-    const expiresAt = new Date(Date.now() + SESSION_DAYS * 24 * 60 * 60 * 1000);
+    const refreshToken = crypto.randomBytes(32).toString('hex');
+    const refreshTokenHash = await bcrypt.hash(refreshToken, BCRYPT_ROUNDS);
+    const expiresAt = new Date(Date.now() + REFRESH_TOKEN_DAYS * 24 * 60 * 60 * 1000);
 
     const session = await this.prisma.session.create({
       data: {
         userId,
-        tokenHash,
+        tokenHash: refreshTokenHash,
         expiresAt,
         ipAddress,
         userAgent,
       },
     });
 
-    await this.eventService.emit('session.created', { sessionId: session.id, userId });
+    await this.eventService.emit('identity.session.created', {
+      id: crypto.randomUUID(),
+      type: 'identity.session.created',
+      timestamp: new Date(),
+      actorId: userId,
+      actorType: 'user',
+      resourceType: 'session',
+      resourceId: session.id,
+      metadata: {},
+      ipAddress,
+      userAgent,
+    });
 
-    return { id: session.id, token, expiresAt };
+    return { id: session.id, refreshToken, expiresAt };
   }
 
-  private buildAuthResponse(user: any, session: { id: string; token: string; expiresAt: Date }) {
+  private buildAuthResponse(user: { id: string; email: string; name: string | null; role: string }, session: { id: string; refreshToken: string; expiresAt: Date }) {
+    const payload: JwtPayload = { sub: user.id, email: user.email, role: user.role, type: 'access' };
+    const accessToken = this.jwtService.sign(payload);
+
     return {
       user: {
         id: user.id,
@@ -376,11 +536,9 @@ export class AuthService {
         name: user.name,
         role: user.role,
       },
-      session: {
-        id: session.id,
-        expiresAt: session.expiresAt,
-      },
-      token: session.token,
+      accessToken,
+      refreshToken: session.refreshToken,
+      expiresIn: ACCESS_TOKEN_TTL_SECONDS,
     };
   }
 }
