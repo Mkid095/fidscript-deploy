@@ -10,8 +10,8 @@ Current state of FIDScript Deploy development.
 
 | | |
 |---|---|
-| **Current phase** | Phase 08 — Database Platform (next) |
-| **Last verified phase** | Phase 02 — Event Bus & Service Registry (typed events, audit consumer, NATS JetStream, service registry) |
+| **Current phase** | Phase 08 — Database Platform (in progress) |
+| **Last verified phase** | Phase 07 — Domains & TLS (Mode A/B DNS, 5-step verify, TLS_PENDING, BROKEN/ACTIVE, ssl metadata, DomainConnection, health checks) |
 | **Phase docs** | All 24 rewritten to v2 |
 | **Snapshot baseline** | Commit `f1dd6f2` (Phase 00-23 scaffold, pre-hardening) |
 | **Reset date** | 2026-06-16 |
@@ -69,7 +69,7 @@ Statuses: `Planned` · `In Progress` · `Verified`
 - [x] Begin **Phase 04 — Projects Engine**: encrypted env vars (AES-256-GCM/CryptoService), invitations flow (SHA-256 token hash, 7d expiry, accept/revoke), project API keys (fpk_ prefix, bcrypt-hashed), `projects.*` events (15 typed), `ProjectEnv`/`ProjectInvitation`/`ProjectApiKey` models.
 - [x] Begin **Phase 05 — Storage Platform**: real MinIO bucket lifecycle (makeBucket/removeBucket SDK calls), real etag from putObject response, external URLs via MINIO_EXTERNAL_ENDPOINT, per-project bucket namespacing (proj-<slug>-<name>), project isolation (checkProjectAccess), multi-provider (internal/cloudinary/telegram) with per-project credentials from ProjectEnv.
 - [x] Begin **Phase 06 — Deployment Engine**: real Docker build+run via BuildRunnerService, async DeploymentWorkerService driving PENDING→QUEUED→BUILDING→DEPLOYING→SUCCESS/FAILED state machine, encrypted env var injection at runtime, lifecycle ops (stop/restart/destroy/rollback), fidscript-app network, Traefik Docker labels routing, build logs persisted.
-- [x] Begin **Phase 07 — Domains & TLS**: real Cloudflare DNS API, DnsProvider interface, Traefik ACME DNS-01 + HTTP-01 resolvers, SERVER_IP wired, deploymentId on Domain.
+- [x] Verified **Phase 07 — Domains & TLS**: real Cloudflare DNS API, DnsProvider interface, Traefik ACME DNS-01 + HTTP-01 resolvers, SERVER_IP wired, deploymentId on Domain.
 - [ ] Begin **Phase 08 — Database Platform**: managed PostgreSQL, connection pooling, per-project databases.
 
 ## Definition of done (per phase)
