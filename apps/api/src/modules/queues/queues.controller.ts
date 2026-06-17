@@ -10,8 +10,9 @@ import {
   UseGuards,
 } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
-import { JwtAuthGuard } from '../auth/jwt-auth.guard';
-import { QueuesService } from './queues.service';
+import { JwtAuthGuard } from '@/modules/auth/jwt-auth.guard';
+import { QueueCrudService } from './services/queue-crud.service';
+import { QueueMessagesService } from './services/queue-messages.service';
 import {
   CreateQueueDto,
   UpdateQueueDto,
@@ -28,25 +29,28 @@ import {
 @UseGuards(JwtAuthGuard)
 @ApiBearerAuth()
 export class QueuesController {
-  constructor(private queuesService: QueuesService) {}
+  constructor(
+    private queueCrudService: QueueCrudService,
+    private queueMessagesService: QueueMessagesService,
+  ) {}
 
   @Post()
   @ApiOperation({ summary: 'Create queue' })
   async createQueue(@Param('projectId') projectId: string, @Body() dto: CreateQueueDto) {
-    return this.queuesService.createQueue(projectId, dto);
+    return this.queueCrudService.createQueue(projectId, dto);
   }
 
   @Get()
   @ApiOperation({ summary: 'List queues' })
   async listQueues(@Param('projectId') projectId: string) {
-    const queues = await this.queuesService.listQueues(projectId);
+    const queues = await this.queueCrudService.listQueues(projectId);
     return { queues };
   }
 
   @Get(':queueId')
   @ApiOperation({ summary: 'Get queue' })
   async getQueue(@Param('projectId') projectId: string, @Param('queueId') queueId: string) {
-    return this.queuesService.getQueue(projectId, queueId);
+    return this.queueCrudService.getQueue(projectId, queueId);
   }
 
   @Patch(':queueId')
@@ -56,19 +60,19 @@ export class QueuesController {
     @Param('queueId') queueId: string,
     @Body() dto: UpdateQueueDto,
   ) {
-    return this.queuesService.updateQueue(projectId, queueId, dto);
+    return this.queueCrudService.updateQueue(projectId, queueId, dto);
   }
 
   @Delete(':queueId')
   @ApiOperation({ summary: 'Delete queue' })
   async deleteQueue(@Param('projectId') projectId: string, @Param('queueId') queueId: string) {
-    return this.queuesService.deleteQueue(projectId, queueId);
+    return this.queueCrudService.deleteQueue(projectId, queueId);
   }
 
   @Get(':queueId/stats')
   @ApiOperation({ summary: 'Get queue stats' })
   async getQueueStats(@Param('projectId') projectId: string, @Param('queueId') queueId: string) {
-    return this.queuesService.getQueueStats(projectId, queueId);
+    return this.queueMessagesService.getQueueStats(projectId, queueId);
   }
 
   @Post(':queueId/messages')
@@ -78,7 +82,7 @@ export class QueuesController {
     @Param('queueId') queueId: string,
     @Body() dto: PublishMessageDto,
   ) {
-    return this.queuesService.publishMessage(projectId, queueId, dto);
+    return this.queueMessagesService.publishMessage(projectId, queueId, dto);
   }
 
   @Post(':queueId/messages/batch')
@@ -88,7 +92,7 @@ export class QueuesController {
     @Param('queueId') queueId: string,
     @Body() dto: PublishBatchDto,
   ) {
-    return this.queuesService.publishBatch(projectId, queueId, dto);
+    return this.queueMessagesService.publishBatch(projectId, queueId, dto);
   }
 
   @Post(':queueId/consume')
@@ -98,7 +102,7 @@ export class QueuesController {
     @Param('queueId') queueId: string,
     @Body() dto: ConsumeMessageDto,
   ) {
-    return this.queuesService.consumeMessages(projectId, queueId, dto);
+    return this.queueMessagesService.consumeMessages(projectId, queueId, dto);
   }
 
   @Post(':queueId/ack')
@@ -108,7 +112,7 @@ export class QueuesController {
     @Param('queueId') queueId: string,
     @Body() dto: AcknowledgeMessageDto,
   ) {
-    return this.queuesService.acknowledgeMessages(projectId, queueId, dto);
+    return this.queueMessagesService.acknowledgeMessages(projectId, queueId, dto);
   }
 
   @Post(':queueId/retry')
@@ -118,7 +122,7 @@ export class QueuesController {
     @Param('queueId') queueId: string,
     @Body() dto: RetryMessageDto,
   ) {
-    return this.queuesService.retryMessages(projectId, queueId, dto);
+    return this.queueMessagesService.retryMessages(projectId, queueId, dto);
   }
 
   @Post(':queueId/dead-letter')
@@ -128,7 +132,7 @@ export class QueuesController {
     @Param('queueId') queueId: string,
     @Body() dto: MoveToDeadLetterDto,
   ) {
-    return this.queuesService.moveToDeadLetter(projectId, queueId, dto);
+    return this.queueMessagesService.moveToDeadLetter(projectId, queueId, dto);
   }
 
   @Get(':queueId/messages')
@@ -138,6 +142,12 @@ export class QueuesController {
     @Param('queueId') queueId: string,
     @Query() query: { status?: string; limit?: number; cursor?: string },
   ) {
-    return this.queuesService.getQueueMessages(projectId, queueId, query.status, query.limit, query.cursor);
+    return this.queueMessagesService.getQueueMessages(
+      projectId,
+      queueId,
+      query.status,
+      query.limit,
+      query.cursor,
+    );
   }
 }

@@ -12,8 +12,8 @@ import {
   HttpStatus,
 } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
-import { JwtAuthGuard } from '../auth/jwt-auth.guard';
-import { StorageService } from './storage.service';
+import { JwtAuthGuard } from '@/modules/auth/jwt-auth.guard';
+import { StorageService } from '@/modules/storage/services/storage.service';
 import { Request } from 'express';
 
 @ApiTags('storage')
