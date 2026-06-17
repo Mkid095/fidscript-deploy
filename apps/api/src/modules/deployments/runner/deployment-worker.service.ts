@@ -1,9 +1,9 @@
-import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
-import { ConfigService } from '@nestjs/config';
+import { Injectable, Logger, OnModuleInit, Inject } from '@nestjs/common';
 import { EventService } from '../../events/event.service';
 import { PrismaService } from '../../../prisma/prisma.service';
-import { BuildRunnerService, RuntimeEnv } from './build-runner.service';
+import { BuildRunnerService } from './build-runner.service';
 import { CryptoService } from '../../crypto/crypto.service';
+import { BuildProvider } from '../providers/build-provider.interface';
 import type { PlatformEvent } from '@fidscript/events';
 
 @Injectable()
@@ -15,7 +15,7 @@ export class DeploymentWorkerService implements OnModuleInit {
     private prisma: PrismaService,
     private buildRunner: BuildRunnerService,
     private cryptoService: CryptoService,
-    private configService: ConfigService,
+    @Inject('BUILD_PROVIDER') private buildProvider: BuildProvider,
   ) {}
 
   onModuleInit() {
@@ -32,7 +32,7 @@ export class DeploymentWorkerService implements OnModuleInit {
   private async handleDeploymentCreated(event: PlatformEvent) {
     const { deploymentId, projectId, userId } = (event.metadata as any) || {};
     if (!deploymentId || !projectId) {
-      this.logger.warn('[worker] deployments.deployment.created event missing deploymentId/projectId in metadata');
+      this.logger.warn('[worker] deployments.deployment.created missing deploymentId/projectId');
       return;
     }
     this.logger.log(`[worker] Processing deployment ${deploymentId}`);
@@ -55,23 +55,22 @@ export class DeploymentWorkerService implements OnModuleInit {
     projectId: string,
     userId: string,
   ) {
-    // Load deployment + project + buildConfig
     const deployment = await this.prisma.deployment.findUnique({
       where: { id: deploymentId },
       include: { project: true },
     });
+
     if (!deployment) {
       this.logger.error(`[worker] Deployment ${deploymentId} not found`);
       return;
     }
-    const buildConfig = await this.prisma.buildConfig.findUnique({
-      where: { projectId: deployment.projectId },
-    });
 
     if (deployment.status !== 'PENDING') {
       this.logger.warn(`[worker] Deployment ${deploymentId} is ${deployment.status}, skipping`);
       return;
     }
+
+    const projectType: string = deployment.project.type || 'DOCKER';
 
     // ── QUEUED ─────────────────────────────────────────────────
     await this.prisma.deployment.update({
@@ -87,42 +86,30 @@ export class DeploymentWorkerService implements OnModuleInit {
     });
     await this.emit(deploymentId, projectId, userId, 'deployments.deployment.building', {});
 
-    // ── Decrypt env vars for runtime injection ────────────────
+    // ── Decrypt env vars ────────────────────────────────────────
     const projectEnv = await this.prisma.projectEnv.findMany({ where: { projectId } });
     const runtimeEnv = this.decryptEnvVars(projectEnv);
-
-    // ── Collect build config ───────────────────────────────────
-    const cfg = buildConfig;
-    const strategy = cfg?.strategy || 'dockerfile';
-    const buildCommand = cfg?.buildCommand || undefined;
-    const outputDirectory = cfg?.outputDirectory || undefined;
-    const healthCheckPath = cfg?.healthCheckPath || '/';
-    const healthCheckPort = cfg?.healthCheckPort || 3000;
 
     // ── Source resolution ──────────────────────────────────────
     const source = this.parseSource(deployment);
 
     // ── Build + Deploy ─────────────────────────────────────────
-    const imageTag = `fidscript/${deployment.project.slug}:${deployment.version}`;
-    const containerName = `fidscript-deploy-${deploymentId}`;
-
     const logs: string[] = [];
     const onLog = (line: string) => logs.push(line);
 
-    const { buildResult, deployResult } = await this.buildRunner.buildAndDeploy({
-      deploymentId,
-      projectId,
-      projectSlug: deployment.project.slug,
-      version: deployment.version,
-      strategy,
-      buildCommand,
-      outputDirectory,
-      healthCheckPath,
-      healthCheckPort,
-      source,
-      envVars: runtimeEnv,
-      onLog,
-    });
+    const { buildResult, deployResult } = await this.buildRunner.buildAndDeploy(
+      this.buildProvider,
+      {
+        deploymentId,
+        projectId,
+        projectSlug: deployment.project.slug,
+        projectType,
+        version: deployment.version,
+        source,
+        envVars: runtimeEnv,
+        onLog,
+      },
+    );
 
     // ── Persist build logs ─────────────────────────────────────
     await this.prisma.deployment.update({
@@ -170,7 +157,7 @@ export class DeploymentWorkerService implements OnModuleInit {
   }
 
   // ─────────────────────────────────────────────────────────────
-  // Lifecycle ops (called by DeploymentsService)
+  // Lifecycle ops
   // ─────────────────────────────────────────────────────────────
 
   async stopDeployment(deploymentId: string, userId: string): Promise<void> {
@@ -184,8 +171,6 @@ export class DeploymentWorkerService implements OnModuleInit {
     }
 
     const containerName = `fidscript-deploy-${deploymentId}`;
-    const imageTag = `fidscript/${deployment.project.slug}:${deployment.version}`;
-
     await this.buildRunner.stop(containerName);
 
     await this.prisma.deployment.update({
@@ -239,12 +224,12 @@ export class DeploymentWorkerService implements OnModuleInit {
   // Helpers
   // ─────────────────────────────────────────────────────────────
 
-  private decryptEnvVars(envVars: { key: string; value: string }[]): RuntimeEnv[] {
+  private decryptEnvVars(envVars: { key: string; value: string }[]): { key: string; value: string }[] {
     return envVars.map(({ key, value }) => {
       try {
         return { key, value: this.cryptoService.decrypt(value) };
       } catch {
-        return { key, value }; // fallback: treat as plaintext (dev only)
+        return { key, value };
       }
     });
   }
