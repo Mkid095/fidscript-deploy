@@ -78,4 +78,4 @@ A phase moves to **Verified** only when, on the VPS: it builds, it runs, its pro
 
 ---
 
-*Last updated: 2026-06-19*
+*Last updated: 2026-06-17*

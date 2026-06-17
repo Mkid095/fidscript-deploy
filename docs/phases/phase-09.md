@@ -1,6 +1,6 @@
 # Phase 09: Email Platform (Stalwart)
 
-> **Status:** Planned  |  **Track:** Data/Compute  |  **Depends on:** Phase 07, Phase 05
+> **Status:** In Progress  |  **Track:** Data/Compute  |  **Depends on:** Phase 07, Phase 05
 
 ## Objective
 
@@ -8,12 +8,14 @@ A real internal mail server: **send and receive mail** through a self-hosted Sta
 
 ## Current State
 
-**STUB.** See `docs/AUDIT.md` §C (Email). Specific defects:
+**IN PROGRESS.** As of 2026-06-17:
 
-- The API **never talks to Stalwart**. "Send" writes a row.
-- `verifyDomain()` returns `{dkim:true, spf:true, dmarc:true}` hardcoded.
-- Mailboxes exist only in Postgres — not in Stalwart.
-- Stalwart has **no published ports, no mounted certs, no DKIM keys, no MX/DNS step** in the stack. It starts (Phase 01) but does nothing functional.
+- **Stalwart ports exposed**: SMTP 25/465/587, IMAP 993, JMAP 8443 via docker-compose; `stalwart_admin_token` secret generated at setup time
+- **Real verifyDomain**: `EmailService.verifyDomain` now calls `MailDnsService.verifyEmailDns` which queries actual Cloudflare DNS records (DKIM, SPF, DMARC, MX) — no more hardcoded booleans
+- **DKIM key generation**: `MailDnsService.generateDkimKey` generates Ed25519 key pair; private key stored on Stalwart volume (`/data/dkim/<selector>/<domain>.private`); public key published as TXT DNS record
+- **MX/SPF/DMARC DNS via DnsProvider**: `MailDnsService.setupEmailDns` creates all email DNS records through the Phase 07 `DnsProvider` interface (Cloudflare API), never direct calls
+- **Priority field added**: `DnsProvider.createRecord` now accepts `priority` for MX records
+- **Stalwart config updated**: `main.toml` rewritten with inbound/outbound/submission/IMAP/JMAP sections, ACME TLS, DKIM signing, SQLite storage
 
 ## Dependencies
 
@@ -87,10 +89,15 @@ docker compose exec postgres psql ... -c "select * from email.messages order by 
 
 ## Files you'll touch (precision map)
 
-- Stub lives at: `apps/api/src/modules/email/email.service.ts` ("send" writes a row; `verifyDomain` returns hardcoded `{dkim:true, spf:true, dmarc:true}`) and `apps/api/src/modules/email/providers/` (e.g. `smtp.provider.ts` using `nodemailer`).
-- Prisma: `Mailbox`, `EmailAlias`, `EmailLog`, `DomainVerification`, enum `EmailStatus`.
-- Infra: the Stalwart container in `installer/docker/docker-compose.yml` (expose 25/465/587/993, mount TLS certs, generate DKIM keys); MX/SPF/DKIM/DMARC via the Phase 07 DNS provider.
-- Reuse: identity magic links (Phase 03), domain-live notices (Phase 07), alert dispatch (Phase 14).
+- `apps/api/src/modules/email/mail-dns.service.ts` — new; DKIM Ed25519 key gen, MX/SPF/DMARC/DKIM record creation + verification via DnsProvider
+- `apps/api/src/modules/email/email.service.ts` — verifyDomain delegates to MailDnsService (was: hardcoded booleans)
+- `apps/api/src/modules/email/email.module.ts` — imports DomainsModule, provides MailDnsService
+- `apps/api/src/modules/domains/providers/dns-provider.interface.ts` — add `priority` to createRecord
+- `apps/api/src/modules/domains/providers/cloudflare-dns.provider.ts` — pass priority in MX payload
+- `apps/api/src/modules/domains/domains.module.ts` — export DNS_PROVIDER token
+- `installer/docker/docker-compose.yml` — expose Stalwart ports 25/465/587/993/8443, add stalwart_admin_token secret
+- `installer/config/stalwart/main.toml` — rewritten: inbound/outbound/submission/IMAP/JMAP, ACME TLS, DKIM, SQLite
+- `installer/scripts/setup-wizard.sh` — generate stalwart_admin_token.txt
 
 ## Next Phase
 
