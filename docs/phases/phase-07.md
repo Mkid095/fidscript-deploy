@@ -10,13 +10,18 @@ Custom domains with real DNS verification and automatic TLS. Attach a custom dom
 
 **IMPLEMENTED.** All deliverables complete as of 2026-06-19.
 
-- `DnsProvider` interface + `CloudflareDnsProvider` — real Cloudflare API v4 calls
-- `checkDns()` (now `verifyPlatformSubdomain`) queries Cloudflare API; not hardcoded
-- `CLOUDFLARE_API_TOKEN_FILE` wired into both API and Traefik containers
-- `SERVER_IP` env var set via setup-wizard, used for A record values
-- Two Traefik ACME resolvers: `letsencrypt-dns` (DNS-01) and `letsencrypt-http` (HTTP-01)
-- `Domain.deploymentId` FK wired — domains route to specific deployments
-- `DomainVerification` via TXT record for custom domains
+- **Mode A (Manual DNS) as default**: `dnsMode: 'manual'` — platform returns DNS instructions user configures manually, no external API calls
+- **Mode B (Cloudflare Auto)**: `dnsMode: 'cloudflare_auto'` — creates records via Cloudflare API
+- **Three-step verification**: DNS propagation + DNS resolution + HTTP routing (`GET /.well-known/fidscript`)
+- **ACTIVE/BROKEN lifecycle**: BROKEN when previously-active domain fails a health check; recovers to ACTIVE
+- **sslStatus field**: PENDING | ISSUING | ACTIVE | FAILED | EXPIRED
+- **Email safety**: MX record detection before Mode B auto-DNS; MX/SPF/DKIM/DMARC never overwritten
+- **Apex domain support**: A record instruction/creation for root domains (no CNAME possible)
+- **isPrimary flag**: first domain is primary; multiple domains per deployment supported
+- **routingVerifiedAt**: timestamp when HTTP routing was confirmed working
+- **Cloudflare account connection**: `POST /domains/connect-cloudflare` stores encrypted API token
+- **DnsProvider interface**: Cloudflare only today, Route53/etc. drop in without service changes
+- **ADR-022** (TLS/ACME approach) reflects Mode A/B, three-check verification, email safety
 
 ## Dependencies
 

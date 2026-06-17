@@ -4,47 +4,77 @@
 
 ## Overview
 
-Domain registration, DNS validation via Cloudflare API, and automatic TLS certificate provisioning via Traefik ACME (DNS-01 challenge). Two resolvers handle two distinct DNS ownership scenarios:
+Domain registration, DNS validation, and automatic TLS via Let's Encrypt.
 
-| Resolver | Challenge | Use case |
-|----------|-----------|----------|
-| `letsencrypt-dns` | DNS-01 via Cloudflare | Platform subdomains + any domain on our Cloudflare zone |
-| `letsencrypt-http` | HTTP-01 | Custom domains where user adds CNAME to our IP |
+### Two DNS Configuration Modes
 
----
+| Mode | Trigger | How it works |
+|------|---------|-------------|
+| **Mode A — Manual DNS (default)** | `dnsMode: 'manual'` | Platform shows DNS records user must configure manually. No Cloudflare API calls. |
+| **Mode B — Cloudflare Auto** | `dnsMode: 'cloudflare_auto'` | Platform creates DNS records via Cloudflare API automatically. |
 
-## Architecture
+Mode A is always the default. Mode B is opt-in and requires connecting a Cloudflare account first.
 
-### DNS Provider Interface
+### Three Verification Checks
 
-`DnsProvider` interface (`apps/api/src/modules/domains/providers/dns-provider.interface.ts`) — callers depend on the interface, not Cloudflare:
+Every domain goes through three verification checks before reaching `ACTIVE`:
 
-```typescript
-interface DnsProvider {
-  name: string;
-  createRecord(opts: { zoneId, type, name, content, ttl?, proxied? }): Promise<DnsRecord>;
-  deleteRecord(opts: { zoneId, recordId }): Promise<void>;
-  listRecords(opts: { zoneId, name, type? }): Promise<DnsRecord[]>;
-  verifyRecord(opts: { zoneId, name, type, expectedContent, allowProxy? }): Promise<boolean>;
-  getZoneId(domain: string): Promise<string | null>;
-  createPlatformSubdomain(subdomain: string): Promise<DnsRecord>;  // platform convenience
-  deletePlatformSubdomain(subdomain: string): Promise<void>;       // platform convenience
-}
+1. **DNS Propagation** — the required DNS records exist in Cloudflare (Mode B) or public DNS (Mode A)
+2. **DNS Resolution** — the domain actually resolves (confirmed via Cloudflare DoH or `dig`)
+3. **HTTP Routing** — `GET http://<domain>/.well-known/fidscript` reaches the platform
+
+Only when all three pass does `dnsStatus` become `ACTIVE`.
+
+### Domain Lifecycle
+
+```
+PENDING → VALIDATING → ACTIVE
+                     ↘ FAILED (verification failed)
+                     ↘ BROKEN (was ACTIVE but routing dropped)
 ```
 
-Implemented by `CloudflareDnsProvider` — token read from `CLOUDFLARE_API_TOKEN_FILE`.
+| Status | Meaning |
+|--------|---------|
+| `PENDING` | Added, verification not yet attempted |
+| `VALIDATING` | Verification in progress (propagation + resolution + routing) |
+| `ACTIVE` | All checks passed, serving traffic |
+| `BROKEN` | Was ACTIVE but HTTP routing check failed (e.g. user deleted CNAME) |
+| `FAILED` | Verification failed permanently |
 
-### Domain Types
+### SSL Status
 
-**Platform subdomains** (e.g. `demo.apps.deploy.fidscript.com`):
-- Created as A record via Cloudflare API: `<slug>.apps.deploy.fidscript.com` → `SERVER_IP`
-- Verified by polling Cloudflare API until record is live
-- TLS: Traefik `letsencrypt-dns` resolver (DNS-01)
+SSL is tracked independently of DNS:
 
-**Custom domains** (e.g. `app.example.com`):
-- TXT record issued for ownership verification: `_fidscript-verification.app.example.com` → verification token
-- User then adds CNAME to `<slug>.apps.deploy.fidscript.com`
-- TLS: Traefik `letsencrypt-http` resolver (HTTP-01 fallback) or `letsencrypt-dns` if on Cloudflare
+| Status | Meaning |
+|--------|---------|
+| `PENDING` | Not yet issued |
+| `ISSUING` | ACME certificate in flight |
+| `ACTIVE` | Certificate issued and serving |
+| `FAILED` | Certificate issuance or renewal failed |
+| `EXPIRED` | Certificate was valid but has expired |
+
+### Email Safety
+
+Before auto-creating DNS records (Mode B), the platform checks for MX records. If found:
+
+- `emailWarning: true` is set on the domain
+- Only CNAME and TXT records are created
+- MX/SPF/DKIM/DMARC records are **never touched or overwritten**
+- User is warned in the API response and dashboard
+
+Common email providers detected: Google Workspace, Microsoft 365, Zoho, Amazon SES, Mailgun.
+
+### Apex Domain Support
+
+Root domains (e.g. `example.com`) cannot use CNAME records. For apex domains:
+- **Mode A**: Platform instructs user to create an **A record** pointing to `SERVER_IP`
+- **Mode B**: Platform creates an **A record** (not CNAME) automatically
+
+### Multiple Domains Per Deployment
+
+A deployment can have multiple domains simultaneously:
+- One domain is marked `isPrimary: true` (first added, or explicitly set)
+- Used for redirects (e.g. redirect `www.example.com` → `example.com`)
 
 ---
 
@@ -52,33 +82,25 @@ Implemented by `CloudflareDnsProvider` — token read from `CLOUDFLARE_API_TOKEN
 
 ### projects.domains
 
-```sql
-CREATE TABLE projects.domains (
-  id            UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  project_id    UUID REFERENCES projects.projects(id) ON DELETE CASCADE,
-  deployment_id UUID REFERENCES projects.deployments(id) ON DELETE SET NULL,  -- which deployment routes here
-  domain        VARCHAR(255) NOT NULL,
-  is_custom     BOOLEAN DEFAULT false,
-  ssl_enabled   BOOLEAN DEFAULT true,
-  ssl_cert_arn  VARCHAR(255),  -- reserved for future cert-manager integration
-  dns_status    VARCHAR(50) DEFAULT 'PENDING',  -- PENDING | VALIDATING | VALID | FAILED
-  dns_verified_at TIMESTAMPTZ,
-  created_at    TIMESTAMPTZ DEFAULT NOW()
-);
--- Unique per project
-CREATE UNIQUE INDEX ON projects.domains (project_id, domain);
--- Index for reverse lookup by deployment
-CREATE INDEX ON projects.domains (deployment_id) WHERE deployment_id IS NOT NULL;
-```
+| Column | Type | Notes |
+|--------|------|-------|
+| `id` | UUID | Primary key |
+| `project_id` | UUID FK | Which project owns this domain |
+| `deployment_id` | UUID FK (nullable) | Which deployment this domain routes to |
+| `domain` | VARCHAR(255) | Full domain, e.g. `app.example.com` |
+| `is_custom` | BOOLEAN | `true` for user-owned domains, `false` for platform subdomains |
+| `is_primary` | BOOLEAN | `true` for the primary domain on a deployment |
+| `apex_domain` | BOOLEAN | `true` for root domains (no subdomain part) |
+| `dns_mode` | VARCHAR(50) | `'manual'` (default) or `'cloudflare_auto'` |
+| `ssl_enabled` | BOOLEAN | Kill-switch for TLS |
+| `ssl_status` | ENUM | `PENDING \| ISSUING \| ACTIVE \| FAILED \| EXPIRED` |
+| `ssl_method` | VARCHAR(50) | `'letsencrypt'` (default), `'custom'`, `'disabled'` |
+| `dns_status` | ENUM | `PENDING \| VALIDATING \| ACTIVE \| BROKEN \| FAILED` |
+| `dns_verified_at` | TIMESTAMPTZ | When DNS check passed |
+| `routing_verified_at` | TIMESTAMPTZ | When HTTP routing check passed |
+| `email_warning` | BOOLEAN | `true` if MX records were detected |
 
-### DomainStatus values
-
-| Value | Meaning |
-|-------|---------|
-| `PENDING` | Record created, DNS not yet set up |
-| `VALIDATING` | DNS record created, waiting for propagation |
-| `VALID` | DNS verified, cert issuance in progress |
-| `FAILED` | Verification failed |
+**Indexes:** `(project_id, domain)` unique; `(deployment_id)` for reverse lookup; `(dns_status)`; `(ssl_status)`
 
 ---
 
@@ -86,12 +108,48 @@ CREATE INDEX ON projects.domains (deployment_id) WHERE deployment_id IS NOT NULL
 
 | Method | Path | Description |
 |--------|------|-------------|
-| `GET` | `/api/v1/projects/:projectId/domains` | List project domains |
-| `POST` | `/api/v1/projects/:projectId/domains` | Add domain to a deployment |
-| `DELETE` | `/api/v1/projects/:projectId/domains/:id` | Remove domain + clean up DNS |
-| `POST` | `/api/v1/projects/:projectId/domains/:id/verify` | Re-verify DNS |
+| `GET` | `/api/v1/projects/:projectId/domains` | List all domains for a project |
+| `POST` | `/api/v1/projects/:projectId/domains` | Add domain (`dnsMode`, `deploymentId`, `sslEnabled`) |
+| `GET` | `/api/v1/projects/:projectId/domains/:id/instructions` | Get DNS instructions (Mode A) |
+| `POST` | `/api/v1/projects/:projectId/domains/:id/verify` | Full verification (DNS + resolution + routing) |
+| `POST` | `/api/v1/projects/:projectId/domains/connect-cloudflare` | Connect Cloudflare account (Mode B) |
+| `DELETE` | `/api/v1/projects/:projectId/domains/:id` | Delete domain + clean up DNS |
 
-`POST /domains` body: `{ domain: string, deploymentId: string, sslEnabled?: boolean }`
+`POST /domains` body:
+```json
+{
+  "domain": "app.example.com",
+  "deploymentId": "uuid",
+  "sslEnabled": true,
+  "dnsMode": "manual",
+  "isPrimary": false
+}
+```
+
+`POST /connect-cloudflare` body: `{ "apiToken": "cfut_..." }`
+
+---
+
+## Verification Flow
+
+```
+add(domain, deploymentId)
+  → isApex = (domain has no dot-split parts > 2)
+  → emailWarning = checkMxRecords(domain).hasMx   // for Mode B and info
+  → if Mode A: return { instructions } (CNAME/TXT/A records user must create)
+  → if Mode B:
+       create TXT _fidscript-verification.<domain> via Cloudflare API
+       create CNAME (or A for apex) via Cloudflare API
+       dnsStatus = VALIDATING
+
+verify(domainId)
+  → dnsStatus = VALIDATING
+  → checkDnsPropagation()    → dig / Cloudflare API
+  → checkDnsResolution()     → Cloudflare DoH + dig
+  → checkHttpRouting()        → GET http://<domain>/.well-known/fidscript
+  → all pass → dnsStatus = ACTIVE, sslStatus = ISSUING
+  → routing fails → dnsStatus = FAILED
+```
 
 ---
 
@@ -99,72 +157,12 @@ CREATE INDEX ON projects.domains (deployment_id) WHERE deployment_id IS NOT NULL
 
 | Event | When |
 |-------|------|
-| `domain.added` | Domain record created in DB |
-| `domain.verified` | DNS check passed, dnsStatus → VALID |
-| `domain.failed` | DNS check failed, dnsStatus → FAILED |
+| `domain.added` | Domain record created |
+| `domain.verified` | All three checks passed, dnsStatus = ACTIVE |
+| `domain.failed` | DNS or routing check failed |
+| `domain.broken` | Previously ACTIVE domain failed a health check |
+| `domain.recovered` | BROKEN domain passed a subsequent health check |
 | `domain.deleted` | Domain removed |
-
----
-
-## Traefik Configuration
-
-Two certificate resolvers in `installer/traefik/traefik.yml`:
-
-```yaml
-certificatesResolvers:
-  letsencrypt-dns:
-    acme:
-      email: admin@deploy.fidscript.com
-      storage: /acme-dns/acme-dns.json
-      dnsChallenge:
-        provider: cloudflare
-        resolvers: ["1.1.1.1", "1.0.0.1"]
-      caServer: https://acme-staging-v02.api.letsencrypt.org/directory  # staging
-
-  letsencrypt-http:
-    acme:
-      email: admin@deploy.fidscript.com
-      storage: /acme-http/acme-http.json
-      httpChallenge:
-        entryPoint: web
-      caServer: https://acme-staging-v02.api.letsencrypt.org/directory
-```
-
-Both use **staging** ACME endpoint to avoid rate limits during iteration.
-Flip `caServer` to production (`https://acme-v02.api.letsencrypt.org/directory`) after initial verification.
-
-**Required env vars for Traefik container:**
-- `CF_API_TOKEN_FILE=/run/secrets/cf_api_token` — Cloudflare API token
-
-**Required env vars for API container:**
-- `SERVER_IP` — public IP of the VPS
-- `PLATFORM_DOMAIN=deploy.fidscript.com`
-- `CLOUDFLARE_API_TOKEN_FILE=/run/secrets/cf_api_token`
-
----
-
-## DNS Verification Flow
-
-```
-add(domain, deploymentId)
-  -> isPlatform = domain.endsWith(".deploy.fidscript.com")
-  -> if platform:
-       createPlatformSubdomain(slug)
-       -> Cloudflare API: create A record <slug>.apps.deploy.fidscript.com -> SERVER_IP
-       -> pollCloudflare until live (max 60s, 12 x 5s)
-       -> dnsStatus = VALID or VALIDATING
-  -> else (custom):
-       create TXT record _fidscript-verification.<domain> -> token
-       -> dnsStatus = VALIDATING
-
-verify(domainId)
-  -> if platform:
-       pollCloudflare for A record
-       -> dnsStatus = VALID
-  -> else:
-       pollCloudflare for TXT record
-       -> dnsStatus = VALID
-```
 
 ---
 
@@ -172,23 +170,25 @@ verify(domainId)
 
 | File | Role |
 |------|------|
-| `apps/api/src/modules/domains/domains.service.ts` | HTTP handler: add/list/delete/verify |
-| `apps/api/src/modules/domains/domains.controller.ts` | REST controller |
+| `apps/api/src/modules/domains/domains.service.ts` | All domain operations, verification checks, Mode A/B |
+| `apps/api/src/modules/domains/domains.controller.ts` | REST endpoints |
 | `apps/api/src/modules/domains/domains.module.ts` | DI module |
 | `apps/api/src/modules/domains/providers/dns-provider.interface.ts` | DnsProvider interface |
 | `apps/api/src/modules/domains/providers/cloudflare-dns.provider.ts` | Cloudflare API v4 implementation |
-| `apps/api/prisma/schema.prisma` | Domain model + deploymentId FK |
-| `apps/api/prisma/migrations/20260619000000_domains_tls_real/` | deploymentId column migration |
+| `apps/api/src/modules/verification/verification.controller.ts` | `GET /.well-known/fidscript` public endpoint |
+| `apps/api/prisma/schema.prisma` | Domain model + SslStatus enum |
+| `apps/api/prisma/migrations/20260619000000_domains_tls_real/` | All new columns + BROKEN status + SslStatus |
 | `installer/traefik/traefik.yml` | ACME DNS-01 + HTTP-01 resolvers |
-| `installer/traefik/dynamic.yml` | Router TLS resolver (letsencrypt-dns) |
-| `installer/docker/docker-compose.yml` | CF_API_TOKEN_FILE, SERVER_IP env vars |
+| `installer/traefik/dynamic.yml` | Platform routes with letsencrypt-dns |
+| `installer/docker/docker-compose.yml` | CF_API_TOKEN_FILE, SERVER_IP |
 | `installer/scripts/setup-wizard.sh` | Prompts for Cloudflare token + SERVER_IP |
 
 ---
 
 ## Out of Scope
 
-- Cert-manager integration (SSL cert ARNs stored but not used — future)
-- Additional DNS providers (interface-ready, Cloudflare only for now)
-- DNSSEC management
-- CAA records
+- Buying/registering domains
+- Automatic WWW redirects (Phase 19 dashboard)
+- Domain monitoring background worker (Phase 14 — `checkHealth()` method exists, needs scheduler)
+- Custom SSL certificate upload
+- Additional DNS providers beyond Cloudflare (interface-ready, implementation deferred)

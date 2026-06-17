@@ -6,6 +6,7 @@ import { EventsModule } from './modules/events/events.module';
 import { AuditModule } from './modules/audit/audit.module';
 import { RedisModule } from './modules/redis/redis.module';
 import { HealthModule } from './modules/health/health.module';
+import { VerificationModule } from './modules/verification/verification.module';
 import { StorageModule } from './modules/storage/storage.module';
 import { AuthModule } from './modules/auth/auth.module';
 import { AppAuthModule } from './modules/app-auth/app-auth.module';
@@ -35,6 +36,7 @@ import { CryptoModule } from './modules/crypto/crypto.module';
     AuditModule,
     RedisModule,
     HealthModule,
+    VerificationModule,
     StorageModule,
     AuthModule,
     AppAuthModule,

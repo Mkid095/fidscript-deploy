@@ -7,6 +7,8 @@ import {
   Logger,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
+import axios from 'axios';
+import * as crypto from 'crypto';
 import { PrismaService } from '../../prisma/prisma.service';
 import { EventService } from '../events/event.service';
 import { DnsProvider } from './providers/dns-provider.interface';
@@ -35,33 +37,33 @@ export class DomainsService {
 
     const domains = await this.prisma.domain.findMany({
       where: { projectId },
-      include: { deployment: { select: { id: true, deploymentUrl: true, status: true } } },
-      orderBy: { createdAt: 'desc' },
+      include: {
+        deployment: { select: { id: true, deploymentUrl: true, status: true } },
+      },
+      orderBy: [{ isPrimary: 'desc' }, { createdAt: 'desc' }],
     });
 
     return { domains: domains.map(d => this.formatDomain(d)) };
   }
 
   /**
-   * Add a domain to a project and trigger DNS setup.
+   * Add a domain to a project.
    *
-   * For platform subdomains (e.g. demo.apps.deploy.fidscript.com):
-   *   - Creates the DNS A record in Cloudflare immediately
-   *   - Marks domain as VALIDATING (waiting for Traefik cert)
+   * Mode A (dnsMode = 'manual', the default):
+   *   - Detects MX records for email safety warning
+   *   - Returns DNS instructions for the user to configure manually
+   *   - No Cloudflare API calls made
    *
-   * For custom domains (e.g. app.example.com):
-   *   - Creates a TXT verification record in Cloudflare
-   *   - Marks domain as VALIDATING — user must still add the CNAME
-   *   - They add the CNAME pointing to our platform, then we verify
-   *
-   * @param deploymentId — which deployment this domain routes to (required for routing)
+   * Mode B (dnsMode = 'cloudflare_auto'):
+   *   - Requires connected Cloudflare account
+   *   - Creates DNS records automatically
+   *   - Respects email safety (never touches MX/SPF/DKIM/DMARC)
    */
-  async add(userId: string, projectId: string, dto: AddDomainDto, deploymentId: string) {
+  async add(userId: string, projectId: string, dto: AddDomainDto) {
     const hasAccess = await this.checkAccess(userId, projectId);
     if (!hasAccess) throw new ForbiddenException('Access denied');
 
-    // Validate deploymentId: must exist, belong to this project, be SUCCESS
-    const deployment = await this.prisma.deployment.findUnique({ where: { id: deploymentId } });
+    const deployment = await this.prisma.deployment.findUnique({ where: { id: dto.deploymentId } });
     if (!deployment || deployment.projectId !== projectId) {
       throw new NotFoundException('Deployment not found in this project');
     }
@@ -69,103 +71,149 @@ export class DomainsService {
       throw new ConflictException('Can only add a domain to a successful deployment');
     }
 
-    // Check for duplicate
-    const existing = await this.prisma.domain.findFirst({
-      where: { projectId, domain: dto.domain },
-    });
-    if (existing) {
-      throw new ConflictException('Domain already added to this project');
-    }
+    const existing = await this.prisma.domain.findFirst({ where: { projectId, domain: dto.domain } });
+    if (existing) throw new ConflictException('Domain already added to this project');
 
     const isPlatform = dto.domain.endsWith(`.${PLATFORM_DOMAIN}`);
+    const isApex = !dto.domain.startsWith('www.') && dto.domain.split('.').length === 2;
 
-    // Create the domain record
+    // Email safety check (Mode B only, but results surfaced for Mode A too)
+    let emailWarning = false;
+    let emailProvider = '';
+    if (!isPlatform && dto.dnsMode === 'cloudflare_auto') {
+      const mx = await this.checkMxRecords(dto.domain);
+      emailWarning = mx.hasMx;
+      emailProvider = mx.provider;
+    }
+
+    // First domain added is automatically primary
+    const existingCount = await this.prisma.domain.count({ where: { projectId } });
+    const isPrimary = existingCount === 0;
+
     const domain = await this.prisma.domain.create({
       data: {
         projectId,
-        deploymentId,
+        deploymentId: dto.deploymentId,
         domain: dto.domain,
         isCustom: !isPlatform,
+        isPrimary,
+        apexDomain: isApex,
+        dnsMode: dto.dnsMode ?? 'manual',
         sslEnabled: dto.sslEnabled ?? true,
+        sslStatus: 'PENDING',
         dnsStatus: 'PENDING',
+        emailWarning,
       },
     });
 
-    await this.eventService.emit('domain.added' as any, {
-      id: `${domain.id}-${Date.now()}`,
-      type: 'domain.added' as any,
-      timestamp: new Date(),
-      actorId: userId,
-      actorType: 'user',
-      resourceType: 'domain',
-      resourceId: domain.id,
-      metadata: { domainId: domain.id, projectId, domain: dto.domain, isCustom: !isPlatform },
+    await this.emit(domain.id, projectId, userId, 'domain.added', {
+      domain: dto.domain,
+      isCustom: !isPlatform,
+      emailWarning,
     });
 
-    this.logger.log(`[domains] Domain ${dto.domain} added for project ${projectId}`);
+    // DNS instructions always returned (Mode A: user follows them; Mode B: informational)
+    const instructions = this.getDnsInstructions(dto.domain, deployment.deploymentUrl, isApex);
 
-    // ── Set up DNS based on domain type ──────────────────────
-    if (isPlatform) {
-      // Platform subdomain: create DNS A record in Cloudflare
-      await this.setupPlatformSubdomain(domain.id, dto.domain, projectId, deployment);
-    } else {
-      // Custom domain: issue a TXT verification record for ownership check
-      await this.setupCustomDomain(domain.id, dto.domain, projectId);
+    // Mode B: auto-create DNS records
+    if (dto.dnsMode === 'cloudflare_auto') {
+      try {
+        await this.cloudflareAutoSetup(domain.id, dto.domain, deployment.deploymentUrl, isApex);
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : String(err);
+        this.logger.error(`[domains] Cloudflare auto-setup failed for ${dto.domain}: ${msg}`);
+        await this.prisma.domain.update({
+          where: { id: domain.id },
+          data: { dnsStatus: 'FAILED' },
+        });
+        throw err;
+      }
     }
 
     return {
       domain: this.formatDomain(domain),
+      instructions,
+      emailWarning: emailWarning
+        ? { detected: true, provider: emailProvider, message: `Email service detected (${emailProvider}). We will only create CNAME and TXT records. MX/SPF/DKIM/DMARC will not be modified.` }
+        : { detected: false },
     };
   }
 
-  /**
-   * Delete a domain and clean up DNS records.
-   * For platform subdomains: deletes the Cloudflare DNS record.
-   * For custom domains: just removes the record (user manages their own DNS).
-   */
-  async delete(userId: string, projectId: string, domainId: string) {
+  /** Get DNS instructions for Mode A (manual DNS configuration). */
+  async getInstructions(userId: string, projectId: string, domainId: string) {
     const hasAccess = await this.checkAccess(userId, projectId);
     if (!hasAccess) throw new ForbiddenException('Access denied');
 
     const domain = await this.prisma.domain.findFirst({
       where: { id: domainId, projectId },
+      include: { deployment: { select: { deploymentUrl: true } } },
     });
     if (!domain) throw new NotFoundException('Domain not found');
 
-    // Clean up DNS record if this is a platform subdomain
-    if (!domain.isCustom) {
+    const instructions = this.getDnsInstructions(domain.domain, domain.deployment?.deploymentUrl ?? null, domain.apexDomain);
+    return { domain: this.formatDomain(domain), instructions };
+  }
+
+  /** Connect Cloudflare account for Mode B — stores encrypted API token. */
+  async connectCloudflare(userId: string, projectId: string, apiToken: string) {
+    const hasAccess = await this.checkAccess(userId, projectId);
+    if (!hasAccess) throw new ForbiddenException('Access denied');
+
+    // Validate token against Cloudflare API
+    let cfEmail = '';
+    try {
+      const resp = await axios.get('https://api.cloudflare.com/client/v4/user/tokens/verify', {
+        headers: { Authorization: `Bearer ${apiToken}` },
+        timeout: 10_000,
+      });
+      if (!resp.data.success) throw new Error('Invalid Cloudflare API token');
+      cfEmail = resp.data.result?.email || '';
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      throw new ConflictException(`Cloudflare token validation failed: ${msg}`);
+    }
+
+    // Encrypt and store token in ProjectEnv
+    const encryptionKey = this.getEncryptionKey();
+    const encrypted = this.encrypt(encryptionKey, apiToken);
+    await this.prisma.projectEnv.upsert({
+      where: { projectId_key: { projectId, key: 'CLOUDFLARE_API_TOKEN' } },
+      create: { projectId, key: 'CLOUDFLARE_API_TOKEN', value: encrypted },
+      update: { value: encrypted },
+    });
+
+    this.logger.log(`[domains] Cloudflare account connected for project ${projectId}`);
+    return { success: true, email: cfEmail };
+  }
+
+  async delete(userId: string, projectId: string, domainId: string) {
+    const hasAccess = await this.checkAccess(userId, projectId);
+    if (!hasAccess) throw new ForbiddenException('Access denied');
+
+    const domain = await this.prisma.domain.findFirst({ where: { id: domainId, projectId } });
+    if (!domain) throw new NotFoundException('Domain not found');
+
+    if (domain.dnsMode === 'cloudflare_auto' && !domain.isCustom) {
       try {
-        await this.cleanupPlatformSubdomain(domain.domain);
+        await this.dnsProvider.deletePlatformSubdomain(this.subdomainFor(domain.domain));
       } catch (err) {
-        this.logger.warn(`[domains] Failed to clean up DNS for ${domain.domain}: ${err instanceof Error ? err.message : err}`);
+        this.logger.warn(`[domains] Failed to clean DNS for ${domain.domain}: ${err instanceof Error ? err.message : err}`);
       }
     }
 
     await this.prisma.domain.delete({ where: { id: domainId } });
-
-    await this.eventService.emit('domain.deleted' as any, {
-      id: `${domainId}-${Date.now()}`,
-      type: 'domain.deleted' as any,
-      timestamp: new Date(),
-      actorId: userId,
-      actorType: 'user',
-      resourceType: 'domain',
-      resourceId: domainId,
-      metadata: { domainId, projectId, domain: domain.domain },
-    });
-
+    await this.emit(domainId, projectId, userId, 'domain.deleted', { domain: domain.domain });
     return { success: true };
   }
 
   /**
-   * Verify domain DNS configuration.
+   * Full domain verification — three checks:
+   * 1. DNS propagation check
+   * 2. DNS resolution check (dig confirms real resolution)
+   * 3. HTTP routing check (GET /.well-known/fidscript hits the platform)
    *
-   * For platform subdomains: polls Cloudflare until the A record is live,
-   * then marks dnsStatus = VALID.
-   *
-   * For custom domains: polls Cloudflare until the TXT record is found
-   * (ownership verification), then marks dnsStatus = VALID.
-   * The CNAME verification for routing is handled by Traefik ACME.
+   * dnsStatus: PENDING → VALIDATING → ACTIVE | FAILED
+   * If a previously-ACTIVE domain fails its HTTP check → BROKEN
    */
   async verify(userId: string, projectId: string, domainId: string) {
     const hasAccess = await this.checkAccess(userId, projectId);
@@ -173,225 +221,336 @@ export class DomainsService {
 
     const domain = await this.prisma.domain.findFirst({
       where: { id: domainId, projectId },
+      include: { deployment: { select: { deploymentUrl: true } } },
     });
     if (!domain) throw new NotFoundException('Domain not found');
 
-    // Mark as validating while we poll
-    if (domain.dnsStatus === 'PENDING') {
+    await this.prisma.domain.update({
+      where: { id: domainId },
+      data: { dnsStatus: 'VALIDATING' },
+    });
+
+    try {
+      // Step 1: DNS propagation
+      const dnsPropagation = await this.checkDnsPropagation(domain);
+
+      // Step 2: DNS resolution (domain actually resolves)
+      const dnsResolution = await this.checkDnsResolution(domain);
+
+      if (!dnsPropagation || !dnsResolution) {
+        await this.failDomain(domainId, projectId, 'DNS propagation or resolution check failed');
+        const updated = await this.prisma.domain.findUnique({ where: { id: domainId } });
+        return this.formatDomain(updated!);
+      }
+
+      // Step 3: HTTP routing — confirms traffic reaches the platform
+      const routingOk = await this.checkHttpRouting(domain);
+
+      if (!routingOk) {
+        await this.prisma.domain.update({
+          where: { id: domainId },
+          data: { dnsStatus: 'FAILED', routingVerifiedAt: null },
+        });
+        await this.emit(domainId, projectId, userId, 'domain.failed', {
+          reason: 'HTTP routing check failed — DNS points here but platform is not receiving traffic',
+          domain: domain.domain,
+        });
+        const updated = await this.prisma.domain.findUnique({ where: { id: domainId } });
+        return this.formatDomain(updated!);
+      }
+
+      // All three checks passed
       await this.prisma.domain.update({
         where: { id: domainId },
-        data: { dnsStatus: 'VALIDATING' },
+        data: {
+          dnsStatus: 'ACTIVE',
+          dnsVerifiedAt: new Date(),
+          routingVerifiedAt: new Date(),
+          sslStatus: domain.sslEnabled ? 'ISSUING' : 'PENDING',
+        },
       });
-    }
+      await this.emit(domainId, projectId, userId, 'domain.verified', { domain: domain.domain });
 
-    const isPlatform = !domain.isCustom;
-    let verified = false;
-
-    if (isPlatform) {
-      verified = await this.verifyPlatformSubdomain(domain.domain);
-    } else {
-      verified = await this.verifyCustomDomain(domain.domain);
-    }
-
-    if (verified) {
-      await this.prisma.domain.update({
-        where: { id: domainId },
-        data: { dnsStatus: 'VALID', dnsVerifiedAt: new Date() },
-      });
-
-      await this.eventService.emit('domain.verified' as any, {
-        id: `${domainId}-${Date.now()}`,
-        type: 'domain.verified' as any,
-        timestamp: new Date(),
-        actorId: userId,
-        actorType: 'user',
-        resourceType: 'domain',
-        resourceId: domainId,
-        metadata: { domainId, projectId, domain: domain.domain },
-      });
-    } else {
-      await this.prisma.domain.update({
-        where: { id: domainId },
-        data: { dnsStatus: 'FAILED' },
-      });
-
-      await this.eventService.emit('domain.failed' as any, {
-        id: `${domainId}-${Date.now()}`,
-        type: 'domain.failed' as any,
-        timestamp: new Date(),
-        actorId: userId,
-        actorType: 'user',
-        resourceType: 'domain',
-        resourceId: domainId,
-        metadata: { domainId, projectId, domain: domain.domain },
-      });
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      this.logger.error(`[domains] Verification error for ${domain.domain}: ${msg}`);
+      await this.failDomain(domainId, projectId, msg);
     }
 
     const updated = await this.prisma.domain.findUnique({ where: { id: domainId } });
     return this.formatDomain(updated!);
   }
 
+  /** Domain health check — called periodically by a background worker (Phase 14). */
+  async checkHealth(domainId: string) {
+    const domain = await this.prisma.domain.findUnique({
+      where: { id: domainId },
+      include: { deployment: { select: { deploymentUrl: true } } },
+    });
+    if (!domain) return;
+    if (domain.dnsStatus !== 'ACTIVE') return;
+
+    const routingOk = await this.checkHttpRouting(domain).catch(() => false);
+
+    const status = domain.dnsStatus as string;
+    if (!routingOk && status === 'ACTIVE') {
+      await this.prisma.domain.update({
+        where: { id: domainId },
+        data: { dnsStatus: 'BROKEN' },
+      });
+      await this.emit(domainId, domain.projectId, '', 'domain.broken', { domain: domain.domain });
+      this.logger.warn(`[domains] Domain ${domain.domain} went BROKEN`);
+    } else if (routingOk && status === 'BROKEN') {
+      await this.prisma.domain.update({
+        where: { id: domainId },
+        data: { dnsStatus: 'ACTIVE' },
+      });
+      await this.emit(domainId, domain.projectId, '', 'domain.recovered', { domain: domain.domain });
+      this.logger.log(`[domains] Domain ${domain.domain} recovered to ACTIVE`);
+    }
+  }
+
   // ─────────────────────────────────────────────────────────────
-  // DNS setup — platform subdomains
+  // Mode B: Cloudflare Auto Setup
   // ─────────────────────────────────────────────────────────────
 
-  /**
-   * Set up DNS for a platform subdomain:
-   *   <slug>.apps.deploy.fidscript.com → A → SERVER_IP
-   *
-   * The Traefik router for this domain will be configured in dynamic.yml
-   * (or dynamically via the file provider) once dnsStatus = VALID.
-   */
-  private async setupPlatformSubdomain(
+  private async cloudflareAutoSetup(
     domainId: string,
     domain: string,
-    projectId: string,
-    deployment: { id: string; deploymentUrl: string | null },
+    deploymentUrl: string | null,
+    isApex: boolean,
   ) {
-    // Extract subdomain part: "demo" from "demo.apps.deploy.fidscript.com"
-    const subdomain = domain.replace(`.apps.${PLATFORM_DOMAIN}`, '');
+    const zoneId = await this.dnsProvider.getZoneId(domain);
+    if (!zoneId) throw new Error(`Cloudflare zone for ${domain} not found — is the domain on Cloudflare?`);
 
-    try {
-      await this.dnsProvider.createPlatformSubdomain(subdomain);
-      this.logger.log(`[domains] DNS A record created for platform subdomain: ${domain}`);
+    const slug = this.extractSlug(deploymentUrl || domain);
 
-      // Poll for propagation (up to 60s, polling every 5s)
-      const verified = await this.pollDnsVerification(domain, 'A', /* allowProxy */ false);
-      if (verified) {
-        await this.prisma.domain.update({
-          where: { id: domainId },
-          data: { dnsStatus: 'VALID', dnsVerifiedAt: new Date() },
-        });
-        this.logger.log(`[domains] Platform subdomain DNS verified: ${domain}`);
-      } else {
-        // DNS record was created but not yet propagated — leave as VALIDATING
-        this.logger.warn(`[domains] DNS record created for ${domain} but not yet propagated (will retry on verify call)`);
-      }
-    } catch (err) {
-      const msg = err instanceof Error ? err.message : String(err);
-      this.logger.error(`[domains] Failed to create DNS record for ${domain}: ${msg}`);
-      await this.prisma.domain.update({
-        where: { id: domainId },
-        data: { dnsStatus: 'FAILED' },
+    // TXT for ownership verification
+    await this.dnsProvider.createRecord({
+      zoneId,
+      type: 'TXT',
+      name: `_fidscript-verification.${domain}`,
+      content: `FIDScript verified ${domainId}`,
+      ttl: 300,
+    });
+
+    if (isApex) {
+      // Apex: A record to VPS IP (never touch MX)
+      await this.dnsProvider.createRecord({
+        zoneId, type: 'A', name: domain,
+        content: this.configService.get<string>('SERVER_IP', ''),
+        ttl: 300, proxied: false,
       });
-      throw err;
+    } else {
+      // Subdomain: CNAME to the platform subdomain
+      await this.dnsProvider.createRecord({
+        zoneId, type: 'CNAME', name: domain,
+        content: `${slug}.apps.${PLATFORM_DOMAIN}`,
+        ttl: 300, proxied: false,
+      });
     }
-  }
 
-  private async cleanupPlatformSubdomain(domain: string) {
-    const subdomain = domain.replace(`.apps.${PLATFORM_DOMAIN}`, '');
-    await this.dnsProvider.deletePlatformSubdomain(subdomain);
-    this.logger.log(`[domains] DNS record cleaned up for platform subdomain: ${domain}`);
-  }
-
-  private async verifyPlatformSubdomain(domain: string): Promise<boolean> {
-    const subdomain = domain.replace(`.apps.${PLATFORM_DOMAIN}`, '');
-    const serverIp = this.configService.get<string>('SERVER_IP', '');
-
-    // Verify A record exists: subdomain.apps.deploy.fidscript.com → SERVER_IP
-    return this.pollDnsVerification(domain, 'A', /* allowProxy */ false);
+    await this.prisma.domain.update({
+      where: { id: domainId },
+      data: { dnsStatus: 'VALIDATING' },
+    });
   }
 
   // ─────────────────────────────────────────────────────────────
-  // DNS setup — custom domains
+  // DNS verification checks
   // ─────────────────────────────────────────────────────────────
 
   /**
-   * Set up a TXT record for custom domain ownership verification.
-   * The user then adds their CNAME pointing to our platform.
+   * Check if MX records exist for this domain.
+   * Used to warn users before auto-DNS (Mode B) — we must never overwrite MX/SPF/DKIM/DMARC.
    */
-  private async setupCustomDomain(domainId: string, domain: string, projectId: string) {
-    const verificationToken = `_fidscript-verification.${domain}`;
-    const txtValue = `FIDScript verified domain ${domainId}`;
-
+  private async checkMxRecords(domain: string): Promise<{ hasMx: boolean; provider: string }> {
+    // Try Cloudflare DNS-over-HTTPS for MX lookup
     try {
-      const zoneId = await this.dnsProvider.getZoneId(domain);
-      if (!zoneId) {
-        throw new Error(`Cloudflare zone for ${domain} not found — custom domain may not be on Cloudflare`);
+      const resp = await axios.get(
+        `https://cloudflare-dns.com/dns-query?name=${encodeURIComponent(domain)}&type=MX`,
+        { headers: { Accept: 'application/dns-json' }, timeout: 8_000 }
+      );
+      if (resp.data?.Answer?.length > 0) {
+        const mxData = resp.data.Answer.map((a: any) => a.data).join(',');
+        if (mxData.includes('google.com')) return { hasMx: true, provider: 'Google Workspace' };
+        if (mxData.includes('outlook.com') || mxData.includes('microsoft.com')) return { hasMx: true, provider: 'Microsoft 365' };
+        if (mxData.includes('zoho.com')) return { hasMx: true, provider: 'Zoho' };
+        if (mxData.includes('amazonses.com')) return { hasMx: true, provider: 'Amazon SES' };
+        if (mxData.includes('mailgun.org')) return { hasMx: true, provider: 'Mailgun' };
+        return { hasMx: true, provider: 'custom' };
       }
+    } catch { /* ignore */ }
 
-      await this.dnsProvider.createRecord({
-        zoneId,
-        type: 'TXT',
-        name: verificationToken,
-        content: txtValue,
-        ttl: 300,
-      });
+    // Fallback: system dig
+    try {
+      const { execSync } = require('child_process');
+      const out = execSync(`dig +short MX ${domain} 2>/dev/null`, { timeout: 8_000 }).toString().trim();
+      if (out && !out.includes('no MX')) {
+        if (out.includes('google.com')) return { hasMx: true, provider: 'Google Workspace' };
+        if (out.includes('outlook.com') || out.includes('microsoft.com')) return { hasMx: true, provider: 'Microsoft 365' };
+        if (out.includes('zoho.com')) return { hasMx: true, provider: 'Zoho' };
+        return { hasMx: true, provider: 'custom' };
+      }
+    } catch { /* ignore */ }
 
-      this.logger.log(`[domains] TXT verification record created for custom domain: ${domain}`);
-      this.logger.log(`[domains] User must add: ${domain} CNAME → <deployment-url>`);
-    } catch (err) {
-      const msg = err instanceof Error ? err.message : String(err);
-      this.logger.error(`[domains] Failed to create TXT record for custom domain ${domain}: ${msg}`);
-      await this.prisma.domain.update({
-        where: { id: domainId },
-        data: { dnsStatus: 'FAILED' },
-      });
-      throw err;
-    }
+    return { hasMx: false, provider: '' };
   }
 
-  private async verifyCustomDomain(domain: string): Promise<boolean> {
-    const verificationToken = `_fidscript-verification.${domain}`;
-    const txtValue = `FIDScript verified domain`;
-
-    try {
-      const zoneId = await this.dnsProvider.getZoneId(domain);
+  /** Check if the DNS record exists (propagation). Mode A uses public DNS; Mode B uses Cloudflare API. */
+  private async checkDnsPropagation(domain: { domain: string; dnsMode: string; isCustom: boolean }): Promise<boolean> {
+    if (domain.dnsMode === 'cloudflare_auto') {
+      const zoneId = await this.dnsProvider.getZoneId(domain.domain);
       if (!zoneId) return false;
+      const records = await this.dnsProvider.listRecords({ zoneId, name: domain.domain });
+      return records.length > 0;
+    }
 
-      return this.dnsProvider.verifyRecord({
-        zoneId,
-        name: verificationToken,
-        type: 'TXT',
-        expectedContent: txtValue,
-      });
+    // Mode A (manual): use public DNS-over-HTTPS resolver
+    try {
+      const resp = await axios.get(
+        `https://cloudflare-dns.com/dns-query?name=${encodeURIComponent(domain.domain)}&type=A`,
+        { headers: { Accept: 'application/dns-json' }, timeout: 8_000 }
+      );
+      return (resp.data?.Answer?.length ?? 0) > 0;
+    } catch { /* ignore */ }
+
+    // Fallback: dig
+    try {
+      const { execSync } = require('child_process');
+      const out = execSync(`dig +short ${domain.domain} 2>/dev/null`, { timeout: 8_000 }).toString().trim();
+      return out.length > 0 && !out.includes('no servers');
     } catch {
       return false;
     }
   }
 
-  // ─────────────────────────────────────────────────────────────
-  // DNS polling helpers
-  // ─────────────────────────────────────────────────────────────
+  /** Check if the domain actually resolves (confirms DNS is live and reachable). */
+  private async checkDnsResolution(domain: { domain: string }): Promise<boolean> {
+    try {
+      const resp = await axios.get(
+        `https://cloudflare-dns.com/cdn-cgi/trace?name=${encodeURIComponent(domain.domain)}`,
+        { timeout: 8_000 }
+      );
+      return resp.status === 200;
+    } catch { /* ignore */ }
+
+    try {
+      const { execSync } = require('child_process');
+      const out = execSync(`dig +short ${domain.domain} 2>/dev/null`, { timeout: 8_000 }).toString().trim();
+      return out.length > 0;
+    } catch {
+      return false;
+    }
+  }
 
   /**
-   * Poll DNS until the expected record is found (or timeout).
-   * Uses Cloudflare API directly for fast, accurate results (not public resolvers).
+   * HTTP routing check — confirms traffic actually reaches the platform.
+   * GET http://<domain>/.well-known/fidscript
+   *
+   * We expect:
+   * - 200 with { fidscript: true } if Traefik routed it here, OR
+   * - 404 with our token in the body (routing works, but endpoint may differ)
+   *
+   * Any 2xx/404 from our server = routing works.
+   * Connection refused / ENOTFOUND / timeout = routing broken.
    */
-  private async pollDnsVerification(
-    fullDomain: string,
-    type: 'A' | 'TXT' | 'CNAME',
-    allowProxy: boolean,
-    maxAttempts = 12,
-    intervalMs = 5_000,
-  ): Promise<boolean> {
-    const zoneId = await this.dnsProvider.getZoneId(PLATFORM_DOMAIN);
-    if (!zoneId) return false;
+  private async checkHttpRouting(domain: { domain: string }): Promise<boolean> {
+    try {
+      const response = await axios.get(`http://${domain.domain}/.well-known/fidscript`, {
+        timeout: 10_000,
+        validateStatus: (status) => status < 500,
+      });
 
-    for (let attempt = 1; attempt <= maxAttempts; attempt++) {
-      try {
-        const records = await this.dnsProvider.listRecords({ zoneId, name: fullDomain, type });
+      // 200 = routing confirmed
+      if (response.status === 200) return true;
 
-        if (records.length > 0) {
-          this.logger.log(`[domains] DNS ${type} record found for ${fullDomain} on attempt ${attempt}`);
-          return true;
-        }
-      } catch (err) {
-        this.logger.warn(`[domains] DNS poll attempt ${attempt} failed: ${err instanceof Error ? err.message : err}`);
+      // 404 with our token in body = routing works (got to our server)
+      if (response.status === 404 && typeof response.data === 'string') {
+        if (response.data.includes('fidscript')) return true;
       }
 
-      if (attempt < maxAttempts) {
-        await sleep(intervalMs);
+      // Any 2xx / 404 means the request reached us
+      return response.status < 400 || response.status === 404;
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : '';
+      // These = routing definitely broken
+      if (msg.includes('ECONNREFUSED') || msg.includes('ENOTFOUND') || msg.includes('ETIMEDOUT') || msg.includes('NXDOMAIN')) {
+        return false;
       }
+      // axios errors with a response object = routing reached a server (possibly not ours)
+      const axiosErr = err as any;
+      if (axiosErr?.response) return true;
+      return false;
+    }
+  }
+
+  // ─────────────────────────────────────────────────────────────
+  // DNS Instructions (Mode A)
+  // ─────────────────────────────────────────────────────────────
+
+  /** Returns human-readable DNS records the user must create. */
+  private getDnsInstructions(
+    domain: string,
+    deploymentUrl: string | null,
+    isApex: boolean,
+  ): { type: string; name: string; value: string; ttl: number; notes: string }[] {
+    const slug = this.extractSlug(deploymentUrl || domain);
+    const instructions = [];
+
+    if (isApex) {
+      instructions.push({
+        type: 'A',
+        name: '@',
+        value: this.configService.get<string>('SERVER_IP', '<YOUR_SERVER_IP>'),
+        ttl: 300,
+        notes: `A record for the root domain. CNAME is not valid at the apex.`,
+      });
+    } else {
+      instructions.push({
+        type: 'CNAME',
+        name: domain.replace(`.${PLATFORM_DOMAIN}`, '').split('.')[0],
+        value: `${slug}.apps.${PLATFORM_DOMAIN}`,
+        ttl: 300,
+        notes: `Routes ${domain} to your FIDScript deployment.`,
+      });
     }
 
-    this.logger.warn(`[domains] DNS ${type} record for ${fullDomain} not found after ${maxAttempts} attempts`);
-    return false;
+    instructions.push({
+      type: 'TXT',
+      name: `_fidscript-verification.${domain}`,
+      value: `FIDScript verified`,
+      ttl: 300,
+      notes: `Proves you own this domain. Can be deleted after verification.`,
+    });
+
+    return instructions;
   }
 
   // ─────────────────────────────────────────────────────────────
   // Helpers
   // ─────────────────────────────────────────────────────────────
+
+  private extractSlug(deploymentUrl: string): string {
+    try {
+      const host = deploymentUrl.replace('https://', '').replace('http://', '').split(':')[0];
+      return host.split('.')[0];
+    } catch {
+      return 'app';
+    }
+  }
+
+  private subdomainFor(domain: string): string {
+    return domain.replace(`.apps.${PLATFORM_DOMAIN}`, '');
+  }
+
+  private async failDomain(domainId: string, projectId: string, reason: string) {
+    await this.prisma.domain.update({
+      where: { id: domainId },
+      data: { dnsStatus: 'FAILED' },
+    });
+    await this.emit(domainId, projectId, '', 'domain.failed', { reason });
+  }
 
   private async checkAccess(userId: string, projectId: string): Promise<boolean> {
     const project = await this.prisma.project.findUnique({ where: { id: projectId } });
@@ -410,15 +569,51 @@ export class DomainsService {
       deploymentId: domain.deploymentId || null,
       domain: domain.domain,
       isCustom: domain.isCustom,
+      isPrimary: domain.isPrimary,
+      apexDomain: domain.apexDomain,
+      dnsMode: domain.dnsMode,
       sslEnabled: domain.sslEnabled,
+      sslStatus: domain.sslStatus?.toLowerCase() ?? 'pending',
+      sslMethod: domain.sslMethod,
       dnsStatus: domain.dnsStatus?.toLowerCase() ?? 'pending',
       dnsVerifiedAt: domain.dnsVerifiedAt,
+      routingVerifiedAt: domain.routingVerifiedAt,
+      emailWarning: domain.emailWarning,
       deploymentUrl: domain.deployment?.deploymentUrl || null,
       createdAt: domain.createdAt,
     };
   }
-}
 
-function sleep(ms: number) {
-  return new Promise(resolve => setTimeout(resolve, ms));
+  private async emit(domainId: string, projectId: string, userId: string, type: string, metadata: Record<string, unknown>) {
+    await this.eventService.emit(type as any, {
+      id: `${domainId}-${Date.now()}`,
+      type,
+      timestamp: new Date(),
+      actorId: userId || undefined,
+      actorType: 'user',
+      resourceType: 'domain',
+      resourceId: domainId,
+      metadata: { domainId, projectId, ...metadata },
+    });
+  }
+
+  // ── Encryption helpers (same AES-256-GCM as CryptoService) ────────────────────
+
+  private getEncryptionKey(): Buffer {
+    const keyBase64 = this.configService.get<string>('ENCRYPTION_KEY');
+    if (keyBase64) return Buffer.from(keyBase64, 'base64');
+    const keyFile = this.configService.get<string>('ENCRYPTION_KEY_FILE');
+    if (keyFile) {
+      try { return Buffer.from(require('fs').readFileSync(keyFile, 'utf8').trim(), 'base64'); } catch { /* fall through */ }
+    }
+    throw new Error('ENCRYPTION_KEY or ENCRYPTION_KEY_FILE must be set');
+  }
+
+  private encrypt(key: Buffer, plaintext: string): string {
+    const iv = crypto.randomBytes(16);
+    const cipher = crypto.createCipheriv('aes-256-gcm', key, iv);
+    const encrypted = Buffer.concat([cipher.update(plaintext, 'utf8'), cipher.final()]);
+    const authTag = cipher.getAuthTag();
+    return `${iv.toString('base64')}:${authTag.toString('base64')}:${encrypted.toString('base64')}`;
+  }
 }
