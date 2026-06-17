@@ -85,6 +85,13 @@ docker compose exec postgres psql ... -c "select * from email.messages order by 
 - **Port-25 blocked** by the VPS provider → inbound impossible; document and offer IMAP-only/relay models.
 - DKIM key rotation and cert renewal must be automated or mail silently breaks — boot-time checks + alerts.
 
+## Files you'll touch (precision map)
+
+- Stub lives at: `apps/api/src/modules/email/email.service.ts` ("send" writes a row; `verifyDomain` returns hardcoded `{dkim:true, spf:true, dmarc:true}`) and `apps/api/src/modules/email/providers/` (e.g. `smtp.provider.ts` using `nodemailer`).
+- Prisma: `Mailbox`, `EmailAlias`, `EmailLog`, `DomainVerification`, enum `EmailStatus`.
+- Infra: the Stalwart container in `installer/docker/docker-compose.yml` (expose 25/465/587/993, mount TLS certs, generate DKIM keys); MX/SPF/DKIM/DMARC via the Phase 07 DNS provider.
+- Reuse: identity magic links (Phase 03), domain-live notices (Phase 07), alert dispatch (Phase 14).
+
 ## Next Phase
 
 [Phase 10: Functions Runtime](./phase-10.md)

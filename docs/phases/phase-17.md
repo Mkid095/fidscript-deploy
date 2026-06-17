@@ -75,6 +75,13 @@ curl -fsS https://deploy.fidscript.com/mcp/tools -H "Authorization: Bearer ..." 
 - An agent with a powerful API key can do real damage (deploy, delete) → scope keys per project, default to read tools, document least-privilege.
 - Tool descriptions too thin → agents misuse tools; invest in clear schemas + descriptions.
 
+## Files you'll touch (precision map)
+
+- Live path: `apps/mcp-server/src/server.ts` (entry, MCP SDK 0.5.0 API fixed in Phase 00) + `handlers.ts` + `tools/*.ts` + `utils/api.ts` (real HTTP calls to the API).
+- The dead 1526-line `apps/mcp-server/src/index.ts` was already deleted in Phase 00.
+- `apps/mcp-server/package.json` (deps incl. `@modelcontextprotocol/sdk`); `apps/mcp-server/install.sh` (today `npx`s an unpublished package — fix to point at the built server).
+- Add: bearer/API-key auth, scoped tool subset per token, progress notifications for long ops.
+
 ## Next Phase
 
 [Phase 18: CLI Platform](./phase-18.md)

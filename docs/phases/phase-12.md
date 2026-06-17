@@ -79,6 +79,12 @@ curl -fsS .../schedules/<id>/runs | jq '.[-1]'   # a run recorded AFTER the rest
 - Cron engine state lives only in memory by default — the bootstrap restore is mandatory; if a job is added but the bootstrap is skipped (e.g., race at startup) it won't run until next restart. Verify with the restart prove-it.
 - Timezone/DST mishandling in `nextRunAt` → use a battle-tested parser (croner/cron-parser) and pin the stored timezone.
 
+## Files you'll touch (precision map)
+
+- Stub lives at: `apps/api/src/modules/scheduler/scheduler.service.ts` (real `cron` lib, fires HTTP while alive — but **no `OnModuleInit`/`OnApplicationBootstrap`**, so every restart silently disables all jobs; `functionId` targets ignored; `nextRunAt` reports a time that never fires).
+- Prisma: `CronJob`, `CronJobRun`.
+- Add: bootstrap re-registration on startup; a Redis distributed lock (prevent double-fire); function-target dispatch (Phase 10); correct `nextRunAt` from the expression.
+
 ## Next Phase
 
 [Phase 13: Realtime Platform](./phase-13.md)

@@ -72,6 +72,12 @@ node -e '
 - Keeping two SDKs alive "just in case" perpetuates the split — delete the loser decisively and port any unique feature.
 - Hand-maintained types drift from the API → generate from schema, or add a contract test that hits each endpoint.
 
+## Files you'll touch (precision map)
+
+- Two SDKs to consolidate (ADR-012): `apps/sdk/` (`@fidscript/sdk-node`, axios, **stronger but missing a `databases` module`) and `packages/sdk/` (`@fidscript/sdk`, fetch, has databases). `apps/sdk/src/client.ts` + per-module `src/<module>/index.ts`.
+- Decision: merge the stronger into `packages/sdk` as the canonical `@fidscript/sdk`; delete the other; the dashboard (`apps/dashboard/package.json` depends on `@fidscript/sdk`) keeps that name.
+- Types: derive from `packages/types` / the API to avoid drift; add the missing `databases` module + realtime client.
+
 ## Next Phase
 
 [Phase 17: MCP Platform](./phase-17.md)

@@ -84,6 +84,12 @@ curl -fsS -X POST .../functions/$FID/invoke -d '{"hello":"world"}'   # correct J
 - Cold-start latency under the per-invocation-container model → warm pool, but cap pool size to bound memory.
 - Image-build time on create → async build with status; invoke returns 409 until ready.
 
+## Files you'll touch (precision map)
+
+- Dangerous stub at: `apps/api/src/modules/functions/functions.service.ts` (executes via `child_process.exec` on the **host** — no sandbox, Docker socket mounted, `/tmp` storage, `memoryMb` ignored, env not injected, Python payload shell-injection-prone).
+- Prisma: `Function`, `FunctionLog`.
+- Create: a sandboxed **runner** (isolated Docker containers, dropped caps, `--security-opt no-new-privileges`, seccomp, resource limits, structured JSON IO, egress deny, timeout) — mirror the Phase 06 builder pattern; user code never gets the socket.
+
 ## Next Phase
 
 [Phase 11: Queues Platform](./phase-11.md)

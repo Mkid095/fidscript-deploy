@@ -1,5 +1,7 @@
 # FIDScript Deploy — Architecture Vision Document
 
+> **⚠ Aspirational target spec — not current reality.** Written before the hardening reset; describes the *intended* design. For what actually builds/runs today read [`START_HERE`](docs/START_HERE.md), [`AUDIT`](docs/AUDIT.md), and [`AGENT_STATUS`](AGENT_STATUS.md). Phase docs (`docs/phases/`) are the source of truth for current state and next work.
+
 > **Version:** 1.0  
 > **Phase:** 0 — Architecture First  
 > **Status:** Foundation for all subsequent phases  

@@ -81,6 +81,14 @@ docker compose exec postgres psql ... -c "select type from platform_events where
 - Refresh-token rotation bugs (reuse-detection false positives log users out) — test the rotate path explicitly.
 - Existing seeded data created under the broken scheme — re-seed after the fix.
 
+## Files you'll touch (precision map)
+
+- Stub lives at: `apps/api/src/modules/auth/auth.service.ts` (mints a raw hex token) and `apps/api/src/modules/auth/jwt.strategy.ts` (verifies as a signed JWT → 401 everywhere). `JWT_SECRET` defaults to `change-me`.
+- `apps/api/src/modules/auth/auth.controller.ts`, `auth.module.ts`, `dto/`.
+- App-level auth (separate concern): `apps/api/src/modules/app-auth/`.
+- Prisma: `User`, `Session`, `ApiKey`, `AuditLog`, enum `Role` in `apps/api/prisma/schema.prisma`.
+- Add: a `PlatformAdminGuard` + `@Roles()` (guards/), refresh-token rotation, optional TOTP.
+
 ## Next Phase
 
 [Phase 04: Projects Engine](./phase-04.md)

@@ -79,6 +79,12 @@ docker compose exec nats nats consumer info QUEUES ...   # consumer exists, deli
 - Mixing the old table-broker with JetStream → pick one source of truth (JetStream) and demote the table to metadata; otherwise messages double-process.
 - Idempotency is the consumer's responsibility — if ignored, redelivery causes duplicate side effects. Make the dedupe-key prominent in the SDK.
 
+## Files you'll touch (precision map)
+
+- Stub lives at: `apps/api/src/modules/queues/queues.service.ts` (a Prisma-table "broker" with DLQ logic — **no NATS, no worker, no visibility timeout**; messages sit `pending`).
+- Prisma: `Queue`, `QueueMessage` (keep for metadata/audit; JetStream becomes source of truth).
+- Reback on: NATS JetStream from Phase 02 (`queues.>` stream + durable consumers with `ackWait`); create a worker service that autonomously consumes + dispatches to functions (Phase 10) / HTTP (Phase 06).
+
 ## Next Phase
 
 [Phase 12: Scheduler Platform](./phase-12.md)

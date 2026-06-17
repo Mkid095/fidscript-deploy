@@ -81,6 +81,12 @@ fidscript marketplace install <template-id>   # generates + (optionally) deploys
 - Spam/abuse moderation → admin queue + report/flag + hide-abusive-review capability.
 - Review bombing → per-user-one-review + verified-usage gating + moderation.
 
+## Files you'll touch (precision map)
+
+- `apps/api/src/modules/marketplace/marketplace.service.ts` (rating aggregation genuinely works — but **`approveItem`/`rejectItem`/`markFeatured`/`verifyItem` have no role guard** → privilege escalation; reviews never display, `isVerified:false` forever) + the controller.
+- Prisma: `MarketplaceItem`, `MarketplaceReview`.
+- Add: `PlatformAdminGuard` (Phase 03) on every moderation route (plus a service-level role recheck); fix review verification so approved reviews render; an install handoff to Skills (20) / Templates (21).
+
 ## Next Phase
 
 **Roadmap complete.** With all 23 phases verified, the platform builds, installs on a fresh VPS, and delivers all three surfaces (Dashboard, MCP+Skills, CLI) backed by a real backend. Further work is hardening, performance, and ecosystem growth — tracked as follow-on ADRs, not new "phases."

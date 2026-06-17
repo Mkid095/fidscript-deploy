@@ -81,6 +81,12 @@ curl -fsS -N -X POST .../ai/chat -d '{"prompt":"summarize my project's last 10 e
 - Cost runaway → enforce budgets + rate limits from day one; surface usage.
 - Key leakage via logs/proxies → header-only transport, redact in logs, fail closed.
 
+## Files you'll touch (precision map)
+
+- `apps/api/src/modules/ai/ai.service.ts` (Gemini call is real; **key passed as a query parameter**; no streaming/retry/budget) + `apps/api/src/modules/ai/providers/{ai-provider.interface.ts, gemini.provider.ts}` + `ai.controller.ts`. (Compiles now — Phase 00 fixed the DI token + import.)
+- Prisma: `AIConversation`, `AIMessage` (accessors `aIConversation`/`aIMessage`).
+- Add: an `AiProvider` abstraction (Gemini primary, OpenAI/Anthropic-ready); key from `GEMINI_API_KEY_FILE` (never the URL); streaming (SSE); grounded diagnosis pulling real context from logs(15)/monitoring(14)/deployments(06); per-project budget.
+
 ## Next Phase
 
 [Phase 23: Marketplace](./phase-23.md)

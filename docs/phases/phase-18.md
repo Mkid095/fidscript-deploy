@@ -65,6 +65,12 @@ fidscript deployments list -o json   # machine-readable
 - Credential file leakage → `0600` perms, never log secrets, document revocation (`fidscript logout` + API-key revoke in 03).
 - Drift between CLI commands and API if built by hand → build strictly over the SDK; if a capability is in the SDK it should have a command.
 
+## Files you'll touch (precision map)
+
+- **Nothing exists** — the CLI is entirely absent (no `bin`, no `commander`). Create a new workspace `apps/cli/`: `package.json` (`bin: { fidscript: ./dist/bin/fidscript.js }`), `src/bin/fidscript.ts`, `src/commands/*` (commander), `src/config` (credentials + current project in `~/.fidscript`).
+- `pnpm-workspace.yaml` already globs `apps/*`, so `apps/cli` is auto-included.
+- Depends on the SDK (Phase 16); mirror the API surface (login, project, deploy, db, fn, storage, domains, env, queues, cron, logs).
+
 ## Next Phase
 
 [Phase 19: Dashboard Platform](./phase-19.md)

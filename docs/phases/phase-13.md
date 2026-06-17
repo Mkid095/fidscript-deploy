@@ -77,6 +77,12 @@ docker compose exec api ...   # e.g. a deployment transitions → client sees 'd
 - Forgetting to authorize a channel leaks cross-project data — the prove-it (join project B's channel as member of A) is the backstop.
 - Without the Redis adapter, multi-instance silently drops broadcasts — adopt it from day one, even single-instance.
 
+## Files you'll touch (precision map)
+
+- Stub at: `apps/api/src/modules/realtime/gateways/realtime.gateway.ts` (Socket.IO gateway — deps `@nestjs/websockets`/`socket.io` installed in Phase 00, so it can now instantiate) and `apps/api/src/modules/realtime/realtime.service.ts` (`validateChannelToken` returns `true`; presence in-memory only).
+- Prisma: `RealtimeChannel`, `RealtimeMessage`, `RealtimePresence`.
+- Add: `@socket.io/redis-adapter` (survive restarts, multi-instance); a `@OnEvent` bridge fanning the Phase 02 bus to authorized socket rooms; channel authz via project membership.
+
 ## Next Phase
 
 [Phase 14: Monitoring Platform](./phase-14.md)

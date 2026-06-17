@@ -78,6 +78,13 @@ docker compose exec minio mc ls local/   # or admin API — bucket listed
 - MinIO CORS misconfiguration makes browser direct-upload fail silently — verify the presigned PUT from a browser origin, not just curl.
 - Overly permissive bucket policy makes "private" objects public — default to private, opt into public.
 
+## Files you'll touch (precision map)
+
+- Module: `apps/api/src/modules/storage/storage.service.ts` (real MinIO uploads + presign; **`createBucket`/`deleteBucket` only write rows**; `getPublicUrl` leaks `http://localhost:9000`).
+- Providers: `apps/api/src/modules/storage/providers/{minio.provider.ts, telegram.provider.ts, ...}`.
+- Prisma: `Bucket`, `File`.
+- Infra: MinIO in `installer/docker/docker-compose.yml`; add `MINIO_EXTERNAL_ENDPOINT` (e.g. `https://storage.deploy.fidscript.com`) and a Traefik route + CORS for browser uploads.
+
 ## Next Phase
 
 [Phase 06: Deployment Engine](./phase-06.md)

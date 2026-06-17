@@ -76,6 +76,12 @@ curl -fsS "$(fidscript deployments list -o json | jq -r '.[0].url')"   # live
 - Skills that reference tools that don't exist yet mislead the agent → only ship a skill after its tools verify; gate skill availability on MCP tool presence.
 - Drift as the API evolves → version skills against API/CLI versions and surface mismatches.
 
+## Files you'll touch (precision map)
+
+- Stub at: `apps/mcp-server/fidscript-skill.md` (plain documentation — **no `SKILL.md` frontmatter**, references fictional commands).
+- Create: a skills registry (e.g. `skills/` or `apps/skills/`) with installable `SKILL.md` files — `deploy`, `database`, `functions`, `domains`, `diagnose` — each driving the **real** Phase 17 MCP tools / Phase 18 CLI commands.
+- Dashboard (Phase 19) browse/install UI; item type feeds the Phase 23 marketplace.
+
 ## Next Phase
 
 [Phase 21: Templates Platform](./phase-21.md)

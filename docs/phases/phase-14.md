@@ -76,6 +76,12 @@ curl -fsS -X POST .../channels/<id>/test   # message arrives at the configured t
 - Alert storms from over-sensitive rules → require `durationSeconds` defaults, dedupe per rule, and silencing.
 - Notification delivery failures must be visible (the `notifications` table + retry), or alerts silently die — surface delivery failures in the dashboard.
 
+## Files you'll touch (precision map)
+
+- Partial at: `apps/api/src/modules/monitoring/monitoring.service.ts` (real metric rows + alert-rule evaluation — but **no `/metrics` Prometheus endpoint**, `durationSeconds` ignored, notifications never dispatched).
+- Prisma: `Metric`, `AlertRule`, `Alert`, `NotificationChannel`.
+- Add: a `/metrics` Prometheus-format route; a `Notifier` (email via Phase 09, webhook, Slack) with retry + delivery record; the `OK→PENDING→FIRING→RESOLVED` state machine honoring `durationSeconds`.
+
 ## Next Phase
 
 [Phase 15: Logging Platform](./phase-15.md)

@@ -83,6 +83,13 @@ curl -fsS https://deploy.fidscript.com/ -o /dev/null -w "%{http_code}\n"
 - Screens built against endpoints that don't exist yet → track which backend phase each screen depends on; land screens as their phases verify.
 - Token handling in the browser → httpOnly cookie + short-lived access + server-side refresh; never store secrets in localStorage.
 
+## Files you'll touch (precision map)
+
+- `apps/dashboard/src/app/` — Next.js App Router; currently just `layout.tsx` + `page.tsx` (a single `<h1>`). Add `login/`, project routes, feature screens.
+- `packages/ui/src/components/*` — 8 real components used by nothing yet (build the app shell + screens from these).
+- `apps/dashboard/package.json` (Next 15; depends on `@fidscript/{sdk,ui,types}`), `apps/dashboard/next.config.ts`.
+- Wire: auth (Phase 03), the SDK/typed-fetch data layer, and the realtime client (Phase 13/16) for live status + log tail.
+
 ## Next Phase
 
 [Phase 20: Skills Platform](./phase-20.md)

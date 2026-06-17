@@ -79,6 +79,13 @@ psql "$CONN" -c 'select * from t;'   # row is back
 - Logical-DB model has noisy-neighbor risk if one app saturates the shared cluster — set per-role `statement_timeout`/connection limits; document the upgrade path to dedicated containers.
 - Restore-into-same is destructive — require explicit `confirm` and a recent-backup precheck.
 
+## Files you'll touch (precision map)
+
+- Stub lives at: `apps/api/src/modules/databases/databases.service.ts` (provision inserts a row + a **fabricated** connection string; backup/restore/rotate are commented-out stubs returning `size:0`).
+- Prisma: `ManagedDatabase`, `DatabaseBackup`.
+- Infra: the platform Postgres in `installer/docker/docker-compose.yml`; add a PgBouncer service; stream backups to Storage (Phase 05).
+- Reuse: encrypt connection strings with the Phase 04 `CryptoService`.
+
 ## Next Phase
 
 [Phase 09: Email Platform (Stalwart)](./phase-09.md)

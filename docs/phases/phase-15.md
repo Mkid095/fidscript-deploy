@@ -75,6 +75,12 @@ docker compose exec postgres psql ... -c "select count(*) from logs.logs where t
 - High-volume ingest can saturate Postgres → enforce ingest rate limits + the volume quota + consider the object-store sink for firehose apps.
 - Batched deletes on large tables can lock → always batch with `LIMIT` loops, run off-peak.
 
+## Files you'll touch (precision map)
+
+- Partial at: `apps/api/src/modules/logging/logging.service.ts` (real ingestion + genuinely good cursor-paginated query — but `retentionDays` never enforced; no retention sweep; no shipping).
+- Prisma: `LogStream`, `LogEntry`.
+- Add: a retention sweep as a Phase 12 scheduler job (batched deletes); a pluggable `LogShipper` (webhook / object storage to Phase 05 / Loki); structured ingest from deployments(06)/functions(10)/queues(11).
+
 ## Next Phase
 
 [Phase 16: SDK Platform](./phase-16.md)

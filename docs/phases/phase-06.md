@@ -83,6 +83,14 @@ curl -s -o /dev/null -w "%{http_code}" "$URL"   # 404 after the route is gone
 - Builds that consume all disk/RAM starve the host → enforce limits; fail builds that breach them.
 - A bad `Dockerfile` or malicious image can still do damage inside its container — the isolation boundary is the container + network + cgroups, not a VM. Document this honestly (single-tenant trust model per VPS).
 
+## Files you'll touch (precision map)
+
+- Stub lives at: `apps/api/src/modules/deployments/deployments.service.ts` (`create()` inserts a `PENDING` row; `triggerBuild`/`completeBuild` flip a column with **zero callers** — dead code).
+- Controller + dto: `apps/api/src/modules/deployments/` (`dto/create-deployment.dto.ts`, enum `BuildStrategy`).
+- Prisma: `Deployment`, `BuildConfig`, enum `DeploymentStatus`.
+- Create: a trusted build **runner** that holds the Docker socket (user containers never get it) — e.g. `apps/api/src/modules/deployments/runner/` or a sidecar; wire it through the Phase 02 event bus.
+- Infra: a shared Docker bridge network + Traefik labels on deployed containers routing `<slug>.apps.deploy.fidscript.com`.
+
 ## Next Phase
 
 [Phase 07: Domains & TLS](./phase-07.md)

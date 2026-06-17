@@ -70,6 +70,16 @@ docker build -f apps/dashboard/Dockerfile apps/dashboard  # succeeds
 - Next.js standalone mode requires all imported packages flagged in `next.config.ts`.
 - Removing `.js` extensions is a large mechanical sweep — do it with a codemod and verify via `typecheck`, not by hand.
 
+## Files you'll touch (precision map)
+
+> **Phase 00 is VERIFIED (commit `047ca53`).** This map records what was done — use it to orient, not to redo.
+
+- Module system: `apps/api/package.json` (`type: commonjs`); `apps/api/tsconfig.json` (commonjs/node + `experimentalDecorators`, `emitDecoratorMetadata`, `noEmit:false`, `strictPropertyInitialization:false`); every `packages/*/{tsconfig,package}.json` (CommonJS, `noEmit:false`).
+- Build pipeline: `tsconfig.base.json` (`noEmit:true` — overridden per consumer); `turbo.json` (`^build` already correct).
+- Compile fixes: `apps/api/src/modules/ai/ai.module.ts` + `ai.service.ts`; `apps/api/src/modules/marketplace/marketplace.service.ts`; `apps/api/prisma/schema.prisma` (added `Project.aiConversations`); `apps/mcp-server/src/server.ts` + `handlers.ts`.
+- Containerize: `apps/api/Dockerfile`, `apps/dashboard/Dockerfile`, `.dockerignore`, `apps/dashboard/next.config.ts` (`output:'standalone'` + `outputFileTracingRoot`).
+- Removed/renamed: orphan `src/` (recoverable at `f1dd6f2`), `apps/mcp-server/src/index.ts`, `{src}`/`{dto}` dirs; `apps/sdk` → `@fidscript/sdk-node` (ADR-012).
+
 ## Next Phase
 
 [Phase 01: Installer & Infrastructure Stack](./phase-01.md)

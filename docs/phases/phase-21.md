@@ -73,6 +73,12 @@ fidscript storage ls ...
 - Templates that don't deploy cleanly undermine trust → each official template is a prove-it (generate → deploy → live) before shipping.
 - Secret variables baked into generated source → always inject at deploy time, never persist into the bundle.
 
+## Files you'll touch (precision map)
+
+- Stub lives at: `apps/api/src/modules/templates/templates.service.ts` (`{{var}}` substitution is real — but "generate a project" creates one `Project` row + returns a string that goes nowhere; no files, no repo, no deploy).
+- Prisma: `Template`.
+- Create: template-as-source-tree (git repo or tarball in Storage, Phase 05) + a `generate → deploy` pipeline into Phase 06; a starter catalog of official templates; `fidscript init --template` (Phase 18).
+
 ## Next Phase
 
 [Phase 22: AI Layer](./phase-22.md)

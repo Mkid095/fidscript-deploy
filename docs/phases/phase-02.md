@@ -75,6 +75,13 @@ docker compose exec nats nats sub 'events.>' &   # then trigger an action; the m
 - Dual-write consistency between local and JetStream (acceptable: local is source of truth for reactivity, JetStream is the durable record).
 - Migrating every existing `emit()` string to the typed scheme is a broad sweep — gate it behind `typecheck`.
 
+## Files you'll touch (precision map)
+
+- Stub lives at: `apps/api/src/modules/events/event.service.ts` (imports `nats.ws` browser pkg; `emit()` only publishes with zero consumers; silently logs when `NATS_URL` unset).
+- `apps/api/src/modules/events/events.module.ts` — `@Global()`, exports `EventService`.
+- Reconcile with: `packages/events/` (defines `PlatformEvent`/`EventType` the service ignores) and `docs/EVENT_CATALOG.md` (subject scheme diverges from code).
+- Add: `@nestjs/event-emitter` to `apps/api`; an audit/event-persistence consumer writing `PlatformEvent` rows (add the model to `apps/api/prisma/schema.prisma`); a `ServiceRegistry` + `GET /api/v1/services`.
+
 ## Next Phase
 
 [Phase 03: Identity & Access](./phase-03.md)

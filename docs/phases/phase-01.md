@@ -84,6 +84,16 @@ docker compose exec postgres psql ... -c "select email from identity.users;"  # 
 - Traefik ACME rate limits during repeated testing — use the staging ACME endpoint for dev.
 - Stalwart crashing on missing certs can mark the stack unhealthy; gate it behind Phase 09 readiness.
 
+## Files you'll touch (precision map)
+
+- `installer/scripts/install.sh` — today copies `installer/` only and prints "complete" without building/starting app containers; `mkdir ".../{postgres,redis}"` brace bug.
+- `installer/docker/docker-compose.yml` — `$(cat /run/secrets/...)` inside `environment:` isn't substituted; `api`/`dashboard` `build:` must point at `apps/api` / `apps/dashboard`; fix host env wiring (`DB_HOST=postgres`, `NATS_URL=...`, `MINIO_ENDPOINT=...`).
+- `installer/traefik/traefik.yml` + `installer/docker/dynamic.yml` — Go-template `{{ .Domain }}` the file provider ignores.
+- `installer/scripts/configure-firewall.sh` — `iptables -F/-X` + `FORWARD DROP` breaks Docker networking.
+- `installer/scripts/setup-wizard.sh`, `installer/scripts/health-check.sh` — collect ADMIN creds; health verification.
+- Create: `apps/api/prisma/migrations/` (first baseline), `apps/api/prisma/seed.ts` (admin from `ADMIN_EMAIL`/`ADMIN_PASSWORD`).
+- Reference: compose builds/runs the `fidscript-api` + `fidscript-dashboard` images produced in Phase 00.
+
 ## Next Phase
 
 [Phase 02: Event Bus & Service Registry](./phase-02.md)

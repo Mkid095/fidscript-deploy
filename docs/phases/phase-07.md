@@ -83,6 +83,13 @@ curl -s -o /dev/null -w "%{http_code}" https://demo.fidscript.com   # 404 / not 
 - Cloudflare token scopes too narrow → DNS writes fail; document the required token permissions (Zone:DNS:Edit for the zone).
 - DNS propagation delays make verification flaky → poll with backoff, expose "pending" status honestly rather than claiming instant verification.
 
+## Files you'll touch (precision map)
+
+- Stub lives at: `apps/api/src/modules/domains/domains.service.ts` (`checkDns()` returns `true`; `'YOUR_SERVER_IP'` placeholder; no provider calls anywhere).
+- Prisma: `Domain`, enum `DomainStatus`.
+- Create: a DNS provider interface + Cloudflare implementation (`apps/api/src/modules/domains/providers/`); wire `CLOUDFLARE_API_TOKEN_FILE` (creds exist in memory `cloudflare-config`, **not yet in code**).
+- Infra: Traefik ACME `dnsChallenge` (Cloudflare) in `installer/traefik/traefik.yml`; staging endpoint for dev.
+
 ## Next Phase
 
 [Phase 08: Database Platform](./phase-08.md)

@@ -10,13 +10,19 @@ FIDScript Deploy - AI Development Constitution
 
 | Need | Go To |
 |------|-------|
+| **Start here — orient any agent/human (read first)** | `docs/START_HERE.md` |
 | Why we reset + current honest state | `docs/AUDIT.md` |
 | Roadmap, phase sequence, template, verification rubric | `docs/phases/README.md` |
 | Current phase and status | `AGENT_STATUS.md` |
 | Architecture decisions | `DECISIONS.md` |
-| System architecture | `ARCHITECTURE.md` |
-| All services overview | `docs/SERVICE_CATALOG.md` |
+| System architecture (⚠ aspirational target — see START_HERE) | `ARCHITECTURE.md` |
+| All services overview (⚠ aspirational target) | `docs/SERVICE_CATALOG.md` |
 | Complete file inventory | `PROJECT_INDEX.md` |
+
+> **⚠ The design/spec docs (`ARCHITECTURE.md`, `docs/PRODUCT_REQUIREMENTS.md`,
+> `docs/*_SPEC.md`, `docs/services/*.md`) describe the *intended* system, written before
+> the hardening reset. They are the destination, not the present. Always cross-check
+> against `docs/AUDIT.md` and the phase doc's "Current State" before assuming a feature works.**
 
 ---
 

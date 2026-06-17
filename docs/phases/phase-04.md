@@ -76,6 +76,13 @@ curl -s -o /dev/null -w "%{http_code}" .../projects/$PID -H "Authorization: Bear
 - A misconfigured/rotated `ENCRYPTION_KEY` makes existing secrets undecryptable → fail closed, document the key, back it up via secrets manager, never commit it.
 - Forgetting to route a new resource type through `ProjectGuard` reopens isolation holes — the isolation prove-it test is the backstop.
 
+## Files you'll touch (precision map)
+
+- Module: `apps/api/src/modules/projects/` (`projects.service.ts` — real CRUD + RBAC already; **env vars stored plaintext**), controller, `dto/`.
+- Related: `apps/api/src/modules/audit/` (membership/access checks).
+- Prisma: `Project`, `ProjectMember`, `ProjectSettings`, enums `ProjectType`/`ProjectStatus`.
+- Add: a reusable `CryptoService` (AES-256-GCM, key from `ENCRYPTION_KEY_FILE`) for env-var encryption; an invitations flow + project API keys (hashed).
+
 ## Next Phase
 
 [Phase 05: Storage Platform](./phase-05.md)
