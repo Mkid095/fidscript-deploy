@@ -177,6 +177,14 @@ services:
       SERVER_IP: ${SERVER_IP}
       PLATFORM_DOMAIN: ${PLATFORM_DOMAIN:-deploy.fidscript.com}
       CLOUDFLARE_API_TOKEN_FILE: /run/secrets/cf_api_token
+      # Stalwart / Email
+      STALWART_JMAP_URL: http://fidscript_stalwart:8080
+      STALWART_ADMIN_TOKEN_FILE: /run/secrets/stalwart_admin_token
+      STALWART_SMTP_HOST: fidscript_stalwart
+      STALWART_SMTP_PORT: "587"
+      PLATFORM_MAIL_HOST: ${PLATFORM_MAIL_HOST:-mail.deploy.fidscript.com}
+      SMTP_FROM: noreply@${PLATFORM_MAIL_HOST:-deploy.fidscript.com}
+      STALWART_WEBHOOK_SECRET_FILE: /run/secrets/stalwart_webhook_secret
     secrets:
       - postgres_password
       - redis_password
@@ -185,6 +193,8 @@ services:
       - jwt_secret
       - encryption_key
       - cf_api_token
+      - stalwart_admin_token
+      - stalwart_webhook_secret
     volumes:
       - ./secrets:/run/secrets:ro
     networks:
@@ -294,3 +304,5 @@ secrets:
     file: ./secrets/cf_api_token.txt
   stalwart_admin_token:
     file: ./secrets/stalwart_admin_token.txt
+  stalwart_webhook_secret:
+    file: ./secrets/stalwart_webhook_secret.txt

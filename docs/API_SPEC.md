@@ -528,66 +528,114 @@ Upload a file.
 
 ### Email Module
 
-#### POST /projects/:id/email/send
-Send an email.
+Three products: Hosted Mailboxes (IMAP/SMTP via Stalwart), Email API (Resend-style via API keys), and Inbox (message browsing).
 
-**Headers:** `Authorization: Bearer <token>`
+#### Domains
 
-**Request:**
+```
+POST   /projects/:projectId/email/domains
+GET    /projects/:projectId/email/domains
+GET    /projects/:projectId/email/domains/:domainId
+DELETE /projects/:projectId/email/domains/:domainId
+POST   /projects/:projectId/email/domains/:domainId/verify
+POST   /projects/:projectId/email/domains/:domainId/catch-all
+DELETE /projects/:projectId/email/domains/:domainId/catch-all
+```
+
+#### Mailboxes (IMAP/SMTP accounts)
+
+```
+POST   /projects/:projectId/email/mailboxes                        → returns Outlook credentials once
+GET    /projects/:projectId/email/mailboxes
+GET    /projects/:projectId/email/mailboxes/:mailboxId
+PATCH  /projects/:projectId/email/mailboxes/:mailboxId
+POST   /projects/:projectId/email/mailboxes/:mailboxId/suspend
+POST   /projects/:projectId/email/mailboxes/:mailboxId/activate
+POST   /projects/:projectId/email/mailboxes/:mailboxId/reset-password
+DELETE /projects/:projectId/email/mailboxes/:mailboxId
+```
+
+Create mailbox response (shown once):
 ```json
 {
-  "from": "noreply@myapp.com",
-  "to": ["user@example.com"],
-  "subject": "Welcome!",
-  "htmlBody": "<h1>Welcome!</h1>",
-  "textBody": "Welcome!"
+  "id": "uuid",
+  "email": "john@example.com",
+  "name": "John",
+  "quotaMb": 1024,
+  "imapHost": "mail.deploy.fidscript.com",
+  "imapPort": 993,
+  "smtpHost": "mail.deploy.fidscript.com",
+  "smtpPort": 587,
+  "username": "john@example.com",
+  "password": "..."
 }
 ```
 
-**Response (201):**
-```json
-{
-  "data": {
-    "email": {
-      "id": "eml_abc123",
-      "from": "noreply@myapp.com",
-      "to": ["user@example.com"],
-      "subject": "Welcome!",
-      "status": "sent",
-      "messageId": "abc123@provider.com"
-    }
-  }
-}
+#### Aliases (forwarding addresses)
+
+```
+POST   /projects/:projectId/email/aliases
+GET    /projects/:projectId/email/aliases
+PATCH  /projects/:projectId/email/aliases/:aliasId
+DELETE /projects/:projectId/email/aliases/:aliasId
 ```
 
----
+#### Sender Identities (API sending — no mailbox required)
 
-#### GET /projects/:id/email/logs
-List email logs.
+```
+POST   /projects/:projectId/email/sender-identities
+GET    /projects/:projectId/email/sender-identities
+DELETE /projects/:projectId/email/sender-identities/:identityId
+```
 
-**Headers:** `Authorization: Bearer <token>`
+#### API Keys (Resend-style auth)
 
-**Query Parameters:**
-- `status` - Filter by status
-- `page` - Page number
-- `limit` - Items per page
+```
+POST   /projects/:projectId/email/api-keys          → raw key shown once
+GET    /projects/:projectId/email/api-keys         → no secrets
+DELETE /projects/:projectId/email/api-keys/:apiKeyId
+```
+
+#### Send Email
+
+```
+POST   /projects/:projectId/email/send
+```
+
+```json
+{
+  "from": "noreply@example.com",
+  "to": "user@gmail.com",
+  "subject": "Login code",
+  "text": "Your code is 123456",
+  "html": "<p>Your code is <b>123456</b></p>"
+}
+```
 
 **Response (200):**
 ```json
 {
-  "data": {
-    "logs": [
-      {
-        "id": "eml_abc123",
-        "from": "noreply@myapp.com",
-        "to": ["user@example.com"],
-        "subject": "Welcome!",
-        "status": "delivered",
-        "createdAt": "2026-06-16T12:00:00Z"
-      }
-    ]
-  }
+  "messageId": "uuid",
+  "accepted": ["user@gmail.com"],
+  "status": "SENT"
 }
+```
+
+#### Messages (Inbox)
+
+```
+GET    /projects/:projectId/email/messages                          ?mailboxId=&folder=inbox&unread=true
+GET    /projects/:projectId/email/messages/:messageId
+GET    /projects/:projectId/email/messages/:messageId/content     body from MinIO
+PATCH  /projects/:projectId/email/messages/read                  { "messageIds": ["..."], "isRead": true }
+PATCH  /projects/:projectId/email/messages/:messageId/star        ?starred=true
+DELETE /projects/:projectId/email/messages                        { "messageIds": ["..."] }
+```
+
+#### Inbound Webhook
+
+```
+POST   /email/inbound/webhook    Stalwart sieve notify — no project auth
 ```
 
 ---

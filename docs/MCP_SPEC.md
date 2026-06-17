@@ -543,50 +543,225 @@ Generate a signed URL for private file access.
 
 ### Email Tools
 
-#### send_email
+Three products: Hosted Mailboxes (IMAP/SMTP), Email API (Resend-style), Inbox.
 
-Send an email.
+#### add_email_domain
+
+Add and configure an email domain.
 
 ```json
 {
-  "name": "send_email",
-  "description": "Send a transactional email",
+  "name": "add_email_domain",
+  "description": "Add an email domain and set up DNS records",
   "inputSchema": {
     "type": "object",
     "properties": {
       "projectId": { "type": "string" },
-      "to": {
+      "domain": { "type": "string" }
+    },
+    "required": ["projectId", "domain"]
+  }
+}
+```
+
+#### verify_email_domain
+
+Verify DNS records for a domain (DKIM, SPF, DMARC, MX).
+
+```json
+{
+  "name": "verify_email_domain",
+  "description": "Re-verify domain DNS records",
+  "inputSchema": {
+    "type": "object",
+    "properties": {
+      "projectId": { "type": "string" },
+      "domainId": { "type": "string" }
+    },
+    "required": ["projectId", "domainId"]
+  }
+}
+```
+
+#### create_mailbox
+
+Create a mailbox (IMAP/SMTP account). Returns credentials once — caller should display to user.
+
+```json
+{
+  "name": "create_mailbox",
+  "description": "Create a mailbox account — returns Outlook credentials once",
+  "inputSchema": {
+    "type": "object",
+    "properties": {
+      "projectId": { "type": "string" },
+      "domain": { "type": "string" },
+      "localPart": { "type": "string" },
+      "password": { "type": "string" },
+      "name": { "type": "string" },
+      "quotaMb": { "type": "number" }
+    },
+    "required": ["projectId", "domain", "localPart", "password"]
+  }
+}
+```
+
+#### suspend_mailbox
+
+Suspend a mailbox (login disabled, emails kept).
+
+```json
+{
+  "name": "suspend_mailbox",
+  "description": "Suspend a mailbox",
+  "inputSchema": {
+    "type": "object",
+    "properties": {
+      "projectId": { "type": "string" },
+      "mailboxId": { "type": "string" }
+    },
+    "required": ["projectId", "mailboxId"]
+  }
+}
+```
+
+#### reset_mailbox_password
+
+Reset a mailbox password. Returns new password once.
+
+```json
+{
+  "name": "reset_mailbox_password",
+  "description": "Reset mailbox password — returns new password once",
+  "inputSchema": {
+    "type": "object",
+    "properties": {
+      "projectId": { "type": "string" },
+      "mailboxId": { "type": "string" },
+      "newPassword": { "type": "string" }
+    },
+    "required": ["projectId", "mailboxId", "newPassword"]
+  }
+}
+```
+
+#### create_alias
+
+Create a forwarding alias.
+
+```json
+{
+  "name": "create_alias",
+  "description": "Create a forwarding alias",
+  "inputSchema": {
+    "type": "object",
+    "properties": {
+      "projectId": { "type": "string" },
+      "domain": { "type": "string" },
+      "localPart": { "type": "string" },
+      "targets": {
         "type": "array",
-        "items": { "type": "string" }
+        "items": {
+          "type": "object",
+          "properties": {
+            "type": { "type": "string", "enum": ["mailbox", "external"] },
+            "mailboxId": { "type": "string" },
+            "address": { "type": "string" }
+          }
+        }
       },
+      "description": { "type": "string" }
+    },
+    "required": ["projectId", "domain", "localPart", "targets"]
+  }
+}
+```
+
+#### create_sender_identity
+
+Create a sender identity for API sending (no mailbox required).
+
+```json
+{
+  "name": "create_sender_identity",
+  "description": "Create a sender identity for API-based sending",
+  "inputSchema": {
+    "type": "object",
+    "properties": {
+      "projectId": { "type": "string" },
+      "domain": { "type": "string" },
+      "email": { "type": "string" },
+      "name": { "type": "string" }
+    },
+    "required": ["projectId", "domain", "email"]
+  }
+}
+```
+
+#### create_email_api_key
+
+Create an API key for programmatic email sending. Key shown only once.
+
+```json
+{
+  "name": "create_email_api_key",
+  "description": "Create an email API key — shown only once",
+  "inputSchema": {
+    "type": "object",
+    "properties": {
+      "projectId": { "type": "string" },
+      "name": { "type": "string" }
+    },
+    "required": ["projectId", "name"]
+  }
+}
+```
+
+#### send_email
+
+Send an email via Stalwart SMTP.
+
+```json
+{
+  "name": "send_email",
+  "description": "Send an email",
+  "inputSchema": {
+    "type": "object",
+    "properties": {
+      "projectId": { "type": "string" },
+      "from": { "type": "string" },
+      "to": { "type": "string" },
       "subject": { "type": "string" },
-      "body": { "type": "string" },
-      "from": { "type": "string" }
+      "text": { "type": "string" },
+      "html": { "type": "string" }
     },
     "required": ["projectId", "to", "subject"]
   }
 }
 ```
 
----
+#### list_email_messages
 
-#### list_email_logs
-
-View email delivery logs.
+List messages (inbox view).
 
 ```json
 {
-  "name": "list_email_logs",
-  "description": "View email sending history",
+  "name": "list_email_messages",
+  "description": "List email messages with optional filters",
   "inputSchema": {
     "type": "object",
     "properties": {
       "projectId": { "type": "string" },
-      "status": { "type": "string" }
+      "mailboxId": { "type": "string" },
+      "folder": { "type": "string", "enum": ["inbox", "drafts", "trash", "spam"] },
+      "unread": { "type": "boolean" },
+      "limit": { "type": "number" },
+      "offset": { "type": "number" }
     },
     "required": ["projectId"]
   }
 }
+```
 ```
 
 ---

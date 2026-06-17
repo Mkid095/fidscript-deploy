@@ -124,6 +124,8 @@ openssl rand -base64 64 > "$SECRETS_DIR/jwt_secret.txt"
 echo "$CLOUDFLARE_API_TOKEN" > "$SECRETS_DIR/cf_api_token.txt"
 # Stalwart admin token for management API
 openssl rand -base64 32 > "$SECRETS_DIR/stalwart_admin_token.txt"
+# Stalwart webhook HMAC secret for inbound email/bounce webhooks
+openssl rand -base64 32 > "$SECRETS_DIR/stalwart_webhook_secret.txt"
 
 # Set permissions
 chmod 600 "$SECRETS_DIR/"*.txt

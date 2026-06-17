@@ -254,31 +254,88 @@ const publicUrl = client.storage.files.getPublicUrl('bkt_abc123', 'images/logo.p
 
 ## Email Module
 
+Three products: Hosted Mailboxes (IMAP/SMTP), Email API (Resend-style), Inbox.
+
 ```typescript
-// Domains
-const { domains } = await client.email.domains.list();
-const { domain, dkimRecord, spfRecord } = await client.email.domains.add('myapp.com');
-await client.email.domains.verify('edm_abc123');
+// ── Domains ──────────────────────────────────────────────────────────────
+const domains = await client.email.domains.list(projectId);
+const domain = await client.email.domains.create(projectId, { domain: 'example.com' });
+const verification = await client.email.domains.verify(projectId, domain.id);
+await client.email.domains.delete(projectId, domain.id);
 
-// Mailboxes
-const { mailboxes } = await client.email.mailboxes.list('edm_abc123');
-const mailbox = await client.email.mailboxes.create('edm_abc123', {
-  localPart: 'contact',
-  password: 'securepassword'
-});
-await client.email.mailboxes.delete('mbx_xyz789');
-
-// Send email
-const { email, messageId } = await client.email.send({
-  from: 'noreply@myapp.com',
-  to: ['user@example.com'],
-  subject: 'Welcome!',
-  htmlBody: '<h1>Welcome!</h1>',
-  textBody: 'Welcome!'
+// Catch-all
+await client.email.domains.setCatchAll(projectId, domain.id, {
+  targetType: 'mailbox',
+  targetId: mailboxId,
 });
 
-// Logs
-const { logs } = await client.email.logs({ status: 'delivered' });
+// ── Mailboxes ────────────────────────────────────────────────────────────
+// Returns Outlook/Thunderbird credentials once — save them.
+const { credentials } = await client.email.mailboxes.create(projectId, {
+  domain: 'example.com',
+  localPart: 'john',
+  password: 'SecureP@ss123',
+  name: 'John',
+  quotaMb: 1024,
+});
+// credentials: { imapHost, imapPort, smtpHost, smtpPort, username, password }
+
+const mailboxes = await client.email.mailboxes.list(projectId);
+const mailbox = await client.email.mailboxes.get(projectId, mailboxId);
+await client.email.mailboxes.update(projectId, mailboxId, { name: 'John Updated', quotaMb: 2048 });
+await client.email.mailboxes.suspend(projectId, mailboxId);
+await client.email.mailboxes.activate(projectId, mailboxId);
+const { password } = await client.email.mailboxes.resetPassword(projectId, mailboxId, { newPassword: 'NewSecure!' });
+await client.email.mailboxes.delete(projectId, mailboxId);
+
+// ── Aliases ──────────────────────────────────────────────────────────────
+const aliases = await client.email.aliases.list(projectId);
+const alias = await client.email.aliases.create(projectId, {
+  domain: 'example.com',
+  localPart: 'sales',
+  targets: [{ type: 'mailbox', mailboxId: 'uuid' }],
+  description: 'Sales team',
+});
+await client.email.aliases.update(projectId, alias.id, { isActive: false });
+await client.email.aliases.delete(projectId, alias.id);
+
+// ── Sender Identities ────────────────────────────────────────────────────
+// noreply@example.com can send without being a mailbox
+const identities = await client.email.senderIdentities.list(projectId);
+const identity = await client.email.senderIdentities.create(projectId, {
+  domain: 'example.com',
+  email: 'noreply@example.com',
+  name: 'No Reply',
+});
+await client.email.senderIdentities.delete(projectId, identity.id);
+
+// ── API Keys ─────────────────────────────────────────────────────────────
+// ek_... key shown once at creation — save it
+const { key } = await client.email.apiKeys.create(projectId, { name: 'Production' });
+const apiKeys = await client.email.apiKeys.list(projectId);
+await client.email.apiKeys.delete(projectId, apiKeyId);
+
+// ── Send ─────────────────────────────────────────────────────────────────
+const { messageId, accepted, status } = await client.email.send(projectId, {
+  from: 'noreply@example.com',
+  to: 'user@gmail.com',
+  subject: 'Login code',
+  text: 'Your code is 123456',
+  html: '<p>Your code is <b>123456</b></p>',
+});
+
+// ── Messages (Inbox) ─────────────────────────────────────────────────────
+const messages = await client.email.messages.list(projectId, {
+  mailboxId: '...',
+  folder: 'inbox',
+  unread: true,
+  limit: 20,
+});
+const message = await client.email.messages.get(projectId, messageId);
+const { content } = await client.email.messages.getContent(projectId, messageId); // body from MinIO
+await client.email.messages.markRead(projectId, { messageIds: ['...'], isRead: true });
+await client.email.messages.star(projectId, messageId, { starred: true });
+await client.email.messages.delete(projectId, { messageIds: ['...'] });
 ```
 
 ---

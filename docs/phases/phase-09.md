@@ -4,100 +4,293 @@
 
 ## Objective
 
-A real internal mail server: **send and receive mail** through a self-hosted Stalwart instance that the installer brings up and the platform configures automatically — DKIM/SPF/DMARC set via DNS, mailboxes managed in the API, templates rendered, and delivery tracked. This is the vision the user flagged as not-yet-implemented; this phase makes it real. It also unblocks platform features that need email (magic links, notifications, invites, domain-live alerts).
+A real internal mail server: **send and receive mail** through a self-hosted Stalwart instance — DKIM/SPF/DMARC DNS automation, mailbox/alias/sender-identity management, SMTP submission, IMAP access, and a message inbox backed by Stalwart JMAP.
+
+The platform serves three distinct email products under one API:
+
+1. **Hosted Mailboxes** — Namecheap Private Email / Zoho-style IMAP/SMTP accounts users manage in Outlook, Thunderbird, or mobile mail. Built directly on Stalwart.
+2. **Email API** — Resend-style programmatic sending with API keys and sender identities. No mailbox required to send.
+3. **Inbox Platform** — Gmail-style webmail UI backed by Stalwart. The platform acts as a JMAP client reading from Stalwart.
+
+## Architecture Principles
+
+- **Control plane vs. mail infrastructure** — Platform owns domains, aliases, mailboxes, sender identities, API keys, permissions. Stalwart owns SMTP, IMAP, JMAP, mail storage, authentication, routing.
+- **No triple storage** — Messages live in Stalwart. Platform stores metadata rows only for sent events, delivery events, and automation triggers. Inbox UI reads from Stalwart via JMAP, not from Postgres.
+- **Stalwart owns passwords** — Platform stores only `stalwartAccountId`. Password reset goes API → Stalwart → returns new password once.
+- **Sender identity gating** — Identities require domain to be ACTIVE (all DNS verified) before use.
+- **Domain ownership verification** — TXT token required before enabling any sending.
+- **Rate limiting** — Per-key per-day usage tracked in `email.api_usage`.
 
 ## Current State
 
-**IN PROGRESS.** As of 2026-06-17:
+**IN PROGRESS — schema restructured, all endpoints implemented, events wired.** As of 2026-06-17:
 
-- **Stalwart ports exposed**: SMTP 25/465/587, IMAP 993, JMAP 8443 via docker-compose; `stalwart_admin_token` secret generated at setup time
-- **Real verifyDomain**: `EmailService.verifyDomain` now calls `MailDnsService.verifyEmailDns` which queries actual Cloudflare DNS records (DKIM, SPF, DMARC, MX) — no more hardcoded booleans
-- **DKIM key generation**: `MailDnsService.generateDkimKey` generates Ed25519 key pair; private key stored on Stalwart volume (`/data/dkim/<selector>/<domain>.private`); public key published as TXT DNS record
-- **MX/SPF/DMARC DNS via DnsProvider**: `MailDnsService.setupEmailDns` creates all email DNS records through the Phase 07 `DnsProvider` interface (Cloudflare API), never direct calls
-- **Priority field added**: `DnsProvider.createRecord` now accepts `priority` for MX records
-- **Stalwart config updated**: `main.toml` rewritten with inbound/outbound/submission/IMAP/JMAP sections, ACME TLS, DKIM signing, SQLite storage
+- **Schema restructured** — `email.domains`, `email.mailboxes`, `email.aliases`, `email.sender_identities`, `email.api_keys`, `email.messages`, `email.catch_all_rules`, `email.api_usage`
+- **Domain lifecycle** — PENDING → DNS_CONFIGURED → OWNERSHIP_VERIFIED → VERIFICATION_PENDING → ACTIVE
+- **Ownership verification** — TXT token generated at domain creation; verified before DNS configuration
+- **Stalwart JMAP client** — `StalwartJmapService` calls `POST /jmap` with bearer auth
+- **All endpoints implemented** — domains, mailboxes, aliases (mailbox/external/webhook targets), sender identities, API keys, messages, catch-all
+- **Alias routing in Stalwart** — aliases synced via Sieve script on target mailbox; rebuilt whenever aliases change
+- **Webhook delivery** — inbound mail on alias with webhook target fires delivery webhook with retry (3x exponential backoff)
+- **Events wired** — full set including `email.webhook_triggered`, `email.opened`, `email.clicked`, `email.complained`
+- **API key scopes** — string array `["email.send", "email.domains.read", ...]`; `ForbiddenException` if scope missing
+- **Rate limiting** — `dailyLimit`, `monthlyLimit`, `blockedUntil`, `lastFailureAt` per key per day
+- **No MinIO for messages** — body read from Stalwart via JMAP at display time; metadata only in Postgres
+- **Webhook security** — `X-Stalwart-Signature` HMAC-SHA256 on all inbound/bounce webhooks
+- **Bounce ingestion** — `EmailEventsController.handleBounce` updates message status, emits `email.bounced`
+- **SMTP status model** — `QUEUED → SUBMITTED → ACCEPTED → BOUNCED/FAILED`
+- **Inbound webhook** — `X-Stalwart-Signature` HMAC verification on both `/email/inbound/webhook` and `/email/events/bounce`
 
-## Dependencies
+## Schema
 
-- **Phase 07** (the `DnsProvider` + Cloudflare wiring — MX/SPF/DKIM/DMARC records are set through it; TLS certs for SMTP/IMAP).
-- **Phase 05** (object storage for attachment/archive).
-- **Phase 01** (Stalwart container running).
+```
+email.domains
+  id, project_id, domain,
+  status (PENDING|DNS_CONFIGURED|OWNERSHIP_VERIFIED|VERIFICATION_PENDING|ACTIVE|FAILED),
+  dkim_verified, spf_verified, dmarc_verified, mx_verified,
+  dkim_selector, ownership_token, verified_at, created_at
 
-## Deliverables
+email.mailboxes
+  id, domain_id, local_part, name, quota (bytes),
+  is_active, stalwart_account_id, created_at, updated_at
+  → email.messages[]
+  Note: password owned by Stalwart — platform stores only stalwartAccountId. Quota stats queried from Stalwart live.
 
-- [ ] **Stalwart wired and exposed.** Publish real ports — SMTP 25 (inbound), 465/587 (submission), IMAP 993, JMAP — behind Traefik where sensible, with TLS certs mounted (from Phase 07 ACME or Stalwart's internal ACME). DKIM signing keys generated at first boot.
-- [ ] **DNS automation (the real fix).** Through the Phase 07 `DnsProvider`, set and verify **MX**, **SPF** (TXT), **DKIM** (TXT, the public key matching Stalwart's private key), and **DMARC** (TXT) for the mail domain. `verifyDomain()` queries real records — no hardcoded booleans.
-- [ ] **Mailbox management.** Create/delete/suspend mailboxes via Stalwart's management API, mirrored in Postgres. Password set per mailbox (Argon2 via Stalwart).
-- [ ] **Aliases & routing.** Alias addresses forward to a mailbox or an external address; catch-all and sieve-like routing rules.
-- [ ] **Send (real).** Outbound mail submitted to Stalwart (SMTP submission / JMAP) with authenticated senders; HTML/text rendered from templates. Records `queued → sent → delivered|bounced`.
-- [ ] **Receive (real).** Inbound mail delivered by Stalwart to the mailbox **and** surfaced to the platform (Stalwart webhook / sieve-notify / IMAP polling) → stored → emits an `email.received` event so functions/webhooks can react.
-- [ ] **Delivery tracking.** Queue state, SMTP responses, DSNs/bounces recorded; a per-message timeline.
-- [ ] **Provider abstraction.** A `MailProvider` interface (`send`, `verifyDomain`, `createMailbox`, …). **Stalwart** is the primary implementation; an **SMTP-relay** path (Resend/SES/external SMTP) is the secondary for high-volume or for VPSes where port 25 is blocked — callers never hardcode the provider (Development Rule 5).
-- [ ] **Platform consumers wired.** Identity magic links (03), project invitations (04), "domain live" notice (07), alert notifications (14) send through this provider.
+email.aliases
+  id, domain_id, local_part,
+  targets (JSON: mailboxId | external address | webhook url),
+  description, is_active, created_at, updated_at
+
+email.sender_identities
+  id, domain_id, email, name, is_verified, created_at
+
+email.api_keys
+  id, project_id, name, key_hash,
+  scopes (string[]: email.send | email.domains.read | email.mailboxes.read | email.messages.read | email.identities.read),
+  last_used_at, created_at
+  → email.api_usage[]
+
+email.api_usage
+  id, project_id, api_key_id, date,
+  sends, failures, bounces,
+  daily_limit, monthly_limit,
+  blocked_until, last_failure_at
+  @@unique([project_id, api_key_id, date])
+
+email.messages
+  id, mailbox_id, sender_identity_id, project_id,
+  from, to, subject, size_bytes,
+  is_read, is_starred, is_draft, spam_score,
+  status (QUEUED|SUBMITTED|ACCEPTED|BOUNCED|FAILED), error, created_at
+
+email.catch_all_rules
+  id, domain_id, target (JSON: mailboxId | external address | webhook url), is_active
+```
+
+email.aliases
+  id, domain_id, local_part,
+  targets (JSON: mailboxId | external address | webhook url),
+  description, is_active, created_at, updated_at
+
+email.sender_identities
+  id, domain_id, email, name, is_verified, created_at
+  → email.messages[]
+
+email.api_keys
+  id, project_id, name, key_hash, last_used_at, created_at
+  → email.api_usage[]
+
+email.api_usage
+  id, project_id, api_key_id, date, sends, failures, bounces
+  @@unique([project_id, api_key_id, date])
+
+email.messages
+  id, mailbox_id, sender_identity_id, project_id,
+  from, to, subject, size_bytes,
+  is_read, is_starred, is_draft, spam_score, status, error, created_at
+  Note: body/attachments live in Stalwart — read via JMAP at display time
+
+email.catch_all_rules
+  id, domain_id, target (JSON: mailboxId | external address | webhook url), is_active
+```
+
+## API Endpoints
+
+### Domains
+```
+POST   /projects/:projectId/email/domains                 Create domain + ownership token
+GET    /projects/:projectId/email/domains
+GET    /projects/:projectId/email/domains/:domainId
+DELETE /projects/:projectId/email/domains/:domainId
+POST   /projects/:projectId/email/domains/:domainId/verify   Step through lifecycle
+POST   /projects/:projectId/email/domains/:domainId/catch-all
+DELETE /projects/:projectId/email/domains/:domainId/catch-all
+```
+
+### Mailboxes (passwords owned by Stalwart — platform stores only stalwartAccountId)
+```
+POST   /projects/:projectId/email/mailboxes                   → returns credentials once
+GET    /projects/:projectId/email/mailboxes
+GET    /projects/:projectId/email/mailboxes/:mailboxId
+PATCH  /projects/:projectId/email/mailboxes/:mailboxId
+POST   /projects/:projectId/email/mailboxes/:mailboxId/suspend
+POST   /projects/:projectId/email/mailboxes/:mailboxId/activate
+POST   /projects/:projectId/email/mailboxes/:mailboxId/reset-password  → returns new once
+DELETE /projects/:projectId/email/mailboxes/:mailboxId
+```
+
+### Aliases (webhook targets supported)
+```
+POST   /projects/:projectId/email/aliases
+GET    /projects/:projectId/email/aliases
+PATCH  /projects/:projectId/email/aliases/:aliasId
+DELETE /projects/:projectId/email/aliases/:aliasId
+```
+
+### Sender Identities (requires ACTIVE domain)
+```
+POST   /projects/:projectId/email/sender-identities
+GET    /projects/:projectId/email/sender-identities
+DELETE /projects/:projectId/email/sender-identities/:identityId
+```
+
+### API Keys (Resend-style — ek_... key shown once, rate limited)
+```
+POST   /projects/:projectId/email/api-keys
+GET    /projects/:projectId/email/api-keys
+DELETE /projects/:projectId/email/api-keys/:apiKeyId
+```
+
+### Send
+```
+POST   /projects/:projectId/email/send   apiKeyId for rate limit tracking
+```
+
+### Messages (metadata only — body from Stalwart via JMAP)
+```
+GET    /projects/:projectId/email/messages                       folder=, unread= filters
+GET    /projects/:projectId/email/messages/:messageId
+PATCH  /projects/:projectId/email/messages/read              bulk mark read
+PATCH  /projects/:projectId/email/messages/:messageId/star
+DELETE /projects/:projectId/email/messages                    metadata row only
+```
+
+### Inbound & Events (webhook endpoints — HMAC-SHA256 authenticated)
+```
+POST   /email/inbound/webhook   Stalwart sieve notify — X-Stalwart-Signature HMAC-SHA256
+POST   /email/events/bounce     Stalwart bounce notification — X-Stalwart-Signature HMAC-SHA256
+```
 
 ## Technical Design
 
-- **Stalwart config:** generated/mounted TOML at boot — domain list, DKIM keys path, TLS cert path, ACME or manual cert, management API token from `STALWART_ADMIN_TOKEN_FILE`. Data volume persisted.
-- **DNS via the Phase 07 provider:** for `mail.<domain>` set `MX → <mail host>`, `TXT "v=spf1 ... -all"`, `TXT <selector>._domainkey → <public key>`, `_dmarc TXT "v=DMARC1; ..."`. Verification re-reads these records (Cloudflare API + DNS resolve) and only flips `verified` when all match.
-- **Outbound path:** `send({from,to,subject,html,text})` → Stalwart SMTP submission (TLS+AUTH) → Stalwart queues/attempts → logs DSN. Fallback relay when configured.
-- **Inbound path:** Stalwart receives on 25, runs delivery; a Stalwart `sieve` notify / webhook posts to the API → store message metadata (headers, body ref in storage) → `email.received` event.
-- **Deliverability honesty:** document that VPS email reputation (PTR/rDNS, IP warmth, port-25 egress blocks) is the real-world constraint; the relay option exists precisely because many providers block outbound 25.
+### Domain Lifecycle
+1. `PENDING` — created, ownership TXT token generated
+2. User adds TXT record `{token}._email.{domain}`
+3. `verifyDomain` → ownership verified → `DNS_CONFIGURED`
+4. `setupEmailDns` creates DKIM/SPF/DMARC/MX records
+5. `OWNERSHIP_VERIFIED` → `verifyDomain` checks DNS records
+6. All DNS passing → `VERIFICATION_PENDING` → `ACTIVE`
+7. Mailboxes, aliases, sender identities require `ACTIVE` domain
+
+### Stalwart JMAP Client
+- All management: `POST /jmap` with `Authorization: Bearer <STA_ADMIN_TOKEN>`
+- Admin methods: `x:Domain/set`, `x:Account/set`
+- Mailbox/identity methods: `jmapIdentityCreate`, `jmapSieveScriptSet`, `jmapSieveScriptDestroy`
+
+### Alias Routing (Stalwart as Source of Truth)
+- Alias forwarding rules live in Stalwart's Sieve scripts on the target mailbox — not in Postgres alone
+- When an alias is created/deleted/updated: `rebuildMailboxSieveScript` aggregates ALL active aliases for that mailbox + the catch-all rule into one script and pushes to Stalwart via `jmapSieveScriptSet`
+- Webhook targets are handled asynchronously by `WebhookService` (not Sieve): inbound notify → metadata → webhook delivery with 3x exponential backoff
+
+### Webhook Delivery
+- `WebhookService.deliver()` fires HTTP POST to registered URL with retry (1s / 5s / 15s)
+- Payload: `{ event, messageId, projectId, mailboxId, to, from, subject, timestamp }`
+- Emits `email.webhook_triggered` on success; logs permanently failed attempts
+
+### Inbound Webhook Security
+- All Stalwart → platform webhooks authenticated with `X-Stalwart-Signature: sha256=<HMAC-SHA256(body, STALWART_WEBHOOK_SECRET)`
+- Both `/email/inbound/webhook` and `/email/events/bounce` verify HMAC before processing
+
+### Bounce Ingestion
+- Stalwart POSTs bounce event to `/email/events/bounce`
+- `handleBounce` updates `EmailMessage.status → BOUNCED`, emits `email.bounced`
+- Hard bounces (550 / user unknown) invalidate the sender identity
+
+### SMTP Status Model
+- `QUEUED` — message created, not yet submitted to SMTP
+- `SUBMITTED` — submitted to Stalwart SMTP relay
+- `ACCEPTED` — accepted by remote MTA
+- `BOUNCED` — permanently rejected by remote MTA
+- `FAILED` — local error (validation, auth, network)
+
+### API Key Scopes
+- `scopes string[]` — e.g. `["email.send"]` or `["email.send", "email.messages.read"]`
+- Valid: `email.send | email.domains.read | email.mailboxes.read | email.messages.read | email.identities.read`
+- Enforced at send time via `checkApiKeyCanSend` → `ForbiddenException` if scope missing or rate limit hit
+
+### Rate Limiting
+- `email.api_usage` upserted on every send with sends/failures/bounces per key per day
+- `dailyLimit` (default 1000) and `monthlyLimit` (default 30000) checked before accepting send
+- `blockedUntil` set after repeated failures; cleared when usage is low
+
 
 ## Integration Points
 
-- **Events emitted:** `email.domain.added/verified/failed`, `email.mailbox.created/deleted`, `email.sent`, `email.delivered`, `email.bounced`, `email.received`. Consumed by audit (02), Functions (10, inbound triggers), Realtime (13, live mailbox updates).
-- **Service registry:** registers `email`.
-- **SDK (16):** `email.send`, `email.mailboxes.*`, `email.domains.verify`.
-- **CLI (18):** `fidscript email send`, `fidscript mailboxes create`.
-- **Dashboard (19):** mailboxes, send-mail composer, inbound inbox, domain/DNS status.
-- **Consumers of this phase:** Identity (03 magic links), Projects (04 invites), Domains (07 live notice), Monitoring (14 alerts).
+- **DNS:** Phase 07 `DnsProvider` (Cloudflare) for all record management
+- **Storage:** None for messages (Stalwart owns mail storage)
+- **Events:** All `email.*` events through Phase 02 event bus
+- **SDK (16):** `email.domains.*`, `email.mailboxes.*`, `email.aliases.*`, `email.senderIdentities.*`, `email.apiKeys.*`, `email.messages.*`, `email.send`
+- **CLI (18):** `fidscript email domains create`, `fidscript email mailboxes create`, `fidscript email send`
 
 ## Verification (VPS)
 
 ```bash
-# 1) Configure mail for a real domain you control (or a subdomain on fidscript.com):
-curl -fsS -X POST .../api/v1/projects/$PID/email/domains -d '{"domain":"mail.example.com"}'
-curl -fsS .../email/domains/mail.example.com   # status: verified (only AFTER real DNS exists)
+# 1) Add domain → receive ownership token
+curl -fsS -X POST $API/api/v1/projects/$PID/email/domains \
+  -H "Authorization: Bearer $TOKEN" \
+  -d '{"domain":"mail.example.com"}'
+# Save ownershipToken from response
 
-# 2) DNS records were really created (not hardcoded) — check in Cloudflare / dig:
-dig +short MX mail.example.com
-dig +short TXT mail.example.com             # SPF
-dig +short TXT default._domainkey.mail.example.com   # DKIM public key
+# 2) Add TXT record: {token}._email.mail.example.com = {token}
+# Then verify ownership + DNS
+curl -fsS -X POST $API/api/v1/projects/$PID/email/domains/$DOMAIN_ID/verify \
+  -H "Authorization: Bearer $TOKEN"
 
-# 3) Send a real message and confirm external delivery:
-curl -fsS -X POST .../email/send -d '{"from":"you@mail.example.com","to":"real@gmail.com","subject":"t","text":"hi"}'
-# check the external inbox (incl. spam); check Authentication-Results: pass for dkim/spf/dmarc
+# 3) Create mailbox → save credentials
+curl -fsS -X POST $API/api/v1/projects/$PID/email/mailboxes \
+  -H "Authorization: Bearer $TOKEN" \
+  -d '{"domain":"mail.example.com","localPart":"john","password":"SecureP@ss123"}'
+# Configure Outlook/Thunderbird with returned credentials
 
-# 4) Inbound: mail from an external address to you@mail.example.com → platform records it:
-docker compose exec postgres psql ... -c "select * from email.messages order by 1 desc limit 5;"
-# and an email.received event fired (Phase 02)
+# 4) Create sender identity (requires ACTIVE domain)
+curl -fsS -X POST $API/api/v1/projects/$PID/email/sender-identities \
+  -d '{"domain":"mail.example.com","email":"noreply@mail.example.com"}'
+
+# 5) Create API key → save ek_... key
+curl -fsS -X POST $API/api/v1/projects/$PID/email/api-keys \
+  -H "Authorization: Bearer $TOKEN" -d '{"name":"Production"}'
+
+# 6) Send
+curl -fsS -X POST $API/api/v1/projects/$PID/email/send \
+  -H "Authorization: Bearer $TOKEN" \
+  -d '{"from":"noreply@mail.example.com","to":"user@gmail.com","subject":"Hi","text":"Hello"}'
+
+# 7) Inbound: mail to john@mail.example.com from external → check:
+curl -fsS $API/api/v1/projects/$PID/email/messages \
+  -H "Authorization: Bearer $TOKEN" | jq .
 ```
 
-**Exit criterion:** real DNS records exist and verify (not hardcoded); a sent message arrives in an external inbox with DKIM/SPF/DMARC `pass`; an inbound message is recorded in the platform and emits `email.received`; mailboxes are created in Stalwart itself. Stalwart is actually wired, not just running.
+## Files you'll touch
 
-## Out of Scope / Future
-
-- Calendar/contacts (CalDAV/CardDAV beyond Stalwart defaults) — future.
-- Advanced spam filtering tuning / custom Sieve editor — future.
-- Mailing-list / broadcast engine — future.
-
-## Risks
-
-- **Deliverability is environmental, not just code.** VPS IP reputation, missing PTR record, or port-25 egress blocks can sink outbound mail regardless of correct DKIM/SPF. Mitigations: document PTR requirement; provide the SMTP-relay fallback (Resend/SES); warm the IP. Be honest in the dashboard about verification vs. deliverability.
-- **Port-25 blocked** by the VPS provider → inbound impossible; document and offer IMAP-only/relay models.
-- DKIM key rotation and cert renewal must be automated or mail silently breaks — boot-time checks + alerts.
-
-## Files you'll touch (precision map)
-
-- `apps/api/src/modules/email/mail-dns.service.ts` — new; DKIM Ed25519 key gen, MX/SPF/DMARC/DKIM record creation + verification via DnsProvider
-- `apps/api/src/modules/email/email.service.ts` — verifyDomain delegates to MailDnsService (was: hardcoded booleans)
-- `apps/api/src/modules/email/email.module.ts` — imports DomainsModule, provides MailDnsService
-- `apps/api/src/modules/domains/providers/dns-provider.interface.ts` — add `priority` to createRecord
-- `apps/api/src/modules/domains/providers/cloudflare-dns.provider.ts` — pass priority in MX payload
-- `apps/api/src/modules/domains/domains.module.ts` — export DNS_PROVIDER token
-- `installer/docker/docker-compose.yml` — expose Stalwart ports 25/465/587/993/8443, add stalwart_admin_token secret
-- `installer/config/stalwart/main.toml` — rewritten: inbound/outbound/submission/IMAP/JMAP, ACME TLS, DKIM, SQLite
-- `installer/scripts/setup-wizard.sh` — generate stalwart_admin_token.txt
+- `apps/api/prisma/schema.prisma` — new email schema
+- `apps/api/src/modules/email/stalwart-jmap.service.ts` — JMAP admin client
+- `apps/api/src/modules/email/email.service.ts` — complete rewrite
+- `apps/api/src/modules/email/email.controller.ts` — all endpoints
+- `apps/api/src/modules/email/email.module.ts`
+- `apps/api/src/modules/email/mail-dns.service.ts` — added verifyOwnership
+- `apps/api/src/modules/email/dto/` — all DTOs
+- `packages/events/src/index.ts` — email.* event types
+- `docs/phases/phase-09.md` — this doc
 
 ## Next Phase
 

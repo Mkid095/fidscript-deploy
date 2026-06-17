@@ -1,36 +1,12 @@
-export class SendEmailDto {
-  to!: string;
-  from?: string;
-  subject!: string;
-  text?: string;
-  html?: string;
-  replyTo?: string;
-  attachments?: Array<{
-    filename: string;
-    content: Buffer | string;
-    contentType?: string;
-  }>;
-}
-
-export class CreateMailboxDto {
-  email!: string;
-  name?: string;
-  quota?: number;
-}
-
-export class CreateAliasDto {
-  alias!: string;
-  forwardsTo!: string[];
-  description?: string;
-}
-
-export class VerifyDomainDto {
-  domain!: string;
-}
-
-export class GetEmailsDto {
-  mailboxId?: string;
-  limit?: number;
-  offset?: number;
-  unread?: boolean;
-}
+export * from './send-email.dto';
+export * from './create-email-domain.dto';
+export * from './create-mailbox.dto';
+export * from './update-mailbox.dto';
+export * from './reset-mailbox-password.dto';
+export * from './create-alias.dto';
+export * from './update-alias.dto';
+export * from './create-sender-identity.dto';
+export * from './create-email-api-key.dto';
+export * from './list-messages.dto';
+export * from './mark-messages-read.dto';
+export * from './delete-messages.dto';

@@ -115,10 +115,10 @@ model Project {
   domains    Domain[]
   appUsers   AppUser[]
   appRoles   AppRole[]
-  mailboxes  Mailbox[]
-  aliases    EmailAlias[]
-  emailLogs  EmailLog[]
-  domainVerifications DomainVerification[]
+  emailDomains    EmailDomain[]
+  emailMessages   EmailMessage[]
+  emailApiKeys    EmailApiKey[]
+  emailApiUsages EmailApiUsage[]
   channels  RealtimeChannel[]
   databases ManagedDatabase[]
   functions Function[]
@@ -510,78 +510,196 @@ model AppUserRole {
 // EMAIL SCHEMA
 // =============================================
 
-model Mailbox {
-  id        String   @id @default(uuid())
-  projectId String   @map("project_id")
-  email     String   @db.VarChar(255)
-  name      String?  @db.VarChar(255)
-  quota     BigInt   @default(10737418240)
-  isActive  Boolean  @default(true) @map("is_active")
-  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz
+// Email domains registered on the platform.
+// Tracks DNS verification state independently per record type.
+model EmailDomain {
+  id             String            @id @default(uuid())
+  projectId      String            @map("project_id")
+  domain         String            @db.VarChar(255)
+  status         EmailDomainStatus @default(PENDING)
+  dkimVerified   Boolean           @default(false) @map("dkim_verified")
+  spfVerified    Boolean           @default(false) @map("spf_verified")
+  dmarcVerified  Boolean           @default(false) @map("dmarc_verified")
+  mxVerified     Boolean           @default(false) @map("mx_verified")
+  dkimSelector   String?           @map("dkim_selector") @db.VarChar(255)
+  ownershipToken String?           @map("ownership_token") @db.VarChar(255)  // TXT record value for ownership verification
+  verifiedAt     DateTime?         @map("verified_at") @db.Timestamptz
+  createdAt      DateTime          @default(now()) @map("created_at") @db.Timestamptz
 
-  project Project    @relation(fields: [projectId], references: [id], onDelete: Cascade)
-  logs    EmailLog[]
+  project          Project           @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  mailboxes        EmailMailbox[]
+  aliases          EmailAlias[]
+  senderIdentities SenderIdentity[]
+  catchAllRules    CatchAllRule[]
 
-  @@unique([projectId, email])
+  @@unique([projectId, domain])
+  @@map("email.domains")
+}
+
+enum EmailDomainStatus {
+  PENDING             // Created, DNS not yet configured
+  DNS_CONFIGURED     // DNS records exist, ownership not verified
+  OWNERSHIP_VERIFIED // TXT ownership token confirmed
+  VERIFICATION_PENDING // DNS verified, waiting for DKIM/SPF/DMARC
+  ACTIVE             // All checks passed
+  FAILED             // Verification failed permanently
+}
+
+// Real mailbox accounts on Stalwart (IMAP/SMTP access).
+// Passwords are owned entirely by Stalwart — platform only stores stalwartAccountId.
+model EmailMailbox {
+  id                 String    @id @default(uuid())
+  domainId           String    @map("domain_id")
+  localPart          String   @db.VarChar(255)
+  name               String?  @db.VarChar(255)
+  quota              BigInt   @default(10737418240)
+  isActive           Boolean  @default(true) @map("is_active")
+  stalwartAccountId  String?  @map("stalwart_account_id") @db.VarChar(255)
+  createdAt          DateTime @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt          DateTime @updatedAt @map("updated_at") @db.Timestamptz
+
+  domain   EmailDomain    @relation(fields: [domainId], references: [id], onDelete: Cascade)
+  messages EmailMessage[]
+
+  @@unique([domainId, localPart])
   @@map("email.mailboxes")
 }
 
+// Alias addresses that forward to mailboxes, external addresses, or webhooks.
+// Routing lives in Stalwart — platform stores management metadata.
 model EmailAlias {
-  id         String   @id @default(uuid())
-  projectId  String   @map("project_id")
-  alias      String   @db.VarChar(255)
-  forwardsTo Json     @default("[]")
-  description String? @db.Text
-  isActive   Boolean  @default(true) @map("is_active")
-  createdAt  DateTime @default(now()) @map("created_at") @db.Timestamptz
+  id          String    @id @default(uuid())
+  domainId    String    @map("domain_id")
+  localPart   String   @db.VarChar(255)
+  description String?  @db.Text
+  isActive    Boolean   @default(true) @map("is_active")
+  // JSON array of forwarding targets:
+  // [{ type: "mailbox", mailboxId: "uuid" }, { type: "external", address: "foo@example.com" }, { type: "webhook", url: "https://..." }]
+  targets     Json     @default("[]")
+  createdAt   DateTime  @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt   DateTime  @updatedAt @map("updated_at") @db.Timestamptz
 
-  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  domain EmailDomain @relation(fields: [domainId], references: [id], onDelete: Cascade)
 
-  @@unique([projectId, alias])
+  @@unique([domainId, localPart])
   @@map("email.aliases")
 }
 
-model EmailLog {
+// Sender identities for API-based sending (Resend-style).
+// These may exist without a corresponding mailbox.
+model SenderIdentity {
+  id         String    @id @default(uuid())
+  domainId   String    @map("domain_id")
+  email      String   @db.VarChar(255)
+  name       String?  @db.VarChar(255)
+  isVerified Boolean  @default(false) @map("is_verified")
+  createdAt  DateTime  @default(now()) @map("created_at") @db.Timestamptz
+
+  domain   EmailDomain    @relation(fields: [domainId], references: [id], onDelete: Cascade)
+  messages EmailMessage[]
+
+  @@unique([domainId, email])
+  @@map("email.sender_identities")
+}
+
+// API keys for programmatic email sending (Resend-style auth).
+model EmailApiKey {
+  id         String    @id @default(uuid())
+  projectId  String    @map("project_id")
+  name       String   @db.VarChar(255)
+  keyHash    String   @map("key_hash") @db.VarChar(255)
+  // String scopes: email.send | email.domains.read | email.mailboxes.read | email.messages.read | email.identities.read
+  scopes     String[] @default(["email.send"])
+  lastUsedAt DateTime? @map("last_used_at") @db.Timestamptz
+  createdAt  DateTime  @default(now()) @map("created_at") @db.Timestamptz
+
+  project Project         @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  usages EmailApiUsage[]
+
+  @@map("email.api_keys")
+}
+
+// Email messages — metadata only. Body is read from Stalwart via JMAP at display time.
+// Metadata rows are created for: outbound sent, delivery events (delivered/bounced), and automation triggers.
+// Inbox browsing reads directly from JMAP — not from this table.
+model EmailMessage {
   id         String        @id @default(uuid())
-  projectId  String        @map("project_id")
   mailboxId  String?       @map("mailbox_id")
-  messageId  String        @map("message_id") @db.VarChar(255)
+  senderIdentityId String? @map("sender_identity_id")
+  projectId  String        @map("project_id")
   from       String        @db.VarChar(255)
   to         String        @db.VarChar(255)
   subject    String        @db.VarChar(500)
-  status     EmailStatus   @default(PENDING)
+  sizeBytes  BigInt        @default(0) @map("size_bytes")
+  isRead     Boolean       @default(false) @map("is_read")
+  isStarred  Boolean       @default(false) @map("is_starred")
+  isDraft    Boolean       @default(false) @map("is_draft")
+  spamScore  Float?        @map("spam_score")
+  status     EmailStatus   @default(QUEUED)
   error      String?       @db.Text
-  readAt     DateTime?     @map("read_at") @db.Timestamptz
   createdAt  DateTime      @default(now()) @map("created_at") @db.Timestamptz
 
-  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
-  mailbox Mailbox? @relation(fields: [mailboxId], references: [id], onDelete: SetNull)
+  mailbox       EmailMailbox?   @relation(fields: [mailboxId], references: [id], onDelete: SetNull)
+  senderIdentity SenderIdentity? @relation(fields: [senderIdentityId], references: [id], onDelete: SetNull)
+  project        Project        @relation(fields: [projectId], references: [id], onDelete: Cascade)
 
-  @@map("email.logs")
+  @@index([mailboxId, createdAt])
+  @@index([projectId, createdAt])
+  @@map("email.messages")
+}
+
+// Catch-all rules — forwarded to a mailbox, external address, or webhook.
+model CatchAllRule {
+  id        String   @id @default(uuid())
+  domainId  String   @map("domain_id")
+  // { type: "mailbox", mailboxId } | { type: "external", address } | { type: "webhook", url }
+  target    Json
+  isActive  Boolean  @default(true) @map("is_active")
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz
+
+  domain EmailDomain @relation(fields: [domainId], references: [id], onDelete: Cascade)
+
+  @@unique([domainId])
+  @@map("email.catch_all_rules")
+}
+
+// Tracks per-project per-key email API usage for rate limiting and billing.
+model EmailApiUsage {
+  id          String   @id @default(uuid())
+  projectId  String   @map("project_id")
+  apiKeyId   String   @map("api_key_id")
+  date       DateTime @default(now()) @map("date") @db.Timestamptz
+  sends      Int      @default(0)
+  failures   Int      @default(0)
+  bounces    Int      @default(0)
+
+  // Plan limits (set at key creation time, read at query time)
+  dailyLimit   Int @default(1000) @map("daily_limit")
+  monthlyLimit Int @default(30000) @map("monthly_limit")
+
+  // Blocking state
+  blockedUntil   DateTime? @map("blocked_until") @db.Timestamptz
+  lastFailureAt DateTime? @map("last_failure_at") @db.Timestamptz
+
+  project Project    @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  apiKey EmailApiKey @relation(fields: [apiKeyId], references: [id], onDelete: Cascade)
+
+  @@unique([projectId, apiKeyId, date])
+  @@index([projectId, date])
+  @@map("email.api_usage")
 }
 
 enum EmailStatus {
-  PENDING
-  SENT
-  DELIVERED
+  // Message submitted to SMTP but not yet accepted by remote server
+  QUEUED
+  // Message accepted by remote MTA (Stalwart outbound relay)
+  SUBMITTED
+  // Remote MTA acknowledged the message
+  ACCEPTED
+  // Remote MTA rejected the message permanently
   BOUNCED
+  // Local failure (validation, auth, network)
   FAILED
-}
-
-model DomainVerification {
-  id           String   @id @default(uuid())
-  projectId    String   @map("project_id")
-  domain       String   @db.VarChar(255)
-  dkimVerified Boolean  @default(false) @map("dkim_verified")
-  spfVerified  Boolean  @default(false) @map("spf_verified")
-  dmarcVerified Boolean @default(false) @map("dmarc_verified")
-  verifiedAt   DateTime? @map("verified_at") @db.Timestamptz
-  createdAt    DateTime @default(now()) @map("created_at") @db.Timestamptz
-
-  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
-
-  @@unique([projectId, domain])
-  @@map("email.domain_verifications")
 }
 
 // =============================================

@@ -98,6 +98,24 @@ export class MailDnsService {
   }
 
   /**
+   * Verify domain ownership by checking for the ownership TXT record.
+   * The token is stored as {token}._email.{domain} TXT record.
+   */
+  async verifyOwnership(domain: string, token: string): Promise<boolean> {
+    const zoneId = await this.getZoneId(domain);
+    const recordName = `${token}._email.${domain}`;
+
+    const records = await this.dnsProvider.listRecords({
+      zoneId,
+      name: recordName,
+      type: 'TXT',
+    });
+
+    // Token must be present as the exact content of the TXT record
+    return records.some(r => r.content === token);
+  }
+
+  /**
    * Verify email DNS records exist and are correct for a domain.
    * Checks: DKIM ( TXT record with public key), SPF, DMARC.
    * Returns the verification result for each record type.

@@ -10,8 +10,8 @@ Current state of FIDScript Deploy development.
 
 | | |
 |---|---|
-| **Current phase** | Phase 09 — Email Platform (Stalwart) (next) |
-| **Last verified phase** | Phase 08 — Database Platform (real provisioning, PgBouncer, encrypted creds, DATABASE_URL auto-injection, SSL, connection limits, size tracking) |
+| **Current phase** | Phase 09 — Email Platform (Stalwart) (in progress) |
+| **Last verified phase** | Phase 08 — Database Platform (verified 2026-06-17) |
 | **Phase docs** | All 24 rewritten to v2 |
 | **Snapshot baseline** | Commit `f1dd6f2` (Phase 00-23 scaffold, pre-hardening) |
 | **Reset date** | 2026-06-16 |
@@ -40,8 +40,8 @@ Statuses: `Planned` · `In Progress` · `Verified`
 | 05 | Storage Platform | Verified |
 | 06 | Deployment Engine | Verified |
 | 07 | Domains & TLS | Verified |
-| 08 | Database Platform | In Progress |
-| 09 | Email Platform (Stalwart) | Planned |
+| 08 | Database Platform | Verified |
+| 09 | Email Platform (Stalwart) | In Progress |
 | 10 | Functions Runtime | Planned |
 | 11 | Queues Platform | Planned |
 | 12 | Scheduler Platform | Planned |
@@ -71,6 +71,7 @@ Statuses: `Planned` · `In Progress` · `Verified`
 - [x] Begin **Phase 06 — Deployment Engine**: real Docker build+run via BuildRunnerService, async DeploymentWorkerService driving PENDING→QUEUED→BUILDING→DEPLOYING→SUCCESS/FAILED state machine, encrypted env var injection at runtime, lifecycle ops (stop/restart/destroy/rollback), fidscript-app network, Traefik Docker labels routing, build logs persisted.
 - [x] Verified **Phase 07 — Domains & TLS**: real Cloudflare DNS API, DnsProvider interface, Traefik ACME DNS-01 + HTTP-01 resolvers, SERVER_IP wired, deploymentId on Domain.
 - [x] Verified **Phase 08 — Database Platform**: real provisioning, PgBouncer, encrypted creds, DATABASE_URL auto-injection, SSL enforcement, connection limits, size tracking, rotate re-injects env vars.
+- [x] **Phase 09 — Email Platform**: schema restructured (domains/mailboxes/aliases/sender_identities/api_keys/messages/catch_all_rules), StalwartJmapService (full JMAP admin client), 30+ endpoints, MinIO body storage, all events wired.
 
 ## Definition of done (per phase)
 
