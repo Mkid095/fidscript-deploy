@@ -2,6 +2,7 @@ import { Injectable, NotFoundException, ForbiddenException, ConflictException } 
 import { PrismaService } from '@/prisma/prisma.service';
 import { EventService } from '@/modules/events/event.service';
 import { CreateProjectDto, UpdateProjectDto, CloneProjectDto } from '@/modules/projects/dto/index';
+import { ProjectAccessService } from './project-access.service';
 import * as crypto from 'crypto';
 
 @Injectable()
@@ -9,6 +10,7 @@ export class ProjectCrudService {
   constructor(
     private prisma: PrismaService,
     private eventService: EventService,
+    private projectAccessService: ProjectAccessService,
   ) {}
 
   async create(userId: string, dto: CreateProjectDto) {
@@ -59,12 +61,12 @@ export class ProjectCrudService {
   }
 
   async get(userId: string, projectId: string) {
-    const project = await this.findProjectWithAccess(userId, projectId);
+    const project = await this.projectAccessService.findProjectWithAccess(userId, projectId);
     return this.formatProject(project);
   }
 
   async update(userId: string, projectId: string, dto: UpdateProjectDto) {
-    await this.checkPermission(userId, projectId, ['admin', 'owner']);
+    await this.projectAccessService.checkPermission(userId, projectId, ['admin', 'owner']);
     const project = await this.prisma.project.update({
       where: { id: projectId },
       data: {
@@ -96,7 +98,7 @@ export class ProjectCrudService {
   }
 
   async suspend(userId: string, projectId: string) {
-    await this.checkPermission(userId, projectId, ['admin', 'owner']);
+    await this.projectAccessService.checkPermission(userId, projectId, ['admin', 'owner']);
     const project = await this.prisma.project.update({
       where: { id: projectId }, data: { status: 'SUSPENDED' },
     });
@@ -109,7 +111,7 @@ export class ProjectCrudService {
   }
 
   async archive(userId: string, projectId: string) {
-    await this.checkPermission(userId, projectId, ['admin', 'owner']);
+    await this.projectAccessService.checkPermission(userId, projectId, ['admin', 'owner']);
     const project = await this.prisma.project.update({
       where: { id: projectId }, data: { status: 'ARCHIVED' },
     });
@@ -122,7 +124,7 @@ export class ProjectCrudService {
   }
 
   async restore(userId: string, projectId: string) {
-    await this.checkPermission(userId, projectId, ['admin', 'owner']);
+    await this.projectAccessService.checkPermission(userId, projectId, ['admin', 'owner']);
     const project = await this.prisma.project.update({
       where: { id: projectId }, data: { status: 'ACTIVE' },
     });
@@ -135,7 +137,7 @@ export class ProjectCrudService {
   }
 
   async clone(userId: string, projectId: string, dto: CloneProjectDto) {
-    const source = await this.findProjectWithAccess(userId, projectId);
+    const source = await this.projectAccessService.findProjectWithAccess(userId, projectId);
     const slug = this.generateSlug(dto.name);
     const existing = await this.prisma.project.findUnique({ where: { slug } });
     if (existing) throw new ConflictException('Project with this name already exists');
@@ -187,32 +189,5 @@ export class ProjectCrudService {
   private generateSlug(name: string): string {
     const base = name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').substring(0, 50);
     return `${base}-${Math.random().toString(36).substring(2, 8)}`;
-  }
-
-  private async findProjectWithAccess(userId: string, projectId: string) {
-    const project = await this.prisma.project.findUnique({
-      where: { id: projectId },
-      include: { owner: { select: { id: true, email: true, name: true } } },
-    });
-    if (!project) throw new NotFoundException('Project not found');
-    const isOwner = project.ownerId === userId;
-    const isMember = await this.prisma.projectMember.findUnique({
-      where: { projectId_userId: { projectId, userId } },
-    });
-    if (!isOwner && !isMember) throw new ForbiddenException('Access denied');
-    return project;
-  }
-
-  async checkPermission(userId: string, projectId: string, allowedRoles: string[]) {
-    const project = await this.prisma.project.findUnique({ where: { id: projectId } });
-    if (!project) throw new NotFoundException('Project not found');
-    const isOwner = project.ownerId === userId;
-    if (isOwner || allowedRoles.includes('owner')) return;
-    const member = await this.prisma.projectMember.findUnique({
-      where: { projectId_userId: { projectId, userId } },
-    });
-    if (!member || !allowedRoles.includes(member.role.toLowerCase())) {
-      throw new ForbiddenException('Insufficient permissions');
-    }
   }
 }

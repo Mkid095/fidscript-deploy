@@ -11,7 +11,8 @@ import {
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { JwtAuthGuard } from '@/modules/auth/jwt-auth.guard';
 import { LogStreamService } from '@/modules/logging/services/log-stream.service';
-import { LogEntryService } from '@/modules/logging/services/log-entry.service';
+import { LogWriteService } from '@/modules/logging/services/log-write.service';
+import { LogQueryService } from '@/modules/logging/services/log-query.service';
 import { CreateLogStreamDto, GetLogsDto, WriteLogDto, WriteBatchLogsDto } from '@/modules/logging/dto/index';
 
 @ApiTags('logging')
@@ -21,7 +22,8 @@ import { CreateLogStreamDto, GetLogsDto, WriteLogDto, WriteBatchLogsDto } from '
 export class LoggingController {
   constructor(
     private logStreamService: LogStreamService,
-    private logEntryService: LogEntryService,
+    private logWriteService: LogWriteService,
+    private logQueryService: LogQueryService,
   ) {}
 
   // ===== Log Streams =====
@@ -56,19 +58,19 @@ export class LoggingController {
   @Post()
   @ApiOperation({ summary: 'Write log entry' })
   async writeLog(@Param('projectId') projectId: string, @Body() dto: WriteLogDto) {
-    return this.logEntryService.writeLog(projectId, dto);
+    return this.logWriteService.writeLog(projectId, dto);
   }
 
   @Post('batch')
   @ApiOperation({ summary: 'Write batch logs' })
   async writeBatchLogs(@Param('projectId') projectId: string, @Body() dto: WriteBatchLogsDto) {
-    return this.logEntryService.writeBatchLogs(projectId, dto);
+    return this.logWriteService.writeBatchLogs(projectId, dto);
   }
 
   @Get()
   @ApiOperation({ summary: 'Get logs' })
   async getLogs(@Param('projectId') projectId: string, @Query() dto: GetLogsDto) {
-    return this.logEntryService.getLogs(projectId, dto);
+    return this.logQueryService.getLogs(projectId, dto);
   }
 
   @Get('streams/:streamName')
@@ -78,7 +80,7 @@ export class LoggingController {
     @Param('streamName') streamName: string,
     @Query() dto: GetLogsDto,
   ) {
-    return this.logEntryService.getLogsByStream(projectId, streamName, dto);
+    return this.logQueryService.getLogsByStream(projectId, streamName, dto);
   }
 
   @Get('streams/:streamName/timeline')
@@ -88,12 +90,12 @@ export class LoggingController {
     @Param('streamName') streamName: string,
     @Query('interval') interval?: string,
   ) {
-    return this.logEntryService.getLogTimeline(projectId, streamName, interval);
+    return this.logQueryService.getLogTimeline(projectId, streamName, interval);
   }
 
   @Get('stats')
   @ApiOperation({ summary: 'Get log stats' })
   async getLogStats(@Param('projectId') projectId: string, @Query('stream') stream?: string) {
-    return this.logEntryService.getLogStats(projectId, stream);
+    return this.logQueryService.getLogStats(projectId, stream);
   }
 }

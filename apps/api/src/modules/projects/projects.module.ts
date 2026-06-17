@@ -3,6 +3,7 @@ import { ProjectsController } from '@/modules/projects/controllers/projects.cont
 import { InvitationsController } from '@/modules/projects/controllers/invitations.controller';
 import { ProjectsService } from '@/modules/projects/services/projects.service';
 import { ProjectCrudService } from '@/modules/projects/services/project-crud.service';
+import { ProjectAccessService } from '@/modules/projects/services/project-access.service';
 import { ProjectMemberService } from '@/modules/projects/services/project-member.service';
 import { ProjectEnvService } from '@/modules/projects/services/project-env.service';
 import { ProjectInvitationService } from '@/modules/projects/services/project-invitation.service';
@@ -13,6 +14,7 @@ import { ProjectApiKeyService } from '@/modules/projects/services/project-api-ke
   providers: [
     ProjectsService,
     ProjectCrudService,
+    ProjectAccessService,
     ProjectMemberService,
     ProjectEnvService,
     ProjectInvitationService,
