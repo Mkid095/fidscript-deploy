@@ -23,7 +23,7 @@ The platform serves three distinct email products under one API:
 
 ## Current State
 
-**IN PROGRESS — schema restructured, all endpoints implemented, events wired.** As of 2026-06-17:
+**IN PROGRESS — code complete, wiring gaps fixed, awaiting VPS verification.** As of 2026-06-17:
 
 - **Schema restructured** — `email.domains`, `email.mailboxes`, `email.aliases`, `email.sender_identities`, `email.api_keys`, `email.messages`, `email.catch_all_rules`, `email.api_usage`, `email.suppressions`
 - **Domain lifecycle** — PENDING → VERIFIED → ACTIVE (or FAILED). Ownership TXT + DNS setup combined into one verify step; full DNS (DKIM/SPF/DMARC/MX) validated in second step.
@@ -43,6 +43,8 @@ The platform serves three distinct email products under one API:
 - **Bounce ingestion** — `EmailEventsController.handleBounce` updates message status, adds to suppression list, emits `email.bounced`
 - **SMTP status model** — `QUEUED → SUBMITTED → ACCEPTED → BOUNCED/FAILED`
 - **Inbound webhook** — `X-Stalwart-Signature` HMAC verification on both `/email/inbound/webhook` and `/email/events/bounce`
+- **Platform SMTP credentials** — `SMTP_SUBMISSION_USER/PASS` generated at install time; `SmtpSendService` uses them when no `from` address is supplied; Stalwart credentials file mounted for SMTP AUTH on port 587
+- **Traefik mail routes** — `jmap.$DOMAIN`, `imap.$DOMAIN`, and ACME HTTP-01 challenge route to Stalwart now configured in `dynamic.yml` and setup wizard
 
 ## Schema
 
