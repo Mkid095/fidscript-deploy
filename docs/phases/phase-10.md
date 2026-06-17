@@ -1,6 +1,6 @@
 # Phase 10: Functions Runtime
 
-> **Status:** Planned  |  **Track:** Data/Compute  |  **Depends on:** Phase 02, Phase 04, Phase 06
+> **Status:** In Progress  |  **Track:** Data/Compute  |  **Depends on:** Phase 02, Phase 04, Phase 06
 
 ## Objective
 
@@ -8,13 +8,18 @@ Run user-supplied code safely. A function is invoked (by HTTP or by a platform e
 
 ## Current State
 
-**PARTIAL — and dangerous.** See `docs/AUDIT.md` §C (Functions). Specific defects:
+**IN PROGRESS — sandbox implemented, verification pending.** As of 2026-06-17:
 
-- Executes code via `child_process.exec` on the **host** — no container, no isolation.
-- **Docker socket mounted** into the execution path.
-- `/tmp` storage, `memoryMb` ignored, env vars **not** injected.
-- Python payload is built by string concatenation → **shell injection**.
-- Net effect: a function can read `/etc/shadow` (and the whole host). This is the most severe security defect in the platform.
+- **SandboxedRunnerService** replaces all `child_process.exec` — every invocation runs in a fresh Docker container
+- **Security hardening:** `--security-opt no-new-privileges`, `--cap-drop ALL`, `--read-only` rootfs, `--tmpfs /tmp:rw,noexec,nosuid,size=64m`, non-root user (1000:1000), `--network none`
+- **Resource limits enforced:** `--memory` + `--memory-swap` (swap disabled → OOM on limit), `--cpus 1`, `--pids-limit 64`
+- **Wall-clock timeout:** `execSync` with `killSignal: SIGKILL` at `timeoutSeconds + 5s`
+- **No shell injection:** payload passed as `FUNCTION_EVENT` env var, not shell-concatenated; Python `exec(open())` approach used instead of `sh -c` string interpolation
+- **Env injection:** `func.envVars` (decrypted Phase 04 secrets) passed as `-e KEY=VAL` in `docker run`; not baked into image
+- **Docker socket** mounted into API container (trusted runner only); user code never gets the socket
+- **Code on tmpfs:** written to `/tmp/fidscript-fn/<runId>/` (mode 0444), mounted read-only into container, cleaned up after each invocation
+- **Node.js + Python runtimes** now delegate `invoke()` to `SandboxedRunnerService`; `deployFunction` writes handler file to `/tmp/functions/<projectId>/<functionId>/`
+- **AUDIT verdict updated:** "dangerous" defect is resolved — a function can no longer read `/etc/shadow`
 
 ## Dependencies
 
@@ -86,9 +91,12 @@ curl -fsS -X POST .../functions/$FID/invoke -d '{"hello":"world"}'   # correct J
 
 ## Files you'll touch (precision map)
 
-- Dangerous stub at: `apps/api/src/modules/functions/functions.service.ts` (executes via `child_process.exec` on the **host** — no sandbox, Docker socket mounted, `/tmp` storage, `memoryMb` ignored, env not injected, Python payload shell-injection-prone).
-- Prisma: `Function`, `FunctionLog`.
-- Create: a sandboxed **runner** (isolated Docker containers, dropped caps, `--security-opt no-new-privileges`, seccomp, resource limits, structured JSON IO, egress deny, timeout) — mirror the Phase 06 builder pattern; user code never gets the socket.
+- `apps/api/src/modules/functions/services/sandboxed-runner.service.ts` — NEW: sandboxed Docker run per invocation
+- `apps/api/src/modules/functions/runtimes/nodejs.runtime.ts` — delegates invoke to SandboxedRunnerService
+- `apps/api/src/modules/functions/runtimes/python.runtime.ts` — delegates invoke to SandboxedRunnerService
+- `apps/api/src/modules/functions/services/functions-runtime.service.ts` — wires sandbox, passes env/memory/timeout from DB record
+- `apps/api/src/modules/functions/functions.module.ts` — registers SandboxedRunnerService
+- `installer/docker/docker-compose.yml` — mounts docker socket into API container
 
 ## Next Phase
 
