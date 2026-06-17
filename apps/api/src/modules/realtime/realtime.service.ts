@@ -1,5 +1,6 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
-import * as crypto from "crypto";
+import * as crypto from 'crypto';
+import * as bcrypt from 'bcrypt';
 import { PrismaService } from '../../prisma/prisma.service';
 import { EventService } from '../events/event.service';
 import { CreateChannelDto, SetPresenceDto } from './dto/index';
@@ -12,12 +13,22 @@ export class RealtimeService {
   ) {}
 
   async createChannel(projectId: string, dto: CreateChannelDto) {
+    const isPrivate = dto.isPrivate || false;
+
+    // Auto-generate access token for private channels (return raw once, store bcrypt hash)
+    let accessToken: string | undefined;
+    if (isPrivate) {
+      const rawToken = crypto.randomBytes(32).toString('hex');
+      accessToken = await bcrypt.hash(rawToken, 10);
+    }
+
     const channel = await this.prisma.realtimeChannel.create({
       data: {
         projectId,
         name: dto.name,
-        isPrivate: dto.isPrivate || false,
+        isPrivate,
         metadata: (dto.metadata || {}) as any,
+        ...(accessToken && { accessToken }),
       },
     });
 
@@ -108,12 +119,14 @@ export class RealtimeService {
     });
   }
 
-  async generateChannelToken(channelId: string, userId: string): Promise<string> {
-    const token = crypto.randomBytes(32).toString('hex');
+  async generateChannelToken(channelId: string, _userId: string): Promise<string> {
+    // Generate a secure random token, bcrypt-hash it before storing, return the raw token once
+    const rawToken = crypto.randomBytes(32).toString('hex');
+    const hashedToken = await bcrypt.hash(rawToken, 10);
     await this.prisma.realtimeChannel.update({
       where: { id: channelId },
-      data: { accessToken: token },
+      data: { accessToken: hashedToken },
     });
-    return token;
+    return rawToken; // only returned once — user must store it
   }
 }

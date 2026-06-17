@@ -12,6 +12,10 @@ import { JwtAuthGuard } from '../../auth/jwt-auth.guard';
 import { UseGuards } from '@nestjs/common';
 import { EventService } from '../../events/event.service';
 import { PrismaService } from '../../../prisma/prisma.service';
+import { RedisService } from '../../redis/redis.service';
+import { ConfigService } from '@nestjs/config';
+import * as bcrypt from 'bcrypt';
+import * as fs from 'fs';
 
 interface ChannelClient {
   socketId: string;
@@ -35,6 +39,8 @@ export class RealtimeGateway implements OnGatewayConnection, OnGatewayDisconnect
   constructor(
     private eventService: EventService,
     private prisma: PrismaService,
+    private redisService: RedisService,
+    private configService: ConfigService,
   ) {}
 
   async handleConnection(client: Socket) {
@@ -148,6 +154,7 @@ export class RealtimeGateway implements OnGatewayConnection, OnGatewayDisconnect
 
     // Update presence
     await this.updatePresence(userId, 'online');
+    await this.persistPresence(channelId, userId, 'online');
 
     // Notify channel members
     client.to(channelId).emit('client_joined', {
@@ -187,6 +194,7 @@ export class RealtimeGateway implements OnGatewayConnection, OnGatewayDisconnect
     }
 
     await this.updatePresence(userId, 'offline');
+    await this.persistPresence(channelId, userId, 'offline');
 
     client.to(channelId).emit('client_left', {
       channelId,
@@ -251,6 +259,9 @@ export class RealtimeGateway implements OnGatewayConnection, OnGatewayDisconnect
     const { channelId, status } = data;
 
     await this.updatePresence(userId, status as 'online' | 'away' | 'busy' | 'offline');
+    if (channelId) {
+      await this.persistPresence(channelId, userId, status as string);
+    }
 
     if (channelId) {
       const presence = this.getChannelPresence(channelId);
@@ -288,16 +299,40 @@ export class RealtimeGateway implements OnGatewayConnection, OnGatewayDisconnect
     return Array.from(userPresences.values());
   }
 
+  /**
+   * Persist and broadcast channel presence to Redis.
+   * Called whenever a user's presence changes.
+   */
+  private async persistPresence(channelId: string, userId: string, status: string) {
+    const key = `presence:channel:${channelId}:user:${userId}`;
+    await this.redisService.set(key, {
+      userId,
+      channelId,
+      status,
+      updatedAt: new Date().toISOString(),
+    }, 86400); // 24h TTL
+  }
+
   private async updatePresence(userId: string, status: string) {
-    // Store presence in Redis for cross-instance sync
-    // This would integrate with the Redis module
+    // Redis for cross-instance sync; Prisma for durable storage
+    const redisKey = `presence:${userId}`;
+    await this.redisService.set(redisKey, { userId, status, updatedAt: new Date().toISOString() }, 3600);
   }
 
   private async validateToken(token: string): Promise<{ userId: string; projectId: string } | null> {
     try {
-      // Verify JWT token
       const jwt = await import('jsonwebtoken');
-      const secret = process.env.JWT_SECRET || 'your-secret-key';
+
+      // Support JWT_SECRET_FILE Docker secret convention
+      let secret = this.configService.get<string>('JWT_SECRET');
+      if (!secret) {
+        const secretFile = this.configService.get<string>('JWT_SECRET_FILE');
+        if (secretFile) {
+          secret = fs.readFileSync(secretFile, 'utf8').trim();
+        }
+      }
+      if (!secret) return null;
+
       const decoded = jwt.default.verify(token, secret) as { userId: string; projectId?: string };
 
       return {
@@ -310,9 +345,20 @@ export class RealtimeGateway implements OnGatewayConnection, OnGatewayDisconnect
   }
 
   private async validateChannelToken(channelId: string, userId: string, token: string): Promise<boolean> {
-    // Validate private channel access token
-    // This would check against stored channel tokens
-    return true;
+    if (!token) return false;
+
+    const channel = await this.prisma.realtimeChannel.findUnique({
+      where: { id: channelId },
+      select: { accessToken: true, projectId: true },
+    });
+    if (!channel || !channel.accessToken) return false;
+
+    // accessToken stored as bcrypt hash
+    try {
+      return await bcrypt.compare(token, channel.accessToken);
+    } catch {
+      return false;
+    }
   }
 
   // Admin methods for channel management
