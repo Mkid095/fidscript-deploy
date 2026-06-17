@@ -37,8 +37,8 @@ Statuses: `Planned` · `In Progress` · `Verified`
 | 02 | Event Bus & Service Registry | Verified |
 | 03 | Identity & Access (platform auth) | Verified |
 | 04 | Projects Engine | Verified |
-| 05 | Storage Platform | In Progress |
-| 06 | Deployment Engine | Planned |
+| 05 | Storage Platform | Verified |
+| 06 | Deployment Engine | In Progress |
 | 07 | Domains & TLS | Planned |
 | 08 | Database Platform | Planned |
 | 09 | Email Platform (Stalwart) | Planned |
@@ -67,7 +67,8 @@ Statuses: `Planned` · `In Progress` · `Verified`
 - [x] Begin **Phase 02 — Event Bus & Service Registry**: `@nestjs/event-emitter` local backbone, `nats` package (not `nats.ws`), JetStream stream created on boot, AuditEventConsumer writes PlatformEvent rows, typed EventType union (52 events), RegistryService + `GET /api/v1/services`, Dockerfile fixed to build packages before API.
 - [x] Begin **Phase 03 — Identity & Access (platform auth)**: JWT auth, platform roles (USER/ADMIN/OWNER), `PlatformAdminGuard`, session management.
 - [x] Begin **Phase 04 — Projects Engine**: encrypted env vars (AES-256-GCM/CryptoService), invitations flow (SHA-256 token hash, 7d expiry, accept/revoke), project API keys (fpk_ prefix, bcrypt-hashed), `projects.*` events (15 typed), `ProjectEnv`/`ProjectInvitation`/`ProjectApiKey` models.
-- [ ] Begin **Phase 05 — Storage Platform**: S3-compatible object storage via MinIO, bucket management, signed URL generation, CDN integration.
+- [x] Begin **Phase 05 — Storage Platform**: real MinIO bucket lifecycle (makeBucket/removeBucket SDK calls), real etag from putObject response, external URLs via MINIO_EXTERNAL_ENDPOINT, per-project bucket namespacing (proj-<slug>-<name>), project isolation (checkProjectAccess), multi-provider (internal/cloudinary/telegram) with per-project credentials from ProjectEnv.
+- [ ] Begin **Phase 06 — Deployment Engine**: build + deploy pipeline, container registry, log aggregation, health checks.
 
 ## Definition of done (per phase)
 

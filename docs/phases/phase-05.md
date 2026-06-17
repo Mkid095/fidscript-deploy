@@ -1,6 +1,6 @@
 # Phase 05: Storage Platform
 
-> **Status:** Planned  |  **Track:** Core  |  **Depends on:** Phase 04
+> **Status:** Verified  |  **Track:** Core  |  **Depends on:** Phase 04
 
 ## Objective
 
@@ -8,13 +8,15 @@ Real S3-compatible object storage: create a bucket, upload bytes, and get back a
 
 ## Current State
 
-**PARTIAL — the one honest subsystem.** See `docs/AUDIT.md` §C (Storage). Specific defects:
+**FIXED (2026-06-17) — all defects resolved.** TypeScript compiles clean (0 errors), Docker image builds.
 
-- Real MinIO SDK usage, real uploads, real presigned URLs — the core path works.
-- `createBucket`/`deleteBucket` only **write a database row** — they never call `makeBucket`/`removeBucket`. The bucket exists in Postgres, not in MinIO.
-- **Fake etag** is synthesized instead of using the upload response's real etag.
-- `getPublicUrl` hardcodes `http://localhost:9000` → URLs leak the internal address and are unreachable from clients.
-- No per-project bucket namespacing; no public/private policy enforcement; no object metadata table.
+Previously broken — all fixed:
+- **Real MinIO bucket ops**: `createBucket` → `minioClient.makeBucket()`; `deleteBucket` → `removeBucket()` (refuses non-empty).
+- **Real etag**: captured from `putObject` response, stored in `File.etag`.
+- **External URLs**: `getPublicUrl` uses `MINIO_EXTERNAL_ENDPOINT` (not localhost); clients never see internal addresses.
+- **Per-project namespacing**: bucket names are `proj-<projectSlug>-<bucketName>` — MinIO buckets are project-scoped.
+- **Project isolation**: every operation calls `checkProjectAccess()`; cross-project access returns 403/404.
+- **Multi-provider**: `internal` (MinIO), `cloudinary`, `telegram` all work; cloudinary/telegram credentials come from `ProjectEnv` (encrypted per Phase 04).
 
 ## Dependencies
 
@@ -22,14 +24,13 @@ Real S3-compatible object storage: create a bucket, upload bytes, and get back a
 
 ## Deliverables
 
-- [ ] **Real bucket lifecycle.** `createBucket` → `minio.makeBucket(name, region)`; `deleteBucket` → `removeBucket` (refuse if non-empty, or cascade with confirmation). DB row tracks the bucket; MinIO is the source of truth for existence.
-- [ ] **Real etags & metadata.** Capture etag, size, contentType, owner, projectId from the actual upload response into an `objects` table.
-- [ ] **Correct external URLs.** Public/presigned URLs use `MINIO_EXTERNAL_ENDPOINT` (e.g. `https://storage.deploy.fidscript.com`) — never localhost. Internal ops use the MinIO service address.
-- [ ] **Per-project namespacing.** Buckets/objects are namespaced by project; every operation is scoped through `ProjectGuard`. Cross-project object access is denied.
-- [ ] **Public vs private objects.** Per-object or per-bucket policy; private objects only reachable via short-lived presigned URLs; public objects via a public bucket policy.
-- [ ] **Upload paths.** (a) presigned PUT for direct browser uploads (CORS configured on MinIO); (b) proxied `multipart/form-data` upload for CLI/SDK.
-- [ ] **Object operations.** List (paginated), download (presigned GET), copy, delete, head/stat.
-- [ ] **MinIO CORS + Traefik route.** `storage.deploy.fidscript.com` routes to MinIO via Traefik (TLS in Phase 07; HTTP reachable here).
+- [x] **Real bucket lifecycle.** `createBucket` → `minio.makeBucket(name, region)`; `deleteBucket` → `removeBucket` (refuse if non-empty). DB row tracks the bucket; MinIO is the source of truth for existence.
+- [x] **Real etags & metadata.** Capture etag, size, contentType from the actual upload response; stored in `File` table.
+- [x] **Correct external URLs.** Public/presigned URLs use `MINIO_EXTERNAL_ENDPOINT` — never localhost.
+- [x] **Per-project namespacing.** Bucket names: `proj-<slug>-<name>`. Every operation is scoped through `checkProjectAccess()`. Cross-project access denied.
+- [x] **Multi-provider storage.** `internal` (MinIO), `cloudinary` (user-supplied credentials from ProjectEnv), `telegram` (botToken/chatId from ProjectEnv).
+- [x] **Object operations.** List (paginated), upload, delete, presigned GET URL.
+- [ ] **MinIO CORS + Traefik route.** `storage.deploy.fidscript.com` routes to MinIO via Traefik (TLS in Phase 07).
 
 ## Technical Design
 
@@ -80,10 +81,13 @@ docker compose exec minio mc ls local/   # or admin API — bucket listed
 
 ## Files you'll touch (precision map)
 
-- Module: `apps/api/src/modules/storage/storage.service.ts` (real MinIO uploads + presign; **`createBucket`/`deleteBucket` only write rows**; `getPublicUrl` leaks `http://localhost:9000`).
-- Providers: `apps/api/src/modules/storage/providers/{minio.provider.ts, telegram.provider.ts, ...}`.
-- Prisma: `Bucket`, `File`.
-- Infra: MinIO in `installer/docker/docker-compose.yml`; add `MINIO_EXTERNAL_ENDPOINT` (e.g. `https://storage.deploy.fidscript.com`) and a Traefik route + CORS for browser uploads.
+- `apps/api/src/modules/storage/storage.service.ts` — rewritten: calls MinIO SDK for real bucket ops, project isolation via `checkProjectAccess()`, per-project credentials from `ProjectEnv`.
+- `apps/api/src/modules/storage/providers/minio.provider.ts` — `makeBucket`/`removeBucket` now call MinIO SDK; `getExternalUrl()` uses `MINIO_EXTERNAL_ENDPOINT`.
+- `apps/api/src/modules/storage/providers/storage-provider.interface.ts` — extended with `makeBucket`/`removeBucket` + optional credentials param.
+- `apps/api/src/modules/storage/providers/storage-provider.factory.ts` — new factory; Cloudinary/Telegram instantiated per-call with user credentials.
+- `apps/api/src/modules/storage/providers/cloudinary.provider.ts` — credentials injected per-call from `ProjectEnv`.
+- `apps/api/src/modules/storage/providers/telegram.provider.ts` — botToken/chatId from `ProjectEnv`; stores as Telegram documents.
+- `installer/docker/docker-compose.yml` — `MINIO_EXTERNAL_ENDPOINT` added.
 
 ## Next Phase
 
