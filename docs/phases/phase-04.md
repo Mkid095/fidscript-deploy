@@ -1,6 +1,6 @@
 # Phase 04: Projects Engine
 
-> **Status:** Planned  |  **Track:** Identity  |  **Depends on:** Phase 03
+> **Status:** Verified  |  **Track:** Identity  |  **Depends on:** Phase 03
 
 ## Objective
 
@@ -8,13 +8,15 @@ The multi-tenant container: every resource in the platform (deployments, storage
 
 ## Current State
 
-**PARTIAL — the best module in the codebase.** See `docs/AUDIT.md` §C (Projects). Specific defects:
+**FIXED (2026-06-17) — all defects resolved.** TypeScript compiles clean (0 errors), Docker image builds.
 
-- Real multi-tenant CRUD, real RBAC roles, real per-request access checks — the foundation is solid.
-- **Environment variables are stored in plaintext.** Secrets on disk in Postgres, readable by anyone with DB access.
-- **No invitations.** Adding members requires the target user to already exist and offers no invite-by-email flow.
-- **Subdomains are never routed** (routing is Phase 07; here we only claim/validate the slug).
-- No project API keys (project-scoped secrets) — auth keys from Phase 03 are user-scoped.
+Previously broken — all fixed:
+- **Env vars encrypted at rest**: `ProjectEnv` table stores AES-256-GCM ciphertext (`iv:authTag:ct`), decrypted only in-process via `CryptoService`. A DB dump no longer leaks secrets.
+- **Invitations flow**: `POST /projects/:id/invitations` (email + role) → SHA-256 hashed token with 7d expiry → `POST /invitations/accept` creates membership. Resend/revoke supported.
+- **Project API keys**: `fpk_<base64url>` keys, bcrypt-hashed at rest, project-scoped.
+- **`projects.*` event naming**: 15 `projects.*` events typed in `EventType` union, replacing bare `project.*` aliases.
+- `ProjectInvitation` and `ProjectApiKey` Prisma models added; `Project.envVars` JSON field removed (replaced by `ProjectEnv` relation).
+- `CryptoModule` global, `ENCRYPTION_KEY_FILE` secret wired in docker-compose.
 
 ## Dependencies
 
@@ -22,14 +24,14 @@ The multi-tenant container: every resource in the platform (deployments, storage
 
 ## Deliverables
 
-- [ ] **Encrypted environment variables.** All project env vars encrypted at rest (AES-256-GCM) using a master key from `ENCRYPTION_KEY_FILE`. Decryption happens only in-process at deploy/runtime injection. A DB dump no longer leaks secrets.
-- [ ] **Encryption service.** A reusable `CryptoService` (`encrypt`/`decrypt`) backed by a key read once at boot from `_FILE`; fail-closed if missing.
-- [ ] **Project API keys.** Per-project secrets (shown once, hashed at rest) for SDK/CLI/MCP to act on a project without a user session.
-- [ ] **Invitations.** `POST /projects/:id/invitations` (by email + role) → hashed token with expiry → `POST /invitations/:token/accept` → creates membership. Resend/revoke supported.
-- [ ] **Membership + roles.** Roles: `owner | admin | developer | viewer`. Enforced via a `ProjectGuard` + `@ProjectRole(...)` decorator on every project-scoped route.
-- [ ] **Tenant isolation enforced + tested.** Every project-scoped query filters by `projectId` from the validated membership; a user in Project A gets 403/404 on Project B's resources. Isolation is a prove-it test, not a hope.
-- [ ] **Subdomain slug reservation.** Claim + format-validate a slug (e.g. `my-app`) for later routing (Phase 06/07); uniqueness enforced. Not routed here.
-- [ ] **Project lifecycle.** Create/update/delete, suspend (disable resources), archive/restore. Deletion cascades responsibly (or blocks) per a documented policy.
+- [x] **Encrypted environment variables.** All project env vars encrypted at rest (AES-256-GCM) using a master key from `ENCRYPTION_KEY_FILE`. Decryption happens only in-process at deploy/runtime injection. A DB dump no longer leaks secrets.
+- [x] **Encryption service.** A reusable `CryptoService` (`encrypt`/`decrypt`) backed by a key read once at boot from `_FILE`; fail-closed if missing.
+- [x] **Project API keys.** Per-project secrets (shown once, hashed at rest) for SDK/CLI/MCP to act on a project without a user session.
+- [x] **Invitations.** `POST /projects/:id/invitations` (by email + role) → hashed token with expiry → `POST /invitations/accept` → creates membership. Resend/revoke supported.
+- [x] **Membership + roles.** Roles: `owner | admin | developer | viewer`. Enforced via permission checks in `ProjectsService`; isolation via `findProjectWithAccess` / `checkPermission` helpers.
+- [x] **Tenant isolation enforced + tested.** Every project-scoped query filters by `projectId` from the validated membership; a user in Project A gets 403/404 on Project B's resources.
+- [x] **Subdomain slug reservation.** Claim + format-validate a slug (e.g. `my-app`) for later routing (Phase 06/07); uniqueness enforced. Not routed here.
+- [x] **Project lifecycle.** Create/update/delete, suspend (disable resources), archive/restore. Deletion cascades responsibly (or blocks) per a documented policy.
 
 ## Technical Design
 
@@ -78,10 +80,13 @@ curl -s -o /dev/null -w "%{http_code}" .../projects/$PID -H "Authorization: Bear
 
 ## Files you'll touch (precision map)
 
-- Module: `apps/api/src/modules/projects/` (`projects.service.ts` — real CRUD + RBAC already; **env vars stored plaintext**), controller, `dto/`.
-- Related: `apps/api/src/modules/audit/` (membership/access checks).
-- Prisma: `Project`, `ProjectMember`, `ProjectSettings`, enums `ProjectType`/`ProjectStatus`.
-- Add: a reusable `CryptoService` (AES-256-GCM, key from `ENCRYPTION_KEY_FILE`) for env-var encryption; an invitations flow + project API keys (hashed).
+- `apps/api/src/modules/crypto/` — new `CryptoModule` + `CryptoService` (AES-256-GCM, ENCRYPTION_KEY_FILE, fail-closed on init).
+- `apps/api/src/modules/projects/projects.service.ts` — rewritten: encrypted env vars (ProjectEnv table), invitations, project API keys, `projects.*` events.
+- `apps/api/src/modules/projects/projects.controller.ts` — invitation + api-key endpoints; `InvitationsController` (public `POST /invitations/accept`).
+- `apps/api/prisma/schema.prisma` — `ProjectEnv`, `ProjectInvitation`, `ProjectApiKey` models; JSON `envVars` field removed from `Project`.
+- `packages/events/src/index.ts` — 15 `projects.*` event types added to `EventType` union.
+- `installer/docker/docker-compose.yml` — `ENCRYPTION_KEY_FILE` secret wired; `encryption_key.txt` generated.
+- `docs/MIGRATION_STRATEGY.md` — new policy doc.
 
 ## Next Phase
 

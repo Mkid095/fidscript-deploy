@@ -36,8 +36,8 @@ Statuses: `Planned` · `In Progress` · `Verified`
 | 01 | Installer & Infrastructure Stack | Verified |
 | 02 | Event Bus & Service Registry | Verified |
 | 03 | Identity & Access (platform auth) | Verified |
-| 04 | Projects Engine | In Progress |
-| 05 | Storage Platform | Planned |
+| 04 | Projects Engine | Verified |
+| 05 | Storage Platform | In Progress |
 | 06 | Deployment Engine | Planned |
 | 07 | Domains & TLS | Planned |
 | 08 | Database Platform | Planned |
@@ -66,7 +66,8 @@ Statuses: `Planned` · `In Progress` · `Verified`
 - [x] Begin **Phase 01 — Installer & Infrastructure Stack**: first Prisma migration baseline, `prisma/seed.ts`, compose `_FILE` secrets + env wiring, `install.sh` actually deploys, Traefik/firewall fixes, health checks.
 - [x] Begin **Phase 02 — Event Bus & Service Registry**: `@nestjs/event-emitter` local backbone, `nats` package (not `nats.ws`), JetStream stream created on boot, AuditEventConsumer writes PlatformEvent rows, typed EventType union (52 events), RegistryService + `GET /api/v1/services`, Dockerfile fixed to build packages before API.
 - [x] Begin **Phase 03 — Identity & Access (platform auth)**: JWT auth, platform roles (USER/ADMIN/OWNER), `PlatformAdminGuard`, session management.
-- [ ] Begin **Phase 04 — Projects Engine**: Project CRUD, ProjectMember roles, project-scoped auth context.
+- [x] Begin **Phase 04 — Projects Engine**: encrypted env vars (AES-256-GCM/CryptoService), invitations flow (SHA-256 token hash, 7d expiry, accept/revoke), project API keys (fpk_ prefix, bcrypt-hashed), `projects.*` events (15 typed), `ProjectEnv`/`ProjectInvitation`/`ProjectApiKey` models.
+- [ ] Begin **Phase 05 — Storage Platform**: S3-compatible object storage via MinIO, bucket management, signed URL generation, CDN integration.
 
 ## Definition of done (per phase)
 
