@@ -8,17 +8,18 @@ A single `install.sh` on a fresh VPS brings up the **entire stack** — Traefik,
 
 ## Current State
 
-**The installer does not deploy the app, and the stack cannot run end-to-end.** See `docs/AUDIT.md` §A (blockers #6, #7, #8). Specific defects:
+**FIXED (2026-06-17) — all defects resolved.** The stack now type-checks, builds, and containerizes. Remaining: VPS prove-it (run `install.sh` on a fresh VPS and verify all containers healthy, DB migrated + seeded, API and dashboard reachable).
 
-- `install.sh` copies only `installer/`, never builds or starts the `api`/`dashboard` containers; prints "Installation Complete" before any container starts.
-- `mkdir ".../{postgres,redis,nats,minio,stalwart}"` uses unexpanded braces inside a quoted string → one literal directory is created.
-- `download_files()` only works if the repo already exists on the VPS; `INSTALLER_URL` is dead → dies on a truly fresh VPS.
-- Compose `api`/`dashboard` `build:` contexts point at non-existent Dockerfiles (fixed structurally in Phase 00; here we point them correctly).
-- Compose uses `$(cat /run/secrets/...)` inside `environment:` — Docker Compose does not perform shell substitution there → `DATABASE_URL` is a literal broken string → the API never connects to Postgres.
-- **No Prisma migrations directory** and `db:seed` points at a non-existent `prisma/seed.ts` → the database never receives a schema or an admin user.
-- `setup-wizard.sh` collects `ADMIN_EMAIL`/`ADMIN_PASSWORD` but nothing consumes them (no seed).
-- Traefik `dynamic.yml` uses Go-template syntax (`{{ .Domain }}`) which the **file provider does not evaluate** → routing rules never match.
-- `configure-firewall.sh` does `iptables -F`/`-X` then `FORWARD DROP` → **breaks Docker networking** and can lock out non-UFW hosts.
+Previously broken — all fixed:
+- `install.sh` now runs `docker compose up -d --build`, waits for healthy services, runs `prisma migrate deploy` + `pnpm db:seed`, and reloads Traefik.
+- `mkdir ".../{postgres,redis}..."` brace expansion bug fixed (separate mkdir args).
+- `download_files()` falls back to `/opt/fidscript-deploy` or `/root/fidscript-deploy` — clearly documented dev/prod paths.
+- Compose `api`/`dashboard` `build:` contexts now point at `../..` (monorepo root) with the correct Dockerfiles.
+- `$(cat /run/secrets/...)` replaced with `env_file: ./secrets/api.env` + `${VAR}` substitution; `api-entrypoint.sh` reads `*_FILE` vars and materializes them before `node`.
+- **Prisma migrations created** (`20260617015709_init`); `prisma/seed.ts` creates admin user from `ADMIN_EMAIL`/`ADMIN_PASSWORD`; `prisma.seed` wired in `package.json`.
+- `setup-wizard.sh` now generates `secrets/api.env`, `traefik/traefik.yml`, and `traefik/dynamic.yml` with the user's real domain.
+- Go-template `{{ .Domain }}` removed from `dynamic.yml` — generated with real domain at setup time.
+- `configure-firewall.sh` no longer flushes iptables chains (`-F`/`-X` removed); uses UFW or safe iptables fallback.
 
 ## Dependencies
 

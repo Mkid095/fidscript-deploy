@@ -15,7 +15,7 @@ http:
 
   routers:
     dashboard:
-      rule: "Host(`{{ .Domain }}`)"
+      rule: "Host(`deploy.fidscript.com`)"
       service: dashboard
       middlewares:
         - security-headers
@@ -24,7 +24,7 @@ http:
         certResolver: letsencrypt
 
     api:
-      rule: "Host(`api.{{ .Domain }}`)"
+      rule: "PathPrefix(`/api`)"
       service: api
       middlewares:
         - security-headers
@@ -33,7 +33,7 @@ http:
         certResolver: letsencrypt
 
     minio-console:
-      rule: "Host(`storage.{{ .Domain }}`)"
+      rule: "Host(`storage.fidscript.com`)"
       service: minio-console
       middlewares:
         - security-headers

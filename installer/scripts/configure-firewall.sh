@@ -25,7 +25,6 @@ fi
 configure_ufw() {
     log_info "Configuring UFW firewall..."
 
-    # Check if UFW is installed
     if ! command -v ufw &> /dev/null; then
         log_info "Installing UFW..."
         apt-get update -qq
@@ -54,16 +53,14 @@ configure_ufw() {
     ufw status verbose | sed 's/^/  /'
 }
 
-configure_iptables() {
-    log_info "Configuring iptables rules..."
+configure_iptables_fallback() {
+    log_info "Configuring iptables (fallback — UFW preferred)..."
 
-    # Flush existing rules
-    iptables -F
-    iptables -X
+    # IMPORTANT: Do NOT flush (-F) or delete (-X) chains — that breaks Docker networking.
+    # Only add rules to the existing tables without touching other rules.
 
-    # Default policies
     iptables -P INPUT ACCEPT
-    iptables -P FORWARD DROP
+    iptables -P FORWARD ACCEPT
     iptables -P OUTPUT ACCEPT
 
     # Allow loopback
@@ -80,23 +77,20 @@ configure_iptables() {
     iptables -A INPUT -p tcp --dport 80 -j ACCEPT
     iptables -A INPUT -p tcp --dport 443 -j ACCEPT
 
-    # Allow Docker traffic
-    iptables -A INPUT -i docker0 -j ACCEPT 2>/dev/null || true
-
-    # Save rules
-    if [[ -d /etc/iptables ]]; then
+    # Save rules if iptables-proper is available
+    if command -v iptables-save &> /dev/null && [[ -d /etc/iptables ]]; then
         iptables-save > /etc/iptables/rules.v4
         log_info "iptables rules saved to /etc/iptables/rules.v4"
     fi
 
-    log_info "iptables rules configured."
+    log_info "iptables configured (no chains flushed — Docker networking intact)."
 }
 
-# Detect available firewall
+# Use UFW if available; otherwise use safe iptables (never flush)
 if command -v ufw &> /dev/null; then
     configure_ufw
 elif [[ -f /etc/debian_version ]]; then
-    configure_iptables
+    configure_iptables_fallback
 else
     log_warn "No supported firewall found. Please configure manually."
     log_info "Required ports: 22 (SSH), 80 (HTTP), 443 (HTTPS)"

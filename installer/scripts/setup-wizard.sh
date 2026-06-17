@@ -84,23 +84,29 @@ fi
 echo ""
 echo "Starting installation..."
 
-# Create secrets directory
-mkdir -p "$(dirname "$0")/../docker/secrets"
-mkdir -p "$(dirname "$0")/../docker/traefik/certs"
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+INSTALL_DIR="$(dirname "$SCRIPT_DIR")"
+DOCKER_DIR="$INSTALL_DIR/docker"
+TRAEFIK_DIR="$DOCKER_DIR/traefik"
+SECRETS_DIR="$DOCKER_DIR/secrets"
+
+# Create directories
+mkdir -p "$SECRETS_DIR"
+mkdir -p "$TRAEFIK_DIR/certs"
 
 # Generate secrets
 echo "Generating secure secrets..."
-openssl rand -base64 32 > "$(dirname "$0")/../docker/secrets/postgres_password.txt"
-openssl rand -base64 32 > "$(dirname "$0")/../docker/secrets/redis_password.txt"
-openssl rand -base64 32 > "$(dirname "$0")/../docker/secrets/minio_access_key.txt"
-openssl rand -base64 32 > "$(dirname "$0")/../docker/secrets/minio_secret_key.txt"
-openssl rand -base64 64 > "$(dirname "$0")/../docker/secrets/jwt_secret.txt"
+openssl rand -base64 32 > "$SECRETS_DIR/postgres_password.txt"
+openssl rand -base64 32 > "$SECRETS_DIR/redis_password.txt"
+openssl rand -base64 32 > "$SECRETS_DIR/minio_access_key.txt"
+openssl rand -base64 32 > "$SECRETS_DIR/minio_secret_key.txt"
+openssl rand -base64 64 > "$SECRETS_DIR/jwt_secret.txt"
 
 # Set permissions
-chmod 600 "$(dirname "$0")/../docker/secrets/"*.txt
+chmod 600 "$SECRETS_DIR/"*.txt
 
-# Create config file
-cat > "$(dirname "$0")/../.env" << EOF
+# Create .env
+cat > "$INSTALL_DIR/.env" << EOF
 DOMAIN=$DOMAIN
 ADMIN_EMAIL=$ADMIN_EMAIL
 ADMIN_PASSWORD=$ADMIN_PASSWORD
@@ -108,15 +114,132 @@ STORAGE_PATH=$STORAGE_PATH
 AUTO_SSL=$AUTO_SSL
 EOF
 
-echo ""
-echo "Configuration saved to .env"
+# Generate api.env with secret values (api container reads these via env_file)
+POSTGRES_PASSWORD=$(cat "$SECRETS_DIR/postgres_password.txt")
+REDIS_PASSWORD=$(cat "$SECRETS_DIR/redis_password.txt")
+MINIO_ACCESS_KEY=$(cat "$SECRETS_DIR/minio_access_key.txt")
+MINIO_SECRET_KEY=$(cat "$SECRETS_DIR/minio_secret_key.txt")
+
+cat > "$SECRETS_DIR/api.env" << EOF
+POSTGRES_PASSWORD=$POSTGRES_PASSWORD
+REDIS_PASSWORD=$REDIS_PASSWORD
+MINIO_ACCESS_KEY=$MINIO_ACCESS_KEY
+MINIO_SECRET_KEY=$MINIO_SECRET_KEY
+EOF
+
+# Generate Traefik dynamic.yml with the real domain
+cat > "$TRAEFIK_DIR/dynamic.yml" << EOF
+http:
+  middlewares:
+    security-headers:
+      headers:
+        frameDeny: true
+        browserXssFilter: true
+        contentTypeNosniff: true
+        sslRedirect: true
+        stsSeconds: 31536000
+        stsIncludeSubdomains: true
+        stsPreload: true
+
+    compress:
+      compress: {}
+
+  routers:
+    dashboard:
+      rule: "Host(\`$DOMAIN\`)"
+      service: dashboard
+      middlewares:
+        - security-headers
+        - compress
+      tls:
+        certResolver: letsencrypt
+
+    api:
+      rule: "PathPrefix(\`/api\`)"
+      service: api
+      middlewares:
+        - security-headers
+        - compress
+      tls:
+        certResolver: letsencrypt
+
+    minio-console:
+      rule: "Host(\`storage.$DOMAIN\`)"
+      service: minio-console
+      middlewares:
+        - security-headers
+        - compress
+      tls:
+        certResolver: letsencrypt
+
+  services:
+    dashboard:
+      loadBalancer:
+        servers:
+          - url: "http://fidscript_dashboard:3000"
+
+    api:
+      loadBalancer:
+        servers:
+          - url: "http://fidscript_api:3001"
+
+    minio-console:
+      loadBalancer:
+        servers:
+          - url: "http://fidscript_minio:9001"
+EOF
+
+# Generate Traefik static config with real email
+cat > "$TRAEFIK_DIR/traefik.yml" << EOF
+api:
+  dashboard: true
+  insecure: true
+
+entryPoints:
+  web:
+    address: ":80"
+    http:
+      redirections:
+        entryPoint:
+          to: websecure
+          scheme: https
+
+  websecure:
+    address: ":443"
+    http:
+      tls:
+        certResolver: letsencrypt
+
+certificatesResolvers:
+  letsencrypt:
+    acme:
+      email: $ADMIN_EMAIL
+      storage: /acme/acme.json
+      httpChallenge:
+        entryPoint: web
+
+providers:
+  docker:
+    endpoint: "unix:///var/run/docker.sock"
+    exposedByDefault: false
+    network: fidscript
+  file:
+    filename: /etc/traefik/dynamic.yml
+    watch: true
+EOF
+
 echo ""
 echo "╔═══════════════════════════════════════════════════════════╗"
 echo "║              Installation Complete!                       ║"
 echo "╚═══════════════════════════════════════════════════════════╝"
 echo ""
+echo "  Domain:       https://$DOMAIN"
+echo "  Admin email:  $ADMIN_EMAIL"
+echo ""
 echo "Next steps:"
-echo "  1. Review .env file and adjust if needed"
-echo "  2. Run: cd installer/docker && docker compose up -d"
-echo "  3. Access dashboard at: https://$DOMAIN"
+echo "  1. cd $DOCKER_DIR"
+echo "  2. docker compose up -d --build"
+echo "  3. docker compose exec api npx prisma migrate deploy"
+echo "  4. docker compose exec api pnpm db:seed"
+echo "  5. Access dashboard at: https://$DOMAIN"
 echo ""

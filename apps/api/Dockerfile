@@ -31,8 +31,11 @@ COPY --from=build /app/apps/api/dist ./apps/api/dist
 COPY --from=build /app/apps/api/prisma ./apps/api/prisma
 COPY apps/api/package.json ./apps/api/package.json
 
-RUN chown -R node:node /app
+# Entrypoint reads *_FILE env vars, runs migrations, then starts the API.
+# Copy from monorepo root (build context) so the script is available.
+COPY --from=build /app/installer/docker/api-entrypoint.sh /usr/local/bin/api-entrypoint.sh
+RUN chown -R node:node /app && chmod +x /usr/local/bin/api-entrypoint.sh
 USER node
 
 EXPOSE 3001
-CMD ["node", "apps/api/dist/main.js"]
+ENTRYPOINT ["/usr/local/bin/api-entrypoint.sh"]

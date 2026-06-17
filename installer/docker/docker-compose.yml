@@ -108,18 +108,23 @@ services:
 
   api:
     build:
-      context: ./api
-      dockerfile: Dockerfile
+      context: ../..
+      dockerfile: apps/api/Dockerfile
     container_name: fidscript_api
     restart: unless-stopped
+    # Read *_FILE env vars and materialize them before starting node
+    env_file:
+      - ./secrets/api.env
     environment:
-      DATABASE_URL: postgresql://fidscript:$$(cat /run/secrets/postgres_password)@postgres:5432/fidscript
-      REDIS_URL: redis://:$$(cat /run/secrets/redis_password)@redis:6379
+      DATABASE_URL: postgresql://fidscript:${POSTGRES_PASSWORD}@postgres:5432/fidscript
+      REDIS_URL: redis://:${REDIS_PASSWORD}@redis:6379
       NATS_URL: nats://nats:4222
       MINIO_ENDPOINT: minio:9000
-      MINIO_ACCESS_KEY: $$(cat /run/secrets/minio_access_key)
-      MINIO_SECRET_KEY: $$(cat /run/secrets/minio_secret_key)
+      MINIO_PORT: "9000"
+      MINIO_ACCESS_KEY: ${MINIO_ACCESS_KEY}
+      MINIO_SECRET_KEY: ${MINIO_SECRET_KEY}
       JWT_SECRET_FILE: /run/secrets/jwt_secret
+      API_PORT: "3001"
     secrets:
       - postgres_password
       - redis_password
@@ -127,7 +132,7 @@ services:
       - minio_secret_key
       - jwt_secret
     volumes:
-      - /var/run/docker.sock:/var/run/docker.sock
+      - ./secrets:/run/secrets:ro
     networks:
       - fidscript
     depends_on:
@@ -139,15 +144,21 @@ services:
         condition: service_healthy
       minio:
         condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:3001/api/v1/health || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
 
   dashboard:
     build:
-      context: ./dashboard
-      dockerfile: Dockerfile
+      context: ../..
+      dockerfile: apps/dashboard/Dockerfile
     container_name: fidscript_dashboard
     restart: unless-stopped
     environment:
-      NEXT_PUBLIC_API_URL: https://api.${DOMAIN}
+      NEXT_PUBLIC_API_URL: https://${DOMAIN}/api
       NEXT_PUBLIC_PLATFORM_URL: https://${DOMAIN}
     networks:
       - fidscript
@@ -159,6 +170,7 @@ services:
     container_name: fidscript_bootstrap
     restart: "no"
     volumes:
+      - ./secrets:/run/secrets:ro
       - fidscript_secrets:/secrets
       - fidscript_config:/config
     networks:
@@ -172,7 +184,6 @@ services:
         set -e
         apk add --no-cache postgresql-client > /dev/null 2>&1
 
-        # Wait for postgres to be fully ready
         echo "Waiting for PostgreSQL..."
         until pg_isready -h postgres -U fidscript -d fidscript > /dev/null 2>&1; do
           sleep 1
