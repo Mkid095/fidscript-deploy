@@ -57,6 +57,14 @@ phase that implements it is `Verified` in `AGENT_STATUS.md`.
 5. **Integration is a deliverable** — every phase wires its events, service-registry entry,
    and SDK/MCP/CLI/dashboard touchpoints.
 6. 150-line file limit; feature-based structure; no emojis in UI.
+7. **Research before implementing** — these docs *and your training* can be stale. Before
+   non-trivial work, confirm the current correct approach with your tools: **Context7** MCP
+   for library/framework docs, **web search** for best practices, and **file reads** for the
+   repo's real state.
+8. **Docs are living** — the phase docs, `docs/AUDIT.md`, the precision maps, and
+   `AGENT_STATUS.md` are a snapshot. Keep them honest: update them **in the same commit**
+   as the code. A doc that lies is worse than no doc (the whole reset happened because status
+   said "complete" while nothing was built).
 
 ## The exact next action
 

@@ -26,6 +26,43 @@ FIDScript Deploy - AI Development Constitution
 
 ---
 
+## How an agent should work (read this)
+
+**Research before you implement.** These docs — and your own training — are a
+snapshot in time. Library APIs, versions, and best-practice patterns change
+(NestJS, Prisma, NATS, Stalwart, Traefik, Next.js, the MCP SDK, Docker, etc.).
+Before implementing anything non-trivial, **use the tools available to you to
+confirm the current, correct approach** rather than trusting memory or a doc
+written months ago:
+
+- **Library / framework docs & exact APIs** → the **Context7** MCP
+  (`resolve-library-id`, then `query-docs`) for current docs.
+- **"How do I…" / current best practices** → **web search** (Brave / Firecrawl);
+  read authoritative/official sources, not stale blog posts.
+- **A specific page** → fetch it and read it.
+- **This repo's own state** → Read/Grep the actual files (a doc's "Current State"
+  can lag the code).
+
+Confirm against the source, *then* implement. If the correct approach differs
+from what a phase doc says, follow the source and **update the doc** (below).
+
+**The docs are living, not fixed.** The phase docs, `docs/AUDIT.md`, the
+"Files you'll touch" precision maps, and `AGENT_STATUS.md` describe reality *as
+of the last commit*. As you implement, reality shifts — keep them honest **in
+the same commit** as the code change:
+
+- Refactored/removed/added a module → update that phase doc's *Current State* and
+  *Files you'll touch* if they're now stale.
+- A phase passed VPS verification → flip it to `Verified` in `AGENT_STATUS.md`.
+- Discovered a "stub" is realer — or worse — than AUDIT says → correct `docs/AUDIT.md`.
+- Made an architecture decision → record an ADR in `DECISIONS.md`.
+
+Code and docs drift together in one commit. **A doc that lies is worse than no
+doc** — the whole point of the reset was that status said "complete" while
+nothing was built. Don't recreate that.
+
+---
+
 ## Service Specifications
 
 | Service | Read First |
@@ -108,6 +145,8 @@ FIDScript Deploy - AI Development Constitution
 9. **No Emojis in UI** - Use text or icon components only
 10. **No Secrets in Code/History** - Secrets via `_FILE` env or a secrets manager; never committed
 11. **Tenant Isolation** - Every query scoped by project/owner; isolation is tested
+12. **Research Before Implementing** - Use available tools (Context7 for current library docs, web search for current best practices, file Read for repo state) to verify the correct approach before coding. Docs and model training may be stale.
+13. **Docs Are Living** - Phase docs, AUDIT, AGENT_STATUS, and the precision maps are a snapshot. Update them in the same commit as the code so they never drift; a doc that lies is worse than no doc.
 
 ---
 
@@ -119,10 +158,11 @@ FIDScript Deploy - AI Development Constitution
 4. Read `docs/phases/phase-XX.md` - Know this phase's deliverables and exit criterion
 5. Read relevant `docs/services/[service].md` - Know the service contract
 6. Read related ADRs in `DECISIONS.md` - Know decisions made
-7. Implement against the phase spec
-8. **Verify on the VPS** against the phase's `## Verification` section
-9. Commit the verified phase
-10. Update `AGENT_STATUS.md`; update `DECISIONS.md` if a new ADR was created
+7. **Research the current correct approach** (Context7 for library docs, web search for best practices) before implementing — see "How an agent should work"
+8. Implement against the phase spec
+9. **Verify on the VPS** against the phase's `## Verification` section
+10. Commit the verified phase
+11. **Keep docs honest in the same commit**: update `AGENT_STATUS.md` (phase → `Verified`); refresh the phase doc's *Current State* / *Files you'll touch* if they drifted; correct `docs/AUDIT.md` if a verdict changed; add an ADR to `DECISIONS.md` if you made a decision
 
 ---
 
@@ -154,4 +194,4 @@ Configured during Phase 07 (Domains & TLS). DNS credentials are in Cloudflare (s
 
 ---
 
-*Last updated: 2026-06-16*
+*Last updated: 2026-06-17*
