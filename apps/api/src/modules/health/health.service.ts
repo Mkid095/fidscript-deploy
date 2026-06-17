@@ -75,7 +75,7 @@ export class HealthService {
     if (!natsUrl) return { status: 'unknown', error: 'NATS_URL not configured' };
 
     try {
-      const { connect } = await import('nats.ws');
+      const { connect } = await import('nats');
       const nc = await connect({ servers: [natsUrl], timeout: 3000 });
       await nc.close();
       return { status: 'up', latencyMs: Date.now() - start };

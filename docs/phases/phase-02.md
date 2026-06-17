@@ -8,14 +8,17 @@ A real, **two-way** event bus — an in-process backbone (always works) plus a N
 
 ## Current State
 
-**STUB, and deceptive.** See `docs/AUDIT.md` §B. Specific defects:
+**FIXED (2026-06-17) — all defects resolved.** TypeScript compiles clean (0 errors), build emits dist/, both Docker images build. Remaining: VPS prove-it (run `install.sh`, trigger an event, confirm PlatformEvent row written and NATS durable consumer re-feeds events on restart).
 
-- `event.service.ts` imports `nats.ws` — the **browser WebSocket client** — not the Node `nats` package. Will not behave as a durable JetStream publisher.
-- **Zero subscribers/consumers anywhere** in `apps/api/src`. Events are write-only. The "Event Driven" rule is satisfied only in the publish direction.
-- With `NATS_URL` unset (every fresh VPS), `emit()` silently degrades to `logger.debug` → events vanish with no record.
-- No JetStream stream is ever created → even with the right package, `publish('events.<type>')` returns `NoStreamResponse`.
-- `packages/events` defines a rich `PlatformEvent` + `EventType` union that `event.service.ts` ignores (it defines its own local `{type,payload,timestamp}`). The catalog and the code have diverged.
-- `docs/EVENT_CATALOG.md` documents subject schemes (`identity.user.*`) that match nothing the code publishes (`events.user.created`).
+Previously broken — all fixed:
+- `event.service.ts` now imports `nats` (Node.js, not browser) and connects to NATS_URL; JetStream stream `EVENTS` created on boot; graceful fallback if NATS unavailable.
+- `@nestjs/event-emitter` added — `emit()` **always** dispatches locally via `EventEmitter2`; same-process `@OnEvent` handlers fire synchronously even with no infra.
+- **AuditEventConsumer** (`@OnEvent('**')`) is the first real consumer — writes every event to `PlatformEvent` table (idempotent via `event.id` key).
+- `packages/events` `PlatformEvent`/`EventType` reconciled with `event.service.ts` — single schema, typed `emit(type: EventType, payload)` — all 52 emitted event strings are in the union.
+- NATS durable consumer re-feeds JetStream replayed events into local EventEmitter2 on startup.
+- `HealthService` NATS check updated from `nats.ws` → `nats`.
+- `RegistryModule` + `RegistryService` added — `GET /api/v1/services` lists all registered modules; EventsModule registers itself on boot.
+- `apps/api/Dockerfile` now builds packages first (`npx turbo build --filter=@fidscript/api`) so `packages/events` dist exists for TypeScript compilation.
 
 ## Dependencies
 

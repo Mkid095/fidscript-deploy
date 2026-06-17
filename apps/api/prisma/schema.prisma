@@ -879,3 +879,25 @@ model MarketplaceReview {
   @@unique([itemId, userId])
   @@map("marketplace.reviews")
 }
+
+// =============================================
+// PLATFORM EVENTS (audit log via event bus)
+// =============================================
+
+model PlatformEvent {
+  id          String    @id // UUID — matches event.id
+  type        String    @db.VarChar(100)
+  timestamp   DateTime  @default(now()) @db.Timestamptz
+  actorId     String?   @map("actor_id") @db.VarChar(255)
+  actorType   String?   @map("actor_type") @db.VarChar(50)
+  resourceType String   @map("resource_type") @db.VarChar(100)
+  resourceId String    @map("resource_id") @db.VarChar(255)
+  metadata    Json     @default("{}")
+  ipAddress   String?   @map("ip_address") @db.VarChar(45)
+  userAgent   String?   @map("user_agent") @db.Text
+
+  @@index([type, timestamp])
+  @@index([resourceType, resourceId])
+  @@index([actorId])
+  @@map("platform.events")
+}

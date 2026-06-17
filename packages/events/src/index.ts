@@ -1,64 +1,100 @@
 // Event type definitions for FIDScript platform
-// All platform actions generate events for auditing and reactivity
+// All platform actions generate events for auditing and reactivity.
+//
+// Naming scheme: <domain>.<entity>.<verb>
+// Every string emitted by EventService.emit() must be a valid EventType.
+// Add new types here — never emit strings outside this union (gate behind typecheck).
 
 export type EventType =
-  // Auth events
+  // Auth / Identity events
   | 'user.created'
   | 'user.updated'
   | 'user.deleted'
+  | 'user.login'
   | 'session.created'
   | 'session.revoked'
   | 'api_key.created'
   | 'api_key.revoked'
+  | 'auth.user_created'
+  | 'auth.login_succeeded'
+  | 'auth.login_failed'
   // Project events
   | 'project.created'
   | 'project.updated'
   | 'project.deleted'
-  | 'project.deployed'
-  | 'project.build_started'
-  | 'project.build_failed'
+  | 'project.suspended'
+  | 'project.archived'
+  | 'project.restored'
+  | 'project.cloned'
   // Deployment events
-  | 'deployment.created'
   | 'deployment.started'
-  | 'deployment.completed'
+  | 'deployment.building'
+  | 'deployment.succeeded'
   | 'deployment.failed'
   | 'deployment.rolled_back'
   // Database events
-  | 'database.created'
-  | 'database.started'
-  | 'database.stopped'
-  | 'database.restarted'
+  | 'database.provisioned'
+  | 'database.updated'
   | 'database.deleted'
+  | 'database.backup_started'
+  | 'database.backup_completed'
+  | 'database.restored'
   // Domain events
-  | 'domain.created'
-  | 'domain.updated'
+  | 'domain.added'
+  | 'domain.verified'
+  | 'domain.failed'
   | 'domain.deleted'
-  | 'domain.ssl_issued'
-  | 'domain.ssl_failed'
-  | 'domain.dns_verified'
   // Function events
   | 'function.created'
   | 'function.deployed'
   | 'function.invoked'
-  | 'function.failed'
+  | 'function.error'
+  | 'function.deleted'
+  | 'function.dead_lettered'
   // Queue events
   | 'queue.created'
-  | 'queue.started'
-  | 'queue.stopped'
   | 'queue.message_published'
+  | 'queue.message_retried'
+  | 'queue.dead_lettered'
   // Cron events
-  | 'cron.created'
-  | 'cron.started'
-  | 'cron.stopped'
-  | 'cron.executed'
-  | 'cron.failed'
+  | 'cron.job_created'
+  | 'cron.job_updated'
+  | 'cron.job_deleted'
+  | 'cron.job_run_started'
+  | 'cron.job_run_completed'
+  | 'cron.job_run_failed'
   // Storage events
-  | 'storage.created'
-  | 'storage.uploaded'
-  | 'storage.deleted'
-  // System events
-  | 'system.health_check'
-  | 'system.error';
+  | 'storage.bucket_created'
+  | 'storage.bucket_deleted'
+  | 'storage.file_uploaded'
+  | 'storage.file_deleted'
+  // Realtime events
+  | 'realtime.channel_created'
+  | 'realtime.channel_deleted'
+  | 'realtime.client_joined'
+  | 'realtime.client_left'
+  | 'realtime.message_sent'
+  // Email events
+  | 'email.sent'
+  | 'email.mailbox_created'
+  | 'email.domain_added'
+  // AI events
+  | 'ai.conversation.created'
+  | 'ai.conversation.deleted'
+  | 'ai.error_diagnosed'
+  | 'ai.recommendation.generated'
+  | 'ai.deployment.assisted'
+  | 'ai.project.generation_assisted'
+  // Monitoring events
+  | 'monitoring.alert_triggered'
+  // Template events
+  | 'template.created'
+  | 'template.deleted'
+  | 'template.project_generated'
+  // Marketplace events
+  | 'marketplace.item.submitted'
+  | 'marketplace.item.approved'
+  | 'marketplace.review.created';
 
 export interface PlatformEvent<T = unknown> {
   id: string;
@@ -66,8 +102,8 @@ export interface PlatformEvent<T = unknown> {
   timestamp: Date;
   actorId?: string;
   actorType?: 'user' | 'system' | 'api_key';
-  resourceType: string;
-  resourceId: string;
+  resourceType?: string;
+  resourceId?: string;
   metadata?: T;
   ipAddress?: string;
   userAgent?: string;

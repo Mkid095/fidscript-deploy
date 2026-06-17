@@ -15,8 +15,9 @@ WORKDIR /app
 # keeps the workspace install reproducible.
 COPY . .
 RUN pnpm install --frozen-lockfile
+# turbo respects dependsOn: ["^build"] — builds all dependencies first, then the API
 RUN pnpm --filter @fidscript/api exec prisma generate
-RUN pnpm --filter @fidscript/api build
+RUN npx turbo build --filter=@fidscript/api
 
 FROM node:20-bookworm-slim AS runtime
 ENV NODE_ENV=production

@@ -1,6 +1,7 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import { PrismaModule } from './prisma/prisma.module';
+import { RegistryModule } from './modules/registry/registry.module';
 import { EventsModule } from './modules/events/events.module';
 import { AuditModule } from './modules/audit/audit.module';
 import { RedisModule } from './modules/redis/redis.module';
@@ -27,6 +28,7 @@ import { MarketplaceModule } from './modules/marketplace/marketplace.module';
   imports: [
     ConfigModule.forRoot({ isGlobal: true }),
     PrismaModule,
+    RegistryModule,
     EventsModule,
     AuditModule,
     RedisModule,
