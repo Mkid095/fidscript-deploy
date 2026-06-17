@@ -367,4 +367,19 @@ export class EmailEventsController {
     }
     return this.emailService.handleBounce(payload);
   }
+
+  @Post('complaint')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Stalwart complaint (FBL) webhook — adds recipient to suppression list' })
+  async handleComplaint(
+    @Headers('x-stalwart-signature') signature: string,
+    @Body()
+    payload: { email: string; userAgent?: string },
+  ) {
+    const rawBody = JSON.stringify(payload);
+    if (signature && !this.verifySignature(rawBody, signature)) {
+      throw new UnauthorizedException('Invalid webhook signature');
+    }
+    return this.emailService.handleComplaint(payload);
+  }
 }

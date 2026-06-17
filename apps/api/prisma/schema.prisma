@@ -531,18 +531,17 @@ model EmailDomain {
   aliases          EmailAlias[]
   senderIdentities SenderIdentity[]
   catchAllRules    CatchAllRule[]
+  suppressions     EmailSuppression[]
 
   @@unique([projectId, domain])
   @@map("email.domains")
 }
 
 enum EmailDomainStatus {
-  PENDING             // Created, DNS not yet configured
-  DNS_CONFIGURED     // DNS records exist, ownership not verified
-  OWNERSHIP_VERIFIED // TXT ownership token confirmed
-  VERIFICATION_PENDING // DNS verified, waiting for DKIM/SPF/DMARC
-  ACTIVE             // All checks passed
-  FAILED             // Verification failed permanently
+  PENDING           // Created, ownership token generated — waiting for TXT record
+  VERIFIED         // Ownership TXT confirmed, DNS (DKIM/SPF/DMARC/MX) configured
+  ACTIVE           // All checks passed — can send/receive
+  FAILED           // Verification failed permanently
 }
 
 // Real mailbox accounts on Stalwart (IMAP/SMTP access).
@@ -649,18 +648,42 @@ model EmailMessage {
 }
 
 // Catch-all rules — forwarded to a mailbox, external address, or webhook.
+// Rate-limited to prevent spam amplification via public catch-all domains.
 model CatchAllRule {
   id        String   @id @default(uuid())
   domainId  String   @map("domain_id")
   // { type: "mailbox", mailboxId } | { type: "external", address } | { type: "webhook", url }
   target    Json
   isActive  Boolean  @default(true) @map("is_active")
+  messagesPerMinute Int @default(60) @map("messages_per_minute")  // rate-limit guard
   createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz
 
   domain EmailDomain @relation(fields: [domainId], references: [id], onDelete: Cascade)
 
   @@unique([domainId])
   @@map("email.catch_all_rules")
+}
+
+// Suppression list entries — prevents sending to known bad recipients.
+// Written by bounce/complaint handlers; checked at send time.
+model EmailSuppression {
+  id          String           @id @default(uuid())
+  domainId   String           @map("domain_id")
+  email       String           @db.VarChar(255)
+  reason      SuppressionReason
+  createdAt   DateTime        @default(now()) @map("created_at") @db.Timestamptz
+
+  domain EmailDomain @relation(fields: [domainId], references: [id], onDelete: Cascade)
+
+  @@unique([domainId, email])
+  @@map("email.suppressions")
+}
+
+enum SuppressionReason {
+  BOUNCE     // Permanent failure (550 user unknown)
+  COMPLAINT  // Spam complaint (FBL)
+  UNSUBSCRIBE // Recipient unsubscribed
+  MANUAL     // Manually suppressed by user
 }
 
 // Tracks per-project per-key email API usage for rate limiting and billing.

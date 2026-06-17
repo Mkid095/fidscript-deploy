@@ -25,8 +25,11 @@ The platform serves three distinct email products under one API:
 
 **IN PROGRESS — schema restructured, all endpoints implemented, events wired.** As of 2026-06-17:
 
-- **Schema restructured** — `email.domains`, `email.mailboxes`, `email.aliases`, `email.sender_identities`, `email.api_keys`, `email.messages`, `email.catch_all_rules`, `email.api_usage`
-- **Domain lifecycle** — PENDING → DNS_CONFIGURED → OWNERSHIP_VERIFIED → VERIFICATION_PENDING → ACTIVE
+- **Schema restructured** — `email.domains`, `email.mailboxes`, `email.aliases`, `email.sender_identities`, `email.api_keys`, `email.messages`, `email.catch_all_rules`, `email.api_usage`, `email.suppressions`
+- **Domain lifecycle** — PENDING → VERIFIED → ACTIVE (or FAILED). Ownership TXT + DNS setup combined into one verify step; full DNS (DKIM/SPF/DMARC/MX) validated in second step.
+- **Platform generates mailbox passwords** — `resetMailboxPassword` never accepts user-supplied passwords; platform generates `crypto.randomBytes` and returns once.
+- **Suppression list** — `email.suppressions` table with reasons: BOUNCE / COMPLAINT / UNSUBSCRIBE / MANUAL. Hard bounces add recipient to suppression; `sendEmail` checks suppression before sending. Sender identities are NOT invalidated.
+- **Catch-all rate limiting** — `CatchAllRule.messagesPerMinute` (default 60) prevents spam amplification via public catch-all domains.
 - **Ownership verification** — TXT token generated at domain creation; verified before DNS configuration
 - **Stalwart JMAP client** — `StalwartJmapService` calls `POST /jmap` with bearer auth
 - **All endpoints implemented** — domains, mailboxes, aliases (mailbox/external/webhook targets), sender identities, API keys, messages, catch-all
@@ -37,7 +40,7 @@ The platform serves three distinct email products under one API:
 - **Rate limiting** — `dailyLimit`, `monthlyLimit`, `blockedUntil`, `lastFailureAt` per key per day
 - **No MinIO for messages** — body read from Stalwart via JMAP at display time; metadata only in Postgres
 - **Webhook security** — `X-Stalwart-Signature` HMAC-SHA256 on all inbound/bounce webhooks
-- **Bounce ingestion** — `EmailEventsController.handleBounce` updates message status, emits `email.bounced`
+- **Bounce ingestion** — `EmailEventsController.handleBounce` updates message status, adds to suppression list, emits `email.bounced`
 - **SMTP status model** — `QUEUED → SUBMITTED → ACCEPTED → BOUNCED/FAILED`
 - **Inbound webhook** — `X-Stalwart-Signature` HMAC verification on both `/email/inbound/webhook` and `/email/events/bounce`
 
@@ -46,15 +49,16 @@ The platform serves three distinct email products under one API:
 ```
 email.domains
   id, project_id, domain,
-  status (PENDING|DNS_CONFIGURED|OWNERSHIP_VERIFIED|VERIFICATION_PENDING|ACTIVE|FAILED),
+  status (PENDING|VERIFIED|ACTIVE|FAILED),
   dkim_verified, spf_verified, dmarc_verified, mx_verified,
   dkim_selector, ownership_token, verified_at, created_at
+  → email.suppressions[]
 
 email.mailboxes
   id, domain_id, local_part, name, quota (bytes),
   is_active, stalwart_account_id, created_at, updated_at
   → email.messages[]
-  Note: password owned by Stalwart — platform stores only stalwartAccountId. Quota stats queried from Stalwart live.
+  Note: password owned by Stalwart — platform stores only stalwartAccountId.
 
 email.aliases
   id, domain_id, local_part,
@@ -82,36 +86,15 @@ email.messages
   from, to, subject, size_bytes,
   is_read, is_starred, is_draft, spam_score,
   status (QUEUED|SUBMITTED|ACCEPTED|BOUNCED|FAILED), error, created_at
-
-email.catch_all_rules
-  id, domain_id, target (JSON: mailboxId | external address | webhook url), is_active
-```
-
-email.aliases
-  id, domain_id, local_part,
-  targets (JSON: mailboxId | external address | webhook url),
-  description, is_active, created_at, updated_at
-
-email.sender_identities
-  id, domain_id, email, name, is_verified, created_at
-  → email.messages[]
-
-email.api_keys
-  id, project_id, name, key_hash, last_used_at, created_at
-  → email.api_usage[]
-
-email.api_usage
-  id, project_id, api_key_id, date, sends, failures, bounces
-  @@unique([project_id, api_key_id, date])
-
-email.messages
-  id, mailbox_id, sender_identity_id, project_id,
-  from, to, subject, size_bytes,
-  is_read, is_starred, is_draft, spam_score, status, error, created_at
   Note: body/attachments live in Stalwart — read via JMAP at display time
 
 email.catch_all_rules
-  id, domain_id, target (JSON: mailboxId | external address | webhook url), is_active
+  id, domain_id, target (JSON: mailboxId | external address | webhook url),
+  is_active, messages_per_minute (default 60)
+
+email.suppressions
+  id, domain_id, email, reason (BOUNCE|COMPLAINT|UNSUBSCRIBE|MANUAL), created_at
+  @@unique([domain_id, email])
 ```
 
 ## API Endpoints
@@ -186,11 +169,10 @@ POST   /email/events/bounce     Stalwart bounce notification — X-Stalwart-Sign
 ### Domain Lifecycle
 1. `PENDING` — created, ownership TXT token generated
 2. User adds TXT record `{token}._email.{domain}`
-3. `verifyDomain` → ownership verified → `DNS_CONFIGURED`
-4. `setupEmailDns` creates DKIM/SPF/DMARC/MX records
-5. `OWNERSHIP_VERIFIED` → `verifyDomain` checks DNS records
-6. All DNS passing → `VERIFICATION_PENDING` → `ACTIVE`
-7. Mailboxes, aliases, sender identities require `ACTIVE` domain
+3. `verifyDomain` (PENDING) → ownership verified + DNS records created → `VERIFIED`
+4. `verifyDomain` (VERIFIED) → DKIM/SPF/DMARC/MX validated → `ACTIVE`
+5. Mailboxes, aliases, sender identities require `ACTIVE` domain
+6. Failed verification → `FAILED` (permanent, must re-add domain)
 
 ### Stalwart JMAP Client
 - All management: `POST /jmap` with `Authorization: Bearer <STA_ADMIN_TOKEN>`
@@ -214,7 +196,14 @@ POST   /email/events/bounce     Stalwart bounce notification — X-Stalwart-Sign
 ### Bounce Ingestion
 - Stalwart POSTs bounce event to `/email/events/bounce`
 - `handleBounce` updates `EmailMessage.status → BOUNCED`, emits `email.bounced`
-- Hard bounces (550 / user unknown) invalidate the sender identity
+- Hard bounces (550 / user unknown) add the recipient to `email.suppressions` — sender identity is NOT invalidated
+- Soft bounces are tracked in usage counters but do not suppress
+
+### Suppression List
+- `email.suppressions` stores `{ email, reason, created_at }` with unique constraint on `(domain_id, email)`
+- Reasons: `BOUNCE` (permanent failure), `COMPLAINT` (spam FBL), `UNSUBSCRIBE`, `MANUAL`
+- `sendEmail` checks suppression before sending — `ForbiddenException` if recipient is suppressed
+- Complaints (FBL) handled via `/email/events/complaint` endpoint (same HMAC auth)
 
 ### SMTP Status Model
 - `QUEUED` — message created, not yet submitted to SMTP
@@ -252,15 +241,15 @@ curl -fsS -X POST $API/api/v1/projects/$PID/email/domains \
 # Save ownershipToken from response
 
 # 2) Add TXT record: {token}._email.mail.example.com = {token}
-# Then verify ownership + DNS
+# Then verify — ownership confirmed and DNS records created in one step
 curl -fsS -X POST $API/api/v1/projects/$PID/email/domains/$DOMAIN_ID/verify \
   -H "Authorization: Bearer $TOKEN"
 
-# 3) Create mailbox → save credentials
+# 3) Create mailbox → platform generates password, shown once only
 curl -fsS -X POST $API/api/v1/projects/$PID/email/mailboxes \
   -H "Authorization: Bearer $TOKEN" \
-  -d '{"domain":"mail.example.com","localPart":"john","password":"SecureP@ss123"}'
-# Configure Outlook/Thunderbird with returned credentials
+  -d '{"domain":"mail.example.com","localPart":"john"}'
+# Save the returned password — it is shown only this time
 
 # 4) Create sender identity (requires ACTIVE domain)
 curl -fsS -X POST $API/api/v1/projects/$PID/email/sender-identities \

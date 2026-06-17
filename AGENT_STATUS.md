@@ -71,7 +71,7 @@ Statuses: `Planned` · `In Progress` · `Verified`
 - [x] Begin **Phase 06 — Deployment Engine**: real Docker build+run via BuildRunnerService, async DeploymentWorkerService driving PENDING→QUEUED→BUILDING→DEPLOYING→SUCCESS/FAILED state machine, encrypted env var injection at runtime, lifecycle ops (stop/restart/destroy/rollback), fidscript-app network, Traefik Docker labels routing, build logs persisted.
 - [x] Verified **Phase 07 — Domains & TLS**: real Cloudflare DNS API, DnsProvider interface, Traefik ACME DNS-01 + HTTP-01 resolvers, SERVER_IP wired, deploymentId on Domain.
 - [x] Verified **Phase 08 — Database Platform**: real provisioning, PgBouncer, encrypted creds, DATABASE_URL auto-injection, SSL enforcement, connection limits, size tracking, rotate re-injects env vars.
-- [x] **Phase 09 — Email Platform**: schema restructured (domains/mailboxes/aliases/sender_identities/api_keys/messages/catch_all_rules), StalwartJmapService (full JMAP admin client), 30+ endpoints, MinIO body storage, all events wired.
+- [x] **Phase 09 — Email Platform**: schema restructured (domains/mailboxes/aliases/sender_identities/api_keys/messages/catch_all_rules/api_usage/suppressions), simplified domain lifecycle (PENDING→VERIFIED→ACTIVE), platform-generated mailbox passwords, suppression list (bounce/complaint/unsubscribe/manual), catch-all rate limiting (messagesPerMinute), StalwartJmapService (full JMAP admin client), all events wired.
 
 ## Definition of done (per phase)
 

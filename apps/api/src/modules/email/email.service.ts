@@ -81,8 +81,7 @@ export class EmailService {
       steps: [
         `1. Add TXT record: ${ownershipToken}._email.${dto.domain}`,
         `2. Add MX record: mail.${dto.domain} → 10 mail.${dto.domain}`,
-        `3. Then call POST .../verify to confirm ownership`,
-        `4. DNS (DKIM/SPF/DMARC) will be configured automatically`,
+        `3. Then call POST .../verify — ownership will be confirmed and DNS records created`,
       ],
     };
   }
@@ -93,7 +92,7 @@ export class EmailService {
     });
     if (!domain) throw new NotFoundException('Domain not found');
 
-    // Step 1: Verify ownership via TXT record
+    // Step 1: Verify ownership via TXT record → VERIFIED
     if (domain.status === 'PENDING') {
       const ownershipVerified = await this.mailDnsService.verifyOwnership(
         domain.domain,
@@ -105,9 +104,11 @@ export class EmailService {
           `${domain.ownershipToken}._email.${domain.domain}`,
         );
       }
+      // Configure DNS records and move to VERIFIED in one step
+      await this.mailDnsService.setupEmailDns(domain.domain);
       await this.prisma.emailDomain.update({
         where: { id: domainId },
-        data: { status: 'DNS_CONFIGURED', ownershipToken: null },
+        data: { status: 'VERIFIED', ownershipToken: null },
       });
       await this.eventService.emit('email.domain_verified', {
         domainId,
@@ -117,23 +118,8 @@ export class EmailService {
       });
     }
 
-    // Step 2: Configure DNS records if not yet done
-    if (domain.status === 'DNS_CONFIGURED') {
-      await this.mailDnsService.setupEmailDns(domain.domain);
-      await this.prisma.emailDomain.update({
-        where: { id: domainId },
-        data: { status: 'OWNERSHIP_VERIFIED' },
-      });
-      await this.eventService.emit('email.domain_verified', {
-        domainId,
-        projectId,
-        domain: domain.domain,
-        step: 'dns_configured',
-      });
-    }
-
-    // Step 3: Full DNS verification (DKIM/SPF/DMARC/MX)
-    if (domain.status === 'OWNERSHIP_VERIFIED') {
+    // Step 2: Full DNS verification (DKIM/SPF/DMARC/MX) → ACTIVE
+    if (domain.status === 'VERIFIED') {
       const result = await this.mailDnsService.verifyEmailDns(domain.domain);
       const allVerified = result.dkim && result.spf && result.dmarc && result.mx;
 
@@ -150,6 +136,7 @@ export class EmailService {
           },
         });
       } else {
+        // Keep VERIFIED — DNS is configured but not fully propagated/validated yet
         await this.prisma.emailDomain.update({
           where: { id: domainId },
           data: {
@@ -157,7 +144,6 @@ export class EmailService {
             spfVerified: result.spf,
             dmarcVerified: result.dmarc,
             mxVerified: result.mx,
-            status: 'VERIFICATION_PENDING',
           },
         });
       }
@@ -336,19 +322,20 @@ export class EmailService {
     return this.updateMailbox(projectId, mailboxId, { isActive: true });
   }
 
-  async resetMailboxPassword(projectId: string, mailboxId: string, dto: ResetMailboxPasswordDto) {
+  async resetMailboxPassword(projectId: string, mailboxId: string, _dto: ResetMailboxPasswordDto) {
     const mailbox = await this.getMailbox(projectId, mailboxId);
     if (!mailbox.stalwartAccountId) {
       throw new InternalServerErrorException('Mailbox has no Stalwart account');
     }
 
-    // Update in Stalwart — platform does NOT store the hash
-    await this.stalwartJmap.setAccountPassword(mailbox.stalwartAccountId, dto.newPassword);
+    // Platform generates a new password — never accepts a user-supplied one
+    const newPassword = crypto.randomBytes(20).toString('base64').slice(0, 24);
+    await this.stalwartJmap.setAccountPassword(mailbox.stalwartAccountId, newPassword);
 
     return {
       success: true,
       email: `${mailbox.localPart}@${mailbox.domain.domain}`,
-      password: dto.newPassword, // returned once
+      password: newPassword, // returned once — shown only this time
       message: 'Password updated. Use the new password for IMAP/SMTP.',
     };
   }
@@ -711,6 +698,16 @@ export class EmailService {
           `Sender domain must be ACTIVE. Current status: ${senderDomainStatus}`,
         );
       }
+
+      // Check suppression list — reject sends to known bad recipients
+      const suppressed = await this.prisma.emailSuppression.findFirst({
+        where: { domain: { domain: dto.from.split('@')[1] }, email: dto.to.toLowerCase() },
+      });
+      if (suppressed) {
+        throw new ForbiddenException(
+          `Recipient ${dto.to} is suppressed (${suppressed.reason}). Cannot send.`,
+        );
+      }
     }
 
     // Send via SMTP to Stalwart
@@ -996,7 +993,6 @@ export class EmailService {
   // ================================================================
 
   async handleBounce(payload: { messageId: string; to: string; error: string; code?: string }) {
-    // Find the message by SMTP messageId or recipient address
     const message = await this.prisma.emailMessage.findFirst({
       where: {
         OR: [
@@ -1022,12 +1018,23 @@ export class EmailService {
       },
     });
 
-    // If hard bounce, mark the sender identity as unusable
-    if (isHardBounce && message.senderIdentityId) {
-      await this.prisma.senderIdentity.update({
-        where: { id: message.senderIdentityId },
-        data: { isVerified: false }, // requires re-verification
-      });
+    // Add to suppression list — prevents future sends to this recipient
+    if (isHardBounce) {
+      const [, domainName] = payload.to.split('@');
+      const emailDomain = domainName
+        ? await this.prisma.emailDomain.findFirst({ where: { domain: domainName } })
+        : null;
+      if (emailDomain) {
+        await this.prisma.emailSuppression.upsert({
+          where: { domainId_email: { domainId: emailDomain.id, email: payload.to.toLowerCase() } },
+          create: {
+            domainId: emailDomain.id,
+            email: payload.to.toLowerCase(),
+            reason: 'BOUNCE',
+          },
+          update: { reason: 'BOUNCE' },
+        }).catch(() => {/* already suppressed — that's fine */});
+      }
     }
 
     await this.eventService.emit('email.bounced', {
@@ -1039,6 +1046,35 @@ export class EmailService {
     });
 
     return { updated: true };
+  }
+
+  // ================================================================
+  // COMPLAINT (FBL) INGESTION
+  // ================================================================
+
+  async handleComplaint(payload: { email: string; userAgent?: string }) {
+    const [, domainName] = payload.email.split('@');
+    if (!domainName) return { added: false };
+
+    const emailDomain = await this.prisma.emailDomain.findFirst({ where: { domain: domainName } });
+    if (!emailDomain) return { added: false };
+
+    await this.prisma.emailSuppression.upsert({
+      where: { domainId_email: { domainId: emailDomain.id, email: payload.email.toLowerCase() } },
+      create: {
+        domainId: emailDomain.id,
+        email: payload.email.toLowerCase(),
+        reason: 'COMPLAINT',
+      },
+      update: { reason: 'COMPLAINT' },
+    }).catch(() => {/* already suppressed */});
+
+    await this.eventService.emit('email.complained', {
+      projectId: emailDomain.projectId,
+      email: payload.email,
+    });
+
+    return { added: true };
   }
 
   // ================================================================
