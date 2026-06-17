@@ -3,15 +3,19 @@ import { DatabasesController } from './databases.controller';
 import { DatabasesService } from './databases.service';
 import { InternalPgProvider } from './providers/internal-pg.provider';
 import { DATABASE_PROVIDER } from './providers/database-provider.interface';
-
-const DATABASE_PROVIDER_TOKEN = {
-  provide: DATABASE_PROVIDER,
-  useClass: InternalPgProvider,
-};
+import { StorageModule } from '../storage/storage.module';
 
 @Module({
+  imports: [StorageModule],
   controllers: [DatabasesController],
-  providers: [DatabasesService, InternalPgProvider, DATABASE_PROVIDER_TOKEN],
+  providers: [
+    DatabasesService,
+    InternalPgProvider,
+    {
+      provide: DATABASE_PROVIDER,
+      useClass: InternalPgProvider,
+    },
+  ],
   exports: [DatabasesService],
 })
 export class DatabasesModule {}

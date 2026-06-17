@@ -2,6 +2,7 @@ import { Injectable, Inject, NotFoundException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { PrismaService } from '../../prisma/prisma.service';
 import { EventService } from '../events/event.service';
+import { CryptoService } from '../crypto/crypto.service';
 import { DatabaseProvider, DATABASE_PROVIDER, DatabaseCredentials } from './providers/index';
 import {
   CreateDatabaseDto,
@@ -11,7 +12,6 @@ import {
   RotateCredentialsDto,
   GetConnectionInfoDto,
 } from './dto/index';
-import * as crypto from 'crypto';
 
 @Injectable()
 export class DatabasesService {
@@ -19,6 +19,7 @@ export class DatabasesService {
     private prisma: PrismaService,
     private configService: ConfigService,
     private eventService: EventService,
+    private cryptoService: CryptoService,
     @Inject(DATABASE_PROVIDER) private dbProvider: DatabaseProvider,
   ) {}
 
@@ -71,10 +72,11 @@ export class DatabasesService {
   }
 
   async listDatabases(projectId: string) {
-    return this.prisma.managedDatabase.findMany({
+    const databases = await this.prisma.managedDatabase.findMany({
       where: { projectId },
       orderBy: { createdAt: 'desc' },
     });
+    return databases.map((db) => this.formatDatabase(db as Record<string, unknown>));
   }
 
   async getDatabase(projectId: string, databaseId: string) {
@@ -82,7 +84,7 @@ export class DatabasesService {
       where: { id: databaseId, projectId },
     });
     if (!database) throw new NotFoundException('Database not found');
-    return database;
+    return this.formatDatabase(database as Record<string, unknown>);
   }
 
   async updateDatabase(projectId: string, databaseId: string, dto: UpdateDatabaseDto) {
@@ -264,10 +266,19 @@ export class DatabasesService {
   }
 
   private formatConnectionInfo(creds: DatabaseCredentials): string {
-    return JSON.stringify(creds);
+    // Encrypt the full credential set before storing
+    return this.cryptoService.encrypt(JSON.stringify(creds));
   }
 
-  private parseConnectionInfo(info: string): DatabaseCredentials {
-    return JSON.parse(info);
+  private parseConnectionInfo(info: string | null | undefined): DatabaseCredentials {
+    if (!info) throw new Error('No connection info stored');
+    // Decrypt before parsing — throws if tampered
+    return JSON.parse(this.cryptoService.decrypt(info));
+  }
+
+  private formatDatabase(db: Record<string, unknown>) {
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    const { connectionInfo: _ci, ...safe } = db;
+    return safe;
   }
 }

@@ -15,6 +15,6 @@ import { StorageProviderFactory } from './providers/storage-provider.factory';
     TelegramProvider,
     StorageProviderFactory,
   ],
-  exports: [StorageService],
+  exports: [StorageService, MinioProvider],
 })
 export class StorageModule {}

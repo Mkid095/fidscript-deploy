@@ -1,0 +1,12 @@
+# PgBouncer userlist for auth_file (auth_type = md5)
+# Format: "username" "md5{HASH}"  where HASH = md5(password + username)
+# For Docker secrets: the postgres password is read from the secret at runtime.
+# Auth query (auth_query) validates per-database users directly against Postgres pg_shadow.
+# This file must contain at minimum the Postgres superuser ('fidscript') and the
+# pgbouncer admin user used for console connections.
+#
+# IMPORTANT: Generate real MD5 hashes by running on the server:
+#   echo -n "PASSWORDfidscript" | md5sum | cut -d' ' -f1  -> prepend "md5"
+#
+# For initial setup, use setup-wizard.sh to generate this file from the Docker secret.
+"fidscript" "md5CHANGEME"

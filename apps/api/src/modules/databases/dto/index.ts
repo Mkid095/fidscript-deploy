@@ -26,3 +26,19 @@ export class RotateCredentialsDto {
 export class GetConnectionInfoDto {
   poolOnly?: boolean;
 }
+
+/** Strip connectionInfo from list/get responses — never leak credentials */
+export class DatabaseResponseDto {
+  id!: string;
+  projectId!: string;
+  name!: string;
+  type!: string;
+  version!: string;
+  size!: string;
+  status!: string;
+  host!: string | null;
+  port!: number | null;
+  username!: string | null;
+  createdAt!: Date;
+  updatedAt!: Date;
+}

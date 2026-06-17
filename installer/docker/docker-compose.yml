@@ -43,6 +43,28 @@ services:
       timeout: 5s
       retries: 5
 
+  pgbouncer:
+    image: dhi.io/pgbouncer:alpine
+    container_name: fidscript_pgbouncer
+    restart: unless-stopped
+    environment:
+      DATABASE_URL: "postgres://fidscript@fidscript_postgres:5432/fidscript"
+    env_file:
+      - ./secrets/api.env
+    volumes:
+      - ./pgbouncer.ini:/etc/pgbouncer/pgbouncer.ini:ro
+      - ./userlist.txt:/etc/pgbouncer/userlist.txt:ro
+    networks:
+      - fidscript
+    depends_on:
+      postgres:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -h localhost -p 6432 -U fidscript"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
   redis:
     image: redis:7-alpine
     container_name: fidscript_redis
@@ -121,7 +143,15 @@ services:
     env_file:
       - ./secrets/api.env
     environment:
-      DATABASE_URL: postgresql://fidscript:${POSTGRES_PASSWORD}@postgres:5432/fidscript
+      DATABASE_URL: postgresql://fidscript:${POSTGRES_PASSWORD}@pgbouncer:6432/fidscript?pgbouncer=true
+      DIRECT_URL: postgresql://fidscript:${POSTGRES_PASSWORD}@postgres:5432/fidscript
+      DB_ADMIN_USER: fidscript
+      DB_ADMIN_PASSWORD_FILE: /run/secrets/postgres_password
+      DB_ADMIN_HOST: postgres
+      DB_ADMIN_PORT: "5432"
+      DB_ADMIN_DATABASE: fidscript
+      PGBOUNCER_HOST: pgbouncer
+      PGBOUNCER_PORT: "6432"
       REDIS_URL: redis://:${REDIS_PASSWORD}@redis:6379
       NATS_URL: nats://nats:4222
       MINIO_ENDPOINT: minio:9000
@@ -150,6 +180,8 @@ services:
       - fidscript-app
     depends_on:
       postgres:
+        condition: service_healthy
+      pgbouncer:
         condition: service_healthy
       redis:
         condition: service_healthy

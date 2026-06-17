@@ -1,6 +1,6 @@
 # Phase 08: Database Platform
 
-> **Status:** Planned  |  **Track:** Data/Compute  |  **Depends on:** Phase 04, Phase 05
+> **Status:** In Progress  |  **Track:** Data/Compute  |  **Depends on:** Phase 04, Phase 05
 
 ## Objective
 
@@ -8,11 +8,19 @@ Provision a **real** database per project that an app can actually connect to, w
 
 ## Current State
 
-**STUB.** See `docs/AUDIT.md` §C (Databases). Specific defects:
+**IN PROGRESS.** As of 2026-06-17:
 
-- "Provision" inserts a row and fabricates a connection string — no `CREATE DATABASE`, no container, no real role/password.
-- Backup/restore/rotate are **commented-out stubs returning `size:0`**.
-- No PgBouncer / pooled endpoint, no query console.
+- **Real provisioning**: `InternalPgProvider.provision()` issues `CREATE DATABASE` + `CREATE ROLE` (NOINHERIT NOLOGIN) + grants — uses `pg` Pool for direct Postgres admin connection bypassing PgBouncer
+- **Encrypted credentials**: connection string stored encrypted at rest via `CryptoService` (Phase 04 AES-256-GCM)
+- **PgBouncer**: added to docker-compose; `DATABASE_URL` in API now routes through `pgbouncer:6432?pgbouncer=true`
+- **`DIRECT_URL`**: separate unpooled connection for Prisma migrations (`postgres:5432` direct)
+- **PgBouncer config**: `pgbouncer.ini` (transaction mode, md5 auth) + `userlist.txt` (updated at setup time)
+- **Backup**: `pg_dump --format=custom | gzip` → MinIO bucket `backups-<dbname>`, no temp file in memory
+- **Restore**: MinIO → temp file → `pg_restore --clean --if-exists`
+- **Credential rotation**: `ALTER ROLE ... WITH PASSWORD` + re-encrypts stored connection string
+- **Isolation**: per-database roles with `NOINHERIT NOLOGIN`, `REVOKE` on `public` schema
+- **Pg npm package**: `pg@^8.21` added for direct Postgres admin connections
+- **MinioProvider**: exports `MinioProvider` alongside `StorageService` for backup bucket access
 
 ## Dependencies
 
@@ -81,10 +89,14 @@ psql "$CONN" -c 'select * from t;'   # row is back
 
 ## Files you'll touch (precision map)
 
-- Stub lives at: `apps/api/src/modules/databases/databases.service.ts` (provision inserts a row + a **fabricated** connection string; backup/restore/rotate are commented-out stubs returning `size:0`).
-- Prisma: `ManagedDatabase`, `DatabaseBackup`.
-- Infra: the platform Postgres in `installer/docker/docker-compose.yml`; add a PgBouncer service; stream backups to Storage (Phase 05).
-- Reuse: encrypt connection strings with the Phase 04 `CryptoService`.
+- `apps/api/src/modules/databases/providers/internal-pg.provider.ts` — real provision/delete/backup/restore/rotate via `pg` Pool
+- `apps/api/src/modules/databases/databases.service.ts` — encrypts/decrypts connectionInfo via CryptoService, strips from list/get responses
+- `apps/api/src/modules/databases/databases.module.ts` — imports StorageModule, wires MinioProvider into InternalPgProvider
+- `apps/api/src/modules/storage/storage.module.ts` — exports MinioProvider (was: StorageService only)
+- `apps/api/package.json` — added `pg@^8.21` + `@types/pg@^8.20`
+- `installer/docker/docker-compose.yml` — added PgBouncer service, `DATABASE_URL` → `pgbouncer:6432?pgbouncer=true`, `DIRECT_URL` for unpooled migrations, `DB_ADMIN_*` for provisioning, `PGBOUNCER_HOST/PORT`
+- `installer/docker/pgbouncer.ini` — new (transaction mode, md5 auth, per-db pool entries)
+- `installer/docker/userlist.txt` — new (updated at setup time from `postgres_password` secret)
 
 ## Next Phase
 

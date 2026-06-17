@@ -70,7 +70,7 @@ Statuses: `Planned` · `In Progress` · `Verified`
 - [x] Begin **Phase 05 — Storage Platform**: real MinIO bucket lifecycle (makeBucket/removeBucket SDK calls), real etag from putObject response, external URLs via MINIO_EXTERNAL_ENDPOINT, per-project bucket namespacing (proj-<slug>-<name>), project isolation (checkProjectAccess), multi-provider (internal/cloudinary/telegram) with per-project credentials from ProjectEnv.
 - [x] Begin **Phase 06 — Deployment Engine**: real Docker build+run via BuildRunnerService, async DeploymentWorkerService driving PENDING→QUEUED→BUILDING→DEPLOYING→SUCCESS/FAILED state machine, encrypted env var injection at runtime, lifecycle ops (stop/restart/destroy/rollback), fidscript-app network, Traefik Docker labels routing, build logs persisted.
 - [x] Verified **Phase 07 — Domains & TLS**: real Cloudflare DNS API, DnsProvider interface, Traefik ACME DNS-01 + HTTP-01 resolvers, SERVER_IP wired, deploymentId on Domain.
-- [ ] Begin **Phase 08 — Database Platform**: managed PostgreSQL, connection pooling, per-project databases.
+- [x] Begin **Phase 08 — Database Platform**: pg npm, InternalPgProvider real provision/backup/restore/rotate, PgBouncer docker-compose, DIRECT_URL + pgbouncer=true wiring, CryptoService encrypt.
 
 ## Definition of done (per phase)
 
