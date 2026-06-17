@@ -5,6 +5,7 @@ export class CreateDatabaseDto {
   version?: string;
   size?: string;
   maxConnections?: number;
+  provider?: string;  // 'internal-postgres' (default) | future: 'dedicated-postgres', 'external'
 }
 
 export class UpdateDatabaseDto {

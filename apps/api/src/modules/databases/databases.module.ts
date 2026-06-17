@@ -1,7 +1,7 @@
 import { Module } from '@nestjs/common';
 import { DatabasesController } from './databases.controller';
 import { DatabasesService } from './databases.service';
-import { InternalPgProvider } from './providers/internal-pg.provider';
+import { PostgresDatabaseProvider } from './providers/internal-pg.provider';
 import { DATABASE_PROVIDER } from './providers/database-provider.interface';
 import { StorageModule } from '../storage/storage.module';
 
@@ -10,10 +10,10 @@ import { StorageModule } from '../storage/storage.module';
   controllers: [DatabasesController],
   providers: [
     DatabasesService,
-    InternalPgProvider,
+    PostgresDatabaseProvider,
     {
       provide: DATABASE_PROVIDER,
-      useClass: InternalPgProvider,
+      useClass: PostgresDatabaseProvider,
     },
   ],
   exports: [DatabasesService],

@@ -44,6 +44,8 @@ MinIO
 | `used_bytes` | BIGINT | Actual size from `pg_database_size()` |
 | `max_connections` | INT | Per-role `CONNECTION LIMIT` |
 | `status` | VARCHAR(50) | `provisioning` \| `ready` \| `unhealthy` |
+| `cluster_id` | UUID (FK, nullable) | Future multi-cluster routing; single cluster today |
+| `provider` | VARCHAR(50) | `internal-postgres` (default); future: `dedicated-postgres`, `external` |
 | `host / port / username` | | Direct Postgres connection info |
 | `connection_info` | TEXT | **AES-256-GCM encrypted** JSON of full credentials |
 | `backup_retention_days` | INT | Days to retain backups |
@@ -102,7 +104,8 @@ Written by the Phase 14 scheduler every ~10 minutes. Enables dashboard graphs, b
 {
   "name": "app",
   "environment": "production",
-  "maxConnections": 20
+  "maxConnections": 20,
+  "provider": "internal-postgres"
 }
 ```
 

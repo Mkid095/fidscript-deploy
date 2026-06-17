@@ -23,6 +23,7 @@ Provision a **real** database per project that an app can actually connect to, w
 - **Restore**: MinIO → temp file → `pg_restore --clean --if-exists`
 - **Credential rotation**: `ALTER ROLE ... WITH PASSWORD` + re-encrypts + re-injects DATABASE_URL env vars
 - **DatabaseMetric table**: `infrastructure.database_metrics` — for Phase 14 scheduler to collect size, connections, queries/sec, backup age, and `backup_verified` flag
+- **Future-proofing**: `clusterId` (FK, nullable) + `provider` (`internal-postgres` default) fields on `ManagedDatabase` for multi-cluster and multi-provider support; `PostgresDatabaseProvider` (renamed from `InternalPgProvider`)
 - **Isolation**: per-database roles with `NOINHERIT NOLOGIN`, `REVOKE` on `public` schema
 - **Pg npm package**: `pg@^8.21` + `@types/pg@^8.20`
 - **MinioProvider**: exported from `StorageModule` alongside `StorageService` for backup bucket access
@@ -94,7 +95,7 @@ psql "$CONN" -c 'select * from t;'   # row is back
 
 ## Files you'll touch (precision map)
 
-- `apps/api/src/modules/databases/providers/internal-pg.provider.ts` — real provision/delete/backup/restore/rotate/getSize via `pg` Pool; CONNECTION LIMIT + statement_timeout; sslmode=require in conn strings
+- `apps/api/src/modules/databases/providers/internal-pg.provider.ts` → `PostgresDatabaseProvider` — real provision/delete/backup/restore/rotate/getSize via `pg` Pool; CONNECTION LIMIT + statement_timeout; sslmode=require in conn strings
 - `apps/api/src/modules/databases/databases.service.ts` — encrypts/decrypts connectionInfo, strips from list/get, injects DATABASE_URL into project env vars, tracks usedBytes
 - `apps/api/src/modules/databases/databases.module.ts` — imports StorageModule, wires MinioProvider
 - `apps/api/src/modules/databases/providers/database-provider.interface.ts` — added `getSize()` method

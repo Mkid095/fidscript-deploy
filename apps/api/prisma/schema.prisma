@@ -660,6 +660,11 @@ model ManagedDatabase {
   backups DatabaseBackup[]
   metrics  DatabaseMetric[]
 
+  // Future-proofing: multi-cluster support (single cluster today)
+  clusterId String?  @map("cluster_id")
+  // 'internal-postgres' | 'dedicated-postgres' | 'external'
+  provider  String  @default("internal-postgres") @db.VarChar(50)
+
   @@unique([projectId, environment, name])
   @@map("databases.managed")
 }

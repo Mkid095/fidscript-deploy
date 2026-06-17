@@ -38,6 +38,7 @@ export class DatabasesService {
         version: dto.version || '15',
         size: dto.size || 'small',
         maxConnections: dto.maxConnections || 20,
+        provider: dto.provider || 'internal-postgres',
         status: 'provisioning',
       },
     });

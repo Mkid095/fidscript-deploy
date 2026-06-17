@@ -9,7 +9,7 @@ import { join } from 'path';
 import { MinioProvider } from '../../storage/providers/minio.provider';
 
 /**
- * InternalPgProvider — manages logical databases + roles inside the shared
+ * PostgresDatabaseProvider — manages logical databases + roles inside the shared
  * platform Postgres cluster, backed by PgBouncer for pooled app connections.
  *
  * Provisioning (CREATE DATABASE / CREATE ROLE) requires a direct superuser
@@ -20,7 +20,7 @@ import { MinioProvider } from '../../storage/providers/minio.provider';
  * MinIO (Phase 05 storage), avoiding temp files in the app container.
  */
 @Injectable()
-export class InternalPgProvider implements DatabaseProvider, OnModuleInit {
+export class PostgresDatabaseProvider implements DatabaseProvider, OnModuleInit {
   private adminPool: Pool | null = null;
   private adminHost: string = 'postgres';
   private adminPort: number = 5432;
@@ -78,7 +78,7 @@ export class InternalPgProvider implements DatabaseProvider, OnModuleInit {
         connectionTimeoutMillis: 10_000,
       });
       this.adminPool.on('error', (err) => {
-        console.error('[InternalPgProvider] admin pool error', err.message);
+        console.error('[PostgresDatabaseProvider] admin pool error', err.message);
       });
     }
     return this.adminPool;
