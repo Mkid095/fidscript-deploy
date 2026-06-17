@@ -10,8 +10,8 @@ Current state of FIDScript Deploy development.
 
 | | |
 |---|---|
-| **Current phase** | Phase 08 — Database Platform (in progress) |
-| **Last verified phase** | Phase 07 — Domains & TLS (Mode A/B DNS, 5-step verify, TLS_PENDING, BROKEN/ACTIVE, ssl metadata, DomainConnection, health checks) |
+| **Current phase** | Phase 09 — Email Platform (Stalwart) (next) |
+| **Last verified phase** | Phase 08 — Database Platform (real provisioning, PgBouncer, encrypted creds, DATABASE_URL auto-injection, SSL, connection limits, size tracking) |
 | **Phase docs** | All 24 rewritten to v2 |
 | **Snapshot baseline** | Commit `f1dd6f2` (Phase 00-23 scaffold, pre-hardening) |
 | **Reset date** | 2026-06-16 |
@@ -70,7 +70,7 @@ Statuses: `Planned` · `In Progress` · `Verified`
 - [x] Begin **Phase 05 — Storage Platform**: real MinIO bucket lifecycle (makeBucket/removeBucket SDK calls), real etag from putObject response, external URLs via MINIO_EXTERNAL_ENDPOINT, per-project bucket namespacing (proj-<slug>-<name>), project isolation (checkProjectAccess), multi-provider (internal/cloudinary/telegram) with per-project credentials from ProjectEnv.
 - [x] Begin **Phase 06 — Deployment Engine**: real Docker build+run via BuildRunnerService, async DeploymentWorkerService driving PENDING→QUEUED→BUILDING→DEPLOYING→SUCCESS/FAILED state machine, encrypted env var injection at runtime, lifecycle ops (stop/restart/destroy/rollback), fidscript-app network, Traefik Docker labels routing, build logs persisted.
 - [x] Verified **Phase 07 — Domains & TLS**: real Cloudflare DNS API, DnsProvider interface, Traefik ACME DNS-01 + HTTP-01 resolvers, SERVER_IP wired, deploymentId on Domain.
-- [x] Begin **Phase 08 — Database Platform**: pg npm, InternalPgProvider real provision/backup/restore/rotate, PgBouncer docker-compose, DIRECT_URL + pgbouncer=true wiring, CryptoService encrypt.
+- [x] Verified **Phase 08 — Database Platform**: real provisioning, PgBouncer, encrypted creds, DATABASE_URL auto-injection, SSL enforcement, connection limits, size tracking, rotate re-injects env vars.
 
 ## Definition of done (per phase)
 
