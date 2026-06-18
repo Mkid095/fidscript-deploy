@@ -41,7 +41,6 @@ http:
       tls:
         certResolver: letsencrypt-dns
 
-    # Stalwart JMAP / management HTTP — port 8443 inside container
     jmap:
       rule: "Host(`jmap.deploy.fidscript.com`)"
       service: stalwart-jmap
@@ -50,21 +49,60 @@ http:
       tls:
         certResolver: letsencrypt-dns
 
-    # Stalwart IMAPS — port 993 inside container
-    imap:
-      rule: "Host(`imap.deploy.fidscript.com`)"
-      service: stalwart-imap
-      middlewares:
-        - security-headers
-      tls:
-        certResolver: letsencrypt-dns
-
-    # ACME HTTP-01 challenge proxy — routes to Stalwart's internal ACME listener
     acme-challenge:
       rule: "PathPrefix(`/.well-known/acme-challenge/`)"
       service: stalwart-acme
       middlewares:
         - security-headers
+
+    whatsapp-fidscript:
+      rule: "Host(`whatsapp.fidscript.com`)"
+      service: whatsapp-evolution
+      middlewares:
+        - security-headers
+      tls:
+        certResolver: letsencrypt-dns
+
+    apiwhatsapp-fidscript:
+      rule: "Host(`apiwhatsapp.fidscript.com`)"
+      service: whatsapp-evolution
+      middlewares:
+        - security-headers
+      tls:
+        certResolver: letsencrypt-dns
+
+    docs-nextmavens:
+      rule: "Host(`docs.nextmavens.cloud`)"
+      service: docs-nextmavens-static
+      middlewares:
+        - security-headers
+      tls:
+        certResolver: letsencrypt-dns
+
+    whatsapp-nextmavens:
+      rule: "Host(`whatsapp.nextmavens.cloud`)"
+      service: whatsapp-nextmavens-static
+      middlewares:
+        - security-headers
+      tls:
+        certResolver: letsencrypt-dns
+
+    soostori:
+      rule: "Host(`soostori.co.ke`) || Host(`www.soostori.co.ke`)"
+      service: soostori-api
+      middlewares:
+        - security-headers
+        - compress
+      tls:
+        certResolver: letsencrypt-dns
+
+    soostori-deploy:
+      rule: "Host(`deploy.soostori.co.ke`)"
+      service: soostori-api
+      middlewares:
+        - security-headers
+      tls:
+        certResolver: letsencrypt-dns
 
   services:
     dashboard:
@@ -85,14 +123,29 @@ http:
     stalwart-jmap:
       loadBalancer:
         servers:
-          - url: "http://fidscript_stalwart:8443"
-
-    stalwart-imap:
-      loadBalancer:
-        servers:
-          - url: "http://fidscript_stalwart:993"
+          - url: "http://fidscript_stalwart:8080"
 
     stalwart-acme:
       loadBalancer:
         servers:
           - url: "http://127.0.0.1:8080"
+
+    whatsapp-evolution:
+      loadBalancer:
+        servers:
+          - url: "http://172.18.0.4:8080"
+
+    docs-nextmavens-static:
+      loadBalancer:
+        servers:
+          - url: "http://127.0.0.1:8082"
+
+    whatsapp-nextmavens-static:
+      loadBalancer:
+        servers:
+          - url: "http://127.0.0.1:8083"
+
+    soostori-api:
+      loadBalancer:
+        servers:
+          - url: "http://10.0.1.11:3000"
