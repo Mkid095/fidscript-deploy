@@ -15,7 +15,7 @@ Current state of FIDScript Deploy development.
 | **Phase docs** | All 24 rewritten to v2 |
 | **Snapshot baseline** | Commit `f1dd6f2` (Phase 00-23 scaffold, pre-hardening) |
 | **Reset date** | 2026-06-16 |
-| **Runtime bring-up** | **2026-06-18** — the Phase 01 installer + the API NestJS bootstrap now actually run end-to-end on the VPS (commits `67c4e72` + `f94a772`). Infra + API healthy; /health = 200; the audit's "never actually run" is fixed for the runtime path. |
+| **Runtime bring-up** | **2026-06-18** — the Phase 01 installer + the API NestJS bootstrap now actually run end-to-end on the VPS (commits `67c4e72` + `f94a772`). Infra + API healthy; /health = 200; the audit's "never actually run" is fixed for the runtime path. **2026-06-18 (later)** — Stalwart email container also brought up under the same compose; one `docker compose up -d` now starts the whole 7-container platform. StalwartJmapService port to v0.15.5 is the remaining gap before Phase 09 flips to Verified. |
 
 ---
 
@@ -44,7 +44,6 @@ Statuses: `Planned` · `In Progress` · `Verified`
 | 08 | Database Platform | Verified |
 | 09 | Email Platform (Stalwart) | In Progress |
 | 10 | Functions Runtime | In Progress |
-| 10 | Functions Runtime | Planned |
 | 11 | Queues Platform | Planned |
 | 12 | Scheduler Platform | Planned |
 | 13 | Realtime Platform | Planned |
@@ -75,6 +74,7 @@ Statuses: `Planned` · `In Progress` · `Verified`
 - [x] Verified **Phase 08 — Database Platform**: real provisioning, PgBouncer, encrypted creds, DATABASE_URL auto-injection, SSL enforcement, connection limits, size tracking, rotate re-injects env vars.
 - [x] **Phase 09 — Email Platform**: schema restructured (domains/mailboxes/aliases/sender_identities/api_keys/messages/catch_all_rules/api_usage/suppressions), simplified domain lifecycle (PENDING→VERIFIED→ACTIVE), platform-generated mailbox passwords, suppression list (bounce/complaint/unsubscribe/manual), catch-all rate limiting (messagesPerMinute), StalwartJmapService (full JMAP admin client), all events wired.
 - [x] **2026-06-18 — Runtime bring-up on the VPS.** Fixed every latent Phase 01 defect that the audit warned about ("Verified but never actually ran"). The canonical installer + the API NestJS bootstrap now run end-to-end on this box. Commits `67c4e72` (installer: compose, pgbouncer, nats, redis, secrets, entrypoint, .gitignore) and `f94a772` (api: Dockerfile libssl, Prisma `binaryTargets`, migration ordering + the one in-place FK-type fix, five `@Inject('DNS_PROVIDER')` DI fixes). Live state: postgres + redis + nats + minio + pgbouncer (md5 backend, end-to-end auth verified) all healthy; API NestApplication started on :3001, MinIO/Redis/NATS clients initialized, service registry + EventNatsConsumer running; `curl /health` → 200 `{"status":"ok"}`. **Important caveat:** the full Phase 01 §5 rubric (login/register prove-it, tenant-isolation prove-it) is NOT yet run, so Phase 01 is still "In Progress" by the strict definition. What changed is the *biggest blocker* (the stack would not build/run) is removed.
+- [x] **2026-06-18 — Stalwart (email) container brings up; one `docker compose up -d` runs the whole platform.** Phase 09 had been marked In Progress but the email container was never started — Stalwart was in the compose but crashed silently because (a) the mounted `main.toml` was written for an older schema (sqlite + `${VAR}` placeholders that Stalwart doesn't substitute) and (b) the image was `:latest` and had drifted. Fixed: pinned to `stalwartlabs/stalwart:v0.15.5` (last TOML-schema release; v0.16 moved config to the DB and broke the StalwartJmapService contract), pinned `minio/minio:RELEASE.2025-09-07T16-13-09Z`, replaced the Stalwart config with a v0.15.5-schema `config.toml` rendered at install time by setup-wizard.sh with a bcrypt-hashed fallback-admin secret, added a bash-`/dev/tcp` healthcheck (the Stalwart image has no curl/wget/nc), fixed the api compose healthcheck path (`/health` → `/api/v1/health`) and installed curl in the api runtime, and rewrote `health.service.checkRedis` to do a real PING (the previous string-replace trick produced an invalid `http://:pwd@host:6379/health` URL). Live state: 8 containers up — postgres, pgbouncer, redis, nats, minio, stalwart, api — and `api` is now `Up (healthy)`. End-to-end JMAP probe from the api container: `POST http://fidscript_stalwart:8080/jmap/` with HTTP Basic auth returns `{"methodResponses":[["Core/echo",{},"0"]],"sessionState":"3e25b2a0"}`. Disk: pruned 1.1GB of dangling images; the only fidscript-related images in use are the pinned ones. **Phase 09 is still "In Progress"** — the api's `StalwartJmapService` was written against the v0.16 API (`urn:stalwart:jmap` capability + `x:Domain/set` method + Bearer token) and needs to be ported to v0.15.5 (`urn:ietf:params:jmap:*` + standard JMAP methods + HTTP Basic). The container is up and JMAP works; the application's domain/mailbox CRUD against it does not yet.
 
 ### Hardening follow-ups (committed code, but the live VPS still needs them)
 
@@ -88,4 +88,4 @@ A phase moves to **Verified** only when, on the VPS: it builds, it runs, its pro
 
 ---
 
-*Last updated: 2026-06-18*
+*Last updated: 2026-06-18 (Stalwart bring-up)*
