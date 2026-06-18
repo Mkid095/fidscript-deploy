@@ -1,0 +1,17 @@
+User-agent: *
+Allow: /
+
+# Disallow dashboard routes
+Disallow: /client/
+Disallow: /admin/
+Disallow: /api/
+
+# Disallow auth endpoints
+Disallow: /login
+Disallow: /register
+
+# Sitemap
+Sitemap: https://whatsapp.fidscript.com/sitemap.xml
+
+# Crawl-delay for polite bots
+Crawl-delay: 1

@@ -57,7 +57,7 @@ http:
 
     whatsapp-fidscript:
       rule: "Host(`whatsapp.fidscript.com`)"
-      service: whatsapp-evolution
+      service: whatsapp-frontend-new
       middlewares:
         - security-headers
       tls:
@@ -65,7 +65,7 @@ http:
 
     apiwhatsapp-fidscript:
       rule: "Host(`apiwhatsapp.fidscript.com`)"
-      service: whatsapp-evolution
+      service: whatsapp-admin-api
       middlewares:
         - security-headers
       tls:
@@ -134,6 +134,21 @@ http:
       loadBalancer:
         servers:
           - url: "http://172.18.0.4:8080"
+
+    whatsapp-frontend:
+      loadBalancer:
+        servers:
+          - url: "http://172.18.0.10:80"
+
+    whatsapp-frontend-new:
+      loadBalancer:
+        servers:
+          - url: "http://172.18.0.10:80"
+
+    whatsapp-admin-api:
+      loadBalancer:
+        servers:
+          - url: "http://172.18.0.6:3001"
 
     docs-nextmavens-static:
       loadBalancer:
