@@ -1,11 +1,11 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Inject } from '@nestjs/common';
 import * as https from 'https';
 import axios from 'axios';
 import { DnsProvider } from '@/modules/domains/providers/dns-provider.interface';
 
 @Injectable()
 export class DomainChecksService {
-  constructor(private dnsProvider: DnsProvider) {}
+  constructor(@Inject('DNS_PROVIDER') private dnsProvider: DnsProvider) {}
 
   async checkDnsPropagation(domain: { domain: string; dnsMode: string }): Promise<boolean> {
     if (domain.dnsMode === 'cloudflare_auto') {

@@ -1,5 +1,11 @@
 generator client {
-  provider = "prisma-client-js"
+  provider      = "prisma-client-js"
+  // The runtime image installs openssl 3 (Debian Bookworm default + the apt
+  // openssl package), so the query/client engine MUST be generated for
+  // debian-openssl-3.0.x — otherwise the client fails to load at runtime
+  // with "Prisma Client was generated for debian-openssl-1.1.x, but the
+  // actual deployment required debian-openssl-3.0.x".
+  binaryTargets = ["native", "debian-openssl-3.0.x"]
 }
 
 // Prisma seed — run with `pnpm db:seed` (calls "tsx prisma/seed.ts" via package.json prisma.seed config)

@@ -23,6 +23,15 @@ FROM node:20-bookworm-slim AS runtime
 ENV NODE_ENV=production
 WORKDIR /app
 
+# Prisma's native engine binaries (libquery-engine, schema-engine) link against
+# OpenSSL. The slim base image doesn't ship libssl, so without this install
+# the engine fails to initialize and `prisma migrate deploy` reports a
+# blank "Error: Schema engine error:" with no further detail.
+# Install as root (before USER node) and clean the apt cache.
+RUN apt-get update -y \
+    && apt-get install -y --no-install-recommends openssl ca-certificates \
+    && rm -rf /var/lib/apt/lists/*
+
 # pnpm's node_modules (root + per-package) carry the resolved dependency graph;
 # packages/ holds the built @fidscript/* workspace libs the API requires.
 COPY --from=build /app/node_modules ./node_modules

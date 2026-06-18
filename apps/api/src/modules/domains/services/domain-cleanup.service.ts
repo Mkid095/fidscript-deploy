@@ -1,4 +1,4 @@
-import { Injectable, Logger, NotFoundException } from '@nestjs/common';
+import { Injectable, Logger, NotFoundException, Inject } from '@nestjs/common';
 import { PrismaService } from '@/prisma/prisma.service';
 import { EventService } from '@/modules/events/event.service';
 import { DnsProvider } from '@/modules/domains/providers/dns-provider.interface';
@@ -12,7 +12,7 @@ export class DomainCleanupService {
   constructor(
     private prisma: PrismaService,
     private eventService: EventService,
-    private dnsProvider: DnsProvider,
+    @Inject('DNS_PROVIDER') private dnsProvider: DnsProvider,
   ) {}
 
   async delete(userId: string, projectId: string, domainId: string) {

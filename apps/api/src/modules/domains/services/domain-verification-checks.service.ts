@@ -1,10 +1,10 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Inject } from '@nestjs/common';
 import axios from 'axios';
 import { DnsProvider } from '@/modules/domains/providers/dns-provider.interface';
 
 @Injectable()
 export class DomainVerificationChecksService {
-  constructor(private dnsProvider: DnsProvider) {}
+  constructor(@Inject('DNS_PROVIDER') private dnsProvider: DnsProvider) {}
 
   async checkOwnership(domain: { domain: string; dnsMode: string }): Promise<boolean> {
     const txtName = `_fidscript-verification.${domain.domain}`;

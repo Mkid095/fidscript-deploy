@@ -1,4 +1,4 @@
-import { Injectable, ConflictException } from '@nestjs/common';
+import { Injectable, ConflictException, Inject } from '@nestjs/common';
 import { PrismaService } from '@/prisma/prisma.service';
 import { DnsProvider } from '@/modules/domains/providers/dns-provider.interface';
 import { DomainDnsService } from './domain-dns.service';
@@ -8,7 +8,7 @@ export class DomainCloudflareAutoService {
   constructor(
     private prisma: PrismaService,
     private domainDnsService: DomainDnsService,
-    private dnsProvider: DnsProvider,
+    @Inject('DNS_PROVIDER') private dnsProvider: DnsProvider,
   ) {}
 
   async cloudflareAutoSetup(

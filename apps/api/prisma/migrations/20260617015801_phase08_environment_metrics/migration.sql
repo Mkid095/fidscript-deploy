@@ -17,9 +17,14 @@ ALTER TABLE "databases.managed"
   UNIQUE ("project_id", "environment", "name");
 
 -- DatabaseMetric table for scheduler-driven metrics collection
+-- NOTE: "database_id" is TEXT (not UUID) to match the parent databases.managed.id
+-- (a TEXT/CUID primary key, per the ManagedDatabase model). The previous
+-- declaration was UUID, which produced SQLSTATE 42804 ("incompatible types:
+-- uuid and text") and broke the foreign key. The "id" column is also TEXT to
+-- stay consistent.
 CREATE TABLE "infrastructure.database_metrics" (
-  "id"                 UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  "database_id"        UUID NOT NULL REFERENCES "databases.managed" ("id") ON DELETE CASCADE,
+  "id"                 TEXT PRIMARY KEY DEFAULT gen_random_uuid()::text,
+  "database_id"        TEXT NOT NULL REFERENCES "databases.managed" ("id") ON DELETE CASCADE,
   "recorded_at"        TIMESTAMPTZ NOT NULL DEFAULT now(),
   "used_bytes"         BIGINT NOT NULL DEFAULT 0,
   "active_conns"       INTEGER NOT NULL DEFAULT 0,

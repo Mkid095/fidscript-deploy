@@ -1,4 +1,4 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, Inject } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { DnsProvider } from '@/modules/domains/providers/dns-provider.interface';
 import * as crypto from 'crypto';
@@ -16,7 +16,7 @@ export class DkimService {
   private readonly dkimSelector = 'default';
 
   constructor(
-    private dnsProvider: DnsProvider,
+    @Inject('DNS_PROVIDER') private dnsProvider: DnsProvider,
     private configService: ConfigService,
   ) {
     this.dkimKeyPath = this.configService.get('STALWART_DKIM_PATH', '/data/dkim');
