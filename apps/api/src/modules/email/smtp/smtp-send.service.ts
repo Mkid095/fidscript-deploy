@@ -5,18 +5,35 @@ import { EventService } from '@/modules/events/event.service';
 import { RateLimitService } from '@/modules/email/services/rate-limit.service';
 import { SendEmailDto } from '@/modules/email/dto/send-email.dto';
 import * as crypto from 'crypto';
+import * as fs from 'fs';
 
 /**
  * SMTP sending — connects to Stalwart, submits mail, records metadata.
+ *
+ * Stalwart v0.15.5: SMTP submission on port 465 (implicit TLS) with AUTH PLAIN.
+ * Credentials: user=admin, password=STALWART_ADMIN_TOKEN (platform admin token).
+ * This is the only credential that works — the SMTP_SUBMISSION_USER/PASS
+ * generated at setup time are NOT registered in Stalwart's internal directory.
  */
 @Injectable()
 export class SmtpSendService {
+  private adminToken: string;
+
   constructor(
     private prisma: PrismaService,
     private configService: ConfigService,
     private eventService: EventService,
     private rateLimit: RateLimitService,
-  ) {}
+  ) {
+    // Load the admin token once at construction. The file is mounted by compose.
+    const tokenFile = this.configService.get<string>('STALWART_ADMIN_TOKEN_FILE', '/run/secrets/stalwart_admin_token');
+    try {
+      this.adminToken = fs.readFileSync(tokenFile, 'utf8').trim();
+    } catch {
+      // Fallback for environments where the file isn't mounted
+      this.adminToken = this.configService.get<string>('STALWART_ADMIN_TOKEN', '');
+    }
+  }
 
   async send(projectId: string, dto: SendEmailDto) {
     const project = await this.prisma.project.findUnique({ where: { id: projectId } });
@@ -54,20 +71,17 @@ export class SmtpSendService {
       }
     }
 
-    const smtpHost = this.configService.get('STALWART_SMTP_HOST', 'fidscript_stalwart');
-    const smtpPort = parseInt(this.configService.get('STALWART_SMTP_PORT', '587') ?? '587');
+    // Stalwart v0.15.5: port 465 (implicit TLS), AUTH PLAIN with admin token.
+    const smtpHost = this.configService.get<string>('STALWART_SMTP_HOST', 'fidscript_stalwart');
+    const smtpPort = this.configService.get<number>('STALWART_SMTP_PORT', 465);
+    const secure = smtpPort === 465;
 
     const { default: nodemailer } = await import('nodemailer');
     const transporter = nodemailer.createTransport({
       host: smtpHost,
       port: smtpPort,
-      secure: smtpPort === 465,
-      auth: dto.from
-        ? { user: dto.from, pass: dto.smtpPassword ?? '' }
-        : {
-            user: this.configService.get('SMTP_SUBMISSION_USER', 'submission@localhost'),
-            pass: this.configService.get('SMTP_SUBMISSION_PASS', ''),
-          },
+      secure, // true = implicit TLS on 465, false = STARTTLS on 587
+      auth: { user: 'admin', pass: this.adminToken },
     });
 
     let messageId = `<${Date.now()}-${crypto.randomBytes(6).toString('hex')}@${

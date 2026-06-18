@@ -97,6 +97,32 @@ user = "admin"
 # Format: $2b$<cost>$<22-char-salt><31-char-hash> (bcrypt)
 secret = "${STALWART_ADMIN_HASH}"
 
+# ── SMTP AUTH — enable PLAIN/LOGIN on submission ports ──────────
+# By default Stalwart v0.15 requires this to be explicitly configured.
+# PLAIN and LOGIN are only offered on TLS connections (port 465, 587
+# after STARTTLS, 993 after IMAPS TLS). Port 25 (MX) never offers AUTH.
+# The internal directory validates against the fallback-admin account.
+
+[session.auth]
+# Enable PLAIN + LOGIN on submission ports when TLS is active.
+mechanisms = [
+  { if = "local_port != 25 && is_tls", then = "[plain, login]" },
+  { else = false }
+]
+# Use the internal directory for credential lookups.
+directory = "internal"
+# Require authentication on submission ports.
+require = true
+# Allow authentication even if sender doesn't match auth account.
+must-match-sender = false
+# Allow plain-text auth (already gated by TLS above).
+allow-plain-text = true
+
+# ── Session errors ───────────────────────────────────────────────
+[session.auth.errors]
+total = 3
+wait = "5s"
+
 # ── Logging — to logs/ subdir, picked up by docker logs ─────────
 
 [tracer.log]
