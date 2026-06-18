@@ -31,23 +31,23 @@ entryPoints:
 certificatesResolvers:
   letsencrypt-dns:
     acme:
-      email: admin@fidscript.com
+      email: admin@deploy.fidscript.com
       storage: /acme-dns/acme-dns.json
       dnsChallenge:
         provider: cloudflare
         resolvers:
           - "1.1.1.1"
           - "1.0.0.1"
-      # Use staging while iterating to avoid rate limits
-      caServer: https://acme-staging-v02.api.letsencrypt.org/directory
+      # Production ACME endpoint — do not change
+      caServer: https://acme-v02.api.letsencrypt.org/directory
 
   letsencrypt-http:
     acme:
-      email: admin@fidscript.com
+      email: admin@deploy.fidscript.com
       storage: /acme-http/acme-http.json
       httpChallenge:
         entryPoint: web
-      caServer: https://acme-staging-v02.api.letsencrypt.org/directory
+      caServer: https://acme-v02.api.letsencrypt.org/directory
 
 providers:
   file:
