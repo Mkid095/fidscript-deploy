@@ -1,0 +1,98 @@
+http:
+  middlewares:
+    security-headers:
+      headers:
+        frameDeny: true
+        browserXssFilter: true
+        contentTypeNosniff: true
+        sslRedirect: true
+        stsSeconds: 31536000
+        stsIncludeSubdomains: true
+        stsPreload: true
+
+    compress:
+      compress: {}
+
+  routers:
+    dashboard:
+      rule: "Host(`deploy.fidscript.com`)"
+      service: dashboard
+      middlewares:
+        - security-headers
+        - compress
+      tls:
+        certResolver: letsencrypt-dns
+
+    api:
+      rule: "PathPrefix(`/api`)"
+      service: api
+      middlewares:
+        - security-headers
+        - compress
+      tls:
+        certResolver: letsencrypt-dns
+
+    minio-console:
+      rule: "Host(`storage.deploy.fidscript.com`)"
+      service: minio-console
+      middlewares:
+        - security-headers
+        - compress
+      tls:
+        certResolver: letsencrypt-dns
+
+    # Stalwart JMAP / management HTTP — port 8443 inside container
+    jmap:
+      rule: "Host(`jmap.deploy.fidscript.com`)"
+      service: stalwart-jmap
+      middlewares:
+        - security-headers
+      tls:
+        certResolver: letsencrypt-dns
+
+    # Stalwart IMAPS — port 993 inside container
+    imap:
+      rule: "Host(`imap.deploy.fidscript.com`)"
+      service: stalwart-imap
+      middlewares:
+        - security-headers
+      tls:
+        certResolver: letsencrypt-dns
+
+    # ACME HTTP-01 challenge proxy — routes to Stalwart's internal ACME listener
+    acme-challenge:
+      rule: "PathPrefix(`/.well-known/acme-challenge/`)"
+      service: stalwart-acme
+      middlewares:
+        - security-headers
+
+  services:
+    dashboard:
+      loadBalancer:
+        servers:
+          - url: "http://fidscript_dashboard:3000"
+
+    api:
+      loadBalancer:
+        servers:
+          - url: "http://fidscript_api:3001"
+
+    minio-console:
+      loadBalancer:
+        servers:
+          - url: "http://fidscript_minio:9001"
+
+    stalwart-jmap:
+      loadBalancer:
+        servers:
+          - url: "http://fidscript_stalwart:8443"
+
+    stalwart-imap:
+      loadBalancer:
+        servers:
+          - url: "http://fidscript_stalwart:993"
+
+    stalwart-acme:
+      loadBalancer:
+        servers:
+          - url: "http://127.0.0.1:8080"

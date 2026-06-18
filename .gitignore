@@ -18,3 +18,8 @@ build/
 installer/docker/secrets/
 installer/docker/.env
 installer/docker/userlist.txt
+
+# Stalwart rendered config — contains a bcrypt hash of the platform
+# admin token. setup-wizard.sh regenerates from the .template on every
+# install; never commit the rendered version.
+installer/config/stalwart/config.toml

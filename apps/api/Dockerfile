@@ -26,10 +26,13 @@ WORKDIR /app
 # Prisma's native engine binaries (libquery-engine, schema-engine) link against
 # OpenSSL. The slim base image doesn't ship libssl, so without this install
 # the engine fails to initialize and `prisma migrate deploy` reports a
-# blank "Error: Schema engine error:" with no further detail.
-# Install as root (before USER node) and clean the apt cache.
+# blank "Error: Schema engine error:" with no further detail. curl is
+# also installed for the runtime healthcheck (compose's "test" command)
+# and for the api's Stalwart JMAP connectivity probe (see
+# email/stalwart/stalwart-jmap.service.ts). Install as root (before
+# USER node) and clean the apt cache.
 RUN apt-get update -y \
-    && apt-get install -y --no-install-recommends openssl ca-certificates \
+    && apt-get install -y --no-install-recommends openssl ca-certificates curl \
     && rm -rf /var/lib/apt/lists/*
 
 # pnpm's node_modules (root + per-package) carry the resolved dependency graph;

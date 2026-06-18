@@ -351,6 +351,35 @@ providers:
     watch: true
 EOF
 
+# Render Stalwart's config.toml from the template. Stalwart's binary
+# does NOT do ${VAR} substitution, so the file on disk must already
+# be the rendered version with the real MAIL_HOSTNAME baked in.
+# Also: Stalwart's [authentication.fallback-admin] secret must be a
+# bcrypt hash of the platform token — we read the token, hash it,
+# and substitute the hash into the rendered config. The api uses the
+# same plaintext token via STALWART_ADMIN_TOKEN, so they match.
+STALWART_CONFIG_DIR="$(dirname "$SCRIPT_DIR")/config/stalwart"
+if [[ -f "$STALWART_CONFIG_DIR/config.toml.template" ]]; then
+  MAIL_HOSTNAME="mail.${DOMAIN}"
+  # Bcrypt the admin token using the host's python3 (no need to
+  # pull a python image at install time). The host almost always
+  # has python3 since prisma + the api need it for migrations.
+  STALWART_ADMIN_TOKEN_VALUE=$(cat "$SECRETS_DIR/stalwart_admin_token.txt")
+  STALWART_ADMIN_HASH=$(python3 -c "import bcrypt; print(bcrypt.hashpw(b'${STALWART_ADMIN_TOKEN_VALUE}', bcrypt.gensalt()).decode())" 2>/dev/null || echo "PYTHON_BCRYPT_MISSING")
+  if [[ "$STALWART_ADMIN_HASH" == "PYTHON_BCRYPT_MISSING" ]]; then
+    echo "WARNING: python3 + bcrypt not available. Install python3-bcrypt and re-run,"
+    echo "         or manually edit $STALWART_CONFIG_DIR/config.toml and set"
+    echo "         [authentication.fallback-admin] secret = \"<bcrypt-hash>\"."
+  fi
+  sed "s|\${MAIL_HOSTNAME}|${MAIL_HOSTNAME}|g; s|\${DOMAIN}|${DOMAIN}|g; s|\${STALWART_ADMIN_HASH}|${STALWART_ADMIN_HASH}|g" \
+    "$STALWART_CONFIG_DIR/config.toml.template" \
+    > "$STALWART_CONFIG_DIR/config.toml"
+  chmod 644 "$STALWART_CONFIG_DIR/config.toml"
+  echo "Rendered Stalwart config for ${MAIL_HOSTNAME}"
+else
+  echo "WARNING: Stalwart config template not found at $STALWART_CONFIG_DIR/config.toml.template"
+fi
+
 echo ""
 echo "╔═══════════════════════════════════════════════════════════╗"
 echo "║              Installation Complete!                       ║"

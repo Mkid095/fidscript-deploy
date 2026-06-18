@@ -1,0 +1,59 @@
+api:
+  dashboard: true
+  insecure: true
+
+entryPoints:
+  web:
+    address: ":80"
+    http:
+      redirections:
+        entryPoint:
+          to: websecure
+          scheme: https
+
+  websecure:
+    address: ":443"
+
+# ─────────────────────────────────────────────────────────────
+# Certificate resolvers
+# ─────────────────────────────────────────────────────────────
+#
+# 1. letsencrypt-dns — DNS-01 challenge via Cloudflare
+#    Issues wildcards (*.apps.deploy.fidscript.com) and any
+#    domain where we control DNS (deploy.fidscript.com zone).
+#    Requires CF_API_TOKEN env var in the Traefik container.
+#
+# 2. letsencrypt-http — HTTP-01 challenge fallback
+#    For custom domains where the user points their DNS CNAME
+#    to our server IP but we don't control their zone.
+#    Requires port 80 to be reachable from Let's Encrypt servers.
+#
+certificatesResolvers:
+  letsencrypt-dns:
+    acme:
+      email: admin@fidscript.com
+      storage: /acme-dns/acme-dns.json
+      dnsChallenge:
+        provider: cloudflare
+        resolvers:
+          - "1.1.1.1"
+          - "1.0.0.1"
+      # Use staging while iterating to avoid rate limits
+      caServer: https://acme-staging-v02.api.letsencrypt.org/directory
+
+  letsencrypt-http:
+    acme:
+      email: admin@fidscript.com
+      storage: /acme-http/acme-http.json
+      httpChallenge:
+        entryPoint: web
+      caServer: https://acme-staging-v02.api.letsencrypt.org/directory
+
+providers:
+  docker:
+    endpoint: "unix:///var/run/docker.sock"
+    exposedByDefault: false
+    network: fidscript
+  file:
+    filename: /etc/traefik/dynamic.yml
+    watch: true

@@ -59,11 +59,16 @@ export class HealthService {
     const redisUrl = this.configService.get<string>('REDIS_URL');
     if (!redisUrl) return { status: 'unknown', error: 'REDIS_URL not configured' };
 
+    // Use the actual Redis protocol (PING) instead of HTTP — redis has
+    // no HTTP endpoint, and string-replacing the scheme to http://
+    // produced an invalid URL like "http://:<password>@host:6379/health".
     try {
-      const response = await fetch(`${redisUrl.replace('redis://', 'http://')}/health`, {
-        method: 'GET',
-      });
-      return { status: response.ok ? 'up' : 'down', latencyMs: Date.now() - start };
+      const { createClient } = await import('redis');
+      const client = createClient({ url: redisUrl });
+      await client.connect();
+      const pong = await client.ping();
+      await client.quit();
+      return { status: pong === 'PONG' ? 'up' : 'down', latencyMs: Date.now() - start };
     } catch (error) {
       return { status: 'down', latencyMs: Date.now() - start, error: (error as Error).message };
     }
