@@ -115,20 +115,22 @@ mkdir -p "$TRAEFIK_DIR/certs"
 
 # Generate secrets
 echo "Generating secure secrets..."
-openssl rand -base64 32 > "$SECRETS_DIR/postgres_password.txt"
-openssl rand -base64 32 > "$SECRETS_DIR/redis_password.txt"
-openssl rand -base64 32 > "$SECRETS_DIR/minio_access_key.txt"
-openssl rand -base64 32 > "$SECRETS_DIR/minio_secret_key.txt"
-openssl rand -base64 64 > "$SECRETS_DIR/jwt_secret.txt"
+# Hex (not base64): URL-safe chars only, so values never break the
+# Postgres/Redis connection strings they get substituted into.
+openssl rand -hex 32 > "$SECRETS_DIR/postgres_password.txt"
+openssl rand -hex 32 > "$SECRETS_DIR/redis_password.txt"
+openssl rand -hex 32 > "$SECRETS_DIR/minio_access_key.txt"
+openssl rand -hex 32 > "$SECRETS_DIR/minio_secret_key.txt"
+openssl rand -hex 64 > "$SECRETS_DIR/jwt_secret.txt"
 # Cloudflare API token for DNS management and Traefik ACME DNS-01 challenge
 echo "$CLOUDFLARE_API_TOKEN" > "$SECRETS_DIR/cf_api_token.txt"
 # Stalwart admin token for management API
-openssl rand -base64 32 > "$SECRETS_DIR/stalwart_admin_token.txt"
+openssl rand -hex 32 > "$SECRETS_DIR/stalwart_admin_token.txt"
 # Stalwart webhook HMAC secret for inbound email/bounce webhooks
-openssl rand -base64 32 > "$SECRETS_DIR/stalwart_webhook_secret.txt"
+openssl rand -hex 32 > "$SECRETS_DIR/stalwart_webhook_secret.txt"
 # Platform SMTP submission credentials (used for all outbound mail via API)
 SMTP_SUBMISSION_USER="submission@$DOMAIN"
-SMTP_SUBMISSION_PASS=$(openssl rand -base64 32)
+SMTP_SUBMISSION_PASS=$(openssl rand -hex 32)
 echo "$SMTP_SUBMISSION_USER" > "$SECRETS_DIR/smtp_submission_user.txt"
 echo "$SMTP_SUBMISSION_PASS" > "$SECRETS_DIR/smtp_submission_pass.txt"
 # Stalwart credentials file for SMTP submission port auth (format: user password)
@@ -137,8 +139,26 @@ echo "$SMTP_SUBMISSION_USER $SMTP_SUBMISSION_PASS" > "$SECRETS_DIR/stalwart_cred
 # Set permissions
 chmod 600 "$SECRETS_DIR/"*.txt
 
-# Create .env
-cat > "$INSTALL_DIR/.env" << EOF
+# Read secret values (needed for .env substitution, api.env, and pgbouncer userlist)
+POSTGRES_PASSWORD=$(cat "$SECRETS_DIR/postgres_password.txt")
+REDIS_PASSWORD=$(cat "$SECRETS_DIR/redis_password.txt")
+MINIO_ACCESS_KEY=$(cat "$SECRETS_DIR/minio_access_key.txt")
+MINIO_SECRET_KEY=$(cat "$SECRETS_DIR/minio_secret_key.txt")
+
+# Generate pgbouncer userlist (plaintext — the standard, working pattern with
+# auth_type=md5: pgbouncer validates the client against this entry and reuses
+# the password to connect to postgres). The placeholder "md5CHANGEME" that
+# previously shipped in the repo would cause every auth to fail.
+cat > "$DOCKER_DIR/userlist.txt" << EOF
+"fidscript" "${POSTGRES_PASSWORD}"
+EOF
+chmod 600 "$DOCKER_DIR/userlist.txt"
+
+# Create .env in DOCKER_DIR — that's the CWD install.sh runs compose from,
+# so docker compose auto-loads it for ${VAR} substitution. The four DB/cache
+# credentials MUST be here (not only in api.env) because compose resolves
+# ${POSTGRES_PASSWORD} etc. at parse time from .env, not from env_file.
+cat > "$DOCKER_DIR/.env" << EOF
 DOMAIN=$DOMAIN
 ADMIN_EMAIL=$ADMIN_EMAIL
 ADMIN_PASSWORD=$ADMIN_PASSWORD
@@ -149,14 +169,14 @@ PLATFORM_DOMAIN=deploy.fidscript.com
 PLATFORM_MAIL_HOST=mail.$DOMAIN
 SMTP_SUBMISSION_USER=submission@$DOMAIN
 SMTP_SUBMISSION_PASS=$SMTP_SUBMISSION_PASS
+POSTGRES_PASSWORD=$POSTGRES_PASSWORD
+REDIS_PASSWORD=$REDIS_PASSWORD
+MINIO_ACCESS_KEY=$MINIO_ACCESS_KEY
+MINIO_SECRET_KEY=$MINIO_SECRET_KEY
+MINIO_EXTERNAL_ENDPOINT=https://storage.$DOMAIN
 EOF
 
 # Generate api.env with secret values (api container reads these via env_file)
-POSTGRES_PASSWORD=$(cat "$SECRETS_DIR/postgres_password.txt")
-REDIS_PASSWORD=$(cat "$SECRETS_DIR/redis_password.txt")
-MINIO_ACCESS_KEY=$(cat "$SECRETS_DIR/minio_access_key.txt")
-MINIO_SECRET_KEY=$(cat "$SECRETS_DIR/minio_secret_key.txt")
-
 cat > "$SECRETS_DIR/api.env" << EOF
 POSTGRES_PASSWORD=$POSTGRES_PASSWORD
 REDIS_PASSWORD=$REDIS_PASSWORD

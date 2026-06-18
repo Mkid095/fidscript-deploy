@@ -249,7 +249,7 @@ main() {
     deploy_stack
     verify_installation
 
-    source "$INSTALL_DIR/.env" 2>/dev/null || true
+    source "$INSTALL_DIR/docker/.env" 2>/dev/null || true
 
     echo ""
     echo "╔═══════════════════════════════════════════════════════════╗"

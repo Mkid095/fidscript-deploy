@@ -11,3 +11,10 @@ coverage/
 .next/
 out/
 build/
+
+# Installer — generated secrets (never commit). The setup-wizard creates
+# these in installer/docker/secrets/ and they're root-only. Keep them out
+# of git; developers generate their own on first run.
+installer/docker/secrets/
+installer/docker/.env
+installer/docker/userlist.txt
