@@ -108,7 +108,7 @@ http:
     dashboard:
       loadBalancer:
         servers:
-          - url: "http://fidscript_dashboard:3000"
+          - url: "http://fidscript_dashboard:3001"
 
     api:
       loadBalancer:
