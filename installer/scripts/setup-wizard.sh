@@ -186,8 +186,41 @@ SMTP_SUBMISSION_USER=$SMTP_SUBMISSION_USER
 SMTP_SUBMISSION_PASS=$SMTP_SUBMISSION_PASS
 EOF
 
-# Generate Traefik dynamic.yml with the real domain + Stalwart routes
-cat > "$TRAEFIK_DIR/dynamic.yml" << 'HEREDOC'
+# Create DNS records for platform subdomains via Cloudflare API before Traefik starts
+echo "Creating DNS records on Cloudflare..."
+ZONE_RESULT=$(curl -s -X GET "https://api.cloudflare.com/client/v4/zones?name=${DOMAIN#*.}&status=active" \
+  -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" \
+  -H "Content-Type: application/json")
+ZONE_ID=$(echo "$ZONE_RESULT" | python3 -c "import sys,json; d=json.load(sys.stdin); print(d['result'][0]['id'])" 2>/dev/null || echo "")
+
+if [[ -z "$ZONE_ID" ]]; then
+  echo "ERROR: Could not find Cloudflare zone for ${DOMAIN}. Check your API token permissions."
+  exit 1
+fi
+
+# Create A records for core subdomains
+for SUBDOMAIN in "deploy" "jmap" "storage"; do
+  FULL_DOMAIN="${SUBDOMAIN}.${DOMAIN}"
+  echo "  Creating A record: ${FULL_DOMAIN} -> ${SERVER_IP}"
+  curl -s -X POST "https://api.cloudflare.com/client/v4/zones/${ZONE_ID}/dns_records" \
+    -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" \
+    -H "Content-Type: application/json" \
+    -d "{\"type\":\"A\",\"name\":\"${FULL_DOMAIN}\",\"content\":\"${SERVER_IP}\",\"ttl\":3600,\"proxied\":false}" \
+    | grep -q '"success":true' || echo "  WARNING: Failed to create ${FULL_DOMAIN}"
+done
+
+# Create wildcard A record for *.apps.$DOMAIN
+echo "  Creating wildcard A record: *.apps.${DOMAIN} -> ${SERVER_IP}"
+curl -s -X POST "https://api.cloudflare.com/client/v4/zones/${ZONE_ID}/dns_records" \
+  -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d "{\"type\":\"A\",\"name\":\"*.apps.${DOMAIN}\",\"content\":\"${SERVER_IP}\",\"ttl\":3600,\"proxied\":false}" \
+  | grep -q '"success":true' || echo "  WARNING: Failed to create *.apps.${DOMAIN}"
+
+echo "DNS records created."
+
+# Generate Traefik dynamic.yml — double-quote heredoc allows $DOMAIN substitution
+cat > "$TRAEFIK_DIR/dynamic.yml" << HEREDOC
 http:
   middlewares:
     security-headers:
@@ -205,7 +238,7 @@ http:
 
   routers:
     dashboard:
-      rule: "Host(`deploy.fidscript.com`)"
+      rule: "Host(\`deploy.${DOMAIN}\`)"
       service: dashboard
       middlewares:
         - security-headers
@@ -214,7 +247,7 @@ http:
         certResolver: letsencrypt-dns
 
     api:
-      rule: "PathPrefix(`/api`)"
+      rule: "PathPrefix(\`/api\`)"
       service: api
       middlewares:
         - security-headers
@@ -223,7 +256,7 @@ http:
         certResolver: letsencrypt-dns
 
     minio-console:
-      rule: "Host(`storage.deploy.fidscript.com`)"
+      rule: "Host(\`storage.${DOMAIN}\`)"
       service: minio-console
       middlewares:
         - security-headers
@@ -233,17 +266,8 @@ http:
 
     # Stalwart JMAP / management HTTP — port 8443 inside container
     jmap:
-      rule: "Host(`jmap.deploy.fidscript.com`)"
+      rule: "Host(\`jmap.${DOMAIN}\`)"
       service: stalwart-jmap
-      middlewares:
-        - security-headers
-      tls:
-        certResolver: letsencrypt-dns
-
-    # Stalwart IMAPS — port 993 inside container
-    imap:
-      rule: "Host(`imap.deploy.fidscript.com`)"
-      service: stalwart-imap
       middlewares:
         - security-headers
       tls:
@@ -251,7 +275,7 @@ http:
 
     # ACME HTTP-01 challenge proxy — routes to Stalwart's internal ACME listener
     acme-challenge:
-      rule: "PathPrefix(`/.well-known/acme-challenge/`)"
+      rule: "PathPrefix(\`/.well-known/acme-challenge/\`)"
       service: stalwart-acme
       middlewares:
         - security-headers
@@ -260,7 +284,7 @@ http:
     dashboard:
       loadBalancer:
         servers:
-          - url: "http://fidscript_dashboard:3000"
+          - url: "http://fidscript_dashboard:3001"
 
     api:
       loadBalancer:
@@ -275,12 +299,7 @@ http:
     stalwart-jmap:
       loadBalancer:
         servers:
-          - url: "http://fidscript_stalwart:8443"
-
-    stalwart-imap:
-      loadBalancer:
-        servers:
-          - url: "http://fidscript_stalwart:993"
+          - url: "http://fidscript_stalwart:8080"
 
     stalwart-acme:
       loadBalancer:
@@ -311,9 +330,9 @@ entryPoints:
 # ─────────────────────────────────────────────────────────────
 #
 # 1. letsencrypt-dns — DNS-01 challenge via Cloudflare
-#    Issues wildcards (*.apps.deploy.fidscript.com) and any
-#    domain where we control DNS (deploy.fidscript.com zone).
-#    Requires CF_API_TOKEN env var in the Traefik container.
+#    Issues wildcards (*.apps.$DOMAIN) and any domain where we
+#    control DNS. Requires CLOUDFLARE_API_TOKEN_FILE env var
+#    (pointing to the mounted secret file) in the Traefik container.
 #
 # 2. letsencrypt-http — HTTP-01 challenge fallback
 #    For custom domains where the user points their DNS CNAME
@@ -330,8 +349,8 @@ certificatesResolvers:
         resolvers:
           - "1.1.1.1"
           - "1.0.0.1"
-      # Use staging while iterating to avoid rate limits
-      caServer: https://acme-staging-v02.api.letsencrypt.org/directory
+      # Production ACME endpoint — do not change
+      caServer: https://acme-v02.api.letsencrypt.org/directory
 
   letsencrypt-http:
     acme:
@@ -339,13 +358,10 @@ certificatesResolvers:
       storage: /acme-http/acme-http.json
       httpChallenge:
         entryPoint: web
-      caServer: https://acme-staging-v02.api.letsencrypt.org/directory
+      # Production ACME endpoint — do not change
+      caServer: https://acme-v02.api.letsencrypt.org/directory
 
 providers:
-  docker:
-    endpoint: "unix:///var/run/docker.sock"
-    exposedByDefault: false
-    network: fidscript
   file:
     filename: /etc/traefik/dynamic.yml
     watch: true

@@ -15,7 +15,7 @@ http:
 
   routers:
     dashboard:
-      rule: "Host(`deploy.fidscript.com`)"
+      rule: "Host(`deploy.fidscript.com`) && !PathPrefix(`/api`)"
       service: dashboard
       middlewares:
         - security-headers
