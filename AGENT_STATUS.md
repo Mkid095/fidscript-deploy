@@ -15,6 +15,7 @@ Current state of FIDScript Deploy development.
 | **Phase docs** | All 24 rewritten to v2 |
 | **Snapshot baseline** | Commit `f1dd6f2` (Phase 00-23 scaffold, pre-hardening) |
 | **Reset date** | 2026-06-16 |
+| **Runtime bring-up** | **2026-06-18** — the Phase 01 installer + the API NestJS bootstrap now actually run end-to-end on the VPS (commits `67c4e72` + `f94a772`). Infra + API healthy; /health = 200; the audit's "never actually run" is fixed for the runtime path. |
 
 ---
 
@@ -73,6 +74,13 @@ Statuses: `Planned` · `In Progress` · `Verified`
 - [x] Verified **Phase 07 — Domains & TLS**: real Cloudflare DNS API, DnsProvider interface, Traefik ACME DNS-01 + HTTP-01 resolvers, SERVER_IP wired, deploymentId on Domain.
 - [x] Verified **Phase 08 — Database Platform**: real provisioning, PgBouncer, encrypted creds, DATABASE_URL auto-injection, SSL enforcement, connection limits, size tracking, rotate re-injects env vars.
 - [x] **Phase 09 — Email Platform**: schema restructured (domains/mailboxes/aliases/sender_identities/api_keys/messages/catch_all_rules/api_usage/suppressions), simplified domain lifecycle (PENDING→VERIFIED→ACTIVE), platform-generated mailbox passwords, suppression list (bounce/complaint/unsubscribe/manual), catch-all rate limiting (messagesPerMinute), StalwartJmapService (full JMAP admin client), all events wired.
+- [x] **2026-06-18 — Runtime bring-up on the VPS.** Fixed every latent Phase 01 defect that the audit warned about ("Verified but never actually ran"). The canonical installer + the API NestJS bootstrap now run end-to-end on this box. Commits `67c4e72` (installer: compose, pgbouncer, nats, redis, secrets, entrypoint, .gitignore) and `f94a772` (api: Dockerfile libssl, Prisma `binaryTargets`, migration ordering + the one in-place FK-type fix, five `@Inject('DNS_PROVIDER')` DI fixes). Live state: postgres + redis + nats + minio + pgbouncer (md5 backend, end-to-end auth verified) all healthy; API NestApplication started on :3001, MinIO/Redis/NATS clients initialized, service registry + EventNatsConsumer running; `curl /health` → 200 `{"status":"ok"}`. **Important caveat:** the full Phase 01 §5 rubric (login/register prove-it, tenant-isolation prove-it) is NOT yet run, so Phase 01 is still "In Progress" by the strict definition. What changed is the *biggest blocker* (the stack would not build/run) is removed.
+
+### Hardening follow-ups (committed code, but the live VPS still needs them)
+
+- **Regenerate the canonical Prisma migrations from the model.** The `ADD …` migrations (Phase 09+) still have systemic FK type bugs (UUID vs TEXT against the init's TEXT/CUID ids). On this VPS we used `prisma db push` (dev-only) + marked all 10 migrations applied so the entrypoint is happy. A fresh install would hit the same P3009 / 42804 chain. The right fix: `prisma migrate diff` from the current schema back to `schema.prisma`, regenerate clean migration files, replace the canonical set.
+- **Phase B cutover: Traefik owns 80/443, host nginx retires.** Routes for the existing live domains (whatsapp.fidscript.com → Evolution API, soostori.co.ke → soostori-api) move into Traefik so the whatsapp/nextmavens stack stays live and soostori stays reachable; fidscript's own domains (deploy.fidscript.com, *.apps.deploy.fidscript.com, storage.*, jmap.*) come up via Cloudflare DNS-01 (ADR-022). Avoid host port 8080 (evoapi already uses it).
+- **Phase 04 (Projects) re-platform soostori under fidscript.** Deferred per user direction (2026-06-18). The soostori stack is still running as its own docker-compose; the migration path is documented in task #70.
 
 ## Definition of done (per phase)
 
@@ -80,4 +88,4 @@ A phase moves to **Verified** only when, on the VPS: it builds, it runs, its pro
 
 ---
 
-*Last updated: 2026-06-17*
+*Last updated: 2026-06-18*
