@@ -5,6 +5,9 @@ export class CreateQueueDto {
   maxMessages?: number;
   maxBytes?: number;
   replicas?: number;
+  retryAttempts?: number;
+  retryDelaySeconds?: number;
+  deadLetterQueue?: string;
 }
 
 export class UpdateQueueDto {

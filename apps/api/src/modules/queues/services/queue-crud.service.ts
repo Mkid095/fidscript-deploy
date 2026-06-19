@@ -1,6 +1,7 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '@/prisma/prisma.service';
 import { EventService } from '@/modules/events/event.service';
+import { JetStreamQueueService } from './jetstream-queue.service';
 import { CreateQueueDto, UpdateQueueDto } from '../dto/index';
 
 @Injectable()
@@ -8,6 +9,7 @@ export class QueueCrudService {
   constructor(
     private prisma: PrismaService,
     private eventService: EventService,
+    private jsQueue: JetStreamQueueService,
   ) {}
 
   async createQueue(projectId: string, dto: CreateQueueDto) {
@@ -21,10 +23,30 @@ export class QueueCrudService {
         maxBytes: dto.maxBytes || 1073741824,
         replicas: dto.replicas || 1,
         status: 'active',
+        retryAttempts: dto.retryAttempts ?? 3,
+        retryDelaySeconds: dto.retryDelaySeconds ?? 60,
+        deadLetterQueue: dto.deadLetterQueue,
       },
     });
 
-    await this.eventService.emit('queue.created', {
+    // Ensure JetStream durable consumer for this queue
+    try {
+      await this.jsQueue.ensureConsumer(
+        projectId,
+        queue.name,
+        queue.retryDelaySeconds || 60,
+        queue.retryAttempts || 3,
+      );
+    } catch (err: unknown) {
+      // Non-fatal: NATS may not be connected yet (degraded mode still works via Prisma)
+      this.eventService.emit('queues.consumer.setup.degraded' as any, {
+        queueId: queue.id,
+        projectId,
+        error: (err as Error).message,
+      });
+    }
+
+    await this.eventService.emit('queues.created' as any, {
       queueId: queue.id,
       projectId,
       name: dto.name,
@@ -54,7 +76,7 @@ export class QueueCrudService {
     });
     if (!queue) throw new NotFoundException('Queue not found');
 
-    return this.prisma.queue.update({
+    const updated = await this.prisma.queue.update({
       where: { id: queueId },
       data: {
         retentionDays: dto.retentionDays ?? queue.retentionDays,
@@ -65,6 +87,18 @@ export class QueueCrudService {
         retryDelaySeconds: dto.retryDelaySeconds ?? queue.retryDelaySeconds,
       },
     });
+
+    // Update consumer settings in JetStream to match new retry settings
+    try {
+      await this.jsQueue.ensureConsumer(
+        projectId,
+        updated.name,
+        updated.retryDelaySeconds || 60,
+        updated.retryAttempts || 3,
+      );
+    } catch { /* ignore */ }
+
+    return updated;
   }
 
   async deleteQueue(projectId: string, queueId: string) {
@@ -73,8 +107,13 @@ export class QueueCrudService {
     });
     if (!queue) throw new NotFoundException('Queue not found');
 
-    await this.prisma.queue.delete({ where: { id: queueId } });
+    // Remove JetStream durable consumer
+    try {
+      await this.jsQueue.deleteConsumer(queue.name);
+    } catch { /* ignore if already gone */ }
+
     await this.prisma.queueMessage.deleteMany({ where: { queueId } });
+    await this.prisma.queue.delete({ where: { id: queueId } });
 
     return { deleted: true };
   }

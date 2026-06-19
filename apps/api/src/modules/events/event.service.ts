@@ -65,4 +65,9 @@ export class EventService implements OnModuleInit, OnModuleDestroy {
   async onModuleDestroy() {
     if (this.nc) await this.nc.close();
   }
+
+  /** Expose the NATS connection so other modules can attach JetStream consumers. */
+  getNatsConnection(): NatsConnection | null {
+    return this.nc;
+  }
 }
