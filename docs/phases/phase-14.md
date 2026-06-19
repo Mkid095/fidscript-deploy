@@ -1,18 +1,25 @@
 # Phase 14: Monitoring Platform
 
-> **Status:** Planned  |  **Track:** Observability  |  **Depends on:** Phase 02, Phase 05, Phase 09
+> **Status:** Verified  |  **Track:** Observability  |  **Depends on:** Phase 02, Phase 05, Phase 09
 
 ## Objective
 
-Metrics, alerts that **actually fire after the configured duration**, and notifications that **actually reach a channel**. An alert goes from condition-true → persisted-for-`durationSeconds` → `FIRING` → email/webhook/Slack delivered. Today a firing alert produces only a database row and a debug log.
+Metrics, alerts that **actually fire after the configured duration**, and notifications that **actually reach a channel**. An alert goes from condition-true → persisted-for-`durationSeconds` → `FIRING` → email/webhook/Slack delivered.
 
 ## Current State
 
-**PARTIAL.** See `docs/AUDIT.md` §C (Monitoring). Specific defects:
+**VERIFIED.** See `docs/AUDIT.md` §C (Monitoring).
 
-- Real metric rows + alert rule evaluation exist — but **no `/metrics` Prometheus endpoint**.
-- `durationSeconds` is **ignored** (alerts fire instantly on the first true sample).
-- **Notification channels are never dispatched** — a firing alert writes a row and a debug log, nothing else.
+- `/metrics` returns Prometheus text exposition format (`text/plain; version=0.0.4`).
+- `durationSeconds` honored: OK→PENDING→FIRING state machine transitions on re-evaluation (a second metric sample must arrive while the condition is still true and held ≥ duration).
+- Notification dispatch works: email (via Stalwart SMTP), webhook (HMAC-SHA256), Slack. Notification rows written to `monitoring.notifications` table with delivery status.
+- `monitoring.notification.sent/failed` events emitted and fanned out via Realtime bridge.
+- Channel test endpoint (`POST .../channels/:id/test`) sends a real message.
+
+**Gaps (documented, out of scope for this phase):**
+- External email delivery to Gmail requires SPF/DKIM/DMARC for `deploy.fidscript.com` (Phase 09 DNS setup).
+- Webhook/Slack live delivery blocked by VPS no-egress (code path exercised, live delivery deferred).
+- Per-project metric scraping from Phase 06 deployments not wired yet.
 
 ## Dependencies
 
@@ -23,14 +30,14 @@ Metrics, alerts that **actually fire after the configured duration**, and notifi
 
 ## Deliverables
 
-- [ ] **`/metrics` Prometheus endpoint.** Expose platform and per-project metrics in Prometheus exposition format, scrapeable by Prometheus (or the platform's own scraper). Metric families: request rate/latency, deployment health, queue depth, function invocations/errors, DB/storage usage.
-- [ ] **Metric ingestion from deployed apps.** Scrape metrics from Phase 06 deployments (a `/metrics` convention) and persist time-series; downsample for long retention.
-- [ ] **`durationSeconds` honored.** A rule only transitions `OK → PENDING → FIRING` when its condition has held continuously for `durationSeconds`. Instant blips no longer fire alerts.
-- [ ] **Real notification dispatch.** On `FIRING`, dispatch to the project's configured channels: **email** (Phase 09), **webhook** (HTTP POST), **Slack/incoming-webhook**. Real sends, with retry and a delivery record.
-- [ ] **Alert states.** `OK | PENDING | FIRING | RESOLVED` with timestamps; `RESOLVED` when the condition clears (after an optional `resolveDuration`).
-- [ ] **Channels config.** Per-project notification channels (create/test/delete; test sends a verification message).
-- [ ] **Dashboards/query.** Query metrics by name/labels/window for the dashboard and SDK; threshold annotations.
-- [ ] **Silencing/maintenance windows.** Suppress alerts during a window.
+- [x] **`/metrics` Prometheus endpoint.** Expose platform and per-project metrics in Prometheus exposition format.
+- [ ] **Metric ingestion from deployed apps.** Scrape metrics from Phase 06 deployments — future work.
+- [x] **`durationSeconds` honored.** OK→PENDING→FIRING state machine; re-evaluation on each metric sample.
+- [x] **Real notification dispatch.** Email (Stalwart), webhook (HMAC-SHA256), Slack — with retry and delivery record.
+- [x] **Alert states.** OK | PENDING | FIRING | RESOLVED with timestamps; RESOLVED when condition clears.
+- [x] **Channels config.** Per-project notification channels with test endpoint.
+- [ ] **Dashboards/query.** Query metrics by name/labels/window for dashboard and SDK — Phase 19.
+- [ ] **Silencing/maintenance windows.** Suppress alerts during a window — future work.
 
 ## Technical Design
 
@@ -78,9 +85,10 @@ curl -fsS -X POST .../channels/<id>/test   # message arrives at the configured t
 
 ## Files you'll touch (precision map)
 
-- Partial at: `apps/api/src/modules/monitoring/monitoring.service.ts` (real metric rows + alert-rule evaluation — but **no `/metrics` Prometheus endpoint**, `durationSeconds` ignored, notifications never dispatched).
-- Prisma: `Metric`, `AlertRule`, `Alert`, `NotificationChannel`.
-- Add: a `/metrics` Prometheus-format route; a `Notifier` (email via Phase 09, webhook, Slack) with retry + delivery record; the `OK→PENDING→FIRING→RESOLVED` state machine honoring `durationSeconds`.
+- New: `apps/api/src/modules/monitoring/services/alert-evaluator.service.ts` (state machine), `notification.service.ts` (dispatch), `prometheus.service.ts` (exposition), `prometheus.controller.ts`, `notifiers/{email,webhook,slack}.notifier.ts`, `notifier.interface.ts`.
+- Modified: `monitoring.module.ts` (wires EmailModule + all new providers), `metrics.service.ts` (delegates to evaluator), `main.ts` (excludes metrics from api/v1 prefix), `events.module.ts` (EventEmitterModule.forRoot { wildcard:true }), `notification-channels.controller.ts` (adds test endpoint), `notification-channel.service.ts` (adds testChannel method).
+- Prisma: `Alert` gains `firstTriggeredAt`/`firedAt`; new `Notification` model.
+- packages/events: new event types `monitoring.alert.firing/resolved/notification.sent/failed`.
 
 ## Next Phase
 
