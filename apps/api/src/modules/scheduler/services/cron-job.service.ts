@@ -5,6 +5,18 @@ import { CronJobExecutionService } from './cron-job-execution.service';
 import { CronJobSchedulerService } from './cron-job-scheduler.service';
 import * as cron from 'cron';
 
+function computeNextRunAt(expression: string, timezone: string): Date | null {
+  try {
+    const cronTime = new cron.CronTime(expression, timezone);
+    const nextDate = cronTime.sendAt();
+    // sendAt() returns Luxon DateTime; .toISO() is always available
+    const iso: string | null = (nextDate as any).toISO ? (nextDate as any).toISO() : null;
+    return iso ? new Date(iso) : null;
+  } catch {
+    return null;
+  }
+}
+
 @Injectable()
 export class CronJobService {
   constructor(
@@ -16,6 +28,7 @@ export class CronJobService {
 
   async createCronJob(projectId: string, dto: any) {
     try { new cron.CronTime(dto.cronExpression); } catch { throw new Error('Invalid cron expression'); }
+    const nextRunAt = computeNextRunAt(dto.cronExpression, dto.timezone || 'UTC');
 
     const job = await this.prisma.cronJob.create({
       data: {
@@ -23,7 +36,7 @@ export class CronJobService {
         timezone: dto.timezone || 'UTC', endpoint: dto.endpoint, functionId: dto.functionId,
         payload: (dto.payload || {}) as any, enabled: dto.enabled ?? true,
         retryAttempts: dto.retryAttempts || 3, retryDelaySeconds: dto.retryDelaySeconds || 60,
-        timeoutSeconds: dto.timeoutSeconds || 300,
+        timeoutSeconds: dto.timeoutSeconds || 300, nextRunAt,
       },
     });
 
@@ -48,15 +61,22 @@ export class CronJobService {
     if (dto.cronExpression) { try { new cron.CronTime(dto.cronExpression); } catch { throw new Error('Invalid cron expression'); } }
 
     this.scheduler.unscheduleJob(jobId);
+    const newExpression = dto.cronExpression ?? job.cronExpression;
+    const newTimezone = dto.timezone ?? job.timezone;
+    const nextRunAt = dto.cronExpression || dto.timezone
+      ? computeNextRunAt(newExpression, newTimezone)
+      : undefined;
+
     const updated = await this.prisma.cronJob.update({
       where: { id: jobId },
       data: {
-        name: dto.name ?? job.name, cronExpression: dto.cronExpression ?? job.cronExpression,
-        timezone: dto.timezone ?? job.timezone, endpoint: dto.endpoint ?? job.endpoint,
+        name: dto.name ?? job.name, cronExpression: newExpression,
+        timezone: newTimezone, endpoint: dto.endpoint ?? job.endpoint,
         functionId: dto.functionId ?? job.functionId, payload: (dto.payload ?? job.payload) as any,
         enabled: dto.enabled ?? job.enabled, retryAttempts: dto.retryAttempts ?? job.retryAttempts,
         retryDelaySeconds: dto.retryDelaySeconds ?? job.retryDelaySeconds,
         timeoutSeconds: dto.timeoutSeconds ?? job.timeoutSeconds,
+        ...(nextRunAt !== undefined && { nextRunAt }),
       },
     });
 

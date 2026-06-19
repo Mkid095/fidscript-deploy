@@ -74,6 +74,41 @@ export class RedisService implements OnModuleDestroy {
     }
   }
 
+  /**
+   * Atomic distributed lock acquire using SET NX PX + Lua compare-and-delete release.
+   * Returns true if lock was acquired, false if already held by another token.
+   * Gracefully degrades to true (allow execution) if Redis is unavailable.
+   */
+  async acquireLock(lockKey: string, token: string, ttlMs: number): Promise<boolean> {
+    if (!this.client) return true;
+    try {
+      // SET key token NX PX ttl-ms — atomic set-if-not-exists
+      const result = await this.client.set(lockKey, token, { NX: true, PX: ttlMs });
+      if (result === 'OK') return true;
+      // Key already held — check if it's our own token (idempotent on re-entry)
+      const existing = await this.client.get(lockKey);
+      return existing === token;
+    } catch (error) {
+      this.logger.error(`Redis acquireLock error for ${lockKey}:`, (error as Error).message);
+      return true; // Degrade: allow job to run if Redis fails
+    }
+  }
+
+  /**
+   * Release a distributed lock using Lua compare-and-delete (only deletes if token matches).
+   */
+  async releaseLock(lockKey: string, token: string): Promise<void> {
+    if (!this.client) return;
+    try {
+      await this.client.eval(
+        'if redis.call("get", KEYS[1]) == ARGV[1] then return redis.call("del", KEYS[1]) else return 0 end',
+        { keys: [lockKey], arguments: [token] },
+      );
+    } catch (error) {
+      this.logger.error(`Redis releaseLock error for ${lockKey}:`, (error as Error).message);
+    }
+  }
+
   async onModuleDestroy() {
     if (this.client) {
       await this.client.quit();

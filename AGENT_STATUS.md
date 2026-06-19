@@ -10,8 +10,8 @@ Current state of FIDScript Deploy development.
 
 | | |
 |---|---|
-| **Current phase** | Phase 12 — Scheduler Platform |
-| **Last verified phase** | Phase 09 — Email Platform (Stalwart) (verified 2026-06-18) |
+| **Current phase** | Phase 13 — Realtime Platform |
+| **Last verified phase** | Phase 12 — Scheduler Platform (verified 2026-06-19) |
 | **Phase docs** | All 24 rewritten to v2 |
 | **Snapshot baseline** | Commit `f1dd6f2` (Phase 00-23 scaffold, pre-hardening) |
 | **Reset date** | 2026-06-16 |
@@ -45,7 +45,7 @@ Statuses: `Planned` · `In Progress` · `Verified`
 | 09 | Email Platform (Stalwart) | Verified |
 | 10 | Functions Runtime | Verified |
 | 11 | Queues Platform | Verified |
-| 12 | Scheduler Platform | Planned |
+| 12 | Scheduler Platform | Verified |
 | 13 | Realtime Platform | Planned |
 | 14 | Monitoring Platform | Planned |
 | 15 | Logging Platform | Planned |
@@ -75,6 +75,7 @@ Statuses: `Planned` · `In Progress` · `Verified`
 - [x] **Phase 09 — Email Platform (verified 2026-06-18)**: schema restructured (domains/mailboxes/aliases/sender_identities/api_keys/messages/catch_all_rules/api_usage/suppressions), simplified domain lifecycle (PENDING→VERIFIED→ACTIVE), platform-generated mailbox passwords, suppression list (bounce/complaint/unsubscribe/manual), catch-all rate limiting (messagesPerMinute), all events wired. StalwartJmapService ported to v0.15.5: HTTP Basic auth, `urn:ietf:params:jmap:*` capabilities only, POST /api/principal for account management, SMTP AUTH PLAIN on port 465 with admin token. Commit `ffb8035`.
 - [x] **2026-06-18 — Runtime bring-up on the VPS.** Fixed every latent Phase 01 defect that the audit warned about ("Verified but never actually ran"). The canonical installer + the API NestJS bootstrap now run end-to-end on this box. Commits `67c4e72` (installer: compose, pgbouncer, nats, redis, secrets, entrypoint, .gitignore) and `f94a772` (api: Dockerfile libssl, Prisma `binaryTargets`, migration ordering + the one in-place FK-type fix, five `@Inject('DNS_PROVIDER')` DI fixes). Live state: postgres + redis + nats + minio + pgbouncer (md5 backend, end-to-end auth verified) all healthy; API NestApplication started on :3001, MinIO/Redis/NATS clients initialized, service registry + EventNatsConsumer running; `curl /health` → 200 `{"status":"ok"}`. **Important caveat:** the full Phase 01 §5 rubric (login/register prove-it, tenant-isolation prove-it) is NOT yet run, so Phase 01 is still "In Progress" by the strict definition. What changed is the *biggest blocker* (the stack would not build/run) is removed. **2026-06-18 (later):** Clean Prisma migration replaces the 9-broken-migration set (commit `cd73283`); fresh installs now work correctly. The api-entrypoint.sh was also hardened to avoid advisory-lock timeouts on restart.
 - [x] **2026-06-18 — Stalwart (email) container brings up; one `docker compose up -d` runs the whole platform.** Phase 09 had been marked In Progress but the email container was never started — Stalwart was in the compose but crashed silently because (a) the mounted `main.toml` was written for an older schema (sqlite + `${VAR}` placeholders that Stalwart doesn't substitute) and (b) the image was `:latest` and had drifted. Fixed: pinned to `stalwartlabs/stalwart:v0.15.5`, pinned `minio/minio:RELEASE.2025-09-07T16-13-09Z`, replaced the Stalwart config with a v0.15.5-schema `config.toml` rendered at install time by setup-wizard.sh with a bcrypt-hashed fallback-admin secret, added a bash-`/dev/tcp` healthcheck, fixed the api compose healthcheck path and installed curl in the api runtime, and rewrote `health.service.checkRedis` to do a real PING. Live state: 7 containers up — postgres, pgbouncer, redis, nats, minio, stalwart, api — and `api` is now `Up (healthy)`. Commit `ffb8035` ported the StalwartJmapService to v0.15.5 API contract. **Phase 09 verified 2026-06-18.**
+- [x] **2026-06-19 — Phase 12 Scheduler verified, and the API bootstrap-hang root-caused + fixed.** The API had been booting all modules but `app.listen()` never opened port 3001 (silent hang, no error). Root cause: `QueuesModule.onModuleInit` awaited `worker.start()`, which awaited infinite `while(!cancelled)` pull loops — NestJS won't open the HTTP port until every init hook resolves, so one infinite loop blocked the whole server (ADR-023). Fix: worker loops are now fire-and-forget; API boots in ~2s, port binds, `/api/v1/health` → 200. Scheduler prove-it on the VPS: jobs **survive a restart** (`onApplicationBootstrap` re-registers every enabled job — the `OnModuleInit` gap from AUDIT §C is closed); **HTTP target** fires on cron after restart (`CronJobRun` completed, echo 200); **function target** dispatches (`executeJob → invokeFunction`, `FunctionLog` created); **`nextRunAt`** computed correctly from the expression; **execution history** recorded; **single fire per tick**; **Redis distributed lock** (`SET NX PX` + Lua compare-and-delete) proven to block double-acquire. Also fixed a correctness bug: a function-target run was silently marked `completed` even when the function errored (invokeFunction returns rather than throws) — now surfaced as `failed`. Honest gaps: only cron-expression schedule type is implemented (no fixed-interval / one-shot `runAt`); no explicit concurrency-policy field (Redis lock gives implicit "skip"); and **function sandbox execution cannot run on this VPS** because the `node:18-alpine` runtime image isn't cached and the box has no external egress to pull it (a Phase 10 / environment constraint, not a scheduler defect). **Phase 12 verified 2026-06-19.**
 
 ### Hardening follow-ups (committed code, but the live VPS still needs them)
 
@@ -86,4 +87,4 @@ A phase moves to **Verified** only when, on the VPS: it builds, it runs, its pro
 
 ---
 
-*Last updated: 2026-06-18 (Prisma migration fix, Traefik cutover complete)*
+*Last updated: 2026-06-19 (Phase 12 Scheduler verified; API bootstrap-hang fixed — ADR-023)*

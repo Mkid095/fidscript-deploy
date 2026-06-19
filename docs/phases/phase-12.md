@@ -1,6 +1,6 @@
 # Phase 12: Scheduler Platform
 
-> **Status:** Planned  |  **Track:** Data/Compute  |  **Depends on:** Phase 02, Phase 10, Phase 06
+> **Status:** Verified (2026-06-19)  |  **Track:** Data/Compute  |  **Depends on:** Phase 02, Phase 10, Phase 06
 
 ## Objective
 
@@ -8,12 +8,20 @@ Cron jobs that **survive a restart and fire on schedule**, targeting real HTTP e
 
 ## Current State
 
-**PARTIAL.** See `docs/AUDIT.md` §C (Scheduler). Specific defects:
+**Verified 2026-06-19.** The AUDIT §C defects are closed. See `docs/AUDIT.md` §C (Scheduler) for the updated verdict. What is now real (proven on the VPS):
 
-- Real `cron` library, fires HTTP endpoints while alive — but **no `OnModuleInit`/bootstrap hook**, so **every restart silently disables all cron jobs**.
-- `functionId` targets are **ignored**.
-- `nextRunAt` reports a time that **never fires**.
-- No distributed lock (double-fire risk on overlap/restart).
+- **Restore on boot.** `CronJobSchedulerService` implements `OnApplicationBootstrap` and re-registers **every** enabled job on startup — restarting the API no longer disables schedules (verified: a DB-only job inserted outside the running process was picked up and fired after restart).
+- **Distributed lock.** `scheduleJob` acquires `schedule:lock:<jobId>` via Redis `SET NX PX` and releases with a Lua compare-and-delete (token-checked). Proven: second acquirer is blocked; wrong-token release is a no-op.
+- **Both targets.** HTTP (`fetch(endpoint, POST)` w/ timeout) and function (`FunctionsService.invokeFunction`) branches both wired and exercised.
+- **`nextRunAt`** computed from the real expression (`cron.CronTime.sendAt()`), refreshed after each fire.
+- **Execution history** in `CronJobRun` (startedAt / completed / failed + errorMessage).
+- **Correct failure surfacing.** A function-target run whose function errored used to be silently `completed` (invokeFunction returns rather than throws); executeJob now throws on `!fnResult.success`, so the run is recorded as `failed`.
+
+**Honest gaps (still open, non-blocking for the exit criterion):**
+
+- Only the **cron-expression** schedule type is implemented. Fixed-interval and one-shot (`runAt`) are not (no schema field for them yet).
+- No explicit **concurrency policy** field (`allow`/`skip`/`replace`); the Redis lease gives implicit "skip" behavior.
+- **Function-target execution cannot run on the current VPS** because the `node:18-alpine` sandbox image is not cached and the box has **no external egress** to pull it. The *scheduler dispatch* (`executeJob → invokeFunction → sandbox.run`, observable via `FunctionLog`) is verified; the *function runtime* executing successfully depends on a Phase 10 environment fix (pre-pull/cache the runtime image or enable egress).
 
 ## Dependencies
 
