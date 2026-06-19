@@ -4,6 +4,7 @@ import {
 } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { JwtAuthGuard } from '@/modules/auth/jwt-auth.guard';
+import { PlatformAdminGuard } from '@/modules/auth/guards/platform-admin.guard';
 import { MarketplaceCatalogService } from '@/modules/marketplace/services/marketplace-catalog.service';
 import { MarketplaceReviewService } from '@/modules/marketplace/services/marketplace-review.service';
 import { MarketplaceSubmissionService } from '@/modules/marketplace/services/marketplace-submission.service';
@@ -90,34 +91,34 @@ export class MarketplaceController {
   }
 
   @Post('items/:id/approve')
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(JwtAuthGuard, PlatformAdminGuard)
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Approve item (admin)' })
-  async approveItem(@Param('id') id: string) {
-    return this.submissions.approveItem(id);
+  async approveItem(@Param('id') id: string, @Req() req: any) {
+    return this.submissions.approveItem(id, req.user);
   }
 
   @Post('items/:id/reject')
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(JwtAuthGuard, PlatformAdminGuard)
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Reject item (admin)' })
-  async rejectItem(@Param('id') id: string) {
-    return this.submissions.rejectItem(id);
+  async rejectItem(@Param('id') id: string, @Req() req: any) {
+    return this.submissions.rejectItem(id, req.user);
   }
 
   @Post('items/:id/featured')
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(JwtAuthGuard, PlatformAdminGuard)
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Toggle featured (admin)' })
-  async markFeatured(@Param('id') id: string, @Body() body: { featured: boolean }) {
-    return this.submissions.markFeatured(id, body.featured);
+  async markFeatured(@Param('id') id: string, @Body() body: { featured: boolean }, @Req() req: any) {
+    return this.submissions.markFeatured(id, body.featured, req.user);
   }
 
   @Post('items/:id/verify')
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(JwtAuthGuard, PlatformAdminGuard)
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Verify item (admin)' })
-  async verifyItem(@Param('id') id: string) {
-    return this.submissions.verifyItem(id);
+  async verifyItem(@Param('id') id: string, @Req() req: any) {
+    return this.submissions.verifyItem(id, req.user);
   }
 }

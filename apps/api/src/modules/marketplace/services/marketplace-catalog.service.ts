@@ -44,7 +44,7 @@ export class MarketplaceCatalogService {
           rating: true,
           reviewCount: true,
           isFeatured: true,
-          isVerified: true,
+          isVerified: false,
           createdAt: true,
         },
       }),
@@ -59,7 +59,6 @@ export class MarketplaceCatalogService {
       where: { slug, status: 'approved', isActive: true },
       include: {
         reviews: {
-          where: { isVerified: true },
           take: 10,
           orderBy: { createdAt: 'desc' },
           select: {
@@ -68,6 +67,7 @@ export class MarketplaceCatalogService {
             title: true,
             content: true,
             userName: true,
+            isVerified: true,
             helpful: true,
             createdAt: true,
           },

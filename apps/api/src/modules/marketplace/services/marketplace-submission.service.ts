@@ -1,4 +1,4 @@
-import { Injectable, BadRequestException } from '@nestjs/common';
+import { Injectable, BadRequestException, ForbiddenException } from '@nestjs/common';
 import { PrismaService } from '@/prisma/prisma.service';
 import { EventService } from '@/modules/events/event.service';
 
@@ -58,7 +58,15 @@ export class MarketplaceSubmissionService {
     });
   }
 
-  async approveItem(itemId: string) {
+  private requireAdmin(user: { platformRole?: string }): void {
+    // Defense-in-depth: service-level role recheck even though guard already validated
+    if (user.platformRole !== 'ADMIN') {
+      throw new ForbiddenException('Admin role required for this action');
+    }
+  }
+
+  async approveItem(itemId: string, actor: { platformRole?: string }) {
+    this.requireAdmin(actor);
     const item = await this.prisma.marketplaceItem.update({
       where: { id: itemId },
       data: { status: 'approved', approvedAt: new Date(), isActive: true },
@@ -67,21 +75,24 @@ export class MarketplaceSubmissionService {
     return item;
   }
 
-  async rejectItem(itemId: string) {
+  async rejectItem(itemId: string, actor: { platformRole?: string }) {
+    this.requireAdmin(actor);
     return this.prisma.marketplaceItem.update({
       where: { id: itemId },
       data: { status: 'rejected' },
     });
   }
 
-  async markFeatured(itemId: string, featured: boolean) {
+  async markFeatured(itemId: string, featured: boolean, actor: { platformRole?: string }) {
+    this.requireAdmin(actor);
     return this.prisma.marketplaceItem.update({
       where: { id: itemId },
       data: { isFeatured: featured },
     });
   }
 
-  async verifyItem(itemId: string) {
+  async verifyItem(itemId: string, actor: { platformRole?: string }) {
+    this.requireAdmin(actor);
     return this.prisma.marketplaceItem.update({
       where: { id: itemId },
       data: { isVerified: true },
