@@ -172,6 +172,28 @@ async function run(argv: string[]): Promise<void> {
       }
     });
 
+  // init --template <id> <name> [--project <projectId>]
+  program
+    .command('init')
+    .description('Scaffold a new project from a template')
+    .argument('<template>', 'Template ID (e.g. static-site, node-api)')
+    .argument('<name>', 'Name for the new project')
+    .option('-p, --project <id>', 'Parent project ID for template sourcing', cfg.currentProject ?? '')
+    .action(async (template: string, name: string, opts: { project?: string }) => {
+      const apiKey = getApiKey() ?? die('Not logged in');
+      const parentProjectId = opts.project ?? die('No project ID (--project or set currentProject in config)');
+      const { createFidscript } = await import('@fidscript/sdk');
+      const sdk = createFidscript({ apiKey });
+      console.log(`Scaffolding project "${name}" from template "${template}"...`);
+      try {
+        const result = await sdk.templates.generateAndDeploy(parentProjectId, template, name, {});
+        console.log(`Project created: ${result.project.id}`);
+        console.log(`Deployment: ${result.deployment.id} (${result.deployment.status})`);
+      } catch (e) {
+        die(`Failed to scaffold project: ${(e as Error).message}`);
+      }
+    });
+
   // deployments list [--project <id>]
   program
     .command('deployments list')
