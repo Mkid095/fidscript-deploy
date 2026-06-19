@@ -1,6 +1,6 @@
 # Phase 15: Logging Platform
 
-> **Status:** Planned  |  **Track:** Observability  |  **Depends on:** Phase 02, Phase 05, Phase 12
+> **Status:** In Progress  |  **Track:** Observability  |  **Depends on:** Phase 02, Phase 05, Phase 12
 
 ## Objective
 
@@ -8,11 +8,14 @@ Logs that **ingest, query with filters, age out per retention, and ship to an ex
 
 ## Current State
 
-**PARTIAL.** See `docs/AUDIT.md` §C (Logging). Specific defects:
+**IN PROGRESS (committed, pending VPS verify).**
 
-- Real ingestion + genuinely good cursor-paginated query — the read path is solid.
-- **`retentionDays` is never enforced**; there is **no retention sweep** → logs grow forever.
-- **No log shipping** to external sinks.
+- Real ingestion + cursor-paginated query — ✅ existing.
+- **Retention sweep** — ✅ `LogRetentionService.runSweep()` batch-deletes per `retentionDays`, `logs.pruned` events emitted.
+- **Log shipping** — ✅ `LogShipperService` with `WebhookShipper` (HMAC-signed HTTP POST) and `MinioShipper` (gzipped JSONL to MinIO); `logs.shipped/ship_failed` events.
+- **Structured ingest** — ✅ `POST /logs/ingest` with `X-API-Key` auth, `validateProjectApiKey` on `ProjectApiKeyService`.
+- **Volume quota** — ✅ `LogQuotaService` 50 k/24 h soft cap, fires Phase-14 alert on breach.
+- **`logs.log.ingested`** — ✅ emitted (sampled 1 %).
 
 ## Dependencies
 
@@ -77,9 +80,8 @@ docker compose exec postgres psql ... -c "select count(*) from logs.logs where t
 
 ## Files you'll touch (precision map)
 
-- Partial at: `apps/api/src/modules/logging/logging.service.ts` (real ingestion + genuinely good cursor-paginated query — but `retentionDays` never enforced; no retention sweep; no shipping).
-- Prisma: `LogStream`, `LogEntry`.
-- Add: a retention sweep as a Phase 12 scheduler job (batched deletes); a pluggable `LogShipper` (webhook / object storage to Phase 05 / Loki); structured ingest from deployments(06)/functions(10)/queues(11).
+- **Existing (unchanged):** `LogStream`, `LogEntry` Prisma models; `LogQueryService` (cursor pagination); `LogWriteService` (ingestion); `LoggingController` (JWT-guarded CRUD).
+- **New:** `LogRetentionService` (batched sweep); `LogQuotaService` (soft quota + Phase-14 alert hook); `LogSchedulerService` (setInterval retention+shipper timers); `LogShipperService` (buffer coordinator); `WebhookShipper`; `MinioShipper`; `LogIngestController` (`POST /logs/ingest`); `validateProjectApiKey` on `ProjectApiKeyService`; `packages/events` logging event types.
 
 ## Next Phase
 
