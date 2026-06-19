@@ -55,4 +55,8 @@ export class AIConversationService {
   async chat(projectId: string, userId: string | null, content: string) {
     return this.chatHandler.chat(projectId, userId, content);
   }
+
+  async chatStream(projectId: string, userId: string | null, content: string) {
+    return this.chatHandler.chatStream(projectId, userId, content);
+  }
 }

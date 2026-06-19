@@ -82,6 +82,17 @@ export class AIController {
     return this.conversation.chat(projectId, req.user?.id, dto.content);
   }
 
+  @Post('chat/stream')
+  @ApiOperation({ summary: 'Streaming chat' })
+  async chatStream(
+    @Param('projectId') projectId: string,
+    @Req() req: any,
+    @Body() dto: { content: string },
+  ) {
+    const stream = await this.conversation.chatStream(projectId, req.user?.id, dto.content);
+    return stream;
+  }
+
   @Post('diagnose')
   @ApiOperation({ summary: 'Diagnose error' })
   async diagnoseError(@Param('projectId') projectId: string, @Body() dto: DiagnoseErrorDto) {

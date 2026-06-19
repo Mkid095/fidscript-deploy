@@ -3,7 +3,6 @@ export interface AICompletionRequest {
   messages: Array<{ role: string; content: string }>;
   temperature?: number;
   maxTokens?: number;
-  stream?: boolean;
 }
 
 export interface AICompletionResponse {
@@ -17,7 +16,7 @@ export interface AICompletionResponse {
 export interface AIProvider {
   name: string;
   complete(request: AICompletionRequest): Promise<AICompletionResponse>;
-  stream?(request: AICompletionRequest): AsyncGenerator<string>;
+  stream(request: AICompletionRequest): AsyncGenerator<string>;
 }
 
 export const AI_PROVIDER = 'AI_PROVIDER';

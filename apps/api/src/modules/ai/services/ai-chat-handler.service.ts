@@ -66,6 +66,22 @@ export class AIChatHandlerService {
     return this.sendMessage(projectId, conversation.id, { content });
   }
 
+  async *chatStream(projectId: string, userId: string | null, content: string): AsyncGenerator<string> {
+    const systemPrompt = this.buildSystemPrompt(projectId);
+    const apiMessages = [
+      { role: 'system', content: systemPrompt },
+      { role: 'user', content },
+    ];
+
+    for await (const token of this.aiProvider.stream({
+      model: 'gemini-1.5-flash',
+      messages: apiMessages,
+      temperature: 0.7,
+    })) {
+      yield token;
+    }
+  }
+
   parseAIJsonResponse(content: string): any {
     try {
       const jsonMatch = content.match(/```(?:json)?\s*([\s\S]*?)```/) || content.match(/\{[\s\S]*\}/);

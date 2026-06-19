@@ -11,25 +11,65 @@ export class AIAssistantService {
     @Inject('AI_PROVIDER') private aiProvider: AIProvider,
   ) {}
 
+  /**
+   * Diagnose an error using REAL platform context — deployment logs, recent alerts,
+   * and deployment history are fetched from the platform and included in the prompt.
+   * This makes the diagnosis grounded, not a generic hallucination.
+   */
   async diagnoseError(projectId: string, dto: any) {
-    const systemPrompt = `You are FIDScript Deploy's AI error diagnosis assistant.
-Analyze errors and provide:
-1. Root cause analysis
-2. Suggested fix
-3. Prevention tips
-4. Related documentation links
+    // Fetch real platform context in parallel
+    // LogEntry is scoped by streamId → LogStream.projectId, not directly by projectId
+    const [deployment, firingAlerts] = await Promise.all([
+      dto.deploymentId
+        ? this.prisma.deployment.findFirst({ where: { id: dto.deploymentId, projectId } })
+        : Promise.resolve(null),
+      this.prisma.alert.findMany({
+        where: { projectId, status: { in: ['FIRING', 'WARNING'] } },
+        include: { rule: { select: { name: true } } },
+        take: 10,
+      }),
+    ]);
 
-Format response as JSON with: diagnosis, fix, prevention, links`;
+    // Fetch log entries via the LogStream relation
+    const recentLogs = await this.prisma.logEntry.findMany({
+      where: {
+        stream: { projectId },
+        level: { in: ['error', 'fatal'] },
+      },
+      orderBy: { timestamp: 'desc' },
+      take: 20,
+    });
+
+    // Redact secrets from logs before sending to AI
+    const sanitizedLogs = recentLogs.map(l => ({
+      timestamp: l.timestamp,
+      level: l.level,
+      message: this.redactSecrets(l.message),
+    }));
+
+    const context = {
+      deployment: deployment
+        ? { id: deployment.id, status: deployment.status, deploymentUrl: deployment.deploymentUrl, createdAt: deployment.createdAt }
+        : null,
+      recentErrors: sanitizedLogs,
+      firingAlerts: firingAlerts.map(a => ({ ruleName: a.rule?.name, severity: a.severity, status: a.status, message: a.message })),
+    };
+
+    const systemPrompt = `You are FIDScript Deploy's AI error diagnosis assistant.
+You have access to REAL platform data. Be specific and cite exact error messages, log lines, and metrics.
+If the logs don't contain enough information to diagnose the issue, say so honestly.
+
+Format response as JSON with: diagnosis (string), fix (string), prevention (string), links (string[])`;
 
     const response = await this.aiProvider.complete({
       model: 'gemini-1.5-flash',
       messages: [
         { role: 'system', content: systemPrompt },
-        { role: 'user', content: `Error: ${dto.error}\nContext: ${JSON.stringify(dto.context || {})}` },
+        { role: 'user', content: `Deployment ID: ${dto.deploymentId ?? 'not specified'}\nPlatform Context:\n${JSON.stringify(context, null, 2)}` },
       ],
     });
 
-    this.events.emit('ai.error_diagnosed', { projectId, error: dto.error });
+    this.events.emit('ai.error_diagnosed', { projectId, error: dto.error, deploymentId: dto.deploymentId });
     return this.parseAIJsonResponse(response.content);
   }
 
@@ -118,6 +158,19 @@ Format response as JSON with: structure, template, features (array), setupSteps 
 
     this.events.emit('ai.project.generation_assisted', { projectId });
     return this.parseAIJsonResponse(response.content);
+  }
+
+  /**
+   * Redact secrets from log messages before sending to AI to prevent leakage.
+   * Redacts: API keys, DATABASE_URL, passwords, tokens.
+   */
+  private redactSecrets(text: string): string {
+    return text
+      .replace(/(fpk_[a-zA-Z0-9]{32,})/g, '[REDACTED_API_KEY]')
+      .replace(/postgres(?:ql)?:\/\/[^:]+:[^@]+@[^/]+/g, '[REDACTED_DATABASE_URL]')
+      .replace(/(Bearer |Token )([a-zA-Z0-9_\-\.]{10,})/g, '$1[REDACTED_TOKEN]')
+      .replace(/password["\s:=]+[^\s,"]+/gi, 'password=[REDACTED]')
+      .replace(/secret["\s:=]+[^\s,"]+/gi, 'secret=[REDACTED]');
   }
 
   private parseAIJsonResponse(content: string): any {
