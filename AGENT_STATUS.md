@@ -10,7 +10,7 @@ Current state of FIDScript Deploy development.
 
 | | |
 |---|---|
-| **Current phase** | Phase 10 — Functions Runtime (in progress) |
+| **Current phase** | Phase 10 — Functions Runtime (verified 2026-06-19) |
 | **Last verified phase** | Phase 09 — Email Platform (Stalwart) (verified 2026-06-18) |
 | **Phase docs** | All 24 rewritten to v2 |
 | **Snapshot baseline** | Commit `f1dd6f2` (Phase 00-23 scaffold, pre-hardening) |
@@ -43,7 +43,7 @@ Statuses: `Planned` · `In Progress` · `Verified`
 | 07 | Domains & TLS | Verified |
 | 08 | Database Platform | Verified |
 | 09 | Email Platform (Stalwart) | Verified |
-| 10 | Functions Runtime | In Progress |
+| 10 | Functions Runtime | Verified |
 | 11 | Queues Platform | Planned |
 | 12 | Scheduler Platform | Planned |
 | 13 | Realtime Platform | Planned |

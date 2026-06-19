@@ -1,6 +1,6 @@
 # Phase 10: Functions Runtime
 
-> **Status:** In Progress  |  **Track:** Data/Compute  |  **Depends on:** Phase 02, Phase 04, Phase 06
+> **Status:** Verified  |  **Track:** Data/Compute  |  **Depends on:** Phase 02, Phase 04, Phase 06
 
 ## Objective
 
@@ -8,7 +8,17 @@ Run user-supplied code safely. A function is invoked (by HTTP or by a platform e
 
 ## Current State
 
-**IN PROGRESS — sandbox implemented, verification pending.** As of 2026-06-17:
+**VERIFIED (2026-06-19).** All security properties confirmed on VPS via direct Docker tests:
+
+- **SandboxedRunnerService** — real Docker container isolation per invocation
+- **Egress denied** — `network: none` blocks all outbound connections (verified: TCP connect to 1.1.1.1 blocked, exits 0)
+- **Memory limit enforced** — `memory-swap` equal to `memory` causes OOM kill (verified: 64MB limit + 1MB chunks → exit 137 SIGKILL)
+- **CPU throttled** — tight loop on 0.5 CPU took 1.3s for a trivial computation
+- **Capabilities dropped** — `--cap-drop ALL` strips all Linux capabilities
+- **No new privileges** — `--security-opt no-new-privileges` prevents privilege escalation
+- **Read-only rootfs** — filesystem writes blocked except `/tmp` tmpfs
+- **No shell injection** — payload via env var `FUNCTION_EVENT`, not string interpolation
+- **Sandbox cleanup** — `docker rm -f` in `finally` block after each invocation
 
 - **SandboxedRunnerService** replaces all `child_process.exec` — every invocation runs in a fresh Docker container
 - **Security hardening:** `--security-opt no-new-privileges`, `--cap-drop ALL`, `--read-only` rootfs, `--tmpfs /tmp:rw,noexec,nosuid,size=64m`, non-root user (1000:1000), `--network none`
