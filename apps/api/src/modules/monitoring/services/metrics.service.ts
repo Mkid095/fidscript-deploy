@@ -1,12 +1,12 @@
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '@/prisma/prisma.service';
-import { EventService } from '@/modules/events/event.service';
+import { AlertEvaluatorService } from './alert-evaluator.service';
 
 @Injectable()
 export class MetricsService {
   constructor(
     private prisma: PrismaService,
-    private eventService: EventService,
+    private alertEvaluator: AlertEvaluatorService,
   ) {}
 
   async getMetrics(projectId: string, dto: { metric?: string; startTime?: Date; endTime?: Date }) {
@@ -66,7 +66,9 @@ export class MetricsService {
       data: { projectId, metric, value, labels: labels || {} },
     });
 
-    await this.checkAlertRules(projectId, metric, value);
+    // Phase 14: evaluate alert rules through the OK→PENDING→FIRING→RESOLVED
+    // state machine (honors durationSeconds; dispatches on FIRING).
+    await this.alertEvaluator.evaluate(projectId, metric, value);
 
     return record;
   }
@@ -83,53 +85,5 @@ export class MetricsService {
       totalMetrics: metricCount,
       notificationChannels: channelCount,
     };
-  }
-
-  private async checkAlertRules(projectId: string, metric: string, value: number) {
-    const rules = await this.prisma.alertRule.findMany({
-      where: { projectId, metric, enabled: true },
-    });
-
-    for (const rule of rules) {
-      let triggered = false;
-
-      switch (rule.condition) {
-        case 'above':
-          triggered = value > rule.threshold;
-          break;
-        case 'below':
-          triggered = value < rule.threshold;
-          break;
-        case 'equals':
-          triggered = value === rule.threshold;
-          break;
-      }
-
-      if (triggered) {
-        const existingAlert = await this.prisma.alert.findFirst({
-          where: { projectId, ruleId: rule.id, status: { in: ['firing', 'pending'] } },
-        });
-
-        if (!existingAlert) {
-          await this.prisma.alert.create({
-            data: {
-              projectId,
-              ruleId: rule.id,
-              severity: rule.severity,
-              status: 'firing',
-              message: `${rule.name}: ${metric} is ${value} (threshold: ${rule.threshold})`,
-            },
-          });
-
-          await this.eventService.emit('monitoring.alert_triggered', {
-            projectId,
-            ruleId: rule.id,
-            metric,
-            value,
-            threshold: rule.threshold,
-          });
-        }
-      }
-    }
   }
 }

@@ -40,4 +40,9 @@ export class NotificationChannelsController {
   async deleteNotificationChannel(@Param('projectId') projectId: string, @Param('channelId') channelId: string) {
     return this.channels.deleteNotificationChannel(projectId, channelId);
   }
+
+  @Post(':channelId/test')
+  async testNotificationChannel(@Param('projectId') projectId: string, @Param('channelId') channelId: string) {
+    return this.channels.testChannel(projectId, channelId);
+  }
 }

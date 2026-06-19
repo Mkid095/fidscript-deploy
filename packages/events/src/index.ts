@@ -136,6 +136,10 @@ export type EventType =
   | 'ai.project.generation_assisted'
   // Monitoring events
   | 'monitoring.alert_triggered'
+  | 'monitoring.alert.firing'
+  | 'monitoring.alert.resolved'
+  | 'monitoring.notification.sent'
+  | 'monitoring.notification.failed'
   // Template events
   | 'template.created'
   | 'template.deleted'

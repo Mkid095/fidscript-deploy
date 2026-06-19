@@ -1,9 +1,13 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '@/prisma/prisma.service';
+import { NotificationService } from './notification.service';
 
 @Injectable()
 export class NotificationChannelService {
-  constructor(private prisma: PrismaService) {}
+  constructor(
+    private prisma: PrismaService,
+    private notifications: NotificationService,
+  ) {}
 
   async createNotificationChannel(
     projectId: string,
@@ -61,5 +65,23 @@ export class NotificationChannelService {
 
     await this.prisma.notificationChannel.delete({ where: { id: channelId } });
     return { deleted: true };
+  }
+
+  /** Send a test message through the channel (no delivery record). */
+  async testChannel(
+    projectId: string,
+    channelId: string,
+  ): Promise<{ success: boolean; error?: string }> {
+    const channel = await this.prisma.notificationChannel.findFirst({
+      where: { id: channelId, projectId },
+    });
+    if (!channel) throw new NotFoundException('Notification channel not found');
+    return this.notifications.testChannel({
+      id: channel.id,
+      projectId: channel.projectId,
+      name: channel.name,
+      type: channel.type,
+      config: (channel.config ?? {}) as Record<string, unknown>,
+    });
   }
 }
