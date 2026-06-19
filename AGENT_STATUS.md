@@ -50,7 +50,7 @@ Statuses: `Planned` · `In Progress` · `Verified`
 | 14 | Monitoring Platform | Verified |
 | 15 | Logging Platform | In Progress |
 | 16 | SDK Platform | In Progress |
-| 17 | MCP Platform | Planned |
+| 17 | MCP Platform | In Progress |
 | 18 | CLI Platform | Planned |
 | 19 | Dashboard Platform | Planned |
 | 20 | Skills Platform | Planned |

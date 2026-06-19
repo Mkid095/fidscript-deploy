@@ -1,19 +1,19 @@
 # Phase 17: MCP Platform
 
-> **Status:** Planned  |  **Track:** Surfaces  |  **Depends on:** Phase 16, Phase 03
+> **Status:** In Progress  |  **Track:** Surfaces  |  **Depends on:** Phase 16, Phase 03
 
 ## Objective
 
-A Model Context Protocol server that lets coding agents (Claude Code, Claude Desktop, Cursor) **operate the platform** — list projects, deploy, invoke functions, query logs, manage databases — through real, working tools. One of the three access surfaces the installer delivers. Today the live modular path is real but **cannot start** (SDK missing from the lockfile) and is shadowed by a 1526-line dead duplicate.
+A Model Context Protocol server that lets coding agents (Claude Code, Claude Desktop, Cursor) **operate the platform** — list projects, deploy, invoke functions, query logs, manage databases — through real, working tools.
 
 ## Current State
 
-**PARTIAL.** See `docs/AUDIT.md` §D (MCP). Specific defects:
+**IN PROGRESS.**
 
-- The modular `tools/*` + `handlers.ts` + `server.ts` path is **real and live** (real HTTP calls to the API) — the right foundation.
-- `index.ts` is a **1526-line dead duplicate** with zero importers — delete it.
-- `@modelcontextprotocol/sdk` is **absent from `pnpm-lock.yaml`** → the server cannot start.
-- `install.sh` tries to `npx` an **unpublished** package.
+- The modular `tools/*` + `handlers.ts` + `server.ts` path is **real and live** — `initialize` + `tools/list` return structured tool schemas (verified).
+- `@modelcontextprotocol/sdk@0.5.0` is installed and the server starts on stdio.
+- `install.sh` fixed to point at the built `dist/server.js` with Node.js (no more `npx` of an unpublished package).
+- All platform modules exposed as MCP tools: auth, projects, deployments, storage, databases, email, functions, queues, cron, realtime, monitoring, logging, AI, marketplace.
 
 ## Dependencies
 
@@ -77,10 +77,8 @@ curl -fsS https://deploy.fidscript.com/mcp/tools -H "Authorization: Bearer ..." 
 
 ## Files you'll touch (precision map)
 
-- Live path: `apps/mcp-server/src/server.ts` (entry, MCP SDK 0.5.0 API fixed in Phase 00) + `handlers.ts` + `tools/*.ts` + `utils/api.ts` (real HTTP calls to the API).
-- The dead 1526-line `apps/mcp-server/src/index.ts` was already deleted in Phase 00.
-- `apps/mcp-server/package.json` (deps incl. `@modelcontextprotocol/sdk`); `apps/mcp-server/install.sh` (today `npx`s an unpublished package — fix to point at the built server).
-- Add: bearer/API-key auth, scoped tool subset per token, progress notifications for long ops.
+- `apps/mcp-server/install.sh` — fixed to point at `node dist/server.js` instead of `npx` of unpublished package.
+- Remaining: bearer/API-key auth (FIDSCRIPT_API_KEY wired already), scoped tool subset per token, progress notifications for long ops (deploy/build streaming).
 
 ## Next Phase
 
