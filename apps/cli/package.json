@@ -1,0 +1,22 @@
+{
+  "name": "@fidscript/cli",
+  "version": "1.0.0",
+  "description": "FIDScript Deploy CLI — manage projects, deployments, functions, and more from the terminal",
+  "type": "module",
+  "bin": {
+    "fidscript": "./dist/bin/fidscript.js"
+  },
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsc --watch",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@fidscript/sdk": "workspace:*",
+    "commander": "^12.0.0"
+  },
+  "devDependencies": {
+    "@types/node": "^20.0.0",
+    "typescript": "^5.4.0"
+  }
+}
