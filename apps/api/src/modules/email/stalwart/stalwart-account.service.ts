@@ -79,6 +79,9 @@ export class StalwartAccountService {
         name: email,
         type: 'individual',
         secrets: [password],
+        // The address MUST be in `emails` for recipient validation to accept
+        // inbound delivery for this mailbox (the `name` alone is not enough).
+        emails: [email],
       };
       if (displayName) body.description = displayName;
 
@@ -137,5 +140,29 @@ export class StalwartAccountService {
       name: p.name,
       status: 'active',
     }));
+  }
+
+  /**
+   * Idempotently ensure a DOMAIN principal exists. In Stalwart v0.15 a domain
+   * is treated as LOCAL (mail accepted/delivered for it) only when a principal
+   * of type "domain" exists for it. Created via POST /api/principal.
+   */
+  async ensureDomainPrincipal(domain: string): Promise<void> {
+    const res = await this.api<PrincipalListResponse>('/api/principal');
+    const exists = (res.data?.items ?? []).some((p) => p.type === 'domain' && p.name === domain);
+    if (exists) return;
+    await this.api('/api/principal', 'POST', { type: 'domain', name: domain, description: `${domain} (local)` });
+  }
+
+  /**
+   * Idempotently ensure an INDIVIDUAL account (mailbox) exists. Skips creation
+   * if a principal with this email already exists (no password overwrite —
+   * v0.15 secrets are write-once anyway).
+   */
+  async ensureAccount(email: string, password: string, displayName?: string): Promise<void> {
+    const res = await this.api<PrincipalListResponse>('/api/principal');
+    const exists = (res.data?.items ?? []).some((p) => p.name === email);
+    if (exists) return;
+    await this.createAccount(email, password, displayName);
   }
 }

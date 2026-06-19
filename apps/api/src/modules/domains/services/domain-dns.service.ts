@@ -4,16 +4,17 @@ import { PrismaService } from '@/prisma/prisma.service';
 import axios from 'axios';
 import * as crypto from 'crypto';
 
-const PLATFORM_DOMAIN = 'deploy.fidscript.com';
-
 @Injectable()
 export class DomainDnsService {
   private readonly logger = new Logger(DomainDnsService.name);
+  private readonly platformDomain: string;
 
   constructor(
     private prisma: PrismaService,
     private configService: ConfigService,
-  ) {}
+  ) {
+    this.platformDomain = this.configService.get<string>('PLATFORM_DOMAIN', 'apps.local');
+  }
 
   /**
    * Connect Cloudflare account for Mode B auto-DNS.
@@ -93,7 +94,7 @@ export class DomainDnsService {
     } else {
       await createRecord({
         zoneId, type: 'CNAME', name: domain,
-        content: `${slug}.apps.${PLATFORM_DOMAIN}`,
+        content: `${slug}.apps.${this.platformDomain}`,
         ttl: 300, proxied: false,
       });
     }

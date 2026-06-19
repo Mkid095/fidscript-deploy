@@ -62,33 +62,57 @@ export class CloudflareZoneService {
   get serverIpRef() { return this.serverIp; }
   get platformDomainRef() { return this.platformDomain; }
 
+  /**
+   * Get the Cloudflare zone ID for a domain.
+   *
+   * If the domain is a subdomain (e.g. deploy.fidscript.com) and no zone
+   * exists for that exact name, walks up the domain labels to find the
+   * nearest parent zone (e.g. fidscript.com). This handles the common case
+   * where a zone is registered for the apex but not every subdomain.
+   */
   async getZoneId(domain: string): Promise<string | null> {
     const normalized = this.stripTrailingDot(domain);
     if (this.zoneIdCache.has(normalized)) {
       return this.zoneIdCache.get(normalized)!;
     }
 
-    try {
-      const response = await this.client.get('/zones', { params: { name: normalized } });
+    const zoneId = await this.getZoneIdImpl(normalized);
+    if (zoneId) {
+      // Cache the result for the original domain so future lookups for this
+      // specific subdomain are instant.
+      this.zoneIdCache.set(normalized, zoneId);
+    }
+    return zoneId;
+  }
 
+  private async getZoneIdImpl(domain: string): Promise<string | null> {
+    try {
+      // First try exact match
+      let response = await this.client.get('/zones', { params: { name: domain } });
       if (response.data.result?.length > 0) {
         const zoneId = response.data.result[0].id;
-        this.zoneIdCache.set(normalized, zoneId);
-        this.logger.log(`[cloudflare] Zone ${normalized} -> id=${zoneId}`);
+        this.logger.log(`[cloudflare] Zone ${domain} -> id=${zoneId}`);
         return zoneId;
       }
 
-      const searchResponse = await this.client.get('/zones', {
-        params: { name: normalized, status: 'active' },
-      });
-
-      if (searchResponse.data.result?.length > 0) {
-        const zoneId = searchResponse.data.result[0].id;
-        this.zoneIdCache.set(normalized, zoneId);
+      // Try active filter
+      response = await this.client.get('/zones', { params: { name: domain, status: 'active' } });
+      if (response.data.result?.length > 0) {
+        const zoneId = response.data.result[0].id;
+        this.logger.log(`[cloudflare] Zone ${domain} (active) -> id=${zoneId}`);
         return zoneId;
       }
 
-      return null;
+      // Subdomain walk: if no zone found, try stripping the left-most label.
+      // e.g. deploy.fidscript.com -> fidscript.com -> com (no zone)
+      const dotIndex = domain.indexOf('.');
+      if (dotIndex === -1) return null;
+      const parent = domain.slice(dotIndex + 1);
+      const parentZone = await this.getZoneIdImpl(parent);
+      if (parentZone) {
+        this.logger.log(`[cloudflare] Zone ${domain} -> using parent zone ${parent} -> id=${parentZone}`);
+      }
+      return parentZone ?? null;
     } catch (err) {
       this.logger.error(`[cloudflare] Failed to get zone ID for ${domain}: ${err instanceof Error ? err.message : err}`);
       return null;

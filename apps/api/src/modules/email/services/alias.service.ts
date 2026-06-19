@@ -44,7 +44,7 @@ export class EmailAliasService {
     }
 
     const alias = await this.prisma.emailAlias.create({
-      data: { domainId: domain.id, localPart: dto.localPart, targets: dto.targets, description: dto.description },
+      data: { domainId: domain.id, localPart: dto.localPart, targets: JSON.parse(JSON.stringify(dto.targets)), description: dto.description },
     });
 
     await this.eventService.emit('email.alias_created', {

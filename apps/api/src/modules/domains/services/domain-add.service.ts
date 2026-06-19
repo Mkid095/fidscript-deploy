@@ -1,4 +1,5 @@
 import { Injectable, NotFoundException, ForbiddenException, ConflictException } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { PrismaService } from '@/prisma/prisma.service';
 import { EventService } from '@/modules/events/event.service';
 import { DomainMxService } from '@/modules/domains/services/domain-mx.service';
@@ -7,10 +8,10 @@ import { DomainListService } from './domain-list.service';
 import { DomainAccessService } from './domain-access.service';
 import { AddDomainDto } from '@/modules/domains/dto/add-domain.dto';
 
-const PLATFORM_DOMAIN = 'deploy.fidscript.com';
-
 @Injectable()
 export class DomainAddService {
+  private readonly platformDomain: string;
+
   constructor(
     private prisma: PrismaService,
     private eventService: EventService,
@@ -18,7 +19,10 @@ export class DomainAddService {
     private cloudflareAuto: DomainCloudflareAutoService,
     private listService: DomainListService,
     private access: DomainAccessService,
-  ) {}
+    private configService: ConfigService,
+  ) {
+    this.platformDomain = this.configService.get<string>('PLATFORM_DOMAIN', 'apps.local');
+  }
 
   async add(userId: string, projectId: string, dto: AddDomainDto) {
     await this.access.ensureAccess(userId, projectId);
@@ -29,7 +33,7 @@ export class DomainAddService {
     const existing = await this.prisma.domain.findFirst({ where: { projectId, domain: dto.domain } });
     if (existing) throw new ConflictException('Domain already added to this project');
 
-    const isPlatform = dto.domain.endsWith(`.${PLATFORM_DOMAIN}`);
+    const isPlatform = dto.domain.endsWith(`.${this.platformDomain}`);
     const isApex = !dto.domain.startsWith('www.') && dto.domain.split('.').length === 2;
     const mx = await this.domainMxService.checkMxRecords(dto.domain);
     const isPrimary = (await this.prisma.domain.count({ where: { projectId } })) === 0;
@@ -78,7 +82,7 @@ export class DomainAddService {
     if (isApex) {
       instructions.push({ type: 'A', name: '@', value: 'YOUR_SERVER_IP', ttl: 300, notes: 'A record for the root domain.' });
     } else {
-      instructions.push({ type: 'CNAME', name: domain.replace(`.${PLATFORM_DOMAIN}`, '').split('.')[0], value: `${slug}.apps.${PLATFORM_DOMAIN}`, ttl: 300, notes: `Routes ${domain} to your deployment.` });
+      instructions.push({ type: 'CNAME', name: domain.replace(`.${this.platformDomain}`, '').split('.')[0], value: `${slug}.apps.${this.platformDomain}`, ttl: 300, notes: `Routes ${domain} to your deployment.` });
     }
     instructions.push({ type: 'TXT', name: `_fidscript-verification.${domain}`, value: 'FIDScript verified', ttl: 300, notes: 'Proves you own this domain.' });
     return instructions;

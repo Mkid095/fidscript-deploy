@@ -47,13 +47,24 @@ services:
     image: pgbouncer/pgbouncer:1.15.0
     container_name: fidscript_pgbouncer
     restart: unless-stopped
-    # Bypass the image's entrypoint script (which demands DATABASES env);
-    # run pgbouncer directly with the mounted ini (the soostori-proven pattern).
-    # Both entrypoint AND command must be overridden — the image entrypoint is
-    # the script that enforces the DATABASES env contract. The pgbouncer binary
-    # lives at /opt/pgbouncer/pgbouncer in this image (not in $PATH).
-    entrypoint: ["/opt/pgbouncer/pgbouncer"]
-    command: ["/etc/pgbouncer/pgbouncer.ini"]
+    # Bypass the image's entrypoint script (which demands DATABASES env).
+    # The pgbouncer binary lives at /opt/pgbouncer/pgbouncer (not in $PATH).
+    # We run a tiny shell wrapper that resolves `postgres` -> its current IP
+    # at startup and substitutes it into a temp copy of pgbouncer.ini before
+    # launching pgbouncer. This is required because (a) the committed ini uses
+    # the `postgres` service name as a placeholder, and (b) pgbouncer's c-ares
+    # resolver cannot parse the single-label docker name ("Misformatted domain
+    # name"). Resolving via getent (system resolver) at boot keeps the backend
+    # host dynamic — it survives postgres recreates (which change its IP),
+    # unlike a hardcoded literal IP which breaks on every recreate.
+    entrypoint: ["/bin/sh", "-c"]
+    command:
+      - |
+        set -e
+        PGIP=$$(getent hosts postgres | awk '{print $$1}' | head -1)
+        echo "[entrypoint] resolved postgres -> $${PGIP}"
+        sed "s/host=postgres/host=$${PGIP}/g" /etc/pgbouncer/pgbouncer.ini > /tmp/pgbouncer.ini
+        exec /opt/pgbouncer/pgbouncer /tmp/pgbouncer.ini
     env_file:
       - ./secrets/api.env
     volumes:
@@ -137,6 +148,17 @@ services:
     image: stalwartlabs/stalwart:v0.15.5
     container_name: fidscript_stalwart
     restart: unless-stopped
+    # Mail ports published to the host so external MTAs can deliver inbound
+    # (25) and users/clients can submit (465/587) and read mail (143/993).
+    # Without port 25 published, the MX record points at a closed port and
+    # no external mail arrives. The firewall (configure-firewall.sh) must
+    # also allow these — publishing alone is not enough.
+    ports:
+      - "25:25"     # SMTP  — inbound MX (server-to-server delivery)
+      - "465:465"   # SMTPS — implicit-TLS submission
+      - "587:587"   # SMTP  — STARTTLS submission
+      - "143:143"   # IMAP  — STARTTLS
+      - "993:993"   # IMAPS — implicit-TLS
     # Stalwart reads its config from /opt/stalwart/etc/config.toml,
     # which the image's entrypoint creates on first start if absent.
     # By pre-mounting our rendered config.toml to the same path, the

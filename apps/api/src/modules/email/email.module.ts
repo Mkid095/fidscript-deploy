@@ -30,6 +30,7 @@ import { StalwartIdentityService } from './stalwart/stalwart-identity.service';
 import { StalwartSieveService } from './stalwart/stalwart-sieve.service';
 import { WebhookService } from './services/webhook.service';
 import { EmailMailboxListService } from './services/email-mailbox-crud.service';
+import { EmailBootstrapService } from './services/email-bootstrap.service';
 import { DomainsModule } from '@/modules/domains/domains.module';
 
 @Module({
@@ -68,6 +69,7 @@ import { DomainsModule } from '@/modules/domains/domains.module';
     StalwartSieveService,
     WebhookService,
     EmailMailboxListService,
+    EmailBootstrapService,
   ],
   exports: [
     EmailService,

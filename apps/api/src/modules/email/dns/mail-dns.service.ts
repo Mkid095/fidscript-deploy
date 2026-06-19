@@ -18,7 +18,7 @@ export class MailDnsService {
 
   /**
    * Set up all email DNS records for a domain:
-   *   1. Generate DKIM key pair, store private key, publish TXT record
+   *   1. DKIM — ensure key exists in Stalwart, read public key, publish TXT
    *   2. MX record → mail.<domain>
    *   3. SPF TXT record → "v=spf1 mx -all"
    *   4. DMARC TXT record → "v=DMARC1; p=quarantine; ..."
@@ -30,35 +30,58 @@ export class MailDnsService {
     dmarcRecord: string;
   }> {
     const mailHostname = `mail.${domain}`;
+    const zoneId = await this.dkimService.getZoneId(domain);
+    const dns = this.dkimService.getDnsProvider();
 
-    // DKIM — generate, store private key, publish public key to DNS
-    const { privateKeyPem, publicKeyTxt } = await this.dkimService.generateKey(domain);
-    const keyPath = await this.dkimService.storePrivateKey(domain, privateKeyPem);
-    this.logger.log(`DKIM private key stored at ${keyPath}`);
-    await this.dkimService.publishDns(domain, publicKeyTxt);
+    // DKIM — Stalwart owns the private key; we publish only the public key.
+    await this.dkimService.ensureKey(domain);
+    const publicKeyB64 = await this.dkimService.getPublicKey(domain);
+    const publicKeyTxt = `v=DKIM1; k=ed25519; p=${publicKeyB64}`;
+    await this.ensureTxt(zoneId, `${this.dkimService.selector}._domainkey.${domain}`, publicKeyTxt);
 
     // MX
-    const zoneId = await this.dkimService.getZoneId(domain);
-    await this.dkimService.getDnsProvider().createRecord({
-      zoneId, type: 'MX', name: domain, content: mailHostname, priority: 10, ttl: 3600,
-    });
-    this.logger.log(`MX record published: ${domain} → ${mailHostname}`);
+    await this.ensureMx(zoneId, domain, mailHostname, 10);
 
-    // SPF
-    const spfRecord = 'v=spf1 mx -all';
-    await this.dkimService.getDnsProvider().createRecord({
-      zoneId, type: 'TXT', name: domain, content: spfRecord, ttl: 3600,
-    });
-    this.logger.log(`SPF record published: ${domain}`);
+    // SPF — softfail (~all) so receiving MTAs don't hard-reject during the
+    // deliverability warm-up; the sending IP is the MX host, so `mx` passes.
+    const spfRecord = 'v=spf1 mx ~all';
+    await this.ensureTxt(zoneId, domain, spfRecord);
 
     // DMARC
     const dmarcRecord = `v=DMARC1; p=quarantine; rua=mailto:dmarc@${domain}; pct=100`;
-    await this.dkimService.getDnsProvider().createRecord({
-      zoneId, type: 'TXT', name: `_dmarc.${domain}`, content: dmarcRecord, ttl: 3600,
-    });
-    this.logger.log(`DMARC record published: _dmarc.${domain}`);
+    await this.ensureTxt(zoneId, `_dmarc.${domain}`, dmarcRecord);
 
     return { dkimPublicKey: publicKeyTxt, mxRecord: mailHostname, spfRecord, dmarcRecord };
+  }
+
+  /**
+   * Upsert a TXT record: exactly one TXT at `name` with `content`.
+   * If a matching record exists → skip. If a differing TXT exists → delete it
+   * and create the correct one (self-correcting, no duplicates). If none →
+   * create. (Merging an existing user SPF/DKIM is future "DNS planner" work;
+   * for platform-managed domains the platform owns the record.)
+   */
+  private async ensureTxt(zoneId: string, name: string, content: string): Promise<void> {
+    const dns = this.dkimService.getDnsProvider();
+    const existing = await dns.listRecords({ zoneId, name, type: 'TXT' });
+    if (existing.some(r => r.content === content)) return;
+    for (const r of existing) {
+      await dns.deleteRecord({ zoneId, recordId: r.id });
+    }
+    await dns.createRecord({ zoneId, type: 'TXT', name, content, ttl: 3600 });
+    this.logger.log(`TXT upserted: ${name}`);
+  }
+
+  /** Upsert an MX record: exactly one MX at `name` pointing at mailHostname. */
+  private async ensureMx(zoneId: string, name: string, mailHostname: string, priority: number): Promise<void> {
+    const dns = this.dkimService.getDnsProvider();
+    const existing = await dns.listRecords({ zoneId, name, type: 'MX' });
+    if (existing.some(r => r.content === mailHostname)) return;
+    for (const r of existing) {
+      await dns.deleteRecord({ zoneId, recordId: r.id });
+    }
+    await dns.createRecord({ zoneId, type: 'MX', name, content: mailHostname, priority, ttl: 3600 });
+    this.logger.log(`MX upserted: ${name} → ${mailHostname}`);
   }
 
   /** Verify domain ownership via the ownership TXT record. */

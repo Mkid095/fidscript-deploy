@@ -45,6 +45,13 @@ configure_ufw() {
     ufw allow 80/tcp comment 'HTTP'
     ufw allow 443/tcp comment 'HTTPS'
 
+    # Allow mail (Stalwart — required for external email send/receive)
+    ufw allow 25/tcp comment 'SMTP inbound (MX delivery)'
+    ufw allow 465/tcp comment 'SMTPS submission'
+    ufw allow 587/tcp comment 'SMTP submission'
+    ufw allow 143/tcp comment 'IMAP'
+    ufw allow 993/tcp comment 'IMAPS'
+
     # Enable firewall
     echo "y" | ufw enable > /dev/null 2>&1
 
@@ -77,6 +84,11 @@ configure_iptables_fallback() {
     iptables -A INPUT -p tcp --dport 80 -j ACCEPT
     iptables -A INPUT -p tcp --dport 443 -j ACCEPT
 
+    # Allow mail (Stalwart — required for external email send/receive)
+    for p in 25 465 587 143 993; do
+        iptables -A INPUT -p tcp --dport "$p" -j ACCEPT
+    done
+
     # Save rules if iptables-proper is available
     if command -v iptables-save &> /dev/null && [[ -d /etc/iptables ]]; then
         iptables-save > /etc/iptables/rules.v4
@@ -103,4 +115,6 @@ echo "Required open ports:"
 echo "  - 22/tcp (SSH)"
 echo "  - 80/tcp (HTTP)"
 echo "  - 443/tcp (HTTPS)"
+echo "  - 25/465/587/tcp (SMTP — mail send/receive)"
+echo "  - 143/993/tcp (IMAP — mailbox access)"
 echo ""

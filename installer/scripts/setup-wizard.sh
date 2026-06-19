@@ -135,6 +135,11 @@ echo "$SMTP_SUBMISSION_USER" > "$SECRETS_DIR/smtp_submission_user.txt"
 echo "$SMTP_SUBMISSION_PASS" > "$SECRETS_DIR/smtp_submission_pass.txt"
 # Stalwart credentials file for SMTP submission port auth (format: user password)
 echo "$SMTP_SUBMISSION_USER $SMTP_SUBMISSION_PASS" > "$SECRETS_DIR/stalwart_credentials.txt"
+# Password for system mailboxes (alert@, noreply@) provisioned by the api's
+# EmailBootstrapService on boot. Stable across boots so operators can log in
+# via IMAP; outbound mail authenticates with the admin token, not this.
+SYSTEM_MAILBOX_PASSWORD=$(openssl rand -base64 24 | tr -d '/=' | head -c 32)
+echo "$SYSTEM_MAILBOX_PASSWORD" > "$SECRETS_DIR/system_mailbox_password.txt"
 
 # Set permissions
 chmod 600 "$SECRETS_DIR/"*.txt
@@ -165,7 +170,7 @@ ADMIN_PASSWORD=$ADMIN_PASSWORD
 STORAGE_PATH=$STORAGE_PATH
 AUTO_SSL=$AUTO_SSL
 SERVER_IP=$SERVER_IP
-PLATFORM_DOMAIN=deploy.fidscript.com
+PLATFORM_DOMAIN=$DOMAIN
 PLATFORM_MAIL_HOST=mail.$DOMAIN
 SMTP_SUBMISSION_USER=submission@$DOMAIN
 SMTP_SUBMISSION_PASS=$SMTP_SUBMISSION_PASS
@@ -184,6 +189,7 @@ MINIO_ACCESS_KEY=$MINIO_ACCESS_KEY
 MINIO_SECRET_KEY=$MINIO_SECRET_KEY
 SMTP_SUBMISSION_USER=$SMTP_SUBMISSION_USER
 SMTP_SUBMISSION_PASS=$SMTP_SUBMISSION_PASS
+SYSTEM_MAILBOX_PASSWORD=$SYSTEM_MAILBOX_PASSWORD
 EOF
 
 # Create DNS records for platform subdomains via Cloudflare API before Traefik starts
@@ -238,11 +244,20 @@ http:
 
   routers:
     dashboard:
-      rule: "Host(\`deploy.${DOMAIN}\`)"
+      rule: "Host(\`${DOMAIN}\`) && !PathPrefix(\`/api\`) && !PathPrefix(\`/metrics\`)"
       service: dashboard
       middlewares:
         - security-headers
         - compress
+      tls:
+        certResolver: letsencrypt-dns
+
+    # Prometheus /metrics endpoint (Phase 14) — must precede the dashboard catch-all.
+    metrics:
+      rule: "Host(\`${DOMAIN}\`) && PathPrefix(\`/metrics\`)"
+      service: api
+      middlewares:
+        - security-headers
       tls:
         certResolver: letsencrypt-dns
 

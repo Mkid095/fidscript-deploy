@@ -89,4 +89,4 @@ A phase moves to **Verified** only when, on the VPS: it builds, it runs, its pro
 
 ---
 
-*Last updated: 2026-06-19 (Phase 14 Monitoring verified — alert state machine, notifiers, Prometheus endpoint; Phase 13 Realtime verified — event fan-out to clients + Redis adapter)*
+*Last updated: 2026-06-19 (Phase 14 Monitoring verified; email deliverability fully fixed — inbox confirmed; pgbouncer dynamic resolution; Phase 09 gaps closed)*

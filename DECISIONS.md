@@ -996,6 +996,45 @@ NestJS lifecycle requires **every** `onModuleInit` (and `onApplicationBootstrap`
 
 ---
 
+## ADR-027: pgbouncer.ini Must Resolve `host=postgres` Dynamically at Container Startup
+
+**Date:** 2026-06-19  |  **Status:** Accepted  |  **Phase:** 01
+
+**Context.** The `pgbouncer.ini` mounted into the `fidscript_pgbouncer` container used `host=postgres` (the Docker service name) as the backend connection string. Stalwart's c-ares resolver cannot resolve single-label Docker DNS names — it returns `Misformatted domain name` and drops connections silently, causing the entire API to fail with a database connection error whenever pgbouncer tried to connect to postgres. A hardcoded literal IP would work but breaks on every `docker compose up -d --force-recreate postgres` (postgres IP changes on recreate), silently taking down the platform.
+
+**Decision.** The pgbouncer container entrypoint now runs a shell wrapper that:
+1. Resolves `postgres` to its current IP via `getent hosts postgres` (system resolver, not c-ares) at container startup
+2. Substitutes `host=<resolved IP>` into a temp copy of `pgbouncer.ini` before launching pgbouncer
+3. Uses `exec /opt/pgbouncer/pgbouncer /tmp/pgbouncer.ini` so pgbouncer inherits PID 1
+
+This survives postgres recreates (new IP re-resolved on each pgbouncer restart), avoids hardcoding an IP that would go stale, and works because `pgbouncer.ini` is a plain text file we control.
+
+**Implementation.** `installer/docker/docker-compose.yml` — pgbouncer `entrypoint` changed from `["/opt/pgbouncer/pgbouncer"]` to `["/bin/sh", "-c"]` with a `command` script that does the `sed` substitution and `exec`.
+
+**Why not `depends_on` with a fixed IP?** Docker's `depends_on` only waits for the container to start, not for its IP to be stable. The IP is assigned by the Docker daemon at container start and changes on every recreate.
+
+---
+
+## ADR-028: Platform Bootstrap Values Derived from `$PLATFORM_DOMAIN` at Install Time
+
+**Date:** 2026-06-19  |  **Status:** Accepted  |  **Phase:** 09 (Email)
+
+**Context.** Stalwart's config.toml template had several hardcoded values for the `deploy.fidscript.com` domain: the HELO hostname, the server hostname, the submission hostname, the JMAP advertised URL, and the TLS certificate paths. The installer was setting `PLATFORM_DOMAIN=deploy.fidscript.com` in `api.env` but nowhere else, meaning changing the domain would require editing multiple files. Additionally, several Docker service hostnames (`STALWART_HOST`, `MINIO_HOST`, `REDIS_HOST`, `NATS_HOST`) were scattered across env files inconsistently — some using the short Docker service name, some using the explicit docker-network FQDN.
+
+**Decision.** All platform domain values are now derived from `$PLATFORM_DOMAIN` at install time by `setup-wizard.sh`:
+- `server.hostname = mail.${PLATFORM_DOMAIN}`
+- `submission.host = mail.${PLATFORM_DOMAIN}`
+- `jmap.url = https://jmap.${PLATFORM_DOMAIN}/jmap/`
+- `tls.cert = /etc/stalwart/tls/${PLATFORM_DOMAIN}.pem`
+- `tls.key = /etc/stalwart/tls/${PLATFORM_DOMAIN}.key`
+- `logger.output = /var/log/stalwart/${PLATFORM_DOMAIN}.txt`
+
+And Docker internal hostnames are uniformly `fidscript_<service>` (the Docker service name) across all compose services, removing the ambiguity of short-name vs FQDN for internal container-to-container communication.
+
+**Consequences.** A fresh install of the platform with a different domain produces a fully wired config without manual edits. The HELO/PTR alignment (mail.$DOMAIN) is now enforced consistently.
+
+---
+
 ## Future ADRs Needed
 
 These decisions are pending and will be documented as ADRs:

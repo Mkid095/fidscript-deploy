@@ -82,6 +82,7 @@ export class EmailDomainService {
           spfVerified: result.spf,
           dmarcVerified: result.dmarc,
           mxVerified: result.mx,
+          dkimSelector: result.dkim ? 'default' : null,
           ...(allVerified ? { status: 'ACTIVE', verifiedAt: new Date() } : {}),
         },
       });

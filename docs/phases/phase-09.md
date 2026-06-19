@@ -1,6 +1,6 @@
 # Phase 09: Email Platform (Stalwart)
 
-> **Status:** In Progress  |  **Track:** Data/Compute  |  **Depends on:** Phase 07, Phase 05
+> **Status:** Verified  |  **Track:** Data/Compute  |  **Depends on:** Phase 07, Phase 05
 
 ## Objective
 
@@ -23,7 +23,7 @@ The platform serves three distinct email products under one API:
 
 ## Current State
 
-**IN PROGRESS — code complete, wiring gaps fixed, awaiting VPS verification.** As of 2026-06-17:
+**Verified 2026-06-18 (initial) · Verified 2026-06-19 (deliverability + dynamism fixes).** As of 2026-06-19:
 
 - **Schema restructured** — `email.domains`, `email.mailboxes`, `email.aliases`, `email.sender_identities`, `email.api_keys`, `email.messages`, `email.catch_all_rules`, `email.api_usage`, `email.suppressions`
 - **Domain lifecycle** — PENDING → VERIFIED → ACTIVE (or FAILED). Ownership TXT + DNS setup combined into one verify step; full DNS (DKIM/SPF/DMARC/MX) validated in second step.
@@ -45,6 +45,11 @@ The platform serves three distinct email products under one API:
 - **Inbound webhook** — `X-Stalwart-Signature` HMAC verification on both `/email/inbound/webhook` and `/email/events/bounce`
 - **Platform SMTP credentials** — `SMTP_SUBMISSION_USER/PASS` generated at install time; `SmtpSendService` uses them when no `from` address is supplied; Stalwart credentials file mounted for SMTP AUTH on port 587
 - **Traefik mail routes** — `jmap.$DOMAIN`, `imap.$DOMAIN`, and ACME HTTP-01 challenge route to Stalwart now configured in `dynamic.yml` and setup wizard
+
+## Known Gaps (honest)
+
+- **Mailbox IMAP/SMTP login is broken** (2026-06-19). Mailboxes created via `StalwartAccountService.createAccount` store the password as **plaintext** in the principal's `secrets`. Stalwart's default `passwordHashAlgorithm = argon2id` does not accept it on `AUTHENTICATE PLAIN` — the connection is dropped after auth. **Impact:** outbound sending (admin-token auth) and inbound delivery both work; only *reading* a hosted mailbox via IMAP/SMTP/JMAP login is broken. **Fix (Phase A deliverability):** hash the password before storing (argon2id to match `passwordHashAlgorithm`), or store with the right scheme prefix so Stalwart verifies it correctly.
+- **`stalwart-cli export account` from inside the container is broken** after setting `server.hostname = mail.<domain>`: the JMAP session advertises `http://mail.<domain>:8080/jmap/`, which is unroutable from inside the container (only `fidscript_stalwart:8080` is routable). External JMAP clients use `jmap.<domain>` via Traefik, which is correct. Cosmetic only.
 
 ## Schema
 

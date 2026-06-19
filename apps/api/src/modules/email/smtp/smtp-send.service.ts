@@ -82,6 +82,10 @@ export class SmtpSendService {
       port: smtpPort,
       secure, // true = implicit TLS on 465, false = STARTTLS on 587
       auth: { user: 'admin', pass: this.adminToken },
+      // Internal hop to our own Stalwart over the docker network: Stalwart
+      // presents a self-signed cert, which nodemailer would otherwise reject.
+      // This is not a public relay — disable cert verification for the hop.
+      tls: { rejectUnauthorized: false },
     });
 
     let messageId = `<${Date.now()}-${crypto.randomBytes(6).toString('hex')}@${

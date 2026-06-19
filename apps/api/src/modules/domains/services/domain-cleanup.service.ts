@@ -1,19 +1,22 @@
 import { Injectable, Logger, NotFoundException, Inject } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { PrismaService } from '@/prisma/prisma.service';
 import { EventService } from '@/modules/events/event.service';
 import { DnsProvider } from '@/modules/domains/providers/dns-provider.interface';
 
-const PLATFORM_DOMAIN = 'deploy.fidscript.com';
-
 @Injectable()
 export class DomainCleanupService {
   private readonly logger = new Logger(DomainCleanupService.name);
+  private readonly platformDomain: string;
 
   constructor(
     private prisma: PrismaService,
     private eventService: EventService,
     @Inject('DNS_PROVIDER') private dnsProvider: DnsProvider,
-  ) {}
+    private configService: ConfigService,
+  ) {
+    this.platformDomain = this.configService.get<string>('PLATFORM_DOMAIN', 'apps.local');
+  }
 
   async delete(userId: string, projectId: string, domainId: string) {
     const domain = await this.prisma.domain.findFirst({ where: { id: domainId, projectId } });
@@ -33,7 +36,7 @@ export class DomainCleanupService {
   }
 
   private subdomainFor(domain: string): string {
-    return domain.replace(`.apps.${PLATFORM_DOMAIN}`, '');
+    return domain.replace(`.apps.${this.platformDomain}`, '');
   }
 
   private async emit(domainId: string, projectId: string, userId: string, type: string, metadata: Record<string, unknown>) {

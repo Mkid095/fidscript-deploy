@@ -36,7 +36,8 @@ export class DockerRunService {
     const { imageTag, deploymentId, projectSlug, envVars, profile, startupTimeoutSeconds, onLog } = opts;
     const startTime = Date.now();
     const containerName = `fidscript-${projectSlug}-${deploymentId}`;
-    const domain = `${projectSlug}.apps.deploy.fidscript.com`;
+    const platformDomain = this.configService.get<string>('PLATFORM_DOMAIN', 'apps.local');
+    const domain = `${projectSlug}.apps.${platformDomain}`;
     const logs: string[] = [];
     const addLog = (l: string) => { logs.push(l); onLog(l); };
 
@@ -84,7 +85,8 @@ export class DockerRunService {
   }): Promise<DeployResult> {
     const { imageTag, deploymentId, projectSlug, envVars, profile, startupTimeoutSeconds, onLog } = opts;
     const containerName = `fidscript-${projectSlug}-${deploymentId}`;
-    const domain = `${projectSlug}.apps.deploy.fidscript.com`;
+    const platformDomain = this.configService.get<string>('PLATFORM_DOMAIN', 'apps.local');
+    const domain = `${projectSlug}.apps.${platformDomain}`;
     const startTime = Date.now();
     const logs: string[] = [];
     const addLog = (l: string) => { logs.push(l); onLog(l); };

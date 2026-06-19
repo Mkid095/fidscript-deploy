@@ -53,7 +53,7 @@ export class SmtpProvider implements EmailProvider {
 
   async send(options: SendEmailOptions): Promise<{ messageId: string; accepted: string[]; rejected: string[] }> {
     const info = await this.transporter.sendMail({
-      from: options.from || this.configService.get('SMTP_FROM', 'noreply@deploy.fidscript.com'),
+      from: options.from || this.configService.get('SMTP_FROM', `noreply@${this.configService.get('PLATFORM_DOMAIN', 'localhost')}`),
       to: options.to,
       replyTo: options.replyTo,
       subject: options.subject,
