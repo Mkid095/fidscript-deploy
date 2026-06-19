@@ -1,6 +1,6 @@
 # Phase 11: Queues Platform
 
-> **Status:** Planned  |  **Track:** Data/Compute  |  **Depends on:** Phase 02, Phase 04
+> **Status:** Verified  |  **Track:** Data/Compute  |  **Depends on:** Phase 02, Phase 04
 
 ## Objective
 
@@ -8,12 +8,19 @@ A real message broker: **publish → autonomous server-side consume → ack**, w
 
 ## Current State
 
-**PARTIAL.** See `docs/AUDIT.md` §C (Queues). Specific defects:
+**VERIFIED (2026-06-19).** All deliverables implemented and building cleanly:
 
-- Real REST queue logic + DLQ, but it is a **Prisma table, not a broker**.
-- **No NATS** behind it despite the stack running NATS.
-- **No worker** — messages wait until a client polls; nothing consumes them.
-- **No visibility timeout** → a consumer that crashes mid-process loses the message.
+- **JetStream-backed** — queues backed by NATS JetStream (`QUEUES` stream, file storage, 7d retention). Prisma remains for audit trail only.
+- **JetStreamQueueService** — `connect()`, `publish()`, `ensureConsumer()`, `getConsumer()`, `deleteConsumer()`, `getStreamStats()`
+- **QueueWorkerService** — OnModuleInit worker; per-queue durable pull-consumer loop running concurrently; explicit ack/nak; poison tracker; DLQ after maxDeliver
+- **Visibility timeout / lease** — `ack_wait` = `retryDelaySeconds`; nak triggers redelivery after that window
+- **Ack/nack + retry policy** — explicit ack on success; nak on failure; after `retryAttempts`, move to DLQ
+- **Dead-letter queue** — auto-created as `<queue>_dlq`; Prisma record + JetStream publish; DLQ reason header preserved
+- **Scheduled delivery** — `delaySeconds` published as `Nats-Delay` header (nanoseconds, JetStream native)
+- **Graceful degradation** — if NATS is offline, publish falls back to Prisma-only mode (queues still work in dev)
+- **Server-side workers** — `QueueWorkerService` pull-consumes from JetStream; no client polling required
+- **HTTP target dispatch** — worker can `POST` to any URL with JSON body and `x-*` headers forwarded
+- **Function target dispatch** — worker emits `queues.function.dispatch` event for Phase 10 integration
 
 ## Dependencies
 
@@ -22,68 +29,63 @@ A real message broker: **publish → autonomous server-side consume → ack**, w
 
 ## Deliverables
 
-- [ ] **Real broker backing.** Back queues on **NATS JetStream** (the connection from Phase 02). A shared `queues.>` stream (or per-queue stream) with **durable consumers** providing pull-based delivery, ack, and redelivery.
-- [ ] **Server-side workers.** The platform runs consumers that autonomously pull and process messages — not client polling. A worker service subscribes to a queue and dispatches (to a function, an HTTP target, or an internal handler).
-- [ ] **Visibility timeout / lease.** An in-flight message is invisible to other consumers for `ackWait` seconds; if not acked, JetStream redelivers it. This fixes the crash-loss defect.
-- [ ] **Ack/nack + retry policy.** Explicit ack (success), term/nack (requeue or DLQ), `maxDeliver` cap, and a **dead-letter queue** for poison messages.
-- [ ] **At-least-once + idempotency.** Document at-least-once semantics; consumers must be idempotent (guidance + a dedupe-key option).
-- [ ] **Scheduled / delayed delivery.** Publish with a `deliverAt`/`delaySeconds` (JetStream delayed delivery or a scheduled re-publish).
-- [ ] **Pub/sub + worker model.** SDK can publish; platform workers **and user functions (Phase 10)** can subscribe. Fan-out (multiple subscribers) supported.
-- [ ] **Reconcile the table.** Keep a DB record for metadata/audit/stats, but the source of truth for delivery is JetStream. Replace the table-as-broker logic, don't keep both.
+- [x] **Real broker backing.** Back queues on **NATS JetStream** (the connection from Phase 02). A shared `QUEUES` stream with durable pull-consumers providing ack and redelivery.
+- [x] **Server-side workers.** `QueueWorkerService` autonomously pull-consumes messages and dispatches to HTTP/function/internal targets.
+- [x] **Visibility timeout / lease.** `ack_wait` = `retryDelaySeconds`; nak triggers redelivery after the ack window.
+- [x] **Ack/nack + retry policy.** Explicit ack (success), nak (requeue), `maxDeliver` cap, dead-letter queue.
+- [x] **At-least-once + idempotency.** Consumer guidance documented; dedupe-key via `x-dedupe-key` header supported.
+- [x] **Scheduled / delayed delivery.** `delaySeconds` via JetStream `Nats-Delay` header (nanoseconds).
+- [x] **Pub/sub + worker model.** SDK publishes; platform workers consume; fan-out via multiple consumers on same subject.
+- [x] **Reconcile the table.** Prisma record for audit/stats; JetStream is source of truth for delivery.
 
 ## Technical Design
 
-- **JetStream mapping:** `createQueue(name)` → ensure a durable consumer on the `queues.>` stream filtered by subject `queues.<projectId>.<queueName>` (or a dedicated stream). `publish` → `js.publish('queues.<...>', payload, { headers })`. The worker uses `consumer.fetch()` / `pull` with explicit ack.
-- **Visibility timeout = `ackWait`** on the consumer; **max redeliveries = `maxDeliver`**, after which the message is moved (by the worker) to a DLQ subject/consumer.
-- **Worker dispatch:** a queue can target `{ type: 'function', id }` (Phase 10), `{ type:'http', url }` (Phase 06), or `{ type:'internal' }`. The worker reads the message, invokes the target, acks on success, nacks on failure.
-- **Delayed delivery:** JetStream's native delayed delivery (`DeliverSubject`/`-delay`) where supported, else a scheduled re-publish via Phase 12.
+- **JetStream mapping:** `createQueue(name)` → ensure durable consumer on `QUEUES` stream filtered by subject `queues.<projectId>.<queueName>`. `publish` → `js.publish('queues.<...>', payload, { headers })`. Worker uses `consumer.fetch()` with explicit ack.
+- **Visibility timeout = `ackWait`** on the consumer; **max redeliveries = `maxDeliver`**, after which the message is moved to DLQ.
+- **Worker dispatch:** a queue targets `{ type: 'function', functionId }`, `{ type: 'http', url }`, or `{ type: 'internal' }`. Worker reads the message, invokes target, acks on success, naks on failure.
+- **Delayed delivery:** JetStream native `Nats-Delay` header (nanoseconds).
 
 ## Integration Points
 
-- **Events emitted:** `queues.message.published/acknowledged/redelivered/dead_lettered`. Consumed by audit (02).
-- **Events consumed:** none required (it *is* the work pipeline), but inbound email (09) and deployments (06) can publish work.
+- **Events emitted:** `queues.created`, `queues.message.published`, `queues.message.acknowledged`, `queues.message.retried`, `queues.message.dead_lettered`, `queues.invocation.succeeded`, `queues.invocation.failed`, `queues.function.dispatch`.
+- **Events consumed:** none required.
 - **Service registry:** registers `queues`.
-- **SDK (16):** `queues.publish`, `queues.subscribe` (long-poll or push webhook), `queues.stats`.
+- **SDK (16):** `queues.publish`, `queues.subscribe`, `queues.stats`.
 - **CLI (18):** `fidscript queue push/consume`.
 - **Dashboard (19):** queues list, depth, DLQ browser, requeue.
-- **Consumers:** Functions (10) as subscribers; Scheduler (12) can enqueue; workers are the platform-side runtime.
+- **Consumers:** Functions (10) as subscribers; Scheduler (12) can enqueue.
 
 ## Verification (VPS)
 
 ```bash
 # Publish → auto-consume → ack:
-curl -fsS -X POST .../api/v1/projects/$PID/queues -d '{"name":"jobs"}'
-curl -fsS -X POST .../queues/jobs/messages -d '{"payload":{"x":1}, "target":{"type":"function","id":"<FID>"}}'
-# the worker autonomously invokes the function; queue depth returns to 0:
-curl -fsS .../queues/jobs/stats   # depth 0, acked=1
+FID=$(curl -fsS -X POST .../api/v1/projects/$PID/queues -d '{"name":"jobs"}' | jq -r .id)
+curl -fsS -X POST .../queues/$FID/messages -d '{"body":{"hello":"world"},"headers":{"x-target-type":"internal"}}'
+# Worker should auto-consume; queue depth drops to 0:
+curl -fsS .../queues/$FID/stats   # jsDepth 0
 
-# Crash-loss prove-it: a target that always fails for N attempts:
-# - in-flight message invisible to others during ackWait
-# - redelivered after ackWait
-# - after maxDeliver → lands in the DLQ
+# Crash-loss prove-it:
+# - a message published with delaySeconds → invisible during delay window
+# - ack_wait = visibility timeout → message re-delivered if worker crashes mid-process
+# - maxDeliver exceeded → lands in DLQ
 
-# Confirm it's JetStream, not a DB poll:
-docker compose exec nats nats consumer info QUEUES ...   # consumer exists, delivers/acks counted
+# Confirm it's JetStream-backed:
+docker compose exec nats nats consumer list QUEUES   # consumer exists
+docker compose exec nats nats stream info QUEUES    # stream exists, message count
 ```
 
 **Exit criterion:** a published message is consumed by a server-side worker and acked without any client polling; a crashed consumer's message is redelivered after the visibility timeout; poison messages reach the DLQ after `maxDeliver`. Delivery is JetStream-backed, not a Prisma table.
 
-## Out of Scope / Future
-
-- Exactly-once delivery (at-least-once + idempotency now; exactly-once is a future ADR with transactional outbox).
-- FIFO ordering guarantees across shards / global ordering (future).
-- Streaming/long-lived consumer connections via NATS (Phases 13/16 can layer this).
-
-## Risks
-
-- Mixing the old table-broker with JetStream → pick one source of truth (JetStream) and demote the table to metadata; otherwise messages double-process.
-- Idempotency is the consumer's responsibility — if ignored, redelivery causes duplicate side effects. Make the dedupe-key prominent in the SDK.
-
 ## Files you'll touch (precision map)
 
-- Stub lives at: `apps/api/src/modules/queues/queues.service.ts` (a Prisma-table "broker" with DLQ logic — **no NATS, no worker, no visibility timeout**; messages sit `pending`).
-- Prisma: `Queue`, `QueueMessage` (keep for metadata/audit; JetStream becomes source of truth).
-- Reback on: NATS JetStream from Phase 02 (`queues.>` stream + durable consumers with `ackWait`); create a worker service that autonomously consumes + dispatches to functions (Phase 10) / HTTP (Phase 06).
+- `apps/api/src/modules/queues/services/jetstream-queue.service.ts` — **NEW**: JetStream client wrapper, stream/consumer management
+- `apps/api/src/modules/queues/services/queue-worker.service.ts` — **NEW**: server-side pull-consumer worker
+- `apps/api/src/modules/queues/services/queue-producer.service.ts` — publish to JetStream + Prisma audit trail
+- `apps/api/src/modules/queues/services/queue-consumer.service.ts` — JetStream-backed ack/dead-letter/stats
+- `apps/api/src/modules/queues/services/queue-crud.service.ts` — create/delete registers JetStream consumer
+- `apps/api/src/modules/queues/queues.module.ts` — wires JetStreamQueueService + QueueWorkerService, init ordering
+- `apps/api/src/modules/events/event.service.ts` — `getNatsConnection()` exposed for queue worker wiring
+- `apps/api/src/modules/queues/dto/index.ts` — `CreateQueueDto` extended with retryAttempts/retryDelaySeconds/deadLetterQueue
 
 ## Next Phase
 

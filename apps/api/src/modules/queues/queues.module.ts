@@ -4,8 +4,8 @@ import { QueuesService } from './queues.service';
 import { QueueCrudService } from '@/modules/queues/services/queue-crud.service';
 import { QueueProducerService } from '@/modules/queues/services/queue-producer.service';
 import { QueueConsumerService } from '@/modules/queues/services/queue-consumer.service';
-import { JetStreamQueueService } from '@/modules/queues/services/jetstream-queue.service';
-import { QueueWorkerService } from '@/modules/queues/services/queue-worker.service';
+import { JetStreamQueueService } from './services/jetstream-queue.service';
+import { QueueWorkerService } from './services/queue-worker.service';
 import { EventService } from '@/modules/events/event.service';
 
 @Module({
@@ -31,20 +31,16 @@ export class QueuesModule implements OnModuleInit, OnModuleDestroy {
   ) {}
 
   /**
-   * Init order: wait for EventService to connect to NATS (via its onModuleInit),
-   * then wire JetStream, then start the queue worker.
+   * Init order: EventService.onModuleInit fires first (same DI init phase).
+   * Give it a moment to actually connect to NATS, then wire JetStream + start workers.
    */
   async onModuleInit() {
-    // EventService.onModuleInit runs first (same DI tree, same init phase).
-    // Give it a tick to actually connect.
-    await sleep(500);
-
+    await sleep(2000);
     const nc = this.eventService.getNatsConnection();
     if (!nc) {
       this.logger.warn('NATS not connected — queues running in degraded (Prisma-only) mode');
       return;
     }
-
     try {
       await this.jsQueue.connect(nc);
       await this.worker.start(nc);
@@ -55,7 +51,6 @@ export class QueuesModule implements OnModuleInit, OnModuleDestroy {
   }
 
   async onModuleDestroy() {
-    // Stop workers before NATS closes (EventService.onModuleDestroy runs after)
     await this.worker.stop();
   }
 }

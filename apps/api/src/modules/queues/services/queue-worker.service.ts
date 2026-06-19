@@ -118,10 +118,23 @@ export class QueueWorkerService implements OnModuleInit {
       return;
     }
 
+    // Target routing: check JetStream message headers first (set by producer),
+    // then fall back to JSON body headers (for backward compat).
+    const jsHeaders: Record<string, string> = {};
+    if (msg.headers) {
+      for (const [k, v] of msg.headers) {
+        jsHeaders[k] = Array.isArray(v) ? v[0] : v;
+      }
+    }
+
+    const rawUrl = jsHeaders['x-target-url'] ?? (payload.headers as Record<string, string>)?.['x-target-url'];
+    const rawFnId = jsHeaders['x-target-function-id'] ?? (payload.headers as Record<string, string>)?.['x-target-function-id'];
     const target: QueueTarget = {
-      type: (payload.headers['x-target-type'] as QueueTarget['type']) ?? 'internal',
-      url: payload.headers['x-target-url'],
-      functionId: payload.headers['x-target-function-id'],
+      type: (jsHeaders['x-target-type'] as QueueTarget['type'])
+        ?? (payload.headers as Record<string, string>)?.['x-target-type'] as QueueTarget['type']
+        ?? 'internal',
+      url: rawUrl || undefined,
+      functionId: rawFnId || undefined,
     };
 
     try {
@@ -197,7 +210,7 @@ export class QueueWorkerService implements OnModuleInit {
 
       case 'internal':
       default:
-        this.logger.debug(`[internal] queue=${payload.queueName} body=${payload.body.slice(0, 80)}`);
+        this.logger.debug(`[internal] queue=${queue.name} body=${(payload.body || '').slice(0, 80)}`);
         break;
     }
   }
