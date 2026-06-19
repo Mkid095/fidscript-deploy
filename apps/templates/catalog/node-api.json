@@ -1,0 +1,11 @@
+{
+  "name": "node-api",
+  "description": "Node.js Express REST API — production-ready with health checks",
+  "category": "backend",
+  "isPublic": true,
+  "content": "[{\"path\":\"package.json\",\"content\":\"{\\n  \\\"name\\\": \\\"{{APP_NAME}}\\\",\\n  \\\"version\\\": \\\"1.0.0\\\",\\n  \\\"main\\\": \\\"server.js\\\",\\n  \\\"scripts\\\": {\\n    \\\"start\\\": \\\"node server.js\\\",\\n    \\\"dev\\\": \\\"node --watch server.js\\\"\\n  },\\n  \\\"dependencies\\\": {\\n    \\\"express\\\": \\\"^4.18.2\\\",\\n    \\\"cors\\\": \\\"^2.8.5\\\",\\n    \\\"helmet\\\": \\\"^7.1.0\\\"\\n  }\\n}\"},{\"path\":\"server.js\",\"content\":\"const express = require('express');\\nconst cors = require('cors');\\nconst helmet = require('helmet');\\n\\nconst app = express();\\nconst PORT = process.env.PORT || '{{PORT}}';\\n\\napp.use(helmet());\\napp.use(cors());\\napp.use(express.json());\\n\\napp.get('/health', (req, res) => {\\n  res.json({ status: 'ok', timestamp: new Date().toISOString() });\\n});\\n\\napp.get('/', (req, res) => {\\n  res.json({ name: '{{APP_NAME}}', version: '1.0.0' });\\n});\\n\\napp.listen(PORT, () => {\\n  console.log(`{{APP_NAME}} running on port ${PORT}`);\\n});\"},{\"path\":\"Dockerfile\",\"content\":\"FROM node:18-alpine\\nWORKDIR /app\\nCOPY package*.json ./\\nRUN npm ci --only=production\\nCOPY server.js .\\nEXPOSE {{PORT}}\\nCMD [\\\"node\\\", \\\"server.js\\\"]\"}]",
+  "variables": [
+    { "name": "APP_NAME", "description": "Application name shown at the root endpoint", "defaultValue": "my-api", "required": true },
+    { "name": "PORT", "description": "Port the server listens on", "defaultValue": "3000", "required": false }
+  ]
+}

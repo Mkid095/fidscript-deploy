@@ -1,11 +1,12 @@
 import {
   Controller, Get, Post, Patch, Delete,
-  Body, Param, Query, UseGuards,
+  Body, Param, Query, UseGuards, Req,
 } from '@nestjs/common';
+import { Request } from 'express';
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { TemplatesService } from './templates.service';
-import { CreateTemplateDto, UpdateTemplateDto, GenerateProjectDto } from './dto/index';
+import { CreateTemplateDto, UpdateTemplateDto, GenerateProjectDto, GenerateAndDeployDto } from './dto/index';
 
 @ApiTags('templates')
 @Controller('projects/:projectId/templates')
@@ -56,7 +57,23 @@ export class TemplatesController {
 
   @Post('generate')
   @ApiOperation({ summary: 'Generate project from template' })
-  async generateProject(@Param('projectId') projectId: string, @Body() dto: GenerateProjectDto) {
-    return this.templatesService.generateProject(projectId, dto);
+  async generateProject(
+    @Req() req: Request,
+    @Param('projectId') projectId: string,
+    @Body() dto: GenerateProjectDto,
+  ) {
+    const user = req.user as { userId: string };
+    return this.templatesService.generateProject(user.userId, projectId, dto);
+  }
+
+  @Post('generate-and-deploy')
+  @ApiOperation({ summary: 'Generate project from template and immediately deploy it' })
+  async generateAndDeploy(
+    @Req() req: Request,
+    @Param('projectId') projectId: string,
+    @Body() dto: GenerateAndDeployDto,
+  ) {
+    const user = req.user as { userId: string };
+    return this.templatesService.generateAndDeploy(user.userId, projectId, dto);
   }
 }

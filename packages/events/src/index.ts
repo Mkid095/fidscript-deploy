@@ -150,6 +150,7 @@ export type EventType =
   | 'template.created'
   | 'template.deleted'
   | 'template.project_generated'
+  | 'templates.template.applied'
   // Marketplace events
   | 'marketplace.item.submitted'
   | 'marketplace.item.approved'

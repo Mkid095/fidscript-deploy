@@ -21,6 +21,13 @@ export class GenerateProjectDto {
   variables!: Record<string, string>;
 }
 
+export class GenerateAndDeployDto {
+  templateId!: string;
+  name!: string;
+  variables!: Record<string, string>;
+  strategy?: string;
+}
+
 export class TemplateVariable {
   name!: string;
   description?: string;

@@ -27,6 +27,7 @@ import { CronModule } from './modules/cron';
 import { RealtimeModule } from './modules/realtime';
 import { MonitoringModule } from './modules/monitoring';
 import { LoggingModule } from './modules/logging';
+import { TemplatesModule } from './modules/templates';
 import {
   FidscriptError,
   AuthError,
@@ -37,7 +38,7 @@ import {
 
 export { FidscriptClient, FidscriptClientOptions };
 export { FidscriptError, AuthError, NotFoundError, ValidationError, RateLimitError };
-export { AuthModule, ProjectsModule, DeploymentsModule, StorageModule, DatabasesModule, DomainsModule, EmailModule, FunctionsModule, QueuesModule, CronModule, RealtimeModule, MonitoringModule, LoggingModule };
+export { AuthModule, ProjectsModule, DeploymentsModule, StorageModule, DatabasesModule, DomainsModule, EmailModule, FunctionsModule, QueuesModule, CronModule, RealtimeModule, MonitoringModule, LoggingModule, TemplatesModule };
 
 export interface FidscriptSDK {
   auth: AuthModule;
@@ -53,6 +54,7 @@ export interface FidscriptSDK {
   realtime: RealtimeModule;
   monitoring: MonitoringModule;
   logs: LoggingModule;
+  templates: TemplatesModule;
 }
 
 export function createFidscript(options: {
@@ -76,5 +78,6 @@ export function createFidscript(options: {
     realtime: new RealtimeModule(client),
     monitoring: new MonitoringModule(client),
     logs: new LoggingModule(client),
+    templates: new TemplatesModule(client),
   };
 }

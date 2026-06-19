@@ -1,0 +1,11 @@
+{
+  "name": "static-site",
+  "description": "Static HTML site — nginx, deploys instantly",
+  "category": "frontend",
+  "isPublic": true,
+  "content": "[{\"path\":\"index.html\",\"content\":\"<!DOCTYPE html>\\n<html lang=\\\"en\\\">\\n<head>\\n  <meta charset=\\\"UTF-8\\\">\\n  <meta name=\\\"viewport\\\" content=\\\"width=device-width, initial-scale=1.0\\\">\\n  <title>{{SITE_TITLE}}</title>\\n  <meta name=\\\"description\\\" content=\\\"{{SITE_DESCRIPTION}}\\\">\\n  <style>\\n    * { margin: 0; padding: 0; box-sizing: border-box; }\\n    body { font-family: system-ui, sans-serif; background: #080a0d; color: #e2e8f0; min-height: 100vh; display: flex; flex-direction: column; }\\n    header { padding: 2rem; border-bottom: 1px solid #1e2130; }\\n    header h1 { color: #f43f5e; font-size: 1.5rem; }\\n    main { flex: 1; display: flex; align-items: center; justify-content: center; padding: 2rem; text-align: center; }\\n    footer { padding: 1rem; border-top: 1px solid #1e2130; font-size: 0.875rem; color: #64748b; }\\n  </style>\\n</head>\\n<body>\\n  <header>\\n    <h1>{{SITE_TITLE}}</h1>\\n  </header>\\n  <main>\\n    <div>\\n      <p>{{SITE_DESCRIPTION}}</p>\\n      <p style=\\\"margin-top: 1rem; color: #f43f5e;\\\">Deployed on FIDScript</p>\\n    </div>\\n  </main>\\n  <footer>Powered by FIDScript Deploy</footer>\\n</body>\\n</html>\"},{\"path\":\"Dockerfile\",\"content\":\"FROM nginx:alpine\\nCOPY index.html /usr/share/nginx/html/\\nEXPOSE 8080\\nCMD [\\\"nginx\\\", \\\"-g\\\", \\\"daemon off;\\\"]\"}]",
+  "variables": [
+    { "name": "SITE_TITLE", "description": "Site title shown in the header", "defaultValue": "My Site", "required": true },
+    { "name": "SITE_DESCRIPTION", "description": "Meta description and hero text", "defaultValue": "Built with FIDScript", "required": false }
+  ]
+}
