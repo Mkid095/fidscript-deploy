@@ -32,6 +32,6 @@ import { StorageModule } from '@/modules/storage/storage.module';
     DockerfileBuildProvider,
     { provide: 'BUILD_PROVIDER', useExisting: DockerfileBuildProvider },
   ],
-  exports: [DeploymentsService, DeploymentWorkerService],
+  exports: [DeploymentsService, DeploymentWorkerService, DeploymentCrudService],
 })
 export class DeploymentsModule {}

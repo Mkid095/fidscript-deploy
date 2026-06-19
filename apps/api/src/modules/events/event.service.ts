@@ -45,9 +45,34 @@ export class EventService implements OnModuleInit, OnModuleDestroy {
     }
   }
 
-  emit<T = unknown>(type: EventType, payload: T): void {
+  /**
+   * Emit a platform event.
+   * @param type - Event type from the EventType union
+   * @param payload - Event-specific data (stored in metadata)
+   * @param context - Optional actor/IP/UA/resource context. When omitted the event is
+   *   emitted with just {id, type, timestamp, metadata}; callers that pass context
+   *   must include all identifying fields so audit rows are complete.
+   */
+  emit<T = unknown>(
+    type: EventType,
+    payload: T,
+    context?: {
+      actorId?: string;
+      actorType?: 'user' | 'system' | 'api_key';
+      resourceType?: string;
+      resourceId?: string;
+      ipAddress?: string;
+      userAgent?: string;
+    },
+  ): void {
     const id = randomUUID();
-    const platformEvent: PlatformEvent<T> = { id, type: type as EventType, timestamp: new Date(), metadata: payload };
+    const platformEvent: PlatformEvent<T> = {
+      id,
+      type: type as EventType,
+      timestamp: new Date(),
+      metadata: payload,
+      ...(context ?? {}),
+    };
     this.eventEmitter.emit(type, platformEvent);
     this.logger.debug(`[local] Event dispatched: ${type}`, { id });
     if (this.connected && this.js) {
