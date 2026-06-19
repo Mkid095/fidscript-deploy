@@ -1,23 +1,25 @@
+import { IsString, IsNumber, IsInt, IsBoolean, IsArray, IsEnum, IsOptional, IsObject } from 'class-validator';
+
 export class CreateAlertRuleDto {
-  name!: string;
-  metric!: string;
-  condition!: 'above' | 'below' | 'equals';
-  threshold!: number;
-  durationSeconds?: number;
-  severity?: 'critical' | 'warning' | 'info';
-  channels?: string[];
-  enabled?: boolean;
+  @IsString() name!: string;
+  @IsString() metric!: string;
+  @IsEnum(['above', 'below', 'equals']) condition!: 'above' | 'below' | 'equals';
+  @IsNumber() threshold!: number;
+  @IsInt() @IsOptional() durationSeconds?: number;
+  @IsEnum(['critical', 'warning', 'info']) @IsOptional() severity?: 'critical' | 'warning' | 'info';
+  @IsArray() @IsOptional() channels?: string[];
+  @IsBoolean() @IsOptional() enabled?: boolean;
 }
 
 export class UpdateAlertRuleDto {
-  name?: string;
-  metric?: string;
-  condition?: 'above' | 'below' | 'equals';
-  threshold?: number;
-  durationSeconds?: number;
-  severity?: 'critical' | 'warning' | 'info';
-  channels?: string[];
-  enabled?: boolean;
+  @IsString() @IsOptional() name?: string;
+  @IsString() @IsOptional() metric?: string;
+  @IsEnum(['above', 'below', 'equals']) @IsOptional() condition?: 'above' | 'below' | 'equals';
+  @IsNumber() @IsOptional() threshold?: number;
+  @IsInt() @IsOptional() durationSeconds?: number;
+  @IsEnum(['critical', 'warning', 'info']) @IsOptional() severity?: 'critical' | 'warning' | 'info';
+  @IsArray() @IsOptional() channels?: string[];
+  @IsBoolean() @IsOptional() enabled?: boolean;
 }
 
 export class GetMetricsDto {
@@ -34,12 +36,12 @@ export class GetAlertsDto {
 }
 
 export class CreateNotificationChannelDto {
-  name!: string;
-  type!: 'email' | 'slack' | 'webhook' | 'pagerduty';
-  config!: Record<string, string>;
+  @IsString() name!: string;
+  @IsEnum(['email', 'slack', 'webhook', 'pagerduty']) type!: 'email' | 'slack' | 'webhook' | 'pagerduty';
+  @IsObject() config!: Record<string, string>;
 }
 
 export class UpdateNotificationChannelDto {
-  name?: string;
-  config?: Record<string, string>;
+  @IsString() @IsOptional() name?: string;
+  @IsObject() @IsOptional() config?: Record<string, string>;
 }
