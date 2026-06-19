@@ -29,6 +29,6 @@ import { ProjectCreateService } from '@/modules/projects/services/project-create
     ProjectFormatService,
     ProjectCreateService,
   ],
-  exports: [ProjectsService],
+  exports: [ProjectsService, ProjectApiKeyService],
 })
 export class ProjectsModule {}

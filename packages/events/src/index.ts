@@ -140,6 +140,12 @@ export type EventType =
   | 'monitoring.alert.resolved'
   | 'monitoring.notification.sent'
   | 'monitoring.notification.failed'
+  // Logging events (Phase 15)
+  | 'logs.log.ingested'
+  | 'logs.pruned'
+  | 'logs.shipped'
+  | 'logs.ship_failed'
+  | 'logs.quota_exceeded'
   // Template events
   | 'template.created'
   | 'template.deleted'

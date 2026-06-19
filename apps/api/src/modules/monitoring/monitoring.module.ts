@@ -40,6 +40,7 @@ import { EmailModule } from '@/modules/email/email.module';
     AlertRuleService,
     AlertService,
     NotificationChannelService,
+    AlertEvaluatorService,
   ],
 })
 export class MonitoringModule {}

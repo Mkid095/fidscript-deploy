@@ -84,6 +84,32 @@ export class ProjectApiKeyService {
     return { success: true };
   }
 
+  /**
+   * Validate a raw project API key and return the associated projectId.
+   * Used by the Phase 15 log ingest endpoint (X-API-Key header).
+   * Returns null if the key is invalid or expired.
+   */
+  async validateProjectApiKey(rawKey: string): Promise<{ projectId: string; name: string } | null> {
+    if (!rawKey.startsWith('fpk_')) return null;
+    const keys = await this.prisma.projectApiKey.findMany({
+      where: {
+        OR: [{ expiresAt: null }, { expiresAt: { gt: new Date() } }],
+      },
+      select: { id: true, projectId: true, name: true, keyHash: true },
+    });
+    for (const key of keys) {
+      const valid = await bcrypt.compare(rawKey.slice(4), key.keyHash).catch(() => false);
+      if (valid) {
+        await this.prisma.projectApiKey.update({
+          where: { id: key.id },
+          data: { lastUsedAt: new Date() },
+        });
+        return { projectId: key.projectId, name: key.name };
+      }
+    }
+    return null;
+  }
+
   private async findProjectWithAccess(userId: string, projectId: string) {
     const project = await this.prisma.project.findUnique({ where: { id: projectId } });
     if (!project) throw new NotFoundException('Project not found');
