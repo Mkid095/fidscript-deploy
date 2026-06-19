@@ -31,8 +31,8 @@ export class GetMetricsDto {
 }
 
 export class GetAlertsDto {
-  status?: 'firing' | 'resolved' | 'pending';
-  severity?: string;
+  @IsEnum(['firing', 'resolved', 'pending']) @IsOptional() status?: 'firing' | 'resolved' | 'pending';
+  @IsString() @IsOptional() severity?: string;
 }
 
 export class CreateNotificationChannelDto {

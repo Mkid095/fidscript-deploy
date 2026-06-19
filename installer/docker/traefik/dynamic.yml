@@ -23,6 +23,16 @@ http:
       tls:
         certResolver: letsencrypt-dns
 
+    # Phase 14: Prometheus scrape endpoint — must route to API before the
+    # dashboard catch-all (dashboard catches Host && !PathPrefix('/api')).
+    metrics:
+      rule: "Host(`deploy.fidscript.com`) && PathPrefix(`/metrics`)"
+      service: api
+      middlewares:
+        - security-headers
+      tls:
+        certResolver: letsencrypt-dns
+
     api:
       rule: "PathPrefix(`/api`)"
       service: api

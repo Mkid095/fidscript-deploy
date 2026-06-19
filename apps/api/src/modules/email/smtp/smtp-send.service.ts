@@ -119,24 +119,28 @@ export class SmtpSendService {
       },
     });
 
-    await this.prisma.emailApiUsage.upsert({
-      where: {
-        projectId_apiKeyId_date: { projectId, apiKeyId: dto.apiKeyId ?? '', date: new Date() },
-      },
-      create: {
-        projectId,
-        apiKeyId: dto.apiKeyId ?? '',
-        date: new Date(),
-        sends: result === 'sent' ? 1 : 0,
-        failures: result === 'failed' ? 1 : 0,
-        bounces: result === 'bounced' ? 1 : 0,
-      },
-      update: {
-        sends: result === 'sent' ? { increment: 1 } : undefined,
-        failures: result === 'failed' ? { increment: 1 } : undefined,
-        bounces: result === 'bounced' ? { increment: 1 } : undefined,
-      },
-    });
+    // Only track API-key-backed usage when an apiKeyId is provided.
+    // Platform-initiated sends (notifications, no API key) skip usage tracking.
+    if (dto.apiKeyId) {
+      await this.prisma.emailApiUsage.upsert({
+        where: {
+          projectId_apiKeyId_date: { projectId, apiKeyId: dto.apiKeyId, date: new Date() },
+        },
+        create: {
+          projectId,
+          apiKeyId: dto.apiKeyId,
+          date: new Date(),
+          sends: result === 'sent' ? 1 : 0,
+          failures: result === 'failed' ? 1 : 0,
+          bounces: result === 'bounced' ? 1 : 0,
+        },
+        update: {
+          sends: result === 'sent' ? { increment: 1 } : undefined,
+          failures: result === 'failed' ? { increment: 1 } : undefined,
+          bounces: result === 'bounced' ? { increment: 1 } : undefined,
+        },
+      });
+    }
 
     if (!errorMsg) {
       await this.eventService.emit('email.sent', {
