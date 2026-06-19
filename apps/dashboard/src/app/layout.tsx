@@ -1,4 +1,5 @@
 import type { Metadata } from 'next';
+import { Providers } from './providers';
 
 export const metadata: Metadata = {
   title: 'FIDScript Deploy',
@@ -13,7 +14,7 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body className="min-h-screen bg-[#080a0d] text-slate-200 antialiased">
-        {children}
+        <Providers>{children}</Providers>
       </body>
     </html>
   );
