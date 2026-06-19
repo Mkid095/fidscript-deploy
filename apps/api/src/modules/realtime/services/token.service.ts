@@ -29,12 +29,19 @@ export class TokenService {
       }
       if (!secret) return null;
 
-      const decoded = jwt.default.verify(token, secret) as { userId: string; projectId?: string };
-
-      return {
-        userId: decoded.userId,
-        projectId: decoded.projectId || '',
+      // The platform JWT carries the user id in the standard `sub` claim
+      // (see AuthSessionService.buildAuthResponse). Fall back to a `userId`
+      // claim only for non-platform tokens. Without reading `sub`, every
+      // socket action that needs a user id silently operated on undefined.
+      const decoded = jwt.default.verify(token, secret) as {
+        sub?: string;
+        userId?: string;
+        projectId?: string;
       };
+      const userId = decoded.sub ?? decoded.userId;
+      if (!userId) return null;
+
+      return { userId, projectId: decoded.projectId || '' };
     } catch {
       return null;
     }

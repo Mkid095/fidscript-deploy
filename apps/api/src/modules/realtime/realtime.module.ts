@@ -9,6 +9,8 @@ import { ChannelStateOpsService } from './services/channel-state-ops.service';
 import { ChannelEventsService } from './services/channel-events.service';
 import { PresenceService } from './services/presence.service';
 import { TokenService } from './services/token.service';
+import { RealtimeBridgeService } from './services/realtime-bridge.service';
+import { RealtimeSubscriptionService } from './services/realtime-subscription.service';
 import { RedisModule } from '../redis/redis.module';
 
 @Module({
@@ -24,6 +26,9 @@ import { RedisModule } from '../redis/redis.module';
     ChannelEventsService,
     PresenceService,
     TokenService,
+    // Phase 13: platform-event fan-out + project-room authorization
+    RealtimeBridgeService,
+    RealtimeSubscriptionService,
   ],
   exports: [
     RealtimeService,

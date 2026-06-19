@@ -2,6 +2,7 @@ import { NestFactory } from '@nestjs/core';
 import { ValidationPipe } from '@nestjs/common';
 import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger';
 import { AppModule } from './app.module';
+import { RedisIoAdapter } from './adapters/redis-io.adapter';
 
 process.on('unhandledRejection', (reason, promise) => {
   console.error('[FATAL] unhandledRejection:', reason);
@@ -41,6 +42,14 @@ async function bootstrap() {
   SwaggerModule.setup('docs', app, document);
 
   const port = process.env.API_PORT || 3001;
+
+  // Phase 13: Socket.IO Redis adapter (multi-instance broadcasts + restart-safe
+  // presence). Must be set before listen(); best-effort — falls back to a
+  // single-instance gateway if Redis is unavailable, never blocks bootstrap.
+  const redisAdapter = new RedisIoAdapter(app, process.env.REDIS_URL);
+  await redisAdapter.connectToRedis();
+  app.useWebSocketAdapter(redisAdapter);
+
   console.log('[bootstrap] Before listen()');
   try {
     const server = await app.listen(port);

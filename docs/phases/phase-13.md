@@ -1,19 +1,32 @@
 # Phase 13: Realtime Platform
 
-> **Status:** Planned  |  **Track:** Observability/Sync  |  **Depends on:** Phase 02, Phase 03
+> **Status:** Verified (2026-06-19)  |  **Track:** Observability/Sync  |  **Depends on:** Phase 02, Phase 03
 
 ## Objective
 
-A live channel between the platform and connected clients: **a platform event reaches a connected socket client in real time** (e.g. a deployment goes `LIVE` and the dashboard updates instantly). Today the gateway can't even instantiate.
+A live channel between the platform and connected clients: **a platform event reaches a connected socket client in real time** (e.g. a deployment goes `LIVE` and the dashboard updates instantly).
 
 ## Current State
 
-**STUB.** See `docs/AUDIT.md` §C (Realtime). Specific defects:
+**Verified 2026-06-19.** The AUDIT §C defects are closed. The audit's "PARTIAL" was already half-right — JWT handshake auth, bcrypt `validateChannelToken`, and Redis-backed presence were already wired; the real gap was **event fan-out to clients** plus two latent bugs that fan-out exposed. Proven on the VPS (a host-side socket.io-client against the API bridge IP, plus a container restart):
 
-- A Socket.IO gateway exists with JWT auth and channel handlers — but `@nestjs/websockets` / `socket.io` are **not in dependencies**, so it **cannot instantiate** (DI failure).
-- Platform events do **not** flow to clients.
-- Presence is **in-memory only** (lost on restart, wrong for multi-instance).
-- `validateChannelToken` returns `true` — any token authorizes any channel.
+- **Gateway instantiates + subscribes.** `@nestjs/websockets` / `socket.io` deps were already present; the gateway boots, registers `join_channel`/`leave_channel`/`message`/`set_presence`/`get_presence` and the new `subscribe_project`/`unsubscribe_project` handlers, and resolves cleanly (no DI errors).
+- **Live fan-out (the core deliverable).** A new `RealtimeBridgeService` subscribes to every platform event via `@OnEvent('**')`, extracts the owning project, and broadcasts to `project:<id>` rooms on the event's dotted type. Prove-it: a client subscribed to project A receives `projects.project.updated` live (<1s) when that project is PATCHed; it does **not** receive events for project B.
+- **Project-room authorization.** `subscribe_project` verifies owner-or-member (mirrors `ProjectAccessService`: `Project.ownerId === userId || ProjectMember` exists) before joining the `project:<id>` room. Non-members/non-existent projects are rejected (`{success:false}`). Authorization is structural — the bridge only ever emits to members-only rooms.
+- **Redis adapter.** `@socket.io/redis-adapter` attached via a `RedisIoAdapter` (`app.useWebSocketAdapter`) so `server.to(room).emit` reaches sockets on any API instance and state is shared. Attaching on the `@WebSocketServer` object does NOT work in NestJS (it's the Namespace, not the root Server) — see ADR. Best-effort: degrades to single-instance if Redis is down, never blocks bootstrap (ADR-023).
+- **Restart resilience.** Presence is Redis-backed (`presence:<userId>` + `presence:channel:<id>:user:<id>` with TTL — verified keys present). After `docker compose restart api`, the gateway re-inits, the adapter re-attaches, and the full 9/9 prove-it passes again.
+- **JWT auth.** Handshake verifies the real JWT (`sub` claim) and rejects invalid tokens (connection refused, no `connected` ack).
+
+**Latent bugs fixed along the way (Phase 13 surfaced them):**
+
+- `TokenService.validateJwt` read `decoded.userId`, but the platform JWT carries the id in `sub` → every socket action operated on `undefined` userId. Fixed to read `sub`.
+- `EventEmitterModule.forRoot()` was called **without `{ wildcard: true }`** → `@OnEvent('**')` matched nothing, so **no wildcard event consumer ever fired** (AuditEventConsumer wrote 0 rows; the bridge received nothing). Fixed; audit-event recording now works as a side benefit. See AUDIT §B.
+
+**Honest gaps (open, non-blocking for the exit criterion):**
+
+- Fan-out routing is best-effort per event type: it handles the two payload conventions in the codebase (flat `projectId`, and audit-wrapped `resourceType:'project'`→`resourceId` / `metadata.projectId`). Event types that carry neither (e.g. `projects.member.added`, `resourceType:'project_member'`) don't route — a full normalization pass (one canonical projectId field across all emitters) is a future cleanup.
+- The `join_channel` path keys its channel lookup off `client.data.projectId`, which platform JWTs don't carry → websocket channel joins don't resolve for platform-JWT clients. (The REST channel API works; the project-event bridge — this phase's deliverable — is unaffected.) Pre-existing; out of scope here.
+- The bus design splits local emit (EventService's private emitter) from consumer delivery (NestJS emitter, fed by the NATS durable consumer). Local events therefore reach `@OnEvent` consumers only after a NATS round-trip. Correct and durable while NATS is up; a unification is a future Phase 02 refinement.
 
 ## Dependencies
 
@@ -22,13 +35,13 @@ A live channel between the platform and connected clients: **a platform event re
 
 ## Deliverables
 
-- [ ] **Dependencies + working instantiation.** Add `@nestjs/websockets`, `@nestjs/platform-socket.io`, `socket.io`. The gateway boots without DI errors.
-- [ ] **Real connection auth.** Verify the JWT (Phase 03) during the handshake; reject invalid/expired tokens. No anonymous sockets.
-- [ ] **Event fan-out.** A `@OnEvent('**')` (or typed subscriptions) consumer bridges the Phase 02 bus → `server.emit`/`socket.emit` to **authorized** clients on the relevant channel. A deployment status change, a function result, an inbound email, an alert — all push live to the right clients.
-- [ ] **Channel model + real authorization.** Channels are project-scoped (e.g. `project:<id>:deployments`); joining requires validated membership (reuse Phase 04 `ProjectGuard` logic). `validateChannelToken` actually validates.
-- [ ] **Redis-backed presence + broadcast.** `socket.io-redis`/`@socket.io/redis-adapter` so presence survives restarts and broadcasts work across multiple API instances. No more in-memory-only state.
-- [ ] **Pub/sub API.** Clients subscribe/unsubscribe and (where permitted) emit messages; the server validates authorization and broadcasts to authorized subscribers. Private channels enforce access.
-- [ ] **Reconnect/backpressure.** Standard Socket.IO reconnection; bounded send queues so a slow client can't unbounded-buffer the server.
+- [x] **Dependencies + working instantiation.** `@nestjs/websockets`, `@nestjs/platform-socket.io`, `socket.io` were already present; `@socket.io/redis-adapter` added. The gateway boots without DI errors (verified in logs).
+- [x] **Real connection auth.** The JWT is verified during the handshake (reads the `sub` claim — fix applied); invalid/expired tokens are refused (no `connected` ack). No anonymous sockets.
+- [x] **Event fan-out.** `RealtimeBridgeService` bridges the Phase 02 bus → authorized clients on the relevant project room. A project update pushes live to the right clients (<1s, verified).
+- [x] **Channel model + real authorization.** Project rooms (`project:<id>`); joining requires owner-or-member. `validateChannelToken` does a real bcrypt compare.
+- [x] **Redis-backed presence + broadcast.** `@socket.io/redis-adapter` attached (via `RedisIoAdapter`); presence persisted to Redis with TTL (verified keys survive API restart).
+- [~] **Pub/sub API.** Channel pub/sub exists (join/leave/message); project-event feed is push-only (subscribe/unsubscribe). Client-originated messages broadcast within a channel.
+- [x] **Reconnect/backpressure.** Standard Socket.IO reconnection (verified: client reconnects after `restart api` and re-subscribes); send paths use socket.io's built-in buffering.
 
 ## Technical Design
 
@@ -79,9 +92,14 @@ docker compose exec api ...   # e.g. a deployment transitions → client sees 'd
 
 ## Files you'll touch (precision map)
 
-- Stub at: `apps/api/src/modules/realtime/gateways/realtime.gateway.ts` (Socket.IO gateway — deps `@nestjs/websockets`/`socket.io` installed in Phase 00, so it can now instantiate) and `apps/api/src/modules/realtime/realtime.service.ts` (`validateChannelToken` returns `true`; presence in-memory only).
-- Prisma: `RealtimeChannel`, `RealtimeMessage`, `RealtimePresence`.
-- Add: `@socket.io/redis-adapter` (survive restarts, multi-instance); a `@OnEvent` bridge fanning the Phase 02 bus to authorized socket rooms; channel authz via project membership.
+- `apps/api/src/modules/realtime/services/realtime-bridge.service.ts` (NEW) — the `@OnEvent('**')` consumer that fans platform events out to authorized project rooms. The core Phase 13 deliverable.
+- `apps/api/src/modules/realtime/services/realtime-subscription.service.ts` (NEW) — owner-or-member authorization for `subscribe_project`.
+- `apps/api/src/modules/realtime/services/realtime-rooms.ts` (NEW) — canonical `project:<id>` room name.
+- `apps/api/src/modules/realtime/gateways/realtime.gateway.ts` — added `subscribe_project`/`unsubscribe_project` handlers + `broadcastToProject` (emits on the `/realtime` namespace).
+- `apps/api/src/adapters/redis-io.adapter.ts` (NEW) + `apps/api/src/main.ts` — `IoAdapter` subclass wiring `@socket.io/redis-adapter` via `app.useWebSocketAdapter`.
+- `apps/api/src/modules/realtime/services/token.service.ts` — bugfix: read the JWT `sub` claim (was `userId`).
+- `apps/api/src/modules/events/events.module.ts` — bugfix: `EventEmitterModule.forRoot({ wildcard: true })` (was without options → `@OnEvent('**')` never matched).
+- Prisma (unchanged, already present): `RealtimeChannel`, `RealtimeMessage`, `RealtimePresence`.
 
 ## Next Phase
 

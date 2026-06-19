@@ -958,6 +958,44 @@ NestJS lifecycle requires **every** `onModuleInit` (and `onApplicationBootstrap`
 
 ---
 
+## ADR-024: Attach the Socket.IO Adapter via IoAdapter, Not on the @WebSocketServer Object
+
+**Date:** 2026-06-19  |  **Status:** Accepted  |  **Phase:** 13
+
+**Context.** Phase 13 needs `@socket.io/redis-adapter` so `server.to(room).emit(...)` reaches sockets on any API instance (multi-node correctness + restart-safe presence). The first attempt attached the adapter inside the gateway's `afterInit` by calling `this.server.adapter(createAdapter(...))` on the `@WebSocketServer()`-injected object.
+
+**Decision.** Attach the adapter via a `RedisIoAdapter` subclass of `IoAdapter`, set on the application with `app.useWebSocketAdapter(redisIoAdapter)` in `main.ts` (overriding `createIOServer` to call `server.adapter(...)`).
+
+**Rationale.** For a namespaced gateway (`@WebSocketGateway({ namespace: '/realtime' })`), NestJS injects the socket.io **Namespace**, not the root **Server**, into `@WebSocketServer()`. A Namespace has no `.of()` and its `.adapter()` wiring differs — calling `this.server.of('/realtime')` throws `server.of is not a function`, and `this.server.adapter(...)` silently mis-targets. The `IoAdapter.createIOServer` path constructs the real Server and sets the adapter on it before any namespace is handed out, which is the only reliable point. This is the pattern the NestJS docs document.
+
+**Consequences.** The adapter must be configured in `main.ts` (bootstrap), not in the gateway. The `RedisIoAdapter` connects its pub/sub clients up front (`connectToRedis`, best-effort + try/catch) and degrades to a single-instance gateway if Redis is unavailable — it must never block bootstrap (consistent with ADR-023). The same Namespace-not-Server fact also governs fan-out: `broadcastToProject` calls `this.server.to(room).emit(...)` (the Namespace), never `.of('/realtime')`.
+
+---
+
+## ADR-025: EventEmitterModule Must Be Created with `wildcard: true`
+
+**Date:** 2026-06-19  |  **Status:** Accepted  |  **Phase:** 13 (fixes Phase 02)
+
+**Context.** `@nestjs/event-emitter`'s `EventEmitter2` only interprets wildcard/pattern listeners (`@OnEvent('**')`, `@OnEvent('deployments.*')`) when the emitter is constructed with `wildcard: true`. The events module was calling `EventEmitterModule.forRoot()` with **no options**, leaving wildcards off (the default). As a result every `@OnEvent('**')` consumer silently matched nothing: `AuditEventConsumer` wrote 0 rows to `platform.events`, and the Phase 13 realtime bridge received no events — despite events being published to NATS and re-emitted by the durable consumer. The bug was invisible because emit/publish worked; only the consumer side was dead.
+
+**Decision.** `EventEmitterModule.forRoot({ wildcard: true })`. This mirrors the options `EventService` already used for its own private emitter. The default delimiter (`.`) matches the platform's dotted event names (`projects.project.updated`), so exact-match `@OnEvent('foo.bar')` listeners continue to work alongside `@OnEvent('**')`.
+
+**Consequences.** All wildcard consumers now fire (audit recording, realtime fan-out). Future consumers may use `@OnEvent('**')` or namespace patterns freely. Exact-match listeners are unaffected. This is a one-line fix that retroactively makes the Phase 02 "real consumers" claim true.
+
+---
+
+## ADR-026: Socket Auth Reads the JWT `sub` Claim
+
+**Date:** 2026-06-19  |  **Status:** Accepted  |  **Phase:** 13
+
+**Context.** The platform access JWT (`AuthSessionService.buildAuthResponse`) carries the user id in the standard `sub` claim: `{ sub, email, role, type }`. The realtime `TokenService.validateJwt` was decoding `decoded.userId` — a claim that does not exist — so it returned an object with `userId: undefined`. The connection still succeeded (the signature verified), but every downstream socket action that needed a user id (channel membership, presence, project subscription) operated on `undefined`, causing e.g. Prisma compound-key lookups to throw.
+
+**Decision.** Read `decoded.sub` (falling back to `decoded.userId` only for non-platform tokens), and reject the connection if no user id is present.
+
+**Consequences.** Realtime socket actions now have a correct `userId`. This aligns realtime auth with the rest of the platform (which decodes `sub`). Any future JWT-claim consumer must read `sub`, not a bespoke `userId` field.
+
+---
+
 ## Future ADRs Needed
 
 These decisions are pending and will be documented as ADRs:

@@ -7,7 +7,12 @@ import { RegistryService } from '../registry/registry.service';
 
 @Global()
 @Module({
-  imports: [EventEmitterModule.forRoot()],
+  // wildcard:true is REQUIRED for @OnEvent('**') (and any pattern listener)
+  // to match. Without it, every wildcard consumer silently never fires — which
+  // is exactly what was happening (AuditEventConsumer wrote 0 rows; the Phase 13
+  // realtime bridge received nothing). Must mirror EventService's own emitter
+  // config. Default delimiter '.' matches our dotted event names.
+  imports: [EventEmitterModule.forRoot({ wildcard: true })],
   providers: [
     EventService,
     EventNatsConsumerService,
