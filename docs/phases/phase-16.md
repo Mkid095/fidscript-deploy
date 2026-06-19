@@ -1,18 +1,19 @@
 # Phase 16: SDK Platform
 
-> **Status:** Planned  |  **Track:** Surfaces  |  **Depends on:** Phases 03–15 (the backend it wraps)
+> **Status:** In Progress  |  **Track:** Surfaces  |  **Depends on:** Phases 03–15 (the backend it wraps)
 
 ## Objective
 
-One canonical TypeScript SDK that exposes the **entire** platform — every module, complete types, auth, pagination, streaming, and realtime — so the CLI, MCP server, and any external app call the API through a single, correct, published package. Today there are **two** SDKs with the same name and an arbitrary resolution winner.
+One canonical TypeScript SDK that exposes the **entire** platform — every module, complete types, auth, pagination, streaming, and realtime — so the CLI, MCP server, and any external app call the API through a single, correct, published package.
 
 ## Current State
 
-**PARTIAL — duplicated.** See `docs/AUDIT.md` §D (SDK). Specific defects:
+**IN PROGRESS — consolidated to `packages/sdk`.**
 
-- **Two SDKs** named `@fidscript/sdk`: `apps/sdk` (axios) and `packages/sdk` (fetch) → importers resolve to an arbitrary one.
-- `apps/sdk` is the stronger one but is **missing a `databases` module**.
-- Neither is published; neither has complete coverage of the 13 backend modules.
+- `packages/sdk` (`@fidscript/sdk`) is now the canonical SDK (was the stronger fetch-based one with databases, now fully built out with all 13 modules).
+- `apps/sdk` (`@fidscript/sdk-node`, axios-based) is **pending deletion** — all modules migrated.
+- Full module coverage: auth, projects, deployments, storage, databases, domains, email, functions, queues, cron, realtime, monitoring, logs.
+- New: async iterator pagination, streaming build/log tails, typed errors (FidscriptError / AuthError / NotFoundError / ValidationError / RateLimitError), configurable retry with back-off, `createFidscript()` entry point.
 
 ## Dependencies
 

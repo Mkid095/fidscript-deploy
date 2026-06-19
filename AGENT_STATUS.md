@@ -49,7 +49,7 @@ Statuses: `Planned` · `In Progress` · `Verified`
 | 13 | Realtime Platform | Verified |
 | 14 | Monitoring Platform | Verified |
 | 15 | Logging Platform | In Progress |
-| 16 | SDK Platform | Planned |
+| 16 | SDK Platform | In Progress |
 | 17 | MCP Platform | Planned |
 | 18 | CLI Platform | Planned |
 | 19 | Dashboard Platform | Planned |

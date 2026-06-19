@@ -1,127 +1,146 @@
-// FIDScript SDK Client
-import type {
-  User,
-  Project,
-  Deployment,
-  Database,
-  Domain,
-  ApiResponse,
-  PaginatedResponse,
-} from './types';
+import axios, { AxiosInstance, AxiosError } from 'axios';
+import { FidscriptError, AuthError, NotFoundError, ValidationError, RateLimitError } from './modules/errors';
 
-const DEFAULT_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000';
+const DEFAULT_BASE_URL = 'https://api.fidscript.com';
 
-export class FIDScriptClient {
-  private baseUrl: string;
-  private headers: Record<string, string>;
-
-  constructor(options: { baseUrl?: string; apiKey?: string } = {}) {
-    this.baseUrl = options.baseUrl || DEFAULT_BASE_URL;
-    this.headers = {
-      'Content-Type': 'application/json',
-      ...(options.apiKey && { Authorization: `Bearer ${options.apiKey}` }),
-    };
-  }
-
-  // Auth
-  async login(email: string, password: string): Promise<ApiResponse<{ user: User; token: string }>> {
-    const res = await fetch(`${this.baseUrl}/api/v1/auth/login`, {
-      method: 'POST',
-      headers: this.headers,
-      body: JSON.stringify({ email, password }),
-    });
-    return res.json() as any;
-  }
-
-  async register(email: string, password: string, name: string): Promise<ApiResponse<{ user: User }>> {
-    const res = await fetch(`${this.baseUrl}/api/v1/auth/register`, {
-      method: 'POST',
-      headers: this.headers,
-      body: JSON.stringify({ email, password, name }),
-    });
-    return res.json() as any;
-  }
-
-  // Projects
-  async getProjects(): Promise<PaginatedResponse<Project>> {
-    const res = await fetch(`${this.baseUrl}/api/v1/projects`, { headers: this.headers });
-    return res.json() as any;
-  }
-
-  async getProject(id: string): Promise<ApiResponse<Project>> {
-    const res = await fetch(`${this.baseUrl}/api/v1/projects/${id}`, { headers: this.headers });
-    return res.json() as any;
-  }
-
-  async createProject(data: Partial<Project>): Promise<ApiResponse<Project>> {
-    const res = await fetch(`${this.baseUrl}/api/v1/projects`, {
-      method: 'POST',
-      headers: this.headers,
-      body: JSON.stringify(data),
-    });
-    return res.json() as any;
-  }
-
-  async deleteProject(id: string): Promise<ApiResponse<void>> {
-    const res = await fetch(`${this.baseUrl}/api/v1/projects/${id}`, {
-      method: 'DELETE',
-      headers: this.headers,
-    });
-    return res.json() as any;
-  }
-
-  // Deployments
-  async getDeployments(projectId: string): Promise<PaginatedResponse<Deployment>> {
-    const res = await fetch(`${this.baseUrl}/api/v1/projects/${projectId}/deployments`, { headers: this.headers });
-    return res.json() as any;
-  }
-
-  async createDeployment(projectId: string): Promise<ApiResponse<Deployment>> {
-    const res = await fetch(`${this.baseUrl}/api/v1/projects/${projectId}/deployments`, {
-      method: 'POST',
-      headers: this.headers,
-    });
-    return res.json() as any;
-  }
-
-  // Databases
-  async getDatabases(): Promise<PaginatedResponse<Database>> {
-    const res = await fetch(`${this.baseUrl}/api/v1/databases`, { headers: this.headers });
-    return res.json() as any;
-  }
-
-  async createDatabase(data: Partial<Database>): Promise<ApiResponse<Database>> {
-    const res = await fetch(`${this.baseUrl}/api/v1/databases`, {
-      method: 'POST',
-      headers: this.headers,
-      body: JSON.stringify(data),
-    });
-    return res.json() as any;
-  }
-
-  // Domains
-  async getDomains(): Promise<PaginatedResponse<Domain>> {
-    const res = await fetch(`${this.baseUrl}/api/v1/domains`, { headers: this.headers });
-    return res.json() as any;
-  }
-
-  async createDomain(data: Partial<Domain>): Promise<ApiResponse<Domain>> {
-    const res = await fetch(`${this.baseUrl}/api/v1/domains`, {
-      method: 'POST',
-      headers: this.headers,
-      body: JSON.stringify(data),
-    });
-    return res.json() as any;
-  }
-
-  async verifyDomain(id: string): Promise<ApiResponse<Domain>> {
-    const res = await fetch(`${this.baseUrl}/api/v1/domains/${id}/verify`, {
-      method: 'POST',
-      headers: this.headers,
-    });
-    return res.json() as any;
-  }
+export interface FidscriptClientOptions {
+  apiKey?: string;
+  baseURL?: string;
+  timeout?: number;
+  maxRetries?: number;
 }
 
-// Default export
-export default FIDScriptClient;
+function mapError(err: unknown): never {
+  if (err instanceof AxiosError) {
+    const status = err.response?.status;
+    const data = err.response?.data as Record<string, unknown> | undefined;
+    const message =
+      typeof data?.message === 'string'
+        ? data.message
+        : typeof data?.error === 'string'
+          ? data.error
+          : err.message;
+
+    if (status === 401) throw new AuthError(message);
+    if (status === 404) throw new NotFoundError('Resource', err.config?.url ?? 'unknown');
+    if (status === 422) throw new ValidationError(message);
+    if (status === 429) {
+      const retryAfter = err.response?.headers?.['retry-after'] as string | undefined;
+      const ms = retryAfter ? parseInt(retryAfter, 10) * 1000 : undefined;
+      throw new RateLimitError(ms);
+    }
+    throw new FidscriptError(message, status, data?.code as string | undefined);
+  }
+  if (err instanceof FidscriptError) throw err;
+  throw new FidscriptError((err as Error).message);
+}
+
+async function withRetry<T>(fn: () => Promise<T>, maxRetries = 3): Promise<T> {
+  let last: Error | undefined;
+  for (let attempt = 1; attempt <= maxRetries; attempt++) {
+    try {
+      return await fn();
+    } catch (err) {
+      last = err as Error;
+      const isRetryable =
+        err instanceof FidscriptError
+          ? [429, 500, 502, 503, 504].includes(err.statusCode ?? 0)
+          : true;
+      if (attempt < maxRetries && isRetryable) {
+        await sleep(attempt * attempt * 200);
+        continue;
+      }
+    }
+  }
+  throw last!;
+}
+
+function sleep(ms: number): Promise<void> {
+  return new Promise(r => setTimeout(r, ms));
+}
+
+export { FidscriptError, AuthError, NotFoundError, ValidationError, RateLimitError, sleep };
+
+export class FidscriptClient {
+  private readonly http: AxiosInstance;
+  private readonly maxRetries: number;
+
+  constructor(options: FidscriptClientOptions = {}) {
+    this.maxRetries = options.maxRetries ?? 3;
+    this.http = axios.create({
+      baseURL: options.baseURL ?? DEFAULT_BASE_URL,
+      timeout: options.timeout ?? 30_000,
+      headers: {
+        'Content-Type': 'application/json',
+        ...(options.apiKey ? { Authorization: `Bearer ${options.apiKey}` } : {}),
+      },
+    });
+  }
+
+  async get<T>(path: string, params?: Record<string, unknown>): Promise<T> {
+    return withRetry(
+      () => this.http.get<T>(path, { params }).then(r => r.data).catch(mapError),
+      this.maxRetries,
+    );
+  }
+
+  async post<T>(path: string, data?: unknown): Promise<T> {
+    return withRetry(
+      () => this.http.post<T>(path, data).then(r => r.data).catch(mapError),
+      this.maxRetries,
+    );
+  }
+
+  async put<T>(path: string, data?: unknown): Promise<T> {
+    return withRetry(
+      () => this.http.put<T>(path, data).then(r => r.data).catch(mapError),
+      this.maxRetries,
+    );
+  }
+
+  async patch<T>(path: string, data?: unknown): Promise<T> {
+    return withRetry(
+      () => this.http.patch<T>(path, data).then(r => r.data).catch(mapError),
+      this.maxRetries,
+    );
+  }
+
+  async delete<T>(path: string): Promise<T> {
+    return withRetry(
+      () => this.http.delete<T>(path).then(r => r.data).catch(mapError),
+      this.maxRetries,
+    );
+  }
+
+  async *streamGet<T>(path: string, params?: Record<string, unknown>): AsyncGenerator<T> {
+    const baseURL = this.http.defaults.baseURL ?? DEFAULT_BASE_URL;
+    const url = new URL(baseURL + path);
+    if (params) {
+      for (const [k, v] of Object.entries(params)) {
+        url.searchParams.set(k, String(v));
+      }
+    }
+    const response = await fetch(url.toString(), {
+      headers: this.http.defaults.headers.common as Record<string, string>,
+    });
+    if (!response.ok) throw mapError(new AxiosError(response.statusText, String(response.status)));
+    const reader = response.body?.getReader();
+    if (!reader) throw new FidscriptError('Response body is not readable');
+    const decoder = new TextDecoder();
+    let buffer = '';
+    try {
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        buffer += decoder.decode(value, { stream: true });
+        const lines = buffer.split('\n');
+        buffer = lines.pop() ?? '';
+        for (const line of lines) {
+          if (line.trim()) yield JSON.parse(line) as T;
+        }
+      }
+    } finally {
+      reader.releaseLock();
+    }
+  }
+}

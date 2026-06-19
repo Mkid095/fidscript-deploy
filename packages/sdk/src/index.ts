@@ -1,3 +1,80 @@
-// FIDScript SDK - Main export
-export * from './client';
-export type * from './types';
+/**
+ * Phase 16 — FIDScript Platform SDK
+ *
+ * One canonical SDK for the entire FIDScript Deploy platform.
+ * Consolidates and supersedes the old `apps/sdk` (axios) and `packages/sdk` (fetch).
+ *
+ * Usage:
+ * ```ts
+ * import { createFidscript } from '@fidscript/sdk';
+ *
+ * const fs = createFidscript({ apiKey: process.env.FIDSCRIPT_API_KEY });
+ * const projects = await fs.projects.list();
+ * ```
+ */
+
+import { FidscriptClient, FidscriptClientOptions } from './client';
+import { AuthModule } from './modules/auth';
+import { ProjectsModule } from './modules/projects';
+import { DeploymentsModule } from './modules/deployments';
+import { StorageModule } from './modules/storage';
+import { DatabasesModule } from './modules/databases';
+import { DomainsModule } from './modules/domains';
+import { EmailModule } from './modules/email';
+import { FunctionsModule } from './modules/functions';
+import { QueuesModule } from './modules/queues';
+import { CronModule } from './modules/cron';
+import { RealtimeModule } from './modules/realtime';
+import { MonitoringModule } from './modules/monitoring';
+import { LoggingModule } from './modules/logging';
+import {
+  FidscriptError,
+  AuthError,
+  NotFoundError,
+  ValidationError,
+  RateLimitError,
+} from './modules/errors';
+
+export { FidscriptClient, FidscriptClientOptions };
+export { FidscriptError, AuthError, NotFoundError, ValidationError, RateLimitError };
+export { AuthModule, ProjectsModule, DeploymentsModule, StorageModule, DatabasesModule, DomainsModule, EmailModule, FunctionsModule, QueuesModule, CronModule, RealtimeModule, MonitoringModule, LoggingModule };
+
+export interface FidscriptSDK {
+  auth: AuthModule;
+  projects: ProjectsModule;
+  deployments: DeploymentsModule;
+  storage: StorageModule;
+  databases: DatabasesModule;
+  domains: DomainsModule;
+  email: EmailModule;
+  functions: FunctionsModule;
+  queues: QueuesModule;
+  cron: CronModule;
+  realtime: RealtimeModule;
+  monitoring: MonitoringModule;
+  logs: LoggingModule;
+}
+
+export function createFidscript(options: {
+  apiKey?: string;
+  baseURL?: string;
+  timeout?: number;
+  maxRetries?: number;
+}): FidscriptSDK {
+  const client = new FidscriptClient(options);
+  return {
+    auth: new AuthModule(client),
+    projects: new ProjectsModule(client),
+    deployments: new DeploymentsModule(client),
+    storage: new StorageModule(client),
+    databases: new DatabasesModule(client),
+    domains: new DomainsModule(client),
+    email: new EmailModule(client),
+    functions: new FunctionsModule(client),
+    queues: new QueuesModule(client),
+    cron: new CronModule(client),
+    realtime: new RealtimeModule(client),
+    monitoring: new MonitoringModule(client),
+    logs: new LoggingModule(client),
+  };
+}
