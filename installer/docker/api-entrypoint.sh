@@ -4,16 +4,19 @@ set -e
 
 echo "[entrypoint] Starting FIDScript API..."
 
-# Materialize *_FILE env vars into real env vars
-for _file_var in $(env | grep '_FILE=' | cut -d= -f1); do
-    _real_var=$(echo "$_file_var" | sed 's/_FILE$//')
-    eval "_file_path=\"\$$_file_var\""
-    if [ -f "$_file_path" ]; then
-        _value=$(cat "$_file_path")
-        eval "export $_real_var=\$_value"
-        echo "[entrypoint] $_real_var loaded"
+# Materialize *_FILE env vars into real env vars.
+# The *_FILE vars are set by Docker's env_file + environment directive.
+for _f in $(env | grep '_FILE=' | cut -d= -f1); do
+    _v=$(echo "$_f" | sed 's/_FILE$//')
+    _p=$(eval echo "\$$_f")
+    if [ -f "$_p" ]; then
+        _val=$(cat "$_p")
+        # POSIX/dash-safe export: one quoted "NAME=value" word.
+        # (printf -v and ${var:0:n} are bash-only and broke under /bin/sh.)
+        export "$_v=$_val"
+        echo "[entrypoint] $_v loaded"
     else
-        echo "[entrypoint] WARNING: $_file_var not found — skipping"
+        echo "[entrypoint] WARNING: $_f not found — skipping"
     fi
 done
 

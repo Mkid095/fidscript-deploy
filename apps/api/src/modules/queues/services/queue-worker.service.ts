@@ -44,9 +44,14 @@ export class QueueWorkerService implements OnModuleInit {
   private async bootAllQueues(): Promise<void> {
     const queues = await this.prisma.queue.findMany({ where: { status: 'active' } });
     this.logger.log(`Starting worker for ${queues.length} active queue(s)`);
-    await Promise.allSettled(
-      queues.map(q => this.startQueueWorker(q.id, q.projectId, q.name)),
-    );
+    // Fire-and-forget: each worker runs an infinite pull loop. Awaiting it here
+    // would block NestJS init() forever, so app.listen() never opens the HTTP
+    // port — the bootstrap hang. Loops must run detached in the background.
+    for (const q of queues) {
+      this.startQueueWorker(q.id, q.projectId, q.name).catch((err: unknown) => {
+        this.logger.error(`Worker for queue "${q.name}" failed to start: ${(err as Error).message}`);
+      });
+    }
   }
 
   private async startQueueWorker(queueId: string, projectId: string, queueName: string): Promise<void> {
@@ -210,7 +215,7 @@ export class QueueWorkerService implements OnModuleInit {
 
       case 'internal':
       default:
-        this.logger.debug(`[internal] queue=${queue.name} body=${(payload.body || '').slice(0, 80)}`);
+        this.logger.debug(`[internal] queue=${payload.queueName} body=${(payload.body || '').slice(0, 80)}`);
         break;
     }
   }

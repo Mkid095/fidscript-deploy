@@ -3,6 +3,15 @@ import { ValidationPipe } from '@nestjs/common';
 import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger';
 import { AppModule } from './app.module';
 
+process.on('unhandledRejection', (reason, promise) => {
+  console.error('[FATAL] unhandledRejection:', reason);
+});
+
+process.on('uncaughtException', (err) => {
+  console.error('[FATAL] uncaughtException:', err);
+  process.exit(1);
+});
+
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
 
@@ -32,7 +41,13 @@ async function bootstrap() {
   SwaggerModule.setup('docs', app, document);
 
   const port = process.env.API_PORT || 3001;
-  await app.listen(port);
-  console.log(`FIDScript API running on port ${port}`);
+  console.log('[bootstrap] Before listen()');
+  try {
+    const server = await app.listen(port);
+    console.log('[bootstrap] listen() returned - FIDScript API running on port', port);
+  } catch (err) {
+    console.error('[bootstrap] listen() threw:', err);
+    process.exit(1);
+  }
 }
 bootstrap();

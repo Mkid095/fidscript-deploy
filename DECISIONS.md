@@ -934,6 +934,30 @@ HTTP-01 challenge (Let's Encrypt makes an HTTP request to port 80) cannot issue 
 
 ---
 
+## ADR-023: Never Await Infinite Worker Loops in NestJS Init Hooks
+
+**Date:** 2026-06-19
+
+**Status:** Accepted
+
+**Context:**
+During Phase 12 bring-up, the API container booted all modules but `app.listen()` never opened port 3001 — the process hung silently with no error. Root cause: `QueuesModule.onModuleInit` did `await this.worker.start(nc)`, and `start()` → `bootAllQueues()` → `Promise.allSettled(queues.map(q => startQueueWorker(...)))`, where each `startQueueWorker` enters an infinite `while (!cancelled)` pull-consume loop. Awaiting an infinite loop means the promise never resolves.
+
+NestJS lifecycle requires **every** `onModuleInit` (and `onApplicationBootstrap`) hook to resolve before `app.listen()` internally calls `httpServer.listen()` and opens the port. One hanging init hook blocks the entire HTTP server from starting — and because the hang is inside `app.listen()`, the failure is invisible (no error, port just never binds).
+
+**Decision:**
+- **Long-running loops (queue workers, pollers, consumers) must be fire-and-forget** — started detached from the bootstrap path. Kick them off with `void promise.catch(log)` (or an un-awaited call), never `await`.
+- The bootstrap hook may `await` only finite setup (DB reads, connection establishment, `ensureConsumer`). The infinite runtime loop that follows must not be awaited.
+- This applies to `onModuleInit`, `onApplicationBootstrap`, and any provider factory awaited during `app.init()`.
+
+**Implementation (Phase 11/12):**
+- `QueueWorkerService.bootAllQueues` now fires each `startQueueWorker` detached with a `.catch` error log, instead of `Promise.allSettled` over the infinite loops.
+- Verified: API boots in ~2s, port 3001 binds, `/api/v1/health` returns 200, and the worker loops continue running in the background.
+
+**Why not run workers in a separate process?** That is a valid future option (a dedicated worker pod), but on a single-VPS deployment the API process hosting the workers is acceptable **as long as** the loops never block bootstrap. This ADR codifies that boundary.
+
+---
+
 ## Future ADRs Needed
 
 These decisions are pending and will be documented as ADRs:

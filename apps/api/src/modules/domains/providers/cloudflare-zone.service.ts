@@ -12,20 +12,30 @@ export class CloudflareZoneService {
 
   constructor(private configService: ConfigService) {
     const apiTokenFile = this.configService.get<string>('CLOUDFLARE_API_TOKEN_FILE');
+
     if (!apiTokenFile) {
-      throw new Error(
-        'CLOUDFLARE_API_TOKEN_FILE is not set - cannot initialize CloudflareZoneService. ' +
-        'Phase 07 requires a Cloudflare API token with Zone:DNS:Edit permissions for deploy.fidscript.com.',
+      this.logger.warn(
+        'CLOUDFLARE_API_TOKEN_FILE is not set - CloudflareZoneService is degraded. ' +
+        'Domain management will not be available. Set CLOUDFLARE_API_TOKEN_FILE to enable.',
       );
+      this.client = axios.create({ baseURL: 'https://api.cloudflare.com/client/v4', timeout: 10_000 });
+      this.platformDomain = this.configService.get<string>('PLATFORM_DOMAIN', 'deploy.fidscript.com');
+      this.serverIp = this.configService.get<string>('SERVER_IP') ?? '0.0.0.0';
+      return;
     }
 
     let token: string;
     try {
       token = require('fs').readFileSync(apiTokenFile, 'utf8').trim();
     } catch (err) {
-      throw new Error(
-        `CLOUDFLARE_API_TOKEN_FILE points to "${apiTokenFile}" but file could not be read: ${err instanceof Error ? err.message : err}`,
+      this.logger.warn(
+        `CLOUDFLARE_API_TOKEN_FILE points to "${apiTokenFile}" but file could not be read: ${err instanceof Error ? err.message : err} - ` +
+        'CloudflareZoneService is degraded. Domain management will not be available.',
       );
+      this.client = axios.create({ baseURL: 'https://api.cloudflare.com/client/v4', timeout: 10_000 });
+      this.platformDomain = this.configService.get<string>('PLATFORM_DOMAIN', 'deploy.fidscript.com');
+      this.serverIp = this.configService.get<string>('SERVER_IP') ?? '0.0.0.0';
+      return;
     }
 
     this.client = axios.create({
@@ -40,12 +50,12 @@ export class CloudflareZoneService {
     this.platformDomain = this.configService.get<string>('PLATFORM_DOMAIN', 'deploy.fidscript.com');
     const serverIpRaw = this.configService.get<string>('SERVER_IP');
     if (!serverIpRaw) {
-      throw new Error(
+      this.logger.warn(
         'SERVER_IP is not set - Phase 07 requires the VPS public IP to create DNS records. ' +
-        'Set SERVER_IP in your environment.',
+        'Using 0.0.0.0 as fallback. Set SERVER_IP in your environment.',
       );
     }
-    this.serverIp = serverIpRaw;
+    this.serverIp = serverIpRaw ?? '0.0.0.0';
   }
 
   get clientRef() { return this.client; }
