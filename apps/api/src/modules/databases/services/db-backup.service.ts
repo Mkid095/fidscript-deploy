@@ -36,7 +36,7 @@ export class DbBackupService {
         where: { id: backupId },
         data: { status: 'completed', filename: backupInfo.filename, size: backupInfo.size, completedAt: new Date() },
       });
-      await this.eventService.emit('database.backup_completed', { backupId, databaseId: database.id });
+      await this.eventService.emit('database.backup_completed', { backupId, databaseId: database.id, projectId: database.projectId });
     } catch {
       await this.prisma.databaseBackup.update({ where: { id: backupId }, data: { status: 'failed' } });
     }
