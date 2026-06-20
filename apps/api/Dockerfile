@@ -29,10 +29,25 @@ WORKDIR /app
 # blank "Error: Schema engine error:" with no further detail. curl is
 # also installed for the runtime healthcheck (compose's "test" command)
 # and for the api's Stalwart JMAP connectivity probe (see
-# email/stalwart/stalwart-jmap.service.ts). Install as root (before
+# email/stalwart/stalwart-jmap.service.ts). git lets the deployment worker
+# clone user source repos. docker-ce-cli + docker-buildx-plugin let the
+# deployment worker run `docker build`/`docker run` against the host daemon
+# (socket mounted in docker-compose); buildx is required because the worker
+# sets DOCKER_BUILDKIT=1 and uses `--secret` (a BuildKit feature). Only the
+# CLI + plugin are installed (no daemon), from Docker's
+# official apt repo since Debian's default repos don't carry it. The host
+# docker socket's group GID is granted to the non-root `node` user at
+# runtime via compose `group_add` (DOCKER_GID). Install as root (before
 # USER node) and clean the apt cache.
 RUN apt-get update -y \
-    && apt-get install -y --no-install-recommends openssl ca-certificates curl \
+    && apt-get install -y --no-install-recommends openssl ca-certificates curl git gnupg \
+    && install -m 0755 -d /etc/apt/keyrings \
+    && curl -fsSL https://download.docker.com/linux/debian/gpg -o /etc/apt/keyrings/docker.asc \
+    && chmod a+r /etc/apt/keyrings/docker.asc \
+    && echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.asc] https://download.docker.com/linux/debian $(. /etc/os-release && echo "$VERSION_CODENAME") stable" \
+        > /etc/apt/sources.list.d/docker.list \
+    && apt-get update -y \
+    && apt-get install -y --no-install-recommends docker-ce-cli docker-buildx-plugin \
     && rm -rf /var/lib/apt/lists/*
 
 # pnpm's node_modules (root + per-package) carry the resolved dependency graph;

@@ -131,9 +131,14 @@ export class DeploymentStateService implements OnModuleInit {
   }
 
   private parseSource(deployment: any) {
+    // deployment.release.sourceUrl carries the git URL from the create DTO.
+    const release = deployment.release;
+    if (!release) return { type: 'git' as const, url: '', branch: 'main' };
+    if (release.sourceUrl) return { type: 'git' as const, url: release.sourceUrl, branch: release.branch || 'main' };
+    // Fallback: platform-level sourceRepo from cloned projects
     const project = deployment.project;
-    if (project.sourceRepo) return { type: 'git' as const, url: project.sourceRepo, branch: deployment.commitSha || project.sourceBranch || 'main' };
-    return { type: 'git' as const, url: '', branch: 'main' };
+    if (project?.sourceRepo) return { type: 'git' as const, url: project.sourceRepo, branch: release.branch || 'main' };
+    return { type: 'git' as const, url: '', branch: release.branch || 'main' };
   }
 
   private async releaseLock(projectId: string, deploymentId: string) {

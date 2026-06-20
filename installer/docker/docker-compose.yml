@@ -257,6 +257,12 @@ services:
     volumes:
       - ./secrets:/run/secrets:ro
       - /var/run/docker.sock:/var/run/docker.sock
+    # The deployment worker runs `docker build`/`docker run` against the host
+    # daemon via the mounted socket. The socket is root:docker on the host
+    # (host GID in DOCKER_GID); adding that GID here grants the non-root
+    # `node` user (uid 1000) read/write access without running as root.
+    group_add:
+      - "${DOCKER_GID}"
     networks:
       - fidscript
       - fidscript-app

@@ -14,8 +14,11 @@ export class DockerBuildArgsService {
     domain: string;
   }): string[] {
     const { imageTag, containerName, envVars, profile, domain } = opts;
+    // First element is the `docker` subcommand; the caller spawns `docker`
+    // directly with execFileSync (no shell) so Traefik labels and env values
+    // pass through verbatim. Do NOT join into a string + sh.
     const args = [
-      'docker run', '--name', containerName, '--restart', 'unless-stopped',
+      'run', '--name', containerName, '--restart', 'unless-stopped',
       '--security-opt', 'no-new-privileges', '--read-only',
       '--tmpfs', '/tmp:rw,noexec,nosuid,size=64m',
       '--tmpfs', '/storage:rw,noexec,nosuid,size=128m',

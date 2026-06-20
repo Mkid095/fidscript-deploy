@@ -288,6 +288,7 @@ model Release {
   branch          String   @default("main") @map("source_branch")
   imageTag        String   @db.VarChar(255) // e.g. "fidscript/<slug>:<version>"
   version         String   @db.VarChar(50) // e.g. "2023-abc123" — immutable once set
+  sourceUrl       String?  @map("source_url") @db.VarChar(1024) // git repo URL at creation
   buildLogs       String?  @db.Text // full build log output
   buildDurationMs Int?     @map("build_duration_ms")
   createdBy       String?  @map("created_by") // userId or "system"

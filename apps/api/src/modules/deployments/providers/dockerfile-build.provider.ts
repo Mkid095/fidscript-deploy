@@ -1,6 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { existsSync, writeFileSync } from 'fs';
-import { join } from 'path';
+import { join, isAbsolute } from 'path';
 import {
   BuildProvider,
   BuildContext,
@@ -70,8 +70,11 @@ export class DockerfileBuildProvider implements BuildProvider {
         });
       }
 
-      const dockerfilePath = source.dockerfilePath
-        || (existsSync(join(ws, 'Dockerfile')) ? 'Dockerfile' : 'Dockerfile');
+      // `docker build -f <path>` resolves a RELATIVE path against the process
+      // CWD (/app), NOT the build context — so a bare "Dockerfile" would point
+      // at /app/Dockerfile and fail to read. Pin it to an absolute workspace path.
+      const requestedPath = source.dockerfilePath || 'Dockerfile';
+      const dockerfilePath = isAbsolute(requestedPath) ? requestedPath : join(ws, requestedPath);
 
       addLog(`[DockerfileBuildProvider] Building with Dockerfile: ${dockerfilePath}`);
 

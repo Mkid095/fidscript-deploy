@@ -10,6 +10,7 @@ import { DeploymentLifecycleService } from './runner/deployment-lifecycle.servic
 import { DeploymentRollbackService } from './runner/deployment-rollback.service';
 import { DockerLifecycleService } from './runner/docker-lifecycle.service';
 import { DockerBuildArgsService } from './runner/docker-build-args.service';
+import { DockerCommandService } from './runner/docker-command.service';
 import { DockerfileBuildProvider } from './providers/dockerfile-build.provider';
 import { DockerBuildWorkspaceService } from './providers/docker-build-workspace.service';
 import { StorageModule } from '@/modules/storage/storage.module';
@@ -28,6 +29,7 @@ import { StorageModule } from '@/modules/storage/storage.module';
     DeploymentRollbackService,
     DockerLifecycleService,
     DockerBuildArgsService,
+    DockerCommandService,
     DockerBuildWorkspaceService,
     DockerfileBuildProvider,
     { provide: 'BUILD_PROVIDER', useExisting: DockerfileBuildProvider },

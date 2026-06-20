@@ -1,9 +1,9 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { execSync } from 'child_process';
 import { DeploymentProfile, RuntimeEnv } from '../types/deployment-profile';
 import { DockerLifecycleService } from './docker-lifecycle.service';
 import { DockerBuildArgsService } from './docker-build-args.service';
+import { DockerCommandService } from './docker-command.service';
 
 export interface DeployResult {
   containerId: string;
@@ -16,12 +16,12 @@ export interface DeployResult {
 @Injectable()
 export class DockerRunService {
   private readonly logger = new Logger(DockerRunService.name);
-  private readonly APP_NETWORK = 'fidscript-app';
 
   constructor(
     private configService: ConfigService,
     private lifecycle: DockerLifecycleService,
     private buildArgs: DockerBuildArgsService,
+    private cmd: DockerCommandService,
   ) {}
 
   async deployContainer(opts: {
@@ -47,23 +47,8 @@ export class DockerRunService {
       addLog(`[runner] Starting container: ${containerName}`);
       if (profile.requiresRoute) addLog(`[runner] Route: https://${domain} → port ${profile.defaultPort}`);
       else addLog(`[runner] No route (${profile.label} does not require HTTP routing)`);
-      this.exec(runArgs.join(' '));
-
-      if (profile.requiresHealthCheck) {
-        addLog(`[runner] Waiting for container (timeout: ${startupTimeoutSeconds}s)…`);
-        const healthy = await this.waitForHealth(containerName, profile.healthCheckPath, profile.defaultPort, startupTimeoutSeconds * 1000);
-        if (!healthy) {
-          let containerLogs = '';
-          try { containerLogs = this.exec(`docker logs ${containerName} 2>&1 | tail -20`); } catch { /* ignore */ }
-          throw new Error(`Health check failed after ${startupTimeoutSeconds}s.\nPath: GET localhost:${profile.defaultPort}${profile.healthCheckPath}\nLogs:\n${containerLogs}`);
-        }
-        addLog(`[runner] Container is healthy`);
-      } else if (profile.isWorker || profile.isCron) {
-        const status = this.exec(`docker inspect -f '{{.State.Running}}' ${containerName} 2>/dev/null`).trim();
-        if (status !== 'true') throw new Error(`Container ${containerName} failed to start. Check docker logs.`);
-        addLog(`[runner] Container started (no health check for ${profile.label})`);
-      }
-
+      this.cmd.execDocker(runArgs);
+      await this.assertContainerHealthy(opts, containerName, addLog);
       const deploymentUrl = profile.requiresRoute ? `https://${domain}` : '';
       return { containerId: containerName, deploymentUrl, deployDurationMs: Date.now() - startTime, success: true };
     } catch (err) {
@@ -96,21 +81,8 @@ export class DockerRunService {
       this.lifecycle.ensureNetwork();
       const runArgs = this.buildArgs.buildRunArgs({ imageTag, containerName, projectSlug, envVars, profile, domain });
       addLog(`[runner] Rollback: re-running ${imageTag} (no rebuild)`);
-      this.exec(runArgs.join(' '));
-
-      if (profile.requiresHealthCheck) {
-        addLog(`[runner] Waiting for container (timeout: ${startupTimeoutSeconds}s)…`);
-        const healthy = await this.waitForHealth(containerName, profile.healthCheckPath, profile.defaultPort, startupTimeoutSeconds * 1000);
-        if (!healthy) {
-          let containerLogs = '';
-          try { containerLogs = this.exec(`docker logs ${containerName} 2>&1 | tail -20`); } catch { /* ignore */ }
-          throw new Error(`Health check failed after ${startupTimeoutSeconds}s.\nLogs:\n${containerLogs}`);
-        }
-      } else {
-        const status = this.exec(`docker inspect -f '{{.State.Running}}' ${containerName} 2>/dev/null`).trim();
-        if (status !== 'true') throw new Error(`Rollback container ${containerName} failed to start.`);
-      }
-
+      this.cmd.execDocker(runArgs);
+      await this.assertContainerHealthy(opts, containerName, addLog);
       const deploymentUrl = profile.requiresRoute ? `https://${domain}` : '';
       return { containerId: containerName, deploymentUrl, deployDurationMs: Date.now() - startTime, success: true };
     } catch (err) {
@@ -120,33 +92,30 @@ export class DockerRunService {
     }
   }
 
+  /** Wait for health (HTTP services) or just confirm it started (workers/cron). */
+  private async assertContainerHealthy(
+    opts: { profile: DeploymentProfile; startupTimeoutSeconds: number },
+    containerName: string,
+    addLog: (l: string) => void,
+  ) {
+    const { profile, startupTimeoutSeconds } = opts;
+    if (profile.requiresHealthCheck) {
+      addLog(`[runner] Waiting for container (timeout: ${startupTimeoutSeconds}s)…`);
+      const healthy = await this.cmd.waitForHealth(containerName, profile.healthCheckPath, profile.defaultPort, startupTimeoutSeconds * 1000);
+      if (!healthy) {
+        let containerLogs = '';
+        try { containerLogs = this.cmd.exec(`docker logs ${containerName} 2>&1 | tail -20`); } catch { /* ignore */ }
+        throw new Error(`Health check failed after ${startupTimeoutSeconds}s.\nPath: GET localhost:${profile.defaultPort}${profile.healthCheckPath}\nLogs:\n${containerLogs}`);
+      }
+      addLog(`[runner] Container is healthy`);
+      return;
+    }
+    const status = this.cmd.exec(`docker inspect -f '{{.State.Running}}' ${containerName} 2>/dev/null`).trim();
+    if (status !== 'true') throw new Error(`Container ${containerName} failed to start. Check docker logs.`);
+    addLog(`[runner] Container started (no health check for ${profile.label})`);
+  }
+
   teardown(containerName: string) { return this.lifecycle.teardown(containerName); }
   restart(containerName: string) { return this.lifecycle.restart(containerName); }
   stop(containerName: string) { return this.lifecycle.stop(containerName); }
-
-  private async waitForHealth(containerName: string, healthCheckPath: string, port: number, timeoutMs: number): Promise<boolean> {
-    const deadline = Date.now() + timeoutMs;
-    while (Date.now() < deadline) {
-      try {
-        const status = this.exec(`docker inspect -f '{{.State.Running}}' ${containerName} 2>/dev/null`).trim();
-        if (status !== 'true') return false;
-        const result = this.exec(`docker exec ${containerName} sh -c "curl -sf localhost:${port}${healthCheckPath}" 2>/dev/null`);
-        if (result.trim() === '' || result.includes('200')) return true;
-      } catch { /* not ready */ }
-      await sleep(2000);
-    }
-    return false;
-  }
-
-  private exec(cmd: string): string {
-    try {
-      return execSync(cmd, { timeout: 60_000, stdio: 'pipe' } as any).toString();
-    } catch (err) {
-      const e = err as { message?: string; stderr?: Buffer | string };
-      const msg = typeof e.stderr === 'string' ? e.stderr : e.stderr?.toString() || e.message || String(err);
-      throw new Error(msg);
-    }
-  }
 }
-
-function sleep(ms: number) { return new Promise(resolve => setTimeout(resolve, ms)); }

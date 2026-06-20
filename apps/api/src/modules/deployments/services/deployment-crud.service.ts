@@ -24,6 +24,7 @@ export class DeploymentCrudService {
         projectId, version,
         commitSha: dto.commitSha || '',
         branch: dto.branch || project.sourceBranch || 'main',
+        sourceUrl: dto.source?.git?.url || undefined,
         imageTag: `fidscript/${project.slug}:${version}`,
         createdBy: userId,
       },

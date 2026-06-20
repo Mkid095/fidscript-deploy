@@ -1,6 +1,5 @@
 import { Injectable, Logger } from '@nestjs/common';
-import { ConfigService } from '@nestjs/config';
-import { execSync } from 'child_process';
+import { execSync, execFileSync } from 'child_process';
 import { InvocationResult } from '@/modules/functions/runtimes/runtime.interface';
 
 export interface SandboxedRunOptions {
@@ -18,124 +17,68 @@ const RUNTIME_IMAGES = {
   python: 'python:3.11-alpine',
 };
 
+// Bootstrap run inside the container: read the function code from stdin,
+// write it to a tmpfs file, require it, and invoke the handler with the event.
+// Piping code via stdin avoids bind-mount host-path issues under Docker-out-of-
+// Docker (the api container's /tmp is not the daemon host's /tmp).
+const NODE_BOOTSTRAP =
+  "let s='';process.stdin.on('data',d=>s+=d);process.stdin.on('end',()=>{" +
+  "require('fs').writeFileSync('/tmp/fn.js',s);" +
+  "const h=require('/tmp/fn.js');const e=JSON.parse(process.env.FUNCTION_EVENT||'{}');" +
+  "const hp=process.env.FUNCTION_HANDLER||'handler';const fn=hp.includes('.')?hp.split('.').pop():hp;" +
+  "const f=(typeof h==='function'?h:(h[fn]||h.handler));" +
+  "Promise.resolve(f?f(e):h).then(r=>process.stdout.write(JSON.stringify(r))).catch(err=>{process.stderr.write(String(err&&err.message||err));process.exit(1)})});";
+
 @Injectable()
 export class SandboxedRunnerService {
   private readonly logger = new Logger(SandboxedRunnerService.name);
 
-  constructor(private configService: ConfigService) {}
-
   async run(opts: SandboxedRunOptions): Promise<InvocationResult> {
     const image = RUNTIME_IMAGES[opts.runtime] ?? RUNTIME_IMAGES.nodejs;
-    const { code, runtime, entryPoint, payload, envVars, memoryMb, timeoutSeconds } = opts;
+    const { code, entryPoint, payload, envVars, memoryMb, timeoutSeconds } = opts;
     const start = Date.now();
-    const runId = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
-    const containerName = `fn-${runId}`;
+    const containerName = `fn-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
 
-    // Write code to a tmpfs dir — container reads it; nothing lives on the host rootfs
-    const hostCodeDir = `/tmp/fidscript-fn/${runId}`;
-    let cleanupDone = false;
+    const dockerArgs = [
+      'docker', 'run', '--rm', '-i',
+      '--name', containerName,
+      '--security-opt', 'no-new-privileges', '--cap-drop', 'ALL',
+      '--read-only', '--tmpfs', '/tmp:rw,noexec,nosuid,size=64m',
+      '--memory', `${memoryMb}m`, '--memory-swap', `${memoryMb}m`,
+      '--cpus', '1', '--pids-limit', '64', '--network', 'none',
+      '-e', `FUNCTION_EVENT=${payload}`,
+      '-e', `FUNCTION_HANDLER=${entryPoint}`,
+      ...Object.entries(envVars).map(([k, v]) => ['-e', `${k}=${v}`]).flat(),
+      image,
+      ...(opts.runtime === 'python' ? this.pythonCmd() : ['node', '-e', NODE_BOOTSTRAP]),
+    ];
 
-    const cleanup = async () => {
-      if (cleanupDone) return;
-      cleanupDone = true;
-      try {
-        const { rm, mkdir } = await import('fs/promises');
-        await rm(hostCodeDir, { recursive: true, force: true });
-      } catch { /* ok */ }
-    };
+    this.pullImage(image);
 
     try {
-      const { writeFile, mkdir } = await import('fs/promises');
-      await mkdir(hostCodeDir, { recursive: true });
-      const ext = runtime === 'nodejs' ? 'js' : 'py';
-      await writeFile(`${hostCodeDir}/${entryPoint}.${ext}`, code, { mode: 0o444 });
-
-      // Build the docker run command — same pattern as Phase 06 build runner
-      const envArg = [
-        `FUNCTION_EVENT=${payload}`,
-        `FUNCTION_HANDLER=${entryPoint}`,
-        ...Object.entries(envVars).map(([k, v]) => `${k}=${v}`),
-      ];
-
-      const dockerArgs = [
-        'docker', 'run',
-        '--name', containerName,
-        // Security hardening
-        '--security-opt', 'no-new-privileges',
-        '--cap-drop', 'ALL',
-        // Read-only rootfs + tmpfs for /tmp
-        '--read-only',
-        '--tmpfs', '/tmp:rw,noexec,nosuid,size=64m',
-        // Resource limits
-        '--memory', `${memoryMb}m`,
-        '--memory-swap', `${memoryMb}m`,   // disable swap — OOM on limit
-        '--cpus', '1',
-        '--pids-limit', '64',
-        // No network
-        '--network', 'none',
-        // Code mounted read-only; /tmp as tmpfs
-        '-v', `${hostCodeDir}:/function:ro`,
-        // Env
-        ...envArg.flatMap(e => ['-e', e]),
-        // Image + entrypoint
-        image,
-        ...this.buildCmd(runtime, entryPoint),
-      ];
-
-      this.pullImage(image);
-
-      let stdout = '';
-      let stderr = '';
-      let exitCode = 0;
-
-      try {
-        // Use execSync to run docker; collect stdout/stderr separately
-        // The container is synchronous — we use a timeout via docker stop
-        stdout = execSync(dockerArgs.join(' '), {
-          timeout: (timeoutSeconds + 5) * 1000,
-          stdio: ['pipe', 'pipe', 'pipe'],
-          killSignal: 'SIGKILL',
-        } as any).toString();
-      } catch (err: any) {
-        if (err.stderr) stderr = err.stderr.toString();
-        if (err.status != null) exitCode = err.status;
-        else if (err.code === 'ETIMEDOUT' || err.message?.includes('timeout')) {
-          // Hard kill already happened via killSignal
-          return { success: false, error: `Timed out after ${timeoutSeconds * 1000}ms`, durationMs: Date.now() - start };
-        } else if (!stderr) {
-          return { success: false, error: err.message, durationMs: Date.now() - start };
-        }
+      // Spawn docker with NO shell; pipe the function code in via stdin.
+      const stdout = execFileSync(dockerArgs[0], dockerArgs.slice(1), {
+        input: code,
+        timeout: (timeoutSeconds + 5) * 1000,
+        stdio: ['pipe', 'pipe', 'pipe'],
+        killSignal: 'SIGKILL',
+      } as any).toString();
+      return { success: true, output: stdout.trim() || 'ok', durationMs: Date.now() - start };
+    } catch (err: any) {
+      if (err.code === 'ETIMEDOUT' || err.message?.includes('timeout')) {
+        return { success: false, error: `Timed out after ${timeoutSeconds * 1000}ms`, durationMs: Date.now() - start };
       }
-
-      // If we get here, container exited — confirm exit code
-      if (exitCode === 0) {
-        return { success: true, output: stdout.trim() || 'ok', durationMs: Date.now() - start };
-      } else {
-        return { success: false, error: stderr || `Exited with code ${exitCode}`, durationMs: Date.now() - start };
-      }
-    } catch (err) {
-      const msg = err instanceof Error ? err.message : String(err);
-      this.logger.error(`Sandbox invocation failed: ${msg}`);
-      return { success: false, error: msg, durationMs: Date.now() - start };
-    } finally {
-      // Best-effort container cleanup
-      try { execSync(`docker rm -f ${containerName}`, { stdio: 'pipe' } as any); } catch { /* already gone */ }
-      await cleanup();
+      const stderr = err.stderr?.toString() || err.stdout?.toString() || err.message;
+      return { success: false, error: stderr, durationMs: Date.now() - start };
     }
   }
 
-  private buildCmd(runtime: 'nodejs' | 'python', entryPoint: string): string[] {
-    if (runtime === 'nodejs') {
-      return [
-        'node', '-e',
-        `const h=require('/function/${entryPoint}.js');const e=JSON.parse(process.env.FUNCTION_EVENT||'{}');const r=(h.handler||h)(e);process.stdout.write(JSON.stringify(r))`,
-      ];
-    } else {
-      return [
-        'python3', '-c',
-        `import os,json;exec(open('/function/${entryPoint}.py').read());print(json.dumps(handler(json.loads(os.environ.get('FUNCTION_EVENT','{}')))))`,
-      ];
-    }
+  private pythonCmd(): string[] {
+    // Python sandbox reads code from stdin, writes it, and invokes handler(event).
+    const bootstrap =
+      "import sys,json,os;open('/tmp/fn.py','w').write(sys.stdin.read());" +
+      "ns={};exec(open('/tmp/fn.py').read(),ns);print(json.dumps(ns['handler'](json.loads(os.environ.get('FUNCTION_EVENT','{}')))))";
+    return ['python3', '-c', bootstrap];
   }
 
   /** Pull image in background if not present — non-blocking for warm paths */
@@ -146,7 +89,6 @@ export class SandboxedRunnerService {
     } catch { /* not found */ }
 
     this.logger.log(`Pulling runtime image: ${image}`);
-    // Fire-and-forget — first cold-start will be slow; subsequent calls use cached image
     execSync(`docker pull ${image}`, { stdio: 'inherit', timeout: 120_000 } as any);
   }
 }

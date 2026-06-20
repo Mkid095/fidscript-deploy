@@ -80,6 +80,14 @@ while [[ -z "$SERVER_IP" || ! "$SERVER_IP" =~ ^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$ ]
     read -p "This server's public IP address: " SERVER_IP
 done
 
+# Detect the host docker daemon socket's group GID. The api container runs as
+# non-root `node` and needs to build/run user images via the mounted socket;
+# compose `group_add: ["$DOCKER_GID"]` grants that access. Falls back to 0 if
+# the docker group is absent (admin should set DOCKER_GID manually post-install).
+DOCKER_GID="$(getent group docker | cut -d: -f3)"
+[[ -z "$DOCKER_GID" ]] && DOCKER_GID=0
+echo "  Detected docker socket GID: $DOCKER_GID"
+
 echo ""
 echo "╔═══════════════════════════════════════════════════════════╗"
 echo "║              Configuration Summary                        ║"
@@ -179,6 +187,9 @@ REDIS_PASSWORD=$REDIS_PASSWORD
 MINIO_ACCESS_KEY=$MINIO_ACCESS_KEY
 MINIO_SECRET_KEY=$MINIO_SECRET_KEY
 MINIO_EXTERNAL_ENDPOINT=https://storage.$DOMAIN
+# Host docker socket GID — granted to the api container (USER node) via group_add
+# so the deployment worker can build/run user images against the host daemon.
+DOCKER_GID=$DOCKER_GID
 EOF
 
 # Generate api.env with secret values (api container reads these via env_file)
