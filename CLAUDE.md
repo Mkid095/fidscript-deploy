@@ -31,6 +31,7 @@ FIDScript Deploy — AI Development Constitution
 | **Start here — orient any agent/human (read first)** | `docs/START_HERE.md` |
 | **Current phase and status** (what's done / what's next) | `AGENT_STATUS.md` |
 | **⚠️ Before implementing: read the validation + roadmap** | `docs/VALIDATION.md`, `docs/IMPLEMENTATION_ROADMAP.md`, `docs/backend-prerequisites.md` |
+| **⚠️ Before merging: the Definition of Done (merge gate)** | `docs/DEFINITION_OF_DONE.md` |
 | **Project documentation map** (every doc in one place) | [below](#project-documentation-map) |
 | Why we reset + current honest state | `docs/AUDIT.md` |
 | Backend phase roadmap + verification rubric | `docs/phases/README.md` |
@@ -260,7 +261,9 @@ every spec cross-references.
     - **Documentation changes require review before implementation.** If reality has shifted and a spec is now wrong, fix the spec **first** (rule 13), in its own change, and get it reviewed — *then* implement against the corrected spec. Never edit code and doc in a way that leaves the contract describing a system that doesn't exist.
     - **A feature is not "done" until its docs are updated.** Flip the phase to `Verified` in `AGENT_STATUS.md`, refresh the spec's *Current State*, and close any `PREREQ-*` it depended on in `docs/backend-prerequisites.md` — all in the same commit as the code (rule 1 + rule 13).
     - **No new frontend feature without its spec complete + approved** (rule 14 still holds).
-    - The implementation order is fixed: `docs/IMPLEMENTATION_ROADMAP.md`. Blockers live in one place: `docs/backend-prerequisites.md`.
+    - The implementation order is fixed: `docs/IMPLEMENTATION_ROADMAP.md`. Blockers live in one place: `docs/backend-prerequisites.md`. Prereqs are **phased**: Phase A (platform correctness/security: `PREREQ-AUTH-5/6/7`) → Phase B (F02 enablers: `PREREQ-AUTH-1/2/3/4`) → Phase C (F05 enablers: `PREREQ-PROJ-2/3`, after F02).
+17. **Definition of Done (the merge gate)** - A feature/phase/PR is **not done** unless *all ten* criteria in `docs/DEFINITION_OF_DONE.md` pass: backend complete, frontend complete, tests pass, docs updated, `backend-prerequisites.md` updated, `VALIDATION.md` still passes (zero broken cross-references), no orphaned endpoint IDs, no undocumented APIs, phase acceptance criteria satisfied, `AGENT_STATUS.md` reflects the new state. If even one is missing, the work is incomplete — do not merge, do not flip the status. The whole point of the hardening reset was to end "marked complete but unbuilt"; this rule is structural prevention.
+18. **ADRs record the *why* (`DECISIONS.md`)** - Architecture Decision Records capture the rationale behind major decisions so a future contributor doesn't reverse them by accident. The home is `DECISIONS.md` (ADR-001…035). Product-rationale ADRs (029–035: self-hosted-first, documentation-first, operating-system dashboard, auth strategy, one-domain fan-out, hide-advanced, Docker-Compose-over-k8s) answer the recurring "why was this designed this way?" questions. When you make a non-obvious decision during implementation, add an ADR in the same commit (rule 4).
 
 ---
 
@@ -324,8 +327,10 @@ FIDScript Deploy repo
 │   ├── START_HERE.md                ← orient any agent
 │   ├── VALIDATION.md                ← ⚠️ Phase D0 validation report (cross-refs + matrix + readiness + UX)
 │   ├── IMPLEMENTATION_ROADMAP.md    ← ⚠️ the canonical build order (every future agent follows this)
-│   ├── backend-prerequisites.md     ← ⚠️ every Open/UI-mitigated backend gap (the blocker registry)
+│   ├── backend-prerequisites.md     ← ⚠️ every Open/UI-mitigated backend gap (the blocker registry, A→B→C phased)
+│   ├── DEFINITION_OF_DONE.md        ← ⚠️ the 10-point merge gate every PR must satisfy
 │   │
+│   ├── (DECISIONS.md lives at repo root — ADRs 001–035, the *why*)
 │   ├── phases/                      ← BACKEND phases 00–23 (all verified)
 │   │   ├── README.md                ← roadmap + verification rubric
 │   │   └── phase-00.md … phase-23.md

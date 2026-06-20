@@ -23,6 +23,46 @@
 4. When you close a prereq, flip its status to ✅ **in the same commit** as the backend
    change, and update every phase spec that referenced it.
 
+---
+
+## Priority phasing (A → B → C)
+
+Not all Open prereqs have equal priority. Some are **platform correctness/security** (must be
+fixed regardless of any frontend); others exist only because a planned frontend screen needs
+them. They are phased so security and correctness never wait behind frontend convenience.
+This is the authoritative ordering; `docs/IMPLEMENTATION_ROADMAP.md` follows it.
+
+### Phase A — Critical platform correctness (do first, independent of any frontend)
+
+These affect the platform's correctness and security whether or not the dashboard exists.
+They are **hardening**, not "frontend blockers," and are fixed first.
+
+- `PREREQ-AUTH-5` — logout is a no-op (Session.tokenHash never set → revocation impossible)
+- `PREREQ-AUTH-6` — refresh/session handling is broken (opaque token vs signed-JWT mismatch)
+- `PREREQ-AUTH-7` — `JWT_SECRET_FILE` honored only by realtime, not by `auth.module`/`jwt.strategy`
+
+> **Authorization gaps (`SEC-*`)** — `PREREQ-SEC-1/2/3/4` (DOM-05/06, email services,
+> STOR-08, webhook HMAC) are functional-today-but-insecure and **UI-mitigated**. They are the
+> next security priority but do **not** block F02 (every affected route works; the UI greys
+> for unauthorized roles). They close in the post-F11 hardening pass — unless a security
+> review escalates them, in which case they move here.
+
+### Phase B — F02 functional blockers (after Phase A)
+
+These exist only because the Authentication screen needs them. Do them only after Phase A.
+
+- `PREREQ-AUTH-1` — `User.mustChangePassword` field + seed-true for the install admin
+- `PREREQ-AUTH-2` — `POST /auth/change-password` endpoint
+- `PREREQ-AUTH-3` — platform magic-code (`/auth/magic-code` + `/auth/verify-magic-code`)
+- `PREREQ-AUTH-4` — `mustChangePassword` flag surfaced on `GET /auth/me`
+
+### Phase C — F05 blockers (after F02 is complete)
+
+These do not affect authentication and must not delay it. They land between F04 and F05.
+
+- `PREREQ-PROJ-2` — `PROJ-01` returns per-row `role` + `lastActivityAt`
+- `PREREQ-PROJ-3` — "last 20 events" endpoint (or realtime replay buffer)
+
 **ID scheme:** `PREREQ-<MODULE>-<n>`. These are distinct from inventory IDs (`AUTH-01`,
 `PROJ-02`, …) — a `PREREQ-*` is always a *new or broken* capability, never an existing
 endpoint. Older specs used tokens like `PROJ-NEW-1` / `SCHED-1` / `AUTH-1..4`; those are
@@ -149,21 +189,29 @@ These are **not bugs** — they're documented scope boundaries. The UI greys eac
 
 ## Implementation-critical subset (the "close these first" list)
 
-The 9 🟥 Open prereqs, in dependency order:
+The 9 🟥 Open prereqs, grouped by the **priority phasing** above (security/correctness first,
+then F02 enablers, then F05 enablers). This is the authoritative close-order; the flat list
+below is the same set in build order.
 
+**Phase A — platform correctness (first, no frontend dependency):**
 1. `PREREQ-AUTH-5` logout no-op
 2. `PREREQ-AUTH-6` refresh-token join
 3. `PREREQ-AUTH-7` JWT_SECRET_FILE
+
+**Phase B — F02 functional blockers (after Phase A):**
 4. `PREREQ-AUTH-1` mustChangePassword field + seed
 5. `PREREQ-AUTH-2` change-password endpoint
 6. `PREREQ-AUTH-3` platform magic-code
 7. `PREREQ-AUTH-4` mustChangePassword on /auth/me
+
+**Phase C — F05 blockers (after F02):**
 8. `PREREQ-PROJ-2` PROJ-01 role + lastActivityAt
 9. `PREREQ-PROJ-3` last-20-events endpoint
 
-Items 1–7 unblock **F02** (and therefore every authenticated screen). Items 8–9 unblock
-**F05** (the project shell). `PREREQ-HEALTH-1/2` unblock **F03** but F03 is lower priority
-than F02/F05 in the implementation order.
+Phase A + B (items 1–7) unblock **F02** (and therefore every authenticated screen).
+Phase C (items 8–9) unblocks **F05** (the project shell) and lands between F04 and F05.
+`PREREQ-HEALTH-1/2` unblock **F03** and can close in parallel with F02 (F03 is sequenced
+after F02).
 
 ---
 

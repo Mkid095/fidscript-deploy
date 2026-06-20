@@ -222,8 +222,10 @@ on the relevant phase).
 
 **The blueprint is internally consistent and complete. It is ready to be frozen as the
 project's contract.** Implementation may proceed in the order defined in
-`docs/IMPLEMENTATION_ROADMAP.md`, beginning with closing the 9 Open `PREREQ-AUTH/PROJ`
-items, then F02 as the first vertical slice.
+`docs/IMPLEMENTATION_ROADMAP.md`: first **Phase A** platform correctness (`PREREQ-AUTH-5/6/7`
+— security/session hardening), then **Phase B** F02 enablers (`PREREQ-AUTH-1/2/3/4`), then
+F02 as the first vertical slice. The 2 `PREREQ-PROJ-*` (Phase C) land between F04 and F05 —
+they never delay authentication.
 
 ---
 

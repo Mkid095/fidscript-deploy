@@ -1035,17 +1035,286 @@ And Docker internal hostnames are uniformly `fidscript_<service>` (the Docker se
 
 ---
 
+## ADR-029: Self-Hosted First (No SaaS, No Billing)
+
+**Date:** 2026-06-20 · **Status:** Accepted
+
+**Context.** The BaaS market is dominated by hosted SaaS (Supabase, Firebase, Convex). FIDScript
+could be offered as a hosted product. The question is whether to build for self-hosting first
+or hosted-first.
+
+**Options considered:**
+1. **Hosted SaaS first** — multi-tenant cloud, billing, usage metering, support.
+2. **Self-hosted first** — the user installs on their own VPS; owns the data, the box, the bill.
+3. **Both, simultaneously.**
+
+**Decision:** Self-hosted first. No SaaS hosting, no billing, no usage metering in the platform.
+
+**Rationale.**
+- **Sovereignty is the product.** The user's value proposition is "your data, your box, no
+  vendor lock-in." A hosted version would undercut the thesis (`docs/product/platform-philosophy.md`).
+- **No billing = simpler platform.** Billing, metering, plan limits, and dunning are large
+  cross-cutting systems with no place in an operator's control plane. Their absence is a
+  feature, not a gap.
+- **One install path.** The `curl … | bash` installer is the only onboarding. A hosted version
+  would fork that path and double the test surface.
+- **The infrastructure is already single-tenant by design** (one VPS, one domain, Docker
+  Compose). A hosted multi-tenant rewrite would be a different product.
+
+**Consequences.**
+- No billing, metering, or plan-limit code exists or will exist in F02–F11.
+- The dashboard has no "upgrade," "plan," or "usage quota" UI.
+- A future hosted offering, if ever pursued, is a separate product built on a hardened
+  self-hosted core — not a fork of it.
+
+---
+
+## ADR-030: Documentation-First Development (Specs Before Code)
+
+**Date:** 2026-06-20 · **Status:** Accepted
+
+**Context.** The hardening reset (`docs/AUDIT.md`) was caused by a single failure mode: status
+said "23 phases complete" while roughly three-quarters was unbuilt scaffolding. The docs
+described an intended system, not the real one, and nothing was ever verified.
+
+**Options considered:**
+1. **Code-first, doc-after** (the prior model) — build, then document. Drift is inevitable.
+2. **Doc-first** — write the complete spec, review it, approve it, *then* implement against it.
+3. **No specs** — trust the implementer.
+
+**Decision:** Documentation-first. No frontend feature is built until its spec
+(`docs/phases/frontend/fNN-*.md` + screen + component specs) is complete and approved. The
+blueprint was validated and frozen 2026-06-20 (Phase D0, `docs/VALIDATION.md`); it is now the
+**contract**, not evolving notes (`CLAUDE.md` rule 16).
+
+**Rationale.**
+- **Prevents the recurrence.** A doc that lies is worse than no doc. Doc-first + a Definition
+  of Done (`docs/DEFINITION_OF_DONE.md`) makes "marked complete but unbuilt" structurally
+  impossible — the spec is the acceptance contract.
+- **Agents can continue the work.** A complete blueprint lets any engineer or LLM pick up a
+  phase without prior conversation context. The spec + inventory + prereq registry + roadmap
+  are self-sufficient.
+- **Forces decisions early.** Writing the spec surfaces backend gaps (the `PREREQ-*` registry)
+  *before* implementation, not during it.
+
+**Consequences.**
+- Implementation is gated on spec completeness + approval (rule 14).
+- Code conforms to the doc; when reality shifts, the doc is fixed *first* and reviewed, then
+  the code follows (rule 16).
+- Doc maintenance is a first-class deliverable, tracked in the Definition of Done.
+
+---
+
+## ADR-031: The Dashboard Is an Operating System (Control Plane, Not Visualization)
+
+**Date:** 2026-06-20 · **Status:** Accepted
+
+**Context.** A BaaS dashboard can be built two ways: as a **visualization layer** (pretty
+read-only charts and tables over data) or as an **operator's control plane** (the console from
+which you actually run the backend — create, deploy, stop, rotate, intervene).
+
+**Options considered:**
+1. **Visualization-first** — graphs, summaries, status pages; actions are secondary or absent.
+2. **Control-plane** — every screen is the operator's console for one or more real Prisma
+   entities; the buttons call real endpoints; the chrome reflects the real role.
+
+**Decision:** Control plane. Every screen renders **real backend entities** with their actual
+fields, enables **real inventory endpoints**, respects the **real auth context** (owner /
+admin / developer / viewer each see different chrome), and is **honest about backend gaps**
+(greyed, never faked). (`CLAUDE.md` rule 15, `docs/product/screens/index.md`.)
+
+**Rationale.**
+- **The user is an operator, not an audience.** They install FIDScript to *run* a backend, not
+  to watch one. A screen that can't stop a stuck deployment or rotate a leaked credential is
+  decorative.
+- **Honesty over polish.** Greying `php`/`go`/`rust` runtimes or `slack`/`pagerduty` channels
+  with "not yet available" builds trust; faking them (a button that does nothing, or invented
+  columns) recreates the audit's core defect.
+- **Per-role rendering is the contract.** A viewer doesn't just lose a button — the whole page
+  reflects read-only. The server re-validates; the UI is the honest hint.
+
+**Consequences.**
+- No mock data anywhere in the dashboard. Every list/detail is backed by a real endpoint.
+- Unimplemented capabilities are greyed with tooltips, never hidden-and-pretended.
+- Screen specs must name the Prisma entity + the inventory IDs they render (D0.1 enforces this).
+
+---
+
+## ADR-032: Authentication Strategy — Magic-Code + Password, No OAuth in the Console
+
+**Date:** 2026-06-20 · **Status:** Accepted (resolves the prior "Authentication strategy — Pending")
+
+**Context.** Platform authentication (the operator logging into the dashboard) needs a method.
+BaaS competitors offer OAuth (Google/GitHub), password, and magic-link. FIDScript also hosts a
+*BaaS auth* surface (per-project end-user auth) which is a separate concern.
+
+**Options considered:**
+1. **OAuth (Google/GitHub) for platform login.**
+2. **Password + magic-link (email URL).**
+3. **Password + magic-code (6-digit OTP).**
+4. **Passwordless (code only).**
+
+**Decision:** Password + **magic-code** (6-digit OTP delivered via Stalwart) for platform auth.
+**No OAuth in the platform console.** BaaS per-project OAuth (Google/GitHub for end-users) is a
+separate, scoped feature (`APPAUTH-*`), not platform login.
+
+**Rationale.**
+- **Magic-code > magic-link.** A 6-digit OTP typed into the same screen is lower-friction than
+  clicking an emailed link, survives more email clients, and is easier to rate-limit and
+  attempt-limit. The existing magic-link path is broken (token never emailed, never expires —
+  `docs/backend-prerequisites.md` → `PREREQ-AUTH-3`); magic-code replaces it.
+- **Password retained.** Operators want a password fallback; magic-code alone is too slow for
+  daily use. Password + magic-code tab covers both.
+- **No OAuth for the operator.** Platform login is for the person who owns the VPS; tying it to
+  a Google/GitHub account adds an external dependency and a recovery failure mode for a
+  self-hosted product. (BaaS OAuth for *their end-users* is different and is supported per-project.)
+- **Deliverability is solved.** Phase 09 verified Stalwart delivers to real inboxes, so the
+  magic-code email actually arrives.
+
+**Consequences.**
+- F02 ships password + magic-code tabs; the magic-link path is removed.
+- No "Sign in with Google/GitHub" button in the console.
+- The broken logout/refresh/JWT machinery is fixed first (`PREREQ-AUTH-5/6/7`) — auth
+  correctness is Phase A, before any login UI.
+
+---
+
+## ADR-033: One-Domain Configuration (Fan-Out, Not Multi-Domain Wiring)
+
+**Date:** 2026-06-20 · **Status:** Accepted
+
+**Context.** A self-hosted platform needs DNS + TLS for: the dashboard, user deployments
+(`*.apps.<domain>`), email (MX/DKIM/SPF/DMARC), and the API. The user could be asked to
+configure each, or the platform could derive all of them from a single input.
+
+**Options considered:**
+1. **Per-service domain configuration** — the user sets the dashboard domain, the apps domain,
+   the email domain, the API domain, separately.
+2. **One domain, derived fan-out** — the user provides one `PLATFORM_DOMAIN` at install; every
+   subdomain and DNS record is derived from it.
+
+**Decision:** One-domain fan-out. The installer takes `PLATFORM_DOMAIN`; Traefik, the wildcard
+apps cert, Stalwart's mail domain, and the API all derive from it (ADR-028).
+
+**Rationale.**
+- **Configure once** (principle 1). One input, everything wired. This is the core product
+  thesis: a fresh VPS to a running platform in one `curl | bash`.
+- **Fewer footguns.** Mismatched domains (dashboard on A, email on B, apps on C) are a support
+  nightmare and an TLS/DNS disaster. Derivation eliminates the class of error.
+- **The installer already does it.** `setup-wizard.sh` + ADR-028 derive every internal hostname
+  from `$PLATFORM_DOMAIN`; this ADR codifies that as a product decision, not an implementation
+  detail.
+
+**Consequences.**
+- The installer asks for exactly one domain.
+- Custom domains per-deployment are still supported (F11 Domains) — that's *additional* routing
+  on top of the derived `*.apps.<domain>`, not a replacement for it.
+- Multi-domain platform installs (dashboard on one domain, email on another) are not supported
+  and won't be; the complexity isn't worth it for a self-hosted product.
+
+---
+
+## ADR-034: Hide Advanced Configuration (Configure-Once / Beginner-First)
+
+**Date:** 2026-06-20 · **Status:** Accepted
+
+**Context.** A BaaS has many knobs: build strategy, memory/timeout limits, retry policies,
+retention, connection pools, cron expressions, DNS modes. Exposing all of them by default
+overwhelms a first-time user; hiding all of them frustrates a power user.
+
+**Options considered:**
+1. **Expose everything** — every field visible, power-user-friendly, beginner-hostile.
+2. **Hide everything behind "smart defaults"** — no advanced access, power-user-hostile.
+3. **Sensible defaults + Advanced disclosure** — the 20% a beginner needs is visible; the 80%
+   a power user sometimes needs is behind an "Advanced" toggle.
+
+**Decision:** Defaults + Advanced disclosure. Every form ships with safe, beginner-friendly
+defaults; rare or expert fields live behind an "Advanced" disclosure. (`docs/product/`
+user-experience-spec §"Sensible defaults"; `CLAUDE.md` principle "Beginner first".)
+
+**Rationale.**
+- **Beginner first** (principle 2). The common case is one click. "Create project" is name +
+  type + create; build strategy defaults to `dockerfile`.
+- **Power users aren't punished.** Advanced is *collapsed*, not removed. A backend dev can
+  override the Dockerfile path, pin a commit, or tune retry policy — they just open the
+  disclosure.
+- **Greying > hiding for unimplemented.** Advanced options that aren't built yet are greyed
+  with "not yet available," not hidden — the user should know they exist in the spec.
+
+**Consequences.**
+- Every create-flow modal has an "Advanced" disclosure for the rare fields.
+- Defaults are platform-defined and locked; the user never configures the design (ADR-adjacent
+  to F00: tokens are immutable).
+- The single-screen test (UX §16) gates this: the beginner's primary task must complete
+  without opening Advanced.
+
+---
+
+## ADR-035: Docker Compose Over Kubernetes (Single-VPS Deployment Model)
+
+**Date:** 2026-06-20 · **Status:** Accepted (codifies the model behind ADR-005/015/018)
+
+**Context.** The platform must run on a single VPS. The orchestration choice determines the
+install path, the resource floor, and the operations story.
+
+**Options considered:**
+1. **Kubernetes (k3s/k8s).**
+2. **Docker Compose.**
+3. **Bare processes / systemd.**
+
+**Decision:** Docker Compose (single node), with BuildKit-built images + Traefik as the edge
+(ADR-005 Dockerfile-First, ADR-022 Traefik ACME). Deployments use Docker-out-of-Docker
+(`execFileSync('docker', …)`, no shell) with a two-image retention policy (ADR-016) and
+project-level concurrency locks (ADR-020).
+
+**Rationale.**
+- **Single VPS is the target.** Kubernetes is operationally heavy (control plane, etcd, CNI)
+  and pointless on one node. Compose is the right-sized tool.
+- **The installer proves it.** `curl … | bash` brings up Postgres, Redis, NATS, MinIO,
+  Stalwart, Traefik, the API, and the dashboard on one VPS — verified end-to-end.
+- **Docker-out-of-Docker keeps deployments isolated** without a separate cluster; each user
+  deployment is a container the API manages via the Docker CLI.
+- **Release-based, not live-edit** (ADR-015). Immutable image tags + rollback (ADR-016) give
+  production-grade deploy semantics without k8s rolling-update machinery.
+
+**Consequences.**
+- No Kubernetes manifests, no Helm charts, no kubectl. Operations are `docker compose`.
+- Multi-node / HA is out of scope (ADR-013 sketches a future multi-service architecture but it
+  is explicitly future).
+- The deployment engine's correctness depends on the Docker CLI being available inside the API
+  container (proven this session — task #26).
+
+---
+
+## Mapping the original "why" questions to ADRs
+
+For future contributors asking "why was this designed this way?":
+
+| Question | Answered by |
+|---|---|
+| Why Magic Code instead of OAuth? | ADR-032 |
+| Why Docker Compose instead of Kubernetes? | ADR-035 |
+| Why one-domain configuration? | ADR-033 (+ ADR-028) |
+| Why no billing? | ADR-029 |
+| Why documentation-first? | ADR-030 |
+| Why hide advanced configuration? | ADR-034 |
+| Why self-hosted first? | ADR-029 |
+| Why an operating-system dashboard? | ADR-031 |
+| Why Stalwart for email? | ADR-002 |
+| Why NATS for events/queues/realtime? | ADR-001 |
+| Why the release/deployment model? | ADR-005, ADR-015, ADR-016, ADR-018, ADR-035 |
+
+---
+
 ## Future ADRs Needed
 
 These decisions are pending and will be documented as ADRs:
 
 | Topic | Status |
 |-------|--------|
-| Authentication strategy (JWT vs Session) | Pending |
 | Queue implementation details | Pending |
-| Monitoring/observability stack | Pending |
+| Monitoring/observability stack | Pending (ADR-021 sketches OpenTelemetry) |
 | CI/CD approach | Pending |
 | SDK language priorities | Pending |
 | MCP server implementation | Pending |
 | Backup strategy | Pending |
-| Multi-tenancy approach | Pending |

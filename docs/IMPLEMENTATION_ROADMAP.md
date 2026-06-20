@@ -24,27 +24,36 @@
 
 ---
 
-## Stage 0 — Close the blocking backend prerequisites (L)
+## Stage 0A — Phase A: Critical platform correctness (do first)
 
-**Do this first.** It unblocks F02, F03, and F05 — the foundation every authenticated screen
-depends on. Per `docs/backend-prerequisites.md`, in dependency order:
+**Do this before anything else.** These three are *platform hardening* — they affect
+correctness and security whether or not the dashboard exists (broken logout, broken refresh,
+a secret that isn't honored). They are not "frontend blockers"; they are bugs. Per the
+priority phasing in `docs/backend-prerequisites.md` → "Phase A".
 
 | Step | Prereq | Work | Effort | Verifies |
 |---|---|---|---|---|
-| 0.1 | `PREREQ-AUTH-5` | Carry `sessionId` in the access JWT; `POST /auth/logout` deletes the `Session` row. | S | logout revokes; re-call /me → 401 |
-| 0.2 | `PREREQ-AUTH-6` | Refresh consumes a signed refresh JWT; rotate on use (expire old `Session`, mint new). | S | refresh → new access; old refresh → 401 |
-| 0.3 | `PREREQ-AUTH-7` | `auth.module` + `jwt.strategy` materialize `JWT_SECRET` from `JWT_SECRET_FILE` (mirror `realtime/services/token.service.ts:23`). | S | app boots with only `JWT_SECRET_FILE` set |
-| 0.4 | `PREREQ-AUTH-1` | `User.mustChangePassword Boolean @default(false)`; seed install admin `true`. | S | migration applies; admin row has the flag |
-| 0.5 | `PREREQ-AUTH-2` | `POST /auth/change-password`: validates current (bcrypt), enforces strength, clears flag, rotates session. | S | change → /me shows `mustChangePassword:false` |
-| 0.6 | `PREREQ-AUTH-3` | `POST /auth/magic-code` + `POST /auth/verify-magic-code`: 6-digit OTP, bcrypt+10m+attempt-limited, delivered via `SmtpSendService` (omit `from`). | M | code arrives at a real inbox; verify → JWT |
-| 0.7 | `PREREQ-AUTH-4` | Include `mustChangePassword` in `GET /auth/me`. | S | /me returns the flag |
-| 0.8 | `PREREQ-PROJ-2` | `GET /projects` returns per-row `{role, lastActivityAt}`. | S | switcher renders badges + timestamps |
-| 0.9 | `PREREQ-PROJ-3` | `GET /projects/:id/events?limit=20` (or realtime replay buffer). | M | bell + activity feed populate |
+| 0A.1 | `PREREQ-AUTH-5` | Carry `sessionId` in the access JWT; `POST /auth/logout` deletes the `Session` row. | S | logout revokes; re-call /me → 401 |
+| 0A.2 | `PREREQ-AUTH-6` | Refresh consumes a signed refresh JWT; rotate on use (expire old `Session`, mint new). | S | refresh → new access; old refresh → 401 |
+| 0A.3 | `PREREQ-AUTH-7` | `auth.module` + `jwt.strategy` materialize `JWT_SECRET` from `JWT_SECRET_FILE` (mirror `realtime/services/token.service.ts:23`). | S | app boots with only `JWT_SECRET_FILE` set |
 
-**Exit criterion:** all 9 items ✅ in `docs/backend-prerequisites.md`; `pnpm typecheck && pnpm build` clean; API healthy on VPS.
+**Exit criterion:** all 3 Phase A items ✅; `pnpm typecheck && pnpm build` clean; API healthy on VPS; token/session machinery correct (login → /me 200; logout revokes; refresh rotates).
 
-> **Optional parallel track (lower priority):** `PREREQ-HEALTH-1/2` (F03's email probe).
-> F03 is sequenced after F02, so this can land during F02 implementation.
+## Stage 0B — Phase B: F02 functional blockers
+
+Only after Phase A. These exist solely because the Authentication screen needs them.
+
+| Step | Prereq | Work | Effort | Verifies |
+|---|---|---|---|---|
+| 0B.1 | `PREREQ-AUTH-1` | `User.mustChangePassword Boolean @default(false)`; seed install admin `true`. | S | migration applies; admin row has the flag |
+| 0B.2 | `PREREQ-AUTH-2` | `POST /auth/change-password`: validates current (bcrypt), enforces strength, clears flag, rotates session. | S | change → /me shows `mustChangePassword:false` |
+| 0B.3 | `PREREQ-AUTH-3` | `POST /auth/magic-code` + `POST /auth/verify-magic-code`: 6-digit OTP, bcrypt+10m+attempt-limited, delivered via `SmtpSendService` (omit `from`). | M | code arrives at a real inbox; verify → JWT |
+| 0B.4 | `PREREQ-AUTH-4` | Include `mustChangePassword` in `GET /auth/me`. | S | /me returns the flag |
+
+**Exit criterion:** all 4 Phase B items ✅; F02 is now unblocked.
+
+> **Optional parallel track:** `PREREQ-HEALTH-1/2` (F03's email probe) can land during 0B/F02
+> since F03 is sequenced after F02.
 
 ---
 
@@ -117,6 +126,20 @@ invitation accept → register-or-accept → land on project.
 
 **Verification:** create project; slug preview live; duplicate-name inline error; viewer
 sees no Create button.
+
+---
+
+## Stage 3.5 — Phase C: F05 backend blockers
+
+After F04, before F05. These two exist only because the project shell needs them, and they
+must not delay authentication (which is why they were not in Stage 0A/0B).
+
+| Step | Prereq | Work | Effort | Verifies |
+|---|---|---|---|---|
+| 3.5.1 | `PREREQ-PROJ-2` | `GET /projects` returns per-row `{role, lastActivityAt}`. | S | switcher renders badges + timestamps |
+| 3.5.2 | `PREREQ-PROJ-3` | `GET /projects/:id/events?limit=20` (or realtime replay buffer). | M | bell + activity feed populate |
+
+**Exit criterion:** both Phase C items ✅; F05 is now unblocked.
 
 ---
 
