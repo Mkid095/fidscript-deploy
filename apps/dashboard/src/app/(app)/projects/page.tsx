@@ -2,55 +2,83 @@
 
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
-import { createFidscript } from '@fidscript/sdk';
 import { Card } from '@fidscript/ui';
 import { Button } from '@fidscript/ui';
 import { Spinner } from '@fidscript/ui';
 import { EmptyState } from '@fidscript/ui';
 import { Input } from '@fidscript/ui';
+import { Modal } from '@fidscript/ui';
 
+import { useAuth } from '@/contexts/auth-context';
 import type { Project } from '@/types';
 
+const TYPE_OPTIONS = [
+  { value: 'frontend', label: 'Frontend', desc: 'Web app deployed automatically' },
+  { value: 'backend', label: 'Backend', desc: 'API + optional database' },
+  { value: 'worker', label: 'Worker', desc: 'Long-running background process' },
+  { value: 'cron', label: 'Cron', desc: 'Scheduled jobs' },
+  { value: 'docker', label: 'Docker', desc: 'Arbitrary container image' },
+  { value: 'static', label: 'Static', desc: 'Static file hosting' },
+];
+
+function slugify(name: string): string {
+  return name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+}
+
 export default function ProjectsPage() {
+  const { user, getSdk } = useAuth();
+
   const [projects, setProjects] = useState<Project[]>([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [showCreate, setShowCreate] = useState(false);
-  const [newName, setNewName] = useState('');
-  const [newType, setNewType] = useState('static');
+  const [name, setName] = useState('');
+  const [type, setType] = useState('frontend');
+  const [description, setDescription] = useState('');
+  const [slug, setSlug] = useState('');
   const [creating, setCreating] = useState(false);
   const [createError, setCreateError] = useState<string | null>(null);
 
+  // Build slug from name live.
   useEffect(() => {
+    setSlug(slugify(name));
+  }, [name]);
+
+  // Load projects on mount.
+  useEffect(() => {
+    let cancelled = false;
     async function load() {
-      const token = localStorage.getItem('fidscript_token');
-      if (!token) { setLoading(false); return; }
       try {
-        const sdk = createFidscript({ apiKey: token });
+        const sdk = getSdk();
         const data = await sdk.projects.list();
-        setProjects(data);
+        if (!cancelled) setProjects(data);
       } catch (err) {
-        setError(err instanceof Error ? err.message : 'Failed to load projects');
+        if (!cancelled) setLoadError(err instanceof Error ? err.message : 'Failed to load projects');
       } finally {
-        setLoading(false);
+        if (!cancelled) setLoading(false);
       }
     }
     load();
-  }, []);
+    return () => { cancelled = true; };
+  }, [getSdk]);
 
   async function handleCreate(e: React.FormEvent) {
     e.preventDefault();
-    if (!newName.trim()) return;
+    if (!name.trim()) return;
     setCreating(true);
     setCreateError(null);
     try {
-      const token = localStorage.getItem('fidscript_token');
-      if (!token) return;
-      const sdk = createFidscript({ apiKey: token });
-      const created = await sdk.projects.create({ name: newName.trim(), type: newType });
+      const sdk = getSdk();
+      const created = await sdk.projects.create({
+        name: name.trim(),
+        type,
+        description: description.trim() || undefined,
+      });
       setProjects(prev => [...prev, created]);
-      setNewName('');
-      setNewType('static');
+      setName('');
+      setType('frontend');
+      setDescription('');
+      setSlug('');
       setShowCreate(false);
     } catch (err) {
       setCreateError(err instanceof Error ? err.message : 'Failed to create project');
@@ -67,93 +95,145 @@ export default function ProjectsPage() {
     );
   }
 
+  const canCreate = user?.role === 'owner' || user?.role === 'admin' || user?.role === 'developer';
+
   return (
     <div>
+      {/* Header */}
       <div className="flex items-center justify-between mb-6">
         <div>
           <h1 className="text-xl font-bold text-slate-200 mb-1">Projects</h1>
           <p className="text-sm text-slate-500">
-            {projects.length} project{projects.length !== 1 ? 's' : ''}
+            {projects.length === 0 ? 'No projects yet' : `${projects.length} project${projects.length !== 1 ? 's' : ''}`}
           </p>
         </div>
-        <Button
-          variant="primary"
-          size="sm"
-          onClick={() => setShowCreate(s => !s)}
-        >
-          {showCreate ? 'Cancel' : 'Create Project'}
-        </Button>
+        {canCreate && (
+          <Button variant="primary" size="sm" onClick={() => setShowCreate(true)}>
+            Create Project
+          </Button>
+        )}
       </div>
 
-      {error && (
-        <p className="text-red-400 mb-4 text-sm">{error}</p>
+      {/* Error */}
+      {loadError && (
+        <p className="text-red-400 mb-4 text-sm">{loadError}</p>
       )}
 
+      {/* Create modal */}
       {showCreate && (
-        <Card className="border border-[#1e2130] mb-6" padding="lg">
-          <h2 className="text-sm font-semibold text-slate-200 mb-4">New Project</h2>
-          <form onSubmit={handleCreate} noValidate>
-            <div className="flex gap-3 flex-wrap items-end">
-              <div>
-                <label className="block text-xs text-slate-400 mb-1">Project name</label>
-                <Input
-                  value={newName}
-                  onChange={e => setNewName(e.target.value)}
-                  placeholder="my-project"
-                  className="bg-[#080a0d] border border-[#1e2130] text-slate-200 placeholder:text-slate-600"
-                />
+        <Modal
+          isOpen={true}
+          title="Create Project"
+          onClose={() => { setShowCreate(false); setCreateError(null); }}
+        >
+          <form id="create-form" onSubmit={handleCreate} className="space-y-4">
+            <Input
+              label="Project name"
+              value={name}
+              onChange={e => setName(e.target.value)}
+              placeholder="my-project"
+              autoFocus
+              className="bg-[#080a0d] border border-[#1e2130] text-slate-200 placeholder:text-slate-600"
+            />
+            {name && (
+              <p className="text-xs text-slate-500 -mt-2">
+                Slug: <span className="font-mono text-slate-300">{slug}</span>
+              </p>
+            )}
+
+            {/* Type select */}
+            <div>
+              <label className="block text-xs font-medium text-slate-400 uppercase mb-1.5">
+                Type
+              </label>
+              <div className="grid grid-cols-2 gap-2">
+                {TYPE_OPTIONS.map(opt => (
+                  <button
+                    key={opt.value}
+                    type="button"
+                    onClick={() => setType(opt.value)}
+                    className={`
+                      p-3 rounded-lg border text-left text-sm transition-colors duration-150
+                      ${type === opt.value
+                        ? 'border-blue-500 bg-blue-900/20 text-slate-200'
+                        : 'border-[#1e2130] bg-[#0f1117] text-slate-400 hover:border-slate-600'}
+                    `}
+                  >
+                    <div className="font-medium">{opt.label}</div>
+                    <div className="text-xs text-slate-500 mt-0.5">{opt.desc}</div>
+                  </button>
+                ))}
               </div>
-              <div>
-                <label className="block text-xs text-slate-400 mb-1">Type</label>
-                <select
-                  value={newType}
-                  onChange={e => setNewType(e.target.value)}
-                  className="bg-[#080a0d] border border-[#1e2130] text-slate-200 rounded-lg px-3 py-2 text-sm"
-                >
-                  <option value="static">Static</option>
-                  <option value="node">Node.js</option>
-                  <option value="python">Python</option>
-                  <option value="docker">Docker</option>
-                </select>
-              </div>
-              <Button type="submit" variant="primary" size="sm" loading={creating}>
-                {creating ? 'Creating...' : 'Create'}
+            </div>
+
+            <Input
+              label="Description (optional)"
+              value={description}
+              onChange={e => setDescription(e.target.value)}
+              placeholder="What does this project do?"
+              className="bg-[#080a0d] border border-[#1e2130] text-slate-200 placeholder:text-slate-600"
+            />
+
+            {createError && (
+              <p className="text-sm text-red-400">{createError}</p>
+            )}
+
+            <div className="flex gap-2 justify-end pt-2">
+              <Button variant="ghost" size="sm" type="button" onClick={() => setShowCreate(false)}>
+                Cancel
+              </Button>
+              <Button
+                variant="primary"
+                size="sm"
+                type="submit"
+                loading={creating}
+                disabled={!name.trim()}
+              >
+                {creating ? 'Creating…' : 'Create'}
               </Button>
             </div>
-            {createError && (
-              <p className="text-red-400 text-xs mt-3">{createError}</p>
-            )}
           </form>
-        </Card>
+        </Modal>
       )}
 
-      {projects.length === 0 ? (
+      {/* Empty state */}
+      {projects.length === 0 && !loadError ? (
         <EmptyState
           title="No projects yet"
-          description="Create your first project to get started deploying."
+          description="Create your first project to start deploying apps, databases, and more."
           action={
-            <Button variant="primary" size="sm" onClick={() => setShowCreate(true)}>
-              Create Project
-            </Button>
+            canCreate ? (
+              <Button variant="primary" size="sm" onClick={() => setShowCreate(true)}>
+                Create Project
+              </Button>
+            ) : undefined
           }
         />
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
           {projects.map(project => (
-            <Link key={project.id} href={`/projects/${project.id}`} className="no-underline">
-              <div
-                className="rounded-lg border border-[#1e2130] bg-[#0f1117] p-5 cursor-pointer transition-colors duration-150 hover:border-blue-500"
-              >
-                <div className="flex items-start justify-between mb-2">
-                  <div>
-                    <h3 className="text-sm font-semibold text-slate-200 mb-0.5">{project.name}</h3>
-                    <p className="text-xs text-slate-500">{project.slug}</p>
+            <Link key={project.id} href={`/projects/${project.id}`} className="no-underline group block">
+              <div className="rounded-lg border border-[#1e2130] bg-[#0f1117] hover:border-blue-500 transition-colors duration-150 p-5 h-full">
+                <div className="flex items-start justify-between mb-3">
+                  <div className="min-w-0 flex-1">
+                    <h3 className="text-sm font-semibold text-slate-200 truncate group-hover:text-blue-300 transition-colors">
+                      {project.name}
+                    </h3>
+                    <p className="text-xs text-slate-500 font-mono truncate mt-0.5">{project.slug}</p>
                   </div>
-                  <span className="text-xs px-2 py-0.5 rounded-full bg-[#1e2130] text-slate-400 border border-[#1e2130] capitalize">
+                  <span className="ml-2 flex-shrink-0 text-xs px-2 py-0.5 rounded-full bg-[#1e2130] text-slate-400 border border-[#2a2d3a] capitalize">
                     {project.status}
                   </span>
                 </div>
-                <p className="text-xs text-slate-600 mt-3">{project.type}</p>
+
+                <div className="flex items-center justify-between mt-3">
+                  <span className="text-xs px-2 py-0.5 rounded bg-[#1e2130] text-slate-500 border border-[#2a2d3a] capitalize">
+                    {project.type}
+                  </span>
+                  <span className="text-xs text-slate-600">
+                    {new Date(project.updatedAt).toLocaleDateString()}
+                  </span>
+                </div>
               </div>
             </Link>
           ))}

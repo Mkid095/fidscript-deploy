@@ -27,6 +27,8 @@ interface AuthContextValue extends AuthState {
   verifyMagicCode: (email: string, code: string) => Promise<void>;
   changePassword: (currentPassword: string, newPassword: string) => Promise<void>;
   clearError: () => void;
+  /** Returns an SDK instance authenticated with the current access token. */
+  getSdk: () => FidscriptSDK;
 }
 
 const AuthContext = createContext<AuthContextValue | null>(null);
@@ -202,6 +204,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setState(s => ({ ...s, error: null }));
   }
 
+  function getSdk(): FidscriptSDK {
+    if (sdkRef.current) return sdkRef.current;
+    // Fallback: build from stored token (for pages that mount after hydration).
+    const { accessToken } = getStoredTokens();
+    if (!accessToken) throw new Error('Not authenticated');
+    const sdk = createFidscript({ apiKey: accessToken });
+    sdkRef.current = sdk;
+    return sdk;
+  }
+
   return (
     <AuthContext.Provider
       value={{
@@ -213,6 +225,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         verifyMagicCode,
         changePassword,
         clearError,
+        getSdk,
       }}
     >
       {children}
