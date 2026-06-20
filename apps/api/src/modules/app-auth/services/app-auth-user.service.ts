@@ -3,6 +3,7 @@ import { PrismaService } from '@/prisma/prisma.service';
 import { EventService } from '@/modules/events/event.service';
 import { AppAuthRegisterService } from './app-auth-register.service';
 import { AppAuthLoginService } from './app-auth-login.service';
+import { MagicCodeService } from './magic-code.service';
 
 @Injectable()
 export class AppAuthUserService {
@@ -11,12 +12,15 @@ export class AppAuthUserService {
     private eventService: EventService,
     private registerService: AppAuthRegisterService,
     private loginService: AppAuthLoginService,
+    private magicCodeService: MagicCodeService,
   ) {}
 
   register(projectId: string, dto: any) { return this.registerService.register(projectId, dto); }
   login(projectId: string, dto: any) { return this.loginService.login(projectId, dto); }
   magicLink(projectId: string, dto: any) { return this.loginService.magicLink(projectId, dto); }
   verifyMagicLink(projectId: string, dto: any) { return this.loginService.verifyMagicLink(projectId, dto); }
+  requestCode(projectId: string, email: string, ipAddress?: string) { return this.magicCodeService.requestCode(projectId, email, ipAddress); }
+  verifyCode(projectId: string, email: string, code: string, ipAddress?: string) { return this.magicCodeService.verifyCode(projectId, email, code, ipAddress); }
   logout(sessionId: string) { return this.loginService.logout(sessionId); }
 
   async validateToken(token: string) {

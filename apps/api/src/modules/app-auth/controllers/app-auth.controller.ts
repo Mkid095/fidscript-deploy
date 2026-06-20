@@ -11,6 +11,8 @@ import {
 } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { JwtAuthGuard } from '@/modules/auth/jwt-auth.guard';
+import { Request } from 'express';
+import { extractRequestContext } from '@/common/request-context';
 import { AppAuthUserService } from '@/modules/app-auth/services/app-auth-user.service';
 import { AppAuthRoleService } from '@/modules/app-auth/services/app-auth-role.service';
 import {
@@ -20,6 +22,8 @@ import {
   VerifyMagicLinkDto,
   CreateRoleDto,
   AssignRoleDto,
+  MagicCodeDto,
+  VerifyMagicCodeDto,
 } from '@/modules/app-auth/dto/index';
 
 @ApiTags('app-auth')
@@ -68,6 +72,30 @@ export class AppAuthController {
     @Body() dto: VerifyMagicLinkDto,
   ) {
     return this.userService.verifyMagicLink(projectId, dto);
+  }
+
+  @Post('magic-code')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Request a magic-code (OTP) sign-in code by email' })
+  async magicCode(
+    @Param('projectId') projectId: string,
+    @Body() dto: MagicCodeDto,
+    @Req() req: Request,
+  ) {
+    const { ipAddress } = extractRequestContext(req);
+    return this.userService.requestCode(projectId, dto.email, ipAddress);
+  }
+
+  @Post('verify-magic-code')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Verify a magic code and sign in' })
+  async verifyMagicCode(
+    @Param('projectId') projectId: string,
+    @Body() dto: VerifyMagicCodeDto,
+    @Req() req: Request,
+  ) {
+    const { ipAddress } = extractRequestContext(req);
+    return this.userService.verifyCode(projectId, dto.email, dto.code, ipAddress);
   }
 
   @Post('roles')

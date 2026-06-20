@@ -27,6 +27,10 @@ export type EventType =
   | 'auth.user_created'
   | 'auth.login_succeeded'
   | 'auth.login_failed'
+  | 'auth.magic_code_sent'
+  | 'auth.magic_code_verified'
+  | 'auth.oauth_linked'
+  | 'auth.provider_configured'
   // Project events (Phase 04)
   | 'projects.project.created'
   | 'projects.project.updated'
