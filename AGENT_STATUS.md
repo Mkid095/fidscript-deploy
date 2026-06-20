@@ -12,7 +12,7 @@ Current state of FIDScript Deploy development.
 |---|---|
 | **Current mode** | **Documentation-first phase — implementation paused.** Building the complete frontend blueprint (`docs/product/` + `docs/phases/frontend/`) before any new frontend feature is written. Rule 14 of `CLAUDE.md` (Documentation → Review → Approval → Implementation) + rule 15 (operating-system framing). |
 | **Backend runtime** | End-to-end verified on the VPS: 23/23 phases verified, deployments + functions proven live, `/health` 200, soostori decommissioned + DB backed up. |
-| **Frontend status** | F00 design system ✅ verified. F01 public site ✅ verified. F02 auth ✅ implemented. F03 onboarding ✅ implemented. F04 Projects ✅ implemented (list + create modal, wired to API). F05–F11 — **specs pending** (F05 = project dashboard shell). |
+| **Frontend status** | F00 design system ✅ verified. F01 public site ✅ verified. F02 auth ✅ verified. F03 onboarding ✅ verified. F04 Projects ✅ verified. F05 Project Shell ✅ implemented. F06–F11 — pending. |
 | **Documentation blueprint** | See "Documentation-first phase" section below. |
 | **Snapshot baseline** | Commit `f1dd6f2` (Phase 00-23 scaffold, pre-hardening) |
 | **Reset date** | 2026-06-16 |

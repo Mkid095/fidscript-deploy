@@ -20,6 +20,25 @@
 
 ---
 
+## 2026-06-20 (later session) — F05: Project Dashboard Shell
+
+Phase: F05
+
+Completed:
+- `projects/[projectId]/layout.tsx`: project shell with project sidebar (14 items, role-gated Settings/MCP), header (FIDScript logo, breadcrumbs, notification bell, account avatar), project switcher modal trigger.
+- `projects/[projectId]/page.tsx`: redirects `/projects/:id` → `?section=deployments`; section router renders Overview/Deployments/Members/Settings.
+- `projects/[projectId]/sections/`: overview (cards: env vars, members, last deploy, created), deployments (list + EmptyState), members (role-colored badges), settings (env vars + danger zone).
+- `ProjectSidebar`: 14-item sidebar, active highlight (fire-red accent), Settings/MCP greyed for non-admin, collapse toggle persisted in localStorage, project status dot (green/amber/grey).
+- `ProjectSwitcherModal`: searchable list of all user projects, role badges (owner/admin/developer/viewer), lastActivityAt timestamps.
+- `NotificationBell`: dropdown of last 20 events via `GET /api/v1/projects/:id/events` (PROJ-23), unread count dot.
+- Outer `(app)/layout.tsx`: transparent for `/projects/*` routes — no double chrome.
+- SDK: `ProjectsModule.getEvents()` added; `Project` interface extended with `role`, `lastActivityAt`, `lastDeployAt`, `region`.
+- Removed conflicting `[id]` directory (was conflicting with `[projectId]`).
+- Build clean; all 9 F05 files pass `import/order` lint.
+
+Impact:
+- Every per-service screen (F06–F11) now renders inside this shell. Sidebar chrome is the same across all projects. Project switcher is live.
+
 ## 2026-06-20 (later session) — Phase C closed
 
 Phase: Phase C — F05 blockers

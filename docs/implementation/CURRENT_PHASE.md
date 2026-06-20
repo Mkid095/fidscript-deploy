@@ -12,7 +12,6 @@
 
 ## Not yet started
 
-- **F05** — Project dashboard shell (sidebar + activity feed).
 - **F04 → F11** — per `docs/IMPLEMENTATION_ROADMAP.md`.
 
 ## Recently completed
