@@ -24,8 +24,9 @@ export class PostgresProvisionService {
 
     await pool.query(`CREATE DATABASE ${quotedDb}`);
     await pool.query(
-      `CREATE ROLE ${quotedUser} WITH PASSWORD '${safePass}' NOSUPERUSER NOCREATEDB NOCREATEROLE NOINHERIT NOLOGIN CONNECTION LIMIT ${connLimit} SET statement_timeout TO '60s'`,
+      `CREATE ROLE ${quotedUser} WITH PASSWORD '${safePass}' NOSUPERUSER NOCREATEDB NOCREATEROLE NOINHERIT NOLOGIN CONNECTION LIMIT ${connLimit}`,
     );
+    await pool.query(`ALTER ROLE ${quotedUser} SET statement_timeout TO '60s'`);
     await pool.query(`GRANT CONNECT ON DATABASE ${quotedDb} TO ${quotedUser}`);
 
     const ownerPool = new Pool({

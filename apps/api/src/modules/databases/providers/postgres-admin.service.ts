@@ -1,10 +1,11 @@
-import { Injectable, OnModuleInit } from '@nestjs/common';
+import { Injectable, OnModuleInit, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { Pool } from 'pg';
-import * as crypto from 'crypto';
+import { readFile } from 'fs/promises';
 
 @Injectable()
 export class PostgresAdminService implements OnModuleInit {
+  private readonly logger = new Logger(PostgresAdminService.name);
   private adminPool: Pool | null = null;
   private adminHost: string = 'postgres';
   private adminPort: number = 5432;
@@ -19,12 +20,14 @@ export class PostgresAdminService implements OnModuleInit {
     this.adminDatabase = this.configService.get<string>('DB_ADMIN_DATABASE', 'fidscript');
   }
 
-  onModuleInit() {
+  async onModuleInit() {
     const passwordFile = this.configService.get<string>('DB_ADMIN_PASSWORD_FILE');
     if (passwordFile) {
       try {
-        this.adminPassword = require('fs').readFileSync(passwordFile, 'utf8').trim();
-      } catch { /* fall through to env var */ }
+        this.adminPassword = (await readFile(passwordFile, 'utf8')).trim();
+      } catch (err) {
+        this.logger.warn(`Failed to read DB_ADMIN_PASSWORD_FILE ${passwordFile}: ${err instanceof Error ? err.message : err}`);
+      }
     }
     if (!this.adminPassword) {
       const directUrl = this.configService.get<string>('DIRECT_URL')
@@ -37,6 +40,7 @@ export class PostgresAdminService implements OnModuleInit {
         } catch { /* ignore parse failures */ }
       }
     }
+    this.logger.log(`PostgresAdminService initialized: host=${this.adminHost} user=${this.adminUser} db=${this.adminDatabase} pass_set=${!!this.adminPassword}`);
   }
 
   async getPool(): Promise<Pool> {

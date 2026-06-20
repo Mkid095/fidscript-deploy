@@ -40,7 +40,7 @@ export class DbCrudService {
 
       await this.prisma.managedDatabase.update({
         where: { id: database.id },
-        data: { status: 'ready', host: credentials.host, port: credentials.port, username: credentials.username, connectionInfo, usedBytes },
+        data: { status: 'ready', host: credentials.host, port: credentials.port, username: credentials.username, connectionInfo, usedBytes: usedBytes !== undefined ? Number(usedBytes) : undefined },
       });
 
       await this.injectDatabaseUrl(projectId, credentials);
@@ -104,6 +104,10 @@ export class DbCrudService {
 
   formatDatabase(db: Record<string, unknown>) {
     const { connectionInfo: _ci, ...safe } = db;
+    // Convert BigInt fields to Number for JSON serialization
+    if ('sizeBytes' in safe) (safe as any).sizeBytes = safe.sizeBytes !== null ? Number(safe.sizeBytes) : null;
+    if ('usedBytes' in safe) (safe as any).usedBytes = safe.usedBytes !== null ? Number(safe.usedBytes) : null;
+    if ('maxConnections' in safe) (safe as any).maxConnections = Number(safe.maxConnections);
     return safe;
   }
 

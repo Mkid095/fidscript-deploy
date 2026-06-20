@@ -11,9 +11,10 @@ import { PostgresBackupService } from '@/modules/databases/providers/postgres-ba
 import { PostgresHealthService } from '@/modules/databases/providers/postgres-health.service';
 import { DATABASE_PROVIDER } from '@/modules/databases/providers/database-provider.interface';
 import { StorageModule } from '@/modules/storage/storage.module';
+import { ProjectsModule } from '@/modules/projects/projects.module';
 
 @Module({
-  imports: [StorageModule],
+  imports: [StorageModule, ProjectsModule],
   controllers: [DatabasesController],
   providers: [
     DatabasesService,
