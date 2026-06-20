@@ -1,30 +1,87 @@
 # CLAUDE.md
 
-FIDScript Deploy - AI Development Constitution
+FIDScript Deploy — AI Development Constitution
 
-> **Operating mode (from 2026-06-16):** Hardening, not feature-chasing. The platform is being rebuilt dependency-first from Phase 0, with every phase verified on the VPS before advancing. See `docs/AUDIT.md` for why.
+> **Operating mode (from 2026-06-16):** Hardening, not feature-chasing. The platform is being rebuilt
+> dependency-first from Phase 0, with every phase verified on the VPS before advancing. See
+> `docs/AUDIT.md` for why.
+>
+> **Current focus: documentation-first phase (paused implementation).** As of 2026-06-20, the backend
+> is end-to-end working (deployments + functions proven on the VPS). The frontend is at a **complete
+> documentation blueprint** but only a thin implementation. The rule now is
+> **Documentation → Review → Approval → Implementation** (rule 14). No new frontend feature is built
+> until its spec is complete and approved. The blueprint lives in `docs/product/` and
+> `docs/phases/frontend/`. Status: `AGENT_STATUS.md`.
 
 ---
 
 ## Navigation
 
+### Start here
+
 | Need | Go To |
 |------|-------|
 | **Start here — orient any agent/human (read first)** | `docs/START_HERE.md` |
+| **Current phase and status** (what's done / what's next) | `AGENT_STATUS.md` |
+| **Project documentation map** (every doc in one place) | [below](#project-documentation-map) |
 | Why we reset + current honest state | `docs/AUDIT.md` |
-| Roadmap, phase sequence, template, verification rubric | `docs/phases/README.md` |
-| **Frontend roadmap** (landing/docs/dashboard phases F00–F11) | `docs/phases/frontend/README.md` |
+| Backend phase roadmap + verification rubric | `docs/phases/README.md` |
+
+### Frontend (dashboard + public site) — the **current focus**
+
+| Need | Go To |
+|------|-------|
+| **Frontend phase roadmap** (F00–F11) | `docs/phases/frontend/README.md` |
+| **Spec template** (every phase fills this) | `docs/phases/frontend/_template.md` |
+| **Backend inventory** (every endpoint; specs cross-reference these IDs) | `docs/phases/frontend/backend/index.md` (cluster files alongside) |
 | **Product philosophy** (north star + 5 principles) | `docs/product/platform-philosophy.md` |
-| Current phase and status | `AGENT_STATUS.md` |
+| **User journeys** (6 personas, full flows) | `docs/product/user-journeys.md` |
+| **Navigation architecture** (sidebar + global IA) | `docs/product/navigation.md` |
+| **Global UX spec** (tactical UX rules) | `docs/product/user-experience-spec.md` |
+| **Service specs** (12 services — the source of truth for each backend subsystem) | `docs/product/services/` |
+| **Screen inventory** (master list; every screen = operator interface to a Prisma entity) | `docs/product/screens/index.md` |
+| **Component catalog** (reusable registry) | `docs/product/components/index.md` |
+
+### Backend (phases 00–23, all verified)
+
+| Need | Go To |
+|------|-------|
+| Phase docs (00–23) | `docs/phases/phase-NN.md` |
 | Architecture decisions | `DECISIONS.md` |
-| System architecture (⚠ aspirational target — see START_HERE) | `ARCHITECTURE.md` |
-| All services overview (⚠ aspirational target) | `docs/SERVICE_CATALOG.md` |
+| System architecture (⚠ aspirational — pre-hardening target) | `ARCHITECTURE.md` |
+| All services overview (⚠ aspirational — pre-hardening) | `docs/SERVICE_CATALOG.md` |
 | Complete file inventory | `PROJECT_INDEX.md` |
 
-> **⚠ The design/spec docs (`ARCHITECTURE.md`, `docs/PRODUCT_REQUIREMENTS.md`,
-> `docs/*_SPEC.md`, `docs/services/*.md`) describe the *intended* system, written before
-> the hardening reset. They are the destination, not the present. Always cross-check
-> against `docs/AUDIT.md` and the phase doc's "Current State" before assuming a feature works.**
+> **⚠ The old design/spec docs (`ARCHITECTURE.md`, `docs/PRODUCT_REQUIREMENTS.md`, `docs/*_SPEC.md`,
+> the old `docs/services/*.md`) were written *before* the hardening reset. They describe the intended
+> system, not the present. The **authoritative** product docs are now in `docs/product/`. Always
+> cross-check against `docs/AUDIT.md` and the current phase doc before assuming a feature works.
+
+---
+
+## The operating-system framing (read first, applies to every frontend doc)
+
+FIDScript is an **operator's control plane for backend services**, not a visualization dashboard.
+Every screen is the operator's console for one or more **real Prisma entities** (`Project`,
+`Deployment`, `Release`, `Function`, `Database`, `Queue`, `CronJob`, `EmailDomain`, `StorageBucket`,
+etc.) and must:
+
+1. **Render the real backend entity with its actual fields** — never invented columns, never
+   faked state. The screen inventory (`docs/product/screens/index.md`) names the entities and the
+   fields each screen shows.
+2. **Enable real operations** — the buttons call the **real inventory endpoints** (with stable IDs
+   like `DEPL-02`, `DB-01`, `MAIL-21`), no mock data. The backend inventory
+   (`docs/phases/frontend/backend/`) is the source of truth.
+3. **Respect the real auth context** — every screen renders differently for `owner / admin /
+   developer / viewer`. A viewer does not just lose a button; the chrome around the page reflects
+   the role. The server is the source of truth (re-validates), but the UI is the honest hint.
+4. **Be honest about gaps** — unimplemented runtimes, providers, channels, and endpoints (e.g.
+   `php|go|rust` runtimes, `slack|pagerduty` channels, Stalwart suspend limitation) are greyed in the
+   UI with "not yet available," never faked. The audit's honest findings are documented in
+   `docs/phases/frontend/backend/index.md` and propagated to the service specs.
+
+If a doc (philosophy, journey, service spec, screen, component, phase spec) does not reflect this
+framing, it is wrong. Fix the doc, don't work around it.
 
 ---
 
@@ -65,26 +122,31 @@ nothing was built. Don't recreate that.
 
 ---
 
-## Service Specifications
+## Service Specifications (the **authoritative** per-service docs)
 
-| Service | Read First |
-|---------|------------|
-| Authentication | `docs/services/auth.md` |
-| Projects | `docs/services/projects.md` |
-| Deployments | `docs/services/deployments.md` |
-| Storage | `docs/services/storage.md` |
-| Email | `docs/services/email.md` |
-| Database | `docs/services/database.md` |
-| Realtime | `docs/services/realtime.md` |
-| Functions | `docs/services/functions.md` |
-| Queues | `docs/services/queues.md` |
-| Cron | `docs/services/cron.md` |
-| Domains | `docs/services/domains.md` |
-| Monitoring | `docs/services/monitoring.md` |
-| Logging | `docs/services/logging.md` |
-| Skills | `docs/services/skills.md` |
-| Templates | `docs/services/templates.md` |
-| Integrations | `docs/services/integrations.md` |
+These are the per-service specs the frontend must follow. Each names the Prisma entities the
+service manages, the real inventory endpoints the screens call, the realtime events it emits, the
+per-role rendering, and the honest backend gaps. They live in `docs/product/services/` (not the old
+pre-hardening `docs/services/`).
+
+| Service | Spec | Connects to inventory |
+|---|---|---|
+| Projects | `docs/product/services/projects.md` | `PROJ-*` |
+| Deployments | `docs/product/services/deployments.md` | `DEPL-*` |
+| Functions (edge) | `docs/product/services/functions.md` | `FN-*` |
+| Databases | `docs/product/services/databases.md` | `DB-*` |
+| Storage | `docs/product/services/storage.md` | `STOR-*` |
+| Realtime | `docs/product/services/realtime.md` | `RT-*` |
+| Queues | `docs/product/services/queues.md` | `QUEUE-*` |
+| Scheduler (cron) | `docs/product/services/scheduler.md` | `CRON-*` |
+| Email | `docs/product/services/email.md` | `MAIL-*` |
+| Domains | `docs/product/services/domains.md` | `DOM-*` |
+| Monitoring | `docs/product/services/monitoring.md` | `MON-*` |
+| Logs | `docs/product/services/logging.md` | `LOG-*` |
+| MCP | `docs/product/services/mcp.md` | (proxy to SDK) |
+
+> **The old `docs/services/*.md` (linked in the original CLAUDE.md) are pre-hardening aspirational
+> specs and should not be used.** The new authoritative specs are in `docs/product/services/`.
 
 ---
 
@@ -183,51 +245,144 @@ every spec cross-references.
 12. **Research Before Implementing** - Use available tools (Context7 for current library docs, web search for current best practices, file Read for repo state) to verify the correct approach before coding. Docs and model training may be stale.
 13. **Docs Are Living** - Phase docs, AUDIT, AGENT_STATUS, and the precision maps are a snapshot. Update them in the same commit as the code so they never drift; a doc that lies is worse than no doc.
 14. **Documentation-First (frontend)** - No frontend feature/page/component/API-integration may be implemented until its spec (`docs/phases/frontend/fNN-*.md`, following `_template.md`'s 16 sections) is complete and approved. Specs cross-reference the **backend inventory** (`docs/phases/frontend/backend/`) by stable endpoint ID — never invent endpoints. Flow: Documentation → Review → Approval → Implementation.
+15. **Operating-System Framing (frontend)** - The dashboard is the operator's **control plane** for backend services, not a viz dashboard. Every screen renders **real Prisma entities** with real fields, enables **real inventory endpoints**, respects the **real auth context** (owner / admin / developer / viewer each see different fields, buttons, chrome), and is **honest about backend gaps** (greyed, never faked). See the "operating-system framing" section above. This rule constrains every product doc (philosophy, journeys, services, screens, components, phase specs).
 
 ---
 
 ## Startup Sequence
 
-1. Read `docs/AUDIT.md` - Know the honest current state
-2. Read `AGENT_STATUS.md` - Know which phase is `In Progress` / `Verified`
-3. Read `docs/phases/README.md` - Know the roadmap and verification rubric
-4. Read `docs/phases/phase-XX.md` - Know this phase's deliverables and exit criterion
-5. Read relevant `docs/services/[service].md` - Know the service contract
-6. Read related ADRs in `DECISIONS.md` - Know decisions made
-7. **Research the current correct approach** (Context7 for library docs, web search for best practices) before implementing — see "How an agent should work"
-8. Implement against the phase spec
-9. **Verify on the VPS** against the phase's `## Verification` section
-10. Commit the verified phase
-11. **Keep docs honest in the same commit**: update `AGENT_STATUS.md` (phase → `Verified`); refresh the phase doc's *Current State* / *Files you'll touch* if they drifted; correct `docs/AUDIT.md` if a verdict changed; add an ADR to `DECISIONS.md` if you made a decision
+### A. Orient yourself (read first)
+
+1. Read `docs/START_HERE.md` — orient any agent/human.
+2. Read `AGENT_STATUS.md` — know which phase is `In Progress` / `Verified`, and the current focus
+   (today: **documentation-first phase**, implementation paused).
+3. Read the **operating-system framing** above — this constrains every frontend doc and screen.
+
+### B. If you're working on the frontend (dashboard / public site)
+
+The blueprint is in `docs/product/` + `docs/phases/frontend/`. Read in this order:
+
+1. `docs/product/platform-philosophy.md` — the north star + 5 principles.
+2. `docs/product/user-journeys.md` — the flows every persona follows.
+3. `docs/product/navigation.md` — the global IA + sidebar's 14 items.
+4. `docs/product/user-experience-spec.md` — tactical UX rules.
+5. `docs/product/services/[service].md` — the service you're implementing (its Prisma entities,
+   real operations, per-role rendering, backend gaps).
+6. `docs/phases/frontend/backend/index.md` (cluster files) — the accurate endpoint inventory; every
+   spec cross-references IDs like `DEPL-02` from here.
+7. `docs/phases/frontend/_template.md` — the 16-section scaffold every phase fills.
+8. `docs/product/screens/index.md` — the master screen inventory; every screen = operator interface
+   to a Prisma entity.
+9. `docs/product/components/index.md` — the reusable components.
+10. The phase spec you're implementing (`docs/phases/frontend/fNN-*.md`).
+
+### C. If you're working on the backend (or hardening)
+
+1. Read `docs/AUDIT.md` — know the honest current state.
+2. Read `docs/phases/README.md` — the roadmap and verification rubric.
+3. Read `docs/phases/phase-XX.md` — this phase's deliverables + exit criterion.
+4. Read related ADRs in `DECISIONS.md` — decisions made.
+5. **Research the current correct approach** (Context7 for library docs, web search for best
+   practices) before implementing — see "How an agent should work" above.
+6. Implement against the phase spec.
+7. **Verify on the VPS** against the phase's `## Verification` section.
+8. Commit the verified phase.
+9. **Keep docs honest in the same commit**: update `AGENT_STATUS.md` (phase → `Verified`); refresh the
+   phase doc's *Current State* / *Files you'll touch* if they drifted; correct `docs/AUDIT.md` if a
+   verdict changed; add an ADR to `DECISIONS.md` if you made a decision.
 
 ---
 
-## Source Structure
+## Project Documentation Map (the single index of every doc)
+
+The complete blueprint + reference docs. Every file the frontend must be built against.
 
 ```
-apps/
-  api/            # NestJS API (23 modules) - the core
-  dashboard/      # Next.js dashboard (Phase 19)
-  mcp-server/     # MCP server for AI agents (Phase 17)
-  sdk/            # TypeScript SDK (Phase 16; consolidate with packages/sdk)
-packages/
-  types/ shared/ events/ config/ ui/ eslint-config/   # shared workspace packages
-installer/
-  docker/ traefik/ config/ scripts/   # VPS install (Phase 01)
-docs/
-  AUDIT.md        # honest current state
-  phases/         # roadmap + phase specs
-  services/       # service contracts
+FIDScript Deploy repo
+├── CLAUDE.md                        ← this file (parent guide)
+├── AGENT_STATUS.md                  ← current progress + status (see also)
+├── DECISIONS.md                     ← ADRs
+├── AGENT_STATUS.md                  ← progress log
+│
+├── docs/
+│   ├── AUDIT.md                     ← why we reset (backend audit)
+│   ├── START_HERE.md                ← orient any agent
+│   │
+│   ├── phases/                      ← BACKEND phases 00–23 (all verified)
+│   │   ├── README.md                ← roadmap + verification rubric
+│   │   └── phase-00.md … phase-23.md
+│   │
+│   ├── phases/frontend/             ← FRONTEND phases F00–F11 (blueprint in progress)
+│   │   ├── README.md                ← roadmap + documentation-first rule
+│   │   ├── _template.md             ← 16-section spec scaffold (every phase fills this)
+│   │   ├── f00-design-system.md    ✅ verified
+│   │   ├── f01-public-site.md      ✅ verified
+│   │   ├── f02-auth.md             ✅ spec done (exemplar); pending approval
+│   │   ├── f03…f11                 ⏳ spec pending
+│   │   └── backend/                ← the accurate backend endpoint inventory
+│   │       ├── index.md             ← conventions + public routes + security caveats
+│   │       ├── auth.md              ← AUTH-*, APPAUTH-* (~33 routes)
+│   │       ├── projects-deployments-domains.md  ← PROJ-*, DEPL-*, DOM-* (~38 routes)
+│   │       ├── data.md              ← STOR-*, DB-*, MAIL-* (~53 routes)
+│   │       ├── compute.md           ← FN-*, QUEUE-*, CRON-*, RT-* (~38 routes)
+│   │       └── surfaces.md          ← MON-*, LOG-*, TMPL-*, AI-*, MKT-*, SVC-*, MCP-* (~80+)
+│   │
+│   ├── product/                     ← THE BLUEPRINT (authoritative)
+│   │   ├── platform-philosophy.md   ← north star + 5 principles + competitor comparison
+│   │   ├── user-journeys.md         ← 6 personas × full flows + success criteria
+│   │   ├── navigation.md            ← sidebar's 14 items + global IA + command palette
+│   │   ├── user-experience-spec.md  ← tactical UX: error/empty/loading/permission/a11y
+│   │   ├── services/                ← 13 service specs (each: entity, operations, gaps)
+│   │   │   ├── _template.md
+│   │   │   ├── projects.md
+│   │   │   ├── deployments.md
+│   │   │   ├── functions.md
+│   │   │   ├── databases.md
+│   │   │   ├── storage.md
+│   │   │   ├── realtime.md
+│   │   │   ├── queues.md
+│   │   │   ├── scheduler.md
+│   │   │   ├── email.md
+│   │   │   ├── domains.md
+│   │   │   ├── monitoring.md
+│   │   │   ├── logs.md
+│   │   │   └── mcp.md
+│   │   ├── screens/                 ← screen inventory (master list)
+│   │   │   ├── _template.md
+│   │   │   └── index.md             ← every screen → Prisma entity + route + auth context
+│   │   └── components/              ← component catalog (reusable registry)
+│   │       ├── _template.md
+│   │       ├── index.md             ← catalog
+│   │       ├── button.md ✅
+│   │       ├── data-table.md ✅
+│   │       └── toast.md ✅
+│   │
+│   └── services/                    ← ⚠ OLD pre-hardening aspirational specs — DO NOT USE
+│                                   (superseded by docs/product/services/)
+│
+├── apps/
+│   ├── api/                         ← NestJS API (23 modules) — the core, verified end-to-end
+│   ├── dashboard/                   ← Next.js dashboard (F00–F11 — implementation paused)
+│   ├── mcp-server/                  ← MCP server for AI agents (Phase 17)
+│   └── sdk/                         ← TypeScript SDK (consolidates with packages/sdk)
+│
+├── packages/                        ← shared workspace packages
+│   ├── types/ shared/ events/ config/ ui/ eslint-config/
+│
+├── installer/                       ← VPS install (Phase 01, hardened)
+│   └── docker/ traefik/ config/ scripts/
+│
+├── memory/                          ← (Claude's own memory; outside the repo)
 ```
+
+**Status legend:** ✅ verified · ✅ spec done (pending approval) · ⏳ spec pending · ⚠ obsolete (do not use).
 
 ---
 
 ## Infrastructure
 
-**Cloudflare Domain:** deploy.fidscript.com
-
-Configured during Phase 07 (Domains & TLS). DNS credentials are in Cloudflare (see memory: `cloudflare-config`) and must be wired into code in Phase 07 — they are **not** wired today.
+**Cloudflare Domain:** deploy.fidscript.com. DNS + ACME wired via the installer (`setup-wizard.sh`).
 
 ---
 
-*Last updated: 2026-06-17*
+*Last updated: 2026-06-20 — documentation-first phase; the blueprint (`docs/product/` + backend inventory + per-service specs + screen/component inventories + F02 exemplar) is in place. F02 implementation is the first vertical slice gated on this blueprint's review and approval; F03–F11 specs follow the same template.*

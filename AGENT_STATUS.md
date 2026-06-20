@@ -10,12 +10,12 @@ Current state of FIDScript Deploy development.
 
 | | |
 |---|---|
-| **Current phase** | Phase 23 — All 23 phases complete (pending VPS verification) |
-| **Last verified phase** | Phase 14 — Monitoring Platform (verified 2026-06-19) |
-| **Phase docs** | All 24 rewritten to v2 |
+| **Current mode** | **Documentation-first phase — implementation paused.** Building the complete frontend blueprint (`docs/product/` + `docs/phases/frontend/`) before any new frontend feature is written. Rule 14 of `CLAUDE.md` (Documentation → Review → Approval → Implementation) + rule 15 (operating-system framing). |
+| **Backend runtime** | End-to-end verified on the VPS: 23/23 phases verified, deployments + functions proven live, `/health` 200, soostori decommissioned + DB backed up. |
+| **Frontend status** | F00 design system ✅ verified (live on deploy.fidscript.com). F01 public site ✅ verified (live). F02 auth — **spec complete** (16-section exemplar, reveals 4 backend prerequisites). F03–F11 — **specs pending** (in implementation order after F02 review). |
+| **Documentation blueprint** | See "Documentation-first phase" section below. |
 | **Snapshot baseline** | Commit `f1dd6f2` (Phase 00-23 scaffold, pre-hardening) |
 | **Reset date** | 2026-06-16 |
-| **Runtime bring-up** | **2026-06-18** — the Phase 01 installer + the API NestJS bootstrap now actually run end-to-end on the VPS (commits `67c4e72` + `f94a772`). Infra + API healthy; /health = 200; the audit's "never actually run" is fixed for the runtime path. **2026-06-18 (later)** — Stalwart email container also brought up under the same compose; one `docker compose up -d` now starts the whole 7-container platform. Commit `ffb8035` ported StalwartJmapService to v0.15.5 (HTTP Basic auth, no `urn:stalwart:jmap`, POST /api/principal for accounts, SMTP AUTH PLAIN on port 465). **Phase 09 verified 2026-06-18.** |
 
 ---
 
@@ -88,6 +88,47 @@ Statuses: `Planned` · `In Progress` · `Verified`
   - **Soostori decommissioned (per user direction).** Stack at `/var/www/soostori.co.ke` stopped + containers removed to free disk (was 99% full — the deployment builds were failing with "no space left on device"). **Database preserved**: full backup at `/home/ken/soostori-migration/` (`soostori-2026-06-20.dump` custom format + `.sql` plain + roles + README) for later migration into the FIDScript platform. Pruning build cache reclaimed 6.95GB (disk now 55%).
   - **Honest remaining gap:** deploys require the repo to ship a **Dockerfile** — there is no zero-config/Nixpacks auto-Dockerfile generation yet (the `deploymentStrategy` field defaults to "buildpack" but no buildpack provider exists). Frontend/Backend/Static/Docker/Worker/Cron profiles are wired, but each expects a Dockerfile in the repo root.
 
+- [x] **2026-06-20 — Documentation-first phase entered.** Backend end-to-end verified; implementation
+  paused. Building the complete blueprint before any new frontend feature is built. The full doc
+  set lives in `docs/product/` (the operating-system blueprint) + `docs/phases/frontend/` (the
+  phase specs) + `docs/phases/frontend/backend/` (the accurate endpoint inventory). The parent
+  guide `CLAUDE.md` was rewritten to point to every doc, codify rule 14 (Documentation → Review →
+  Approval → Implementation) and rule 15 (operating-system framing: every screen renders real
+  Prisma entities + real inventory endpoints, respects per-role rendering, honest about gaps).
+  **The audit proved its own value** — writing the F02 spec surfaced 4 backend prerequisites
+  (`User.mustChangePassword` field + seed, `POST /auth/change-password`, platform magic-code
+  endpoints, `mustChangePassword` on `/auth/me`) that block auth implementation; that is exactly the
+  kind of gap documentation-first is designed to find.
+
+### Documentation-first phase — blueprint status
+
+The complete frontend blueprint. Implementation is **paused** until the user reviews the blueprint
+and approves the next implementation phase. Every doc cross-references the backend inventory
+(`docs/phases/frontend/backend/`, stable IDs `AUTH-04`, `DEPL-02`, `MAIL-21`, …).
+
+| Layer | Doc | Status |
+|---|---|---|
+| North star | `docs/product/platform-philosophy.md` | ✅ done (operating-system, 5 principles, one-domain fan-out) |
+| Flows | `docs/product/user-journeys.md` | ✅ done (6 personas × full flows + branches + success) |
+| IA | `docs/product/navigation.md` | ✅ done (global + sidebar's 14 items + command palette) |
+| UX rules | `docs/product/user-experience-spec.md` | ✅ done (empty/error/loading/permission/a11y + single-screen test) |
+| Backend inventory | `docs/phases/frontend/backend/` (5 cluster files) | ✅ done (~225 routes + WS + 108 MCP tools, security caveats surfaced) |
+| Service specs | `docs/product/services/` (12 services) | ✅ done (Prisma entities + inventory IDs + realtime + gaps) |
+| Screen inventory | `docs/product/screens/index.md` | ✅ done (every screen → Prisma entity + route + auth render) |
+| Component catalog | `docs/product/components/index.md` | ✅ done (catalog) |
+| Component specs | `docs/product/components/{button,data-table,toast}.md` | ✅ 3/30 done; remaining in implementation order |
+| Phase F02 | `docs/phases/frontend/f02-auth.md` | ✅ full 16-section spec (exemplar; pending approval) |
+| Phase F00/F01 | `docs/phases/frontend/f00-*.md`, `f01-*.md` | ✅ implemented + verified; specs are light, full-template upgrade pending |
+| Phases F03–F11 | `docs/phases/frontend/f03..f11-*.md` | ⏳ specs pending (in implementation order) |
+| Per-screen deep specs | `docs/product/screens/_NN-*.md` | ⏳ for the non-obvious screens (in implementation order) |
+
+**Operating-system framing** (read first, constrains every doc): the dashboard is the operator's
+**control plane** for backend services, not a viz dashboard. Every screen renders **real Prisma
+entities** with real fields, enables **real inventory endpoints**, respects the **real auth
+context** (owner/admin/dev/viewer each see different fields, buttons, chrome), and is **honest
+about backend gaps** (greyed, never faked). See `CLAUDE.md` rule 15 and the operating-system
+framing section.
+
 ### Hardening follow-ups (committed code, but the live VPS still needs them)
 
 - **Soostori migration into FIDScript.** The soostori stack was stopped 2026-06-20 and its Postgres backed up to `/home/ken/soostori-migration/`. When ready, restore the dump into a FIDScript-managed database and re-platform the app (the old "re-platform soostori under fidscript" follow-up, now unblocked by disk space).
@@ -98,4 +139,6 @@ A phase moves to **Verified** only when, on the VPS: it builds, it runs, its pro
 
 ---
 
-*Last updated: 2026-06-20 (Phases 04–13 audit complete — 05/06/08 bugs fixed + verified; 07/09–13 confirmed working)*
+*Last updated: 2026-06-20 — documentation-first phase; backend 23/23 verified; frontend blueprint in
+`docs/product/` + `docs/phases/frontend/`; F02 spec complete (pending approval + 4 backend prereqs);
+F03–F11 specs next. Implementation paused.*
