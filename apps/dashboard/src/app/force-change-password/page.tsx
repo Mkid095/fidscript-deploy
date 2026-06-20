@@ -1,0 +1,127 @@
+'use client';
+
+import { useState } from 'react';
+import { Button } from '@fidscript/ui';
+import { Input } from '@fidscript/ui';
+import { Card } from '@fidscript/ui';
+
+import { useAuth } from '@/contexts/auth-context';
+import { PasswordStrength } from '@/components/auth/password-strength';
+
+export default function ForceChangePasswordPage() {
+  const { changePassword, loading, error } = useAuth();
+  const [currentPassword, setCurrentPassword] = useState('');
+  const [newPassword, setNewPassword] = useState('');
+  const [confirm, setConfirm] = useState('');
+  const [validationError, setValidationError] = useState('');
+  const [serverError, setServerError] = useState('');
+
+  function validate(): boolean {
+    if (!currentPassword) {
+      setValidationError('Current password is required');
+      return false;
+    }
+    if (newPassword.length < 12) {
+      setValidationError('New password must be at least 12 characters');
+      return false;
+    }
+    if (!/[A-Z]/.test(newPassword)) {
+      setValidationError('New password must contain an uppercase letter');
+      return false;
+    }
+    if (!/[a-z]/.test(newPassword)) {
+      setValidationError('New password must contain a lowercase letter');
+      return false;
+    }
+    if (!/[0-9]/.test(newPassword)) {
+      setValidationError('New password must contain a number');
+      return false;
+    }
+    if (newPassword === currentPassword) {
+      setValidationError('New password must be different from current password');
+      return false;
+    }
+    if (newPassword !== confirm) {
+      setValidationError('Passwords do not match');
+      return false;
+    }
+    setValidationError('');
+    return true;
+  }
+
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    setServerError('');
+    if (!validate()) return;
+    try {
+      await changePassword(currentPassword, newPassword);
+    } catch (err) {
+      setServerError(err instanceof Error ? err.message : 'Password change failed');
+    }
+  }
+
+  return (
+    <div className="min-h-screen flex items-center justify-center bg-[#080a0d] p-4">
+      <Card padding="lg" className="w-full max-w-md border border-[#1e2130]">
+        <div className="mb-6 text-center">
+          <h1 className="text-xl font-bold text-slate-200 mb-1">Change your password</h1>
+          <p className="text-sm text-slate-500">
+            You are using temporary credentials. Choose a permanent password to continue.
+          </p>
+        </div>
+
+        <form onSubmit={handleSubmit} noValidate>
+          <div className="flex flex-col gap-4">
+            <Input
+              label="Current password"
+              type="password"
+              value={currentPassword}
+              onChange={(e) => setCurrentPassword(e.target.value)}
+              placeholder="Enter your current password"
+              autoComplete="current-password"
+              className="bg-[#080a0d] border border-[#1e2130] text-slate-200 placeholder:text-slate-600"
+            />
+
+            <div className="space-y-1">
+              <Input
+                label="New password"
+                type="password"
+                value={newPassword}
+                onChange={(e) => setNewPassword(e.target.value)}
+                placeholder="At least 12 characters"
+                autoComplete="new-password"
+                className="bg-[#080a0d] border border-[#1e2130] text-slate-200 placeholder:text-slate-600"
+              />
+              <PasswordStrength password={newPassword} />
+            </div>
+
+            <Input
+              label="Confirm new password"
+              type="password"
+              value={confirm}
+              onChange={(e) => setConfirm(e.target.value)}
+              placeholder="Re-enter new password"
+              autoComplete="new-password"
+              className="bg-[#080a0d] border border-[#1e2130] text-slate-200 placeholder:text-slate-600"
+            />
+
+            {(validationError || serverError || error) && (
+              <p className="text-sm text-red-400">
+                {validationError || serverError || error}
+              </p>
+            )}
+
+            <Button
+              type="submit"
+              disabled={loading}
+              variant="primary"
+              className="w-full mt-1"
+            >
+              {loading ? 'Updating...' : 'Update & continue'}
+            </Button>
+          </div>
+        </form>
+      </Card>
+    </div>
+  );
+}

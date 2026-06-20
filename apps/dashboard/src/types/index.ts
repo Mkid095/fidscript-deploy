@@ -7,6 +7,7 @@ export interface User {
   name: string;
   role: string;
   mfaEnabled: boolean;
+  mustChangePassword: boolean;
   createdAt: string;
 }
 

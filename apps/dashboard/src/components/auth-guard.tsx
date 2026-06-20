@@ -14,7 +14,10 @@ export function AuthGuard({ children }: AuthGuardProps) {
 
   useEffect(() => {
     if (!loading && !user) {
-      window.location.href = '/login';
+      const next = encodeURIComponent(window.location.pathname);
+      window.location.href = `/login?next=${next}`;
+    } else if (!loading && user?.mustChangePassword) {
+      window.location.href = '/force-change-password';
     }
   }, [loading, user]);
 
@@ -33,7 +36,7 @@ export function AuthGuard({ children }: AuthGuardProps) {
     );
   }
 
-  if (!user) return null;
+  if (!user || user.mustChangePassword) return null;
 
   return <>{children}</>;
 }

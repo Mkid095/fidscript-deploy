@@ -2,8 +2,10 @@
 
 import {
   createContext,
+  useCallback,
   useContext,
   useEffect,
+  useRef,
   useState,
   type ReactNode,
 } from 'react';
@@ -21,23 +23,39 @@ interface AuthContextValue extends AuthState {
   login: (email: string, password: string) => Promise<void>;
   logout: () => Promise<void>;
   register: (email: string, name: string, password: string) => Promise<void>;
+  sendMagicCode: (email: string) => Promise<{ sent: boolean }>;
+  verifyMagicCode: (email: string, code: string) => Promise<void>;
+  changePassword: (currentPassword: string, newPassword: string) => Promise<void>;
+  clearError: () => void;
 }
 
 const AuthContext = createContext<AuthContextValue | null>(null);
 
-const TOKEN_KEY = 'fidscript_token';
+const ACCESS_TOKEN_KEY = 'fidscript_access_token';
+const REFRESH_TOKEN_KEY = 'fidscript_refresh_token';
 
-function getStoredToken(): string | null {
-  if (typeof window === 'undefined') return null;
-  return localStorage.getItem(TOKEN_KEY);
+function getStoredTokens(): { accessToken: string | null; refreshToken: string | null } {
+  if (typeof window === 'undefined') return { accessToken: null, refreshToken: null };
+  return {
+    accessToken: localStorage.getItem(ACCESS_TOKEN_KEY),
+    refreshToken: localStorage.getItem(REFRESH_TOKEN_KEY),
+  };
 }
 
-function storeToken(token: string): void {
-  localStorage.setItem(TOKEN_KEY, token);
+function storeTokens(accessToken: string, refreshToken: string): void {
+  localStorage.setItem(ACCESS_TOKEN_KEY, accessToken);
+  localStorage.setItem(REFRESH_TOKEN_KEY, refreshToken);
 }
 
-function clearToken(): void {
-  localStorage.removeItem(TOKEN_KEY);
+function clearTokens(): void {
+  localStorage.removeItem(ACCESS_TOKEN_KEY);
+  localStorage.removeItem(REFRESH_TOKEN_KEY);
+}
+
+function getNextRoute(): string {
+  if (typeof window === 'undefined') return '/dashboard';
+  const params = new URLSearchParams(window.location.search);
+  return params.get('next') || '/dashboard';
 }
 
 export function AuthProvider({ children }: { children: ReactNode }) {
@@ -47,59 +65,83 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     error: null,
   });
 
-  const [sdk, setSdk] = useState<FidscriptSDK | null>(null);
+  const sdkRef = useRef<FidscriptSDK | null>(null);
 
+  const buildSdk = useCallback((accessToken: string) => {
+    sdkRef.current = createFidscript({ apiKey: accessToken });
+  }, []);
+
+  const hydrateUser = useCallback(async (accessToken: string) => {
+    buildSdk(accessToken);
+    return sdkRef.current!.auth.me();
+  }, [buildSdk]);
+
+  // Restore session on mount.
   useEffect(() => {
     let cancelled = false;
 
     async function restoreSession() {
-      const token = getStoredToken();
-      if (!token) {
+      const { accessToken, refreshToken } = getStoredTokens();
+      if (!accessToken) {
         if (!cancelled) setState(s => ({ ...s, loading: false }));
         return;
       }
 
       try {
-        const sdkInstance = createFidscript({ apiKey: token });
-        const res = await sdkInstance.auth.getSession();
-        if (!cancelled) {
-          setSdk(sdkInstance);
-          setState({ user: res.user, loading: false, error: null });
-        }
+        const user = await hydrateUser(accessToken);
+        if (!cancelled) setState({ user, loading: false, error: null });
       } catch {
-        clearToken();
-        if (!cancelled) setState({ user: null, loading: false, error: null });
+        // Token may be expired — attempt refresh.
+        if (!cancelled && refreshToken) {
+          try {
+            const sdk = createFidscript({});
+            const refreshed = await sdk.auth.refreshToken(refreshToken);
+            if (cancelled) return;
+            storeTokens(refreshed.accessToken, refreshed.refreshToken);
+            const user = await hydrateUser(refreshed.accessToken);
+            if (!cancelled) setState({ user, loading: false, error: null });
+          } catch {
+            if (!cancelled) {
+              clearTokens();
+              setState({ user: null, loading: false, error: null });
+            }
+          }
+        } else {
+          if (!cancelled) {
+            clearTokens();
+            setState({ user: null, loading: false, error: null });
+          }
+        }
       }
     }
 
     restoreSession();
-
-    return () => {
-      cancelled = true;
-    };
-  }, []);
+    return () => { cancelled = true; };
+  }, [hydrateUser]);
 
   async function login(email: string, password: string): Promise<void> {
     setState(s => ({ ...s, loading: true, error: null }));
     try {
-      const sdkInstance = createFidscript({});
-      const res = await sdkInstance.auth.login(email, password);
-      storeToken(res.token);
-      setSdk(sdkInstance);
-      setState({ user: res.user, loading: false, error: null });
-      window.location.href = '/';
+      const sdk = createFidscript({});
+      const res = await sdk.auth.login(email, password);
+      storeTokens(res.accessToken, res.refreshToken);
+      buildSdk(res.accessToken);
+      const user = await sdkRef.current!.auth.me();
+      setState({ user, loading: false, error: null });
+      window.location.href = getNextRoute();
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Login failed';
       setState(s => ({ ...s, loading: false, error: message }));
+      throw err;
     }
   }
 
   async function logout(): Promise<void> {
     try {
-      if (sdk) await sdk.auth.logout();
+      if (sdkRef.current) await sdkRef.current.auth.logout();
     } finally {
-      clearToken();
-      setSdk(null);
+      clearTokens();
+      sdkRef.current = null;
       setState({ user: null, loading: false, error: null });
       window.location.href = '/login';
     }
@@ -108,17 +150,71 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   async function register(email: string, name: string, password: string): Promise<void> {
     setState(s => ({ ...s, loading: true, error: null }));
     try {
-      const sdkInstance = createFidscript({});
-      await sdkInstance.auth.register(email, password, name);
+      const sdk = createFidscript({});
+      await sdk.auth.register(email, password, name);
       await login(email, password);
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Registration failed';
       setState(s => ({ ...s, loading: false, error: message }));
+      throw err;
     }
   }
 
+  async function sendMagicCode(email: string): Promise<{ sent: boolean }> {
+    const sdk = createFidscript({});
+    return sdk.auth.sendMagicCode(email);
+  }
+
+  async function verifyMagicCode(email: string, code: string): Promise<void> {
+    setState(s => ({ ...s, loading: true, error: null }));
+    try {
+      const sdk = createFidscript({});
+      const res = await sdk.auth.verifyMagicCode(email, code);
+      storeTokens(res.accessToken, res.refreshToken);
+      buildSdk(res.accessToken);
+      const user = await sdkRef.current!.auth.me();
+      setState({ user, loading: false, error: null });
+      window.location.href = getNextRoute();
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Invalid or expired code';
+      setState(s => ({ ...s, loading: false, error: message }));
+      throw err;
+    }
+  }
+
+  async function changePassword(currentPassword: string, newPassword: string): Promise<void> {
+    setState(s => ({ ...s, loading: true, error: null }));
+    try {
+      if (!sdkRef.current) throw new Error('Not authenticated');
+      const res = await sdkRef.current.auth.changePassword(currentPassword, newPassword);
+      storeTokens(res.accessToken, res.refreshToken);
+      const user = await hydrateUser(res.accessToken);
+      setState({ user, loading: false, error: null });
+      window.location.href = getNextRoute();
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Password change failed';
+      setState(s => ({ ...s, loading: false, error: message }));
+      throw err;
+    }
+  }
+
+  function clearError() {
+    setState(s => ({ ...s, error: null }));
+  }
+
   return (
-    <AuthContext.Provider value={{ ...state, login, logout, register }}>
+    <AuthContext.Provider
+      value={{
+        ...state,
+        login,
+        logout,
+        register,
+        sendMagicCode,
+        verifyMagicCode,
+        changePassword,
+        clearError,
+      }}
+    >
       {children}
     </AuthContext.Provider>
   );

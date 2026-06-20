@@ -6,31 +6,25 @@ import { Input } from '@fidscript/ui';
 import { Card } from '@fidscript/ui';
 
 import { useAuth } from '@/contexts/auth-context';
+import { PasswordStrength } from '@/components/auth/password-strength';
 
 export default function RegisterPage() {
   const { register, loading, error } = useAuth();
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [confirm, setConfirm] = useState('');
   const [validationError, setValidationError] = useState('');
 
   function validate(): boolean {
-    if (!name.trim()) {
-      setValidationError('Name is required');
-      return false;
-    }
-    if (!email.trim()) {
-      setValidationError('Email is required');
-      return false;
-    }
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-      setValidationError('Enter a valid email address');
-      return false;
-    }
-    if (password.length < 8) {
-      setValidationError('Password must be at least 8 characters');
-      return false;
-    }
+    if (!name.trim()) { setValidationError('Name is required'); return false; }
+    if (!email.trim()) { setValidationError('Email is required'); return false; }
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) { setValidationError('Enter a valid email address'); return false; }
+    if (password.length < 12) { setValidationError('Password must be at least 12 characters'); return false; }
+    if (!/[A-Z]/.test(password)) { setValidationError('Password must contain an uppercase letter'); return false; }
+    if (!/[a-z]/.test(password)) { setValidationError('Password must contain a lowercase letter'); return false; }
+    if (!/[0-9]/.test(password)) { setValidationError('Password must contain a number'); return false; }
+    if (password !== confirm) { setValidationError('Passwords do not match'); return false; }
     setValidationError('');
     return true;
   }
@@ -38,7 +32,11 @@ export default function RegisterPage() {
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (!validate()) return;
-    await register(email, name, password);
+    try {
+      await register(email, name, password);
+    } catch {
+      // error handled by context
+    }
   }
 
   return (
@@ -55,7 +53,7 @@ export default function RegisterPage() {
               label="Name"
               type="text"
               value={name}
-              onChange={e => setName(e.target.value)}
+              onChange={(e) => setName(e.target.value)}
               placeholder="Your full name"
               autoComplete="name"
               className="bg-[#080a0d] border border-[#1e2130] text-slate-200 placeholder:text-slate-600"
@@ -65,24 +63,37 @@ export default function RegisterPage() {
               label="Email"
               type="email"
               value={email}
-              onChange={e => setEmail(e.target.value)}
+              onChange={(e) => setEmail(e.target.value)}
               placeholder="you@example.com"
               autoComplete="email"
               className="bg-[#080a0d] border border-[#1e2130] text-slate-200 placeholder:text-slate-600"
             />
 
+            <div className="space-y-1">
+              <Input
+                label="Password"
+                type="password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                placeholder="At least 12 characters"
+                autoComplete="new-password"
+                className="bg-[#080a0d] border border-[#1e2130] text-slate-200 placeholder:text-slate-600"
+              />
+              <PasswordStrength password={password} />
+            </div>
+
             <Input
-              label="Password"
+              label="Confirm password"
               type="password"
-              value={password}
-              onChange={e => setPassword(e.target.value)}
-              placeholder="Minimum 8 characters"
+              value={confirm}
+              onChange={(e) => setConfirm(e.target.value)}
+              placeholder="Re-enter password"
               autoComplete="new-password"
               className="bg-[#080a0d] border border-[#1e2130] text-slate-200 placeholder:text-slate-600"
             />
 
             {(validationError || error) && (
-              <p className="text-sm text-red-400">{validationError || error}</p>
+              <p className="text-sm text-red-400" role="alert">{validationError || error}</p>
             )}
 
             <Button
