@@ -17,16 +17,14 @@
 
 ## Recently completed
 
-**F03 — First-Run Onboarding ✅** (2026-06-20).
+**F04 — Projects ✅** (2026-06-20).
 
-- `/onboarding` page: 5-row live-polling health board (5s interval). Rows: Docker (aggregate /health), Database (/health), Domain (Cloudflare DoH → expected IP), SSL (fetch .well-known/fidscript), Email (GET /health/email).
-- HealthBadge component: idle/running/healthy/unhealthy with color + pulse.
-- Per-row: label + one-line "why this matters" + inline error detail on failure.
-- 30s per-check timeout; "Continue anyway" ghost button when ≥1 row is red.
-- First-run cookie `fidscript_onboarded=1`; redirects to /login on Continue.
-- `GET /health/email`: `PlatformMailService.check()` SMTP probe (5s timeout), returns {status, latencyMs, error}.
-- Backend: `PlatformMailService` extended with `check()`, `HealthModule` imports `EmailModule`, `HealthController` gets `/health/email` route.
-- `apps/dashboard/.env.local` added (NEXT_PUBLIC_SERVER_IP, gitignored).
+- `/dashboard/projects` list + create modal wired to real API via `useAuth().getSdk()`.
+- CreateProjectModal: name + live slug preview + 6-type grid selector (frontend/backend/worker/cron/docker/static) + optional description.
+- Optimistic create: modal closes immediately, card appears; failure re-opens modal with inline error.
+- Project cards: name, slug, status badge, type pill, updatedAt. Link to `/projects/:id`.
+- Per-role: Create button shown for owner/admin/developer; viewer sees cards read-only.
+- Responsive grid (1 → md:2 → xl:3). AuthContext gains `getSdk()` for shared SDK access.
 
 **F02 — Authentication (frontend) ✅** (2026-06-20).
 

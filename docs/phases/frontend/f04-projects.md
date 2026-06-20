@@ -1,6 +1,6 @@
 # F04 — Projects (full spec)
 
-> **Status:** ⏳ Spec complete — pending approval.
+> **Status:** ✅ Implemented — initial slice (2026-06-20). Projects list + create modal wired to real API. Activity feed (F04 follow-up).
 > **Connects to:** backend Phase 04 (PROJ-* inventory: `docs/phases/frontend/backend/projects-deployments-domains.md`).
 > Cross-references F03 (onboarding → login → projects), F05 (project dashboard shell — the sidebar
 > lives inside the project), and the service specs in `docs/product/services/`.

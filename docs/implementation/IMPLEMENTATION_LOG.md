@@ -285,3 +285,36 @@ Impact:
 - F03 implemented: `/onboarding` page, `GET /health/email` endpoint, `HealthBadge` component.
   `PREREQ-HEALTH-1` closed. `PREREQ-HEALTH-2` (services.email in /health) remains open — deferred
   to future hardening. F04 (Projects) is the next vertical slice per roadmap.
+
+## 2026-06-20 (later) — F04 projects list + create modal
+
+Phase: F04 Projects (initial slice)
+
+Completed:
+- `AuthContext.getSdk()`: exposed so child pages can access the authenticated SDK instance rather
+  than each creating their own with a hardcoded `localStorage` token key.
+- `/dashboard/projects`: rewrote from scratch using `useAuth().getSdk()` (was: `localStorage.getItem('fidscript_token')` + wrong key name).
+- CreateProjectModal: name field + live slug preview (slugify) + 6-type grid selector
+  (frontend/backend/worker/cron/docker/static) + optional description. Submit calls
+  `sdk.projects.create({name, type, description})`.
+- Optimistic create: modal closes immediately, new card appears in grid. On error, modal
+  re-opens with inline error message.
+- Empty state when no projects (conditional Create CTA based on role).
+- Project cards: name, slug, status badge, type pill, updatedAt. Link to `/projects/:id`.
+- Per-role rendering: "Create Project" shown for owner/admin/developer; viewer sees cards read-only.
+- Responsive grid: 1 col → md:2 → xl:3.
+- Dashboard typecheck + build clean. `/projects` in route manifest (4.99 kB).
+
+Unexpected issues:
+- Existing projects page used wrong token key (`fidscript_token` vs `fidscript_access_token`),
+  and instantiated its own SDK instead of using the shared AuthContext. Both fixed.
+- `Modal` component had no `footer` prop — restructured to inline footer buttons inside the form.
+- `Card` inside `Link` is invalid HTML (block-level inside inline) — replaced with a plain div.
+
+Decision:
+- Pages should use `useAuth().getSdk()` for all API calls, not their own SDK instantiation.
+  AuthContext holds the single source of truth for the current access token.
+
+Impact:
+- F04 initial slice: projects list + create modal implemented. Follow-up: project detail
+  page (/projects/:id, F05 shell), activity feed, members, env vars, API keys, invitations.
