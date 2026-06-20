@@ -115,8 +115,8 @@ hardening plan (`docs/phases/phase-03.md`) covers these.
 | ID | Title | Category | Blocks | Suggested fix | Status |
 |---|---|---|---|---|---|
 | `PREREQ-PROJ-1` | Slug-availability check | missing-endpoint | F04 | `GET /projects/slug-available?slug=…` → `{available:bool,suggestion?}`. Until it lands the UI derives the check from `PROJ-01?slug=…`. _(alias: PROJ-NEW-1)_ | 🟧 UI-mitigated |
-| `PREREQ-PROJ-2` | `PROJ-01` returns per-row `role` + `lastActivityAt` | missing-behavior | F05 | The project-switcher needs each row's role (for the badge) + last activity (for the timestamp). Extend the list projection. | 🟥 Open |
-| `PREREQ-PROJ-3` | "Last 20 events for the bell" endpoint | missing-endpoint | F05 | Either `GET /projects/:id/events?limit=20` or a realtime-gateway replay buffer. The notification bell + activity feed both need it. | 🟥 Open |
+| `PREREQ-PROJ-2` | `PROJ-01` returns per-row `role` + `lastActivityAt` | missing-behavior | F05 | The project-switcher needs each row's role (for the badge) + last activity (for the timestamp). Extend the list projection. | ✅ Closed — `ProjectCrudService.list()` now includes `members { role }` join + derives `role` (`owner`/`member.role`/`viewer`) and `lastActivityAt` (`lastDeployAt ?? updatedAt`) per row; `ProjectFormatService.formatProject()` surfaces both fields. 2026-06-20. |
+| `PREREQ-PROJ-3` | "Last 20 events for the bell" endpoint | missing-endpoint | F05 | Either `GET /projects/:id/events?limit=20` or a realtime-gateway replay buffer. The notification bell + activity feed both need it. | ✅ Closed — `GET /projects/:id/events` route added to `ProjectsCrudController`; `ProjectCrudService.getProjectEvents()` queries `platform.events` for `project`, `deployment`, and `member` resource types under this project, ordered `timestamp desc` with configurable limit (default 20). Access gated via `findProjectWithAccess`. 2026-06-20. |
 | `PREREQ-PROJ-4` | `PROJ-20` API-key DTO is `@Body() dto: any` | audit-gap | F04, F11 | No validation on the create-API-key body. Add a class-validator DTO. UI validates locally meanwhile. | 🟨 UI-mitigated |
 | `PREREQ-PROJ-5` | `PROJ-14` invitation `role` is free-text `@IsString` | audit-gap | F04, F11 | Not an enum — any string accepted. Constrain to `admin|developer|viewer`. UI constrains meanwhile. | 🟨 UI-mitigated |
 
@@ -190,7 +190,7 @@ These are **not bugs** — they're documented scope boundaries. The UI greys eac
 
 | Status | Count | Meaning |
 |---|---|---|
-| 🟥 Open | 2 | Phase C only (PROJ-2/3, after F02) — **Phase B is code-complete** |
+| 🟥 Open | 0 | Phase C closed — all blockers resolved |
 | 🟧 Workable / UI-mitigated | 14 | UI works around it; close in a hardening pass before production |
 | 🟨 Hardening | 4 | Functional but insecure; close before any production claim |
 | ✅ Closed | 7 | `PREREQ-AUTH-1/2/3/4/5/6/7` (Phase A + all of Phase B — 2026-06-20) |
@@ -212,8 +212,8 @@ implemented in the code, verified 2026-06-20); Phase B is the active work; Phase
 7. ~~`PREREQ-AUTH-4` mustChangePassword on /auth/me~~ ✅
 
 **Phase C — F05 blockers (after F02):**
-8. `PREREQ-PROJ-2` PROJ-01 role + lastActivityAt
-9. `PREREQ-PROJ-3` last-20-events endpoint
+8. ~~`PREREQ-PROJ-2` PROJ-01 role + lastActivityAt~~ ✅
+9. ~~`PREREQ-PROJ-3` last-20-events endpoint~~ ✅
 
 Phase B (items 4–7) unblocks **F02** (and therefore every authenticated screen).
 Phase C (items 8–9) unblocks **F05** (the project shell) and lands between F04 and F05.

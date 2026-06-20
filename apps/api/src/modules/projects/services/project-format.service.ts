@@ -2,7 +2,8 @@ import { Injectable } from '@nestjs/common';
 
 @Injectable()
 export class ProjectFormatService {
-  formatProject(project: any) {
+  formatProject(project: any, extras: { role?: string } = {}) {
+    const lastActivityAt = project.lastDeployAt ?? project.updatedAt;
     return {
       id: project.id, name: project.name, slug: project.slug,
       description: project.description, type: project.type?.toLowerCase(),
@@ -11,7 +12,9 @@ export class ProjectFormatService {
       customDomains: project.customDomains || [], buildSettings: project.buildSettings || {},
       deploymentStrategy: project.deploymentStrategy, sourceProvider: project.sourceProvider,
       sourceRepo: project.sourceRepo, sourceBranch: project.sourceBranch,
-      lastDeployAt: project.lastDeployAt, createdAt: project.createdAt, updatedAt: project.updatedAt,
+      lastDeployAt: project.lastDeployAt, lastActivityAt,
+      createdAt: project.createdAt, updatedAt: project.updatedAt,
+      ...(extras.role !== undefined && { role: extras.role }),
     };
   }
 }

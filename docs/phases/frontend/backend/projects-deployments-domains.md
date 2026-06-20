@@ -30,6 +30,7 @@ role distinctions noted per route.
 | PROJ-20 | POST | `/projects/:id/api-keys` | admin/owner | ⚠ `dto:any` {name,permissions?,expiresAt?} | `{apiKey,key}` (`fpk_`, once) | `.api_key.created` |
 | PROJ-21 | DELETE | `/projects/:id/api-keys/:keyId` | admin/owner | — | `{success:true}` | `.revoked` |
 | PROJ-22 | POST | `/invitations/accept` | **public** | `{token}` | `{success:true,projectId}` | `.accepted` |
+| PROJ-23 | GET | `/projects/:id/events` | any access | `?limit` | `PlatformEvent[]` | none |
 
 ## Deployments — `/api/v1/projects/:projectId/deployments` (owner-or-member; role ignored)
 

@@ -25,6 +25,7 @@ export class ProjectsService {
   archive(userId: string, projectId: string) { return this.crud.archive(userId, projectId); }
   restore(userId: string, projectId: string) { return this.crud.restore(userId, projectId); }
   clone(userId: string, projectId: string, dto: any) { return this.crud.clone(userId, projectId, dto); }
+  getProjectEvents(userId: string, projectId: string, limit?: number) { return this.crud.getProjectEvents(userId, projectId, limit); }
 
   // Members
   listMembers(userId: string, projectId: string) { return this.members.listMembers(userId, projectId); }

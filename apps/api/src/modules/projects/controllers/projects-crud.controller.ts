@@ -72,4 +72,11 @@ export class ProjectsCrudController {
     const user = req.user as { userId: string };
     return this.projects.clone(user.userId, id, dto);
   }
+
+  /** Activity feed: last N platform events for this project (PREREQ-PROJ-3). */
+  @Get(':id/events')
+  async getProjectEvents(@Req() req: Request, @Param('id') id: string, @Query('limit') limit?: string) {
+    const user = req.user as { userId: string };
+    return this.projects.getProjectEvents(user.userId, id, limit ? parseInt(limit) : 20);
+  }
 }

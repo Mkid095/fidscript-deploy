@@ -20,6 +20,24 @@
 
 ---
 
+## 2026-06-20 (later session) — Phase C closed
+
+Phase: Phase C — F05 blockers
+
+Completed:
+- `PREREQ-PROJ-2` ✅ — `ProjectCrudService.list()` now joins `members { role }` per row,
+  derives `role` (`owner`/`member.role`/`viewer`), computes `lastActivityAt`
+  (`lastDeployAt ?? updatedAt`); `ProjectFormatService.formatProject()` surfaces both.
+- `PREREQ-PROJ-3` ✅ — `GET /projects/:id/events` route added to `ProjectsCrudController`;
+  `ProjectCrudService.getProjectEvents()` queries `platform.events` for `project`,
+  `deployment`, and `member` resource types under the project, ordered `timestamp desc`,
+  configurable limit (default 20), access via `findProjectWithAccess`.
+- `backend-prerequisites.md` updated: Phase C 🟥→✅; Phase C summary entry updated.
+
+Impact:
+- F05 (project dashboard shell) is now unblocked. Both endpoints are live for the activity feed
+  and project-switcher role badges.
+
 ## 2026-06-20
 
 Phase: Documentation-first (pre-implementation)

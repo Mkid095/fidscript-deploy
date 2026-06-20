@@ -12,7 +12,7 @@
 
 ## Not yet started
 
-- **Phase C** (`PREREQ-PROJ-2/3`) — between F04 and F05.
+- **F05** — Project dashboard shell (sidebar + activity feed).
 - **F04 → F11** — per `docs/IMPLEMENTATION_ROADMAP.md`.
 
 ## Recently completed

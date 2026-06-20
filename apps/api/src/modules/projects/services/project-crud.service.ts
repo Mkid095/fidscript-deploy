@@ -29,21 +29,32 @@ export class ProjectCrudService {
     const [projects, total] = await Promise.all([
       this.prisma.project.findMany({
         where,
-        include: { owner: { select: { id: true, email: true, name: true } } },
-        orderBy: { createdAt: 'desc' }, skip, take: limit,
+        include: {
+          owner: { select: { id: true, email: true, name: true } },
+          members: { where: { userId }, select: { role: true } },
+        },
+        orderBy: { updatedAt: 'desc' }, skip, take: limit,
       }),
       this.prisma.project.count({ where }),
     ]);
 
     return {
-      projects: projects.map(p => this.format.formatProject(p)),
+      projects: projects.map(p => {
+        const role = p.ownerId === userId ? 'owner' : (p.members[0]?.role ?? 'viewer');
+        return this.format.formatProject(p, { role });
+      }),
       pagination: { page, limit, total, pages: Math.ceil(total / limit) },
     };
   }
 
   async get(userId: string, projectId: string) {
     const project = await this.access.findProjectWithAccess(userId, projectId);
-    return this.format.formatProject(project);
+    const role = project.ownerId === userId ? 'owner' : (
+      await this.prisma.projectMember.findUnique({
+        where: { projectId_userId: { projectId, userId } },
+      })
+    )?.role ?? 'viewer';
+    return this.format.formatProject(project, { role });
   }
 
   async update(userId: string, projectId: string, dto: any) {
@@ -119,5 +130,37 @@ export class ProjectCrudService {
 
   async clone(userId: string, projectId: string, dto: any) {
     return this.createService.clone(userId, projectId, dto, this.access.findProjectWithAccess.bind(this.access));
+  }
+
+  /**
+   * Get the last N platform events for a project (activity feed).
+   * Covers: project lifecycle, deployments, members, env vars, api keys.
+   */
+  async getProjectEvents(userId: string, projectId: string, limit = 20) {
+    // Verify access
+    await this.access.findProjectWithAccess(userId, projectId);
+
+    // Collect related resource IDs for this project
+    const [deployments, members] = await Promise.all([
+      this.prisma.deployment.findMany({ where: { projectId }, select: { id: true } }),
+      this.prisma.projectMember.findMany({ where: { projectId }, select: { id: true } }),
+    ]);
+    const deploymentIds = deployments.map(d => d.id);
+    const memberIds = members.map(m => m.id);
+
+    // Query events across all project-scoped resource types
+    const events = await this.prisma.platformEvent.findMany({
+      where: {
+        OR: [
+          { resourceType: 'project', resourceId: projectId },
+          ...(deploymentIds.length ? [{ resourceType: 'deployment', resourceId: { in: deploymentIds } }] : []),
+          ...(memberIds.length ? [{ resourceType: 'member', resourceId: { in: memberIds } }] : []),
+        ],
+      },
+      orderBy: { timestamp: 'desc' },
+      take: limit,
+    });
+
+    return events;
   }
 }
