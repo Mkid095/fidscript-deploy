@@ -184,7 +184,7 @@ export default function ProjectsPage() {
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
           {projects.map(project => (
-            <Link key={project.id} href={`/projects/${project.id}`} className="no-underline group block">
+            <Link key={project.id} href={`/projects/${project.id}?section=deployments`} className="no-underline group block">
               <div className="rounded-lg border border-[#1e2130] bg-[#0f1117] hover:border-blue-500 transition-colors duration-150 p-5 h-full">
                 <div className="flex items-start justify-between mb-3">
                   <div className="min-w-0 flex-1">

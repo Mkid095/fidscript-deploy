@@ -19,6 +19,12 @@ export interface Project {
   type: string;
   status: string;
   ownerId: string;
+  role?: string; // 'owner' | 'admin' | 'developer' | 'viewer'
+  lastActivityAt?: string;
+  lastDeployAt?: string;
+  region?: string;
+  deploymentStrategy?: string;
+  subdomain?: string;
   createdAt: string;
   updatedAt: string;
 }

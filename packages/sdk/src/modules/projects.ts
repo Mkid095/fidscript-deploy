@@ -7,6 +7,10 @@ export interface Project {
   type: string;
   status: string;
   ownerId: string;
+  role?: string;
+  lastActivityAt?: string;
+  lastDeployAt?: string;
+  region?: string;
   createdAt: string;
   updatedAt: string;
 }
@@ -126,5 +130,10 @@ export class ProjectsModule {
 
   async acceptInvitation(token: string) {
     return this.client.post(`/api/v1/projects/invitations/accept`, { token });
+  }
+
+  // Events (PREREQ-PROJ-3)
+  async getEvents(projectId: string, limit = 20) {
+    return this.client.get<unknown[]>(`/api/v1/projects/${projectId}/events`, { limit });
   }
 }

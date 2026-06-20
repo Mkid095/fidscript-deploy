@@ -2,6 +2,7 @@
 
 import { useState, type ReactNode } from 'react';
 import Link from 'next/link';
+import { usePathname } from 'next/navigation';
 import { Button } from '@fidscript/ui';
 
 import { useAuth } from '@/contexts/auth-context';
@@ -38,16 +39,12 @@ function Sidebar({
 
   return (
     <aside
-      className={`min-h-screen flex flex-col bg-[#0f1117] border-r border-[#1e2130] flex-shrink-0 transition-all duration-200`}
+      className="min-h-screen flex flex-col bg-[#0f1117] border-r border-[#1e2130] flex-shrink-0 transition-all duration-200"
       style={{ width: collapsed ? 64 : 240 }}
     >
-      {/* Logo */}
       <div
-        className={`flex items-center border-b border-[#1e2130] gap-2`}
-        style={{
-          padding: '1rem',
-          justifyContent: collapsed ? 'center' : 'flex-start',
-        }}
+        className="flex items-center border-b border-[#1e2130] gap-2"
+        style={{ padding: '1rem', justifyContent: collapsed ? 'center' : 'flex-start' }}
       >
         <button
           onClick={onToggle}
@@ -57,13 +54,10 @@ function Sidebar({
           {collapsed ? '»' : '«'}
         </button>
         {!collapsed && (
-          <span className="text-base font-bold text-slate-200 whitespace-nowrap">
-            FIDScript
-          </span>
+          <span className="text-base font-bold text-slate-200 whitespace-nowrap">FIDScript</span>
         )}
       </div>
 
-      {/* Nav */}
       <nav className="flex-1 overflow-y-auto p-2">
         {NAV_ITEMS.map(item => (
           <Link
@@ -72,19 +66,14 @@ function Sidebar({
             className="flex items-center gap-3 px-3 py-2 mb-1 rounded-md text-slate-400 hover:text-slate-200 hover:bg-[#1e2130] text-sm transition-colors duration-150"
             style={{ justifyContent: collapsed ? 'center' : 'flex-start' }}
           >
-            <span className="text-base flex-shrink-0 w-4 text-center">
-              {item.label.charAt(0)}
-            </span>
+            <span className="text-base flex-shrink-0 w-4 text-center">{item.label.charAt(0)}</span>
             {!collapsed && <span>{item.label}</span>}
           </Link>
         ))}
       </nav>
 
-      {/* User */}
       {!collapsed && user && (
-        <div
-          className="px-4 py-3 border-t border-[#1e2130] text-xs text-slate-500 truncate"
-        >
+        <div className="px-4 py-3 border-t border-[#1e2130] text-xs text-slate-500 truncate">
           {user.email}
         </div>
       )}
@@ -96,15 +85,11 @@ function TopBar() {
   const { user, logout } = useAuth();
 
   return (
-    <header
-      className="h-14 bg-[#0f1117] border-b border-[#1e2130] flex items-center justify-end px-6 gap-4 flex-shrink-0"
-    >
+    <header className="h-14 bg-[#0f1117] border-b border-[#1e2130] flex items-center justify-end px-6 gap-4 flex-shrink-0">
       {user && (
         <>
           <span className="text-sm text-slate-500">{user.name || user.email}</span>
-          <Button variant="ghost" size="sm" onClick={logout}>
-            Sign out
-          </Button>
+          <Button variant="ghost" size="sm" onClick={logout}>Sign out</Button>
         </>
       )}
     </header>
@@ -125,10 +110,21 @@ function Shell({ children }: { children: ReactNode }) {
   );
 }
 
+/**
+ * Outer app layout — transparent for project routes (which have their own chrome via
+ * the nested projects/[projectId]/layout.tsx). Renders plain children when the URL
+ * starts with /projects/, letting the project layout provide the full shell.
+ */
 export default function AppLayout({ children }: { children: ReactNode }) {
+  const pathname = usePathname();
+  const isProjectRoute = pathname?.startsWith('/projects/');
+
   return (
     <AuthGuard>
-      <Shell>{children}</Shell>
+      {isProjectRoute
+        ? <>{children}</>
+        : <Shell>{children}</Shell>
+      }
     </AuthGuard>
   );
 }
