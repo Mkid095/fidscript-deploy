@@ -1,4 +1,4 @@
-import { Injectable, Inject } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import axios from 'axios';
 import { AIProvider, AICompletionRequest, AICompletionResponse } from './ai-provider.interface';
@@ -6,6 +6,7 @@ import { AIProvider, AICompletionRequest, AICompletionResponse } from './ai-prov
 @Injectable()
 export class GeminiProvider implements AIProvider {
   name = 'gemini';
+  private readonly logger = new Logger(GeminiProvider.name);
   private apiKey: string;
   private baseUrl = 'https://generativelanguage.googleapis.com/v1beta';
 
@@ -24,11 +25,23 @@ export class GeminiProvider implements AIProvider {
       this.apiKey = this.configService.get<string>('GEMINI_API_KEY', '') ?? '';
     }
     if (!this.apiKey) {
-      throw new Error('GEMINI_API_KEY or GEMINI_API_KEY_FILE must be set — AI features disabled');
+      // Degrade gracefully — do NOT throw at construction. Throwing here would
+      // crash the entire NestJS bootstrap, taking the whole API offline whenever
+      // Gemini isn't configured. AI endpoints surface a clear error only when
+      // an AI call is actually attempted (see ensureConfigured).
+      this.logger.warn('GEMINI_API_KEY/_FILE not set — AI features disabled until configured');
+    }
+  }
+
+  /** Throws when an AI call is attempted without a configured key. */
+  private ensureConfigured(): void {
+    if (!this.apiKey) {
+      throw new Error('AI features disabled — set GEMINI_API_KEY or GEMINI_API_KEY_FILE');
     }
   }
 
   async complete(request: AICompletionRequest): Promise<AICompletionResponse> {
+    this.ensureConfigured();
     const startTime = Date.now();
     const model = request.model || 'gemini-1.5-flash';
 
@@ -77,6 +90,7 @@ export class GeminiProvider implements AIProvider {
   }
 
   async *stream(request: AICompletionRequest): AsyncGenerator<string> {
+    this.ensureConfigured();
     const model = request.model || 'gemini-1.5-flash';
 
     const contents = request.messages.map((m) => ({

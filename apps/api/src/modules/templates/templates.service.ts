@@ -3,7 +3,7 @@ import { PrismaService } from '../../prisma/prisma.service';
 import { EventService } from '../events/event.service';
 import { StorageService } from '../storage/services/storage.service';
 import { DeploymentCrudService } from '../deployments/services/deployment-crud.service';
-import { ProjectsService } from '../projects/projects.service';
+import { ProjectsService } from '../projects/services/projects.service';
 import { CreateTemplateDto, UpdateTemplateDto, GenerateProjectDto, GenerateAndDeployDto } from './dto/index';
 import { SourceType } from '../deployments/dto/create-deployment.dto';
 import * as tar from 'tar-stream';
