@@ -19,10 +19,29 @@ export class DeploymentStateService implements OnModuleInit {
 
   onModuleInit() {
     this.eventService.on('deployments.deployment.created', this.handleDeploymentCreated.bind(this));
+    // Fallback: re-process any PENDING deployments that were orphaned before a fix or
+    // missed due to a handler error. Idempotent — runDeployment skips if not PENDING.
+    this.recoverStuckDeployments().catch(err =>
+      this.logger.warn(`[worker] Stuck deployment recovery failed: ${err.message}`),
+    );
+  }
+
+  private async recoverStuckDeployments() {
+    const stuck = await this.prisma.deployment.findMany({
+      where: { status: 'PENDING' },
+      select: { id: true, projectId: true },
+    });
+    if (!stuck.length) return;
+    this.logger.log(`[worker] Recovering ${stuck.length} stuck PENDING deployment(s)`);
+    await Promise.allSettled(
+      stuck.map(d => this.runDeployment(d.id, d.projectId, '')),
+    );
   }
 
   private async handleDeploymentCreated(event: any) {
-    const { deploymentId, projectId, userId } = event.metadata || {};
+    // The emit() call wraps the PlatformEvent in metadata, so the actual payload
+    // (with deploymentId/projectId) lives at event.metadata.metadata
+    const { deploymentId, projectId, userId } = event.metadata?.metadata || event.metadata || {};
     if (!deploymentId || !projectId) { this.logger.warn('[worker] Missing deploymentId/projectId'); return; }
     this.logger.log(`[worker] Processing deployment ${deploymentId}`);
     try {
