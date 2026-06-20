@@ -33,6 +33,35 @@ export class PlatformMailService {
     }
   }
 
+  /**
+   * SMTP connectivity check — verifies the Stalwart submission endpoint is reachable.
+   * Used by the onboarding health board. Does NOT send a message.
+   */
+  async check(): Promise<{ status: 'up' | 'down'; latencyMs: number; error?: string }> {
+    const smtpHost = this.config.get<string>('STALWART_SMTP_HOST', 'fidscript_stalwart');
+    const smtpPort = this.config.get<number>('STALWART_SMTP_PORT', 465);
+    const start = Date.now();
+
+    try {
+      const { default: nodemailer } = await import('nodemailer');
+      const transporter = nodemailer.createTransport({
+        host: smtpHost,
+        port: smtpPort,
+        secure: smtpPort === 465,
+        auth: { user: 'admin', pass: this.adminToken },
+        tls: { rejectUnauthorized: false },
+        connectionTimeout: 5000,
+      });
+
+      // Verify the connection without sending a message.
+      await transporter.verify();
+      return { status: 'up', latencyMs: Date.now() - start };
+    } catch (err) {
+      const error = err instanceof Error ? err.message : String(err);
+      return { status: 'down', latencyMs: Date.now() - start, error };
+    }
+  }
+
   async send(dto: { to: string; subject: string; text?: string; html?: string }): Promise<{ status: 'sent' | 'failed'; error?: string }> {
     const smtpHost = this.config.get<string>('STALWART_SMTP_HOST', 'fidscript_stalwart');
     const smtpPort = this.config.get<number>('STALWART_SMTP_PORT', 465);
