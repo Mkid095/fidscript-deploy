@@ -105,8 +105,8 @@ hardening plan (`docs/phases/phase-03.md`) covers these.
 
 | ID | Title | Category | Blocks | Suggested fix | Status |
 |---|---|---|---|---|---|
-| `PREREQ-HEALTH-1` | `GET /api/v1/health/email` SMTP probe | missing-endpoint | F03 | New public endpoint: SMTP AUTH PLAIN to `fidscript_stalwart:465`; returns `{status, provider, lastChecked}`. Browsers can't speak SMTP, so the probe must be server-side. _(alias: HEALTH-1)_ | 🟥 Open |
-| `PREREQ-HEALTH-2` | `services.email` exposed in `/health` | missing-behavior | F03 | Confirm `/health.services` includes an `email` entry; add if absent. _(alias: HEALTH-2)_ | 🟧 Verify |
+| `PREREQ-HEALTH-1` | `GET /api/v1/health/email` SMTP probe | missing-endpoint | F03 | New public endpoint: SMTP AUTH PLAIN to `fidscript_stalwart:465`; returns `{status, provider, lastChecked}`. Browsers can't speak SMTP, so the probe must be server-side. _(alias: HEALTH-1)_ | ✅ Closed — `PlatformMailService.check()` (SMTP verify, 5s timeout); `GET /health/email` route; returns `{status, latencyMs, error}` as specced. |
+| `PREREQ-HEALTH-2` | `services.email` exposed in `/health` | missing-behavior | F03 | Confirm `/health.services` includes an `email` entry; add if absent. _(alias: HEALTH-2)_ | 🟥 Open |
 
 ---
 

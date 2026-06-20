@@ -1,9 +1,8 @@
 # F03 — First-Run Onboarding (full spec)
 
-> **Status:** ⏳ Spec complete — pending approval.
-> **Connects to:** backend `GET /api/v1/health` (`SVC-03`) + DNS / TLS / SMTP probes (derived from
-> `backend/index.md` → Realtime event catalog and the Stalwart services). Cross-references F02 (the
-> Continue → `/login` target) and F00 (the design system).
+> **Status:** ✅ Implemented (2026-06-20).
+> **Connects to:** backend `GET /api/v1/health` (`SVC-03`) + `GET /health/email` (HEALTH-01).
+> Cross-references F02 (Continue → `/login` target) and F00 (the design system).
 
 ## 1. Purpose
 The post-install welcome screen. Tells the installer "everything is up" with a live, readable

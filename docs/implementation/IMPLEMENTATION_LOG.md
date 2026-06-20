@@ -247,3 +247,41 @@ Decision:
 Impact:
 - F02 is implemented: login, register, magic-code send/verify, force-change-password, SDK updated.
   F03 (onboarding) is the next vertical slice per `docs/IMPLEMENTATION_ROADMAP.md`.
+
+## 2026-06-20 (later) — F03 onboarding implemented
+
+Phase: F03 First-Run Onboarding
+
+Completed:
+- `GET /health/email`: added `PlatformMailService.check()` (SMTP transporter.verify(), 5s timeout,
+  returns {status, latencyMs, error}); wired into `HealthController`; `HealthModule` imports
+  `EmailModule` to inject it.
+- `/onboarding` page: 5-row live-polling health board (5s setInterval). Row 1: Docker aggregate
+  from /health; Row 2: Database from /health; Row 3: Domain via Cloudflare DoH
+  (cloudflare-dns.com/dns-query) comparing deploy.<domain> → expected SERVER_IP; Row 4: SSL via
+  fetch https://<domain>/.well-known/fidscript with redirect:manual; Row 5: Email via GET /health/email.
+- Each row: idle → running → healthy/unhealthy; red rows show inline error detail.
+- 30s per-check timeout enforced; unresponsive → unhealthy with "Service did not respond" detail.
+- All-green: "100% ready" banner; Continue button enables.
+- ≥1 red: "Continue anyway" ghost button visible.
+- On Continue: set `fidscript_onboarded=1` cookie (platform domain scoped); redirect to /login.
+  On revisit: cookie check on mount → redirect to /login immediately.
+- `HealthBadge` component: idle/running/healthy/unhealthy states, color-coded, pulse animation on running.
+- `apps/dashboard/.env.local`: NEXT_PUBLIC_SERVER_IP=127.0.0.1 (gitignored, injected by docker-compose in prod).
+- `apps/dashboard/.env.local` created; not committed (secrets/environment-specific).
+- Dashboard typecheck + build clean. `/onboarding` in route manifest (4.78 kB).
+
+Unexpected issues:
+- ESLint import/order: blank line required between third-party and `@/` imports — fixed.
+- `docsAnchor: 'installation#dns`` had a stray trailing backtick (string not closed) — found by tsc,
+  fixed manually.
+
+Decision:
+- Platform domain hardcoded in the page (`deploy.fidscript.com`) as a reasonable default for
+  self-hosted staging. In production, docker-compose injects it via environment.
+  The DNS/SSL probes are intentionally client-side (no backend round-trip needed).
+
+Impact:
+- F03 implemented: `/onboarding` page, `GET /health/email` endpoint, `HealthBadge` component.
+  `PREREQ-HEALTH-1` closed. `PREREQ-HEALTH-2` (services.email in /health) remains open — deferred
+  to future hardening. F04 (Projects) is the next vertical slice per roadmap.
