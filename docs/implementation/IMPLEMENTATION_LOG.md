@@ -98,3 +98,38 @@ Impact:
 - DB: one new migration (`20260620120000_auth_must_change_password`). API: typecheck + build
   clean. `/auth/me` response gains a `mustChangePassword` boolean. No endpoint ID changes
   (AUTH-4 extends AUTH-02's response, doesn't add an endpoint). Live verification pending (KI-2).
+
+## 2026-06-20 (later) — Phase B / Unit 2: AUTH-2 change-password
+
+Phase: Phase B (F02 functional blockers)
+
+Completed:
+- `PREREQ-AUTH-2`: `POST /auth/change-password` (endpoint **AUTH-18**). New
+  `ChangePasswordDto` (currentPassword; newPassword ≥12 + upper+lower+number); new focused
+  `AuthPasswordService` (verifies current via bcrypt, rejects new===current, hashes new,
+  clears `mustChangePassword`, revokes the originating session, mints a fresh session +
+  tokens, emits `identity.user.password_changed`); wired through `auth.module` →
+  `AuthService` → `AuthController`.
+- Added `identity.user.password_changed` to the `EventType` union (`packages/events`).
+- Added `AUTH-18` to the inventory; updated `AUTH-10` to list `mustChangePassword` in its
+  response (AUTH-4).
+- Rebuilt `@fidscript/events`; `pnpm --filter @fidscript/api typecheck` + `build` clean.
+
+Unexpected issues:
+- Two typecheck errors caught by the gate (good): (1) forgot the DTO barrel export — fixed;
+  (2) `identity.user.password_changed` wasn't in the `EventType` union — added it + rebuilt
+  the events package (the api resolves `@fidscript/events` to its built `dist/`, so editing
+  src alone wasn't enough).
+
+Decision:
+- Change-password rotates the session (revoke originating + mint fresh) rather than leaving
+  the old token valid. Rationale: the flag-clearing should be reflected in a fresh token and
+  the old (pre-change) token should not remain usable. Returns the same shape as login so the
+  client swaps tokens.
+- Endpoint ID assigned **AUTH-18** (next free platform AUTH ID; AUTH-17 was the prior max —
+  the `APPAUTH-*` IDs are a separate cluster and don't consume AUTH numbers). Immutable-ID
+  rule 20 honored.
+
+Impact:
+- New endpoint AUTH-18; new event type; one new service + DTO. VALIDATION re-run: 0 broken
+  references. Open count 4 → 3. Only `PREREQ-AUTH-3` (platform magic-code) remains in Phase B.

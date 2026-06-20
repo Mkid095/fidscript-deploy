@@ -6,3 +6,4 @@ export * from './api-key.dto';
 export * from './profile.dto';
 export * from './refresh-token.dto';
 export * from './mfa.dto';
+export * from './change-password.dto';

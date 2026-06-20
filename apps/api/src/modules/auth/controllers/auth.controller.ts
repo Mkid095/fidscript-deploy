@@ -11,6 +11,7 @@ import { extractRequestContext } from '@/common/request-context';
 import {
   RegisterDto, LoginDto, MagicLinkDto, VerifyMagicLinkDto,
   CreateApiKeyDto, UpdateProfileDto, RefreshTokenDto, MfaCodeDto, MfaChallengeDto,
+  ChangePasswordDto,
 } from '@/modules/auth/dto/index';
 
 @ApiTags('auth')
@@ -51,6 +52,20 @@ export class AuthController {
     }
     await this.authService.logout(user.sessionId, user.userId);
     return { success: true };
+  }
+
+  @Post('change-password')
+  @UseGuards(JwtAuthGuard)
+  @HttpCode(HttpStatus.OK)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Change password (clears mustChangePassword, rotates the session)' })
+  async changePassword(
+    @CurrentUser() user: AuthUser,
+    @Body() dto: ChangePasswordDto,
+    @Req() req: Request,
+  ) {
+    const { ipAddress, userAgent } = extractRequestContext(req);
+    return this.authService.changePassword(user.userId, user.sessionId, dto, ipAddress, userAgent);
   }
 
   @Post('magic-link')

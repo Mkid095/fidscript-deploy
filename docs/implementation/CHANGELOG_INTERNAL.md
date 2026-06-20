@@ -13,7 +13,7 @@ F02-authentication backend enablers. Backend-only; no frontend yet. See
 
 - ✅ `PREREQ-AUTH-1` `mustChangePassword` field + migration + seed
 - ✅ `PREREQ-AUTH-4` flag surfaced on `GET /auth/me`
-- *(pending)* `PREREQ-AUTH-2` `POST /auth/change-password` endpoint
+- ✅ `PREREQ-AUTH-2` `POST /auth/change-password` (endpoint **AUTH-18**; rotates session)
 - *(pending)* `PREREQ-AUTH-3` platform magic-code (`/auth/magic-code` + `/auth/verify-magic-code`)
 
 (Phase A — `PREREQ-AUTH-5/6/7` — was already implemented in the code; verified + reconciled

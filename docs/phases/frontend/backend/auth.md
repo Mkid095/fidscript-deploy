@@ -15,7 +15,7 @@ See `index.md` for conventions. IDs are stable cross-reference targets for specs
 | AUTH-07 | POST | `/auth/mfa/setup` | JWT | — | `{secret,otpauthUrl}` | `identity.user.mfa_setup` |
 | AUTH-08 | POST | `/auth/mfa/verify` | JWT | `{code}` | `{enabled:true}` | `identity.user.mfa_enabled` |
 | AUTH-09 | POST | `/auth/mfa/challenge` | public | `{mfaToken,code}` | tokens | `identity.user.mfa_challenge`, `session.created` |
-| AUTH-10 | GET | `/auth/me` | JWT | — | `{id,email,name,avatarUrl,role,mfaEnabled,lastLoginAt,createdAt}` | none |
+| AUTH-10 | GET | `/auth/me` | JWT | — | `{id,email,name,avatarUrl,role,mfaEnabled,mustChangePassword,lastLoginAt,createdAt}` | none |
 | AUTH-11 | PATCH | `/auth/me` | JWT | `{name?,avatarUrl?}` | profile | `identity.user.updated` |
 | AUTH-12 | GET | `/auth/sessions` | JWT | — | `{sessions:[{id,expiresAt,ipAddress?,userAgent?,createdAt}]}` | none |
 | AUTH-13 | DELETE | `/auth/sessions/:id` | JWT | — | `{success:true}` | `identity.session.revoked` {all:false} |
@@ -23,6 +23,7 @@ See `index.md` for conventions. IDs are stable cross-reference targets for specs
 | AUTH-15 | GET | `/auth/api-keys` | JWT | — | `{apiKeys:[{id,name,permissions,lastUsedAt?,expiresAt?,createdAt}]}` | none |
 | AUTH-16 | POST | `/auth/api-keys` | JWT | `{name,permissions?,expiresAt?}` | `{apiKey,key}` (key shown once, `fsk_`) | `identity.api_key.created` |
 | AUTH-17 | DELETE | `/auth/api-keys/:id` | JWT | — | `{success:true}` | `identity.api_key.revoked` |
+| AUTH-18 | POST | `/auth/change-password` | JWT | `ChangePasswordDto`{currentPassword,newPassword(min12,upper+lower+number)} | tokens (rotated; `mustChangePassword` cleared) | `identity.user.password_changed`, `session.created` |
 
 ## BaaS app-auth — `/api/v1/projects/:projectId/auth`
 

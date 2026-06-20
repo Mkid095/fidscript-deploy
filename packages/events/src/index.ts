@@ -9,6 +9,7 @@ export type EventType =
   // Identity events (Phase 03)
   | 'identity.user.registered'
   | 'identity.user.updated'
+  | 'identity.user.password_changed'
   | 'identity.user.login_failed'
   | 'identity.user.logged_in'
   | 'identity.user.logged_out'

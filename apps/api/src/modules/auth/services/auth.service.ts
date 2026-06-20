@@ -6,6 +6,7 @@ import { AuthTokenService } from '@/modules/auth/services/auth-token.service';
 import { AuthProfileService } from '@/modules/auth/services/auth-profile.service';
 import { AuthSessionMgmtService } from '@/modules/auth/services/auth-session-mgmt.service';
 import { AuthApiKeyService } from '@/modules/auth/services/auth-api-key.service';
+import { AuthPasswordService } from '@/modules/auth/services/auth-password.service';
 import { MfaService } from '@/modules/auth/mfa/mfa.service';
 
 export { AuthSessionService, AuthResponse } from '@/modules/auth/services/auth-session.service';
@@ -20,6 +21,7 @@ export class AuthService {
     private profile: AuthProfileService,
     private sessions: AuthSessionMgmtService,
     private apiKeys: AuthApiKeyService,
+    private password: AuthPasswordService,
     private mfa: MfaService,
   ) {}
 
@@ -46,6 +48,10 @@ export class AuthService {
   enableMfa(userId: string, code: string) { return this.mfa.enable(userId, code); }
 
   logout(sessionId: string, userId: string) { return this.authLogin.logout(sessionId, userId); }
+
+  changePassword(userId: string, sessionId: string | undefined, dto: { currentPassword: string; newPassword: string }, ip?: string, ua?: string) {
+    return this.password.changePassword(userId, sessionId, dto, ip, ua);
+  }
 
   magicLink(dto: any) { return this.authToken.magicLink(dto); }
 
