@@ -164,6 +164,7 @@ wired to a real endpoint (no mocks), 150-line limit, Hugeicons-only, auth-gated 
 11. **Tenant Isolation** - Every query scoped by project/owner; isolation is tested
 12. **Research Before Implementing** - Use available tools (Context7 for current library docs, web search for current best practices, file Read for repo state) to verify the correct approach before coding. Docs and model training may be stale.
 13. **Docs Are Living** - Phase docs, AUDIT, AGENT_STATUS, and the precision maps are a snapshot. Update them in the same commit as the code so they never drift; a doc that lies is worse than no doc.
+14. **Documentation-First (frontend)** - No frontend feature/page/component/API-integration may be implemented until its spec (`docs/phases/frontend/fNN-*.md`, following `_template.md`'s 16 sections) is complete and approved. Specs cross-reference the **backend inventory** (`docs/phases/frontend/backend/`) by stable endpoint ID — never invent endpoints. Flow: Documentation → Review → Approval → Implementation.
 
 ---
 

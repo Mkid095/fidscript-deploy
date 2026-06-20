@@ -1,46 +1,182 @@
-# F02 — Authentication
+# F02 — Authentication (full spec)
 
-> **Status:** ⏳ Next · Connects to backend **Phase 03 (Identity & Access)**
+> **Status:** Spec complete — pending approval. **Connects to:** backend Phase 03 (`AUTH-*`, `APPAUTH-*`;
+> see `backend/auth.md`). **No implementation until this is approved AND the §15 backend gaps are closed.**
 
-Wire the real platform auth into the dashboard. This is the gate every `/dashboard/*` route passes
-through, and the entry point of the user's whole flow.
+## 1. Purpose
+Authentication is the gate every `/dashboard/*` route passes through and the start of every user's
+flow. It proves who the user is, establishes a JWT session, and enforces the "temp creds → change on
+first login" contract the installer promises. Without F02, no project-scoped screen can be safely
+shown.
 
-## Goal
+## 2. Business Goal
+Match the sign-in simplicity of **Supabase / Firebase / Convex** for a *self-hosted* audience: land,
+pick email/password **or** a 6-digit magic code, done. We are NOT trying to out-feature them on SSO —
+we are trying to out-*simplify* them: no provider setup, no OAuth dance, magic codes delivered by the
+platform's own mail server. The experience to beat: Supabase's "magic link" email round-trip (we use a
+fast typed **code** instead of a click-link).
 
-Temp admin creds (printed by the installer) → **first login forces a password change** → persistent
-session → guarded app. Two sign-in methods only: **email/password** and **magic-code** (delivered
-through the platform's own Stalwart mail). **No OAuth button in the UI** (the backend provider stays
-available per-project, but platform login stays simple).
+## 3. User Personas
+- **Installer / platform admin** — first login with installer-printed temp creds; must change password;
+  wants to enable MFA. Frustration: being forced through weak default creds.
+- **Solo developer** — registers themselves; wants magic-code (no password to remember) or email/pw.
+- **Invited team member** — arrives via invitation (PROJ-22); sets a password via accept flow.
+- **End user of a customer's app** — out of scope here (that's BaaS `APPAUTH-*`, surfaced per-project,
+  not in the platform console).
 
-## Backend dependencies (API-side work first)
+## 4. Complete User Journey
+```
+Visit any /dashboard/* (no session)
+  → redirected to /login
+/login: tab [Email + password] | [Magic code]
+  Email+password path:
+    enter email + password → POST AUTH-02
+      → if mustChangePassword: redirect /force-change-password
+      → else: session set → redirect to intended route (or /dashboard)
+      → if mfaRequired: /login/mfa (enter TOTP → POST AUTH-09)
+      → if 401 invalid creds: inline error, shake, rate-limit countdown after N fails
+      → if 429: show Retry-After, lock the form
+  Magic-code path:
+    enter email → POST (NEW) /auth/magic-code → "code sent" (always 200, no enumeration)
+    enter 6-digit code → POST (NEW) /auth/verify-magic-code
+      → success: session set → if mustChangePassword → /force-change-password
+      → invalid/expired/too-many-tries: inline error
+/register: email + password (strength meter) → POST AUTH-01 → session → /dashboard
+/force-change-password: current + new password → POST (NEW) /auth/change-password
+  → flag cleared, session rotated → /dashboard
+Session persists across reload (refresh on 401 via AUTH-03); logout → AUTH-04 → /login
+```
+Every error path has a specific message and recovery action; no generic "something went wrong".
 
-- Add `mustChangePassword Boolean @default(false)` to `User`; seed it `true` for the install admin.
-- A `POST /auth/change-password` endpoint that flips the flag and rotates the session.
-- Extend **platform** login to accept magic-code (`POST /auth/magic-code` + `/verify-magic-code`),
-  reusing the Stalwart delivery path already built for BaaS (Inc 4).
-- `GET /auth/me` returns `mustChangePassword` so the client can route to the change screen.
+## 5. Information Architecture
+Auth screens live **outside** the `(app)` shell (no sidebar/header) and are **not linked from the public
+site**: `/login`, `/register`, `/force-change-password`, `/login/mfa`. Deep-link target is preserved
+(`?next=`) so a user sent to `/dashboard/projects/x` while logged-out returns there after login. The
+header's account menu (in F05) surfaces Profile/MFA/Sessions/API-keys/Logout — those *screens* belong
+to F11 (Settings), but F02 provides the **session + logout** primitives they consume.
 
-## Frontend deliverables
+## 6. Screen Specifications
+- **`/login`** — centered glass card on `bg-ink-950`; logo + "Gateway Access"; segmented control
+  [Email] [Magic code]. Email tab: email, password, "Sign in" (primary), "Forgot?" → magic-code tab,
+  link to `/register`. Magic tab: email → "Send code" → 6-digit OTP input → "Verify". States: idle,
+  submitting (spinner, button disabled), error (red inline + a11y `aria-invalid`), rate-limited
+  (countdown). Empty: n/a. Responsive: card max-w-md, full-width on mobile.
+- **`/register`** — email, password (live strength meter: weak/fair/strong), confirm; "Create account".
+  Validation: email format, password ≥8 (backend rule), confirm match. On success → auto-login.
+- **`/force-change-password`** — current password (or "you're using temp creds" note), new password +
+  strength meter + confirm; "Update & continue". Blocks navigation away until done (route guard).
+- **`/login/mfa`** — 6-digit TOTP input, "Verify" → AUTH-09; "use backup code" (future); back to login.
+- Accessibility: all inputs labelled, `autoFocus` on first field, Enter submits the active form, errors
+  announced via `aria-live`.
 
-- `contexts/auth-context.tsx` — real JWT session: access token in memory, refresh on 401, `user`
-  + `mustChangePassword` exposed; `login`, `register`, `logout`, `refresh`.
-- `components/auth-guard.tsx` — wraps `/dashboard/*`; redirects to `/login` when no session; routes
-  to the force-change screen when `mustChangePassword` is true.
-- `app/login/page.tsx` — email/password + magic-code tabs (toggle, no OAuth).
-- `app/register/page.tsx` — register → auto-login.
-- `app/(auth)/force-change-password/page.tsx` — required before entering the app.
-- Magic-code input (6-digit, resend + rate-limit UI).
+## 7. Component Specifications
+- **`AuthContext` / `AuthProvider`** (client) — holds `{ user, loading, mustChangePassword }`; methods
+  `login`, `register`, `logout`, `changePassword`, `requestMagicCode`, `verifyMagicCode`. Access token
+  in memory; refresh on 401 interceptor. Exposes `useAuth()`.
+- **`AuthGuard`** — wraps `/dashboard/*`; while `loading` → full-screen spinner; if no user → redirect
+  `/login?next=<encoded>`; if `mustChangePassword` → redirect `/force-change-password`.
+- **`<LoginForm/>`** — props `{ onSubmitted, defaultTab? }`; states idle/submitting/error/rate-limited;
+  variants email/magic via internal tab.
+- **`<MagicCodeInput/>`** — props `{ length:6, onComplete, disabled? }`; 6 boxes, auto-advance, paste
+  support, `inputMode="numeric"`.
+- **`<PasswordStrength/>`** — props `{ password }`; computes weak/fair/strong; renders bar + label.
+- **`<ForceChangeForm/>`**, **`<OtpField/>`** (reused by MFA + magic-code).
 
-## Verification (on the VPS)
+## 8. API Mapping (cross-ref `backend/auth.md`)
+| Screen/Action | Endpoint | Method | Body | On success | On error |
+|---|---|---|---|---|---|
+| Login (pw) | `AUTH-02` `/auth/login` | POST | `{email,password}` | store tokens | 401→inline, 429→lockdown |
+| Register | `AUTH-01` `/auth/register` | POST | `{email,password,name?}` | store tokens | 400 validation |
+| Refresh | `AUTH-03` `/auth/refresh` | POST | `{refreshToken}` | rotate tokens | 401→logout |
+| Logout | `AUTH-04` `/auth/logout` | POST | — | clear | — |
+| Me (boot) | `AUTH-10` `/auth/me` | GET | — | hydrate `user`+`mustChangePassword` | 401→refresh or logout |
+| Revoke session | `AUTH-13/14` | DELETE | — | update list | — |
+| Magic-code send | **NEW** `/auth/magic-code` | POST | `{email}` | 200 always | 429 |
+| Magic-code verify | **NEW** `/auth/verify-magic-code` | POST | `{email,code}` | tokens | 400/401 |
+| Change password | **NEW** `/auth/change-password` | POST | `{currentPassword,newPassword}` | rotate session | 400/401 |
+| MFA verify | `AUTH-09` `/auth/mfa/challenge` | POST | `{mfaToken,code}` | tokens | 401 |
 
-1. Register → `accessToken` → `GET /auth/me` 200.
-2. Login with the seeded **temp creds** → redirected to force-change → after change, `mustChangePassword=false`.
-3. Magic-code: request → email arrives (host mail check) → verify → session issued.
-4. Session persists across reload (refresh rotation); `/dashboard/*` without session → `/login`.
-5. Wrong/expired token → 401 → refresh or redirect.
+Loading: per-form spinner + disabled submit. Caching: `user` cached in context; re-hydrated on focus.
+Realtime: n/a (auth is request/response). Retry: none on auth (security). Rate-limit (429): read
+`Retry-After`, show countdown, disable form. Offline: show "no connection", queue nothing.
 
-## Coordination note
+## 9. Backend Integration Map
+```
+LoginForm → sdk.auth.login → POST /auth/login
+  → AuthLoginService (bcrypt verify, Redis rate-limit, MFA gate)
+  → AuthSessionService (create Session, mint JWT pair)
+  → emits identity.user.logged_in + identity.session.created
+AuthContext stores tokens; AuthGuard reads /auth/me (AUTH-10)
+ForceChangeForm → NEW /auth/change-password → flips mustChangePassword, rotates session
+  → emits identity.user.updated + identity.session.created
+Realtime: identity.session.revoked (from another device's "revoke all") can be listened to → force logout
+```
 
-`app/login`, `app/register`, `contexts/auth-context`, `components/auth-guard`, `app/providers` already
-exist as **parallel work** (not authored in the public-site commits). Before rewriting, confirm they
-aren't being edited concurrently — otherwise do the API-side changes first and merge the UI after.
+## 10. User Experience Specification (interaction-level)
+**Login (email/pw):** user focuses email (`autoFocus`) → types → tabs to password → "Sign in". Button
+shows spinner, text → "Signing in…", disabled. On 401: password field shakes, red helper "Wrong email
+or password", focus returns to password. After 5 fails: 429 → banner "Too many attempts. Try again in
+<mm:ss>" (countdown from `Retry-After`), form locked. On success: brief "Signed in" toast, optimistic
+redirect (don't wait for `/me` paint), then `AuthGuard` hydrates.
+**Magic-code:** "Send code" → button becomes "Resend in 0:30" (rate-limit UX, not server-enforced here);
+OTP boxes appear with first box focused; paste fills all 6; on 6th digit auto-submit. "Code sent to
+a•••@…." (masked) for trust. Invalid code: boxes clear, shake, helper "Invalid or expired code".
+**Force-change:** detect `mustChangePassword` → hard redirect; "Choose a permanent password" copy;
+strength meter updates live; confirm must match; "Update & continue" → clears flag → redirect to
+`?next` or `/dashboard`.
+
+## 11. Design Philosophy
+Two methods only (email/pw + magic-code) — fewer choices = faster decisions. **No OAuth button** in the
+platform console UI (the BaaS `APPAUTH-*` OAuth stays available for *customer* apps, configured
+per-project, not here). Magic-code chosen over magic-**link** because a typed code needs no email
+client switch and is faster (and the backend magic-**link** is broken — AUTH-05/06). Defaults: tab =
+email/pw; "remember me" implicit via refresh-token rotation. Advanced (MFA, sessions, API keys) live in
+Settings, not on the login card.
+
+## 12. Configuration Philosophy
+The user configures **nothing** for auth at login time. The installer generates the temp admin
+(`ADMIN_PASSWORD` → seed), prints it, and sets `mustChangePassword=true`. JWT secret + encryption key
+are install-time secrets. Magic codes are delivered by the platform mail server — which itself is
+configured by the **single domain** the user set at install (one config → mail + SSL + deployment URLs
+all work). So "auth works" is a downstream consequence of the one domain config, not a separate setup.
+
+## 13. Automation Rules
+- **Temp admin auto-seed** at install (installer → `pnpm db:seed` with `ADMIN_PASSWORD`).
+- **`mustChangePassword=true`** seeded for the install admin → forces the change flow.
+- **Refresh-token rotation** on every refresh (old invalid) — automatic, no user action.
+- **Rate-limit feedback** surfaced (429 + `Retry-After`) — automatic, no config.
+- **Session revocation broadcast** (`identity.session.revoked` {all:true}) — listen → force logout.
+
+## 14. Endpoint Documentation
+(See `backend/auth.md` for full DTOs.) New endpoints required by F02:
+- **`POST /auth/change-password`** — auth: JWT; body `{currentPassword,newPassword}`; output
+  `{accessToken,refreshToken,user}` (rotated) or 400 (weak)/401 (bad current). Emits `identity.user.updated`.
+- **`POST /auth/magic-code`** — public; body `{email}`; output `{sent:true}` always (200, no
+  enumeration); rate-limited; delivers 6-digit via Stalwart. Reuse the BaaS magic-code delivery path.
+- **`POST /auth/verify-magic-code`** — public; body `{email,code}`; output tokens or 400/401.
+- **Extend `GET /auth/me` (AUTH-10)** to include `mustChangePassword`.
+- **Schema:** add `User.mustChangePassword Boolean @default(false)`; seed true for install admin.
+
+## 15. Feature Dependency Graph
+- **Hard backend prerequisites (must be implemented + verified before F02 frontend):**
+  1. `User.mustChangePassword` field + migration + seed-default for install admin.
+  2. `POST /auth/change-password`.
+  3. Platform magic-code (`/auth/magic-code` + `/auth/verify-magic-code`); add `mustChangePassword` to `/auth/me`.
+- **Frontend deps:** F00 (design system, `AuthProvider`, `AuthGuard` shells — present as parallel wip).
+- **Gated by F02:** F03+ (every `/dashboard/*` route needs the session). F11 (Settings: profile, MFA,
+  sessions, API keys) consumes F02's session but is specced separately.
+
+## 16. Acceptance Criteria
+1. `/login` (email/pw) → real session → `GET /auth/me` 200 → lands on `?next`/`/dashboard`.
+2. Temp-cred login → redirected to `/force-change-password` → after change, `mustChangePassword=false`,
+   session rotated, proceeds.
+3. Magic-code: request → email arrives (host mail check) → verify → session. Wrong/expired rejected;
+   5 fails → lockout.
+4. Refresh on 401 works; logout clears session; `/dashboard/*` without session → `/login?next=`.
+5. Rate-limit (429) shows countdown and locks the form.
+6. No OAuth UI; no mock data; responsive + accessible; `pnpm --filter @fidscript/dashboard build` clean;
+   this spec updated to match shipped behavior.
+
+## Change log
+- 2026-06-20 — Initial full spec (16 sections). Identified 4 backend prerequisites (mustChangePassword
+  field, change-password endpoint, platform magic-code, /me flag) that block implementation.
