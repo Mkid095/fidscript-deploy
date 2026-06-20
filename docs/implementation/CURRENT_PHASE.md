@@ -8,27 +8,35 @@
 
 ## In flight
 
-**Phase B — F02 functional blockers (Stage 0B of the roadmap).**
+**Phase B — F02 functional blockers (Stage 0B). 3 of 4 closed; AUTH-3 remaining.**
 
-- **Goal:** add the four capabilities F02 Authentication depends on.
-- **Spec / contract:** `docs/backend-prerequisites.md` → Phase B; `docs/phases/frontend/f02-auth.md`.
-- **Phase A — ✅ CLOSED 2026-06-20:** all three platform-correctness items
-  (`PREREQ-AUTH-5/6/7`) were already implemented in the code; the AUDIT was stale. Verified by
-  code review + clean `pnpm typecheck`. Remaining gate: live HTTP verification on the VPS
-  (tracked in `KNOWN_ISSUES.md`).
-- **Phase B scope (4 items, AUTH-1 first as the foundation):**
-  1. `PREREQ-AUTH-1` — `User.mustChangePassword` field + seed-true for the install admin *(migration + seed)*
-  2. `PREREQ-AUTH-2` — `POST /auth/change-password` endpoint *(depends on AUTH-1)*
-  3. `PREREQ-AUTH-3` — platform magic-code (`/auth/magic-code` + `/auth/verify-magic-code`); replaces the broken `verifyMagicLink` (`where user.email === token`)
-  4. `PREREQ-AUTH-4` — `mustChangePassword` on `GET /auth/me` *(depends on AUTH-1)*
-- **Next step:** implement AUTH-1 (the migration + seed), since AUTH-2 and AUTH-4 depend on it.
+- **Phase A — ✅ CLOSED:** `PREREQ-AUTH-5/6/7` were already implemented (AUDIT was stale);
+  verified by code review + clean typecheck. Live HTTP verification pending (KI-2).
+- **Phase B progress:**
+  - ✅ `PREREQ-AUTH-1` — `mustChangePassword` field + migration + seed
+  - ✅ `PREREQ-AUTH-2` — `POST /auth/change-password` (endpoint **AUTH-18**; rotates session)
+  - ✅ `PREREQ-AUTH-4` — flag surfaced on `GET /auth/me`
+  - ⏳ **`PREREQ-AUTH-3` — platform magic-code (NEXT)**
+
+### AUTH-3 — the next unit (plan)
+
+`POST /auth/magic-code` + `POST /auth/verify-magic-code` (inventory IDs **AUTH-19** + **AUTH-20**).
+- New `MagicCode` model (Prisma) + migration: `{ email, codeHash, expiresAt(10m), attempts, consumed }`.
+- New `AuthMagicCodeService`: generate 6-digit OTP (`crypto.randomInt`), bcrypt-hash, persist,
+  deliver via `SmtpSendService` (omit `from` → uses `SMTP_FROM`), rate-limited via the existing
+  `AuthRateLimiter`; verify path checks hash + expiry + attempts (≤5), mints a session.
+- Removes the **broken** `verifyMagicLink` (`where user.email === token`) — `AUTH-05/06` routes
+  retired (IDs never recycled — rule 20; inventory rows marked deprecated).
+- **Live verification requires the VPS** (a real code must arrive in an inbox). Code-complete +
+  typecheck-green is the unit gate; live email delivery is the phase sign-off gate.
 
 ## Not yet started
 
-- **F02** (the first vertical slice) — after Phase B.
+- **F02** (the first frontend vertical slice) — after Phase B is fully closed + live-verified.
 - **F03 → F11** — per `docs/IMPLEMENTATION_ROADMAP.md`.
 
 ## Blocked / waiting
 
-- Phase A live HTTP verification — pending a VPS bring-up (login → /me → logout → 401;
-  refresh rotates). Code is verified-correct; this is the protocol's live-verification gate.
+- Phase A + AUTH-1/2/4 live HTTP verification — pending a VPS bring-up (login → /me → logout →
+  401; refresh rotates; change-password clears the flag + rotates; /me returns the flag). Code
+  is verified-correct; this is the protocol's live-verification gate (KI-2).
