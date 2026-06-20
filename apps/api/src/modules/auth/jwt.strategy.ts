@@ -3,25 +3,30 @@ import { PassportStrategy } from '@nestjs/passport';
 import { ExtractJwt, Strategy } from 'passport-jwt';
 import { ConfigService } from '@nestjs/config';
 import { PrismaService } from '../../prisma/prisma.service';
+import { resolveJwtSecret } from '@/common/secrets';
+
+interface AccessPayload {
+  sub: string;
+  email: string;
+  role: string;
+  type: string;
+  sessionId?: string;
+}
 
 @Injectable()
 export class JwtStrategy extends PassportStrategy(Strategy) {
   constructor(
-    private configService: ConfigService,
+    configService: ConfigService,
     private prisma: PrismaService,
   ) {
-    const secret = configService.get<string>('JWT_SECRET');
-    if (!secret || secret === 'change-me') {
-      throw new Error('JWT_SECRET must be set to a non-default value. Use JWT_SECRET_FILE env var.');
-    }
     super({
       jwtFromRequest: ExtractJwt.fromAuthHeaderAsBearerToken(),
       ignoreExpiration: false,
-      secretOrKey: secret,
+      secretOrKey: resolveJwtSecret(configService),
     });
   }
 
-  async validate(payload: { sub: string; email: string; role: string; type: string }) {
+  async validate(payload: AccessPayload) {
     if (payload.type !== 'access') {
       throw new UnauthorizedException('Invalid token type');
     }
@@ -35,6 +40,8 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
       throw new UnauthorizedException('User not found');
     }
 
-    return { userId: user.id, email: user.email, role: user.role };
+    // sessionId travels in the access JWT so logout can revoke the originating
+    // session without an extra lookup. Refresh tokens carry it too.
+    return { userId: user.id, email: user.email, role: user.role, sessionId: payload.sessionId };
   }
 }

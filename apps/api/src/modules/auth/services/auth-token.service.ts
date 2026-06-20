@@ -71,12 +71,16 @@ export class AuthTokenService {
       where: { id: session.id }, data: { expiresAt: new Date(0) },
     });
 
-    await this.eventService.emit('identity.token.refreshed', {
-      id: crypto.randomUUID(), type: 'identity.token.refreshed',
-      timestamp: new Date(), actorId: user.id, actorType: 'user',
-      resourceType: 'session', resourceId: session.id,
-      metadata: { rotatedFrom: session.id },
-    });
+    await this.eventService.emit(
+      'identity.token.refreshed',
+      { rotatedFrom: session.id },
+      {
+        actorId: user.id,
+        actorType: 'user',
+        resourceType: 'session',
+        resourceId: session.id,
+      },
+    );
 
     return { user, oldSession: session };
   }
