@@ -14,6 +14,7 @@ FIDScript Deploy - AI Development Constitution
 | Why we reset + current honest state | `docs/AUDIT.md` |
 | Roadmap, phase sequence, template, verification rubric | `docs/phases/README.md` |
 | **Frontend roadmap** (landing/docs/dashboard phases F00–F11) | `docs/phases/frontend/README.md` |
+| **Product philosophy** (north star + 5 principles) | `docs/product/platform-philosophy.md` |
 | Current phase and status | `AGENT_STATUS.md` |
 | Architecture decisions | `DECISIONS.md` |
 | System architecture (⚠ aspirational target — see START_HERE) | `ARCHITECTURE.md` |
@@ -131,6 +132,23 @@ wired to a real endpoint (no mocks), 150-line limit, Hugeicons-only, auth-gated 
 | F04 | Projects | _(in README roadmap)_ | Planned |
 | F05 | Project Dashboard Shell | _(in README roadmap)_ | Planned |
 | F06–F11 | Deployments / Functions / Databases / Storage / Realtime·Queues·Scheduler / Email·Domains·Monitoring·Logs·Settings·MCP | _(in README roadmap)_ | Planned |
+
+## Product Documentation (`docs/product/`)
+
+The **blueprint** the frontend must follow. Implementation is paused until the full blueprint
+(philosophy → journeys → navigation → UX spec → service specs → screens → components → F00–F11 specs)
+is complete and approved. See `docs/phases/frontend/backend/` for the accurate endpoint inventory
+every spec cross-references.
+
+| Document | Purpose |
+|---------|---------|
+| `platform-philosophy.md` | North star: what FIDScript is, 5 principles (Configure Once, Beginner First, Production-Ready, Observable, One Dashboard), and the one-domain → everything fan-out map. |
+| `user-journeys.md` | The complete flows for every persona (fresh VPS, team member, solo dev, enterprise admin, backend dev, frontend dev) with steps + branches + success criteria. |
+| `navigation.md` | Global IA + the project sidebar's 14 items (purpose, entry, children, permissions, empty state) + command palette + account menu. |
+| `user-experience-spec.md` | Tactical UX rules: empty/error/loading/permission/multi-project, accessibility, keyboard shortcuts, realtime + optimistic UI, the single-screen test. |
+| `services/*.md` | Per-service specs (projects, deployments, functions, …) — each: UX, data model, API mapping (→ backend inventory IDs), realtime events, settings, automation, dependencies. |
+| `screens/` | Screen inventory (master list + per-screen spec). |
+| `components/` | Reusable component registry (every state documented). |
 
 ---
 
