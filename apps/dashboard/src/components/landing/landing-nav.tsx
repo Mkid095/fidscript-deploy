@@ -36,7 +36,7 @@ export function LandingNav() {
         </div>
 
         <a
-          href="https://github.com/fidscript/fidscript"
+          href="https://github.com/Mkid095/fidscript-deploy"
           target="_blank"
           rel="noreferrer"
           className="flex items-center gap-1.5 rounded-lg border border-slate-800 px-3 py-2 text-sm text-slate-300 transition hover:border-slate-700 hover:text-white"

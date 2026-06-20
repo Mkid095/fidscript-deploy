@@ -4,7 +4,7 @@ set -e
 INSTALLER_VERSION="1.1.0"
 # Where to clone from when no local checkout exists (fresh-VPS one-liner path).
 # Overridable: FIDSCRIPT_REPO=git@... bash install.sh
-FIDSCRIPT_REPO="${FIDSCRIPT_REPO:-https://github.com/fidscript/fidscript.git}"
+FIDSCRIPT_REPO="${FIDSCRIPT_REPO:-https://github.com/Mkid095/fidscript-deploy.git}"
 
 echo ""
 echo "╔═══════════════════════════════════════════════════════════╗"

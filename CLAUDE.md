@@ -13,6 +13,7 @@ FIDScript Deploy - AI Development Constitution
 | **Start here — orient any agent/human (read first)** | `docs/START_HERE.md` |
 | Why we reset + current honest state | `docs/AUDIT.md` |
 | Roadmap, phase sequence, template, verification rubric | `docs/phases/README.md` |
+| **Frontend roadmap** (landing/docs/dashboard phases F00–F11) | `docs/phases/frontend/README.md` |
 | Current phase and status | `AGENT_STATUS.md` |
 | Architecture decisions | `DECISIONS.md` |
 | System architecture (⚠ aspirational target — see START_HERE) | `ARCHITECTURE.md` |
@@ -114,6 +115,22 @@ nothing was built. Don't recreate that.
 | 21 | Templates Platform | `docs/phases/phase-21.md` |
 | 22 | AI Layer | `docs/phases/phase-22.md` |
 | 23 | Marketplace | `docs/phases/phase-23.md` |
+
+## Frontend Phase Documents (`docs/phases/frontend/`)
+
+The backend phases above are the **destination**; these are the **dashboard + public-site** phases that
+connect to them. Roadmap + verification rubric: `docs/phases/frontend/README.md`. Rules: every component
+wired to a real endpoint (no mocks), 150-line limit, Hugeicons-only, auth-gated `/dashboard/*`.
+
+| Phase | Title | Document | Status |
+|------:|-------|----------|--------|
+| F00 | Design System & App Foundation | `docs/phases/frontend/f00-design-system.md` | Verified |
+| F01 | Public Site (Landing + Docs) | `docs/phases/frontend/f01-public-site.md` | Verified |
+| F02 | Authentication | `docs/phases/frontend/f02-auth.md` | Next |
+| F03 | First-Run Onboarding | _(in README roadmap)_ | Planned |
+| F04 | Projects | _(in README roadmap)_ | Planned |
+| F05 | Project Dashboard Shell | _(in README roadmap)_ | Planned |
+| F06–F11 | Deployments / Functions / Databases / Storage / Realtime·Queues·Scheduler / Email·Domains·Monitoring·Logs·Settings·MCP | _(in README roadmap)_ | Planned |
 
 ---
 

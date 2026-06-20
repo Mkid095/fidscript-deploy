@@ -4,15 +4,17 @@ import { useState, type ReactNode } from 'react';
 import Link from 'next/link';
 import { HugeiconsIcon } from '@hugeicons/react';
 import { BoltIcon, Menu02Icon, ArrowRight02Icon } from '@hugeicons/core-free-icons';
-
 import { DocsSidebar } from '@/components/docs/docs-sidebar';
 
 export default function DocsLayout({ children }: { children: ReactNode }) {
   const [open, setOpen] = useState(false);
 
   return (
-    <div className="min-h-screen bg-ink-950">
-      <header className="sticky top-0 z-50 border-b border-slate-900 bg-ink-900/80 backdrop-blur-md">
+    // h-screen + overflow-hidden on the root => the sidebar and the content
+    // area each get their OWN scroll region. Scrolling a long doc never moves
+    // the sidebar (the user's actual complaint).
+    <div className="flex h-screen flex-col overflow-hidden bg-ink-950">
+      <header className="z-50 shrink-0 border-b border-slate-900 bg-ink-900/80 backdrop-blur-md">
         <div className="mx-auto flex max-w-6xl items-center justify-between px-6 py-3.5">
           <div className="flex items-center gap-3">
             <button
@@ -39,20 +41,21 @@ export default function DocsLayout({ children }: { children: ReactNode }) {
         </div>
       </header>
 
-      <div className="mx-auto max-w-6xl px-6 py-8 lg:flex lg:gap-10">
-        {/* Sidebar: static on desktop, drawer on mobile */}
-        {open && (
-          <div className="fixed inset-0 z-40 bg-black/60 lg:hidden" onClick={() => setOpen(false)} />
-        )}
+      <div className="relative mx-auto flex w-full max-w-6xl flex-1 overflow-hidden px-6">
+        {/* mobile overlay */}
+        {open && <div className="fixed inset-0 z-40 bg-black/60 lg:hidden" onClick={() => setOpen(false)} />}
+
+        {/* sidebar — own scroll region, stays fixed while content scrolls */}
         <aside
-          className={`fixed inset-y-0 left-0 z-50 w-72 overflow-y-auto border-r border-slate-900 bg-ink-900 p-5 transition-transform lg:static lg:z-0 lg:w-64 lg:translate-x-0 lg:border-r-0 lg:bg-transparent lg:p-0 ${
+          className={`fixed bottom-0 left-0 top-14 z-50 w-72 overflow-y-auto border-r border-slate-900 bg-ink-900 p-5 transition-transform lg:static lg:top-0 lg:z-0 lg:w-64 lg:shrink-0 lg:translate-x-0 lg:border-r-0 lg:bg-transparent lg:p-0 lg:pr-8 ${
             open ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'
           }`}
         >
           <DocsSidebar onNavigate={() => setOpen(false)} />
         </aside>
 
-        <main className="min-w-0 flex-1 pt-2 lg:pt-0">{children}</main>
+        {/* content — independent scroll area */}
+        <main className="min-w-0 flex-1 overflow-y-auto py-8">{children}</main>
       </div>
     </div>
   );

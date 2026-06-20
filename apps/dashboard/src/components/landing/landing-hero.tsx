@@ -58,7 +58,7 @@ export function LandingHero() {
             <HugeiconsIcon icon={ArrowRight02Icon} size={16} color="currentColor" className="transition group-hover:translate-x-0.5" />
           </Link>
           <a
-            href="https://github.com/fidscript/fidscript"
+            href="https://github.com/Mkid095/fidscript-deploy"
             target="_blank"
             rel="noreferrer"
             className="flex items-center gap-2 rounded-xl border border-slate-800 px-6 py-3 text-sm font-semibold text-slate-200 transition hover:border-slate-700"

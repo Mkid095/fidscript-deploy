@@ -56,12 +56,12 @@ export function LandingFooter() {
             © {new Date().getFullYear()} FIDScript · A <span className="font-medium text-slate-400">NextMavens</span> project · MIT-style open source
           </p>
           <a
-            href="https://github.com/fidscript/fidscript"
+            href="https://github.com/Mkid095/fidscript-deploy"
             target="_blank"
             rel="noreferrer"
             className="flex items-center gap-1.5 text-xs text-slate-500 transition hover:text-white"
           >
-            <HugeiconsIcon icon={SourceCodeIcon} size={14} color="currentColor" /> github.com/fidscript
+            <HugeiconsIcon icon={SourceCodeIcon} size={14} color="currentColor" /> github.com/Mkid095
           </a>
         </div>
       </div>
