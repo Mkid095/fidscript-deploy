@@ -32,6 +32,7 @@ FIDScript Deploy — AI Development Constitution
 | **Current phase and status** (what's done / what's next) | `AGENT_STATUS.md` |
 | **⚠️ Before implementing: read the validation + roadmap** | `docs/VALIDATION.md`, `docs/IMPLEMENTATION_ROADMAP.md`, `docs/backend-prerequisites.md` |
 | **⚠️ Before merging: the Definition of Done (merge gate)** | `docs/DEFINITION_OF_DONE.md` |
+| **⚠️ While building: the execution protocol + journal** | `docs/EXECUTION_PROTOCOL.md`, `docs/implementation/CURRENT_PHASE.md` |
 | **Project documentation map** (every doc in one place) | [below](#project-documentation-map) |
 | Why we reset + current honest state | `docs/AUDIT.md` |
 | Backend phase roadmap + verification rubric | `docs/phases/README.md` |
@@ -264,6 +265,8 @@ every spec cross-references.
     - The implementation order is fixed: `docs/IMPLEMENTATION_ROADMAP.md`. Blockers live in one place: `docs/backend-prerequisites.md`. Prereqs are **phased**: Phase A (platform correctness/security: `PREREQ-AUTH-5/6/7`) → Phase B (F02 enablers: `PREREQ-AUTH-1/2/3/4`) → Phase C (F05 enablers: `PREREQ-PROJ-2/3`, after F02).
 17. **Definition of Done (the merge gate)** - A feature/phase/PR is **not done** unless *all ten* criteria in `docs/DEFINITION_OF_DONE.md` pass: backend complete, frontend complete, tests pass, docs updated, `backend-prerequisites.md` updated, `VALIDATION.md` still passes (zero broken cross-references), no orphaned endpoint IDs, no undocumented APIs, phase acceptance criteria satisfied, `AGENT_STATUS.md` reflects the new state. If even one is missing, the work is incomplete — do not merge, do not flip the status. The whole point of the hardening reset was to end "marked complete but unbuilt"; this rule is structural prevention.
 18. **ADRs record the *why* (`DECISIONS.md`)** - Architecture Decision Records capture the rationale behind major decisions so a future contributor doesn't reverse them by accident. The home is `DECISIONS.md` (ADR-001…035). Product-rationale ADRs (029–035: self-hosted-first, documentation-first, operating-system dashboard, auth strategy, one-domain fan-out, hide-advanced, Docker-Compose-over-k8s) answer the recurring "why was this designed this way?" questions. When you make a non-obvious decision during implementation, add an ADR in the same commit (rule 4).
+19. **Execution Protocol (the build lifecycle)** - Every phase follows the same traceable, reversible lifecycle: Specification → Dependency Validation → Backend Impl → Backend Tests → Frontend Impl → Frontend Tests → Integration Tests → Documentation Update → Phase Sign-off (`docs/EXECUTION_PROTOCOL.md`). Each step gates the next; a skipped step is a finding, not a shortcut. Build **one vertical slice at a time** — never parallel phases; complete a phase end-to-end before the next (keeps the platform deployable after every phase). Every phase files a checkpoint report (`docs/implementation/<PHASE>/report.md` + `acceptance.md`) with **live verification** against the running app, not just unit tests. The implementation journal (`docs/implementation/`) records what actually happened (log, current phase, known issues, changelog, decisions) — distinct from the specs (what the system should become).
+20. **Immutable Public Identifiers** - Endpoint IDs (`AUTH-01`, `PROJ-02`, `DEPL-02`, …), component IDs, screen IDs, service IDs, and event IDs are **frozen public contracts**. Never rename an ID. Never recycle an ID. If functionality changes, update the *description* in the inventory — not the identifier. Stable identifiers make long-term maintenance and cross-references safe. (This is why the D0.1 cross-reference check treats a renamed ID as a broken reference.) A new endpoint gets the next free ID in its cluster *before* the code that calls it.
 
 ---
 
@@ -329,6 +332,15 @@ FIDScript Deploy repo
 │   ├── IMPLEMENTATION_ROADMAP.md    ← ⚠️ the canonical build order (every future agent follows this)
 │   ├── backend-prerequisites.md     ← ⚠️ every Open/UI-mitigated backend gap (the blocker registry, A→B→C phased)
 │   ├── DEFINITION_OF_DONE.md        ← ⚠️ the 10-point merge gate every PR must satisfy
+│   ├── EXECUTION_PROTOCOL.md        ← ⚠️ the 9-step phase lifecycle (spec→impl→verify→sign-off)
+│   ├── technical-debt.md            ← every compromise recorded (no scattered TODOs)
+│   ├── implementation/              ← the JOURNAL (what actually happened): log, current phase,
+│   │   ├── CURRENT_PHASE.md         ←   the one in-flight phase
+│   │   ├── IMPLEMENTATION_LOG.md    ←   reverse-chron session log
+│   │   ├── KNOWN_ISSUES.md          ←   issues discovered during implementation
+│   │   ├── CHANGELOG_INTERNAL.md    ←   per-phase "what shipped" narrative
+│   │   ├── _phase-report-template.md←   checkpoint report template
+│   │   └── decisions/               ←   implementation-time decisions (how), vs ADRs (why)
 │   │
 │   ├── (DECISIONS.md lives at repo root — ADRs 001–035, the *why*)
 │   ├── phases/                      ← BACKEND phases 00–23 (all verified)
