@@ -174,3 +174,36 @@ Impact:
 - **Phase B is code-complete (all 4 items closed).** Registry: Open 3 → 2 (Phase C only).
   F02 is unblocked on the backend. Remaining gate: live verification on the VPS (login/logout/
   refresh/change-password/magic-code email delivery) — KI-2.
+
+## 2026-06-20 (later) — Phase B live verification + JwtStrategy bug fix
+
+Phase: Phase B / Verification
+
+Completed:
+- Ran `/tmp/auth_verify.sh` against the live API on the VPS (13 checks).
+- **10 PASS / 3 FAIL on first run.** Two failures shared one root cause (real bug):
+  1. "old token rejected after change-password" → got 200, want 401.
+  2. "/me after logout → 401" → got 200, want 401.
+- Root cause: `JwtStrategy.validate()` checked user existence + token type but **not session validity**.
+  A revoked/expired `Session` row left the access token usable until its own 15-min expiry.
+  This is exactly what live verification is for.
+- **Fix:** Added session-expiry check in `jwt.strategy.ts:validate()`. When `sessionId` is present
+  in the payload, verify the `Session` row is still valid (`expiresAt > now`).
+- Third failure: "verify known code → 200" → got 401. Root cause: pgcrypto extension not loaded
+  on the test database. Fixed with `CREATE EXTENSION pgcrypto;` + retry with bcrypt-compatible hash.
+- **Second run: 13/13 PASS.** All Phase A + B flows verified end-to-end over HTTP.
+- Committed fix as `f78a60c fix(auth): enforce session validity in JwtStrategy.validate()`.
+
+Unexpected issues:
+- The session-revocation bug was invisible to code review — all individual services (logout,
+  change-password, session deletion) were correct in isolation. Only the interaction between
+  `validate()` and the session-scoped JWT revealed it. This is precisely why live verification
+  exists in the execution protocol.
+
+Decision:
+- Live verification is a mandatory gate, not optional polish. The execution protocol's Step 6
+  (live verification) exists to catch exactly this class of bug.
+
+Impact:
+- JwtStrategy now enforces session validity on every guarded request. Phase B is fully
+  live-verified (13/13 PASS). Phase B is complete. F02 frontend is the next target.
