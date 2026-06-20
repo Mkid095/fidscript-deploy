@@ -4,17 +4,23 @@ import {
   Post,
   Body,
   Param,
+  Query,
   UseGuards,
   Req,
+  Res,
   HttpCode,
   HttpStatus,
 } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { JwtAuthGuard } from '@/modules/auth/jwt-auth.guard';
-import { Request } from 'express';
+import { Request, Response } from 'express';
 import { extractRequestContext } from '@/common/request-context';
 import { AppAuthUserService } from '@/modules/app-auth/services/app-auth-user.service';
 import { AppAuthRoleService } from '@/modules/app-auth/services/app-auth-role.service';
+import { OAuthService } from '@/modules/app-auth/services/oauth.service';
+import { AppAuthTokenService } from '@/modules/app-auth/services/app-auth-token.service';
+import { AppJwtGuard } from '@/modules/app-auth/jwt/app-jwt.guard';
+import { CurrentAppUser } from '@/modules/app-auth/current-app-user.decorator';
 import {
   RegisterAppUserDto,
   LoginAppUserDto,
@@ -32,6 +38,8 @@ export class AppAuthController {
   constructor(
     private userService: AppAuthUserService,
     private roleService: AppAuthRoleService,
+    private oauthService: OAuthService,
+    private tokenService: AppAuthTokenService,
   ) {}
 
   @Post('register')
@@ -98,7 +106,102 @@ export class AppAuthController {
     return this.userService.verifyCode(projectId, dto.email, dto.code, ipAddress);
   }
 
-  @Post('roles')
+  // ── OAuth ───────────────────────────────────────────────────────────────
+
+  @Get('oauth/:provider')
+  @HttpCode(HttpStatus.FOUND)
+  @ApiOperation({ summary: 'Redirect to OAuth provider authorize URL' })
+  async oauthAuthorize(
+    @Param('projectId') projectId: string,
+    @Param('provider') provider: string,
+    @Query('redirect') appRedirectUrl: string | undefined,
+    @Req() req: Request,
+    @Res({ passthrough: true }) res: Response,
+  ) {
+    const { ipAddress, userAgent } = extractRequestContext(req);
+    const { url } = await this.oauthService.startAuthorization(
+      projectId, provider, appRedirectUrl, ipAddress, userAgent,
+    );
+    res.status(HttpStatus.FOUND);
+    res.setHeader('Location', url);
+    return { url };
+  }
+
+  @Get('oauth/:provider/callback')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'OAuth callback — exchanges code, creates/links AppUser, returns tokens' })
+  async oauthCallback(
+    @Param('projectId') projectId: string,
+    @Param('provider') provider: string,
+    @Query('code') code: string | undefined,
+    @Query('state') state: string | undefined,
+    @Req() req: Request,
+    @Res({ passthrough: true }) res: Response,
+  ) {
+    const { ipAddress, userAgent } = extractRequestContext(req);
+    const result = await this.oauthService.handleCallback(
+      projectId, provider, code ?? '', state ?? '', ipAddress, userAgent,
+    );
+    // If the client passed a redirect URL via state, redirect with tokens as query params.
+    if (result.appRedirectUrl) {
+      const params = new URLSearchParams({
+        access_token: result.tokens.accessToken,
+        refresh_token: result.tokens.refreshToken,
+        expires_at: String(Math.floor(result.tokens.expiresAt.getTime() / 1000)),
+      });
+      const redirectUrl = `${result.appRedirectUrl}?${params.toString()}`;
+      res.status(HttpStatus.FOUND);
+      res.setHeader('Location', redirectUrl);
+      return;
+    }
+    return {
+      accessToken: result.tokens.accessToken,
+      refreshToken: result.tokens.refreshToken,
+      expiresAt: result.tokens.expiresAt,
+      user: result.appUser,
+    };
+  }
+
+  // ── Token management ────────────────────────────────────────────────────
+
+  @Post('refresh')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Rotate refresh token and issue a new access token' })
+  async refresh(
+    @Body() body: { refreshToken: string },
+    @Req() req: Request,
+  ) {
+    const { ipAddress, userAgent } = extractRequestContext(req);
+    const tokens = await this.tokenService.rotateRefresh(
+      body.refreshToken, ipAddress, userAgent,
+    );
+    return tokens;
+  }
+
+  @Get('me')
+  @UseGuards(AppJwtGuard)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Return the currently authenticated app user' })
+  async me(@CurrentAppUser() user: any) {
+    return {
+      appUserId: user.appUserId,
+      projectId: user.projectId,
+      email: user.email,
+      roles: user.roles,
+    };
+  }
+
+  @Post('logout')
+  @UseGuards(AppJwtGuard)
+  @ApiBearerAuth()
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Revoke the current session (logout)' })
+  async logout(@CurrentAppUser() user: any) {
+    await this.tokenService.revokeSession(user.sessionId);
+    return { success: true };
+  }
+
+  // ── Role management (platform admin) ────────────────────────────────────
   @UseGuards(JwtAuthGuard)
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Create role' })

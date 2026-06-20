@@ -28,10 +28,10 @@ model User {
   createdAt    DateTime  @default(now()) @map("created_at") @db.Timestamptz
   updatedAt    DateTime  @updatedAt @map("updated_at") @db.Timestamptz
 
-  sessions   Session[]
-  apiKeys    ApiKey[]
-  auditLogs  AuditLog[]
-  projects   Project[]  @relation("ProjectOwner")
+  sessions    Session[]
+  apiKeys     ApiKey[]
+  auditLogs   AuditLog[]
+  projects    Project[]       @relation("ProjectOwner")
   memberships ProjectMember[]
 
   @@map("identity.users")
@@ -111,35 +111,37 @@ model Project {
   createdAt          DateTime      @default(now()) @map("created_at") @db.Timestamptz
   updatedAt          DateTime      @updatedAt @map("updated_at") @db.Timestamptz
 
-  owner     User               @relation("ProjectOwner", fields: [ownerId], references: [id], onDelete: Cascade)
-  members   ProjectMember[]
-  settings  ProjectSettings?
-  buckets   Bucket[]
-  deployments Deployment[]
-  buildConfig BuildConfig?
-  releases Release[]
-  domains    Domain[]
-  appUsers   AppUser[]
-  appRoles   AppRole[]
-  emailDomains    EmailDomain[]
-  emailMessages   EmailMessage[]
-  emailApiKeys    EmailApiKey[]
-  emailApiUsages EmailApiUsage[]
-  channels  RealtimeChannel[]
-  databases ManagedDatabase[]
-  functions Function[]
-  queues    Queue[]
-  cronJobs  CronJob[]
-  metrics   Metric[]
-  alertRules AlertRule[]
-  alerts    Alert[]
+  owner                User                  @relation("ProjectOwner", fields: [ownerId], references: [id], onDelete: Cascade)
+  members              ProjectMember[]
+  settings             ProjectSettings?
+  buckets              Bucket[]
+  deployments          Deployment[]
+  buildConfig          BuildConfig?
+  releases             Release[]
+  domains              Domain[]
+  appUsers             AppUser[]
+  appRoles             AppRole[]
+  authProviders        AuthProvider[]
+  appOauthAccounts     AppOAuthAccount[]
+  emailDomains         EmailDomain[]
+  emailMessages        EmailMessage[]
+  emailApiKeys         EmailApiKey[]
+  emailApiUsages       EmailApiUsage[]
+  channels             RealtimeChannel[]
+  databases            ManagedDatabase[]
+  functions            Function[]
+  queues               Queue[]
+  cronJobs             CronJob[]
+  metrics              Metric[]
+  alertRules           AlertRule[]
+  alerts               Alert[]
   notificationChannels NotificationChannel[]
-  logStreams          LogStream[]
-  templates           Template[]
-  aiConversations     AIConversation[]
-  envVars   ProjectEnv[]
-  invitations ProjectInvitation[]
-  apiKeys    ProjectApiKey[]
+  logStreams           LogStream[]
+  templates            Template[]
+  aiConversations      AIConversation[]
+  envVars              ProjectEnv[]
+  invitations          ProjectInvitation[]
+  apiKeys              ProjectApiKey[]
 
   @@map("projects.projects")
 }
@@ -148,7 +150,7 @@ model ProjectEnv {
   id        String   @id @default(uuid())
   projectId String   @map("project_id")
   key       String   @db.VarChar(255)
-  value     String   @db.Text  // AES-256-GCM ciphertext: iv:authTag:ct
+  value     String   @db.Text // AES-256-GCM ciphertext: iv:authTag:ct
   createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz
   updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz
 
@@ -159,16 +161,16 @@ model ProjectEnv {
 }
 
 model ProjectInvitation {
-  id         String   @id @default(uuid())
-  projectId  String   @map("project_id")
-  email      String   @db.VarChar(255)
-  role       String   @db.VarChar(50)
-  tokenHash  String   @map("token_hash") @db.VarChar(255) // SHA-256 of token
-  expiresAt  DateTime @map("expires_at") @db.Timestamptz
-  invitedBy  String?  @map("invited_by") @db.VarChar(255)
+  id         String    @id @default(uuid())
+  projectId  String    @map("project_id")
+  email      String    @db.VarChar(255)
+  role       String    @db.VarChar(50)
+  tokenHash  String    @map("token_hash") @db.VarChar(255) // SHA-256 of token
+  expiresAt  DateTime  @map("expires_at") @db.Timestamptz
+  invitedBy  String?   @map("invited_by") @db.VarChar(255)
   acceptedAt DateTime? @map("accepted_at") @db.Timestamptz
   revokedAt  DateTime? @map("revoked_at") @db.Timestamptz
-  createdAt  DateTime @default(now()) @map("created_at") @db.Timestamptz
+  createdAt  DateTime  @default(now()) @map("created_at") @db.Timestamptz
 
   project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
 
@@ -225,16 +227,16 @@ model ProjectMember {
 }
 
 model ProjectSettings {
-  id                   String    @id @default(uuid())
-  projectId            String    @unique @map("project_id")
-  settings             Json      @default("{}")
-  activeDeploymentId   String?   @unique @map("active_deployment_id")  // prevents concurrent deployments
-  writableMounts       Json      @default("[]") @map("writable_mounts")
-  createdAt            DateTime  @default(now()) @map("created_at") @db.Timestamptz
-  updatedAt            DateTime  @updatedAt @map("updated_at") @db.Timestamptz
+  id                 String   @id @default(uuid())
+  projectId          String   @unique @map("project_id")
+  settings           Json     @default("{}")
+  activeDeploymentId String?  @unique @map("active_deployment_id") // prevents concurrent deployments
+  writableMounts     Json     @default("[]") @map("writable_mounts")
+  createdAt          DateTime @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt          DateTime @updatedAt @map("updated_at") @db.Timestamptz
 
-  project            Project     @relation(fields: [projectId], references: [id], onDelete: Cascade)
-  activeDeployment   Deployment? @relation("ActiveDeployment", fields: [activeDeploymentId], references: [id])
+  project          Project     @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  activeDeployment Deployment? @relation("ActiveDeployment", fields: [activeDeploymentId], references: [id])
 
   @@map("projects.project_settings")
 }
@@ -244,31 +246,31 @@ model ProjectSettings {
 // =============================================
 
 model Bucket {
-  id        String   @id @default(uuid())
-  projectId String   @map("project_id")
-  name      String   @db.VarChar(255)
-  provider  String   @default("internal") @db.VarChar(50)
-  region    String?  @db.VarChar(100)
-  isPublic  Boolean  @default(false) @map("is_public")
-  maxSizeBytes BigInt? @map("max_size_bytes")
-  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz
+  id           String   @id @default(uuid())
+  projectId    String   @map("project_id")
+  name         String   @db.VarChar(255)
+  provider     String   @default("internal") @db.VarChar(50)
+  region       String?  @db.VarChar(100)
+  isPublic     Boolean  @default(false) @map("is_public")
+  maxSizeBytes BigInt?  @map("max_size_bytes")
+  createdAt    DateTime @default(now()) @map("created_at") @db.Timestamptz
 
   project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
-  files  File[]
+  files   File[]
 
   @@map("storage.buckets")
 }
 
 model File {
   id           String   @id @default(uuid())
-  bucketId    String   @map("bucket_id")
-  key         String   @db.VarChar(1024)
+  bucketId     String   @map("bucket_id")
+  key          String   @db.VarChar(1024)
   originalName String?  @map("original_name") @db.VarChar(255)
-  mimeType    String?  @map("mime_type") @db.VarChar(255)
-  sizeBytes   BigInt   @default(0) @map("size_bytes")
-  etag        String?  @db.VarChar(255)
-  metadata    Json     @default("{}")
-  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz
+  mimeType     String?  @map("mime_type") @db.VarChar(255)
+  sizeBytes    BigInt   @default(0) @map("size_bytes")
+  etag         String?  @db.VarChar(255)
+  metadata     Json     @default("{}")
+  createdAt    DateTime @default(now()) @map("created_at") @db.Timestamptz
 
   bucket Bucket @relation(fields: [bucketId], references: [id], onDelete: Cascade)
 
@@ -282,16 +284,16 @@ model File {
 model Release {
   id              String   @id @default(uuid())
   projectId       String   @map("project_id")
-  commitSha        String   @db.VarChar(40)
-  branch           String   @default("main") @map("source_branch")
-  imageTag         String   @db.VarChar(255)  // e.g. "fidscript/<slug>:<version>"
-  version          String   @db.VarChar(50)  // e.g. "2023-abc123" — immutable once set
-  buildLogs        String?  @db.Text  // full build log output
-  buildDurationMs  Int?     @map("build_duration_ms")
-  createdBy        String?  @map("created_by")  // userId or "system"
-  createdAt        DateTime @default(now()) @map("created_at") @db.Timestamptz
+  commitSha       String   @db.VarChar(40)
+  branch          String   @default("main") @map("source_branch")
+  imageTag        String   @db.VarChar(255) // e.g. "fidscript/<slug>:<version>"
+  version         String   @db.VarChar(50) // e.g. "2023-abc123" — immutable once set
+  buildLogs       String?  @db.Text // full build log output
+  buildDurationMs Int?     @map("build_duration_ms")
+  createdBy       String?  @map("created_by") // userId or "system"
+  createdAt       DateTime @default(now()) @map("created_at") @db.Timestamptz
 
-  project    Project       @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  project     Project      @relation(fields: [projectId], references: [id], onDelete: Cascade)
   deployments Deployment[]
 
   @@unique([projectId, version])
@@ -300,20 +302,20 @@ model Release {
 }
 
 model Deployment {
-  id             String            @id @default(uuid())
-  projectId      String            @map("project_id")
-  releaseId      String?           @map("release_id")  // FK to Release (build artifact record)
-  status         DeploymentStatus  @default(PENDING)
+  id             String           @id @default(uuid())
+  projectId      String           @map("project_id")
+  releaseId      String?          @map("release_id") // FK to Release (build artifact record)
+  status         DeploymentStatus @default(PENDING)
   deploymentUrl  String?          @map("deployment_url") @db.Text
-  rolledBackToId String?          @map("rolled_back_to")  // Deployment this rolled back
+  rolledBackToId String?          @map("rolled_back_to") // Deployment this rolled back
   // Build artifact data lives in Release.releaseId (see above)
   createdAt      DateTime         @default(now()) @map("created_at") @db.Timestamptz
   completedAt    DateTime?        @map("completed_at") @db.Timestamptz
 
-  project      Project      @relation(fields: [projectId], references: [id], onDelete: Cascade)
-  release      Release?     @relation(fields: [releaseId], references: [id])
-  rolledBackTo  Deployment?  @relation("Rollback", fields: [rolledBackToId], references: [id])
-  rollbacks    Deployment[]  @relation("Rollback")
+  project      Project          @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  release      Release?         @relation(fields: [releaseId], references: [id])
+  rolledBackTo Deployment?      @relation("Rollback", fields: [rolledBackToId], references: [id])
+  rollbacks    Deployment[]     @relation("Rollback")
   activeFor    ProjectSettings? @relation("ActiveDeployment")
   domains      Domain[]
 
@@ -333,16 +335,16 @@ enum DeploymentStatus {
 }
 
 model BuildConfig {
-  id                  String   @id @default(uuid())
-  projectId           String   @unique @map("project_id")
-  strategy            String   @default("dockerfile")
-  buildCommand        String?  @map("build_command") @db.Text
-  outputDirectory     String?  @map("output_directory") @db.VarChar(255)
-  healthCheckPath     String?  @map("health_check_path") @db.VarChar(255)
-  healthCheckPort     Int      @default(3000) @map("health_check_port")
-  startupTimeoutSeconds Int    @default(120) @map("startup_timeout_seconds")
-  createdAt           DateTime @default(now()) @map("created_at") @db.Timestamptz
-  updatedAt           DateTime @updatedAt @map("updated_at") @db.Timestamptz
+  id                    String   @id @default(uuid())
+  projectId             String   @unique @map("project_id")
+  strategy              String   @default("dockerfile")
+  buildCommand          String?  @map("build_command") @db.Text
+  outputDirectory       String?  @map("output_directory") @db.VarChar(255)
+  healthCheckPath       String?  @map("health_check_path") @db.VarChar(255)
+  healthCheckPort       Int      @default(3000) @map("health_check_port")
+  startupTimeoutSeconds Int      @default(120) @map("startup_timeout_seconds")
+  createdAt             DateTime @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt             DateTime @updatedAt @map("updated_at") @db.Timestamptz
 
   project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
 
@@ -354,35 +356,35 @@ model BuildConfig {
 // =============================================
 
 model Domain {
-  id            String      @id @default(uuid())
-  projectId     String      @map("project_id")
-  deploymentId  String?     @map("deployment_id")  // which deployment this domain routes to
-  dnsConnectionId String?   @map("dns_connection_id")  // which DNS connection to use (Mode B)
-  domain        String      @db.VarChar(255)
-  isCustom      Boolean     @default(false) @map("is_custom")
-  isPrimary     Boolean     @default(false) @map("is_primary")  // primary domain for this deployment
-  apexDomain    Boolean     @default(false) @map("apex_domain")  // true for root domains (example.com)
-  dnsMode       String      @default("manual") @map("dns_mode")  // 'manual' | 'cloudflare_auto'
-  redirectMode  String      @default("none") @map("redirect_mode")  // 'none' | 'www_to_root' | 'root_to_www'
-  sslEnabled    Boolean     @default(true) @map("ssl_enabled")
-  sslStatus     SslStatus   @default(PENDING) @map("ssl_status")
-  sslMethod     String      @default("letsencrypt") @map("ssl_method")  // 'letsencrypt' | 'custom' | 'disabled'
-  sslCertArn    String?     @map("ssl_cert_arn") @db.VarChar(255)
-  sslExpiresAt  DateTime?   @map("ssl_expires_at") @db.Timestamptz  // cert expiry date
-  sslIssuedAt   DateTime?   @map("ssl_issued_at") @db.Timestamptz   // when cert was issued
-  sslLastCheckedAt DateTime? @map("ssl_last_checked_at") @db.Timestamptz  // last SSL check
-  sslLastError   String?     @map("ssl_last_error") @db.Text         // last SSL error
-  dnsStatus     DomainStatus @default(PENDING) @map("dns_status")
-  dnsVerifiedAt DateTime?   @map("dns_verified_at") @db.Timestamptz
-  routingVerifiedAt DateTime? @map("routing_verified_at") @db.Timestamptz
-  emailWarning  Boolean     @default(false) @map("email_warning")
-  emailProvider String?     @map("email_provider") @db.VarChar(100)
-  createdAt     DateTime    @default(now()) @map("created_at") @db.Timestamptz
+  id                String       @id @default(uuid())
+  projectId         String       @map("project_id")
+  deploymentId      String?      @map("deployment_id") // which deployment this domain routes to
+  dnsConnectionId   String?      @map("dns_connection_id") // which DNS connection to use (Mode B)
+  domain            String       @db.VarChar(255)
+  isCustom          Boolean      @default(false) @map("is_custom")
+  isPrimary         Boolean      @default(false) @map("is_primary") // primary domain for this deployment
+  apexDomain        Boolean      @default(false) @map("apex_domain") // true for root domains (example.com)
+  dnsMode           String       @default("manual") @map("dns_mode") // 'manual' | 'cloudflare_auto'
+  redirectMode      String       @default("none") @map("redirect_mode") // 'none' | 'www_to_root' | 'root_to_www'
+  sslEnabled        Boolean      @default(true) @map("ssl_enabled")
+  sslStatus         SslStatus    @default(PENDING) @map("ssl_status")
+  sslMethod         String       @default("letsencrypt") @map("ssl_method") // 'letsencrypt' | 'custom' | 'disabled'
+  sslCertArn        String?      @map("ssl_cert_arn") @db.VarChar(255)
+  sslExpiresAt      DateTime?    @map("ssl_expires_at") @db.Timestamptz // cert expiry date
+  sslIssuedAt       DateTime?    @map("ssl_issued_at") @db.Timestamptz // when cert was issued
+  sslLastCheckedAt  DateTime?    @map("ssl_last_checked_at") @db.Timestamptz // last SSL check
+  sslLastError      String?      @map("ssl_last_error") @db.Text // last SSL error
+  dnsStatus         DomainStatus @default(PENDING) @map("dns_status")
+  dnsVerifiedAt     DateTime?    @map("dns_verified_at") @db.Timestamptz
+  routingVerifiedAt DateTime?    @map("routing_verified_at") @db.Timestamptz
+  emailWarning      Boolean      @default(false) @map("email_warning")
+  emailProvider     String?      @map("email_provider") @db.VarChar(100)
+  createdAt         DateTime     @default(now()) @map("created_at") @db.Timestamptz
 
-  project          Project          @relation(fields: [projectId], references: [id], onDelete: Cascade)
-  deployment       Deployment?      @relation(fields: [deploymentId], references: [id])
-  dnsConnection    DomainConnection? @relation(fields: [dnsConnectionId], references: [id])
-  healthChecks     DomainHealthCheck[]
+  project       Project             @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  deployment    Deployment?         @relation(fields: [deploymentId], references: [id])
+  dnsConnection DomainConnection?   @relation(fields: [dnsConnectionId], references: [id])
+  healthChecks  DomainHealthCheck[]
 
   @@unique([projectId, domain])
   @@map("projects.domains")
@@ -391,17 +393,17 @@ model Domain {
 // Stored DNS provider connections for Mode B (Cloudflare Auto) and future providers.
 // Credentials are encrypted; the plain-text token is never stored after initial verification.
 model DomainConnection {
-  id          String   @id @default(uuid())
-  projectId   String   @map("project_id")
-  provider    String   @db.VarChar(50)  // 'CLOUDLARE' | 'ROUTE53' | 'DIGITALOCEAN'
-  encryptedToken String @map("encrypted_token") @db.Text  // AES-256-GCM ciphertext
-  tokenId     String?  @map("token_id") @db.VarChar(255)  // provider's token ID (for audit/invalidation)
-  permissions  Json     @default("{}")  // granted permissions (Zone:Read, DNS:Edit, etc.)
-  email       String?  @db.VarChar(255)  // provider account email (cloudflare)
+  id             String   @id @default(uuid())
+  projectId      String   @map("project_id")
+  provider       String   @db.VarChar(50) // 'CLOUDLARE' | 'ROUTE53' | 'DIGITALOCEAN'
+  encryptedToken String   @map("encrypted_token") @db.Text // AES-256-GCM ciphertext
+  tokenId        String?  @map("token_id") @db.VarChar(255) // provider's token ID (for audit/invalidation)
+  permissions    Json     @default("{}") // granted permissions (Zone:Read, DNS:Edit, etc.)
+  email          String?  @db.VarChar(255) // provider account email (cloudflare)
   lastVerifiedAt DateTime @map("last_verified_at") @db.Timestamptz
-  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz
+  createdAt      DateTime @default(now()) @map("created_at") @db.Timestamptz
 
-  domains     Domain[]
+  domains Domain[]
 
   @@map("projects.dns_connections")
 }
@@ -409,42 +411,42 @@ model DomainConnection {
 // Tracks operational history of every domain check.
 // Written by the background health monitor every 10 minutes.
 model DomainHealthCheck {
-  id          String   @id @default(uuid())
-  domainId   String   @map("domain_id")
-  checkedAt  DateTime @default(now()) @map("checked_at") @db.Timestamptz
+  id        String   @id @default(uuid())
+  domainId  String   @map("domain_id")
+  checkedAt DateTime @default(now()) @map("checked_at") @db.Timestamptz
 
-  dnsOk       Boolean  @default(false) @map("dns_ok")
-  routingOk   Boolean  @default(false) @map("routing_ok")
-  sslOk       Boolean  @default(false) @map("ssl_ok")
+  dnsOk     Boolean @default(false) @map("dns_ok")
+  routingOk Boolean @default(false) @map("routing_ok")
+  sslOk     Boolean @default(false) @map("ssl_ok")
 
-  responseTimeMs Int?    @map("response_time_ms")
+  responseTimeMs Int? @map("response_time_ms")
 
-  sslExpiresInDays Int?   @map("ssl_expires_in_days")
-  status      String   @db.VarChar(20)  // 'ok' | 'degraded' | 'broken'
-  errorMessage String?  @map("error_message") @db.Text
+  sslExpiresInDays Int?    @map("ssl_expires_in_days")
+  status           String  @db.VarChar(20) // 'ok' | 'degraded' | 'broken'
+  errorMessage     String? @map("error_message") @db.Text
 
-  domain      Domain   @relation(fields: [domainId], references: [id], onDelete: Cascade)
+  domain Domain @relation(fields: [domainId], references: [id], onDelete: Cascade)
 
   @@index([domainId, checkedAt])
   @@map("projects.domain_health_checks")
 }
 
 enum DomainStatus {
-  PENDING           // Domain added, no verification attempted yet
+  PENDING // Domain added, no verification attempted yet
   OWNERSHIP_PENDING // TXT record created, waiting for ownership confirmation
-  VALIDATING        // Ownership confirmed, checking DNS propagation + routing
-  TLS_PENDING       // DNS + routing verified, SSL certificate in flight
-  ACTIVE            // All checks passed: DNS + routing + SSL all done, serving traffic
-  BROKEN            // Was ACTIVE but DNS/routing/cert has failed
-  FAILED            // Verification failed (permanent)
+  VALIDATING // Ownership confirmed, checking DNS propagation + routing
+  TLS_PENDING // DNS + routing verified, SSL certificate in flight
+  ACTIVE // All checks passed: DNS + routing + SSL all done, serving traffic
+  BROKEN // Was ACTIVE but DNS/routing/cert has failed
+  FAILED // Verification failed (permanent)
 }
 
 enum SslStatus {
-  PENDING   // Not yet issued
-  ISSUING   // ACME certificate in flight
-  ACTIVE    // Certificate issued and serving
-  FAILED    // Cert issuance or renewal failed
-  EXPIRED   // Cert was valid but has expired
+  PENDING // Not yet issued
+  ISSUING // ACME certificate in flight
+  ACTIVE // Certificate issued and serving
+  FAILED // Cert issuance or renewal failed
+  EXPIRED // Cert was valid but has expired
 }
 
 // =============================================
@@ -452,34 +454,37 @@ enum SslStatus {
 // =============================================
 
 model AppUser {
-  id           String    @id @default(uuid())
-  projectId    String    @map("project_id")
-  email        String    @db.VarChar(255)
-  passwordHash String?   @map("password_hash") @db.VarChar(255)
-  name         String?   @db.VarChar(255)
-  emailVerified Boolean  @default(false) @map("email_verified")
-  verificationToken String? @map("verification_token") @db.VarChar(255)
-  resetToken   String?   @map("reset_token") @db.VarChar(255)
-  resetTokenExpiry DateTime? @map("reset_token_expiry") @db.Timestamptz
-  createdAt    DateTime  @default(now()) @map("created_at") @db.Timestamptz
-  updatedAt    DateTime  @updatedAt @map("updated_at") @db.Timestamptz
+  id                String    @id @default(uuid())
+  projectId         String    @map("project_id")
+  email             String    @db.VarChar(255)
+  passwordHash      String?   @map("password_hash") @db.VarChar(255)
+  name              String?   @db.VarChar(255)
+  emailVerified     Boolean   @default(false) @map("email_verified")
+  verificationToken String?   @map("verification_token") @db.VarChar(255)
+  resetToken        String?   @map("reset_token") @db.VarChar(255)
+  resetTokenExpiry  DateTime? @map("reset_token_expiry") @db.Timestamptz
+  createdAt         DateTime  @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt         DateTime  @updatedAt @map("updated_at") @db.Timestamptz
 
-  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
-  sessions AppSession[]
-  roles    AppUserRole[]
+  project       Project           @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  sessions      AppSession[]
+  roles         AppUserRole[]
+  oauthAccounts AppOAuthAccount[]
 
   @@unique([projectId, email])
   @@map("projects.app_users")
 }
 
 model AppSession {
-  id           String   @id @default(uuid())
-  userId       String   @map("user_id")
-  tokenHash    String   @map("token_hash") @db.VarChar(255)
-  expiresAt   DateTime @map("expires_at") @db.Timestamptz
-  ipAddress    String?  @map("ip_address") @db.VarChar(45)
-  userAgent    String?  @map("user_agent") @db.Text
-  createdAt    DateTime @default(now()) @map("created_at") @db.Timestamptz
+  id         String    @id @default(uuid())
+  userId     String    @map("user_id")
+  tokenHash  String    @map("token_hash") @db.VarChar(255)
+  expiresAt  DateTime  @map("expires_at") @db.Timestamptz
+  ipAddress  String?   @map("ip_address") @db.VarChar(45)
+  userAgent  String?   @map("user_agent") @db.Text
+  createdAt  DateTime  @default(now()) @map("created_at") @db.Timestamptz
+  revokedAt  DateTime? @map("revoked_at") @db.Timestamptz
+  lastUsedAt DateTime? @map("last_used_at") @db.Timestamptz
 
   user AppUser @relation(fields: [userId], references: [id], onDelete: Cascade)
 
@@ -487,13 +492,13 @@ model AppSession {
 }
 
 model AppRole {
-  id        String   @id @default(uuid())
-  projectId String   @map("project_id")
-  name      String   @db.VarChar(100)
-  permissions Json   @default("[]")
-  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz
+  id          String   @id @default(uuid())
+  projectId   String   @map("project_id")
+  name        String   @db.VarChar(100)
+  permissions Json     @default("[]")
+  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz
 
-  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  project Project       @relation(fields: [projectId], references: [id], onDelete: Cascade)
   users   AppUserRole[]
 
   @@unique([projectId, name])
@@ -512,6 +517,50 @@ model AppUserRole {
   @@map("projects.app_user_roles")
 }
 
+enum AuthProviderName {
+  GOOGLE
+  GITHUB
+
+  @@map("projects.AuthProviderName")
+}
+
+model AuthProvider {
+  id                    String           @id @default(uuid())
+  projectId             String           @map("project_id")
+  provider              AuthProviderName
+  enabled               Boolean          @default(true)
+  encryptedClientId     String           @map("encrypted_client_id") @db.VarChar(512)
+  encryptedClientSecret String           @map("encrypted_client_secret") @db.VarChar(1024)
+  scopes                Json             @default("[]")
+  redirectUri           String?          @map("redirect_uri") @db.VarChar(512)
+  createdAt             DateTime         @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt             DateTime         @updatedAt @map("updated_at") @db.Timestamptz
+
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@unique([projectId, provider])
+  @@index([projectId])
+  @@map("projects.auth_providers")
+}
+
+model AppOAuthAccount {
+  id             String           @id @default(uuid())
+  appUserId      String           @map("app_user_id")
+  projectId      String           @map("project_id")
+  provider       AuthProviderName
+  providerUserId String           @map("provider_user_id") @db.VarChar(255)
+  providerEmail  String?          @map("provider_email") @db.VarChar(255)
+  createdAt      DateTime         @default(now()) @map("created_at") @db.Timestamptz
+
+  appUser AppUser @relation(fields: [appUserId], references: [id], onDelete: Cascade)
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerUserId])
+  @@unique([appUserId, provider])
+  @@index([projectId])
+  @@map("projects.app_oauth_accounts")
+}
+
 // =============================================
 // EMAIL SCHEMA
 // =============================================
@@ -528,11 +577,11 @@ model EmailDomain {
   dmarcVerified  Boolean           @default(false) @map("dmarc_verified")
   mxVerified     Boolean           @default(false) @map("mx_verified")
   dkimSelector   String?           @map("dkim_selector") @db.VarChar(255)
-  ownershipToken String?           @map("ownership_token") @db.VarChar(255)  // TXT record value for ownership verification
+  ownershipToken String?           @map("ownership_token") @db.VarChar(255) // TXT record value for ownership verification
   verifiedAt     DateTime?         @map("verified_at") @db.Timestamptz
   createdAt      DateTime          @default(now()) @map("created_at") @db.Timestamptz
 
-  project          Project           @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  project          Project            @relation(fields: [projectId], references: [id], onDelete: Cascade)
   mailboxes        EmailMailbox[]
   aliases          EmailAlias[]
   senderIdentities SenderIdentity[]
@@ -544,24 +593,24 @@ model EmailDomain {
 }
 
 enum EmailDomainStatus {
-  PENDING           // Created, ownership token generated — waiting for TXT record
-  VERIFIED         // Ownership TXT confirmed, DNS (DKIM/SPF/DMARC/MX) configured
-  ACTIVE           // All checks passed — can send/receive
-  FAILED           // Verification failed permanently
+  PENDING // Created, ownership token generated — waiting for TXT record
+  VERIFIED // Ownership TXT confirmed, DNS (DKIM/SPF/DMARC/MX) configured
+  ACTIVE // All checks passed — can send/receive
+  FAILED // Verification failed permanently
 }
 
 // Real mailbox accounts on Stalwart (IMAP/SMTP access).
 // Passwords are owned entirely by Stalwart — platform only stores stalwartAccountId.
 model EmailMailbox {
-  id                 String    @id @default(uuid())
-  domainId           String    @map("domain_id")
-  localPart          String   @db.VarChar(255)
-  name               String?  @db.VarChar(255)
-  quota              BigInt   @default(10737418240)
-  isActive           Boolean  @default(true) @map("is_active")
-  stalwartAccountId  String?  @map("stalwart_account_id") @db.VarChar(255)
-  createdAt          DateTime @default(now()) @map("created_at") @db.Timestamptz
-  updatedAt          DateTime @updatedAt @map("updated_at") @db.Timestamptz
+  id                String   @id @default(uuid())
+  domainId          String   @map("domain_id")
+  localPart         String   @db.VarChar(255)
+  name              String?  @db.VarChar(255)
+  quota             BigInt   @default(10737418240)
+  isActive          Boolean  @default(true) @map("is_active")
+  stalwartAccountId String?  @map("stalwart_account_id") @db.VarChar(255)
+  createdAt         DateTime @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt         DateTime @updatedAt @map("updated_at") @db.Timestamptz
 
   domain   EmailDomain    @relation(fields: [domainId], references: [id], onDelete: Cascade)
   messages EmailMessage[]
@@ -573,16 +622,16 @@ model EmailMailbox {
 // Alias addresses that forward to mailboxes, external addresses, or webhooks.
 // Routing lives in Stalwart — platform stores management metadata.
 model EmailAlias {
-  id          String    @id @default(uuid())
-  domainId    String    @map("domain_id")
+  id          String   @id @default(uuid())
+  domainId    String   @map("domain_id")
   localPart   String   @db.VarChar(255)
   description String?  @db.Text
-  isActive    Boolean   @default(true) @map("is_active")
+  isActive    Boolean  @default(true) @map("is_active")
   // JSON array of forwarding targets:
   // [{ type: "mailbox", mailboxId: "uuid" }, { type: "external", address: "foo@example.com" }, { type: "webhook", url: "https://..." }]
   targets     Json     @default("[]")
-  createdAt   DateTime  @default(now()) @map("created_at") @db.Timestamptz
-  updatedAt   DateTime  @updatedAt @map("updated_at") @db.Timestamptz
+  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt   DateTime @updatedAt @map("updated_at") @db.Timestamptz
 
   domain EmailDomain @relation(fields: [domainId], references: [id], onDelete: Cascade)
 
@@ -593,12 +642,12 @@ model EmailAlias {
 // Sender identities for API-based sending (Resend-style).
 // These may exist without a corresponding mailbox.
 model SenderIdentity {
-  id         String    @id @default(uuid())
-  domainId   String    @map("domain_id")
+  id         String   @id @default(uuid())
+  domainId   String   @map("domain_id")
   email      String   @db.VarChar(255)
   name       String?  @db.VarChar(255)
   isVerified Boolean  @default(false) @map("is_verified")
-  createdAt  DateTime  @default(now()) @map("created_at") @db.Timestamptz
+  createdAt  DateTime @default(now()) @map("created_at") @db.Timestamptz
 
   domain   EmailDomain    @relation(fields: [domainId], references: [id], onDelete: Cascade)
   messages EmailMessage[]
@@ -611,15 +660,15 @@ model SenderIdentity {
 model EmailApiKey {
   id         String    @id @default(uuid())
   projectId  String    @map("project_id")
-  name       String   @db.VarChar(255)
-  keyHash    String   @map("key_hash") @db.VarChar(255)
+  name       String    @db.VarChar(255)
+  keyHash    String    @map("key_hash") @db.VarChar(255)
   // String scopes: email.send | email.domains.read | email.mailboxes.read | email.messages.read | email.identities.read
-  scopes     String[] @default(["email.send"])
+  scopes     String[]  @default(["email.send"])
   lastUsedAt DateTime? @map("last_used_at") @db.Timestamptz
   createdAt  DateTime  @default(now()) @map("created_at") @db.Timestamptz
 
   project Project         @relation(fields: [projectId], references: [id], onDelete: Cascade)
-  usages EmailApiUsage[]
+  usages  EmailApiUsage[]
 
   @@map("email.api_keys")
 }
@@ -628,25 +677,25 @@ model EmailApiKey {
 // Metadata rows are created for: outbound sent, delivery events (delivered/bounced), and automation triggers.
 // Inbox browsing reads directly from JMAP — not from this table.
 model EmailMessage {
-  id         String        @id @default(uuid())
-  mailboxId  String?       @map("mailbox_id")
-  senderIdentityId String? @map("sender_identity_id")
-  projectId  String        @map("project_id")
-  from       String        @db.VarChar(255)
-  to         String        @db.VarChar(255)
-  subject    String        @db.VarChar(500)
-  sizeBytes  BigInt        @default(0) @map("size_bytes")
-  isRead     Boolean       @default(false) @map("is_read")
-  isStarred  Boolean       @default(false) @map("is_starred")
-  isDraft    Boolean       @default(false) @map("is_draft")
-  spamScore  Float?        @map("spam_score")
-  status     EmailStatus   @default(QUEUED)
-  error      String?       @db.Text
-  createdAt  DateTime      @default(now()) @map("created_at") @db.Timestamptz
+  id               String      @id @default(uuid())
+  mailboxId        String?     @map("mailbox_id")
+  senderIdentityId String?     @map("sender_identity_id")
+  projectId        String      @map("project_id")
+  from             String      @db.VarChar(255)
+  to               String      @db.VarChar(255)
+  subject          String      @db.VarChar(500)
+  sizeBytes        BigInt      @default(0) @map("size_bytes")
+  isRead           Boolean     @default(false) @map("is_read")
+  isStarred        Boolean     @default(false) @map("is_starred")
+  isDraft          Boolean     @default(false) @map("is_draft")
+  spamScore        Float?      @map("spam_score")
+  status           EmailStatus @default(QUEUED)
+  error            String?     @db.Text
+  createdAt        DateTime    @default(now()) @map("created_at") @db.Timestamptz
 
-  mailbox       EmailMailbox?   @relation(fields: [mailboxId], references: [id], onDelete: SetNull)
+  mailbox        EmailMailbox?   @relation(fields: [mailboxId], references: [id], onDelete: SetNull)
   senderIdentity SenderIdentity? @relation(fields: [senderIdentityId], references: [id], onDelete: SetNull)
-  project        Project        @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  project        Project         @relation(fields: [projectId], references: [id], onDelete: Cascade)
 
   @@index([mailboxId, createdAt])
   @@index([projectId, createdAt])
@@ -656,13 +705,13 @@ model EmailMessage {
 // Catch-all rules — forwarded to a mailbox, external address, or webhook.
 // Rate-limited to prevent spam amplification via public catch-all domains.
 model CatchAllRule {
-  id        String   @id @default(uuid())
-  domainId  String   @map("domain_id")
+  id                String   @id @default(uuid())
+  domainId          String   @map("domain_id")
   // { type: "mailbox", mailboxId } | { type: "external", address } | { type: "webhook", url }
-  target    Json
-  isActive  Boolean  @default(true) @map("is_active")
-  messagesPerMinute Int @default(60) @map("messages_per_minute")  // rate-limit guard
-  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz
+  target            Json
+  isActive          Boolean  @default(true) @map("is_active")
+  messagesPerMinute Int      @default(60) @map("messages_per_minute") // rate-limit guard
+  createdAt         DateTime @default(now()) @map("created_at") @db.Timestamptz
 
   domain EmailDomain @relation(fields: [domainId], references: [id], onDelete: Cascade)
 
@@ -673,11 +722,11 @@ model CatchAllRule {
 // Suppression list entries — prevents sending to known bad recipients.
 // Written by bounce/complaint handlers; checked at send time.
 model EmailSuppression {
-  id          String           @id @default(uuid())
-  domainId   String           @map("domain_id")
-  email       String           @db.VarChar(255)
-  reason      SuppressionReason
-  createdAt   DateTime        @default(now()) @map("created_at") @db.Timestamptz
+  id        String            @id @default(uuid())
+  domainId  String            @map("domain_id")
+  email     String            @db.VarChar(255)
+  reason    SuppressionReason
+  createdAt DateTime          @default(now()) @map("created_at") @db.Timestamptz
 
   domain EmailDomain @relation(fields: [domainId], references: [id], onDelete: Cascade)
 
@@ -686,32 +735,32 @@ model EmailSuppression {
 }
 
 enum SuppressionReason {
-  BOUNCE     // Permanent failure (550 user unknown)
-  COMPLAINT  // Spam complaint (FBL)
+  BOUNCE // Permanent failure (550 user unknown)
+  COMPLAINT // Spam complaint (FBL)
   UNSUBSCRIBE // Recipient unsubscribed
-  MANUAL     // Manually suppressed by user
+  MANUAL // Manually suppressed by user
 }
 
 // Tracks per-project per-key email API usage for rate limiting and billing.
 model EmailApiUsage {
-  id          String   @id @default(uuid())
-  projectId  String   @map("project_id")
-  apiKeyId   String   @map("api_key_id")
-  date       DateTime @default(now()) @map("date") @db.Timestamptz
-  sends      Int      @default(0)
-  failures   Int      @default(0)
-  bounces    Int      @default(0)
+  id        String   @id @default(uuid())
+  projectId String   @map("project_id")
+  apiKeyId  String   @map("api_key_id")
+  date      DateTime @default(now()) @map("date") @db.Timestamptz
+  sends     Int      @default(0)
+  failures  Int      @default(0)
+  bounces   Int      @default(0)
 
   // Plan limits (set at key creation time, read at query time)
   dailyLimit   Int @default(1000) @map("daily_limit")
   monthlyLimit Int @default(30000) @map("monthly_limit")
 
   // Blocking state
-  blockedUntil   DateTime? @map("blocked_until") @db.Timestamptz
+  blockedUntil  DateTime? @map("blocked_until") @db.Timestamptz
   lastFailureAt DateTime? @map("last_failure_at") @db.Timestamptz
 
-  project Project    @relation(fields: [projectId], references: [id], onDelete: Cascade)
-  apiKey EmailApiKey @relation(fields: [apiKeyId], references: [id], onDelete: Cascade)
+  project Project     @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  apiKey  EmailApiKey @relation(fields: [apiKeyId], references: [id], onDelete: Cascade)
 
   @@unique([projectId, apiKeyId, date])
   @@index([projectId, date])
@@ -744,7 +793,7 @@ model RealtimeChannel {
   accessToken String?  @map("access_token") @db.VarChar(255)
   createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz
 
-  project  Project             @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  project  Project            @relation(fields: [projectId], references: [id], onDelete: Cascade)
   messages RealtimeMessage[]
   presence RealtimePresence[]
 
@@ -784,31 +833,31 @@ model RealtimePresence {
 // =============================================
 
 model ManagedDatabase {
-  id                   String   @id @default(uuid())
-  projectId            String   @map("project_id")
-  name                 String   @db.VarChar(255)
-  environment          String   @default("production") @db.VarChar(50)  // production | staging | preview | development
-  type                 String   @default("postgresql") @db.VarChar(50)
-  version              String   @default("15") @db.VarChar(20)
-  size                 String   @default("small") @db.VarChar(50)
-  usedBytes            BigInt   @default(0) @map("used_bytes")
-  maxConnections       Int      @default(20) @map("max_connections")
-  status               String   @default("provisioning") @db.VarChar(50)
-  host                 String?  @db.VarChar(255)
-  port                 Int?     @map("port")
-  username             String?  @db.VarChar(255)
-  connectionInfo        String?  @map("connection_info") @db.Text
-  settings             Json     @default("{}")
-  backupRetentionDays  Int      @default(7) @map("backup_retention_days")
-  createdAt            DateTime @default(now()) @map("created_at") @db.Timestamptz
-  updatedAt            DateTime @updatedAt @map("updated_at") @db.Timestamptz
+  id                  String   @id @default(uuid())
+  projectId           String   @map("project_id")
+  name                String   @db.VarChar(255)
+  environment         String   @default("production") @db.VarChar(50) // production | staging | preview | development
+  type                String   @default("postgresql") @db.VarChar(50)
+  version             String   @default("15") @db.VarChar(20)
+  size                String   @default("small") @db.VarChar(50)
+  usedBytes           BigInt   @default(0) @map("used_bytes")
+  maxConnections      Int      @default(20) @map("max_connections")
+  status              String   @default("provisioning") @db.VarChar(50)
+  host                String?  @db.VarChar(255)
+  port                Int?     @map("port")
+  username            String?  @db.VarChar(255)
+  connectionInfo      String?  @map("connection_info") @db.Text
+  settings            Json     @default("{}")
+  backupRetentionDays Int      @default(7) @map("backup_retention_days")
+  createdAt           DateTime @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt           DateTime @updatedAt @map("updated_at") @db.Timestamptz
 
   project Project          @relation(fields: [projectId], references: [id], onDelete: Cascade)
   backups DatabaseBackup[]
-  metrics  DatabaseMetric[]
+  metrics DatabaseMetric[]
 
   // Future-proofing: multi-cluster support (single cluster today)
-  clusterId String?  @map("cluster_id")
+  clusterId String? @map("cluster_id")
   // 'internal-postgres' | 'dedicated-postgres' | 'external'
   provider  String  @default("internal-postgres") @db.VarChar(50)
 
@@ -834,19 +883,19 @@ model DatabaseBackup {
 // Per-database metrics snapshot written by the scheduler (Phase 14).
 // Enables dashboard graphs, alerts, and billing attribution.
 model DatabaseMetric {
-  id           String   @id @default(uuid())
-  databaseId   String   @map("database_id")
-  recordedAt   DateTime @default(now()) @map("recorded_at") @db.Timestamptz
+  id         String   @id @default(uuid())
+  databaseId String   @map("database_id")
+  recordedAt DateTime @default(now()) @map("recorded_at") @db.Timestamptz
 
-  usedBytes       BigInt @default(0) @map("used_bytes")
-  activeConns    Int    @default(0) @map("active_conns")
-  maxConns       Int    @default(0) @map("max_conns")
-  queriesPerSec  Float  @default(0) @map("queries_per_sec")
+  usedBytes     BigInt @default(0) @map("used_bytes")
+  activeConns   Int    @default(0) @map("active_conns")
+  maxConns      Int    @default(0) @map("max_conns")
+  queriesPerSec Float  @default(0) @map("queries_per_sec")
 
   // Latest backup age (null if no backup yet)
-  lastBackupAt    DateTime? @map("last_backup_at") @db.Timestamptz
-  lastBackupSize  BigInt    @default(0) @map("last_backup_size")
-  backupVerified  Boolean   @default(false) @map("backup_verified")
+  lastBackupAt   DateTime? @map("last_backup_at") @db.Timestamptz
+  lastBackupSize BigInt    @default(0) @map("last_backup_size")
+  backupVerified Boolean   @default(false) @map("backup_verified")
 
   database ManagedDatabase @relation(fields: [databaseId], references: [id], onDelete: Cascade)
 
@@ -859,19 +908,19 @@ model DatabaseMetric {
 // =============================================
 
 model Function {
-  id              String   @id @default(uuid())
-  projectId       String   @map("project_id")
-  name            String   @db.VarChar(255)
-  runtime         String   @default("nodejs") @db.VarChar(50)
-  entryPoint      String   @default("handler") @db.VarChar(100)
-  memoryMb        Int      @default(256)
-  timeoutSeconds  Int      @default(30)
-  envVars         Json     @default("{}")
-  settings        Json     @default("{}")
-  currentVersion  String?  @map("current_version") @db.VarChar(100)
-  status          String   @default("created") @db.VarChar(50)
-  createdAt       DateTime @default(now()) @map("created_at") @db.Timestamptz
-  updatedAt       DateTime @updatedAt @map("updated_at") @db.Timestamptz
+  id             String   @id @default(uuid())
+  projectId      String   @map("project_id")
+  name           String   @db.VarChar(255)
+  runtime        String   @default("nodejs") @db.VarChar(50)
+  entryPoint     String   @default("handler") @db.VarChar(100)
+  memoryMb       Int      @default(256)
+  timeoutSeconds Int      @default(30)
+  envVars        Json     @default("{}")
+  settings       Json     @default("{}")
+  currentVersion String?  @map("current_version") @db.VarChar(100)
+  status         String   @default("created") @db.VarChar(50)
+  createdAt      DateTime @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt      DateTime @updatedAt @map("updated_at") @db.Timestamptz
 
   project Project       @relation(fields: [projectId], references: [id], onDelete: Cascade)
   logs    FunctionLog[]
@@ -881,16 +930,16 @@ model Function {
 }
 
 model FunctionLog {
-  id              String   @id @default(uuid())
-  functionId      String   @map("function_id")
-  version         String   @db.VarChar(100)
-  status          String   @db.VarChar(50)
-  durationMs      Int      @default(0) @map("duration_ms")
-  memoryUsedMb    Int?     @map("memory_used_mb")
-  requestPayload  String?  @map("request_payload") @db.Text
-  responseOutput  String?  @map("response_output") @db.Text
-  errorMessage    String?  @map("error_message") @db.Text
-  createdAt       DateTime @default(now()) @map("created_at") @db.Timestamptz
+  id             String   @id @default(uuid())
+  functionId     String   @map("function_id")
+  version        String   @db.VarChar(100)
+  status         String   @db.VarChar(50)
+  durationMs     Int      @default(0) @map("duration_ms")
+  memoryUsedMb   Int?     @map("memory_used_mb")
+  requestPayload String?  @map("request_payload") @db.Text
+  responseOutput String?  @map("response_output") @db.Text
+  errorMessage   String?  @map("error_message") @db.Text
+  createdAt      DateTime @default(now()) @map("created_at") @db.Timestamptz
 
   function Function @relation(fields: [functionId], references: [id], onDelete: Cascade)
 
@@ -902,22 +951,22 @@ model FunctionLog {
 // =============================================
 
 model Queue {
-  id                 String   @id @default(uuid())
-  projectId          String   @map("project_id")
-  name               String   @db.VarChar(255)
-  type               String   @default("stream") @db.VarChar(50)
-  retentionDays      Int      @default(7)
-  maxMessages        Int      @default(100000)
-  maxBytes           Int      @default(1073741824)
-  replicas           Int      @default(1)
-  status             String   @default("active") @db.VarChar(50)
-  deadLetterQueue    String?  @map("dead_letter_queue") @db.VarChar(255)
-  retryAttempts      Int      @default(3)
-  retryDelaySeconds  Int      @default(60)
-  createdAt          DateTime @default(now()) @map("created_at") @db.Timestamptz
-  updatedAt          DateTime @updatedAt @map("updated_at") @db.Timestamptz
+  id                String   @id @default(uuid())
+  projectId         String   @map("project_id")
+  name              String   @db.VarChar(255)
+  type              String   @default("stream") @db.VarChar(50)
+  retentionDays     Int      @default(7)
+  maxMessages       Int      @default(100000)
+  maxBytes          Int      @default(1073741824)
+  replicas          Int      @default(1)
+  status            String   @default("active") @db.VarChar(50)
+  deadLetterQueue   String?  @map("dead_letter_queue") @db.VarChar(255)
+  retryAttempts     Int      @default(3)
+  retryDelaySeconds Int      @default(60)
+  createdAt         DateTime @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt         DateTime @updatedAt @map("updated_at") @db.Timestamptz
 
-  project Project         @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  project  Project        @relation(fields: [projectId], references: [id], onDelete: Cascade)
   messages QueueMessage[]
 
   @@unique([projectId, name])
@@ -948,22 +997,22 @@ model QueueMessage {
 // =============================================
 
 model CronJob {
-  id                String   @id @default(uuid())
-  projectId         String   @map("project_id")
-  name              String   @db.VarChar(255)
-  cronExpression    String   @db.VarChar(100)
-  timezone          String   @default("UTC") @db.VarChar(50)
-  endpoint          String?  @db.VarChar(500)
-  functionId        String?  @map("function_id") @db.VarChar(255)
-  payload           Json     @default("{}")
-  enabled           Boolean  @default(true)
-  retryAttempts     Int      @default(3)
-  retryDelaySeconds Int      @default(60)
-  timeoutSeconds   Int      @default(300)
-  lastRunAt        DateTime? @map("last_run_at") @db.Timestamptz
-  nextRunAt        DateTime? @map("next_run_at") @db.Timestamptz
-  createdAt        DateTime @default(now()) @map("created_at") @db.Timestamptz
-  updatedAt        DateTime @updatedAt @map("updated_at") @db.Timestamptz
+  id                String    @id @default(uuid())
+  projectId         String    @map("project_id")
+  name              String    @db.VarChar(255)
+  cronExpression    String    @db.VarChar(100)
+  timezone          String    @default("UTC") @db.VarChar(50)
+  endpoint          String?   @db.VarChar(500)
+  functionId        String?   @map("function_id") @db.VarChar(255)
+  payload           Json      @default("{}")
+  enabled           Boolean   @default(true)
+  retryAttempts     Int       @default(3)
+  retryDelaySeconds Int       @default(60)
+  timeoutSeconds    Int       @default(300)
+  lastRunAt         DateTime? @map("last_run_at") @db.Timestamptz
+  nextRunAt         DateTime? @map("next_run_at") @db.Timestamptz
+  createdAt         DateTime  @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt         DateTime  @updatedAt @map("updated_at") @db.Timestamptz
 
   project Project      @relation(fields: [projectId], references: [id], onDelete: Cascade)
   runs    CronJobRun[]
@@ -979,7 +1028,7 @@ model CronJobRun {
   startedAt    DateTime  @default(now()) @map("started_at") @db.Timestamptz
   completedAt  DateTime? @map("completed_at") @db.Timestamptz
   errorMessage String?   @map("error_message") @db.Text
-  createdAt   DateTime  @default(now()) @map("created_at") @db.Timestamptz
+  createdAt    DateTime  @default(now()) @map("created_at") @db.Timestamptz
 
   cronJob CronJob @relation(fields: [cronJobId], references: [id], onDelete: Cascade)
 
@@ -993,9 +1042,9 @@ model CronJobRun {
 model Metric {
   id        String   @id @default(uuid())
   projectId String   @map("project_id")
-  metric   String   @db.VarChar(255)
-  value    Float    @db.DoublePrecision
-  labels   Json     @default("{}")
+  metric    String   @db.VarChar(255)
+  value     Float    @db.DoublePrecision
+  labels    Json     @default("{}")
   timestamp DateTime @default(now()) @db.Timestamptz
 
   project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
@@ -1025,20 +1074,20 @@ model AlertRule {
 }
 
 model Alert {
-  id          String    @id @default(uuid())
-  projectId   String    @map("project_id")
-  ruleId      String    @map("rule_id")
-  severity    String    @db.VarChar(50)
-  status      String    @default("pending") @db.VarChar(50)
-  message     String    @db.Text
-  acknowledgedAt DateTime? @map("acknowledged_at") @db.Timestamptz
-  resolvedAt  DateTime? @map("resolved_at") @db.Timestamptz
+  id               String    @id @default(uuid())
+  projectId        String    @map("project_id")
+  ruleId           String    @map("rule_id")
+  severity         String    @db.VarChar(50)
+  status           String    @default("pending") @db.VarChar(50)
+  message          String    @db.Text
+  acknowledgedAt   DateTime? @map("acknowledged_at") @db.Timestamptz
+  resolvedAt       DateTime? @map("resolved_at") @db.Timestamptz
   firstTriggeredAt DateTime? @map("first_triggered_at") @db.Timestamptz
-  firedAt     DateTime? @map("fired_at") @db.Timestamptz
-  createdAt   DateTime  @default(now()) @map("created_at") @db.Timestamptz
+  firedAt          DateTime? @map("fired_at") @db.Timestamptz
+  createdAt        DateTime  @default(now()) @map("created_at") @db.Timestamptz
 
-  project Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
-  rule   AlertRule @relation(fields: [ruleId], references: [id], onDelete: Cascade)
+  project       Project        @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  rule          AlertRule      @relation(fields: [ruleId], references: [id], onDelete: Cascade)
   notifications Notification[]
 
   @@map("monitoring.alerts")
@@ -1046,15 +1095,15 @@ model Alert {
 
 /// Delivery record for a single notification attempt on an alert.
 model Notification {
-  id        String   @id @default(uuid())
-  alertId   String   @map("alert_id")
-  channelId String   @map("channel_id")
-  type      String   @db.VarChar(50)
-  status    String   @default("pending") @db.VarChar(50)
-  error     String?  @db.Text
-  attempts  Int      @default(0)
+  id        String    @id @default(uuid())
+  alertId   String    @map("alert_id")
+  channelId String    @map("channel_id")
+  type      String    @db.VarChar(50)
+  status    String    @default("pending") @db.VarChar(50)
+  error     String?   @db.Text
+  attempts  Int       @default(0)
   sentAt    DateTime? @map("sent_at") @db.Timestamptz
-  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz
+  createdAt DateTime  @default(now()) @map("created_at") @db.Timestamptz
 
   alert Alert @relation(fields: [alertId], references: [id], onDelete: Cascade)
 
@@ -1088,7 +1137,7 @@ model LogStream {
   retentionDays Int      @default(30)
   createdAt     DateTime @default(now()) @map("created_at") @db.Timestamptz
 
-  project Project     @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  project Project    @relation(fields: [projectId], references: [id], onDelete: Cascade)
   entries LogEntry[]
 
   @@unique([projectId, name])
@@ -1137,17 +1186,17 @@ model Template {
 // =============================================
 
 model AIConversation {
-  id          String    @id @default(uuid())
-  projectId   String    @map("project_id")
-  userId      String?   @map("user_id")
-  type        String    @default("general") @db.VarChar(50)
-  model       String    @db.VarChar(100)
-  metadata    Json      @default("{}")
-  tokenCount  Int       @default(0) @map("token_count")
-  createdAt   DateTime  @default(now()) @map("created_at") @db.Timestamptz
-  updatedAt   DateTime  @updatedAt @map("updated_at") @db.Timestamptz
+  id         String   @id @default(uuid())
+  projectId  String   @map("project_id")
+  userId     String?  @map("user_id")
+  type       String   @default("general") @db.VarChar(50)
+  model      String   @db.VarChar(100)
+  metadata   Json     @default("{}")
+  tokenCount Int      @default(0) @map("token_count")
+  createdAt  DateTime @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt  DateTime @updatedAt @map("updated_at") @db.Timestamptz
 
-  project  Project      @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  project  Project     @relation(fields: [projectId], references: [id], onDelete: Cascade)
   messages AIMessage[]
 
   @@index([projectId, createdAt])
@@ -1175,32 +1224,32 @@ model AIMessage {
 // =============================================
 
 model MarketplaceItem {
-  id          String   @id @default(uuid())
-  type        String   @db.VarChar(50) // 'skill' | 'template' | 'integration'
-  name        String   @db.VarChar(255)
-  slug        String   @unique @db.VarChar(255)
-  description String?  @db.Text
-  category    String   @db.VarChar(100)
-  subcategory String?  @db.VarChar(100)
-  content     String?  @db.Text // skill code, template content, integration config
-  metadata    Json     @default("{}")
-  authorId    String?  @map("author_id") @db.VarChar(255)
-  authorName  String?  @map("author_name") @db.VarChar(255)
-  website     String?  @db.VarChar(500)
-  githubUrl   String?  @map("github_url") @db.VarChar(500)
-  npmPackage  String?  @map("npm_package") @db.VarChar(255)
-  version     String   @default("1.0.0") @db.VarChar(50)
-  downloads   Int      @default(0)
-  rating      Float    @default(0) @db.DoublePrecision
-  reviewCount Int      @default(0) @map("review_count")
-  isFeatured  Boolean  @default(false) @map("is_featured")
-  isVerified  Boolean  @default(false) @map("is_verified")
-  isActive    Boolean  @default(true) @map("is_active")
-  status      String   @default("pending") @db.VarChar(50) // pending, approved, rejected
-  submittedAt DateTime @default(now()) @map("submitted_at") @db.Timestamptz
+  id          String    @id @default(uuid())
+  type        String    @db.VarChar(50) // 'skill' | 'template' | 'integration'
+  name        String    @db.VarChar(255)
+  slug        String    @unique @db.VarChar(255)
+  description String?   @db.Text
+  category    String    @db.VarChar(100)
+  subcategory String?   @db.VarChar(100)
+  content     String?   @db.Text // skill code, template content, integration config
+  metadata    Json      @default("{}")
+  authorId    String?   @map("author_id") @db.VarChar(255)
+  authorName  String?   @map("author_name") @db.VarChar(255)
+  website     String?   @db.VarChar(500)
+  githubUrl   String?   @map("github_url") @db.VarChar(500)
+  npmPackage  String?   @map("npm_package") @db.VarChar(255)
+  version     String    @default("1.0.0") @db.VarChar(50)
+  downloads   Int       @default(0)
+  rating      Float     @default(0) @db.DoublePrecision
+  reviewCount Int       @default(0) @map("review_count")
+  isFeatured  Boolean   @default(false) @map("is_featured")
+  isVerified  Boolean   @default(false) @map("is_verified")
+  isActive    Boolean   @default(true) @map("is_active")
+  status      String    @default("pending") @db.VarChar(50) // pending, approved, rejected
+  submittedAt DateTime  @default(now()) @map("submitted_at") @db.Timestamptz
   approvedAt  DateTime? @map("approved_at") @db.Timestamptz
-  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz
-  updatedAt   DateTime @updatedAt @map("updated_at") @db.Timestamptz
+  createdAt   DateTime  @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt   DateTime  @updatedAt @map("updated_at") @db.Timestamptz
 
   reviews MarketplaceReview[]
 
@@ -1211,17 +1260,17 @@ model MarketplaceItem {
 }
 
 model MarketplaceReview {
-  id          String   @id @default(uuid())
-  itemId      String   @map("item_id")
-  userId      String?  @map("user_id") @db.VarChar(255)
-  userName    String?  @map("user_name") @db.VarChar(255)
-  rating      Int
-  title       String?  @db.VarChar(255)
-  content     String?  @db.Text
-  isVerified  Boolean  @default(false) @map("is_verified")
-  helpful     Int       @default(0)
-  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz
-  updatedAt   DateTime @updatedAt @map("updated_at") @db.Timestamptz
+  id         String   @id @default(uuid())
+  itemId     String   @map("item_id")
+  userId     String?  @map("user_id") @db.VarChar(255)
+  userName   String?  @map("user_name") @db.VarChar(255)
+  rating     Int
+  title      String?  @db.VarChar(255)
+  content    String?  @db.Text
+  isVerified Boolean  @default(false) @map("is_verified")
+  helpful    Int      @default(0)
+  createdAt  DateTime @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt  DateTime @updatedAt @map("updated_at") @db.Timestamptz
 
   item MarketplaceItem @relation(fields: [itemId], references: [id], onDelete: Cascade)
 
@@ -1234,16 +1283,16 @@ model MarketplaceReview {
 // =============================================
 
 model PlatformEvent {
-  id          String    @id // UUID — matches event.id
-  type        String    @db.VarChar(100)
-  timestamp   DateTime  @default(now()) @db.Timestamptz
-  actorId     String?   @map("actor_id") @db.VarChar(255)
-  actorType   String?   @map("actor_type") @db.VarChar(50)
+  id           String   @id // UUID — matches event.id
+  type         String   @db.VarChar(100)
+  timestamp    DateTime @default(now()) @db.Timestamptz
+  actorId      String?  @map("actor_id") @db.VarChar(255)
+  actorType    String?  @map("actor_type") @db.VarChar(50)
   resourceType String   @map("resource_type") @db.VarChar(100)
-  resourceId String    @map("resource_id") @db.VarChar(255)
-  metadata    Json     @default("{}")
-  ipAddress   String?   @map("ip_address") @db.VarChar(45)
-  userAgent   String?   @map("user_agent") @db.Text
+  resourceId   String   @map("resource_id") @db.VarChar(255)
+  metadata     Json     @default("{}")
+  ipAddress    String?  @map("ip_address") @db.VarChar(45)
+  userAgent    String?  @map("user_agent") @db.Text
 
   @@index([type, timestamp])
   @@index([resourceType, resourceId])

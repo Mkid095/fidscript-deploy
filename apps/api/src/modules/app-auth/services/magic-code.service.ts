@@ -17,7 +17,9 @@ export interface MagicCodeResult {
     id: string; projectId: string; email: string;
     name: string | null; emailVerified: boolean; createdAt: Date;
   };
-  token: string;
+  token?: string;           // legacy opaque token
+  accessToken?: string;     // JWT access token (when tokenService provided)
+  refreshToken?: string;    // JWT refresh token (when tokenService provided)
   expiresAt: Date;
 }
 
@@ -77,7 +79,13 @@ export class MagicCodeService {
     return { sent: true };
   }
 
-  async verifyCode(projectId: string, rawEmail: string, code: string, ipAddress?: string): Promise<MagicCodeResult> {
+  async verifyCode(
+    projectId: string,
+    rawEmail: string,
+    code: string,
+    ipAddress?: string,
+    tokenService?: any,
+  ): Promise<MagicCodeResult> {
     const email = rawEmail.toLowerCase().trim();
     const hashKey = `otp:hash:${projectId}:${email}`;
     const attKey = `otp:att:${projectId}:${email}`;
@@ -109,18 +117,36 @@ export class MagicCodeService {
       user.emailVerified = true;
     }
 
+    // Issue JWT tokens if tokenService is available; otherwise fall back to opaque token.
+    if (tokenService) {
+      const tokens = await tokenService.issueTokens(user.id, projectId, user.email, ipAddress);
+      await this.eventService.emit(
+        'auth.magic_code_verified', { userId: user.id, projectId, email },
+        { actorId: user.id, actorType: 'user', resourceType: 'app_user', resourceId: user.id, ipAddress },
+      );
+      await this.eventService.emit('auth.login_succeeded', { userId: user.id, projectId, email });
+      return {
+        user: {
+          id: user.id, projectId: user.projectId, email: user.email,
+          name: user.name, emailVerified: user.emailVerified, createdAt: user.createdAt,
+        },
+        accessToken: tokens.accessToken,
+        refreshToken: tokens.refreshToken,
+        expiresAt: tokens.expiresAt,
+      };
+    }
+
+    // Legacy opaque token (used when tokenService is not injected yet).
     const token = crypto.randomBytes(32).toString('hex');
     const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
     await this.prisma.appSession.create({
       data: { userId: user.id, tokenHash: await bcrypt.hash(token, BCRYPT_ROUNDS), expiresAt },
     });
-
     await this.eventService.emit(
       'auth.magic_code_verified', { userId: user.id, projectId, email },
       { actorId: user.id, actorType: 'user', resourceType: 'app_user', resourceId: user.id, ipAddress },
     );
     await this.eventService.emit('auth.login_succeeded', { userId: user.id, projectId, email });
-
     return {
       user: {
         id: user.id, projectId: user.projectId, email: user.email,
