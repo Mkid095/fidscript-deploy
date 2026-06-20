@@ -149,12 +149,17 @@ all work). So "auth works" is a downstream consequence of the one domain config,
 
 ## 14. Endpoint Documentation
 (See `backend/auth.md` for full DTOs.) New endpoints required by F02:
-- **`POST /auth/change-password`** — auth: JWT; body `{currentPassword,newPassword}`; output
-  `{accessToken,refreshToken,user}` (rotated) or 400 (weak)/401 (bad current). Emits `identity.user.updated`.
-- **`POST /auth/magic-code`** — public; body `{email}`; output `{sent:true}` always (200, no
-  enumeration); rate-limited; delivers 6-digit via Stalwart. Reuse the BaaS magic-code delivery path.
-- **`POST /auth/verify-magic-code`** — public; body `{email,code}`; output tokens or 400/401.
-- **Extend `GET /auth/me` (AUTH-10)** to include `mustChangePassword`.
+- **`POST /auth/change-password`** (**AUTH-18**) — auth: JWT; body `{currentPassword,newPassword}`
+  (new ≥12 + upper+lower+number; new≠current); output `{accessToken,refreshToken,user}` (session
+  rotated, `mustChangePassword` cleared) or 400 (weak)/401 (bad current). Emits `identity.user.password_changed`.
+- **`POST /auth/magic-code`** (**AUTH-19**) — public; body `{email}`; output `{sent:true}` always
+  (200, no enumeration); per-IP + per-email rate-limited; delivers a 6-digit code via Stalwart through
+  the **`PlatformMailService`** (a project-less system-mail sender — `SmtpSendService.send` is
+  project-scoped and can't be used for platform auth mail; verified during AUTH-3 implementation).
+- **`POST /auth/verify-magic-code`** (**AUTH-20**) — public; body `{email,code(6)}`; output tokens
+  (rotated session) or 401 (invalid/expired/≤5-attempts-exceeded). Emits `identity.user.magic_code_verified`.
+  The broken `verify-magic-link` path (AUTH-05/06) is removed — IDs retired, never recycled (rule 20).
+- **Extend `GET /auth/me` (AUTH-10)** to include `mustChangePassword` (done — AUTH-4).
 - **Schema:** add `User.mustChangePassword Boolean @default(false)`; seed true for install admin.
 
 ## 15. Feature Dependency Graph

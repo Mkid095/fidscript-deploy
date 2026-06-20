@@ -61,7 +61,7 @@ These exist only because the Authentication screen needs them. Do them only afte
 
 - `PREREQ-AUTH-1` — `User.mustChangePassword` field + seed-true for the install admin → **✅ Closed 2026-06-20**
 - `PREREQ-AUTH-2` — `POST /auth/change-password` endpoint → **✅ Closed 2026-06-20** (endpoint **AUTH-18**)
-- `PREREQ-AUTH-3` — platform magic-code (`/auth/magic-code` + `/auth/verify-magic-code`)
+- `PREREQ-AUTH-3` — platform magic-code (`/auth/magic-code` + `/auth/verify-magic-code`) → **✅ Closed 2026-06-20** (endpoints **AUTH-19** + **AUTH-20**)
 - `PREREQ-AUTH-4` — `mustChangePassword` flag surfaced on `GET /auth/me` → **✅ Closed 2026-06-20**
 
 ### Phase C — F05 blockers (after F02 is complete)
@@ -89,7 +89,7 @@ hardening plan (`docs/phases/phase-03.md`) covers these.
 |---|---|---|---|---|---|
 | `PREREQ-AUTH-1` | `User.mustChangePassword` field + seed-true for install admin | missing-behavior | F02 | Add `mustChangePassword Boolean @default(false)` to `User`; seed the install admin with `true` so first login forces a password change. _(alias: AUTH-1)_ | ✅ Closed — field added to `schema.prisma` + migration `20260620120000_auth_must_change_password` (ADD COLUMN DEFAULT false; no disruption to existing rows) + seed sets `true` on fresh-install admin. Typecheck + build clean 2026-06-20. |
 | `PREREQ-AUTH-2` | `POST /auth/change-password` endpoint | missing-endpoint | F02 | New route: validates current pw (bcrypt), enforces strength, sets `mustChangePassword=false`, rotates session. _(alias: AUTH-2; inventory ID **AUTH-18**)_ | ✅ Closed — `dto/change-password.dto.ts` (strength: ≥12 + upper+lower+number; new≠current) + `services/auth-password.service.ts` (verifies current, hashes new, clears flag, revokes originating session, mints fresh tokens, emits `identity.user.password_changed`) + `AUTH-18 POST /auth/change-password` route. Typecheck + build clean 2026-06-20. |
-| `PREREQ-AUTH-3` | Platform magic-code endpoints (`POST /auth/magic-code` + `POST /auth/verify-magic-code`) | missing-endpoint | F02 | 6-digit OTP, bcrypt-hashed + 10m expiry + attempt-limited, delivered via `SmtpSendService` (omit `dto.from` to use `SMTP_FROM`). Replaces the broken magic-link path (`AUTH-05/06` query `where email === token`, never emailed, never expires). _(alias: AUTH-3)_ | 🟥 Open |
+| `PREREQ-AUTH-3` | Platform magic-code endpoints (`POST /auth/magic-code` + `POST /auth/verify-magic-code`) | missing-endpoint | F02 | 6-digit OTP, bcrypt-hashed + 10m expiry + attempt-limited, delivered via `SmtpSendService` (omit `dto.from` to use `SMTP_FROM`). Replaces the broken magic-link path (`AUTH-05/06` query `where email === token`, never emailed, never expires). _(alias: AUTH-3; inventory IDs **AUTH-19** + **AUTH-20**)_ | ✅ Closed — `MagicCode` model + migration; new `AuthMagicCodeService` (6-digit `crypto.randomInt`, bcrypt-10, 10m expiry, ≤5 attempts, per-IP + per-email rate limits); delivered via a **new `PlatformMailService`** (project-less Stalwart send — `SmtpSendService.send` is project-scoped, unusable for platform mail); endpoints AUTH-19/AUTH-20; broken `verifyMagicLink` removed (AUTH-05/06 retired, never recycled). Typecheck + build clean 2026-06-20. Live email delivery pending VPS (KI-2). |
 | `PREREQ-AUTH-4` | `mustChangePassword` flag on `GET /auth/me` | missing-behavior | F02 | Include the flag in the `/auth/me` response so the client can gate the force-change screen. _(alias: AUTH-4)_ | ✅ Closed — `auth-profile.service.ts:getProfile` now selects `mustChangePassword`; `/auth/me` returns it. 2026-06-20. |
 | `PREREQ-AUTH-5` | Logout is a no-op | broken | F02 | `POST /auth/logout` reads `user.sessionId` which the strategy never sets. Carry `sessionId` in the access JWT; logout deletes the `Session` row. | ✅ Closed — `jwt.strategy.ts` surfaces `sessionId` on `request.user`; `auth.controller.ts:logout` → `authLogin.logout` revokes the `Session` row (`expiresAt = 0`) + emits `identity.user.logged_out`. Verified 2026-06-20. |
 | `PREREQ-AUTH-6` | Refresh-token rotation join is broken | broken | F02 | `POST /auth/refresh` expects a refresh *JWT* but `createSession` issues an *opaque* token. Align both halves to signed JWTs; rotate on use (expire old, mint new). | ✅ Closed — `auth-session.service.ts:createSession` mints a signed refresh JWT carrying `sessionId` (bcrypt-hashed in the row); `auth-token.service.ts:refreshToken` verifies the JWT, checks the session row, rotates it (old `expiresAt = 0`, new session minted). Verified 2026-06-20. |
@@ -190,10 +190,10 @@ These are **not bugs** — they're documented scope boundaries. The UI greys eac
 
 | Status | Count | Meaning |
 |---|---|---|
-| 🟥 Open | 3 | Must close before the phase that lists them can be implemented (Phase B: 1, Phase C: 2) |
+| 🟥 Open | 2 | Phase C only (PROJ-2/3, after F02) — **Phase B is code-complete** |
 | 🟧 Workable / UI-mitigated | 14 | UI works around it; close in a hardening pass before production |
 | 🟨 Hardening | 4 | Functional but insecure; close before any production claim |
-| ✅ Closed | 6 | `PREREQ-AUTH-1/2/4/5/6/7` (Phase A + AUTH-1/2/4 — 2026-06-20) |
+| ✅ Closed | 7 | `PREREQ-AUTH-1/2/3/4/5/6/7` (Phase A + all of Phase B — 2026-06-20) |
 
 ## Implementation-critical subset (the "close these first" list)
 
@@ -208,7 +208,7 @@ implemented in the code, verified 2026-06-20); Phase B is the active work; Phase
 **Phase B — F02 functional blockers (ACTIVE — 2 of 4 closed):**
 4. ~~`PREREQ-AUTH-1` mustChangePassword field + seed~~ ✅
 5. ~~`PREREQ-AUTH-2` change-password endpoint (AUTH-18)~~ ✅
-6. `PREREQ-AUTH-3` platform magic-code
+6. ~~`PREREQ-AUTH-3` platform magic-code (AUTH-19 + AUTH-20)~~ ✅
 7. ~~`PREREQ-AUTH-4` mustChangePassword on /auth/me~~ ✅
 
 **Phase C — F05 blockers (after F02):**

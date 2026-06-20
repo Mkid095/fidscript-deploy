@@ -9,7 +9,7 @@ import { JwtAuthGuard } from '@/modules/auth/jwt-auth.guard';
 import { AuthUser, CurrentUser } from '@/modules/auth/current-user.decorator';
 import { extractRequestContext } from '@/common/request-context';
 import {
-  RegisterDto, LoginDto, MagicLinkDto, VerifyMagicLinkDto,
+  RegisterDto, LoginDto, MagicCodeDto, VerifyMagicCodeDto,
   CreateApiKeyDto, UpdateProfileDto, RefreshTokenDto, MfaCodeDto, MfaChallengeDto,
   ChangePasswordDto,
 } from '@/modules/auth/dto/index';
@@ -68,19 +68,20 @@ export class AuthController {
     return this.authService.changePassword(user.userId, user.sessionId, dto, ipAddress, userAgent);
   }
 
-  @Post('magic-link')
+  @Post('magic-code')
   @HttpCode(HttpStatus.OK)
-  @ApiOperation({ summary: 'Request magic link login' })
-  async magicLink(@Body() dto: MagicLinkDto) {
-    return this.authService.magicLink(dto);
+  @ApiOperation({ summary: 'Request a 6-digit login code (email)' })
+  async magicCode(@Body() dto: MagicCodeDto, @Req() req: Request) {
+    const { ipAddress, userAgent } = extractRequestContext(req);
+    return this.authService.magicCode(dto, ipAddress, userAgent);
   }
 
-  @Post('verify-magic-link')
+  @Post('verify-magic-code')
   @HttpCode(HttpStatus.OK)
-  @ApiOperation({ summary: 'Verify magic link token' })
-  async verifyMagicLink(@Body() dto: VerifyMagicLinkDto, @Req() req: Request) {
-    const { ipAddress } = extractRequestContext(req);
-    return this.authService.verifyMagicLink(dto, ipAddress);
+  @ApiOperation({ summary: 'Verify the 6-digit login code' })
+  async verifyMagicCode(@Body() dto: VerifyMagicCodeDto, @Req() req: Request) {
+    const { ipAddress, userAgent } = extractRequestContext(req);
+    return this.authService.verifyMagicCode(dto, ipAddress, userAgent);
   }
 
   @Post('mfa/setup')

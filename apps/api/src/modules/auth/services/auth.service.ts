@@ -7,6 +7,7 @@ import { AuthProfileService } from '@/modules/auth/services/auth-profile.service
 import { AuthSessionMgmtService } from '@/modules/auth/services/auth-session-mgmt.service';
 import { AuthApiKeyService } from '@/modules/auth/services/auth-api-key.service';
 import { AuthPasswordService } from '@/modules/auth/services/auth-password.service';
+import { AuthMagicCodeService } from '@/modules/auth/services/auth-magic-code.service';
 import { MfaService } from '@/modules/auth/mfa/mfa.service';
 
 export { AuthSessionService, AuthResponse } from '@/modules/auth/services/auth-session.service';
@@ -22,6 +23,7 @@ export class AuthService {
     private sessions: AuthSessionMgmtService,
     private apiKeys: AuthApiKeyService,
     private password: AuthPasswordService,
+    private magicCodeService: AuthMagicCodeService,
     private mfa: MfaService,
   ) {}
 
@@ -53,12 +55,12 @@ export class AuthService {
     return this.password.changePassword(userId, sessionId, dto, ip, ua);
   }
 
-  magicLink(dto: any) { return this.authToken.magicLink(dto); }
+  magicCode(dto: { email: string }, ip?: string, ua?: string) {
+    return this.magicCodeService.requestCode(dto, ip, ua);
+  }
 
-  async verifyMagicLink(dto: any, ip?: string) {
-    const { user, session: oldSession } = await this.authToken.verifyMagicLink(dto, ip);
-    const sess = await this.session.createSession(user.id, oldSession?.ipAddress ?? ip ?? undefined);
-    return this.session.buildAuthResponse(user, sess);
+  verifyMagicCode(dto: { email: string; code: string }, ip?: string, ua?: string) {
+    return this.magicCodeService.verifyCode(dto, ip, ua);
   }
 
   async refreshToken(token: string) {

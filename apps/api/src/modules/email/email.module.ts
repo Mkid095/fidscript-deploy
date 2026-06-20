@@ -17,6 +17,7 @@ import { EmailApiKeyService } from './services/api-key.service';
 import { EmailMessageService } from './services/message.service';
 import { EmailInboundService } from './services/inbound.service';
 import { SmtpSendService } from './smtp/smtp-send.service';
+import { PlatformMailService } from './platform-mail.service';
 import { BounceHandlerService } from './services/bounce-handler.service';
 import { SieveRebuildService } from './services/sieve-rebuild.service';
 import { RateLimitService } from './services/rate-limit.service';
@@ -70,6 +71,7 @@ import { DomainsModule } from '@/modules/domains/domains.module';
     WebhookService,
     EmailMailboxListService,
     EmailBootstrapService,
+    PlatformMailService,
   ],
   exports: [
     EmailService,
@@ -94,6 +96,7 @@ import { DomainsModule } from '@/modules/domains/domains.module';
     StalwartIdentityService,
     StalwartSieveService,
     WebhookService,
+    PlatformMailService,
   ],
 })
 export class EmailModule {}

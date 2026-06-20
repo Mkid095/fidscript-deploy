@@ -10,6 +10,8 @@ export type EventType =
   | 'identity.user.registered'
   | 'identity.user.updated'
   | 'identity.user.password_changed'
+  | 'identity.user.magic_code_sent'
+  | 'identity.user.magic_code_verified'
   | 'identity.user.login_failed'
   | 'identity.user.logged_in'
   | 'identity.user.logged_out'

@@ -39,6 +39,7 @@
 | `TD-UX-3` | Log `retentionDays` never enforced | No retention sweep exists | Temp | Logs grow unbounded | `PREREQ-LOG-1` (scheduler sweep) | P2 |
 | `TD-UX-4` | No in-dashboard SQL console | Not built | Temp | DB detail shows greyed "coming soon" | `PREREQ-DB-1` | P2 |
 | `TD-UX-5` | Scheduler "skip next run" missing | Endpoint not built | Temp | Button greyed "coming soon" | `PREREQ-SCHED-1` | P2 |
+| `TD-ARCH-1` | Stalwart transporter config duplicated | `SmtpSendService.send` and `PlatformMailService.send` each inline the same ~6-line nodemailer transporter config (host/port/secure/auth/tls) | Temp | Drift risk if the Stalwart transport config changes | Extract a shared `buildStalwartTransporter(config)` helper both call; refactor when a 3rd caller appears | P2 |
 
 ## Scope boundaries (Permanent — not debt, documented as such)
 

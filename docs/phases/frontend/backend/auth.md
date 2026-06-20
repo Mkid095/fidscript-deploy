@@ -10,8 +10,8 @@ See `index.md` for conventions. IDs are stable cross-reference targets for specs
 | AUTH-02 | POST | `/auth/login` | public | `LoginDto`{email,password} | tokens **or** `{mfaRequired:true,mfaToken}` | `identity.user.logged_in`/`login_failed`; `session.created` |
 | AUTH-03 | POST | `/auth/refresh` | public | `RefreshTokenDto`{refreshToken} | tokens (rotated) | `identity.token.refreshed`, `session.created` |
 | AUTH-04 | POST | `/auth/logout` | JWT | — | `{success:true}` | `identity.user.logged_out` |
-| AUTH-05 | POST | `/auth/magic-link` | public | `{email}` | `{sent:true}` ⚠ **broken** | none |
-| AUTH-06 | POST | `/auth/verify-magic-link` | public | `{token}` | tokens ⚠ **broken** | `session.created` |
+| AUTH-05 | ~~POST `/auth/magic-link`~~ | — | — | — | **RETIRED 2026-06-20** — broken (queried `where user.email === token`, never emailed). Replaced by **AUTH-19**. ID retired, never recycled (rule 20). |
+| AUTH-06 | ~~POST `/auth/verify-magic-link`~~ | — | — | — | **RETIRED 2026-06-20** — broken. Replaced by **AUTH-20**. ID retired, never recycled. |
 | AUTH-07 | POST | `/auth/mfa/setup` | JWT | — | `{secret,otpauthUrl}` | `identity.user.mfa_setup` |
 | AUTH-08 | POST | `/auth/mfa/verify` | JWT | `{code}` | `{enabled:true}` | `identity.user.mfa_enabled` |
 | AUTH-09 | POST | `/auth/mfa/challenge` | public | `{mfaToken,code}` | tokens | `identity.user.mfa_challenge`, `session.created` |
@@ -24,6 +24,8 @@ See `index.md` for conventions. IDs are stable cross-reference targets for specs
 | AUTH-16 | POST | `/auth/api-keys` | JWT | `{name,permissions?,expiresAt?}` | `{apiKey,key}` (key shown once, `fsk_`) | `identity.api_key.created` |
 | AUTH-17 | DELETE | `/auth/api-keys/:id` | JWT | — | `{success:true}` | `identity.api_key.revoked` |
 | AUTH-18 | POST | `/auth/change-password` | JWT | `ChangePasswordDto`{currentPassword,newPassword(min12,upper+lower+number)} | tokens (rotated; `mustChangePassword` cleared) | `identity.user.password_changed`, `session.created` |
+| AUTH-19 | POST | `/auth/magic-code` | public | `MagicCodeDto`{email} | `{sent:true}` (always; never reveals whether the email exists) | `identity.user.magic_code_sent` |
+| AUTH-20 | POST | `/auth/verify-magic-code` | public | `VerifyMagicCodeDto`{email,code(6)} | tokens (rotated session) | `identity.user.magic_code_verified`, `session.created` |
 
 ## BaaS app-auth — `/api/v1/projects/:projectId/auth`
 

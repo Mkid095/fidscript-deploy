@@ -13,6 +13,8 @@ import { AuthProfileService } from '@/modules/auth/services/auth-profile.service
 import { AuthSessionMgmtService } from '@/modules/auth/services/auth-session-mgmt.service';
 import { AuthApiKeyService } from '@/modules/auth/services/auth-api-key.service';
 import { AuthPasswordService } from '@/modules/auth/services/auth-password.service';
+import { AuthMagicCodeService } from '@/modules/auth/services/auth-magic-code.service';
+import { EmailModule } from '@/modules/email/email.module';
 import { JwtStrategy } from '@/modules/auth/jwt.strategy';
 import { MfaService } from '@/modules/auth/mfa/mfa.service';
 import { JwtAuthGuard } from '@/modules/auth/jwt-auth.guard';
@@ -20,6 +22,7 @@ import { PlatformAdminGuard } from '@/modules/auth/guards/platform-admin.guard';
 
 @Module({
   imports: [
+    EmailModule,
     PassportModule.register({ defaultStrategy: 'jwt' }),
     JwtModule.registerAsync({
       imports: [ConfigModule],
@@ -41,6 +44,7 @@ import { PlatformAdminGuard } from '@/modules/auth/guards/platform-admin.guard';
     AuthSessionMgmtService,
     AuthApiKeyService,
     AuthPasswordService,
+    AuthMagicCodeService,
     JwtStrategy,
     MfaService,
     JwtAuthGuard,

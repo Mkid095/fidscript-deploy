@@ -8,35 +8,29 @@
 
 ## In flight
 
-**Phase B — F02 functional blockers (Stage 0B). 3 of 4 closed; AUTH-3 remaining.**
+**Phase B — ✅ CODE-COMPLETE (all 4 items closed). Live verification is the remaining gate.**
 
-- **Phase A — ✅ CLOSED:** `PREREQ-AUTH-5/6/7` were already implemented (AUDIT was stale);
-  verified by code review + clean typecheck. Live HTTP verification pending (KI-2).
-- **Phase B progress:**
-  - ✅ `PREREQ-AUTH-1` — `mustChangePassword` field + migration + seed
-  - ✅ `PREREQ-AUTH-2` — `POST /auth/change-password` (endpoint **AUTH-18**; rotates session)
-  - ✅ `PREREQ-AUTH-4` — flag surfaced on `GET /auth/me`
-  - ⏳ **`PREREQ-AUTH-3` — platform magic-code (NEXT)**
+- ✅ `PREREQ-AUTH-1` — `mustChangePassword` field + migration + seed
+- ✅ `PREREQ-AUTH-2` — `POST /auth/change-password` (endpoint **AUTH-18**)
+- ✅ `PREREQ-AUTH-3` — platform magic-code (endpoints **AUTH-19** + **AUTH-20**)
+- ✅ `PREREQ-AUTH-4` — flag surfaced on `GET /auth/me`
+- (Phase A `PREREQ-AUTH-5/6/7` was already implemented — verified, not re-built.)
 
-### AUTH-3 — the next unit (plan)
-
-`POST /auth/magic-code` + `POST /auth/verify-magic-code` (inventory IDs **AUTH-19** + **AUTH-20**).
-- New `MagicCode` model (Prisma) + migration: `{ email, codeHash, expiresAt(10m), attempts, consumed }`.
-- New `AuthMagicCodeService`: generate 6-digit OTP (`crypto.randomInt`), bcrypt-hash, persist,
-  deliver via `SmtpSendService` (omit `from` → uses `SMTP_FROM`), rate-limited via the existing
-  `AuthRateLimiter`; verify path checks hash + expiry + attempts (≤5), mints a session.
-- Removes the **broken** `verifyMagicLink` (`where user.email === token`) — `AUTH-05/06` routes
-  retired (IDs never recycled — rule 20; inventory rows marked deprecated).
-- **Live verification requires the VPS** (a real code must arrive in an inbox). Code-complete +
-  typecheck-green is the unit gate; live email delivery is the phase sign-off gate.
+**Next:** bring up the API on the VPS, run the two pending migrations
+(`20260620120000_auth_must_change_password`, `20260620130000_auth_magic_code`), re-seed so the
+admin gets `mustChangePassword=true`, and run the live-verification checklist (KI-2):
+login → /me (returns `mustChangePassword`) → change-password (clears flag, rotates) → /me
+(flag now false) → logout → next call 401 → refresh rotates → magic-code arrives in an inbox
++ verifies → wrong/expired/thrice-failed codes rejected.
 
 ## Not yet started
 
-- **F02** (the first frontend vertical slice) — after Phase B is fully closed + live-verified.
+- **F02** (the first frontend vertical slice) — after Phase B is live-verified.
+- **Phase C** (`PREREQ-PROJ-2/3`) — between F04 and F05.
 - **F03 → F11** — per `docs/IMPLEMENTATION_ROADMAP.md`.
 
 ## Blocked / waiting
 
-- Phase A + AUTH-1/2/4 live HTTP verification — pending a VPS bring-up (login → /me → logout →
-  401; refresh rotates; change-password clears the flag + rotates; /me returns the flag). Code
-  is verified-correct; this is the protocol's live-verification gate (KI-2).
+- **Phase B live verification (KI-2)** — needs the VPS: migrate, re-seed, exercise the auth
+  flows over HTTP, confirm the magic-code email actually arrives. This is the protocol's
+  live-verification + phase-sign-off gate. Code is verified-correct + typecheck/build green.

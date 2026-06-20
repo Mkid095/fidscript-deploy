@@ -133,3 +133,44 @@ Decision:
 Impact:
 - New endpoint AUTH-18; new event type; one new service + DTO. VALIDATION re-run: 0 broken
   references. Open count 4 → 3. Only `PREREQ-AUTH-3` (platform magic-code) remains in Phase B.
+
+## 2026-06-20 (later) — Phase B / Unit 3: AUTH-3 platform magic-code (Phase B COMPLETE)
+
+Phase: Phase B (F02 functional blockers)
+
+Completed:
+- `PREREQ-AUTH-3`: platform magic-code login (endpoints **AUTH-19** + **AUTH-20**).
+  - `MagicCode` model + migration `20260620130000_auth_magic_code` (bcrypt codeHash, 10m expiry, attempts, consumed).
+  - `AuthMagicCodeService`: 6-digit `crypto.randomInt` (uniform), bcrypt-10 hash, ≤5 attempts,
+    per-IP + per-email send rate limits (reuses `AuthRateLimiter`); verify consumes the code +
+    nulls earlier unconsumed codes + mints a session. Always returns `{sent:true}` (no email-exists leak).
+  - **New `PlatformMailService`** (email module) — sends system mail via Stalwart with NO
+    project context (magic-code, future password-reset/notifications). Exported from EmailModule;
+    AuthModule imports EmailModule to inject it.
+  - Removed the broken `verifyMagicLink` (`where user.email === token`) from `AuthTokenService`;
+    removed `magic-link`/`verify-magic-link` routes + the `MagicLinkDto`. **AUTH-05/06 retired**
+    (inventory rows marked retired; IDs never recycled — rule 20).
+  - EventType union: `identity.user.magic_code_sent`, `identity.user.magic_code_verified`.
+  - `pnpm --filter @fidscript/api typecheck` + `build` clean; VALIDATION: 0 broken refs.
+
+Unexpected issues:
+- **The F02 spec's delivery assumption was wrong.** It said "deliver via SmtpSendService (omit
+  dto.from)." Reading the real `SmtpSendService.send` (rule 12) showed it is **project-scoped**
+  — it does `project.findUnique` and writes an `EmailMessage` row tied to a project. Platform
+  magic-code has no project. No project-less sender existed (the monitoring email notifier is
+  also project-scoped). → Created `PlatformMailService` as the clean fix.
+
+Decision:
+- `PlatformMailService` as a separate service (not a method on `SmtpSendService`) because (a)
+  `SmtpSendService` is already 165 lines (over the 150-line rule — adding to it worsens that);
+  (b) project-mail and platform-mail are genuinely different concerns (sender-identity +
+  suppression + usage tracking vs none). The Stalwart transporter config is duplicated (~6
+  declarative lines) — logged as minor tech debt (DRY via a shared transporter builder later).
+- Endpoint IDs **AUTH-19** + **AUTH-20** (next free, after AUTH-18). AUTH-05/06 retired, not recycled.
+
+Impact:
+- 2 new endpoints (AUTH-19/20), 2 new event types, 1 new model + migration, 2 new services
+  (`AuthMagicCodeService`, `PlatformMailService`), EmailModule exports `PlatformMailService`.
+- **Phase B is code-complete (all 4 items closed).** Registry: Open 3 → 2 (Phase C only).
+  F02 is unblocked on the backend. Remaining gate: live verification on the VPS (login/logout/
+  refresh/change-password/magic-code email delivery) — KI-2.

@@ -88,6 +88,22 @@ model AuditLog {
   @@map("identity.audit_logs")
 }
 
+// Platform magic-code (6-digit OTP) for passwordless/second-factor login.
+// One row per issued code; bcrypt-hashed, 10-minute expiry, attempt-limited (≤5),
+// consumed on success. Replaces the broken magic-link path (AUTH-05/06).
+model MagicCode {
+  id        String   @id @default(uuid())
+  email     String   @db.VarChar(255)
+  codeHash  String   @map("code_hash") @db.VarChar(255) // bcrypt of the 6-digit code
+  attempts  Int      @default(0)
+  consumed  Boolean  @default(false)
+  expiresAt DateTime @map("expires_at") @db.Timestamptz
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz
+
+  @@index([email, consumed, createdAt])
+  @@map("identity.magic_codes")
+}
+
 // =============================================
 // PROJECTS SCHEMA
 // =============================================
