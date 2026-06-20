@@ -7,6 +7,7 @@ import { createFidscript } from '@fidscript/sdk';
 import { Card } from '@fidscript/ui';
 import { Button } from '@fidscript/ui';
 import { Spinner } from '@fidscript/ui';
+
 import type { Project, ProjectMember, EnvVar, Deployment } from '@/types';
 
 type Tab = 'overview' | 'deployments' | 'settings' | 'members';

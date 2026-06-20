@@ -9,6 +9,7 @@ import { Input } from '@fidscript/ui';
 import { Spinner } from '@fidscript/ui';
 import { EmptyState } from '@fidscript/ui';
 import { Toast } from '@fidscript/ui';
+
 import type { Project } from '@/types';
 
 interface Bucket {

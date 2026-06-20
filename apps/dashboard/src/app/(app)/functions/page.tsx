@@ -9,6 +9,7 @@ import { Input } from '@fidscript/ui';
 import { Modal } from '@fidscript/ui';
 import { Spinner } from '@fidscript/ui';
 import { EmptyState } from '@fidscript/ui';
+
 import type { Project } from '@/types';
 // Local type definition mirroring SDK internal Function_ interface
 interface Function_ {

@@ -8,6 +8,7 @@ import {
   type ReactNode,
 } from 'react';
 import { createFidscript, type FidscriptSDK } from '@fidscript/sdk';
+
 import type { User } from '@/types';
 
 interface AuthState {

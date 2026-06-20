@@ -1,10 +1,11 @@
 'use client';
 
 import { useState } from 'react';
-import { useAuth } from '@/contexts/auth-context';
 import { Button } from '@fidscript/ui';
 import { Input } from '@fidscript/ui';
 import { Card } from '@fidscript/ui';
+
+import { useAuth } from '@/contexts/auth-context';
 
 export default function RegisterPage() {
   const { register, loading, error } = useAuth();

@@ -7,6 +7,7 @@ import { Card } from '@fidscript/ui';
 import { Button } from '@fidscript/ui';
 import { Spinner } from '@fidscript/ui';
 import { EmptyState } from '@fidscript/ui';
+
 import type { Project, LogEntry } from '@/types';
 
 const STREAMS = ['default', 'build', 'access', 'error'] as const;

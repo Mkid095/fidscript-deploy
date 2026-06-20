@@ -5,6 +5,7 @@ import { createFidscript } from '@fidscript/sdk';
 import { Card } from '@fidscript/ui';
 import { Button } from '@fidscript/ui';
 import { Spinner } from '@fidscript/ui';
+
 import { useAuth } from '@/contexts/auth-context';
 
 interface ApiKey {

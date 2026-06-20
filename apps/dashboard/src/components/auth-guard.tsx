@@ -1,8 +1,9 @@
 'use client';
 
 import { useEffect, type ReactNode } from 'react';
-import { useAuth } from '@/contexts/auth-context';
 import { Spinner } from '@fidscript/ui';
+
+import { useAuth } from '@/contexts/auth-context';
 
 interface AuthGuardProps {
   children: ReactNode;

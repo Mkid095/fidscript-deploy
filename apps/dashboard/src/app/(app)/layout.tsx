@@ -2,9 +2,10 @@
 
 import { useState, type ReactNode } from 'react';
 import Link from 'next/link';
+import { Button } from '@fidscript/ui';
+
 import { useAuth } from '@/contexts/auth-context';
 import { AuthGuard } from '@/components/auth-guard';
-import { Button } from '@fidscript/ui';
 
 interface NavItem {
   label: string;

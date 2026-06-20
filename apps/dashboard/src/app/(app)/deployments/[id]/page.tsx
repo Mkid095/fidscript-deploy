@@ -7,6 +7,7 @@ import { createFidscript } from '@fidscript/sdk';
 import { Card } from '@fidscript/ui';
 import { Button } from '@fidscript/ui';
 import { Spinner } from '@fidscript/ui';
+
 import type { Deployment } from '@/types';
 
 const STATUS_COLORS: Record<string, string> = {
