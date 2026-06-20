@@ -6,14 +6,18 @@
 
 ---
 
-## [Unreleased] — Phase A (in flight)
+## [Unreleased] — Phase B (in flight)
 
-Platform-correctness hardening of the auth token/session machinery. Backend-only; no
-frontend. See `docs/backend-prerequisites.md` → Phase A.
+F02-authentication backend enablers. Backend-only; no frontend yet. See
+`docs/backend-prerequisites.md` → Phase B.
 
-- *(pending)* `PREREQ-AUTH-5` logout no-op fix
-- *(pending)* `PREREQ-AUTH-6` refresh/session rotation fix
-- *(pending)* `PREREQ-AUTH-7` `JWT_SECRET_FILE` honored by auth.module + jwt.strategy
+- ✅ `PREREQ-AUTH-1` `mustChangePassword` field + migration + seed
+- ✅ `PREREQ-AUTH-4` flag surfaced on `GET /auth/me`
+- *(pending)* `PREREQ-AUTH-2` `POST /auth/change-password` endpoint
+- *(pending)* `PREREQ-AUTH-3` platform magic-code (`/auth/magic-code` + `/auth/verify-magic-code`)
+
+(Phase A — `PREREQ-AUTH-5/6/7` — was already implemented in the code; verified + reconciled
+2026-06-20, not new work.)
 
 ---
 

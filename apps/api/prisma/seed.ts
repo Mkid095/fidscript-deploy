@@ -31,6 +31,10 @@ async function main() {
       passwordHash,
       name: 'Platform Admin',
       role: Role.ADMIN,
+      // Force a password change on first login — the install-time ADMIN_PASSWORD
+      // is a bootstrap secret; the operator should set their own. Cleared by
+      // POST /auth/change-password (PREREQ-AUTH-2). See f02-auth.md.
+      mustChangePassword: true,
     },
   });
 

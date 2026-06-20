@@ -70,3 +70,31 @@ Decision:
 Impact:
 - No auth code changes (it was already correct). Prisma client regenerated. Registry, AUDIT,
   CURRENT_PHASE, and this log updated to reflect reality. Phase B is now the active work.
+
+## 2026-06-20 (later) — Phase B / Unit 1: AUTH-1 + AUTH-4
+
+Phase: Phase B (F02 functional blockers)
+
+Completed:
+- `PREREQ-AUTH-1`: added `mustChangePassword Boolean @default(false)` to `User` in
+  `schema.prisma`; migration `20260620120000_auth_must_change_password` (ADD COLUMN DEFAULT
+  false — no disruption to existing rows); seed sets `true` on the fresh-install admin.
+- `PREREQ-AUTH-4`: `auth-profile.service.ts:getProfile` now selects `mustChangePassword`, so
+  `GET /auth/me` returns the flag.
+- Regenerated the Prisma client; `pnpm --filter @fidscript/api typecheck` + `build` both clean.
+
+Unexpected issues:
+- None. The field slotted cleanly into the existing User model + profile select.
+
+Decision:
+- AUTH-1 + AUTH-4 shipped together as "Unit 1" — the flag exists (schema/migration/seed) AND is
+  observable (/me). They're the read half of the force-change-password flow. AUTH-2 (the write
+  half — change-password endpoint) and AUTH-3 (magic-code) are separate units.
+- Existing deployed admins are NOT retroactively flagged (migration is DEFAULT false, seed only
+  flags on create). Rationale: least-surprise for an already-operating admin; the policy is for
+  fresh installs. An operator who wants the flag on an existing admin runs a one-line UPDATE.
+
+Impact:
+- DB: one new migration (`20260620120000_auth_must_change_password`). API: typecheck + build
+  clean. `/auth/me` response gains a `mustChangePassword` boolean. No endpoint ID changes
+  (AUTH-4 extends AUTH-02's response, doesn't add an endpoint). Live verification pending (KI-2).
