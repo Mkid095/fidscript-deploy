@@ -147,7 +147,7 @@ every spec cross-references.
 | `navigation.md` | Global IA + the project sidebar's 14 items (purpose, entry, children, permissions, empty state) + command palette + account menu. |
 | `user-experience-spec.md` | Tactical UX rules: empty/error/loading/permission/multi-project, accessibility, keyboard shortcuts, realtime + optimistic UI, the single-screen test. |
 | `services/*.md` | Per-service specs (projects, deployments, functions, …) — each: UX, data model, API mapping (→ backend inventory IDs), realtime events, settings, automation, dependencies. |
-| `screens/` | Screen inventory (master list + per-screen spec). |
+| `screens/index.md` | Master screen inventory: every screen = one operator interface to a Prisma entity, with route, auth context (owner/admin/dev/viewer render rules), key fields, operations, backend gaps. |
 | `components/` | Reusable component registry (every state documented). |
 
 ---
