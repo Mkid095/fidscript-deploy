@@ -4,6 +4,7 @@ import { useState, type ReactNode } from 'react';
 import Link from 'next/link';
 import { HugeiconsIcon } from '@hugeicons/react';
 import { BoltIcon, Menu02Icon, ArrowRight02Icon } from '@hugeicons/core-free-icons';
+
 import { DocsSidebar } from '@/components/docs/docs-sidebar';
 
 export default function DocsLayout({ children }: { children: ReactNode }) {
