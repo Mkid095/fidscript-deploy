@@ -6,6 +6,7 @@ import { AuthTokenService } from '@/modules/auth/services/auth-token.service';
 import { AuthProfileService } from '@/modules/auth/services/auth-profile.service';
 import { AuthSessionMgmtService } from '@/modules/auth/services/auth-session-mgmt.service';
 import { AuthApiKeyService } from '@/modules/auth/services/auth-api-key.service';
+import { MfaService } from '@/modules/auth/mfa/mfa.service';
 
 export { AuthSessionService, AuthResponse } from '@/modules/auth/services/auth-session.service';
 
@@ -19,6 +20,7 @@ export class AuthService {
     private profile: AuthProfileService,
     private sessions: AuthSessionMgmtService,
     private apiKeys: AuthApiKeyService,
+    private mfa: MfaService,
   ) {}
 
   async register(dto: any, ip?: string, ua?: string) {
@@ -28,10 +30,20 @@ export class AuthService {
   }
 
   async login(dto: any, ip?: string, ua?: string) {
-    const user = await this.authLogin.login(dto, ip, ua);
+    const result = await this.authLogin.login(dto, ip, ua);
+    if (result.mfaToken) return { mfaRequired: true, mfaToken: result.mfaToken };
+    const sess = await this.session.createSession(result.user.id, ip, ua);
+    return this.session.buildAuthResponse(result.user, sess);
+  }
+
+  async completeMfaLogin(dto: { mfaToken: string; code: string }, ip?: string, ua?: string) {
+    const user = await this.mfa.completeChallenge(dto.mfaToken, dto.code, ip, ua);
     const sess = await this.session.createSession(user.id, ip, ua);
     return this.session.buildAuthResponse(user, sess);
   }
+
+  setupMfa(userId: string) { return this.mfa.setup(userId); }
+  enableMfa(userId: string, code: string) { return this.mfa.enable(userId, code); }
 
   logout(sessionId: string, userId: string) { return this.authLogin.logout(sessionId, userId); }
 

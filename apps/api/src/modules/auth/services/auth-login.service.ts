@@ -2,6 +2,7 @@ import { Injectable, UnauthorizedException, HttpException, HttpStatus } from '@n
 import { PrismaService } from '@/prisma/prisma.service';
 import { EventService } from '@/modules/events/event.service';
 import { AuthRateLimiter } from '@/common/auth-rate-limiter.service';
+import { MfaService } from '@/modules/auth/mfa/mfa.service';
 import * as bcrypt from 'bcrypt';
 import * as crypto from 'crypto';
 
@@ -11,15 +12,22 @@ const LOGIN_IP_LIMIT = 30; // max attempts per IP within the window
 const LOGIN_ACCT_LIMIT = 5; // max failed attempts per account within the window
 const LOGIN_WINDOW_SEC = 15 * 60;
 
+interface LoginResult {
+  user: { id: string; email: string; name: string | null; role: string };
+  /** Present when MFA is required — caller must not mint a session yet. */
+  mfaToken?: string;
+}
+
 @Injectable()
 export class AuthLoginService {
   constructor(
     private prisma: PrismaService,
     private eventService: EventService,
     private rateLimiter: AuthRateLimiter,
+    private mfaService: MfaService,
   ) {}
 
-  async login(dto: { email: string; password: string }, ipAddress?: string, userAgent?: string) {
+  async login(dto: { email: string; password: string }, ipAddress?: string, userAgent?: string): Promise<LoginResult> {
     // Rate limiting (Phase 03 gap): per-IP attempt cap + per-account failure lockout.
     const acctKey = `rl:login:fail:${dto.email.toLowerCase()}`;
     if (ipAddress) {
@@ -59,13 +67,24 @@ export class AuthLoginService {
 
     await this.prisma.user.update({ where: { id: user.id }, data: { lastLoginAt: new Date() } });
 
+    const loginResult: LoginResult = {
+      user: { id: user.id, email: user.email, name: user.name, role: user.role },
+    };
+
+    // MFA-enrolled users get a short-lived challenge token instead of full tokens;
+    // the real session is minted only after /auth/mfa/challenge verifies the code.
+    if (user.mfaEnabled) {
+      loginResult.mfaToken = this.mfaService.issueChallenge(user.id);
+      return loginResult;
+    }
+
     await this.eventService.emit(
       'identity.user.logged_in',
       { email: user.email },
       { actorId: user.id, actorType: 'user', resourceType: 'user', resourceId: user.id, ipAddress, userAgent },
     );
 
-    return user;
+    return loginResult;
   }
 
   async logout(sessionId: string, userId: string): Promise<void> {

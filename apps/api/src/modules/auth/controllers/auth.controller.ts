@@ -10,7 +10,7 @@ import { AuthUser, CurrentUser } from '@/modules/auth/current-user.decorator';
 import { extractRequestContext } from '@/common/request-context';
 import {
   RegisterDto, LoginDto, MagicLinkDto, VerifyMagicLinkDto,
-  CreateApiKeyDto, UpdateProfileDto, RefreshTokenDto,
+  CreateApiKeyDto, UpdateProfileDto, RefreshTokenDto, MfaCodeDto, MfaChallengeDto,
 } from '@/modules/auth/dto/index';
 
 @ApiTags('auth')
@@ -66,6 +66,31 @@ export class AuthController {
   async verifyMagicLink(@Body() dto: VerifyMagicLinkDto, @Req() req: Request) {
     const { ipAddress } = extractRequestContext(req);
     return this.authService.verifyMagicLink(dto, ipAddress);
+  }
+
+  @Post('mfa/setup')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Set up TOTP MFA — returns secret + otpauth URL' })
+  async mfaSetup(@CurrentUser('userId') userId: string) {
+    return this.authService.setupMfa(userId);
+  }
+
+  @Post('mfa/verify')
+  @UseGuards(JwtAuthGuard)
+  @HttpCode(HttpStatus.OK)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Verify TOTP code and enable MFA' })
+  async mfaVerify(@CurrentUser('userId') userId: string, @Body() dto: MfaCodeDto) {
+    return this.authService.enableMfa(userId, dto.code);
+  }
+
+  @Post('mfa/challenge')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Complete MFA login with challenge token + code' })
+  async mfaChallenge(@Body() dto: MfaChallengeDto, @Req() req: Request) {
+    const { ipAddress, userAgent } = extractRequestContext(req);
+    return this.authService.completeMfaLogin(dto, ipAddress, userAgent);
   }
 
   @Get('me')
