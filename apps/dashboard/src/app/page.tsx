@@ -1,8 +1,19 @@
+import { LandingNav } from '@/components/landing/landing-nav';
+import { LandingHero } from '@/components/landing/landing-hero';
+import { LandingFeatures } from '@/components/landing/landing-features';
+import { LandingOpenSource } from '@/components/landing/landing-opensource';
+import { LandingFooter } from '@/components/landing/landing-footer';
+
 export default function Home() {
   return (
-    <main className="flex min-h-screen flex-col items-center justify-center p-24">
-      <h1 className="text-4xl font-bold text-white mb-4">FIDScript Deploy</h1>
-      <p className="text-slate-400">Self-hosted Developer Operating System</p>
-    </main>
+    <div className="min-h-screen bg-ink-950">
+      <LandingNav />
+      <main>
+        <LandingHero />
+        <LandingFeatures />
+        <LandingOpenSource />
+      </main>
+      <LandingFooter />
+    </div>
   );
 }

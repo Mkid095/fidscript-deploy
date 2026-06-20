@@ -13,7 +13,11 @@ WORKDIR /app
 
 COPY . .
 RUN pnpm install --frozen-lockfile
-RUN pnpm --filter @fidscript/dashboard build
+# turbo respects dependsOn:["^build"] — builds @fidscript/ui, @fidscript/sdk and
+# @fidscript/types (their dist/) BEFORE the dashboard, so `next build` can
+# resolve them. A bare `pnpm --filter ... build` skips deps and fails with
+# "Module not found: Can't resolve '@fidscript/sdk'" in a clean build context.
+RUN npx turbo build --filter=@fidscript/dashboard
 
 FROM node:20-bookworm-slim AS runtime
 ENV NODE_ENV=production PORT=3001 HOSTNAME=0.0.0.0

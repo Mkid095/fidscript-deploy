@@ -73,8 +73,14 @@ while [[ -z "$CLOUDFLARE_API_TOKEN" ]]; do
     read -p "Cloudflare API token: " CLOUDFLARE_API_TOKEN
 done
 
-# Server public IP
-read -p "This server's public IP address: " SERVER_IP
+# Server public IP (auto-detected by install.sh and passed as $1)
+DETECTED_IP="${1:-}"
+if [[ -n "$DETECTED_IP" ]]; then
+    read -p "This server's public IP address [${DETECTED_IP}]: " SERVER_IP
+    SERVER_IP="${SERVER_IP:-$DETECTED_IP}"
+else
+    read -p "This server's public IP address: " SERVER_IP
+fi
 while [[ -z "$SERVER_IP" || ! "$SERVER_IP" =~ ^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$ ]]; do
     echo "A valid public IP address is required."
     read -p "This server's public IP address: " SERVER_IP
@@ -424,16 +430,14 @@ fi
 
 echo ""
 echo "╔═══════════════════════════════════════════════════════════╗"
-echo "║              Installation Complete!                       ║"
+echo "║            Configuration saved successfully               ║"
 echo "╚═══════════════════════════════════════════════════════════╝"
 echo ""
-echo "  Domain:       https://$DOMAIN"
+echo "  Domain:       $DOMAIN"
 echo "  Admin email:  $ADMIN_EMAIL"
+echo "  Server IP:    $SERVER_IP"
 echo ""
-echo "Next steps:"
-echo "  1. cd $DOCKER_DIR"
-echo "  2. docker compose up -d --build"
-echo "  3. docker compose exec api npx prisma migrate deploy"
-echo "  4. docker compose exec api pnpm db:seed"
-echo "  5. Access dashboard at: https://$DOMAIN"
+echo "Secrets, Traefik, Stalwart, and DNS records have been generated."
+echo "The installer will now build and start the stack, run migrations,"
+echo "seed the admin account, and verify health — no manual steps needed."
 echo ""
