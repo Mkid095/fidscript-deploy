@@ -37,9 +37,17 @@ This is the authoritative ordering; `docs/IMPLEMENTATION_ROADMAP.md` follows it.
 These affect the platform's correctness and security whether or not the dashboard exists.
 They are **hardening**, not "frontend blockers," and are fixed first.
 
-- `PREREQ-AUTH-5` — logout is a no-op (Session.tokenHash never set → revocation impossible)
-- `PREREQ-AUTH-6` — refresh/session handling is broken (opaque token vs signed-JWT mismatch)
-- `PREREQ-AUTH-7` — `JWT_SECRET_FILE` honored only by realtime, not by `auth.module`/`jwt.strategy`
+- ~~`PREREQ-AUTH-5` — logout is a no-op~~ → **✅ Closed 2026-06-20** (already implemented; AUDIT was stale)
+- ~~`PREREQ-AUTH-6` — refresh/session handling is broken~~ → **✅ Closed 2026-06-20** (signed refresh JWT + rotation already implemented)
+- ~~`PREREQ-AUTH-7` — `JWT_SECRET_FILE` honored only by realtime~~ → **✅ Closed 2026-06-20** (`resolveJwtSecret` already used by both Jwt halves)
+
+> **Phase A is DONE in the code.** When Stage 0A began (2026-06-20), reading the real auth
+> services (`auth-session.service.ts`, `auth-token.service.ts`, `jwt.strategy.ts`,
+> `auth-login.service.ts`, `common/secrets.ts`) showed all three Phase A items were already
+> implemented — the `docs/AUDIT.md` "Auth: BROKEN" verdict (2026-06-16) was stale. Rule 12
+> (research before implement) is why this was caught instead of re-implemented. Phase A's
+> remaining gate is **live HTTP verification** on the VPS (login → /me → logout → 401;
+> refresh rotates), tracked in `docs/implementation/KNOWN_ISSUES.md`.
 
 > **Authorization gaps (`SEC-*`)** — `PREREQ-SEC-1/2/3/4` (DOM-05/06, email services,
 > STOR-08, webhook HMAC) are functional-today-but-insecure and **UI-mitigated**. They are the
@@ -83,9 +91,9 @@ hardening plan (`docs/phases/phase-03.md`) covers these.
 | `PREREQ-AUTH-2` | `POST /auth/change-password` endpoint | missing-endpoint | F02 | New route: validates current pw (bcrypt), enforces strength, sets `mustChangePassword=false`, rotates session. _(alias: AUTH-2)_ | 🟥 Open |
 | `PREREQ-AUTH-3` | Platform magic-code endpoints (`POST /auth/magic-code` + `POST /auth/verify-magic-code`) | missing-endpoint | F02 | 6-digit OTP, bcrypt-hashed + 10m expiry + attempt-limited, delivered via `SmtpSendService` (omit `dto.from` to use `SMTP_FROM`). Replaces the broken magic-link path (`AUTH-05/06` query `where email === token`, never emailed, never expires). _(alias: AUTH-3)_ | 🟥 Open |
 | `PREREQ-AUTH-4` | `mustChangePassword` flag on `GET /auth/me` | missing-behavior | F02 | Include the flag in the `/auth/me` response so the client can gate the force-change screen. _(alias: AUTH-4)_ | 🟥 Open |
-| `PREREQ-AUTH-5` | Logout is a no-op | broken | F02 | `POST /auth/logout` reads `user.sessionId` which the strategy never sets. Carry `sessionId` in the access JWT; logout deletes the `Session` row. | 🟥 Open |
-| `PREREQ-AUTH-6` | Refresh-token rotation join is broken | broken | F02 | `POST /auth/refresh` expects a refresh *JWT* but `createSession` issues an *opaque* token. Align both halves to signed JWTs; rotate on use (expire old, mint new). | 🟥 Open |
-| `PREREQ-AUTH-7` | `JWT_SECRET_FILE` not honored by `auth.module`/`jwt.strategy` | broken | F02 | Only `realtime/services/token.service.ts:23` reads the `_FILE` variant. Materialize `JWT_SECRET` from `JWT_SECRET_FILE` everywhere (secrets-manager rule 10). | 🟥 Open |
+| `PREREQ-AUTH-5` | Logout is a no-op | broken | F02 | `POST /auth/logout` reads `user.sessionId` which the strategy never sets. Carry `sessionId` in the access JWT; logout deletes the `Session` row. | ✅ Closed — `jwt.strategy.ts` surfaces `sessionId` on `request.user`; `auth.controller.ts:logout` → `authLogin.logout` revokes the `Session` row (`expiresAt = 0`) + emits `identity.user.logged_out`. Verified 2026-06-20. |
+| `PREREQ-AUTH-6` | Refresh-token rotation join is broken | broken | F02 | `POST /auth/refresh` expects a refresh *JWT* but `createSession` issues an *opaque* token. Align both halves to signed JWTs; rotate on use (expire old, mint new). | ✅ Closed — `auth-session.service.ts:createSession` mints a signed refresh JWT carrying `sessionId` (bcrypt-hashed in the row); `auth-token.service.ts:refreshToken` verifies the JWT, checks the session row, rotates it (old `expiresAt = 0`, new session minted). Verified 2026-06-20. |
+| `PREREQ-AUTH-7` | `JWT_SECRET_FILE` not honored by `auth.module`/`jwt.strategy` | broken | F02 | Only `realtime/services/token.service.ts:23` reads the `_FILE` variant. Materialize `JWT_SECRET` from `JWT_SECRET_FILE` everywhere (secrets-manager rule 10). | ✅ Closed — `apps/api/src/common/secrets.ts:resolveJwtSecret` reads `JWT_SECRET` → `JWT_SECRET_FILE` → fails-closed on `change-me`; used by BOTH `JwtModule` and `JwtStrategy`. Verified 2026-06-20. |
 
 > **Note on MFA.** `User.mfaEnabled`/`mfaSecret` columns already exist; `mfa.service.ts`
 > exists. Platform TOTP is partially scaffolded — verify it end-to-end during F02; if it
@@ -182,23 +190,22 @@ These are **not bugs** — they're documented scope boundaries. The UI greys eac
 
 | Status | Count | Meaning |
 |---|---|---|
-| 🟥 Open | 9 | Must close before the phase that lists them can be implemented |
+| 🟥 Open | 6 | Must close before the phase that lists them can be implemented (Phase B: 4, Phase C: 2) |
 | 🟧 Workable / UI-mitigated | 14 | UI works around it; close in a hardening pass before production |
 | 🟨 Hardening | 4 | Functional but insecure; close before any production claim |
-| ✅ Closed | 0 | — |
+| ✅ Closed | 3 | `PREREQ-AUTH-5/6/7` (Phase A — verified 2026-06-20) |
 
 ## Implementation-critical subset (the "close these first" list)
 
-The 9 🟥 Open prereqs, grouped by the **priority phasing** above (security/correctness first,
-then F02 enablers, then F05 enablers). This is the authoritative close-order; the flat list
-below is the same set in build order.
+The 9 prereqs, grouped by the **priority phasing** above. Phase A is **closed** (already
+implemented in the code, verified 2026-06-20); Phase B is the active work; Phase C waits.
 
-**Phase A — platform correctness (first, no frontend dependency):**
-1. `PREREQ-AUTH-5` logout no-op
-2. `PREREQ-AUTH-6` refresh-token join
-3. `PREREQ-AUTH-7` JWT_SECRET_FILE
+**Phase A — platform correctness — ✅ CLOSED 2026-06-20:**
+1. ~~`PREREQ-AUTH-5` logout no-op~~ ✅
+2. ~~`PREREQ-AUTH-6` refresh-token join~~ ✅
+3. ~~`PREREQ-AUTH-7` JWT_SECRET_FILE~~ ✅
 
-**Phase B — F02 functional blockers (after Phase A):**
+**Phase B — F02 functional blockers (ACTIVE — next):**
 4. `PREREQ-AUTH-1` mustChangePassword field + seed
 5. `PREREQ-AUTH-2` change-password endpoint
 6. `PREREQ-AUTH-3` platform magic-code
@@ -208,7 +215,7 @@ below is the same set in build order.
 8. `PREREQ-PROJ-2` PROJ-01 role + lastActivityAt
 9. `PREREQ-PROJ-3` last-20-events endpoint
 
-Phase A + B (items 1–7) unblock **F02** (and therefore every authenticated screen).
+Phase B (items 4–7) unblocks **F02** (and therefore every authenticated screen).
 Phase C (items 8–9) unblocks **F05** (the project shell) and lands between F04 and F05.
 `PREREQ-HEALTH-1/2` unblock **F03** and can close in parallel with F02 (F03 is sequenced
 after F02).
@@ -216,6 +223,11 @@ after F02).
 ---
 
 ## Change log
+- 2026-06-20 (later) — Stage 0A opened. Reading the real auth code (rule 12) revealed
+  Phase A (`PREREQ-AUTH-5/6/7`) was **already implemented**; the `docs/AUDIT.md` "Auth: BROKEN"
+  verdict was stale. Flipped all three to ✅ Closed with verification notes. Phase B
+  (`PREREQ-AUTH-1/2/3/4`) is confirmed still genuinely missing and is the active work.
+  Status-count table below updated accordingly.
 - 2026-06-20 — Initial registry. Consolidated every backend gap surfaced across F02–F11 +
   the 19 per-screen specs + the component specs + `docs/AUDIT.md`. Unified the ad-hoc ID
   tokens (`AUTH-1..4`, `HEALTH-1..2`, `PROJ-NEW-1`, `SCHED-1`) under the `PREREQ-<MODULE>-<n>`

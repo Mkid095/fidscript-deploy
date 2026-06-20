@@ -42,3 +42,31 @@ Decision:
 Impact:
 - No code changes this session — documentation only. Backend remains as verified
   (`docs/AUDIT.md` §C + this session's deployment/functions proofs).
+
+## 2026-06-20 (later) — Stage 0A opened
+
+Phase: Phase A (platform correctness)
+
+Completed:
+- Ran the execution protocol's first step (research) on the auth code before editing.
+- Found **Phase A was already implemented**: `auth-session.service.ts` (signed refresh JWT +
+  sessionId in access JWT), `auth-token.service.ts:refreshToken` (rotation), `jwt.strategy.ts`
+  (surfaces sessionId), `auth-login.service.ts:logout` (revokes the Session row),
+  `common/secrets.ts:resolveJwtSecret` (JWT_SECRET_FILE, fails-closed).
+- Regenerated the stale Prisma client (`sourceUrl` was in `schema.prisma` but not the generated
+  client) → `pnpm --filter @fidscript/api typecheck` now clean.
+- Flipped `PREREQ-AUTH-5/6/7` to ✅ Closed in the registry with verification notes.
+
+Unexpected issues:
+- `docs/AUDIT.md` "Auth: BROKEN" verdict (2026-06-16) was **stale** — the hardening happened
+  after the audit but the audit was never updated. Caught by rule 12 (research before implement).
+- The repo failed typecheck on a *deployments* file (`sourceUrl`) due to a stale Prisma client,
+  not an auth problem — fixed with `prisma generate`.
+
+Decision:
+- Do NOT re-implement Phase A. Record it as closed-by-verification and move to Phase B, which is
+  confirmed still genuinely missing (mustChangePassword, change-password, magic-code, /me flag).
+
+Impact:
+- No auth code changes (it was already correct). Prisma client regenerated. Registry, AUDIT,
+  CURRENT_PHASE, and this log updated to reflect reality. Phase B is now the active work.
