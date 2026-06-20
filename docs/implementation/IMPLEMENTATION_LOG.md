@@ -207,3 +207,43 @@ Decision:
 Impact:
 - JwtStrategy now enforces session validity on every guarded request. Phase B is fully
   live-verified (13/13 PASS). Phase B is complete. F02 frontend is the next target.
+
+## 2026-06-20 (later) — F02 auth frontend implemented
+
+Phase: F02 Authentication (frontend vertical slice)
+
+Completed:
+- SDK auth module: fixed to match real API — `login`/`register` return `{accessToken, refreshToken,
+  user}` (was: wrong shape), session via `/auth/me` (was: wrong path), added `sendMagicCode`,
+  `verifyMagicCode`, `changePassword`, `refreshToken` with correct request/response shapes.
+- `User` type: added `mustChangePassword: boolean`.
+- `AuthContext`: dual-token storage (`accessToken` + `refreshToken` keys), session hydration via
+  `/auth/me`, auto-refresh on 401, `mustChangePassword` flag drives redirect to `/force-change-password`.
+  All auth methods throw so forms handle errors inline. `?next` param preserved for post-login redirect.
+- `AuthGuard`: unauthenticated → `/login?next=<path>`; `mustChangePassword` → `/force-change-password`.
+- Login page: segmented `[Email] [Magic code]` tab control; magic-code tab: send → masked email shown →
+  6-digit OTP input (auto-advance, paste support, 30s resend countdown) → verify → session.
+- Register page: name + email + password (12+ chars minimum, live strength meter, confirm match).
+  Proper validation (upper+lower+number) matching backend rule.
+- force-change-password page: current + new (strength meter) + confirm; backend strength rules in
+  validation; redirects to `?next` or `/dashboard` on success.
+- New components: `PasswordStrength` (3-bar weak/fair/strong), `MagicCodeInput` (6 OTP boxes with
+  paste support via `onPaste`).
+- Build: `pnpm --filter @fidscript/dashboard typecheck` clean; `build` clean with all 3 auth routes
+  in the generated route manifest (`/login`, `/register`, `/force-change-password`).
+
+Unexpected issues:
+- SDK `dist/` (compiled types) was stale — `auth.ts` edits weren't visible to the dashboard's tsc
+  until `pnpm --filter @fidscript/sdk build` was run. Dashboard imports from `@fidscript/sdk` which
+  resolves to `dist/`, not the raw ts. Fix: rebuild SDK before checking dashboard types.
+- `ClipboardEvent.clipboardData` is on `ClipboardEvent`, not `KeyboardEvent` — `handlePaste` must be
+  a `ClipboardEvent` handler, not a `KeyDown` sub-branch.
+
+Decision:
+- SDK types are the authoritative API contract — the dashboard must import from `@fidscript/sdk` and
+  the SDK's `dist/` must be rebuilt whenever auth interfaces change. Add `pnpm sdk build` as a
+  required step before dashboard typecheck when editing SDK auth types.
+
+Impact:
+- F02 is implemented: login, register, magic-code send/verify, force-change-password, SDK updated.
+  F03 (onboarding) is the next vertical slice per `docs/IMPLEMENTATION_ROADMAP.md`.

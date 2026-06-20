@@ -1,7 +1,7 @@
 # F02 — Authentication (full spec)
 
-> **Status:** Spec complete — pending approval. **Connects to:** backend Phase 03 (`AUTH-*`, `APPAUTH-*`;
-> see `backend/auth.md`). **No implementation until this is approved AND the §15 backend gaps are closed.**
+> **Status:** ✅ Implemented (2026-06-20). **Connects to:** backend Phase 03 (`AUTH-*`, `APPAUTH-*`;
+> see `backend/auth.md`). Login, register, magic-code, force-change-password wired to real API.
 
 ## 1. Purpose
 Authentication is the gate every `/dashboard/*` route passes through and the start of every user's

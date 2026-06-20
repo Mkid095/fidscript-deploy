@@ -8,14 +8,26 @@
 
 ## In flight
 
-**F02 — Authentication (frontend vertical slice)** — design system + auth pages + SDK integration.
+*None — awaiting next directive.*
 
 ## Not yet started
 
 - **Phase C** (`PREREQ-PROJ-2/3`) — between F04 and F05.
-- **F03 → F11** — per `docs/IMPLEMENTATION_ROADMAP.md`.
+- **F04 → F11** — per `docs/IMPLEMENTATION_ROADMAP.md`.
 
 ## Recently completed
+
+**F02 — Authentication (frontend) ✅** (2026-06-20).
+
+- Login page: segmented [Email] [Magic code] tabs; real API integration.
+- Register page: name + email + password (12+ chars, strength meter, confirm).
+- Magic-code flow: send → masked email shown → 6-digit OTP auto-advance → verify → session.
+- force-change-password: current + new (strength meter) + confirm → API call → redirect.
+- SDK auth module updated: correct endpoint paths, AuthResponse {accessToken, refreshToken, user}.
+- AuthContext: dual-token storage, /auth/me hydration, refresh on 401, mustChangePassword redirect.
+- AuthGuard: unauthenticated → /login?next; mustChangePassword → /force-change-password.
+- PasswordStrength + MagicCodeInput components.
+- Typecheck clean; build clean (route list verified: login, register, force-change-password all present).
 
 **Phase B — ✅ LIVE-VERIFIED 13/13** (2026-06-20).
 
@@ -26,9 +38,9 @@
 - (Phase A `PREREQ-AUTH-5/6/7` was already implemented — verified, not re-built.)
 
 **Live verification catch:** `JwtStrategy.validate()` was checking user existence + token type
-but **not** session validity. A revoked session (logout, change-password rotation,
-`DELETE /sessions/:id`) left the access token still usable until its own 15-min expiry.
-Fix: added session-expiry check in `validate()`. Verification script: 13/13 PASS.
+but **not** session validity. A revoked session (logout, change-password rotation) left the
+access token usable until its own 15-min expiry. Fix: added session-expiry check in `validate()`.
+Verification script: 13/13 PASS.
 
 ## Blocked / waiting
 
