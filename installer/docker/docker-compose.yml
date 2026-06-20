@@ -260,6 +260,7 @@ services:
     networks:
       - fidscript
       - fidscript-app
+      - nextmavens-net
     depends_on:
       postgres:
         condition: service_healthy

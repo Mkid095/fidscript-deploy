@@ -2,6 +2,7 @@ import {
   Controller,
   Get,
   Post,
+  Delete,
   Body,
   Param,
   Query,
@@ -19,8 +20,11 @@ import { AppAuthUserService } from '@/modules/app-auth/services/app-auth-user.se
 import { AppAuthRoleService } from '@/modules/app-auth/services/app-auth-role.service';
 import { OAuthService } from '@/modules/app-auth/services/oauth.service';
 import { AppAuthTokenService } from '@/modules/app-auth/services/app-auth-token.service';
+import { AppAuthManagementService } from '@/modules/app-auth/services/app-auth-management.service';
 import { AppJwtGuard } from '@/modules/app-auth/jwt/app-jwt.guard';
 import { CurrentAppUser } from '@/modules/app-auth/current-app-user.decorator';
+import { CurrentUser } from '@/modules/auth/current-user.decorator';
+import { ProjectAccessService } from '@/modules/projects/services/project-access.service';
 import {
   RegisterAppUserDto,
   LoginAppUserDto,
@@ -40,6 +44,8 @@ export class AppAuthController {
     private roleService: AppAuthRoleService,
     private oauthService: OAuthService,
     private tokenService: AppAuthTokenService,
+    private managementService: AppAuthManagementService,
+    private projectAccess: ProjectAccessService,
   ) {}
 
   @Post('register')
@@ -231,5 +237,49 @@ export class AppAuthController {
     @Body() dto: AssignRoleDto,
   ) {
     return this.roleService.assignRole(projectId, dto);
+  }
+
+  // ── App-user management (project-admin) ─────────────────────────────────
+
+  @Get('users')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'List app users for a project (project-admin)' })
+  async listUsers(
+    @Param('projectId') projectId: string,
+    @CurrentUser() user: any,
+    @Req() req: Request,
+  ) {
+    await this.projectAccess.checkPermission(user.userId, projectId, ['admin', 'owner']);
+    return this.managementService.listUsers(projectId, user.userId);
+  }
+
+  @Get('users/:userId')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Get a specific app user (project-admin)' })
+  async getUser(
+    @Param('projectId') projectId: string,
+    @Param('userId') userId: string,
+    @CurrentUser() user: any,
+  ) {
+    await this.projectAccess.checkPermission(user.userId, projectId, ['admin', 'owner']);
+    return this.managementService.getUser(projectId, userId, user.userId);
+  }
+
+  @Delete('users/:userId')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Disable an app user and revoke all sessions (project-admin)' })
+  async disableUser(
+    @Param('projectId') projectId: string,
+    @Param('userId') userId: string,
+    @CurrentUser() user: any,
+    @Req() req: Request,
+  ) {
+    await this.projectAccess.checkPermission(user.userId, projectId, ['admin', 'owner']);
+    const { ipAddress, userAgent } = extractRequestContext(req);
+    return this.managementService.disableUser(projectId, userId, user.userId, ipAddress, userAgent);
   }
 }

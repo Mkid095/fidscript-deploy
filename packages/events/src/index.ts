@@ -37,6 +37,8 @@ export type EventType =
   | 'auth.oauth_linked'
   | 'auth.provider_configured'
   | 'auth.provider_removed'
+  | 'auth.user_disabled'
+  | 'auth.role_assigned'
   // Project events (Phase 04)
   | 'projects.project.created'
   | 'projects.project.updated'

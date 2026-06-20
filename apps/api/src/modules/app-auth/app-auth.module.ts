@@ -7,6 +7,7 @@ import { resolveJwtSecret } from '@/common/secrets';
 import { AppAuthController } from '@/modules/app-auth/controllers/app-auth.controller';
 import { AuthProvidersController } from '@/modules/app-auth/auth-providers/auth-providers.controller';
 import { AppAuthUserService } from '@/modules/app-auth/services/app-auth-user.service';
+import { AppAuthManagementService } from '@/modules/app-auth/services/app-auth-management.service';
 import { AppAuthRegisterService } from '@/modules/app-auth/services/app-auth-register.service';
 import { AppAuthLoginService } from '@/modules/app-auth/services/app-auth-login.service';
 import { AppAuthTokenService } from '@/modules/app-auth/services/app-auth-token.service';
@@ -41,10 +42,11 @@ import { ProjectsModule } from '@/modules/projects/projects.module';
     MagicCodeService,
     OAuthService,
     AppAuthRoleService,
+    AppAuthManagementService,
     AuthProvidersService,
     AppJwtStrategy,
     AppJwtGuard,
   ],
-  exports: [AppAuthUserService, AppAuthRoleService, AppJwtGuard, AppAuthTokenService],
+  exports: [AppAuthUserService, AppAuthRoleService, AppJwtGuard, AppAuthTokenService, AppAuthManagementService],
 })
 export class AppAuthModule {}
