@@ -37,7 +37,7 @@ export class StorageBucketService {
     }
 
     const svc = this.providerFactory.get(provider);
-    await svc.makeBucket(name);
+    await svc.makeBucket(name, project.slug, name);
 
     const bucket = await this.prisma.bucket.create({
       data: { projectId, name, provider, isPublic },
@@ -66,7 +66,7 @@ export class StorageBucketService {
   }
 
   async deleteBucket(userId: string, projectId: string, bucketId: string) {
-    await this.access.checkProjectAccess(userId, projectId);
+    const project = await this.access.checkProjectAccess(userId, projectId);
 
     const bucket = await this.prisma.bucket.findFirst({
       where: { id: bucketId, projectId },
@@ -80,7 +80,7 @@ export class StorageBucketService {
     await this.prisma.bucket.delete({ where: { id: bucketId } });
 
     const svc = this.providerFactory.get(bucket.provider);
-    await svc.removeBucket(bucket.name);
+    await svc.removeBucket(bucket.name, project.slug, bucket.name);
 
     await this.eventService.emit('storage.bucket.deleted', {
       id: crypto.randomUUID(),

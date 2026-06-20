@@ -90,8 +90,9 @@ export class StorageController {
   ) {
     const user = req.user as { userId: string };
     // Body contains base64-encoded file data: { data: "<base64>", key: "...", originalName: "...", mimeType: "..." }
-    const data = Buffer.from(body as any, 'base64');
-    const key = body.key || `file-${Date.now()}`;
+    const payload = body as { data?: string; key?: string; originalName?: string; mimeType?: string };
+    const data = Buffer.from(payload.data || '', 'base64');
+    const key = payload.key || `file-${Date.now()}`;
     return this.storageService.uploadFile(
       user.userId, projectId, bucketId,
       key,

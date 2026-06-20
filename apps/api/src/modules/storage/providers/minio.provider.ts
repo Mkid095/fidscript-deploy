@@ -41,7 +41,11 @@ export class MinioProvider implements StorageProvider, OnModuleInit {
     await this.ensureClient();
     const bname = projectSlug && _bucketDisplayName ? this.buckets.buildBucketName(projectSlug, _bucketDisplayName) : bucketName;
     try { await this.client.makeBucket(bname, ''); this.logger.log(`Bucket created: ${bname}`); }
-    catch (err: any) { if (err.message?.includes('bucket already exists')) return; throw err; }
+    catch (err: any) {
+      // MinIO reports "already exists" with two possible messages
+      if (err.message?.includes('bucket already exists') || err.message?.includes('already own it')) return;
+      throw err;
+    }
   }
 
   async removeBucket(bucketName: string, projectSlug?: string, _bucketDisplayName?: string): Promise<void> {
@@ -91,7 +95,10 @@ export class MinioProvider implements StorageProvider, OnModuleInit {
 
   async getSignedUrl(key: string, expiresInSeconds = 3600, projectSlug?: string, bucketDisplayName?: string): Promise<string> {
     await this.ensureClient();
-    return this.client.presignedGetObject(this.buckets.resolveBucket(projectSlug, bucketDisplayName), key, expiresInSeconds);
+    const bucket = this.buckets.resolveBucket(projectSlug, bucketDisplayName);
+    const url = await this.client.presignedGetObject(bucket, key, expiresInSeconds);
+    // Replace internal endpoint with external so the URL works outside the Docker network
+    return url.replace(this.internalEndpoint, this.externalEndpoint);
   }
 
   getExternalUrl(key: string, projectSlug: string, bucketDisplayName: string): string {

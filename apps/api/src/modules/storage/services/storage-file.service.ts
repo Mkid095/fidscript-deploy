@@ -65,7 +65,10 @@ export class StorageFileService {
       metadata: { projectId, bucketId, key, etag: result.etag },
     });
 
-    return file;
+    return {
+      ...file,
+      sizeBytes: Number(file.sizeBytes),
+    };
   }
 
   async listFiles(
@@ -92,7 +95,10 @@ export class StorageFileService {
       this.prisma.file.count({ where }),
     ]);
 
-    return { files, pagination: { page, limit, total, pages: Math.ceil(total / limit) } };
+    return {
+      files: files.map(f => ({ ...f, sizeBytes: Number(f.sizeBytes) })),
+      pagination: { page, limit, total, pages: Math.ceil(total / limit) },
+    };
   }
 
   async deleteFile(userId: string, projectId: string, fileId: string) {
