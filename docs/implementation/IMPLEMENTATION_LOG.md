@@ -286,6 +286,31 @@ Impact:
   `PREREQ-HEALTH-1` closed. `PREREQ-HEALTH-2` (services.email in /health) remains open — deferred
   to future hardening. F04 (Projects) is the next vertical slice per roadmap.
 
+## 2026-06-20 (evening) — Runtime Platform Configuration + Onboarding Rewrite
+
+Phase: Platform Configuration / F03-F04 follow-up
+
+Completed:
+- Added `InstallationLifecycle` enum + `InstallationStatus` / `InstallationOperation` / `InstallationSettings` / `InstallationSettingsVersion` / `UserCredential` models to schema.prisma; created migration `20260620150000_installation_and_credentials`.
+- Built `InstallationModule`: `InstallationOrchestratorService` with `configure()` + SSE progress stream; provider interfaces (`IReverseProxyProvider`, `ICertificateProvider`); concrete implementations (`TraefikProxyProvider`, `TraefikCertProvider`); step classes (`DnsStep`, `ProxyStep`, `CertificateStep`, `EmailStep`, `HealthStep`) with `validate()` / `execute()` pattern.
+- Added 26 new `installation.*` event types to `packages/events` (`installation.lifecycle.changed`, `installation.step.dns.started`, etc.).
+- Rewrote `/onboarding` page: 5-step wizard — Welcome (minimal, no Restore/Join), Discovery (live health checks), Configure (3 fields only), Progress (verbose log), Complete → Login.
+- Simplified onboarding welcome: single "Create a new platform" button — removed Restore/Join Cluster cards.
+- `UserCredential` model: installer seeds PASSWORD credential for admin; `AuthProfileService.getProfile` returns `credentials[]`; force-change-password page: has PASSWORD → "Change password", no PASSWORD → "Create password".
+- `AuthPasswordService` updated: magic-code-only users can create their first password (no `currentPassword` required); upserts `UserCredential` row instead of relying on `User.passwordHash`.
+
+Unexpected issues:
+- Prisma `Jsonb` not supported in PostgreSQL without `@db.Jsonb` annotation — removed native type annotation, used default `Json`.
+- `EventType` union didn't include new `installation.*` events — added all 26 types to `packages/events/src/index.ts` + rebuilt package.
+
+Decision:
+- `CLOUDFLARE_API_TOKEN_FILE` already mounted in docker-compose (line 237) — no docker-compose change needed.
+- For open-source deployers: Cloudflare token is environment-variable driven; anyone provides their own token at install time.
+- Rollback = manual compensation, not auto-reverse; failures stop and report.
+
+Impact:
+- New migration ready to apply on VPS. API module `InstallationModule` added to `AppModule`. All typecheck + build clean.
+
 ## 2026-06-20 (later) — F04 projects list + create modal
 
 Phase: F04 Projects (initial slice)

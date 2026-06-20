@@ -16,24 +16,25 @@ datasource db {
 }
 
 model User {
-  id           String    @id @default(uuid())
-  email        String    @unique @db.VarChar(255)
-  passwordHash String?   @map("password_hash") @db.VarChar(255)
-  name         String?   @db.VarChar(255)
-  avatarUrl    String?   @map("avatar_url") @db.Text
-  role         Role      @default(USER)
-  mfaEnabled   Boolean   @default(false) @map("mfa_enabled")
-  mfaSecret    String?   @map("mfa_secret") @db.VarChar(255)
-  mustChangePassword Boolean @default(false) @map("must_change_password")
-  lastLoginAt  DateTime? @map("last_login_at") @db.Timestamptz
-  createdAt    DateTime  @default(now()) @map("created_at") @db.Timestamptz
-  updatedAt    DateTime  @updatedAt @map("updated_at") @db.Timestamptz
+  id                 String    @id @default(uuid())
+  email              String    @unique @db.VarChar(255)
+  passwordHash       String?   @map("password_hash") @db.VarChar(255)
+  name               String?   @db.VarChar(255)
+  avatarUrl          String?   @map("avatar_url") @db.Text
+  role               Role      @default(USER)
+  mfaEnabled         Boolean   @default(false) @map("mfa_enabled")
+  mfaSecret          String?   @map("mfa_secret") @db.VarChar(255)
+  mustChangePassword Boolean   @default(false) @map("must_change_password")
+  lastLoginAt        DateTime? @map("last_login_at") @db.Timestamptz
+  createdAt          DateTime  @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt          DateTime  @updatedAt @map("updated_at") @db.Timestamptz
 
   sessions    Session[]
   apiKeys     ApiKey[]
   auditLogs   AuditLog[]
-  projects    Project[]       @relation("ProjectOwner")
+  projects    Project[]        @relation("ProjectOwner")
   memberships ProjectMember[]
+  credentials UserCredential[]
 
   @@map("identity.users")
 }
@@ -1316,4 +1317,98 @@ model PlatformEvent {
   @@index([resourceType, resourceId])
   @@index([actorId])
   @@map("platform.events")
+}
+
+// =============================================
+// INSTALLATION SCHEMA (runtime platform config)
+// =============================================
+
+enum InstallationLifecycle {
+  UNCONFIGURED
+  CONFIGURING
+  CONFIGURED
+  DEGRADED
+  RECONFIGURING
+}
+
+// Singleton — id="installation" is the only row.
+model InstallationStatus {
+  id              String                @id @default("installation")
+  lifecycle       InstallationLifecycle @default(UNCONFIGURED)
+  lastOperationId String?               @map("last_operation_id")
+  updatedAt       DateTime              @updatedAt @map("updated_at") @db.Timestamptz
+
+  @@map("platform.installation_status")
+}
+
+// One row per execution of an installation operation (configure, change-domain, retry).
+model InstallationOperation {
+  id               String    @id @default(uuid())
+  type             String    @db.VarChar(50) // 'CONFIGURE' | 'CHANGE_DOMAIN' | ...
+  status           String    @default("PENDING") @db.VarChar(20) // PENDING | RUNNING | COMPLETED | FAILED
+  currentStep      String?   @map("current_step") @db.VarChar(50)
+  // Structured step records: [{ step, startedAt, completedAt, error, result }]
+  steps            Json?
+  previousSnapshot Json?     @map("previous_snapshot")
+  failureReason    String?   @map("failure_reason") @db.Text
+  createdAt        DateTime  @default(now()) @map("created_at") @db.Timestamptz
+  completedAt      DateTime? @map("completed_at") @db.Timestamptz
+
+  @@index([status])
+  @@map("platform.installation_operations")
+}
+
+// Audit trail — every change to InstallationSettings is snapshot-recorded.
+model InstallationSettingsVersion {
+  id          String   @id @default(uuid())
+  changedBy   String?  @map("changed_by") @db.VarChar(255)
+  changedAt   DateTime @default(now()) @map("changed_at") @db.Timestamptz
+  reason      String?  @db.Text
+  snapshot    Json
+  operationId String?  @map("operation_id") @db.VarChar(36)
+
+  @@map("platform.installation_settings_versions")
+}
+
+// The actual desired-state configuration — not operational state.
+model InstallationSettings {
+  id             String   @id @default("installation")
+  platformName   String   @default("FIDScript Deploy") @map("platform_name") @db.VarChar(255)
+  platformDomain String   @map("platform_domain") @db.VarChar(255)
+  serverIp       String   @map("server_ip") @db.VarChar(45)
+  adminEmail     String   @map("admin_email") @db.VarChar(255)
+  dnsMode        String   @default("cloudflare_auto") @map("dns_mode") @db.VarChar(50)
+  branding       Json?
+  createdAt      DateTime @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt      DateTime @updatedAt @map("updated_at") @db.Timestamptz
+
+  @@map("platform.installation_settings")
+}
+
+// =============================================
+// USER CREDENTIALS (per-auth-type passwords)
+// =============================================
+
+enum CredentialType {
+  PASSWORD
+  MAGIC_CODE
+  PASSKEY
+
+  @@map("identity.CredentialType")
+}
+
+model UserCredential {
+  id         String         @id @default(uuid())
+  userId     String         @map("user_id")
+  type       CredentialType
+  // For PASSWORD: bcrypt hash. For PASSKEY: public key. For MAGIC_CODE: not stored (one-time).
+  secretHash String?        @map("secret_hash") @db.VarChar(255)
+  createdAt  DateTime       @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt  DateTime       @updatedAt @map("updated_at") @db.Timestamptz
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  // MagicCode rows are separate (identity.magic_codes) — they are one-time tokens, not credentials.
+
+  @@unique([userId, type])
+  @@map("identity.user_credentials")
 }

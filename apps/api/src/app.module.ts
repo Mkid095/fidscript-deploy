@@ -25,6 +25,7 @@ import { TemplatesModule } from './modules/templates/templates.module';
 import { AIModule } from './modules/ai/ai.module';
 import { MarketplaceModule } from './modules/marketplace/marketplace.module';
 import { CryptoModule } from './modules/crypto/crypto.module';
+import { InstallationModule } from './modules/installation/installation.module';
 
 @Module({
   imports: [
@@ -54,6 +55,7 @@ import { CryptoModule } from './modules/crypto/crypto.module';
     TemplatesModule,
     AIModule,
     MarketplaceModule,
+    InstallationModule,
   ],
 })
 export class AppModule {}

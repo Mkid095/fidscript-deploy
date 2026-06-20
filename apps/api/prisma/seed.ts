@@ -25,7 +25,7 @@ async function main() {
 
   const passwordHash = await bcrypt.hash(password, 12);
 
-  await prisma.user.create({
+  const user = await prisma.user.create({
     data: {
       email,
       passwordHash,
@@ -38,7 +38,18 @@ async function main() {
     },
   });
 
-  console.log(`Admin user ${email} created`);
+  // Create the PASSWORD credential record for this user.
+  // This allows force-change-password to distinguish between "has a password to change"
+  // and "was magic-code only and needs to create a password".
+  await prisma.userCredential.create({
+    data: {
+      userId: user.id,
+      type: 'PASSWORD',
+      secretHash: passwordHash,
+    },
+  });
+
+  console.log(`Admin user ${email} created with PASSWORD credential`);
 }
 
 main()

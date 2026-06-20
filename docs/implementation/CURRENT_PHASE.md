@@ -17,6 +17,16 @@
 
 ## Recently completed
 
+**Runtime Platform Configuration + Onboarding Rewrite ✅** (2026-06-20)
+
+- `InstallationLifecycle` enum + `InstallationStatus` / `InstallationOperation` / `InstallationSettings` / `InstallationSettingsVersion` / `UserCredential` models added to schema; migration `20260620150000_installation_and_credentials` created.
+- `InstallationModule`: `InstallationOrchestratorService` with `configure()` + SSE progress stream; provider interfaces + `TraefikProxyProvider` / `TraefikCertProvider`; step classes (`DnsStep`, `ProxyStep`, `CertificateStep`, `EmailStep`, `HealthStep`) with `validate()` / `execute()`.
+- 26 new `installation.*` event types added to `packages/events`.
+- `/onboarding` page rewritten: 5-step wizard (Welcome → Discovery → Configure → Progress → Complete).
+- Onboarding welcome simplified: single "Create a new platform" button, no Restore/Join.
+- `UserCredential` model: installer seeds PASSWORD credential; `AuthProfileService` returns `credentials[]`; force-change-password page detects PASSWORD credential → "Change password" vs "Create password".
+- `AuthPasswordService`: magic-code-only users can create their first password without `currentPassword`.
+
 **F04 — Projects ✅** (2026-06-20).
 
 - `/dashboard/projects` list + create modal wired to real API via `useAuth().getSdk()`.

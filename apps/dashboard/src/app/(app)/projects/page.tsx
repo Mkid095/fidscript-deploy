@@ -2,7 +2,6 @@
 
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
-import { Card } from '@fidscript/ui';
 import { Button } from '@fidscript/ui';
 import { Spinner } from '@fidscript/ui';
 import { EmptyState } from '@fidscript/ui';
@@ -11,15 +10,6 @@ import { Modal } from '@fidscript/ui';
 
 import { useAuth } from '@/contexts/auth-context';
 import type { Project } from '@/types';
-
-const TYPE_OPTIONS = [
-  { value: 'frontend', label: 'Frontend', desc: 'Web app deployed automatically' },
-  { value: 'backend', label: 'Backend', desc: 'API + optional database' },
-  { value: 'worker', label: 'Worker', desc: 'Long-running background process' },
-  { value: 'cron', label: 'Cron', desc: 'Scheduled jobs' },
-  { value: 'docker', label: 'Docker', desc: 'Arbitrary container image' },
-  { value: 'static', label: 'Static', desc: 'Static file hosting' },
-];
 
 function slugify(name: string): string {
   return name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
@@ -33,7 +23,6 @@ export default function ProjectsPage() {
   const [loadError, setLoadError] = useState<string | null>(null);
   const [showCreate, setShowCreate] = useState(false);
   const [name, setName] = useState('');
-  const [type, setType] = useState('frontend');
   const [description, setDescription] = useState('');
   const [slug, setSlug] = useState('');
   const [creating, setCreating] = useState(false);
@@ -44,7 +33,7 @@ export default function ProjectsPage() {
     setSlug(slugify(name));
   }, [name]);
 
-  // Load projects on mount.
+  // Load projects.
   useEffect(() => {
     let cancelled = false;
     async function load() {
@@ -62,6 +51,19 @@ export default function ProjectsPage() {
     return () => { cancelled = true; };
   }, [getSdk]);
 
+  function openCreate() {
+    setName('');
+    setDescription('');
+    setSlug('');
+    setCreateError(null);
+    setShowCreate(true);
+  }
+
+  function closeCreate() {
+    setShowCreate(false);
+    setCreateError(null);
+  }
+
   async function handleCreate(e: React.FormEvent) {
     e.preventDefault();
     if (!name.trim()) return;
@@ -71,15 +73,11 @@ export default function ProjectsPage() {
       const sdk = getSdk();
       const created = await sdk.projects.create({
         name: name.trim(),
-        type,
+        type: 'frontend', // default; change in project settings
         description: description.trim() || undefined,
       });
       setProjects(prev => [...prev, created]);
-      setName('');
-      setType('frontend');
-      setDescription('');
-      setSlug('');
-      setShowCreate(false);
+      closeCreate();
     } catch (err) {
       setCreateError(err instanceof Error ? err.message : 'Failed to create project');
     } finally {
@@ -108,13 +106,12 @@ export default function ProjectsPage() {
           </p>
         </div>
         {canCreate && (
-          <Button variant="primary" size="sm" onClick={() => setShowCreate(true)}>
+          <Button variant="primary" size="sm" onClick={openCreate}>
             Create Project
           </Button>
         )}
       </div>
 
-      {/* Error */}
       {loadError && (
         <p className="text-red-400 mb-4 text-sm">{loadError}</p>
       )}
@@ -124,7 +121,7 @@ export default function ProjectsPage() {
         <Modal
           isOpen={true}
           title="Create Project"
-          onClose={() => { setShowCreate(false); setCreateError(null); }}
+          onClose={closeCreate}
         >
           <form id="create-form" onSubmit={handleCreate} className="space-y-4">
             <Input
@@ -141,31 +138,6 @@ export default function ProjectsPage() {
               </p>
             )}
 
-            {/* Type select */}
-            <div>
-              <label className="block text-xs font-medium text-slate-400 uppercase mb-1.5">
-                Type
-              </label>
-              <div className="grid grid-cols-2 gap-2">
-                {TYPE_OPTIONS.map(opt => (
-                  <button
-                    key={opt.value}
-                    type="button"
-                    onClick={() => setType(opt.value)}
-                    className={`
-                      p-3 rounded-lg border text-left text-sm transition-colors duration-150
-                      ${type === opt.value
-                        ? 'border-blue-500 bg-blue-900/20 text-slate-200'
-                        : 'border-[#1e2130] bg-[#0f1117] text-slate-400 hover:border-slate-600'}
-                    `}
-                  >
-                    <div className="font-medium">{opt.label}</div>
-                    <div className="text-xs text-slate-500 mt-0.5">{opt.desc}</div>
-                  </button>
-                ))}
-              </div>
-            </div>
-
             <Input
               label="Description (optional)"
               value={description}
@@ -179,7 +151,7 @@ export default function ProjectsPage() {
             )}
 
             <div className="flex gap-2 justify-end pt-2">
-              <Button variant="ghost" size="sm" type="button" onClick={() => setShowCreate(false)}>
+              <Button variant="ghost" size="sm" type="button" onClick={closeCreate}>
                 Cancel
               </Button>
               <Button
@@ -203,7 +175,7 @@ export default function ProjectsPage() {
           description="Create your first project to start deploying apps, databases, and more."
           action={
             canCreate ? (
-              <Button variant="primary" size="sm" onClick={() => setShowCreate(true)}>
+              <Button variant="primary" size="sm" onClick={openCreate}>
                 Create Project
               </Button>
             ) : undefined

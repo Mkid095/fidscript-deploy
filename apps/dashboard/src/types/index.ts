@@ -9,6 +9,7 @@ export interface User {
   mfaEnabled: boolean;
   mustChangePassword: boolean;
   createdAt: string;
+  credentials?: Array<{ type: 'PASSWORD' | 'MAGIC_CODE' | 'PASSKEY' }>;
 }
 
 export interface Project {

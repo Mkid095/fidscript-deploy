@@ -172,7 +172,33 @@ export type EventType =
   // Marketplace events
   | 'marketplace.item.submitted'
   | 'marketplace.item.approved'
-  | 'marketplace.review.created';
+  | 'marketplace.review.created'
+  // Installation events
+  | 'installation.lifecycle.changed'
+  | 'installation.lifecycle.validation.started'
+  | 'installation.lifecycle.validation.completed'
+  | 'installation.lifecycle.operation.started'
+  | 'installation.lifecycle.operation.completed'
+  | 'installation.step.dns.started'
+  | 'installation.step.dns.validation.completed'
+  | 'installation.step.dns.completed'
+  | 'installation.step.dns.failed'
+  | 'installation.step.proxy.started'
+  | 'installation.step.proxy.validation.completed'
+  | 'installation.step.proxy.completed'
+  | 'installation.step.proxy.failed'
+  | 'installation.step.certificate.started'
+  | 'installation.step.certificate.validation.completed'
+  | 'installation.step.certificate.completed'
+  | 'installation.step.certificate.failed'
+  | 'installation.step.email.started'
+  | 'installation.step.email.validation.completed'
+  | 'installation.step.email.completed'
+  | 'installation.step.email.failed'
+  | 'installation.step.health.started'
+  | 'installation.step.health.validation.completed'
+  | 'installation.step.health.completed'
+  | 'installation.step.health.failed';
 
 export interface PlatformEvent<T = unknown> {
   id: string;

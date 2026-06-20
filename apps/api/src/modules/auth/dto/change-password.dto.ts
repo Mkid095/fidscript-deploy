@@ -9,7 +9,7 @@ import { ApiProperty } from '@nestjs/swagger';
  * password must differ from the current one — enforced in the service.
  */
 export class ChangePasswordDto {
-  @ApiProperty({ description: 'The user’s current password.' })
+  @ApiProperty({ description: "The user’s current password. Empty string for magic-code users creating their first password." })
   @IsString()
   currentPassword: string;
 

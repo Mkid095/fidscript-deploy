@@ -9,7 +9,8 @@ import { useAuth } from '@/contexts/auth-context';
 import { PasswordStrength } from '@/components/auth/password-strength';
 
 export default function ForceChangePasswordPage() {
-  const { changePassword, loading, error } = useAuth();
+  const { user, changePassword, loading, error } = useAuth();
+  const hasPasswordCredential = user?.credentials?.some(c => c.type === 'PASSWORD') ?? false;
   const [currentPassword, setCurrentPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [confirm, setConfirm] = useState('');
@@ -17,7 +18,7 @@ export default function ForceChangePasswordPage() {
   const [serverError, setServerError] = useState('');
 
   function validate(): boolean {
-    if (!currentPassword) {
+    if (hasPasswordCredential && !currentPassword) {
       setValidationError('Current password is required');
       return false;
     }
@@ -37,7 +38,7 @@ export default function ForceChangePasswordPage() {
       setValidationError('New password must contain a number');
       return false;
     }
-    if (newPassword === currentPassword) {
+    if (hasPasswordCredential && newPassword === currentPassword) {
       setValidationError('New password must be different from current password');
       return false;
     }
@@ -54,7 +55,8 @@ export default function ForceChangePasswordPage() {
     setServerError('');
     if (!validate()) return;
     try {
-      await changePassword(currentPassword, newPassword);
+      // Magic-code-only users call changePassword with empty currentPassword
+      await changePassword(hasPasswordCredential ? currentPassword : '', newPassword);
     } catch (err) {
       setServerError(err instanceof Error ? err.message : 'Password change failed');
     }
@@ -64,23 +66,29 @@ export default function ForceChangePasswordPage() {
     <div className="min-h-screen flex items-center justify-center bg-[#080a0d] p-4">
       <Card padding="lg" className="w-full max-w-md border border-[#1e2130]">
         <div className="mb-6 text-center">
-          <h1 className="text-xl font-bold text-slate-200 mb-1">Change your password</h1>
+          <h1 className="text-xl font-bold text-slate-200 mb-1">
+            {hasPasswordCredential ? 'Change your password' : 'Create a password'}
+          </h1>
           <p className="text-sm text-slate-500">
-            You are using temporary credentials. Choose a permanent password to continue.
+            {hasPasswordCredential
+              ? 'Choose a new password to replace your current one.'
+              : 'You are using a magic code login. Create a password to secure your account.'}
           </p>
         </div>
 
         <form onSubmit={handleSubmit} noValidate>
           <div className="flex flex-col gap-4">
-            <Input
-              label="Current password"
-              type="password"
-              value={currentPassword}
-              onChange={(e) => setCurrentPassword(e.target.value)}
-              placeholder="Enter your current password"
-              autoComplete="current-password"
-              className="bg-[#080a0d] border border-[#1e2130] text-slate-200 placeholder:text-slate-600"
-            />
+            {hasPasswordCredential && (
+              <Input
+                label="Current password"
+                type="password"
+                value={currentPassword}
+                onChange={(e) => setCurrentPassword(e.target.value)}
+                placeholder="Enter your current password"
+                autoComplete="current-password"
+                className="bg-[#080a0d] border border-[#1e2130] text-slate-200 placeholder:text-slate-600"
+              />
+            )}
 
             <div className="space-y-1">
               <Input
@@ -117,7 +125,7 @@ export default function ForceChangePasswordPage() {
               variant="primary"
               className="w-full mt-1"
             >
-              {loading ? 'Updating...' : 'Update & continue'}
+              {loading ? 'Updating...' : hasPasswordCredential ? 'Update & continue' : 'Create & continue'}
             </Button>
           </div>
         </form>

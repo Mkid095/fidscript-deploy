@@ -1,0 +1,301 @@
+import { Injectable, Logger, BadRequestException } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
+import { EventService } from '@/modules/events/event.service';
+import type { EventType } from '@fidscript/events';
+import { RedisService } from '@/modules/redis/redis.service';
+import { PrismaService } from '@/prisma/prisma.service';
+import { DnsStep, ProxyStep, CertificateStep, EmailStep, HealthStep } from './steps/installation-steps';
+import {
+  ConfigureInstallationDto,
+  StepValidationIssue,
+  StepResult,
+  DiscoveryResult,
+} from './dto';
+import { randomUUID } from 'crypto';
+import { Prisma } from '@prisma/client';
+
+const LOCK_KEY = 'installation:orchestrate';
+const LOCK_TOKEN_TTL_MS = 5 * 60 * 1000; // 5 minutes
+
+@Injectable()
+export class InstallationOrchestratorService {
+  private readonly logger = new Logger(InstallationOrchestratorService.name);
+
+  constructor(
+    private readonly events: EventService,
+    private readonly redis: RedisService,
+    private readonly prisma: PrismaService,
+    private readonly dnsStep: DnsStep,
+    private readonly proxyStep: ProxyStep,
+    private readonly certificateStep: CertificateStep,
+    private readonly emailStep: EmailStep,
+    private readonly healthStep: HealthStep,
+    private readonly configService: ConfigService,
+  ) {}
+
+  // ─── Discovery ────────────────────────────────────────────────
+
+  async discover(): Promise<DiscoveryResult> {
+    const serverIp = this.configService.get<string>('SERVER_IP') ?? '0.0.0.0';
+
+    let adminEmail: string | null = null;
+    try {
+      const admin = await this.prisma.user.findFirst({
+        where: { role: { in: ['ADMIN', 'OWNER'] } },
+        select: { email: true },
+        orderBy: { createdAt: 'asc' },
+      });
+      adminEmail = admin?.email ?? null;
+    } catch {
+      // DB not seeded yet
+    }
+
+    let existingInstallation: DiscoveryResult['existingInstallation'] = null;
+    try {
+      const status = await this.prisma.installationStatus.findFirst();
+      if (status) {
+        const [projectCount, userCount] = await Promise.all([
+          this.prisma.project.count(),
+          this.prisma.user.count(),
+        ]);
+        existingInstallation = { version: '1.0.0', projectCount, userCount };
+      }
+    } catch {
+      // Tables don't exist yet
+    }
+
+    return {
+      serverIp,
+      adminEmail,
+      existingInstallation,
+      dockerAvailable: true,
+      traefikConfigured: true,
+      cloudflareTokenFound: !!process.env.CLOUDFLARE_API_TOKEN_FILE,
+      existingCertificateFound: existingInstallation !== null,
+    };
+  }
+
+  // ─── Status ──────────────────────────────────────────────────
+
+  async getStatus() {
+    let status = await this.prisma.installationStatus.findFirst();
+    if (!status) {
+      status = await this.prisma.installationStatus.create({
+        data: { id: 'installation', lifecycle: 'UNCONFIGURED' },
+      });
+    }
+    const lastOp = status.lastOperationId
+      ? await this.prisma.installationOperation.findUnique({ where: { id: status.lastOperationId } })
+      : null;
+    return { lifecycle: status.lifecycle, lastOperation: lastOp ?? null };
+  }
+
+  // ─── Validation (dry-run) ────────────────────────────────────
+
+  async validate(dto: Partial<ConfigureInstallationDto>): Promise<StepValidationIssue[]> {
+    const domain = dto.platformDomain ?? this.configService.get<string>('PLATFORM_DOMAIN') ?? '';
+    const serverIp = dto.serverIp ?? this.configService.get<string>('SERVER_IP') ?? '';
+    return Promise.all([
+      this.dnsStep.validate({ domain, serverIp }),
+      this.proxyStep.validate({ domain }),
+      this.certificateStep.validate({ domain }),
+      this.emailStep.validate({ adminEmail: dto.adminEmail ?? '' }),
+      this.healthStep.validate(),
+    ]);
+  }
+
+  // ─── Configure ───────────────────────────────────────────────
+
+  async configure(dto: ConfigureInstallationDto): Promise<{ operationId: string }> {
+    const lockToken = randomUUID();
+    const acquired = await this.redis.acquireLock(LOCK_KEY, lockToken, LOCK_TOKEN_TTL_MS);
+    if (!acquired) {
+      throw new BadRequestException('Configuration is already in progress. Try again shortly.');
+    }
+
+    let operationId = '';
+    try {
+      const prevSettings = await this.prisma.installationSettings.findFirst();
+      const prevSnapshot: Prisma.InputJsonValue | undefined = prevSettings
+        ? (JSON.parse(JSON.stringify(prevSettings)) as Prisma.InputJsonValue)
+        : undefined;
+
+      const op = await this.prisma.installationOperation.create({
+        data: { type: 'CONFIGURE', status: 'RUNNING', previousSnapshot: prevSnapshot },
+      });
+      operationId = op.id;
+
+      await this.prisma.installationStatus.upsert({
+        where: { id: 'installation' },
+        create: { id: 'installation', lifecycle: 'CONFIGURING', lastOperationId: op.id },
+        update: { lifecycle: 'CONFIGURING', lastOperationId: op.id },
+      });
+
+      this.events.emit('installation.lifecycle.operation.started' as EventType, { operationId: op.id, type: 'CONFIGURE' });
+
+      const stepResults = await this.runSteps(dto);
+
+      await this.prisma.installationOperation.update({
+        where: { id: op.id },
+        data: {
+          status: 'COMPLETED',
+          currentStep: null,
+          steps: stepResults as unknown as Prisma.InputJsonValue,
+          completedAt: new Date(),
+        },
+      });
+
+      await this.prisma.installationSettings.upsert({
+        where: { id: 'installation' },
+        create: {
+          id: 'installation',
+          platformName: dto.platformName,
+          platformDomain: dto.platformDomain,
+          serverIp: dto.serverIp,
+          adminEmail: dto.adminEmail,
+          dnsMode: dto.dnsMode ?? 'cloudflare_auto',
+        },
+        update: {
+          platformName: dto.platformName,
+          platformDomain: dto.platformDomain,
+          serverIp: dto.serverIp,
+          adminEmail: dto.adminEmail,
+          dnsMode: dto.dnsMode ?? 'cloudflare_auto',
+        },
+      });
+
+      await this.prisma.installationSettingsVersion.create({
+        data: {
+          changedBy: 'system',
+          reason: 'Initial platform configuration',
+          snapshot: dto as unknown as Prisma.InputJsonValue,
+          operationId: op.id,
+        },
+      });
+
+      await this.prisma.installationStatus.update({
+        where: { id: 'installation' },
+        data: { lifecycle: 'CONFIGURED', lastOperationId: op.id },
+      });
+
+      this.events.emit('installation.lifecycle.operation.completed' as EventType, { operationId: op.id, success: true });
+      this.events.emit('installation.lifecycle.changed' as EventType, { lifecycle: 'CONFIGURED' });
+
+      return { operationId: op.id };
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      this.logger.error(`Installation configure failed: ${msg}`);
+      if (operationId) {
+        await this.prisma.installationOperation.update({
+          where: { id: operationId },
+          data: { status: 'FAILED', failureReason: msg, completedAt: new Date() },
+        }).catch(() => null);
+      }
+      this.events.emit('installation.lifecycle.operation.completed' as EventType, { operationId, success: false, error: msg });
+      throw err;
+    } finally {
+      await this.redis.releaseLock(LOCK_KEY, lockToken);
+    }
+  }
+
+  // ─── SSE stream for progress ─────────────────────────────────
+
+  async *streamProgress(operationId: string): AsyncGenerator<Record<string, unknown>, void, unknown> {
+    const deadline = Date.now() + 10 * 60 * 1000;
+    while (Date.now() < deadline) {
+      const op = await this.prisma.installationOperation.findUnique({ where: { id: operationId } });
+      if (!op) break;
+      yield {
+        type: 'status',
+        status: op.status,
+        currentStep: op.currentStep,
+        steps: op.steps,
+        failureReason: op.failureReason,
+      };
+      if (op.status === 'COMPLETED' || op.status === 'FAILED') break;
+      await this.sleep(500);
+    }
+  }
+
+  // ─── Helpers ─────────────────────────────────────────────────
+
+  private async runSteps(dto: ConfigureInstallationDto): Promise<StepResult[]> {
+    type StepEntry = {
+      name: string;
+      validate: (i: Record<string, unknown>) => Promise<StepValidationIssue>;
+      execute: (i: Record<string, unknown>) => Promise<StepResult>;
+    };
+
+    const steps: StepEntry[] = [
+      {
+        name: 'dns',
+        validate: i => this.dnsStep.validate(i as { domain: string; serverIp?: string }),
+        execute: i => this.dnsStep.execute(i as { domain: string }),
+      },
+      {
+        name: 'proxy',
+        validate: i => this.proxyStep.validate(i as { domain: string }),
+        execute: i => this.proxyStep.execute(i as { domain: string }),
+      },
+      {
+        name: 'certificate',
+        validate: i => this.certificateStep.validate(i as { domain: string }),
+        execute: i => this.certificateStep.execute(i as { domain: string }),
+      },
+      {
+        name: 'email',
+        validate: i => this.emailStep.validate(i as { adminEmail: string }),
+        execute: i => this.emailStep.execute(i as { adminEmail: string }),
+      },
+      {
+        name: 'health',
+        validate: () => this.healthStep.validate(),
+        execute: () => this.healthStep.execute(),
+      },
+    ];
+
+    const inputs: Record<string, unknown>[] = [
+      { domain: dto.platformDomain, serverIp: dto.serverIp },
+      { domain: dto.platformDomain },
+      { domain: dto.platformDomain },
+      { adminEmail: dto.adminEmail },
+      {},
+    ];
+
+    const results: StepResult[] = [];
+
+    for (let i = 0; i < steps.length; i++) {
+      const { name, validate, execute } = steps[i];
+      const input = inputs[i];
+
+      this.events.emit(`installation.step.${name}.started` as EventType, { input });
+      this.events.emit('installation.lifecycle.validation.started' as EventType, { step: name });
+
+      const validation = await validate(input);
+      this.events.emit(`installation.step.${name}.validation.completed` as EventType, validation);
+      this.events.emit('installation.lifecycle.validation.completed' as EventType, { step: name, valid: validation.valid, issues: validation.issues });
+
+      if (!validation.valid) {
+        const error = `Validation failed for step ${name}: ${validation.issues.join(', ')}`;
+        this.events.emit(`installation.step.${name}.failed` as EventType, { reason: error });
+        throw new BadRequestException(error);
+      }
+
+      const result = await execute(input);
+      const eventName = result.success ? `installation.step.${name}.completed` : `installation.step.${name}.failed`;
+      this.events.emit(eventName as EventType, result);
+
+      if (!result.success) {
+        throw new BadRequestException(`Step ${name} failed: ${result.error}`);
+      }
+
+      results.push(result);
+    }
+
+    return results;
+  }
+
+  private sleep(ms: number): Promise<void> {
+    return new Promise(r => setTimeout(r, ms));
+  }
+}
