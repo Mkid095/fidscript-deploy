@@ -12,6 +12,13 @@ FIDScript Deploy — AI Development Constitution
 > **Documentation → Review → Approval → Implementation** (rule 14). No new frontend feature is built
 > until its spec is complete and approved. The blueprint lives in `docs/product/` and
 > `docs/phases/frontend/`. Status: `AGENT_STATUS.md`.
+>
+> **⚠️ The blueprint is FROZEN (2026-06-20, Phase D0).** The documentation validation pass is complete
+> (`docs/VALIDATION.md`): 0 broken cross-references; 13/16 features buildable now; ~89% backend
+> ready. From this point the documentation is the **project's contract**, not evolving notes — see
+> **rule 16 (Documentation Freeze)** below. The canonical implementation order is
+> `docs/IMPLEMENTATION_ROADMAP.md`; every blocker is registered in `docs/backend-prerequisites.md`
+> (9 🟥 Open items — close AUTH first, then F02 as the first vertical slice).
 
 ---
 
@@ -23,6 +30,7 @@ FIDScript Deploy — AI Development Constitution
 |------|-------|
 | **Start here — orient any agent/human (read first)** | `docs/START_HERE.md` |
 | **Current phase and status** (what's done / what's next) | `AGENT_STATUS.md` |
+| **⚠️ Before implementing: read the validation + roadmap** | `docs/VALIDATION.md`, `docs/IMPLEMENTATION_ROADMAP.md`, `docs/backend-prerequisites.md` |
 | **Project documentation map** (every doc in one place) | [below](#project-documentation-map) |
 | Why we reset + current honest state | `docs/AUDIT.md` |
 | Backend phase roadmap + verification rubric | `docs/phases/README.md` |
@@ -246,6 +254,13 @@ every spec cross-references.
 13. **Docs Are Living** - Phase docs, AUDIT, AGENT_STATUS, and the precision maps are a snapshot. Update them in the same commit as the code so they never drift; a doc that lies is worse than no doc.
 14. **Documentation-First (frontend)** - No frontend feature/page/component/API-integration may be implemented until its spec (`docs/phases/frontend/fNN-*.md`, following `_template.md`'s 16 sections) is complete and approved. Specs cross-reference the **backend inventory** (`docs/phases/frontend/backend/`) by stable endpoint ID — never invent endpoints. Flow: Documentation → Review → Approval → Implementation.
 15. **Operating-System Framing (frontend)** - The dashboard is the operator's **control plane** for backend services, not a viz dashboard. Every screen renders **real Prisma entities** with real fields, enables **real inventory endpoints**, respects the **real auth context** (owner / admin / developer / viewer each see different fields, buttons, chrome), and is **honest about backend gaps** (greyed, never faked). See the "operating-system framing" section above. This rule constrains every product doc (philosophy, journeys, services, screens, components, phase specs).
+16. **Documentation Freeze (the contract)** - As of 2026-06-20 (Phase D0) the blueprint is **frozen**: `docs/VALIDATION.md` confirms 0 broken cross-references and the implementation matrix is mapped. From this point the rules of engagement are:
+    - **Documentation is the contract.** Code must conform to the docs; docs do not chase code.
+    - **Code conforms to the documentation.** When building, follow the spec (`docs/phases/frontend/fNN-*.md` + the screen + component specs). If the code can't match the spec, that's a finding to surface — not a reason to silently diverge.
+    - **Documentation changes require review before implementation.** If reality has shifted and a spec is now wrong, fix the spec **first** (rule 13), in its own change, and get it reviewed — *then* implement against the corrected spec. Never edit code and doc in a way that leaves the contract describing a system that doesn't exist.
+    - **A feature is not "done" until its docs are updated.** Flip the phase to `Verified` in `AGENT_STATUS.md`, refresh the spec's *Current State*, and close any `PREREQ-*` it depended on in `docs/backend-prerequisites.md` — all in the same commit as the code (rule 1 + rule 13).
+    - **No new frontend feature without its spec complete + approved** (rule 14 still holds).
+    - The implementation order is fixed: `docs/IMPLEMENTATION_ROADMAP.md`. Blockers live in one place: `docs/backend-prerequisites.md`.
 
 ---
 
@@ -307,6 +322,9 @@ FIDScript Deploy repo
 ├── docs/
 │   ├── AUDIT.md                     ← why we reset (backend audit)
 │   ├── START_HERE.md                ← orient any agent
+│   ├── VALIDATION.md                ← ⚠️ Phase D0 validation report (cross-refs + matrix + readiness + UX)
+│   ├── IMPLEMENTATION_ROADMAP.md    ← ⚠️ the canonical build order (every future agent follows this)
+│   ├── backend-prerequisites.md     ← ⚠️ every Open/UI-mitigated backend gap (the blocker registry)
 │   │
 │   ├── phases/                      ← BACKEND phases 00–23 (all verified)
 │   │   ├── README.md                ← roadmap + verification rubric

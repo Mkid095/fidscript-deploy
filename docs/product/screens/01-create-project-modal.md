@@ -51,9 +51,10 @@ is one form; everything else is set up after.**
 - **Name**:
   - *Idle*: empty input; the slug preview is empty.
   - *Typing*: slug preview updates live (lowercase, replace non-alphanumeric with `-`).
-  - *Async duplicate check*: after typing stops for 300ms, the UI calls a lightweight endpoint
-    (`PROJ-01` with a `?slug=…` filter or a new dedicated `PROJ-23` "check slug availability")
-    to verify uniqueness. Inline ✓ / ✗ indicator.
+  - *Async duplicate check*: after typing stops for 300ms, the UI verifies uniqueness. The
+    canonical path is a dedicated slug-availability check (`docs/backend-prerequisites.md`
+    → `PROJ-NEW-1`); until it lands, the UI derives the check from `PROJ-01` with a
+    `?slug=…` filter. Inline ✓ / ✗ indicator.
   - *Error*: "Already exists — try `<slug>-2`" (the suggested next slug is computed client-side).
 - **Type**:
   - *Idle*: 6 radio cards in a 2-column grid. Each card has the type name + a one-line
@@ -78,8 +79,9 @@ is one form; everything else is set up after.**
 - **Create** — `POST /api/v1/projects` (`PROJ-02`). Payload: `{name, slug, type, description?}`.
   Returns the full `Project` row (status: `CREATING` initially, transitions to `ACTIVE` via
   `projects.project.created` event).
-- **Slug uniqueness** — `PROJ-23` (new, F04 §14 backend prereq) or a derived check on
-  `PROJ-01` with `?slug=…`. UI validates locally first; the server is the source of truth.
+- **Slug uniqueness** — the dedicated availability check does not exist yet
+  (`docs/backend-prerequisites.md` → `PROJ-NEW-1`); the UI derives it from `PROJ-01` with
+  `?slug=…` until that lands. UI validates locally first; the server is the source of truth.
 - **Realtime** — `projects.project.created` event confirms the optimistic insert. The card
   status transitions to `ACTIVE` via `projects.project.updated`.
 

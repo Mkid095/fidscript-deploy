@@ -207,9 +207,11 @@ Open /dashboard/projects/:id/scheduler (F05) → Jobs tab.
     status badge, startedAt, completedAt, durationMs, errorMessage. Click a row → modal
     with full request payload + response output.
   - **Next run tab**: shows nextRunAt with a live countdown (HH:MM:SS); the next 5 runs
-    derived from the cron expression; "Skip next run" button (POST a new endpoint
-    `CRON-09` or PATCH a `skipNextRun` flag — for now: triggers a manual run with
-    a `{"_skip": true}` payload as a placeholder; the canonical skip is a P1 follow-up).
+    derived from the cron expression; "Skip next run" button — **this endpoint does not
+    exist yet** (see `docs/backend-prerequisites.md` → `SCHED-1`). For now the button is
+    greyed with tooltip "coming soon"; it does not perform a placeholder action. When
+    `SCHED-1` lands it becomes `POST /cron/:jobId/skip-next` (inventory ID assigned at
+    build time, recorded in `docs/backend-prerequisites.md`).
 
 ## 7. Component Specifications
 - `<DataTable>` ✅ — messages list, runs list, presence list.
@@ -367,9 +369,9 @@ Notable specifics for F10:
   answer).
 
 Backend gaps the UI must work around:
-- The **`CRON` "skip next run"** is not yet an endpoint; the UI button currently triggers
-  a manual run with a placeholder payload. A `POST /cron/:id/skip-next` is a P1 follow-up;
-  the UI is built to call it when it lands.
+- The **`CRON` "skip next run"** endpoint does not exist yet (`docs/backend-prerequisites.md`
+  → `SCHED-1`). The UI button is greyed with "coming soon"; it does not perform a
+  placeholder action. When `SCHED-1` lands it becomes `POST /cron/:id/skip-next`.
 - **`QUEUE-06` does not currently emit realtime events for stats changes** — the UI polls
   every 10s. (Future: `queue.<id>.stats_updated` event; the UI is built to consume it.)
 
@@ -415,5 +417,5 @@ Backend gaps the UI must work around:
 
 ## Change log
 - 2026-06-20 — Initial full 16-section spec. Documents 2 backend gaps: (1) `CRON` "skip next
-  run" is a P1 follow-up (button present, uses placeholder action today); (2) `QUEUE-06`
+  run" does not exist yet (`SCHED-1` in `docs/backend-prerequisites.md`); button is greyed; (2) `QUEUE-06`
   does not push realtime (UI polls every 10s).

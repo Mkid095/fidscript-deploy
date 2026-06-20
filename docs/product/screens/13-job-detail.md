@@ -58,7 +58,8 @@ and next three states at a glance.**
     - *Click row*: modal with full request payload + response output.
   - **Next run**:
     - *Live*: countdown ticks every second; the next 5 derived runs.
-    - *Skip next run*: button (P1 follow-up; uses placeholder action today).
+    - *Skip next run*: button greyed with "coming soon" — endpoint does not exist yet
+      (`docs/backend-prerequisites.md` → `SCHED-1`).
 
 ## 5. Primary + secondary actions
 - **Primary (top-right)**: "Trigger now" (POST CRON-06).
@@ -106,7 +107,6 @@ and next three states at a glance.**
 4. The Runs tab shows the history with status, duration, errorMessage; click a row →
    modal with full payload + response.
 5. The Next run tab shows the countdown + the next 5 derived runs.
-6. "Skip next run" is present with a P1-followup tooltip; it currently triggers a manual
-   run with a placeholder payload.
+6. "Skip next run" is greyed with "coming soon" — endpoint does not exist yet (`SCHED-1`).
 7. The Config tab is editable; "Delete" in Danger Zone has type-to-confirm.
 8. Realtime updates: runs appear in the Runs tab via WS events.
