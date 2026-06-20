@@ -109,6 +109,26 @@ export class RedisService implements OnModuleDestroy {
     }
   }
 
+  /**
+   * Atomic fixed-window counter: INCR + EXPIRE-on-first-hit via Lua (so the
+   * expiry is set in the same atomic step as the first increment — no race
+   * where a key persists without a TTL). Used by AuthRateLimiter for login /
+   * OTP throttling. Returns 0 when Redis is unavailable (fail-open signal).
+   */
+  async incrWithExpiry(key: string, windowSec: number): Promise<number> {
+    if (!this.client) return 0;
+    try {
+      const res = await this.client.eval(
+        'local c = redis.call("INCR", KEYS[1]) if c == 1 then redis.call("EXPIRE", KEYS[1], ARGV[1]) end return c',
+        { keys: [key], arguments: [String(windowSec)] },
+      );
+      return Number(res);
+    } catch (error) {
+      this.logger.error(`Redis incrWithExpiry error for ${key}:`, (error as Error).message);
+      return 0;
+    }
+  }
+
   async onModuleDestroy() {
     if (this.client) {
       await this.client.quit();
