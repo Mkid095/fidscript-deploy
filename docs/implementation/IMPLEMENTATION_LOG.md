@@ -20,6 +20,21 @@
 
 ---
 
+## 2026-06-21 — F06: Deployments UI
+
+Phase: F06
+
+Completed:
+- `projects/[projectId]/sections/deployments.tsx`: Active/All tab bar, state-colored deployment cards with Stop/Restart/Delete actions, inline git-URL paste empty state, NewDeploymentModal trigger.
+- `projects/[projectId]/deployments/[deploymentId]/page.tsx`: state-machine timeline (9 states), build logs (collapsible), Stop/Restart/Rollback/Delete actions bar.
+- `components/deployments/new-deployment-modal.tsx`: git/archive source picker, branch + Dockerfile path fields, "What will build" live preview.
+- SDK `DeploymentsModule`: full CRUD + stop/restart/destroy/rollback/getBuildConfig/updateBuildConfig; `DeploymentListResult` with pagination.
+- Dashboard `types/index.ts`: `Deployment` type extended with `releaseId`, `rolledBackToId`.
+- Pre-existing `deployments/page.tsx` + `deployments/[id]/page.tsx`: SDK type casts added to fix `Deployment` interface mismatch with SDK's narrower type.
+
+Impact:
+- Every per-service screen (F07–F11) renders inside the F05 shell. Deployments list + detail are live.
+
 ## 2026-06-20 (later session) — F05: Project Dashboard Shell
 
 Phase: F05
