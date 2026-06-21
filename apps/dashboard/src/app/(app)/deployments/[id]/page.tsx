@@ -83,10 +83,17 @@ function LogConsole({ deploymentId, projectId }: { deploymentId: string; project
       const sdk = createFidscript({ apiKey: token });
 
       try {
-        for await (const chunk of sdk.deployments.streamBuildLogs(projectId, deploymentId)) {
-          if (cancelled) break;
-          setLogLines(prev => [...prev, chunk.message]);
+        async function pollLogs() {
+          while (!cancelled) {
+            const data = await sdk.deployments.getLogs(projectId, deploymentId) as any;
+            const logStr = typeof data === "string" ? data : (data?.logs ?? "");
+            if (logStr) setLogLines(logStr.split("\n"));
+            const dep = await sdk.deployments.get(projectId, deploymentId) as any;
+            if (dep?.status && !["PENDING", "QUEUED", "BUILDING", "DEPLOYING"].includes(dep.status)) break;
+            await new Promise(r => setTimeout(r, 3000));
+          }
         }
+        pollLogs();
       } catch (err) {
         if (!cancelled) {
           setError(err instanceof Error ? err.message : 'Stream failed');
@@ -144,7 +151,7 @@ export default function DeploymentDetailPage() {
       try {
         const sdk = createFidscript({ apiKey: token });
         const data = await sdk.deployments.get(projectId, deploymentId);
-        setDeployment(data);
+        setDeployment(data as Deployment);
       } catch (err) {
         setError(err instanceof Error ? err.message : 'Failed to load deployment');
       } finally {

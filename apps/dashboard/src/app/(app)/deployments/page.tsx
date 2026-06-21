@@ -63,7 +63,7 @@ export default function DeploymentsPage() {
         if (!token) return;
         const sdk = createFidscript({ apiKey: token });
         const data = await sdk.deployments.list(selectedProjectId);
-        setDeployments(data);
+        setDeployments((data as any).deployments ?? data);
       } catch (err) {
         setError(err instanceof Error ? err.message : 'Failed to load deployments');
       } finally {

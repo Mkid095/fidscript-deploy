@@ -45,12 +45,14 @@ export interface EnvVar {
 export interface Deployment {
   id: string;
   projectId: string;
+  releaseId: string | null;
   status: string;
-  version: string;
-  commitSha?: string;
-  deploymentUrl?: string;
+  deploymentUrl: string | null;
+  rolledBackToId: string | null;
   createdAt: string;
-  completedAt?: string;
+  completedAt: string | null;
+  version?: string;
+  commitSha?: string;
 }
 
 export type LogLevel = 'debug' | 'info' | 'warn' | 'error' | 'fatal';
