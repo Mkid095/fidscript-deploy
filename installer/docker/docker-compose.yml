@@ -295,7 +295,8 @@ services:
     restart: unless-stopped
     environment:
       NEXT_PUBLIC_API_URL: https://${DOMAIN}/api
-      NEXT_PUBLIC_PLATFORM_URL: https://${DOMAIN}
+      NEXT_PUBLIC_PLATFORM_URL: https://app.${DOMAIN}
+      NEXT_PUBLIC_PLATFORM_DOMAIN: app.${DOMAIN}
     networks:
       - fidscript
     depends_on:

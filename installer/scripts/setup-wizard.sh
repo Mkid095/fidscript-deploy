@@ -222,7 +222,7 @@ if [[ -z "$ZONE_ID" ]]; then
 fi
 
 # Create A records for core subdomains
-for SUBDOMAIN in "deploy" "jmap" "storage"; do
+for SUBDOMAIN in "app" "deploy" "jmap" "storage"; do
   FULL_DOMAIN="${SUBDOMAIN}.${DOMAIN}"
   echo "  Creating A record: ${FULL_DOMAIN} -> ${SERVER_IP}"
   curl -s -X POST "https://api.cloudflare.com/client/v4/zones/${ZONE_ID}/dns_records" \
@@ -262,6 +262,16 @@ http:
   routers:
     dashboard:
       rule: "Host(\`${DOMAIN}\`) && !PathPrefix(\`/api\`) && !PathPrefix(\`/metrics\`)"
+      service: dashboard
+      middlewares:
+        - security-headers
+        - compress
+      tls:
+        certResolver: letsencrypt-dns
+
+    # app subdomain — dashboard + API at app.deploy.fidscript.com
+    app:
+      rule: "Host(\`app.${DOMAIN}\`)"
       service: dashboard
       middlewares:
         - security-headers
