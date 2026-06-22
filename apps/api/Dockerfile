@@ -57,6 +57,10 @@ COPY --from=build /app/apps/api/node_modules ./apps/api/node_modules
 COPY --from=build /app/packages ./packages
 COPY --from=build /app/apps/api/dist ./apps/api/dist
 COPY --from=build /app/apps/api/prisma ./apps/api/prisma
+# Remove the no-op installation_lifecycle_failed migration — its objects were
+# created manually via SQL. Keeping the dir causes Prisma to detect a "failed
+# migration" marker and block all subsequent migrate deploy runs.
+RUN rm -rf ./apps/api/prisma/migrations/20260622000000_installation_lifecycle_failed
 COPY apps/api/package.json ./apps/api/package.json
 
 # Entrypoint reads *_FILE env vars, runs migrations, then starts the API.

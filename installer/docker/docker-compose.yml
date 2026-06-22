@@ -19,7 +19,6 @@ services:
       - fidscript
       - fidscript-app
       - soostori-prod-net
-      - nextmavens-net
 
   postgres:
     image: postgres:16-alpine
@@ -268,7 +267,6 @@ services:
     networks:
       - fidscript
       - fidscript-app
-      - nextmavens-net
     depends_on:
       postgres:
         condition: service_healthy

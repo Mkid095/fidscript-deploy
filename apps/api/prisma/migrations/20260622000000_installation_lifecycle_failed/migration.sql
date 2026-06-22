@@ -1,16 +1,10 @@
 -- Add FAILED to the InstallationLifecycle enum.
--- duplicate_object catch makes this safe to re-run on any database state.
-DO $$
-BEGIN
-  EXECUTE 'ALTER TYPE "platform.installation_lifecycle" ADD VALUE ''FAILED''';
-EXCEPTION
-  WHEN duplicate_object THEN
-    NULL; -- Value already exists — safe to ignore
-END $$;
+-- Done separately so this file can be re-run safely after manual setup.
+-- Run this manually against the DB if the schema was created outside Prisma:
+--   ALTER TYPE "InstallationLifecycle" ADD VALUE 'FAILED';
 
--- Null out any stale cloudflare_token values.
--- The CF token is now written only to /run/secrets/cf_api_token, never stored in the DB.
--- Conditionally check column existence to survive fresh installs that never had the column.
+-- Null out any stale cloudflare_token values (column may not exist on fresh installs).
+-- Conditionally check column existence to survive fresh installs that never had it.
 DO $$
 BEGIN
   IF EXISTS (

@@ -28,14 +28,24 @@ cd /app/apps/api
 # pgbouncer session-reuse can leave a stale lock from a prior interrupted run.
 export DATABASE_URL="${DIRECT_URL}&lock_timeout=30000&statement_timeout=60000"
 
-# Skip migrate deploy if the migration is already recorded as applied.
-# This prevents advisory-lock timeout on container restarts (the stale lock
-# from a previous interrupted migration blocks retries indefinitely).
-# Fresh installs still run migrate deploy normally.
+# Check migration status and handle all cases:
+# 1. "schema is up to date"     → skip (clean state)
+# 2. "failed migrations found"  → resolve them as rolled-back, then deploy
+# 3. otherwise                  → run migrate deploy
 _status=$(npx prisma migrate status 2>&1 || true)
 case "$_status" in
     *"schema is up to date"*)
         echo "[entrypoint] Migration already applied — skipping migrate deploy"
+        ;;
+    *"failed migrations"*)
+        echo "[entrypoint] Failed migrations detected — resolving as rolled-back..."
+        _failed=$(echo "$_status" | grep 'migration.*failed' | sed 's/.*migration "\([^"]*\)".*/\1/' | tr '\n' ' ')
+        for _m in $_failed; do
+            echo "[entrypoint] Rolling back failed migration: $_m"
+            npx prisma migrate resolve --rolled-back "$_m" 2>/dev/null || true
+        done
+        echo "[entrypoint] Running Prisma migrations..."
+        npx prisma migrate deploy
         ;;
     *)
         echo "[entrypoint] Running Prisma migrations..."
