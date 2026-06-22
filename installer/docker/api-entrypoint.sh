@@ -24,9 +24,8 @@ cd /app/apps/api
 
 # Migrations go through DIRECT_URL (postgres direct), not pgbouncer.
 # pgbouncer in transaction mode conflicts with Prisma's prepared statements.
-# Use lock_timeout=30s so pg_advisory_lock retries longer before failing —
-# pgbouncer session-reuse can leave a stale lock from a prior interrupted run.
-export DATABASE_URL="${DIRECT_URL}&lock_timeout=30000&statement_timeout=60000"
+# Use ? to append query params, not & — otherwise they become part of the database name.
+export DATABASE_URL="${DIRECT_URL}?lock_timeout=30000&statement_timeout=60000"
 
 # Check migration status and handle all cases:
 # 1. "schema is up to date"     → skip (clean state)
