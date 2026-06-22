@@ -1,22 +1,14 @@
 -- Add FAILED to the InstallationLifecycle enum.
--- PostgreSQL 13+ supports ADD VALUE IF NOT EXISTS; older versions need a DO block.
+-- duplicate_object catch makes this safe to re-run on any database state.
 DO $$
 BEGIN
-  IF (SELECT current_setting('server_version_num')::int >= 130000) THEN
-    EXECUTE 'ALTER TYPE "platform.installation_lifecycle" ADD VALUE IF NOT EXISTS ''FAILED''';
-  ELSE
-    -- PostgreSQL < 13: add value using value-added approach
-    -- PostgreSQL enum addition requires a transaction, so we use a separate approach
-    -- that works on 12+ by creating a new type and swapping
-    EXECUTE 'ALTER TYPE "platform.installation_lifecycle" ADD VALUE ''FAILED''';
-  END IF;
+  EXECUTE 'ALTER TYPE "platform.installation_lifecycle" ADD VALUE ''FAILED''';
 EXCEPTION
   WHEN duplicate_object THEN
-    -- Value already exists (race condition or already added) — safe to ignore
-    NULL;
+    NULL; -- Value already exists — safe to ignore
 END $$;
 
--- Null out any stale cloudflare_token values from previous schema versions.
+-- Null out any stale cloudflare_token values.
 -- The CF token is now written only to /run/secrets/cf_api_token, never stored in the DB.
 -- Conditionally check column existence to survive fresh installs that never had the column.
 DO $$

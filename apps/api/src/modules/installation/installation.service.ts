@@ -5,7 +5,7 @@ import type { EventType } from '@fidscript/events';
 import { RedisService } from '@/modules/redis/redis.service';
 import { PrismaService } from '@/prisma/prisma.service';
 import { DnsStep, ProxyStep, CertificateStep, EmailStep, HealthStep } from './steps/installation-steps';
-import { InstallationStepError } from './installation.error';
+import { InstallationStepError, InstallationStep } from './installation.error';
 import {
   ConfigureInstallationDto,
   StepValidationIssue,
@@ -133,11 +133,15 @@ export class InstallationOrchestratorService {
 
     let operationId = '';
     try {
-      // Clean up any previous failed/running operation so retry is truly clean
-      await this.prisma.installationOperation.updateMany({
-        where: { status: { in: ['RUNNING', 'FAILED'] } },
-        data: { status: 'ABANDONED' },
-      });
+      // Only abandon an orphaned RUNNING operation — never overwrite a FAILED
+      // operation's record, as that destroys audit history.
+      const prevStatus = await this.prisma.installationStatus.findFirst();
+      if (prevStatus?.lastOperationId) {
+        await this.prisma.installationOperation.updateMany({
+          where: { id: prevStatus.lastOperationId, status: 'RUNNING' },
+          data: { status: 'ABANDONED' },
+        });
+      }
 
       const prevSettings = await this.prisma.installationSettings.findFirst();
       const prevSnapshot: Prisma.InputJsonValue | undefined = prevSettings
@@ -332,34 +336,34 @@ export class InstallationOrchestratorService {
 
   private async runSteps(dto: ConfigureInstallationDto): Promise<StepResult[]> {
     type StepEntry = {
-      name: string;
+      name: InstallationStep;
       validate: (i: Record<string, unknown>) => Promise<StepValidationIssue>;
       execute: (i: Record<string, unknown>) => Promise<StepResult>;
     };
 
     const steps: StepEntry[] = [
       {
-        name: 'dns',
+        name: 'dns' as InstallationStep,
         validate: i => this.dnsStep.validate(i as { domain: string; serverIp?: string }),
         execute: i => this.dnsStep.execute(i as { domain: string }),
       },
       {
-        name: 'proxy',
+        name: 'proxy' as InstallationStep,
         validate: i => this.proxyStep.validate(i as { domain: string }),
         execute: i => this.proxyStep.execute(i as { domain: string }),
       },
       {
-        name: 'certificate',
+        name: 'certificate' as InstallationStep,
         validate: i => this.certificateStep.validate(i as { domain: string }),
         execute: i => this.certificateStep.execute(i as { domain: string }),
       },
       {
-        name: 'email',
+        name: 'email' as InstallationStep,
         validate: i => this.emailStep.validate(i as { adminEmail: string }),
         execute: i => this.emailStep.execute(i as { adminEmail: string }),
       },
       {
-        name: 'health',
+        name: 'health' as InstallationStep,
         validate: () => this.healthStep.validate(),
         execute: () => this.healthStep.execute(),
       },
