@@ -1,269 +1,267 @@
 #!/bin/bash
-set -e
+# =============================================================================
+# FIDScript Deploy — One-line installer
+# Usage: curl -sSL https://deploy.fidscript.com/install.sh | bash
+# =============================================================================
 
-INSTALLER_VERSION="1.1.0"
-# Where to clone from when no local checkout exists (fresh-VPS one-liner path).
-# Overridable: FIDSCRIPT_REPO=git@... bash install.sh
+set -Eeuo pipefail
+
+INSTALLER_VERSION="1.2.0"
 FIDSCRIPT_REPO="${FIDSCRIPT_REPO:-https://github.com/Mkid095/fidscript-deploy.git}"
-
-echo ""
-echo "╔═══════════════════════════════════════════════════════════╗"
-echo "║         FIDScript Deploy Installer v${INSTALLER_VERSION}                   ║"
-echo "╚═══════════════════════════════════════════════════════════╝"
-echo ""
-
-RED='\033[0;31m'
-GREEN='\033[0;32m'
-YELLOW='\033[1;33m'
-CYAN='\033[0;36m'
-BOLD='\033[1m'
-NC='\033[0m'
-
-log_info()  { echo -e "${GREEN}[INFO]${NC} $1"; }
-log_warn()  { echo -e "${YELLOW}[WARN]${NC} $1"; }
-log_error() { echo -e "${RED}[ERROR]${NC} $1"; }
-log_step()  { echo -e "\n${CYAN}${BOLD}▶ $1${NC}"; }
-
 INSTALL_DIR="/opt/fidscript"
 COMPOSE_DIR="$INSTALL_DIR/docker"
+SECRETS_DIR=""
 DNS_OK=false
 PUBLIC_IP=""
 
-# Check if running as root
+# ── Colours ──────────────────────────────────────────────────────────────────
+RED='\033[0;31m';   GREEN='\033[0;32m';   YELLOW='\033[1;33m'
+CYAN='\033[0;36m';  BOLD='\033[1m';       DIM='\033[2m'
+WHITE='\033[97m';   NC='\033[0m'
+
+# ── Helpers ───────────────────────────────────────────────────────────────────
+info()    { echo -e "  ${GREEN}✓${NC}  $1"; }
+warn()    { echo -e "  ${YELLOW}!${NC}  $1"; }
+error()   { echo -e "  ${RED}✗${NC}  $1" >&2; }
+step()    { echo -e "\n  ${CYAN}▶${NC}  $1"; }
+prompt()  { echo -ne "  ${WHITE}$1${NC}  "; }
+title()   { echo -e "\n${BOLD}${CYAN}╔${NC}${DIM}$(printf '═%.0s' {1..64})${NC}"; echo -e "${BOLD}${CYAN}║${NC}  ${BOLD}${WHITE}$1${NC}"; echo -e "${BOLD}${CYAN}╚${NC}${DIM}$(printf '═%.0s' {1..64})${NC}"; }
+banner()  {
+  echo ""
+  echo -e "${BOLD}${CYAN}╔══════════════════════════════════════════════════════════════════════╗${NC}"
+  echo -e "${BOLD}${CYAN}║${NC}  ${BOLD}${WHITE}FIDScript Deploy — Installer v${INSTALLER_VERSION}${NC}"
+  echo -e "${BOLD}${CYAN}╚══════════════════════════════════════════════════════════════════════╝${NC}"
+}
+divider() { echo -e "${DIM}  $(printf '─%.0s' {1..64})${NC}"; }
+
+# ── Trap: show line on error ──────────────────────────────────────────────────
+trap 'echo -e "\n  ${RED}✗${NC}  Error at line $LINENO — stopping." >&2' ERR
+
+# ── Check root ────────────────────────────────────────────────────────────────
 if [[ $EUID -ne 0 ]]; then
-    log_error "This script must be run as root (use sudo)"
+    error "This script must be run as root. Use: sudo bash install.sh"
     exit 1
 fi
 
-# Detect OS
-detect_os() {
-    if [[ -f /etc/os-release ]]; then
-        source /etc/os-release
-        OS="$ID"
-        OS_VERSION="$VERSION_ID"
-    else
-        log_error "Cannot detect OS. This installer requires Ubuntu 22.04 or Debian 11+"
-        exit 1
-    fi
-    case "$OS" in
-        ubuntu)
-            [[ "$OS_VERSION" != "22.04" && "$OS_VERSION" != "24.04" ]] \
-                && log_warn "Tested on Ubuntu 22.04/24.04. You have: $OS_VERSION" ;;
-        debian)
-            [[ "$OS_VERSION" != "11" && "$OS_VERSION" != "12" ]] \
-                && log_warn "Tested on Debian 11/12. You have: $OS_VERSION" ;;
-        *)
-            log_warn "Untested OS: $OS. Designed for Ubuntu/Debian — continuing anyway." ;;
-    esac
+# ── Step 1: Detect environment ────────────────────────────────────────────────
+step_1_env() {
+  title "Step 1 / 6 — Detecting environment"
+  divider
+
+  if [[ -f /etc/os-release ]]; then
+    source /etc/os-release
+    info "OS: $PRETTY_NAME ($ID)"
+  else
+    error "Cannot detect OS. Ubuntu 22.04+ or Debian 11+ required."
+    exit 1
+  fi
+
+  PUBLIC_IP="$(curl -s -m 8 https://api.ipify.org 2>/dev/null || \
+               curl -s -m 8 https://ifconfig.me 2>/dev/null || true)"
+  if [[ -n "$PUBLIC_IP" ]]; then
+    info "Public IP: $PUBLIC_IP (auto-detected)"
+  else
+    warn "Could not auto-detect public IP — you will be prompted for it"
+  fi
 }
 
-# Detect this server's public IP (used for the IP-fallback access URL when DNS
-# isn't live yet, and as a default the wizard can offer).
-detect_public_ip() {
-    PUBLIC_IP="$(curl -s -m 8 https://api.ipify.org 2>/dev/null || true)"
-    if [[ -z "$PUBLIC_IP" ]]; then
-        PUBLIC_IP="$(curl -s -m 8 https://ifconfig.me 2>/dev/null || true)"
-    fi
-    if [[ -n "$PUBLIC_IP" ]]; then
-        log_info "Detected public IP: $PUBLIC_IP"
-    else
-        log_warn "Could not auto-detect public IP. You'll enter it in the wizard."
-    fi
-}
+# ── Step 2: Check prerequisites ──────────────────────────────────────────────
+step_2_prereqs() {
+  title "Step 2 / 6 — Checking prerequisites"
+  divider
 
-# Check prerequisites (installs Docker if missing)
-check_prereqs() {
-    log_step "Checking prerequisites..."
-    local missing=()
-    command -v docker &> /dev/null || missing+=("docker")
-    docker compose version &> /dev/null 2>&1 || docker-compose version &> /dev/null 2>&1 || missing+=("docker-compose")
-    command -v curl &> /dev/null || missing+=("curl")
-    command -v openssl &> /dev/null || missing+=("openssl")
-    command -v git &> /dev/null || missing+=("git")
+  local missing=()
+  command -v docker &>/dev/null || missing+=("docker")
+  docker compose version &>/dev/null 2>&1 || docker-compose version &>/dev/null 2>&1 || missing+=("docker-compose")
+  command -v curl  &>/dev/null || missing+=("curl")
+  command -v openssl &>/dev/null || missing+=("openssl")
+  command -v git   &>/dev/null || missing+=("git")
 
-    if [[ ${#missing[@]} -gt 0 ]]; then
-        log_info "Installing missing dependencies: ${missing[*]}"
-        install_deps
-    fi
-    if ! docker info &> /dev/null; then
-        log_error "Docker daemon is not running. Start it with 'systemctl start docker' and re-run."
-        exit 1
-    fi
-    log_info "All prerequisites met."
+  if [[ ${#missing[@]} -gt 0 ]]; then
+    info "Installing: ${missing[*]}"
+    install_deps
+  else
+    info "All prerequisites satisfied"
+  fi
+
+  if ! docker info &>/dev/null; then
+    error "Docker daemon is not running. Start it with: systemctl start docker"
+    exit 1
+  fi
 }
 
 install_deps() {
-    if [[ "$OS" == "ubuntu" || "$OS" == "debian" ]]; then
-        apt-get update -qq
-        apt-get install -y -qq curl openssl ca-certificates lsb-release git >/dev/null 2>&1
-        if ! command -v docker &> /dev/null; then
-            log_info "Installing Docker..."
-            curl -fsSL https://get.docker.com | sh >/dev/null 2>&1
-            systemctl enable docker >/dev/null 2>&1 || true
-            systemctl start docker >/dev/null 2>&1 || true
-            # On most distros the docker group exists; add the current user if non-root-login.
-            groupadd -f docker >/dev/null 2>&1 || true
-        fi
-        # docker compose v2 ships with the docker CLI plugin; ensure it's present.
-        if ! docker compose version &> /dev/null 2>&1; then
-            log_info "Installing Docker Compose plugin..."
-            mkdir -p /usr/local/lib/docker/cli-plugins
-            curl -fsSL "https://github.com/docker/compose/releases/latest/download/docker-compose-$(uname -s)-$(uname -m)" \
-                -o /usr/local/lib/docker/cli-plugins/docker-compose
-            chmod +x /usr/local/lib/docker/cli-plugins/docker-compose
-        fi
-    else
-        log_error "Automatic dependency install only supports Ubuntu/Debian. Install Docker + git manually and re-run."
-        exit 1
+  step "Installing dependencies..."
+  if [[ "$ID" == "ubuntu" || "$ID" == "debian" ]]; then
+    apt-get update -qq 2>/dev/null || true
+    apt-get install -y -qq curl openssl ca-certificates lsb-release git 2>/dev/null || \
+      apt-get install -y curl openssl git
+    if ! command -v docker &>/dev/null; then
+      info "Installing Docker..."
+      curl -fsSL https://get.docker.com | sh >/dev/null 2>&1 || true
+      systemctl enable docker >/dev/null 2>&1 || true
+      systemctl start docker >/dev/null 2>&1 || true
     fi
-}
-
-# Create installation + data directories
-create_dirs() {
-    log_step "Creating directories..."
-    mkdir -p "$INSTALL_DIR"
-    mkdir -p /data/fidscript/postgres /data/fidscript/redis /data/fidscript/nats /data/fidscript/minio /data/fidscript/stalwart
-}
-
-# Obtain the FIDScript source. Prefer an existing local checkout (dev/test);
-# otherwise clone from the canonical repo so a fresh VPS needs only this script.
-download_files() {
-    log_step "Obtaining FIDScript Deploy files..."
-    local src_dir=""
-    if [[ -d "/opt/fidscript-deploy/installer" ]]; then src_dir="/opt/fidscript-deploy"
-    elif [[ -d "/root/fidscript-deploy/installer" ]]; then src_dir="/root/fidscript-deploy"; fi
-
-    if [[ -n "$src_dir" ]]; then
-        log_info "Using local source at $src_dir..."
-        rm -rf "$INSTALL_DIR"
-        cp -r "$src_dir/installer" "$INSTALL_DIR"
-    else
-        log_info "No local checkout found — cloning $FIDSCRIPT_REPO..."
-        if ! git clone --depth 1 "$FIDSCRIPT_REPO" /opt/fidscript-deploy 2>/dev/null; then
-            log_error "Could not clone $FIDSCRIPT_REPO. Clone manually or set FIDSCRIPT_REPO."
-            exit 1
-        fi
-        rm -rf "$INSTALL_DIR"
-        cp -r /opt/fidscript-deploy/installer "$INSTALL_DIR"
+    if ! docker compose version &>/dev/null 2>&1; then
+      info "Installing Docker Compose plugin..."
+      mkdir -p /usr/local/lib/docker/cli-plugins
+      curl -fsSL \
+        "https://github.com/docker/compose/releases/latest/download/docker-compose-$(uname -s)-$(uname -m)" \
+        -o /usr/local/lib/docker/cli-plugins/docker-compose
+      chmod +x /usr/local/lib/docker/cli-plugins/docker-compose
     fi
-    ln -sfn "$INSTALL_DIR" /usr/local/bin/fidscript 2>/dev/null || true
+  else
+    error "Unsupported OS. Install Docker + git manually and re-run."
+    exit 1
+  fi
+  info "Dependencies installed"
 }
 
-# Run the interactive config wizard (collects domain, admin, mail, Cloudflare…)
-run_setup() {
-    log_step "Starting configuration wizard..."
-    chmod +x "$INSTALL_DIR/scripts/setup-wizard.sh"
-    "$INSTALL_DIR/scripts/setup-wizard.sh" "$PUBLIC_IP"
-}
+# ── Step 3: Clone / update source ─────────────────────────────────────────────
+step_3_clone() {
+  title "Step 3 / 6 — Obtaining source files"
+  divider
 
-# Build + start the stack, then run migrations + seed
-deploy_stack() {
-    log_step "Building and starting containers (this takes a few minutes)..."
-    [[ -f "$COMPOSE_DIR/docker-compose.yml" ]] || { log_error "docker-compose.yml missing at $COMPOSE_DIR"; exit 1; }
-    cd "$COMPOSE_DIR"
+  mkdir -p /data/fidscript
 
-    if ! docker compose up -d --build 2>&1; then
-        log_error "docker compose up failed. Logs: docker compose -f $COMPOSE_DIR/docker-compose.yml logs"
-        exit 1
+  # Always use the VPS's local checkout if it exists (faster, works offline).
+  # But pull latest first so we get recent fixes without a full re-clone.
+  if [[ -d "/opt/fidscript-deploy/installer" ]]; then
+    info "Updating local source from GitHub..."
+    (cd /opt/fidscript-deploy && git -c advice.detachedHead=false pull origin main 2>/dev/null || true)
+    rm -rf "$INSTALL_DIR"
+    cp -r /opt/fidscript-deploy/installer "$INSTALL_DIR"
+    info "Using local source: /opt/fidscript-deploy (updated)"
+  elif [[ -d "/root/fidscript-deploy/installer" ]]; then
+    info "Updating local source from GitHub..."
+    (cd /root/fidscript-deploy && git -c advice.detachedHead=false pull origin main 2>/dev/null || true)
+    rm -rf "$INSTALL_DIR"
+    cp -r /root/fidscript-deploy/installer "$INSTALL_DIR"
+    info "Using local source: /root/fidscript-deploy (updated)"
+  else
+    info "Cloning $FIDSCRIPT_REPO..."
+    if ! git clone --depth 1 "$FIDSCRIPT_REPO" /opt/fidscript-deploy 2>&1; then
+      error "Clone failed. Check your network."
+      exit 1
     fi
-
-    log_step "Waiting for services to become healthy..."
-    local max_wait=180 waited=0
-    while [[ $waited -lt $max_wait ]]; do
-        # Count services that HAVE a healthcheck but aren't healthy yet.
-        # Traefik has no healthcheck (blank Health) so it's excluded automatically.
-        local not_ready
-        not_ready=$(docker compose -f "$COMPOSE_DIR/docker-compose.yml" ps -a --format '{{.Service}} {{.Health}}' 2>/dev/null \
-            | awk '$2 != "healthy" && $2 != "" { print $1 }' | wc -l)
-        if [[ "$not_ready" -eq 0 ]]; then
-            log_info "All services are healthy."
-            break
-        fi
-        sleep 5; waited=$((waited + 5)); echo -n "."
-    done
-    echo ""
-    [[ $waited -ge $max_wait ]] && log_warn "Some services not healthy yet. Check: docker compose -f $COMPOSE_DIR/docker-compose.yml ps"
-
-    log_step "Running database migrations..."
-    docker compose -f "$COMPOSE_DIR/docker-compose.yml" exec -T api npx prisma migrate deploy 2>&1 \
-        && log_info "Migrations applied." || log_warn "Migration step failed or already applied. Continuing."
-
-    log_step "Seeding admin account..."
-    docker compose -f "$COMPOSE_DIR/docker-compose.yml" exec -T api pnpm db:seed 2>&1 \
-        && log_info "Seed complete." || log_warn "Seed failed or admin already exists. Continuing."
-
-    # Reload Traefik to pick up the generated dynamic.yml
-    docker compose -f "$COMPOSE_DIR/docker-compose.yml" kill -s HUP traefik 2>/dev/null || true
+    rm -rf "$INSTALL_DIR"
+    cp -r /opt/fidscript-deploy/installer "$INSTALL_DIR"
+    info "Source cloned fresh"
+  fi
+  ln -sfn "$INSTALL_DIR" /usr/local/bin/fidscript 2>/dev/null || true
+  info "Source files ready at $INSTALL_DIR"
 }
 
-# Verify the domain actually resolves to this server (propagation check).
-# Sets DNS_OK=true so the final banner can pick domain vs IP-fallback URL.
-verify_dns() {
-    log_step "Verifying domain DNS..."
-    # shellcheck disable=SC1090
-    source "$COMPOSE_DIR/.env" 2>/dev/null || true
-    [[ -z "$DOMAIN" ]] && { log_warn "No DOMAIN in .env — skipping DNS check."; return; }
-    local sub="deploy.${DOMAIN}"
-    local resolved
-    resolved=$(getent hosts "$sub" 2>/dev/null | awk '{print $1}' | head -1)
-    if [[ -z "$resolved" ]]; then
-        # Fallback to Cloudflare DoH in case the local resolver hasn't caught up
-        resolved=$(curl -s -m 6 "https://1.1.1.1/dns-query?name=${sub}&type=A" -H "accept: application/dns-json" 2>/dev/null \
-            | grep -o '"data":"[0-9.]*"' | head -1 | cut -d'"' -f4)
-    fi
-    if [[ "$resolved" == "$SERVER_IP" ]]; then
-        DNS_OK=true
-        log_info "DNS verified: ${sub} → ${SERVER_IP}"
-    else
-        DNS_OK=false
-        log_warn "DNS for ${sub} resolved to '${resolved:-nothing}' (expected ${SERVER_IP})."
-        log_warn "Propagation may still be in progress — the IP fallback URL below works immediately."
-    fi
+# ── Step 4: Run setup wizard ────────────────────────────────────────────────
+step_4_wizard() {
+  title "Step 4 / 6 — Configuration wizard"
+  divider
+  chmod +x "$INSTALL_DIR/scripts/setup-wizard.sh"
+  CLOUDFLARE_API_TOKEN="${CLOUDFLARE_API_TOKEN:-}" \
+  export CLOUDFLARE_API_TOKEN \
+  && "$INSTALL_DIR/scripts/setup-wizard.sh" "$PUBLIC_IP"
 }
 
-# Friendly summary: access URL (domain if DNS ok, else IP), admin creds, next steps.
-print_success() {
-    # shellcheck disable=SC1090
-    source "$COMPOSE_DIR/.env" 2>/dev/null || true
-    local url
-    if [[ "$DNS_OK" == "true" ]]; then
-        url="https://${DOMAIN}"
-    else
-        url="http://${SERVER_IP:-$PUBLIC_IP}"
-    fi
+# ── Step 5: Deploy stack ─────────────────────────────────────────────────────
+step_5_deploy() {
+  title "Step 5 / 6 — Building and starting containers"
+  divider
 
-    echo ""
-    echo "╔═══════════════════════════════════════════════════════════╗"
-    echo "║          FIDScript Deploy is running! ✦                   ║"
-    echo "╚═══════════════════════════════════════════════════════════╝"
-    echo ""
-    echo -e "  ${CYAN}Access URL${NC} : ${BOLD}${url}${NC}"
-    echo -e "  ${CYAN}Admin email${NC}: ${ADMIN_EMAIL:-<set during wizard>}"
-    echo -e "  ${CYAN}Password${NC}   : ${CYAN}${ADMIN_PASSWORD:-<set during wizard>}${NC}"
-    if [[ "$DNS_OK" != "true" && -n "$DOMAIN" ]]; then
-        echo ""
-        echo -e "  ${YELLOW}DNS not live yet${NC} — once '${DOMAIN}' resolves to this server,"
-        echo "  your permanent URL will be https://${DOMAIN}"
+  [[ -f "$COMPOSE_DIR/docker-compose.yml" ]] || {
+    error "docker-compose.yml missing at $COMPOSE_DIR"
+    exit 1
+  }
+
+  step "Building images (this takes a few minutes)..."
+  if ! docker compose -f "$COMPOSE_DIR/docker-compose.yml" up -d --build 2>&1; then
+    error "Build failed. Logs: docker compose -f $COMPOSE_DIR/docker-compose.yml logs"
+    exit 1
+  fi
+  info "Containers started"
+
+  step "Waiting for services to become healthy..."
+  local max_wait=300 waited=0
+  while [[ $waited -lt $max_wait ]]; do
+    local not_ready
+    not_ready=$(docker compose -f "$COMPOSE_DIR/docker-compose.yml" ps -a \
+      --format '{{.Service}} {{.Health}}' 2>/dev/null \
+      | awk '$2 != "healthy" && $2 != "" { print $1 }' | wc -l)
+    echo -ne "  ${DIM}Services not ready: ${not_ready}    \r${NC}"
+    if [[ "$not_ready" -eq 0 ]]; then
+      echo ""
+      info "All services healthy"
+      break
     fi
-    echo ""
-    echo "  First login will prompt you to change this password."
-    echo ""
-    echo "  Status:   $INSTALL_DIR/scripts/health-check.sh"
-    echo "  Logs:     docker compose -f $COMPOSE_DIR/docker-compose.yml logs -f"
-    echo "  Update:   cd $COMPOSE_DIR && git -C /opt/fidscript-deploy pull && docker compose up -d --build"
-    echo ""
+    sleep 5; waited=$((waited + 5))
+  done
+  [[ $waited -ge $max_wait ]] && warn "Some services not healthy — check: docker compose -f $COMPOSE_DIR/docker-compose.yml ps"
+
+  step "Running database migrations..."
+  docker compose -f "$COMPOSE_DIR/docker-compose.yml" exec -T api \
+    npx prisma migrate deploy 2>&1 | tail -2 \
+    && info "Migrations applied" || warn "Migration step skipped or already applied"
+
+  step "Seeding admin account..."
+  docker compose -f "$COMPOSE_DIR/docker-compose.yml" exec -T api \
+    pnpm db:seed 2>&1 | tail -2 \
+    && info "Admin seeded" || warn "Seed skipped or admin already exists"
+
+  # Reload Traefik to pick up generated dynamic.yml
+  docker compose -f "$COMPOSE_DIR/docker-compose.yml" kill -s HUP traefik 2>/dev/null || true
 }
 
-main() {
-    detect_os
-    detect_public_ip
-    check_prereqs
-    create_dirs
-    download_files
-    run_setup
-    deploy_stack
-    verify_dns
-    print_success
+# ── Step 6: Verify ───────────────────────────────────────────────────────────
+step_6_verify() {
+  title "Step 6 / 6 — Final verification"
+  divider
+
+  source "$COMPOSE_DIR/.env" 2>/dev/null || true
+  local access_url="https://${DOMAIN:-${SERVER_IP:-localhost}}"
+
+  step "Checking platform health..."
+  local api_ok=false
+  for i in 1 2 3 4 5; do
+    if curl -sf "${access_url}/api/v1/health" &>/dev/null; then
+      api_ok=true; break
+    fi
+    sleep 3
+  done
+
+  if $api_ok; then
+    info "API:     ${access_url}/api/v1/health  ✓"
+  else
+    warn "API:     ${access_url}/api/v1/health  (not reachable yet)"
+  fi
+
+  if [[ -n "$DOMAIN" ]]; then
+    info "Dashboard: https://${DOMAIN}  ✓"
+    info "Install:  https://${DOMAIN}/install.sh  ✓"
+  fi
+
+  echo ""
+  echo -e "  ${GREEN}╔════════════════════════════════════════════════════════╗${NC}"
+  echo -e "  ${GREEN}║${NC}  ${BOLD}${WHITE}Platform is running!${NC}"
+  echo -e "  ${GREEN}╚════════════════════════════════════════════════════════╝${NC}"
+  echo ""
+  echo -e "  ${DIM}Admin email:${NC}   ${ADMIN_EMAIL:-<set during wizard>}"
+  echo -e "  ${DIM}Access URL:${NC}    ${access_url}"
+  echo ""
+  echo -e "  ${DIM}Next steps:${NC}"
+  echo -e "  ${CYAN}  View logs:   docker compose -f $COMPOSE_DIR/docker-compose.yml logs -f${NC}"
+  echo -e "  ${CYAN}  Stop stack:  docker compose -f $COMPOSE_DIR/docker-compose.yml down${NC}"
+  echo -e "  ${CYAN}  Restart:      cd $COMPOSE_DIR && docker compose up -d${NC}"
+  echo ""
 }
 
-main "$@"
+# ── Main ───────────────────────────────────────────────────────────────────────
+banner
+
+echo -e "  ${DIM}Installing FIDScript Deploy on this server.${NC}"
+echo -e "  ${DIM}Run 'sudo fidscript install' to update an existing install.${NC}"
+
+step_1_env
+step_2_prereqs
+step_3_clone
+step_4_wizard
+step_5_deploy
+step_6_verify
