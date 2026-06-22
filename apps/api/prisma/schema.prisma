@@ -1333,6 +1333,7 @@ enum InstallationLifecycle {
   UNCONFIGURED
   CONFIGURING
   CONFIGURED
+  FAILED
   DEGRADED
   RECONFIGURING
 }
@@ -1386,8 +1387,7 @@ model InstallationSettings {
   // Auth method for the admin account: PASSWORD (email+password) or MAGIC_CODE (email-only, code per login)
   authMethod       AuthMethod @default(PASSWORD) @map("auth_method")
   dnsMode          String   @default("cloudflare_auto") @map("dns_mode") @db.VarChar(50)
-  // Cloudflare API token for auto-DNS. Stored as a secret file path; the installer writes it.
-  cloudflareToken  String?  @map("cloudflare_token") @db.VarChar(255)
+  // Cloudflare API token lives in /run/secrets/cf_api_token — never in the database
   branding         Json?
   createdAt        DateTime @default(now()) @map("created_at") @db.Timestamptz
   updatedAt        DateTime @updatedAt @map("updated_at") @db.Timestamptz

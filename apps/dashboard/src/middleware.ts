@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 
 // 30-second in-memory lifecycle cache (survives Next.js hot-reload via globalThis)
-const CACHE_TTL_MS = 30_000;
+const CACHE_TTL_MS = 8_000;
 const lifecycleCache = (globalThis as Record<string, unknown>).__lifecycle_cache__ as Map<string, { value: string; timestamp: number }> | undefined;
 function getCache() {
   if (!lifecycleCache) {
@@ -57,8 +57,8 @@ export async function middleware(req: NextRequest) {
 
   const lifecycle = await getInstallationLifecycle(apiBase);
 
-  // UNCONFIGURED / CONFIGURING → redirect everything non-API to /setup
-  if (lifecycle === 'UNCONFIGURED' || lifecycle === 'CONFIGURING') {
+  // UNCONFIGURED / CONFIGURING / FAILED → redirect everything non-API to /setup
+  if (lifecycle === 'UNCONFIGURED' || lifecycle === 'CONFIGURING' || lifecycle === 'FAILED') {
     if (pathname !== '/setup') {
       const url = req.nextUrl.clone();
       url.pathname = '/setup';

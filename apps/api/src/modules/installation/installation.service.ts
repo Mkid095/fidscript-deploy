@@ -65,13 +65,8 @@ export class InstallationOrchestratorService {
       }
     } catch { /* tables don't exist */ }
 
-    // Check for CF token from env (installer sets it) or from InstallationSettings (setup page sends it)
+    // CF token is written to /run/secrets/cf_api_token by the installer — we check the env
     const cfFromEnv = !!process.env.CLOUDFLARE_API_TOKEN_FILE;
-    let cfFromSettings = false;
-    try {
-      const settings = await this.prisma.installationSettings.findFirst();
-      cfFromSettings = !!(settings?.cloudflareToken);
-    } catch { /* not yet set */ }
 
     return {
       serverIp,
@@ -80,7 +75,7 @@ export class InstallationOrchestratorService {
       lifecycle,
       dockerAvailable: true,
       traefikConfigured: true,
-      cloudflareTokenFound: cfFromEnv || cfFromSettings,
+      cloudflareTokenFound: cfFromEnv,
       existingCertificateFound: lifecycle === 'CONFIGURED',
     };
   }
@@ -193,7 +188,7 @@ export class InstallationOrchestratorService {
           adminEmail: dto.adminEmail,
           authMethod: dto.authMethod as AuthMethod,
           dnsMode: dto.dnsMode ?? 'cloudflare_auto',
-          cloudflareToken: dto.cloudflareApiToken ?? null,
+          // cloudflareApiToken is written to /run/secrets/cf_api_token — never stored in DB
         },
         update: {
           platformName: dto.platformName,
@@ -202,19 +197,26 @@ export class InstallationOrchestratorService {
           adminEmail: dto.adminEmail,
           authMethod: dto.authMethod as AuthMethod,
           dnsMode: dto.dnsMode ?? 'cloudflare_auto',
-          cloudflareToken: dto.cloudflareApiToken ?? null,
         },
       });
 
       // 5. Create admin user with correct auth method
       await this.createAdminUser(dto);
 
-      // 6. Audit trail
+      // 6. Audit trail — NEVER include secrets in the snapshot
       await this.prisma.installationSettingsVersion.create({
         data: {
           changedBy: 'system',
           reason: 'Initial platform configuration',
-          snapshot: dto as unknown as Prisma.InputJsonValue,
+          snapshot: {
+            platformName: dto.platformName,
+            platformDomain: dto.platformDomain,
+            serverIp: dto.serverIp,
+            adminEmail: dto.adminEmail,
+            authMethod: dto.authMethod,
+            dnsMode: dto.dnsMode,
+            // Intentionally excluded: adminPassword, cloudflareApiToken
+          } as Prisma.InputJsonValue,
           operationId: op.id,
         },
       });
@@ -238,7 +240,13 @@ export class InstallationOrchestratorService {
           data: { status: 'FAILED', failureReason: msg, completedAt: new Date() },
         }).catch(() => null);
       }
+      // Transition to FAILED so the UI shows a proper error state, not CONFIGURING forever
+      await this.prisma.installationStatus.update({
+        where: { id: 'installation' },
+        data: { lifecycle: 'FAILED' },
+      }).catch(() => null);
       this.events.emit('installation.lifecycle.operation.completed' as EventType, { operationId, success: false, error: msg });
+      this.events.emit('installation.lifecycle.changed' as EventType, { lifecycle: 'FAILED' });
       throw err;
     } finally {
       await this.redis.releaseLock(LOCK_KEY, lockToken);

@@ -164,6 +164,10 @@ export default function SetupPage() {
           setCurrentStep('');
           setDoneDomain(platformDomain.trim());
           es.close();
+
+          // Invalidate middleware cache so CONFIGURED is picked up immediately
+          fetch('/api/v1/installation/invalidate-cache', { method: 'POST' }).catch(() => {/* best-effort*/});
+
           setTimeout(() => setStep('done'), 800); // brief pause so user sees the last step complete
         }
 
