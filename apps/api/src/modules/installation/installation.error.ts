@@ -1,4 +1,5 @@
-export type InstallationStep = 'dns' | 'proxy' | 'certificate' | 'email' | 'health';
+export const INSTALLATION_STEPS = ['dns', 'proxy', 'certificate', 'email', 'health'] as const;
+export type InstallationStep = typeof INSTALLATION_STEPS[number];
 
 /**
  * Thrown by installation step executors when a step fails.

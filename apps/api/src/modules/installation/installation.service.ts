@@ -5,7 +5,7 @@ import type { EventType } from '@fidscript/events';
 import { RedisService } from '@/modules/redis/redis.service';
 import { PrismaService } from '@/prisma/prisma.service';
 import { DnsStep, ProxyStep, CertificateStep, EmailStep, HealthStep } from './steps/installation-steps';
-import { InstallationStepError, InstallationStep } from './installation.error';
+import { InstallationStepError, InstallationStep, INSTALLATION_STEPS } from './installation.error';
 import {
   ConfigureInstallationDto,
   StepValidationIssue,
@@ -132,37 +132,50 @@ export class InstallationOrchestratorService {
     }
 
     let operationId = '';
+
     try {
-      // Only abandon an orphaned RUNNING operation — never overwrite a FAILED
-      // operation's record, as that destroys audit history.
-      const prevStatus = await this.prisma.installationStatus.findFirst();
-      if (prevStatus?.lastOperationId) {
-        await this.prisma.installationOperation.updateMany({
-          where: { id: prevStatus.lastOperationId, status: 'RUNNING' },
-          data: { status: 'ABANDONED' },
+      // ── Phase 1: Atomic setup (transaction) ──────────────────────────
+      // All DB writes here happen together — if any fails, nothing is written.
+      // No external I/O here so the transaction is brief.
+      const { op } = await this.prisma.$transaction(async (tx) => {
+        // Abandon only the single orphaned RUNNING operation from the previous attempt.
+        // FAILED records are never touched — they preserve audit history.
+        const prevStatus = await tx.installationStatus.findFirst();
+        if (prevStatus?.lastOperationId) {
+          await tx.installationOperation.updateMany({
+            where: { id: prevStatus.lastOperationId, status: 'RUNNING' },
+            data: { status: 'ABANDONED' },
+          });
+        }
+
+        const prevSettings = await tx.installationSettings.findFirst();
+        const prevSnapshot: Prisma.InputJsonValue | undefined = prevSettings
+          ? (JSON.parse(JSON.stringify(prevSettings)) as Prisma.InputJsonValue)
+          : undefined;
+
+        const operation = await tx.installationOperation.create({
+          data: { type: 'CONFIGURE', status: 'RUNNING', previousSnapshot: prevSnapshot },
         });
-      }
 
-      const prevSettings = await this.prisma.installationSettings.findFirst();
-      const prevSnapshot: Prisma.InputJsonValue | undefined = prevSettings
-        ? (JSON.parse(JSON.stringify(prevSettings)) as Prisma.InputJsonValue)
-        : undefined;
+        // Transition any previous lifecycle state → CONFIGURING atomically
+        await tx.installationStatus.upsert({
+          where: { id: 'installation' },
+          create: { id: 'installation', lifecycle: 'CONFIGURING', lastOperationId: operation.id },
+          update: { lifecycle: 'CONFIGURING', lastOperationId: operation.id },
+        });
 
-      const op = await this.prisma.installationOperation.create({
-        data: { type: 'CONFIGURE', status: 'RUNNING', previousSnapshot: prevSnapshot },
+        return { op: operation };
       });
+
       operationId = op.id;
-
-      // Transition FAILED → CONFIGURING so middleware immediately reflects the retry in progress
-      await this.prisma.installationStatus.upsert({
-        where: { id: 'installation' },
-        create: { id: 'installation', lifecycle: 'CONFIGURING', lastOperationId: op.id },
-        update: { lifecycle: 'CONFIGURING', lastOperationId: op.id },
-      });
-
       this.events.emit('installation.lifecycle.operation.started' as EventType, { operationId: op.id, type: 'CONFIGURE' });
 
-      // 1. Write Cloudflare token to secrets dir so Traefik/other services can read it
+      // ── Phase 2: External work (outside transaction) ──────────────────
+      // These involve network/disk I/O and may take time.
+      // The Redis lock is still held, preventing concurrent configure() calls.
+      // If this phase fails, the catch block below transitions to FAILED.
+
+      // Write Cloudflare token to secret file — never written to the DB
       if (dto.cloudflareApiToken) {
         const secretsDir = process.env.CLOUDFLARE_API_TOKEN_FILE
           ? join(process.env.CLOUDFLARE_API_TOKEN_FILE, '..')
@@ -175,76 +188,72 @@ export class InstallationOrchestratorService {
         }
       }
 
-      // 2. Run infrastructure steps (DNS, proxy, cert, email, health)
       const stepResults = await this.runSteps(dto);
 
-      // 3. Update operation
-      await this.prisma.installationOperation.update({
-        where: { id: op.id },
-        data: {
-          status: 'COMPLETED',
-          currentStep: null,
-          steps: stepResults as unknown as Prisma.InputJsonValue,
-          completedAt: new Date(),
-        },
-      });
+      // ── Phase 3: Atomic completion (transaction) ─────────────────────
+      // All writes here happen together — if any fails, nothing is written.
+      await this.prisma.$transaction(async (tx) => {
+        await tx.installationOperation.update({
+          where: { id: op.id },
+          data: {
+            status: 'COMPLETED',
+            currentStep: null,
+            steps: stepResults as unknown as Prisma.InputJsonValue,
+            completedAt: new Date(),
+          },
+        });
 
-      // 4. Save InstallationSettings
-      await this.prisma.installationSettings.upsert({
-        where: { id: 'installation' },
-        create: {
-          id: 'installation',
-          platformName: dto.platformName,
-          platformDomain: dto.platformDomain,
-          serverIp: dto.serverIp,
-          adminEmail: dto.adminEmail,
-          authMethod: dto.authMethod as AuthMethod,
-          dnsMode: dto.dnsMode ?? 'cloudflare_auto',
-          // cloudflareApiToken is written to /run/secrets/cf_api_token — never stored in DB
-        },
-        update: {
-          platformName: dto.platformName,
-          platformDomain: dto.platformDomain,
-          serverIp: dto.serverIp,
-          adminEmail: dto.adminEmail,
-          authMethod: dto.authMethod as AuthMethod,
-          dnsMode: dto.dnsMode ?? 'cloudflare_auto',
-        },
-      });
-
-      // 5. Create admin user with correct auth method
-      await this.createAdminUser(dto);
-
-      // 6. Audit trail — NEVER include secrets in the snapshot
-      await this.prisma.installationSettingsVersion.create({
-        data: {
-          changedBy: 'system',
-          reason: 'Initial platform configuration',
-          snapshot: {
+        await tx.installationSettings.upsert({
+          where: { id: 'installation' },
+          create: {
+            id: 'installation',
             platformName: dto.platformName,
             platformDomain: dto.platformDomain,
             serverIp: dto.serverIp,
             adminEmail: dto.adminEmail,
-            authMethod: dto.authMethod,
-            dnsMode: dto.dnsMode,
-            // Intentionally excluded: adminPassword, cloudflareApiToken
-          } as Prisma.InputJsonValue,
-          operationId: op.id,
-        },
-      });
+            authMethod: dto.authMethod as AuthMethod,
+            dnsMode: dto.dnsMode ?? 'cloudflare_auto',
+          },
+          update: {
+            platformName: dto.platformName,
+            platformDomain: dto.platformDomain,
+            serverIp: dto.serverIp,
+            adminEmail: dto.adminEmail,
+            authMethod: dto.authMethod as AuthMethod,
+            dnsMode: dto.dnsMode ?? 'cloudflare_auto',
+          },
+        });
 
-      // 7. Mark CONFIGURED
-      await this.prisma.installationStatus.update({
-        where: { id: 'installation' },
-        data: { lifecycle: 'CONFIGURED', lastOperationId: op.id },
+        await this.createAdminUser(dto, tx);
+
+        await tx.installationSettingsVersion.create({
+          data: {
+            changedBy: 'system',
+            reason: 'Initial platform configuration',
+            snapshot: {
+              platformName: dto.platformName,
+              platformDomain: dto.platformDomain,
+              serverIp: dto.serverIp,
+              adminEmail: dto.adminEmail,
+              authMethod: dto.authMethod,
+              dnsMode: dto.dnsMode,
+            } as Prisma.InputJsonValue,
+            operationId: op.id,
+          },
+        });
+
+        await tx.installationStatus.update({
+          where: { id: 'installation' },
+          data: { lifecycle: 'CONFIGURED', lastOperationId: op.id },
+        });
       });
 
       this.events.emit('installation.lifecycle.operation.completed' as EventType, { operationId: op.id, success: true });
       this.events.emit('installation.lifecycle.changed' as EventType, { lifecycle: 'CONFIGURED' });
 
       return { operationId: op.id };
+
     } catch (err) {
-      // Structured error — step name is a typed field, not parsed from a string
       const failedStep = err instanceof InstallationStepError ? err.step : null;
       const msg = err instanceof Error ? err.message : String(err);
       this.logger.error(`Installation configure failed at step '${failedStep}': ${msg}`);
@@ -261,14 +270,15 @@ export class InstallationOrchestratorService {
         }).catch(() => null);
       }
 
-      // Transition to FAILED so the UI shows a proper error state, not CONFIGURING forever
       await this.prisma.installationStatus.update({
         where: { id: 'installation' },
         data: { lifecycle: 'FAILED' },
       }).catch(() => null);
+
       this.events.emit('installation.lifecycle.operation.completed' as EventType, { operationId, success: false, error: msg, failedStep });
       this.events.emit('installation.lifecycle.changed' as EventType, { lifecycle: 'FAILED' });
       throw err;
+
     } finally {
       await this.redis.releaseLock(LOCK_KEY, lockToken);
     }
@@ -276,20 +286,22 @@ export class InstallationOrchestratorService {
 
   // ─── Admin user creation ───────────────────────────────────────────
 
-  private async createAdminUser(dto: ConfigureInstallationDto): Promise<void> {
-    const existing = await this.prisma.user.findUnique({ where: { email: dto.adminEmail } });
+  private async createAdminUser(
+    dto: ConfigureInstallationDto,
+    tx: Parameters<Parameters<typeof this.prisma.$transaction>[0]>[0] = this.prisma,
+  ): Promise<void> {
+    const existing = await tx.user.findUnique({ where: { email: dto.adminEmail } });
     if (existing) {
       this.logger.log(`Admin user ${dto.adminEmail} already exists — skipping`);
       return;
     }
 
-    const user = await this.prisma.user.create({
+    await tx.user.create({
       data: {
         email: dto.adminEmail,
         name: 'Platform Admin',
         role: Role.ADMIN,
         preferredAuthMethod: dto.authMethod as AuthMethod,
-        // Magic-code users must set a password on first login
         mustChangePassword: dto.authMethod === 'MAGIC_CODE',
         credentials: dto.authMethod === 'PASSWORD' && dto.adminPassword
           ? {
@@ -307,7 +319,6 @@ export class InstallationOrchestratorService {
               }
             : undefined,
       },
-      include: { credentials: true },
     });
 
     this.logger.log(`Admin user ${dto.adminEmail} created with authMethod=${dto.authMethod}`);
@@ -367,7 +378,15 @@ export class InstallationOrchestratorService {
         validate: () => this.healthStep.validate(),
         execute: () => this.healthStep.execute(),
       },
-    ];
+    ] as const;
+
+    // Runtime assertion: step names must match INSTALLATION_STEPS order exactly.
+    // This ensures adding a new step requires updating INSTALLATION_STEPS.
+    steps.forEach((s, i) => {
+      if (s.name !== INSTALLATION_STEPS[i]) {
+        throw new Error(`Step order mismatch at index ${i}: steps has '${s.name}', INSTALLATION_STEPS has '${INSTALLATION_STEPS[i]}'`);
+      }
+    });
 
     const inputs: Record<string, unknown>[] = [
       { domain: dto.platformDomain, serverIp: dto.serverIp },
