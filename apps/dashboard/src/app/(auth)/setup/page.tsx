@@ -418,7 +418,7 @@ export default function SetupPage() {
                   }}
                   className="w-full py-3 rounded-lg border border-slate-700 text-slate-300 hover:text-white hover:border-slate-500 text-sm transition-colors"
                 >
-                  Try again
+                  Run setup again
                 </button>
               </div>
             ) : null}

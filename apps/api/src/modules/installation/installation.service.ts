@@ -5,6 +5,7 @@ import type { EventType } from '@fidscript/events';
 import { RedisService } from '@/modules/redis/redis.service';
 import { PrismaService } from '@/prisma/prisma.service';
 import { DnsStep, ProxyStep, CertificateStep, EmailStep, HealthStep } from './steps/installation-steps';
+import { InstallationStepError } from './installation.error';
 import {
   ConfigureInstallationDto,
   StepValidationIssue,
@@ -132,6 +133,12 @@ export class InstallationOrchestratorService {
 
     let operationId = '';
     try {
+      // Clean up any previous failed/running operation so retry is truly clean
+      await this.prisma.installationOperation.updateMany({
+        where: { status: { in: ['RUNNING', 'FAILED'] } },
+        data: { status: 'ABANDONED' },
+      });
+
       const prevSettings = await this.prisma.installationSettings.findFirst();
       const prevSnapshot: Prisma.InputJsonValue | undefined = prevSettings
         ? (JSON.parse(JSON.stringify(prevSettings)) as Prisma.InputJsonValue)
@@ -142,6 +149,7 @@ export class InstallationOrchestratorService {
       });
       operationId = op.id;
 
+      // Transition FAILED → CONFIGURING so middleware immediately reflects the retry in progress
       await this.prisma.installationStatus.upsert({
         where: { id: 'installation' },
         create: { id: 'installation', lifecycle: 'CONFIGURING', lastOperationId: op.id },
@@ -232,12 +240,10 @@ export class InstallationOrchestratorService {
 
       return { operationId: op.id };
     } catch (err) {
+      // Structured error — step name is a typed field, not parsed from a string
+      const failedStep = err instanceof InstallationStepError ? err.step : null;
       const msg = err instanceof Error ? err.message : String(err);
-      this.logger.error(`Installation configure failed: ${msg}`);
-
-      // Extract step name from message format "Step <name> failed: <error>"
-      const stepMatch = /^Step (\w+) failed/.exec(msg);
-      const failedStep = stepMatch ? stepMatch[1] : null;
+      this.logger.error(`Installation configure failed at step '${failedStep}': ${msg}`);
 
       if (operationId) {
         await this.prisma.installationOperation.update({
@@ -383,7 +389,7 @@ export class InstallationOrchestratorService {
       if (!validation.valid) {
         const error = `Validation failed for step ${name}: ${validation.issues.join(', ')}`;
         this.events.emit(`installation.step.${name}.failed` as EventType, { reason: error });
-        throw new BadRequestException(error);
+        throw new InstallationStepError(name, error);
       }
 
       const result = await execute(input);
@@ -391,7 +397,7 @@ export class InstallationOrchestratorService {
       this.events.emit(eventName as EventType, result);
 
       if (!result.success) {
-        throw new BadRequestException(`Step ${name} failed: ${result.error}`);
+        throw new InstallationStepError(name, `Step ${name} failed: ${result.error}`);
       }
 
       results.push(result);
