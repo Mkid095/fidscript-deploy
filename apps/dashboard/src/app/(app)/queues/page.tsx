@@ -1,8 +1,8 @@
 'use client';
 
+
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { createFidscript } from '@fidscript/sdk';
 import { Card } from '@fidscript/ui';
 import { Button } from '@fidscript/ui';
 import { Input } from '@fidscript/ui';
@@ -10,6 +10,7 @@ import { Modal } from '@fidscript/ui';
 import { Spinner } from '@fidscript/ui';
 import { EmptyState } from '@fidscript/ui';
 
+import { makeSdk } from '@/lib/sdk';
 import type { Project, Queue } from '@/types';
 
 export default function QueuesPage() {
@@ -31,7 +32,7 @@ export default function QueuesPage() {
       const token = localStorage.getItem('fidscript_token');
       if (!token) { setLoadingProjects(false); return; }
       try {
-        const sdk = createFidscript({ apiKey: token });
+        const sdk = makeSdk(token);
         const data = await sdk.projects.list();
         setProjects(data);
         if (data.length > 0) setSelectedProjectId(data[0].id);
@@ -52,7 +53,7 @@ export default function QueuesPage() {
       try {
         const token = localStorage.getItem('fidscript_token');
         if (!token) return;
-        const sdk = createFidscript({ apiKey: token });
+        const sdk = makeSdk(token);
         const data = await sdk.queues.list(selectedProjectId);
         setQueues(data);
       } catch (err) {
@@ -72,7 +73,7 @@ export default function QueuesPage() {
     try {
       const token = localStorage.getItem('fidscript_token');
       if (!token) return;
-      const sdk = createFidscript({ apiKey: token });
+      const sdk = makeSdk(token);
       await sdk.queues.create(selectedProjectId, { name: newName.trim(), type: newType });
       const data = await sdk.queues.list(selectedProjectId);
       setQueues(data);

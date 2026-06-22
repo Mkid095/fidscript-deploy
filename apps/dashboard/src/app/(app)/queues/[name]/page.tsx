@@ -1,8 +1,8 @@
 'use client';
 
+
 import { useEffect, useState } from 'react';
 import { useParams, useSearchParams } from 'next/navigation';
-import { createFidscript } from '@fidscript/sdk';
 import { Card } from '@fidscript/ui';
 import { Button } from '@fidscript/ui';
 import { Input } from '@fidscript/ui';
@@ -10,6 +10,7 @@ import { Modal } from '@fidscript/ui';
 import { Spinner } from '@fidscript/ui';
 import { EmptyState } from '@fidscript/ui';
 
+import { makeSdk } from '@/lib/sdk';
 import type { Queue, QueueMessage } from '@/types';
 
 type Tab = 'messages' | 'dlq';
@@ -40,7 +41,7 @@ export default function QueueDetailPage() {
       try {
         const token = localStorage.getItem('fidscript_token');
         if (!token) return;
-        const sdk = createFidscript({ apiKey: token });
+        const sdk = makeSdk(token);
         const [queueData, msgs] = await Promise.all([
           sdk.queues.get(projectId, queueId),
           sdk.queues.consume(projectId, queueId, 50, 10),
@@ -65,7 +66,7 @@ export default function QueueDetailPage() {
     try {
       const token = localStorage.getItem('fidscript_token');
       if (!token) return;
-      const sdk = createFidscript({ apiKey: token });
+      const sdk = makeSdk(token);
       let parsed: string | object;
       try { parsed = JSON.parse(publishPayload); } catch { parsed = publishPayload; }
       await sdk.queues.publish(projectId, queueId, parsed);
@@ -84,7 +85,7 @@ export default function QueueDetailPage() {
     try {
       const token = localStorage.getItem('fidscript_token');
       if (!token) return;
-      const sdk = createFidscript({ apiKey: token });
+      const sdk = makeSdk(token);
       await sdk.queues.retry(projectId, queueId, [msgId]);
       setMessages(prev => prev.filter(m => m.id !== msgId));
     } finally {
@@ -98,7 +99,7 @@ export default function QueueDetailPage() {
     try {
       const token = localStorage.getItem('fidscript_token');
       if (!token) return;
-      const sdk = createFidscript({ apiKey: token });
+      const sdk = makeSdk(token);
       await sdk.queues.ack(projectId, queueId, [msgId]);
       setMessages(prev => prev.filter(m => m.id !== msgId));
       setDlqMessages(prev => prev.filter(m => m.id !== msgId));

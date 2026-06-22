@@ -1,15 +1,17 @@
 'use client';
 
+
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useParams } from 'next/navigation';
-import { createFidscript } from '@fidscript/sdk';
 import { Card } from '@fidscript/ui';
 import { Button } from '@fidscript/ui';
 import { Input } from '@fidscript/ui';
 import { Modal } from '@fidscript/ui';
 import { Spinner } from '@fidscript/ui';
 import { EmptyState } from '@fidscript/ui';
+
+import { makeSdk } from '@/lib/sdk';
 // Local type definitions mirroring SDK internal modules
 interface EmailMessage {
   id: string;
@@ -53,7 +55,7 @@ export default function MailboxPage() {
       const token = localStorage.getItem('fidscript_token');
       if (!token) { setLoading(false); return; }
       try {
-        const sdk = createFidscript({ apiKey: token });
+        const sdk = makeSdk(token);
         // We don't have a getMailbox method, but we have listMailboxes to verify existence
         const mailboxes = await sdk.email.listMailboxes(domainId);
         const found = mailboxes.find(m => m.id === mailboxId);
@@ -78,7 +80,7 @@ export default function MailboxPage() {
     try {
       const token = localStorage.getItem('fidscript_token');
       if (!token) return;
-      const sdk = createFidscript({ apiKey: token });
+      const sdk = makeSdk(token);
       // send requires projectId, not domainId
       await sdk.email.send(domainId, {
         to: composeTo.trim(),

@@ -1,13 +1,15 @@
 'use client';
 
+
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useParams, useSearchParams } from 'next/navigation';
-import { createFidscript } from '@fidscript/sdk';
 import { Card } from '@fidscript/ui';
 import { Button } from '@fidscript/ui';
 import { Input } from '@fidscript/ui';
 import { Spinner } from '@fidscript/ui';
+
+import { makeSdk } from '@/lib/sdk';
 // Local type definitions mirroring SDK internal interfaces
 interface Function_ {
   id: string;
@@ -63,7 +65,7 @@ export default function FunctionDetailPage() {
       const token = localStorage.getItem('fidscript_token');
       if (!token) { setLoading(false); return; }
       try {
-        const sdk = createFidscript({ apiKey: token });
+        const sdk = makeSdk(token);
         const [funcData] = await Promise.all([
           sdk.functions.get(projectId, functionId),
         ]);
@@ -84,7 +86,7 @@ export default function FunctionDetailPage() {
       try {
         const token = localStorage.getItem('fidscript_token');
         if (!token) return;
-        const sdk = createFidscript({ apiKey: token });
+        const sdk = makeSdk(token);
         const data = await sdk.functions.getLogs(projectId, functionId);
         setLogs(data);
       } catch {
@@ -102,7 +104,7 @@ export default function FunctionDetailPage() {
     try {
       const token = localStorage.getItem('fidscript_token');
       if (!token) return;
-      const sdk = createFidscript({ apiKey: token });
+      const sdk = makeSdk(token);
       let payload: unknown;
       try {
         payload = JSON.parse(invokeBody);
@@ -195,7 +197,7 @@ export default function FunctionDetailPage() {
               onClick={async () => {
                 const token = localStorage.getItem('fidscript_token');
                 if (!token || !projectId || !functionId) return;
-                const sdk = createFidscript({ apiKey: token });
+                const sdk = makeSdk(token);
                 const data = await sdk.functions.getLogs(projectId, functionId);
                 setLogs(data);
               }}

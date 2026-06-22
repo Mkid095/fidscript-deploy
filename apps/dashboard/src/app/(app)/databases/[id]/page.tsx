@@ -1,13 +1,14 @@
 'use client';
 
+
 import { useEffect, useState, useCallback, use } from 'react';
 import Link from 'next/link';
-import { createFidscript } from '@fidscript/sdk';
 import { Card } from '@fidscript/ui';
 import { Button } from '@fidscript/ui';
 import { Spinner } from '@fidscript/ui';
 import { Toast } from '@fidscript/ui';
 
+import { makeSdk } from '@/lib/sdk';
 interface Database {
   id: string;
   name: string;
@@ -28,7 +29,7 @@ interface DatabaseBackup {
 function getSdk() {
   const token = localStorage.getItem('fidscript_token');
   if (!token) throw new Error('Not authenticated');
-  return createFidscript({ apiKey: token });
+  return makeSdk(token);
 }
 
 function formatBytes(bytes: number): string {

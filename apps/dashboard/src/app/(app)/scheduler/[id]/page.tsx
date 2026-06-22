@@ -1,8 +1,8 @@
 'use client';
 
+
 import { useEffect, useState } from 'react';
 import { useParams, useSearchParams } from 'next/navigation';
-import { createFidscript } from '@fidscript/sdk';
 import { Card } from '@fidscript/ui';
 import { Button } from '@fidscript/ui';
 import { Input } from '@fidscript/ui';
@@ -10,6 +10,7 @@ import { Modal } from '@fidscript/ui';
 import { Spinner } from '@fidscript/ui';
 import { EmptyState } from '@fidscript/ui';
 
+import { makeSdk } from '@/lib/sdk';
 import type { CronJob, CronJobRun } from '@/types';
 
 export default function JobDetailPage() {
@@ -42,7 +43,7 @@ export default function JobDetailPage() {
       try {
         const token = localStorage.getItem('fidscript_token');
         if (!token) return;
-        const sdk = createFidscript({ apiKey: token });
+        const sdk = makeSdk(token);
         const [jobData, runsData] = await Promise.all([
           sdk.cron.get(projectId, jobId),
           sdk.cron.getRuns(projectId, jobId),
@@ -73,7 +74,7 @@ export default function JobDetailPage() {
     try {
       const token = localStorage.getItem('fidscript_token');
       if (!token) return;
-      const sdk = createFidscript({ apiKey: token });
+      const sdk = makeSdk(token);
       await sdk.cron.trigger(projectId, jobId);
       const runsData = await sdk.cron.getRuns(projectId, jobId);
       setRuns(runsData);
@@ -90,7 +91,7 @@ export default function JobDetailPage() {
     try {
       const token = localStorage.getItem('fidscript_token');
       if (!token) return;
-      const sdk = createFidscript({ apiKey: token });
+      const sdk = makeSdk(token);
       const data: Parameters<typeof sdk.cron.update>[2] = {
         name: formName.trim(),
         cronExpression: formExpression.trim(),

@@ -215,10 +215,9 @@ implemented in the code, verified 2026-06-20); Phase B is the active work; Phase
 8. ~~`PREREQ-PROJ-2` PROJ-01 role + lastActivityAt~~ ✅
 9. ~~`PREREQ-PROJ-3` last-20-events endpoint~~ ✅
 
-Phase B (items 4–7) unblocks **F02** (and therefore every authenticated screen).
-Phase C (items 8–9) unblocks **F05** (the project shell) and lands between F04 and F05.
-`PREREQ-HEALTH-1/2` unblock **F03** and can close in parallel with F02 (F03 is sequenced
-after F02).
+Phase A + Phase B (items 1–9 all ✅) fully unblock **F02** — the first vertical slice
+is clear to implement. Phase C (items 8–9) unblocks **F05** (the project shell).
+`PREREQ-HEALTH-1/2` unblock **F03** and can close in parallel with F02 implementation.
 
 ---
 
@@ -226,8 +225,10 @@ after F02).
 - 2026-06-20 (later) — Stage 0A opened. Reading the real auth code (rule 12) revealed
   Phase A (`PREREQ-AUTH-5/6/7`) was **already implemented**; the `docs/AUDIT.md` "Auth: BROKEN"
   verdict was stale. Flipped all three to ✅ Closed with verification notes. Phase B
-  (`PREREQ-AUTH-1/2/3/4`) is confirmed still genuinely missing and is the active work.
-  Status-count table below updated accordingly.
+  (`PREREQ-AUTH-1/2/3/4`) was also already implemented — all four items verified in code
+  (`auth-password.service.ts`, `auth-magic-code.service.ts`, `auth-profile.service.ts`,
+  `schema.prisma` `mustChangePassword`). Flipped all four to ✅ Closed. Both Phase A and
+  Phase B are complete — F02 is now fully unblocked. Status-count table below updated.
 - 2026-06-20 — Initial registry. Consolidated every backend gap surfaced across F02–F11 +
   the 19 per-screen specs + the component specs + `docs/AUDIT.md`. Unified the ad-hoc ID
   tokens (`AUTH-1..4`, `HEALTH-1..2`, `PROJ-NEW-1`, `SCHED-1`) under the `PREREQ-<MODULE>-<n>`

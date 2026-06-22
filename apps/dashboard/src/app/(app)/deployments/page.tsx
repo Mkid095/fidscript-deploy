@@ -1,14 +1,15 @@
 'use client';
 
+
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
-import { createFidscript } from '@fidscript/sdk';
 import { Card } from '@fidscript/ui';
 import { Button } from '@fidscript/ui';
 import { Spinner } from '@fidscript/ui';
 import { EmptyState } from '@fidscript/ui';
 
+import { makeSdk } from '@/lib/sdk';
 import type { Project, Deployment } from '@/types';
 
 const STATUS_COLORS: Record<string, string> = {
@@ -37,7 +38,7 @@ export default function DeploymentsPage() {
       const token = localStorage.getItem('fidscript_token');
       if (!token) { setLoadingProjects(false); return; }
       try {
-        const sdk = createFidscript({ apiKey: token });
+        const sdk = makeSdk(token);
         const data = await sdk.projects.list();
         setProjects(data);
         if (!selectedProjectId && data.length > 0) {
@@ -61,7 +62,7 @@ export default function DeploymentsPage() {
       try {
         const token = localStorage.getItem('fidscript_token');
         if (!token) return;
-        const sdk = createFidscript({ apiKey: token });
+        const sdk = makeSdk(token);
         const data = await sdk.deployments.list(selectedProjectId);
         setDeployments((data as any).deployments ?? data);
       } catch (err) {

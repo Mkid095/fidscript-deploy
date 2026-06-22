@@ -6,9 +6,9 @@ import { homedir } from 'os';
 import { join } from 'path';
 import { readFileSync, writeFileSync, mkdirSync, existsSync, chmodSync } from 'fs';
 
-const CONFIG_DIR = join(homedir(), '.fidscript');
+export const CONFIG_DIR = join(homedir(), '.fidscript');
 const CONFIG_FILE = join(CONFIG_DIR, 'config.json');
-const CREDENTIALS_FILE = join(CONFIG_DIR, 'credentials.json');
+export const CREDENTIALS_FILE = join(CONFIG_DIR, 'credentials.json');
 
 export interface CliConfig {
   apiUrl: string;
@@ -20,7 +20,7 @@ export interface CliCredentials {
   apiKey?: string;
 }
 
-function ensureDir() {
+export function ensureDir() {
   if (!existsSync(CONFIG_DIR)) {
     mkdirSync(CONFIG_DIR, { mode: 0o700 });
   }
@@ -28,14 +28,20 @@ function ensureDir() {
 
 export function loadConfig(): CliConfig {
   ensureDir();
+  // FIDScript_API_URL env var takes priority — open-source consumers set their own host.
+  // No hardcoded default: if neither env nor config file is present, the CLI will
+  // prompt the user to configure their API URL on first run.
   if (!existsSync(CONFIG_FILE)) {
-    return { apiUrl: 'https://api.fidscript.com', outputFormat: 'table' };
+    return {
+      apiUrl: process.env.FIDScript_API_URL ?? '',
+      outputFormat: 'table',
+    };
   }
   try {
     const raw = readFileSync(CONFIG_FILE, 'utf8');
     return JSON.parse(raw) as CliConfig;
   } catch {
-    return { apiUrl: 'https://api.fidscript.com', outputFormat: 'table' };
+    return { apiUrl: process.env.FIDScript_API_URL ?? '', outputFormat: 'table' };
   }
 }
 

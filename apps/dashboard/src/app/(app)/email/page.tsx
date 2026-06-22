@@ -1,8 +1,8 @@
 'use client';
 
+
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
-import { createFidscript } from '@fidscript/sdk';
 import { Card } from '@fidscript/ui';
 import { Button } from '@fidscript/ui';
 import { Input } from '@fidscript/ui';
@@ -10,6 +10,7 @@ import { Modal } from '@fidscript/ui';
 import { Spinner } from '@fidscript/ui';
 import { EmptyState } from '@fidscript/ui';
 
+import { makeSdk } from '@/lib/sdk';
 import type { Project } from '@/types';
 // Domain type — not re-exported from SDK, define locally
 interface Domain {
@@ -53,7 +54,7 @@ export default function EmailPage() {
       const token = localStorage.getItem('fidscript_token');
       if (!token) { setLoadingProjects(false); return; }
       try {
-        const sdk = createFidscript({ apiKey: token });
+        const sdk = makeSdk(token);
         const data = await sdk.projects.list();
         setProjects(data);
         if (data.length > 0 && !selectedProjectId) {
@@ -78,7 +79,7 @@ export default function EmailPage() {
       try {
         const token = localStorage.getItem('fidscript_token');
         if (!token) return;
-        const sdk = createFidscript({ apiKey: token });
+        const sdk = makeSdk(token);
         const allDomains = await sdk.domains.list();
         // Filter to domains belonging to this project
         const projectDomains = allDomains.filter(d => d.projectId === selectedProjectId);
@@ -100,7 +101,7 @@ export default function EmailPage() {
     try {
       const token = localStorage.getItem('fidscript_token');
       if (!token) return;
-      const sdk = createFidscript({ apiKey: token });
+      const sdk = makeSdk(token);
       const created = await sdk.domains.create(selectedProjectId, newDomain.trim());
       setDomains(prev => [...prev, created]);
       setNewDomain('');

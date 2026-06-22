@@ -6,6 +6,7 @@ import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { Request } from 'express';
 import { AuthService } from '@/modules/auth/services/auth.service';
 import { JwtAuthGuard } from '@/modules/auth/jwt-auth.guard';
+import { InstallationGuard } from '@/modules/auth/guards/installation.guard';
 import { AuthUser, CurrentUser } from '@/modules/auth/current-user.decorator';
 import { extractRequestContext } from '@/common/request-context';
 import {
@@ -19,7 +20,15 @@ import {
 export class AuthController {
   constructor(private authService: AuthService) {}
 
+  @Get('auth-method/:email')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Look up preferred auth method for an email (used to pre-fill login)' })
+  async lookupAuthMethod(@Param('email') email: string) {
+    return this.authService.lookupAuthMethod(email.toLowerCase());
+  }
+
   @Post('register')
+  @UseGuards(InstallationGuard)
   @ApiOperation({ summary: 'Register a new account' })
   async register(@Body() dto: RegisterDto, @Req() req: Request) {
     const { ipAddress, userAgent } = extractRequestContext(req);
@@ -27,6 +36,7 @@ export class AuthController {
   }
 
   @Post('login')
+  @UseGuards(InstallationGuard)
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Login with email and password' })
   async login(@Body() dto: LoginDto, @Req() req: Request) {
@@ -69,6 +79,7 @@ export class AuthController {
   }
 
   @Post('magic-code')
+  @UseGuards(InstallationGuard)
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Request a 6-digit login code (email)' })
   async magicCode(@Body() dto: MagicCodeDto, @Req() req: Request) {
@@ -77,6 +88,7 @@ export class AuthController {
   }
 
   @Post('verify-magic-code')
+  @UseGuards(InstallationGuard)
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Verify the 6-digit login code' })
   async verifyMagicCode(@Body() dto: VerifyMagicCodeDto, @Req() req: Request) {

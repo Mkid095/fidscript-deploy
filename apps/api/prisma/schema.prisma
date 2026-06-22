@@ -25,6 +25,7 @@ model User {
   mfaEnabled         Boolean   @default(false) @map("mfa_enabled")
   mfaSecret          String?   @map("mfa_secret") @db.VarChar(255)
   mustChangePassword Boolean   @default(false) @map("must_change_password")
+  preferredAuthMethod AuthMethod @default(PASSWORD) @map("preferred_auth_method")
   lastLoginAt        DateTime? @map("last_login_at") @db.Timestamptz
   createdAt          DateTime  @default(now()) @map("created_at") @db.Timestamptz
   updatedAt          DateTime  @updatedAt @map("updated_at") @db.Timestamptz
@@ -43,6 +44,11 @@ enum Role {
   USER
   ADMIN
   OWNER
+}
+
+enum AuthMethod {
+  PASSWORD
+  MAGIC_CODE
 }
 
 model Session {
@@ -1372,15 +1378,19 @@ model InstallationSettingsVersion {
 
 // The actual desired-state configuration — not operational state.
 model InstallationSettings {
-  id             String   @id @default("installation")
-  platformName   String   @default("FIDScript Deploy") @map("platform_name") @db.VarChar(255)
-  platformDomain String   @map("platform_domain") @db.VarChar(255)
-  serverIp       String   @map("server_ip") @db.VarChar(45)
-  adminEmail     String   @map("admin_email") @db.VarChar(255)
-  dnsMode        String   @default("cloudflare_auto") @map("dns_mode") @db.VarChar(50)
-  branding       Json?
-  createdAt      DateTime @default(now()) @map("created_at") @db.Timestamptz
-  updatedAt      DateTime @updatedAt @map("updated_at") @db.Timestamptz
+  id               String   @id @default("installation")
+  platformName     String   @default("FIDScript Deploy") @map("platform_name") @db.VarChar(255)
+  platformDomain   String   @default("") @map("platform_domain") @db.VarChar(255)
+  serverIp         String   @default("") @map("server_ip") @db.VarChar(45)
+  adminEmail       String   @default("") @map("admin_email") @db.VarChar(255)
+  // Auth method for the admin account: PASSWORD (email+password) or MAGIC_CODE (email-only, code per login)
+  authMethod       AuthMethod @default(PASSWORD) @map("auth_method")
+  dnsMode          String   @default("cloudflare_auto") @map("dns_mode") @db.VarChar(50)
+  // Cloudflare API token for auto-DNS. Stored as a secret file path; the installer writes it.
+  cloudflareToken  String?  @map("cloudflare_token") @db.VarChar(255)
+  branding         Json?
+  createdAt        DateTime @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt        DateTime @updatedAt @map("updated_at") @db.Timestamptz
 
   @@map("platform.installation_settings")
 }

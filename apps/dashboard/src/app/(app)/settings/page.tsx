@@ -1,11 +1,12 @@
 'use client';
 
+
 import { useEffect, useState } from 'react';
-import { createFidscript } from '@fidscript/sdk';
 import { Card } from '@fidscript/ui';
 import { Button } from '@fidscript/ui';
 import { Spinner } from '@fidscript/ui';
 
+import { makeSdk } from '@/lib/sdk';
 import { useAuth } from '@/contexts/auth-context';
 
 interface ApiKey {
@@ -27,7 +28,7 @@ export default function SettingsPage() {
       try {
         const token = localStorage.getItem('fidscript_token');
         if (!token) return;
-        const sdk = createFidscript({ apiKey: token });
+        const sdk = makeSdk(token);
         const projects = await sdk.projects.list();
         if (projects.length === 0) { setLoadingKeys(false); return; }
         // fetch API keys from the first project for now (user-level keys would be a separate endpoint)
@@ -49,7 +50,7 @@ export default function SettingsPage() {
     try {
       const token = localStorage.getItem('fidscript_token');
       if (!token) return;
-      const sdk = createFidscript({ apiKey: token });
+      const sdk = makeSdk(token);
       const projects = await sdk.projects.list();
       if (projects.length > 0) {
         await sdk.projects.revokeApiKey(projects[0].id, keyId);

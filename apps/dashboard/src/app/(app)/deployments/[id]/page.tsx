@@ -1,13 +1,14 @@
 'use client';
 
+
 import { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import { useParams, useSearchParams } from 'next/navigation';
-import { createFidscript } from '@fidscript/sdk';
 import { Card } from '@fidscript/ui';
 import { Button } from '@fidscript/ui';
 import { Spinner } from '@fidscript/ui';
 
+import { makeSdk } from '@/lib/sdk';
 import type { Deployment } from '@/types';
 
 const STATUS_COLORS: Record<string, string> = {
@@ -80,7 +81,7 @@ function LogConsole({ deploymentId, projectId }: { deploymentId: string; project
     async function stream() {
       const token = localStorage.getItem('fidscript_token');
       if (!token) return;
-      const sdk = createFidscript({ apiKey: token });
+      const sdk = makeSdk(token);
 
       try {
         async function pollLogs() {
@@ -149,7 +150,7 @@ export default function DeploymentDetailPage() {
       const token = localStorage.getItem('fidscript_token');
       if (!token) { setLoading(false); return; }
       try {
-        const sdk = createFidscript({ apiKey: token });
+        const sdk = makeSdk(token);
         const data = await sdk.deployments.get(projectId, deploymentId);
         setDeployment(data as Deployment);
       } catch (err) {

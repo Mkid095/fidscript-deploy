@@ -14,13 +14,18 @@ export function LandingFooter() {
       <div className="mx-auto max-w-6xl px-6 py-12">
         <div className="grid gap-8 md:grid-cols-4">
           <div>
-            <div className="flex items-center gap-2.5">
-              <span className="flex h-7 w-7 items-center justify-center rounded-lg border border-fire-500/30 bg-fire-500/10 text-fire-500">
-                <HugeiconsIcon icon={BoltIcon} size={16} color="currentColor" />
-              </span>
-              <span className="font-mono font-bold text-white">
-                FID<span className="text-fire-500">Script</span>
-              </span>
+            <div className="flex items-center gap-2.5 mb-1">
+              <img
+                src="https://res.cloudinary.com/dfp7uhzy3/image/upload/v1782017464/Generated_Image_June_21__2026_-_2_00AM-removebg-preview_ekpdad.png"
+                alt="FIDScript"
+                width={28}
+                height={28}
+                className="rounded"
+              />
+              <div>
+                <p className="text-xs font-bold tracking-widest text-orange-500 uppercase leading-none">fidscript deploy</p>
+                <p className="text-xs text-slate-600 leading-none mt-0.5">by NextMavens</p>
+              </div>
             </div>
             <p className="mt-3 max-w-xs text-xs leading-relaxed text-slate-500">
               The self-hosted developer operating system. Open source. Run it on any VPS.

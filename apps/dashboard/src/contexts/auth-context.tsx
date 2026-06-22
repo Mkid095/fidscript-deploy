@@ -9,8 +9,9 @@ import {
   useState,
   type ReactNode,
 } from 'react';
-import { createFidscript, type FidscriptSDK } from '@fidscript/sdk';
+import { type FidscriptSDK } from '@fidscript/sdk';
 
+import { makeSdk } from '@/lib/sdk';
 import type { User } from '@/types';
 
 interface AuthState {
@@ -22,13 +23,15 @@ interface AuthState {
 interface AuthContextValue extends AuthState {
   login: (email: string, password: string) => Promise<void>;
   logout: () => Promise<void>;
-  register: (email: string, name: string, password: string) => Promise<void>;
+  register: (email: string, name: string, password: string, authMethod: 'PASSWORD' | 'MAGIC_CODE') => Promise<void>;
   sendMagicCode: (email: string) => Promise<{ sent: boolean }>;
   verifyMagicCode: (email: string, code: string) => Promise<void>;
   changePassword: (currentPassword: string, newPassword: string) => Promise<void>;
   clearError: () => void;
   /** Returns an SDK instance authenticated with the current access token. */
   getSdk: () => FidscriptSDK;
+  /** Look up a user's preferred auth method by email (used on login page before credentials). */
+  lookupAuthMethod: (email: string) => Promise<'PASSWORD' | 'MAGIC_CODE' | null>;
 }
 
 const AuthContext = createContext<AuthContextValue | null>(null);
@@ -70,7 +73,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const sdkRef = useRef<FidscriptSDK | null>(null);
 
   const buildSdk = useCallback((accessToken: string) => {
-    sdkRef.current = createFidscript({ apiKey: accessToken });
+    sdkRef.current = makeSdk(accessToken);
   }, []);
 
   const hydrateUser = useCallback(async (accessToken: string) => {
@@ -96,7 +99,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         // Token may be expired — attempt refresh.
         if (!cancelled && refreshToken) {
           try {
-            const sdk = createFidscript({});
+            const sdk = makeSdk();
             const refreshed = await sdk.auth.refreshToken(refreshToken);
             if (cancelled) return;
             storeTokens(refreshed.accessToken, refreshed.refreshToken);
@@ -124,7 +127,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   async function login(email: string, password: string): Promise<void> {
     setState(s => ({ ...s, loading: true, error: null }));
     try {
-      const sdk = createFidscript({});
+      const sdk = makeSdk();
       const res = await sdk.auth.login(email, password);
       storeTokens(res.accessToken, res.refreshToken);
       buildSdk(res.accessToken);
@@ -149,12 +152,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }
 
-  async function register(email: string, name: string, password: string): Promise<void> {
+  async function register(email: string, name: string, password: string, authMethod: 'PASSWORD' | 'MAGIC_CODE'): Promise<void> {
     setState(s => ({ ...s, loading: true, error: null }));
     try {
-      const sdk = createFidscript({});
-      await sdk.auth.register(email, password, name);
-      await login(email, password);
+      const sdk = makeSdk();
+      await sdk.auth.register(email, authMethod === 'PASSWORD' ? password : null, name, authMethod);
+      if (authMethod === 'PASSWORD') {
+        await login(email, password);
+      } else {
+        await sendMagicCode(email);
+      }
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Registration failed';
       setState(s => ({ ...s, loading: false, error: message }));
@@ -162,15 +169,25 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }
 
+  async function lookupAuthMethod(email: string): Promise<'PASSWORD' | 'MAGIC_CODE' | null> {
+    try {
+      const sdk = makeSdk();
+      const res = await sdk.auth.lookupAuthMethod(email);
+      return res.authMethod;
+    } catch {
+      return null;
+    }
+  }
+
   async function sendMagicCode(email: string): Promise<{ sent: boolean }> {
-    const sdk = createFidscript({});
+    const sdk = makeSdk();
     return sdk.auth.sendMagicCode(email);
   }
 
   async function verifyMagicCode(email: string, code: string): Promise<void> {
     setState(s => ({ ...s, loading: true, error: null }));
     try {
-      const sdk = createFidscript({});
+      const sdk = makeSdk();
       const res = await sdk.auth.verifyMagicCode(email, code);
       storeTokens(res.accessToken, res.refreshToken);
       buildSdk(res.accessToken);
@@ -206,12 +223,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   function getSdk(): FidscriptSDK {
     if (sdkRef.current) return sdkRef.current;
-    // Fallback: build from stored token (for pages that mount after hydration).
-    const { accessToken } = getStoredTokens();
-    if (!accessToken) throw new Error('Not authenticated');
-    const sdk = createFidscript({ apiKey: accessToken });
-    sdkRef.current = sdk;
-    return sdk;
+    throw new Error('Not authenticated — SDK not initialized. Did session restore complete?');
   }
 
   return (
@@ -226,6 +238,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         changePassword,
         clearError,
         getSdk,
+        lookupAuthMethod,
       }}
     >
       {children}

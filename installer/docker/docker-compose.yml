@@ -1,5 +1,3 @@
-version: "3.9"
-
 services:
   traefik:
     image: traefik:v3.0
@@ -140,12 +138,13 @@ services:
       retries: 5
 
   stalwart:
-    # Pinned: v0.15.5 is the last release using the TOML config schema
-    # (v0.16 moved bulk config into the database, breaking our
-    # StalwartJmapService / main.toml contract). Do NOT bump to :latest
-    # without first porting the email module to the v0.16 JMAP-object
-    # config flow.
-    image: stalwartlabs/stalwart:v0.15.5
+    # Pinned to a specific version via STALWART_VERSION in .env.
+    # New installations get the newest stable; existing deployments stay pinned
+    # for reproducible rollbacks. Update STALWART_VERSION in .env and re-pull
+    # to upgrade: docker compose up -d stalwart
+    # v0.16.x includes JMAP-based management (Principal/set for role assignment)
+    # and database-keyed config (many former TOML keys now live in RocksDB).
+    image: stalwartlabs/stalwart:${STALWART_VERSION:-v0.16.10}
     container_name: fidscript_stalwart
     restart: unless-stopped
     # Mail ports published to the host so external MTAs can deliver inbound
@@ -244,7 +243,9 @@ services:
       STALWART_SMTP_HOST: fidscript_stalwart
       STALWART_SMTP_PORT: "587"
       PLATFORM_MAIL_HOST: ${PLATFORM_MAIL_HOST:-mail.deploy.fidscript.com}
-      SMTP_FROM: noreply@${PLATFORM_MAIL_HOST:-deploy.fidscript.com}
+      # Use parent domain (deploy.fidscript.com) as sender — it has the
+      # SPF/DKIM/DMARC records. The mail. subdomain has no DNS auth records.
+      SMTP_FROM: noreply@${PLATFORM_DOMAIN}
       SMTP_SUBMISSION_USER: ${SMTP_SUBMISSION_USER}
       SMTP_SUBMISSION_PASS: ${SMTP_SUBMISSION_PASS}
       STALWART_WEBHOOK_SECRET_FILE: /run/secrets/stalwart_webhook_secret
@@ -257,6 +258,7 @@ services:
     volumes:
       - ./secrets:/run/secrets:ro
       - /var/run/docker.sock:/var/run/docker.sock
+      - ../scripts:/usr/local/share/fidscript:ro
     # The deployment worker runs `docker build`/`docker run` against the host
     # daemon via the mounted socket. The socket is root:docker on the host
     # (host GID in DOCKER_GID); adding that GID here grants the non-root
@@ -291,12 +293,11 @@ services:
     build:
       context: ../..
       dockerfile: apps/dashboard/Dockerfile
+      args:
+        NEXT_PUBLIC_PLATFORM_DOMAIN: ${DOMAIN}
+        NEXT_PUBLIC_API_URL: https://${DOMAIN}/api
     container_name: fidscript_dashboard
     restart: unless-stopped
-    environment:
-      NEXT_PUBLIC_API_URL: https://${DOMAIN}/api
-      NEXT_PUBLIC_PLATFORM_URL: https://app.${DOMAIN}
-      NEXT_PUBLIC_PLATFORM_DOMAIN: app.${DOMAIN}
     networks:
       - fidscript
     depends_on:

@@ -1,13 +1,14 @@
 'use client';
 
+
 import { useEffect, useState } from 'react';
 import { useParams, useSearchParams } from 'next/navigation';
-import { createFidscript } from '@fidscript/sdk';
 import { Card } from '@fidscript/ui';
 import { Button } from '@fidscript/ui';
 import { Spinner } from '@fidscript/ui';
 import { EmptyState } from '@fidscript/ui';
 
+import { makeSdk } from '@/lib/sdk';
 import type { AlertRule, Alert, NotificationChannel } from '@/types';
 
 type Tab = 'overview' | 'history';
@@ -46,7 +47,7 @@ export default function AlertDetailPage() {
       try {
         const token = localStorage.getItem('fidscript_token');
         if (!token) return;
-        const sdk = createFidscript({ apiKey: token });
+        const sdk = makeSdk(token);
         const [rules, alertsData, channelsData] = await Promise.all([
           sdk.monitoring.listAlertRules(projectId),
           sdk.monitoring.getAlerts(projectId),
@@ -75,7 +76,7 @@ export default function AlertDetailPage() {
     try {
       const token = localStorage.getItem('fidscript_token');
       if (!token) return;
-      const sdk = createFidscript({ apiKey: token });
+      const sdk = makeSdk(token);
       await sdk.monitoring.acknowledgeAlert(projectId, alertId);
       setAlerts(prev => prev.map(a => a.id === alertId ? { ...a, status: 'resolved' as const } : a));
     } finally {
@@ -89,7 +90,7 @@ export default function AlertDetailPage() {
     try {
       const token = localStorage.getItem('fidscript_token');
       if (!token) return;
-      const sdk = createFidscript({ apiKey: token });
+      const sdk = makeSdk(token);
       await sdk.monitoring.resolveAlert(projectId, alertId);
       setAlerts(prev => prev.map(a => a.id === alertId ? { ...a, status: 'resolved' as const } : a));
     } finally {

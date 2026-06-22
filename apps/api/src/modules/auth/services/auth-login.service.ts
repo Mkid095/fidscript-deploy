@@ -44,12 +44,30 @@ export class AuthLoginService {
 
     const user = await this.prisma.user.findUnique({ where: { email: dto.email } });
 
-    if (!user || !user.passwordHash) {
+    if (!user) {
       await this.rateLimiter.consume(acctKey, LOGIN_ACCT_LIMIT, LOGIN_WINDOW_SEC);
       await this.eventService.emit(
         'identity.user.login_failed',
         { email: dto.email, reason: 'user_not_found' },
         { actorType: 'user', resourceType: 'user', resourceId: 'unknown', ipAddress, userAgent },
+      );
+      throw new UnauthorizedException('Invalid credentials');
+    }
+
+    // If user prefers magic code, reject password login and tell them to use magic code.
+    if (user.preferredAuthMethod === 'MAGIC_CODE') {
+      await this.rateLimiter.consume(acctKey, LOGIN_ACCT_LIMIT, LOGIN_WINDOW_SEC);
+      throw new UnauthorizedException(
+        'This account uses magic code login. Use the magic code option instead.',
+      );
+    }
+
+    if (!user.passwordHash) {
+      await this.rateLimiter.consume(acctKey, LOGIN_ACCT_LIMIT, LOGIN_WINDOW_SEC);
+      await this.eventService.emit(
+        'identity.user.login_failed',
+        { email: dto.email, reason: 'no_password' },
+        { actorType: 'user', resourceType: 'user', resourceId: user.id, ipAddress, userAgent },
       );
       throw new UnauthorizedException('Invalid credentials');
     }

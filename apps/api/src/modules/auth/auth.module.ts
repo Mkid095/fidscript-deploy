@@ -19,9 +19,12 @@ import { JwtStrategy } from '@/modules/auth/jwt.strategy';
 import { MfaService } from '@/modules/auth/mfa/mfa.service';
 import { JwtAuthGuard } from '@/modules/auth/jwt-auth.guard';
 import { PlatformAdminGuard } from '@/modules/auth/guards/platform-admin.guard';
+import { InstallationGuard } from '@/modules/auth/guards/installation.guard';
+import { InstallationModule } from '@/modules/installation/installation.module';
 
 @Module({
   imports: [
+    InstallationModule,
     EmailModule,
     PassportModule.register({ defaultStrategy: 'jwt' }),
     JwtModule.registerAsync({
@@ -49,7 +52,8 @@ import { PlatformAdminGuard } from '@/modules/auth/guards/platform-admin.guard';
     MfaService,
     JwtAuthGuard,
     PlatformAdminGuard,
+    InstallationGuard,
   ],
-  exports: [AuthService, JwtAuthGuard, PlatformAdminGuard],
+  exports: [AuthService, JwtAuthGuard, PlatformAdminGuard, InstallationGuard],
 })
 export class AuthModule {}

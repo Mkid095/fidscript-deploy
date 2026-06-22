@@ -1,8 +1,8 @@
 'use client';
 
+
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { createFidscript } from '@fidscript/sdk';
 import { Card } from '@fidscript/ui';
 import { Button } from '@fidscript/ui';
 import { Input } from '@fidscript/ui';
@@ -10,6 +10,7 @@ import { Modal } from '@fidscript/ui';
 import { Spinner } from '@fidscript/ui';
 import { EmptyState } from '@fidscript/ui';
 
+import { makeSdk } from '@/lib/sdk';
 import type { Project, CronJob } from '@/types';
 
 function computeNextRun(expression: string): string {
@@ -55,7 +56,7 @@ export default function SchedulerPage() {
       const token = localStorage.getItem('fidscript_token');
       if (!token) { setLoadingProjects(false); return; }
       try {
-        const sdk = createFidscript({ apiKey: token });
+        const sdk = makeSdk(token);
         const data = await sdk.projects.list();
         setProjects(data);
         if (data.length > 0) setSelectedProjectId(data[0].id);
@@ -76,7 +77,7 @@ export default function SchedulerPage() {
       try {
         const token = localStorage.getItem('fidscript_token');
         if (!token) return;
-        const sdk = createFidscript({ apiKey: token });
+        const sdk = makeSdk(token);
         const data = await sdk.cron.list(selectedProjectId);
         setJobs(data);
       } catch (err) {
@@ -96,7 +97,7 @@ export default function SchedulerPage() {
     try {
       const token = localStorage.getItem('fidscript_token');
       if (!token) return;
-      const sdk = createFidscript({ apiKey: token });
+      const sdk = makeSdk(token);
       const data = {
         name: formName.trim(),
         cronExpression: formExpression.trim(),
@@ -121,7 +122,7 @@ export default function SchedulerPage() {
     try {
       const token = localStorage.getItem('fidscript_token');
       if (!token) return;
-      const sdk = createFidscript({ apiKey: token });
+      const sdk = makeSdk(token);
       await sdk.cron.update(selectedProjectId, job.id, { enabled: !job.enabled });
       setJobs(prev => prev.map(j => j.id === job.id ? { ...j, enabled: !j.enabled } : j));
     } finally {

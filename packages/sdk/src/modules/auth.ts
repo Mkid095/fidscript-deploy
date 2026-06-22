@@ -7,6 +7,7 @@ export interface User {
   role: string;
   mfaEnabled: boolean;
   mustChangePassword: boolean;
+  preferredAuthMethod: 'PASSWORD' | 'MAGIC_CODE';
   createdAt: string;
 }
 
@@ -26,15 +27,23 @@ export interface MagicCodeVerifyResponse {
   user: User;
 }
 
+export interface AuthMethodResponse {
+  authMethod: 'PASSWORD' | 'MAGIC_CODE';
+}
+
 export class AuthModule {
   constructor(private client: FidscriptClient) {}
 
-  async register(email: string, password: string, name?: string) {
-    return this.client.post<AuthResponse>('/api/v1/auth/register', { email, password, name });
+  async register(email: string, password: string | null, name: string, authMethod: 'PASSWORD' | 'MAGIC_CODE') {
+    return this.client.post<AuthResponse>('/api/v1/auth/register', { email, password, name, authMethod });
   }
 
   async login(email: string, password: string) {
     return this.client.post<AuthResponse>('/api/v1/auth/login', { email, password });
+  }
+
+  async lookupAuthMethod(email: string) {
+    return this.client.get<AuthMethodResponse>(`/api/v1/auth/auth-method/${encodeURIComponent(email)}`);
   }
 
   async logout() {

@@ -8,9 +8,16 @@
  * ```ts
  * import { createFidscript } from '@fidscript/sdk';
  *
- * const fs = createFidscript({ apiKey: process.env.FIDSCRIPT_API_KEY });
+ * const fs = createFidscript({
+ *   baseURL: 'https://api.your-deployment.example.com',
+ *   apiKey: process.env.FIDSCRIPT_API_KEY,
+ * });
  * const projects = await fs.projects.list();
  * ```
+ *
+ * `baseURL` is REQUIRED. There is no hardcoded default — every consumer of
+ * this open-source SDK must explicitly point to their own API host. This is
+ * deliberate: no implicit credential leakage, no silent cross-instance calls.
  */
 
 import { FidscriptClient, FidscriptClientOptions } from './client';
@@ -59,7 +66,7 @@ export interface FidscriptSDK {
 
 export function createFidscript(options: {
   apiKey?: string;
-  baseURL?: string;
+  baseURL: string;
   timeout?: number;
   maxRetries?: number;
 }): FidscriptSDK {

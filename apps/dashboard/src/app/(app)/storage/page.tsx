@@ -1,8 +1,8 @@
 'use client';
 
+
 import { useEffect, useState, useCallback } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { createFidscript } from '@fidscript/sdk';
 import { Card } from '@fidscript/ui';
 import { Button } from '@fidscript/ui';
 import { Input } from '@fidscript/ui';
@@ -10,6 +10,7 @@ import { Spinner } from '@fidscript/ui';
 import { EmptyState } from '@fidscript/ui';
 import { Toast } from '@fidscript/ui';
 
+import { makeSdk } from '@/lib/sdk';
 import type { Project } from '@/types';
 
 interface Bucket {
@@ -23,7 +24,7 @@ interface Bucket {
 function getSdk() {
   const token = localStorage.getItem('fidscript_token');
   if (!token) throw new Error('Not authenticated');
-  return createFidscript({ apiKey: token });
+  return makeSdk(token);
 }
 
 export default function StoragePage() {

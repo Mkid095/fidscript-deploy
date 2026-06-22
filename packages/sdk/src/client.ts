@@ -1,11 +1,11 @@
 import axios, { AxiosInstance, AxiosError } from 'axios';
 import { FidscriptError, AuthError, NotFoundError, ValidationError, RateLimitError } from './modules/errors';
 
-const DEFAULT_BASE_URL = 'https://api.fidscript.com';
-
+// No hardcoded default — the caller (createFidscript) must pass a baseURL.
+// This is an open source SDK: every consumer picks their own API host.
 export interface FidscriptClientOptions {
   apiKey?: string;
-  baseURL?: string;
+  baseURL: string;
   timeout?: number;
   maxRetries?: number;
 }
@@ -64,11 +64,19 @@ export { FidscriptError, AuthError, NotFoundError, ValidationError, RateLimitErr
 export class FidscriptClient {
   private readonly http: AxiosInstance;
   private readonly maxRetries: number;
+  /** The API base URL this client targets. Exposed for modules that need to
+   *  make direct fetch calls (e.g. log ingest, which uses an API key header
+   *  instead of the bearer token). Read-only — never reassigned. */
+  public readonly baseURL: string;
 
-  constructor(options: FidscriptClientOptions = {}) {
+  constructor(options: FidscriptClientOptions) {
+    if (!options.baseURL) {
+      throw new Error('FidscriptClient: baseURL is required. Pass it to createFidscript({ baseURL }).');
+    }
+    this.baseURL = options.baseURL;
     this.maxRetries = options.maxRetries ?? 3;
     this.http = axios.create({
-      baseURL: options.baseURL ?? DEFAULT_BASE_URL,
+      baseURL: options.baseURL,
       timeout: options.timeout ?? 30_000,
       headers: {
         'Content-Type': 'application/json',
@@ -113,7 +121,8 @@ export class FidscriptClient {
   }
 
   async *streamGet<T>(path: string, params?: Record<string, unknown>): AsyncGenerator<T> {
-    const baseURL = this.http.defaults.baseURL ?? DEFAULT_BASE_URL;
+    const baseURL = this.baseURL;
+    if (!baseURL) throw new FidscriptError('No baseURL configured');
     const url = new URL(baseURL + path);
     if (params) {
       for (const [k, v] of Object.entries(params)) {

@@ -128,8 +128,11 @@ export class LoggingModule {
       timestamp?: string;
     }>,
   ): Promise<IngestResult> {
-    // We need a fetch-based call that bypasses the Axios client's auth header
-    const baseURL = 'https://api.fidscript.com';
+    // We need a fetch-based call that bypasses the Axios client's auth header.
+    // Use the same baseURL as the authenticated client (no hardcoded host —
+    // every consumer of this open-source SDK picks their own API host).
+    const baseURL = this.client.baseURL;
+    if (!baseURL) throw new Error('No baseURL configured for log ingest');
     const res = await fetch(`${baseURL}/api/v1/logs/ingest`, {
       method: 'POST',
       headers: {

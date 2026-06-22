@@ -2,53 +2,20 @@
 /**
  * Phase 18 — FIDScript CLI entry point.
  * Usage: fidscript <command> [options]
+ *
+ * The CLI delegates credential + config management to the shared config module
+ * (../config/index.ts) so both the binary and library consumers get the same
+ * behaviour.  No hardcoded default API URL — every open-source consumer picks
+ * their own host via FIDScript_API_URL env var or ~/.fidscript/config.json.
  */
 import { Command } from 'commander';
-import { homedir } from 'os';
-import { join } from 'path';
-import { readFileSync, writeFileSync, mkdirSync, existsSync, chmodSync } from 'fs';
-
-const CONFIG_DIR = join(homedir(), '.fidscript');
-const CONFIG_FILE = join(CONFIG_DIR, 'config.json');
-const CREDENTIALS_FILE = join(CONFIG_DIR, 'credentials.json');
-
-interface CliConfig {
-  apiUrl: string;
-  currentProject?: string;
-  outputFormat: 'table' | 'json' | 'raw';
-}
-
-interface CliCredentials {
-  apiKey?: string;
-}
-
-function ensureDir(): void {
-  if (!existsSync(CONFIG_DIR)) {
-    mkdirSync(CONFIG_DIR, { mode: 0o700 });
-  }
-}
-
-function loadConfig(): CliConfig {
-  ensureDir();
-  if (!existsSync(CONFIG_FILE)) {
-    return { apiUrl: 'https://api.fidscript.com', outputFormat: 'table' };
-  }
-  try {
-    return JSON.parse(readFileSync(CONFIG_FILE, 'utf8')) as CliConfig;
-  } catch {
-    return { apiUrl: 'https://api.fidscript.com', outputFormat: 'table' };
-  }
-}
-
-function loadCredentials(): CliCredentials {
-  ensureDir();
-  if (!existsSync(CREDENTIALS_FILE)) return {};
-  try {
-    return JSON.parse(readFileSync(CREDENTIALS_FILE, 'utf8')) as CliCredentials;
-  } catch {
-    return {};
-  }
-}
+import { writeFileSync, chmodSync } from 'fs';
+import {
+  ensureDir,
+  CREDENTIALS_FILE,
+  loadConfig,
+  loadCredentials,
+} from '../config/index';
 
 function getApiKey(): string | undefined {
   return loadCredentials().apiKey;
@@ -114,9 +81,11 @@ async function run(argv: string[]): Promise<void> {
 
   // whoami
   program.command('whoami').description('Show current user').action(async () => {
+    const cfg = loadConfig();
+    if (!cfg.apiUrl) die('No API URL configured — set FIDScript_API_URL env var or run: fidscript configure');
     const apiKey = getApiKey() ?? die('Not logged in — run: fidscript login <key>');
     const { createFidscript } = await import('@fidscript/sdk');
-    const sdk = createFidscript({ apiKey });
+    const sdk = createFidscript({ apiKey, baseURL: cfg.apiUrl });
     try {
       const { user } = await sdk.auth.getSession();
       console.log(`Logged in as ${user.email} (role: ${user.role})`);
@@ -132,9 +101,10 @@ async function run(argv: string[]): Promise<void> {
     .description('Create a new project')
     .option('--type <type>', 'Project type', 'frontend')
     .action(async (name: string, opts: { type?: string }) => {
+      if (!cfg.apiUrl) die('No API URL configured — set FIDScript_API_URL env var or run: fidscript configure');
       const apiKey = getApiKey() ?? die('Not logged in');
       const { createFidscript } = await import('@fidscript/sdk');
-      const sdk = createFidscript({ apiKey });
+      const sdk = createFidscript({ apiKey, baseURL: cfg.apiUrl });
       const p = await sdk.projects.create({ name, type: opts.type ?? 'frontend' });
       console.log(`Created project ${p.id}: ${p.name}`);
     });
@@ -142,9 +112,10 @@ async function run(argv: string[]): Promise<void> {
     .command('list')
     .description('List all projects')
     .action(async () => {
+      if (!cfg.apiUrl) die('No API URL configured — set FIDScript_API_URL env var or run: fidscript configure');
       const apiKey = getApiKey() ?? die('Not logged in');
       const { createFidscript } = await import('@fidscript/sdk');
-      const sdk = createFidscript({ apiKey });
+      const sdk = createFidscript({ apiKey, baseURL: cfg.apiUrl });
       const items = await sdk.projects.list();
       printTable(items as unknown as Record<string, unknown>[], program.opts().output ?? 'table');
     });
@@ -158,10 +129,11 @@ async function run(argv: string[]): Promise<void> {
     .option('-s, --stream <name>', 'Stream name', 'default')
     .option('-l, --level <level>', 'Min level', 'info')
     .action(async (opts: { project?: string; stream?: string; level?: string }) => {
+      if (!cfg.apiUrl) die('No API URL configured — set FIDScript_API_URL env var or run: fidscript configure');
       const apiKey = getApiKey() ?? die('Not logged in');
       const projectId = opts.project ?? die('No project ID (--project or set currentProject in config)');
       const { createFidscript } = await import('@fidscript/sdk');
-      const sdk = createFidscript({ apiKey });
+      const sdk = createFidscript({ apiKey, baseURL: cfg.apiUrl });
       console.log(`Tailing logs for project ${projectId}...`);
       try {
         for await (const entry of sdk.logs.streamLogs(projectId, { stream: opts.stream, level: opts.level as 'debug' | 'info' | 'warn' | 'error' | 'fatal' })) {
@@ -180,10 +152,11 @@ async function run(argv: string[]): Promise<void> {
     .argument('<name>', 'Name for the new project')
     .option('-p, --project <id>', 'Parent project ID for template sourcing', cfg.currentProject ?? '')
     .action(async (template: string, name: string, opts: { project?: string }) => {
+      if (!cfg.apiUrl) die('No API URL configured — set FIDScript_API_URL env var or run: fidscript configure');
       const apiKey = getApiKey() ?? die('Not logged in');
       const parentProjectId = opts.project ?? die('No project ID (--project or set currentProject in config)');
       const { createFidscript } = await import('@fidscript/sdk');
-      const sdk = createFidscript({ apiKey });
+      const sdk = createFidscript({ apiKey, baseURL: cfg.apiUrl });
       console.log(`Scaffolding project "${name}" from template "${template}"...`);
       try {
         const result = await sdk.templates.generateAndDeploy(parentProjectId, template, name, {});
@@ -200,10 +173,11 @@ async function run(argv: string[]): Promise<void> {
     .description('List deployments for a project')
     .option('-p, --project <id>', 'Project ID', cfg.currentProject ?? '')
     .action(async (opts: { project?: string }) => {
+      if (!cfg.apiUrl) die('No API URL configured — set FIDScript_API_URL env var or run: fidscript configure');
       const apiKey = getApiKey() ?? die('Not logged in');
       const projectId = opts.project ?? die('No project ID (--project or set currentProject in config)');
       const { createFidscript } = await import('@fidscript/sdk');
-      const sdk = createFidscript({ apiKey });
+      const sdk = createFidscript({ apiKey, baseURL: cfg.apiUrl });
       const items = await sdk.deployments.list(projectId);
       printTable(items as unknown as Record<string, unknown>[], program.opts().output ?? 'table');
     });

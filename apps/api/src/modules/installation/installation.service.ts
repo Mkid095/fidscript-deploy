@@ -12,10 +12,13 @@ import {
   DiscoveryResult,
 } from './dto';
 import { randomUUID } from 'crypto';
-import { Prisma } from '@prisma/client';
+import { Prisma, Role, AuthMethod } from '@prisma/client';
+import { writeFileSync, mkdirSync } from 'fs';
+import { join } from 'path';
+import * as bcrypt from 'bcrypt';
 
 const LOCK_KEY = 'installation:orchestrate';
-const LOCK_TOKEN_TTL_MS = 5 * 60 * 1000; // 5 minutes
+const LOCK_TOKEN_TTL_MS = 5 * 60 * 1000;
 
 @Injectable()
 export class InstallationOrchestratorService {
@@ -33,7 +36,7 @@ export class InstallationOrchestratorService {
     private readonly configService: ConfigService,
   ) {}
 
-  // ─── Discovery ────────────────────────────────────────────────
+  // ─── Discovery ─────────────────────────────────────────────────────────
 
   async discover(): Promise<DiscoveryResult> {
     const serverIp = this.configService.get<string>('SERVER_IP') ?? '0.0.0.0';
@@ -46,36 +49,43 @@ export class InstallationOrchestratorService {
         orderBy: { createdAt: 'asc' },
       });
       adminEmail = admin?.email ?? null;
-    } catch {
-      // DB not seeded yet
-    }
+    } catch { /* DB not seeded yet */ }
 
     let existingInstallation: DiscoveryResult['existingInstallation'] = null;
+    let lifecycle = 'UNCONFIGURED';
     try {
       const status = await this.prisma.installationStatus.findFirst();
-      if (status) {
+      lifecycle = status?.lifecycle ?? 'UNCONFIGURED';
+      if (lifecycle === 'CONFIGURED') {
         const [projectCount, userCount] = await Promise.all([
           this.prisma.project.count(),
           this.prisma.user.count(),
         ]);
         existingInstallation = { version: '1.0.0', projectCount, userCount };
       }
-    } catch {
-      // Tables don't exist yet
-    }
+    } catch { /* tables don't exist */ }
+
+    // Check for CF token from env (installer sets it) or from InstallationSettings (setup page sends it)
+    const cfFromEnv = !!process.env.CLOUDFLARE_API_TOKEN_FILE;
+    let cfFromSettings = false;
+    try {
+      const settings = await this.prisma.installationSettings.findFirst();
+      cfFromSettings = !!(settings?.cloudflareToken);
+    } catch { /* not yet set */ }
 
     return {
       serverIp,
       adminEmail,
       existingInstallation,
+      lifecycle,
       dockerAvailable: true,
       traefikConfigured: true,
-      cloudflareTokenFound: !!process.env.CLOUDFLARE_API_TOKEN_FILE,
-      existingCertificateFound: existingInstallation !== null,
+      cloudflareTokenFound: cfFromEnv || cfFromSettings,
+      existingCertificateFound: lifecycle === 'CONFIGURED',
     };
   }
 
-  // ─── Status ──────────────────────────────────────────────────
+  // ─── Status ────────────────────────────────────────────────────────
 
   async getStatus() {
     let status = await this.prisma.installationStatus.findFirst();
@@ -84,13 +94,25 @@ export class InstallationOrchestratorService {
         data: { id: 'installation', lifecycle: 'UNCONFIGURED' },
       });
     }
+    let settings = { lifecycle: status.lifecycle, platformDomain: '', authMethod: null as string | null };
+    try {
+      const s = await this.prisma.installationSettings.findFirst();
+      if (s) {
+        settings = { lifecycle: status.lifecycle, platformDomain: s.platformDomain, authMethod: s.authMethod };
+      }
+    } catch { /* not set yet */ }
     const lastOp = status.lastOperationId
       ? await this.prisma.installationOperation.findUnique({ where: { id: status.lastOperationId } })
       : null;
-    return { lifecycle: status.lifecycle, lastOperation: lastOp ?? null };
+    return {
+      lifecycle: settings.lifecycle,
+      platformDomain: settings.platformDomain,
+      authMethod: settings.authMethod,
+      lastOperation: lastOp ?? null,
+    };
   }
 
-  // ─── Validation (dry-run) ────────────────────────────────────
+  // ─── Validation (dry-run) ────────────────────────────────────────
 
   async validate(dto: Partial<ConfigureInstallationDto>): Promise<StepValidationIssue[]> {
     const domain = dto.platformDomain ?? this.configService.get<string>('PLATFORM_DOMAIN') ?? '';
@@ -104,7 +126,7 @@ export class InstallationOrchestratorService {
     ]);
   }
 
-  // ─── Configure ───────────────────────────────────────────────
+  // ─── Configure ────────────────────────────────────────────────────
 
   async configure(dto: ConfigureInstallationDto): Promise<{ operationId: string }> {
     const lockToken = randomUUID();
@@ -133,8 +155,23 @@ export class InstallationOrchestratorService {
 
       this.events.emit('installation.lifecycle.operation.started' as EventType, { operationId: op.id, type: 'CONFIGURE' });
 
+      // 1. Write Cloudflare token to secrets dir so Traefik/other services can read it
+      if (dto.cloudflareApiToken) {
+        const secretsDir = process.env.CLOUDFLARE_API_TOKEN_FILE
+          ? join(process.env.CLOUDFLARE_API_TOKEN_FILE, '..')
+          : '/run/secrets';
+        try {
+          mkdirSync(secretsDir, { recursive: true });
+          writeFileSync('/run/secrets/cf_api_token', dto.cloudflareApiToken, { mode: 0o600 });
+        } catch (err) {
+          this.logger.warn(`Could not write CF token to /run/secrets: ${err}`);
+        }
+      }
+
+      // 2. Run infrastructure steps (DNS, proxy, cert, email, health)
       const stepResults = await this.runSteps(dto);
 
+      // 3. Update operation
       await this.prisma.installationOperation.update({
         where: { id: op.id },
         data: {
@@ -145,6 +182,7 @@ export class InstallationOrchestratorService {
         },
       });
 
+      // 4. Save InstallationSettings
       await this.prisma.installationSettings.upsert({
         where: { id: 'installation' },
         create: {
@@ -153,17 +191,25 @@ export class InstallationOrchestratorService {
           platformDomain: dto.platformDomain,
           serverIp: dto.serverIp,
           adminEmail: dto.adminEmail,
+          authMethod: dto.authMethod as AuthMethod,
           dnsMode: dto.dnsMode ?? 'cloudflare_auto',
+          cloudflareToken: dto.cloudflareApiToken ?? null,
         },
         update: {
           platformName: dto.platformName,
           platformDomain: dto.platformDomain,
           serverIp: dto.serverIp,
           adminEmail: dto.adminEmail,
+          authMethod: dto.authMethod as AuthMethod,
           dnsMode: dto.dnsMode ?? 'cloudflare_auto',
+          cloudflareToken: dto.cloudflareApiToken ?? null,
         },
       });
 
+      // 5. Create admin user with correct auth method
+      await this.createAdminUser(dto);
+
+      // 6. Audit trail
       await this.prisma.installationSettingsVersion.create({
         data: {
           changedBy: 'system',
@@ -173,6 +219,7 @@ export class InstallationOrchestratorService {
         },
       });
 
+      // 7. Mark CONFIGURED
       await this.prisma.installationStatus.update({
         where: { id: 'installation' },
         data: { lifecycle: 'CONFIGURED', lastOperationId: op.id },
@@ -198,7 +245,46 @@ export class InstallationOrchestratorService {
     }
   }
 
-  // ─── SSE stream for progress ─────────────────────────────────
+  // ─── Admin user creation ───────────────────────────────────────────
+
+  private async createAdminUser(dto: ConfigureInstallationDto): Promise<void> {
+    const existing = await this.prisma.user.findUnique({ where: { email: dto.adminEmail } });
+    if (existing) {
+      this.logger.log(`Admin user ${dto.adminEmail} already exists — skipping`);
+      return;
+    }
+
+    const user = await this.prisma.user.create({
+      data: {
+        email: dto.adminEmail,
+        name: 'Platform Admin',
+        role: Role.ADMIN,
+        preferredAuthMethod: dto.authMethod as AuthMethod,
+        // Magic-code users must set a password on first login
+        mustChangePassword: dto.authMethod === 'MAGIC_CODE',
+        credentials: dto.authMethod === 'PASSWORD' && dto.adminPassword
+          ? {
+              create: {
+                type: 'PASSWORD',
+                secretHash: bcrypt.hashSync(dto.adminPassword, 12),
+              },
+            }
+          : dto.authMethod === 'MAGIC_CODE'
+            ? {
+                create: {
+                  type: 'MAGIC_CODE',
+                  secretHash: '', // filled in on first magic-code login
+                },
+              }
+            : undefined,
+      },
+      include: { credentials: true },
+    });
+
+    this.logger.log(`Admin user ${dto.adminEmail} created with authMethod=${dto.authMethod}`);
+  }
+
+  // ─── SSE stream for progress ─────────────────────────────────────
 
   async *streamProgress(operationId: string): AsyncGenerator<Record<string, unknown>, void, unknown> {
     const deadline = Date.now() + 10 * 60 * 1000;
@@ -217,7 +303,7 @@ export class InstallationOrchestratorService {
     }
   }
 
-  // ─── Helpers ─────────────────────────────────────────────────
+  // ─── Step runner ─────────────────────────────────────────────────
 
   private async runSteps(dto: ConfigureInstallationDto): Promise<StepResult[]> {
     type StepEntry = {

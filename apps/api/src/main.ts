@@ -1,6 +1,7 @@
 import { NestFactory } from '@nestjs/core';
 import { ValidationPipe } from '@nestjs/common';
 import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger';
+import type { Request, Response } from 'express';
 import { AppModule } from './app.module';
 import { RedisIoAdapter } from './adapters/redis-io.adapter';
 
@@ -15,6 +16,19 @@ process.on('uncaughtException', (err) => {
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
+
+  // Serve the one-line installer at the root so `curl …/install.sh` works
+  // outside the api/v1 prefix. The file is mounted into the container at
+  // /usr/local/share/fidscript/install.sh (see docker-compose.yml).
+  const { createReadStream, existsSync } = await import('node:fs');
+  const INSTALL_SH = process.env.INSTALL_SCRIPT_PATH ?? '/usr/local/share/fidscript/install.sh';
+  if (existsSync(INSTALL_SH)) {
+    app.use('/install.sh', (_req: Request, res: Response) => {
+      res.setHeader('Content-Type', 'application/x-sh');
+      res.setHeader('Content-Disposition', 'attachment; filename="install.sh"');
+      createReadStream(INSTALL_SH).pipe(res);
+    });
+  }
 
   app.setGlobalPrefix('api/v1', {
     exclude: ['metrics'],

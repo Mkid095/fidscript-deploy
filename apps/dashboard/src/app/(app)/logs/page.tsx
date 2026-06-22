@@ -1,13 +1,14 @@
 'use client';
 
+
 import { useEffect, useRef, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
-import { createFidscript } from '@fidscript/sdk';
 import { Card } from '@fidscript/ui';
 import { Button } from '@fidscript/ui';
 import { Spinner } from '@fidscript/ui';
 import { EmptyState } from '@fidscript/ui';
 
+import { makeSdk } from '@/lib/sdk';
 import type { Project, LogEntry } from '@/types';
 
 const STREAMS = ['default', 'build', 'access', 'error'] as const;
@@ -46,7 +47,7 @@ export default function LogsPage() {
       const token = localStorage.getItem('fidscript_token');
       if (!token) { setLoadingProjects(false); return; }
       try {
-        const sdk = createFidscript({ apiKey: token });
+        const sdk = makeSdk(token);
         const data = await sdk.projects.list();
         setProjects(data);
         if (!selectedProjectId && data.length > 0) {
@@ -68,7 +69,7 @@ export default function LogsPage() {
     try {
       const token = localStorage.getItem('fidscript_token');
       if (!token) return;
-      const sdk = createFidscript({ apiKey: token });
+      const sdk = makeSdk(token);
       const levelFilter = Array.from(activeLevels).join(',');
       const result = await sdk.logs.getLogs(selectedProjectId, {
         stream,
@@ -100,7 +101,7 @@ export default function LogsPage() {
     async function startStream() {
       const token = localStorage.getItem('fidscript_token');
       if (!token) return;
-      const sdk = createFidscript({ apiKey: token });
+      const sdk = makeSdk(token);
       const levelFilter = Array.from(activeLevels).join(',');
       const iterator = sdk.logs.streamLogs(selectedProjectId, {
         stream,

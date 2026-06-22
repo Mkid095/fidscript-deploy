@@ -1,9 +1,12 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, Inject } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { CloudflareDnsProvider } from '@/modules/domains/providers/cloudflare-dns.provider';
 import { CloudflareZoneService } from '@/modules/domains/providers/cloudflare-zone.service';
 import { Step } from './interfaces';
 import { StepValidationIssue, StepResult } from '../dto';
+import { PROXY_PROVIDER, CERTIFICATE_PROVIDER } from '../installation.tokens';
+import type { IReverseProxyProvider } from '../providers/reverse-proxy.provider';
+import type { ICertificateProvider } from '../providers/certificate.provider';
 
 /** DNS step: validates token + creates platform subdomain record. */
 @Injectable()
@@ -54,7 +57,7 @@ export class ProxyStep implements Step<{ domain: string }> {
   readonly name = 'proxy';
 
   constructor(
-    private proxyProvider: import('../providers/reverse-proxy.provider').IReverseProxyProvider,
+    @Inject(PROXY_PROVIDER) private proxyProvider: IReverseProxyProvider,
   ) {}
 
   async validate(_input: { domain: string }): Promise<StepValidationIssue> {
@@ -85,7 +88,7 @@ export class CertificateStep implements Step<{ domain: string }> {
   readonly name = 'certificate';
 
   constructor(
-    private certProvider: import('../providers/certificate.provider').ICertificateProvider,
+    @Inject(CERTIFICATE_PROVIDER) private certProvider: ICertificateProvider,
   ) {}
 
   async validate(input: { domain: string }): Promise<StepValidationIssue> {

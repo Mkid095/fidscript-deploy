@@ -40,6 +40,8 @@ export class PlatformMailService {
   async check(): Promise<{ status: 'up' | 'down'; latencyMs: number; error?: string }> {
     const smtpHost = this.config.get<string>('STALWART_SMTP_HOST', 'fidscript_stalwart');
     const smtpPort = this.config.get<number>('STALWART_SMTP_PORT', 465);
+    const smtpUser = this.config.get<string>('SMTP_SUBMISSION_USER', 'admin');
+    const smtpPass = this.config.get<string>('SMTP_SUBMISSION_PASS', this.adminToken);
     const start = Date.now();
 
     try {
@@ -48,7 +50,7 @@ export class PlatformMailService {
         host: smtpHost,
         port: smtpPort,
         secure: smtpPort === 465,
-        auth: { user: 'admin', pass: this.adminToken },
+        auth: { user: smtpUser, pass: smtpPass },
         tls: { rejectUnauthorized: false },
         connectionTimeout: 5000,
       });
@@ -66,13 +68,16 @@ export class PlatformMailService {
     const smtpHost = this.config.get<string>('STALWART_SMTP_HOST', 'fidscript_stalwart');
     const smtpPort = this.config.get<number>('STALWART_SMTP_PORT', 465);
     const from = this.config.get<string>('SMTP_FROM', 'noreply@localhost');
+    // Use SMTP_SUBMISSION_USER/PASS for authenticated submission (from .env/docker-compose).
+    const smtpUser = this.config.get<string>('SMTP_SUBMISSION_USER', 'admin');
+    const smtpPass = this.config.get<string>('SMTP_SUBMISSION_PASS', this.adminToken);
 
     const { default: nodemailer } = await import('nodemailer');
     const transporter = nodemailer.createTransport({
       host: smtpHost,
       port: smtpPort,
       secure: smtpPort === 465,
-      auth: { user: 'admin', pass: this.adminToken },
+      auth: { user: smtpUser, pass: smtpPass },
       tls: { rejectUnauthorized: false },
     });
 

@@ -1,4 +1,5 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, NotFoundException } from '@nestjs/common';
+import { PrismaService } from '@/prisma/prisma.service';
 import { AuthSessionService } from '@/modules/auth/services/auth-session.service';
 import { AuthRegisterService } from '@/modules/auth/services/auth-register.service';
 import { AuthLoginService } from '@/modules/auth/services/auth-login.service';
@@ -15,6 +16,7 @@ export { AuthSessionService, AuthResponse } from '@/modules/auth/services/auth-s
 @Injectable()
 export class AuthService {
   constructor(
+    private prisma: PrismaService,
     private session: AuthSessionService,
     private authRegister: AuthRegisterService,
     private authLogin: AuthLoginService,
@@ -83,4 +85,13 @@ export class AuthService {
   getApiKeys(userId: string) { return this.apiKeys.getApiKeys(userId); }
   revokeApiKey(userId: string, keyId: string) { return this.apiKeys.revokeApiKey(userId, keyId); }
   validateApiKey(key: string) { return this.apiKeys.validateApiKey(key); }
+
+  async lookupAuthMethod(email: string) {
+    const user = await this.prisma.user.findUnique({
+      where: { email: email.toLowerCase() },
+      select: { preferredAuthMethod: true },
+    });
+    if (!user) throw new NotFoundException('User not found');
+    return { authMethod: user.preferredAuthMethod ?? 'PASSWORD' };
+  }
 }

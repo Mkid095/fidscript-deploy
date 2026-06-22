@@ -1,15 +1,17 @@
 'use client';
 
+
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useParams } from 'next/navigation';
-import { createFidscript } from '@fidscript/sdk';
 import { Card } from '@fidscript/ui';
 import { Button } from '@fidscript/ui';
 import { Input } from '@fidscript/ui';
 import { Modal } from '@fidscript/ui';
 import { Spinner } from '@fidscript/ui';
 import { EmptyState } from '@fidscript/ui';
+
+import { makeSdk } from '@/lib/sdk';
 // Local type definitions mirroring SDK internal modules
 interface Domain {
   id: string;
@@ -67,7 +69,7 @@ export default function DomainPage() {
       const token = localStorage.getItem('fidscript_token');
       if (!token) { setLoading(false); return; }
       try {
-        const sdk = createFidscript({ apiKey: token });
+        const sdk = makeSdk(token);
         const [domainData, mailboxesData, aliasesData] = await Promise.all([
           sdk.domains.get(domainId),
           sdk.email.listMailboxes(domainId),
@@ -93,7 +95,7 @@ export default function DomainPage() {
     try {
       const token = localStorage.getItem('fidscript_token');
       if (!token) return;
-      const sdk = createFidscript({ apiKey: token });
+      const sdk = makeSdk(token);
       const created = await sdk.email.createMailbox(domainId, newMailboxEmail.trim(), newMailboxName.trim() || undefined);
       setMailboxes(prev => [...prev, created]);
       setNewMailboxEmail('');
@@ -114,7 +116,7 @@ export default function DomainPage() {
     try {
       const token = localStorage.getItem('fidscript_token');
       if (!token) return;
-      const sdk = createFidscript({ apiKey: token });
+      const sdk = makeSdk(token);
       const forwards = newAliasForward.split(',').map(s => s.trim()).filter(Boolean);
       const created = await sdk.email.createAlias(domainId, newAliasAddress.trim(), forwards);
       setAliases(prev => [...prev, created]);
@@ -132,7 +134,7 @@ export default function DomainPage() {
     try {
       const token = localStorage.getItem('fidscript_token');
       if (!token) return;
-      const sdk = createFidscript({ apiKey: token });
+      const sdk = makeSdk(token);
       await sdk.email.deleteMailbox(domainId, id);
       setMailboxes(prev => prev.filter(m => m.id !== id));
     } catch {
@@ -144,7 +146,7 @@ export default function DomainPage() {
     try {
       const token = localStorage.getItem('fidscript_token');
       if (!token) return;
-      const sdk = createFidscript({ apiKey: token });
+      const sdk = makeSdk(token);
       await sdk.email.deleteAlias(domainId, id);
       setAliases(prev => prev.filter(a => a.id !== id));
     } catch {

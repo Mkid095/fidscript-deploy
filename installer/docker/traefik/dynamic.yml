@@ -13,6 +13,12 @@ http:
     compress:
       compress: {}
 
+    app-redirect:
+      redirectRegex:
+        regex: "^/$"
+        replacement: "/projects"
+        permanent: true
+
   routers:
     dashboard:
       rule: "Host(`deploy.fidscript.com`) && !PathPrefix(`/api`)"
@@ -23,8 +29,25 @@ http:
       tls:
         certResolver: letsencrypt-dns
 
-    # Phase 14: Prometheus scrape endpoint — must route to API before the
-    # dashboard catch-all (dashboard catches Host && !PathPrefix('/api')).
+    app:
+      rule: "Host(`app.deploy.fidscript.com`)"
+      priority: 50
+      service: dashboard
+      middlewares:
+        - security-headers
+        - app-redirect
+      tls:
+        certResolver: letsencrypt-dns
+
+    deployments-wildcard:
+      rule: "HostRegexp(`^.+.deploy.fidscript.com$`)"
+      service: api
+      middlewares:
+        - security-headers
+        - compress
+      tls:
+        certResolver: letsencrypt-dns
+
     metrics:
       rule: "Host(`deploy.fidscript.com`) && PathPrefix(`/metrics`)"
       service: api
@@ -34,11 +57,18 @@ http:
         certResolver: letsencrypt-dns
 
     api:
-      rule: "PathPrefix(`/api`)"
+      rule: "PathPrefix(`/api`) && !Path(`/install.sh`)"
       service: api
       middlewares:
         - security-headers
         - compress
+      tls:
+        certResolver: letsencrypt-dns
+
+    install-sh:
+      rule: "Path(`/install.sh`)"
+      service: api
+      priority: 200
       tls:
         certResolver: letsencrypt-dns
 

@@ -1,4 +1,4 @@
-# Stalwart Mail Server — config.toml (v0.15.5 schema, RocksDB)
+# Stalwart Mail Server — config.toml (v0.16.x schema, RocksDB)
 # Template — setup-wizard.sh renders this into the canonical
 # installer/config/stalwart/config.toml with the real MAIL_HOSTNAME
 # before compose-up. Stalwart's binary does NOT do ${VAR} substitution,
@@ -70,7 +70,7 @@ tls.implicit = true
 
 # ── Storage — RocksDB on the fidscript_stalwart volume ──────────
 # RocksDB is self-contained, requires no external service, and is
-# the v0.15 default. The volume is mounted at /opt/stalwart by the
+# the v0.16 default. The volume is mounted at /opt/stalwart by the
 # image's entrypoint; the data subdir is created on first start.
 
 [storage]
@@ -105,7 +105,7 @@ user = "admin"
 secret = "${STALWART_ADMIN_HASH}"
 
 # ── SMTP AUTH — enable PLAIN/LOGIN on submission ports ──────────
-# By default Stalwart v0.15 requires this to be explicitly configured.
+# By default Stalwart v0.16 requires this to be explicitly configured.
 # PLAIN and LOGIN are only offered on TLS connections (port 465, 587
 # after STARTTLS, 993 after IMAPS TLS). Port 25 (MX) never offers AUTH.
 # The internal directory validates against the fallback-admin account.
@@ -150,7 +150,7 @@ ansi = false
 enable = true
 
 # ── DKIM signing ─────────────────────────────────────────────────
-# Stalwart v0.15.5 stores DKIM keys in its internal store, created via the
+# Stalwart v0.16.x stores DKIM keys in its internal store, created via the
 # management API (POST /api/dkim) by the api's DkimService — NOT from files.
 # Each domain's signature id IS the domain (globally unique), selector
 # "default". This rule makes Stalwart sign outbound mail for any local

@@ -1,8 +1,8 @@
 'use client';
 
+
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
-import { createFidscript } from '@fidscript/sdk';
 import { Card } from '@fidscript/ui';
 import { Button } from '@fidscript/ui';
 import { Input } from '@fidscript/ui';
@@ -10,6 +10,7 @@ import { Modal } from '@fidscript/ui';
 import { Spinner } from '@fidscript/ui';
 import { EmptyState } from '@fidscript/ui';
 
+import { makeSdk } from '@/lib/sdk';
 import type { Project } from '@/types';
 // Local type definition mirroring SDK internal Function_ interface
 interface Function_ {
@@ -47,7 +48,7 @@ export default function FunctionsPage() {
       const token = localStorage.getItem('fidscript_token');
       if (!token) { setLoadingProjects(false); return; }
       try {
-        const sdk = createFidscript({ apiKey: token });
+        const sdk = makeSdk(token);
         const data = await sdk.projects.list();
         setProjects(data);
         if (data.length > 0 && !selectedProjectId) {
@@ -72,7 +73,7 @@ export default function FunctionsPage() {
       try {
         const token = localStorage.getItem('fidscript_token');
         if (!token) return;
-        const sdk = createFidscript({ apiKey: token });
+        const sdk = makeSdk(token);
         const data = await sdk.functions.list(selectedProjectId);
         setFunctions(data);
       } catch (err) {
@@ -92,7 +93,7 @@ export default function FunctionsPage() {
     try {
       const token = localStorage.getItem('fidscript_token');
       if (!token) return;
-      const sdk = createFidscript({ apiKey: token });
+      const sdk = makeSdk(token);
       const created = await sdk.functions.create(selectedProjectId, { name: newName.trim(), runtime: newRuntime });
       setFunctions(prev => [...prev, created]);
       setNewName('');

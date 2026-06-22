@@ -13,6 +13,37 @@
 > **Rule.** No phase is "done" until (a) its acceptance criteria pass on the VPS, (b) the
 > `PREREQ-*` items it lists are Closed, and (c) `docs/AGENT_STATUS.md` is flipped in the
 > same commit. Documentation is the contract (see CLAUDE.md rule 16).
+>
+> **Execution model — three parallel tracks:**
+>
+> | Track | Purpose | Starts When |
+> |---|---|---|
+> | **Platform** | Installer, mail automation, auth hardening, infrastructure, backend APIs | Immediately — continuous, not gated by features |
+> | **Specifications** | F03–F11 documentation | Immediately — always stay one feature ahead |
+> | **Features** | F02, F03, F04... implementation | When that feature's own prerequisites are satisfied |
+>
+> Platform work (mail automation, installer, infrastructure, API surface) is **continuous**
+> and does not belong to any single feature phase. It never waits for a feature to complete.
+>
+> Feature work is **dependency-gated**:
+> - F02 ← waits for Stage 0A+0B (PREREQ-AUTH-*)
+> - F03 ← waits for F02 implementation
+> - F04 ← waits for F03
+> - ...
+>
+> Stage 0A is a **release gate** for dependent features, not a **development gate** for
+> platform work. Platform engineering proceeds in parallel from day one.
+>
+> Pipeline: write spec N+1 → implement spec N → validate spec N−1.
+> Example: F02 approved → implement F02 while writing F03 spec.
+> Example: F03 spec written → implement F03 while writing F04 spec.
+>
+> **Engineering principle — API-first completion:**
+> Every infrastructure capability must be accessible through the FIDScript API before it is
+> considered complete. If any operation still requires logging into Stalwart, Docker, or the
+> server directly during normal operation, the feature is not complete. Examples:
+> mailbox creation ✓ · password reset ✓ · alias management ✓ · domain management ✓ ·
+> queue management ✓ · certificate management ✓ · health diagnostics ✓ · backups ✓
 
 ---
 

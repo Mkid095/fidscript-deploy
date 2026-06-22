@@ -6,6 +6,7 @@ import { TraefikCertProvider } from './providers/traefik-cert.provider';
 import { DnsStep, ProxyStep, CertificateStep, EmailStep, HealthStep } from './steps/installation-steps';
 import { DomainsModule } from '@/modules/domains/domains.module';
 import { EmailModule } from '@/modules/email/email.module';
+import { PROXY_PROVIDER, CERTIFICATE_PROVIDER } from './installation.tokens';
 
 @Module({
   imports: [DomainsModule, EmailModule],
@@ -19,6 +20,8 @@ import { EmailModule } from '@/modules/email/email.module';
     CertificateStep,
     EmailStep,
     HealthStep,
+    { provide: PROXY_PROVIDER, useExisting: TraefikProxyProvider },
+    { provide: CERTIFICATE_PROVIDER, useExisting: TraefikCertProvider },
   ],
   exports: [InstallationOrchestratorService],
 })

@@ -1,4 +1,4 @@
-import { IsEmail, IsIP, IsString, IsOptional, MinLength } from 'class-validator';
+import { IsEmail, IsIP, IsString, IsOptional, MinLength, IsIn } from 'class-validator';
 
 export class ConfigureInstallationDto {
   @IsString()
@@ -15,6 +15,21 @@ export class ConfigureInstallationDto {
 
   @IsEmail()
   adminEmail!: string;
+
+  /** 'PASSWORD' or 'MAGIC_CODE' */
+  @IsString()
+  @IsIn(['PASSWORD', 'MAGIC_CODE'])
+  authMethod!: 'PASSWORD' | 'MAGIC_CODE';
+
+  /** Admin password — required when authMethod is PASSWORD, ignored for MAGIC_CODE */
+  @IsString()
+  @IsOptional()
+  adminPassword?: string;
+
+  /** Cloudflare API token for auto-DNS. If omitted, manual DNS required. */
+  @IsString()
+  @IsOptional()
+  cloudflareApiToken?: string;
 
   @IsString()
   @IsOptional()
@@ -43,6 +58,7 @@ export interface StepResult {
 export interface DiscoveryResult {
   serverIp: string;
   adminEmail: string | null;
+  lifecycle: string;
   existingInstallation: {
     version: string | null;
     projectCount: number;
