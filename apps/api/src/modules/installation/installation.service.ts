@@ -234,18 +234,29 @@ export class InstallationOrchestratorService {
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
       this.logger.error(`Installation configure failed: ${msg}`);
+
+      // Extract step name from message format "Step <name> failed: <error>"
+      const stepMatch = /^Step (\w+) failed/.exec(msg);
+      const failedStep = stepMatch ? stepMatch[1] : null;
+
       if (operationId) {
         await this.prisma.installationOperation.update({
           where: { id: operationId },
-          data: { status: 'FAILED', failureReason: msg, completedAt: new Date() },
+          data: {
+            status: 'FAILED',
+            failureReason: msg,
+            currentStep: failedStep,
+            completedAt: new Date(),
+          },
         }).catch(() => null);
       }
+
       // Transition to FAILED so the UI shows a proper error state, not CONFIGURING forever
       await this.prisma.installationStatus.update({
         where: { id: 'installation' },
         data: { lifecycle: 'FAILED' },
       }).catch(() => null);
-      this.events.emit('installation.lifecycle.operation.completed' as EventType, { operationId, success: false, error: msg });
+      this.events.emit('installation.lifecycle.operation.completed' as EventType, { operationId, success: false, error: msg, failedStep });
       this.events.emit('installation.lifecycle.changed' as EventType, { lifecycle: 'FAILED' });
       throw err;
     } finally {

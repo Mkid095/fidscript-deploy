@@ -164,11 +164,9 @@ export default function SetupPage() {
           setCurrentStep('');
           setDoneDomain(platformDomain.trim());
           es.close();
-
-          // Invalidate middleware cache so CONFIGURED is picked up immediately
-          fetch('/api/v1/installation/invalidate-cache', { method: 'POST' }).catch(() => {/* best-effort*/});
-
-          setTimeout(() => setStep('done'), 800); // brief pause so user sees the last step complete
+          // Middleware re-checks lifecycle within 8s; no server-side cache invalidation
+          // is possible since the API cannot reach the Next.js process memory.
+          setTimeout(() => setStep('done'), 800);
         }
 
         if (event.status === 'FAILED') {
@@ -369,9 +367,11 @@ export default function SetupPage() {
         {step === 'progress' && (
           <Card padding="lg">
             <h2 className="text-lg font-bold text-white mb-1">Configuring Your Platform</h2>
-            <p className="text-sm text-slate-400 mb-8">
-              This takes a few minutes. Please wait…
-            </p>
+            {!progressError && (
+              <p className="text-sm text-slate-400 mb-8">
+                This takes a few minutes. Please wait…
+              </p>
+            )}
 
             {/* Step list */}
             <div className="flex flex-col gap-3 mb-8">
@@ -400,15 +400,28 @@ export default function SetupPage() {
               })}
             </div>
 
-            {progressError && (
-              <div className="flex items-start gap-2 p-4 rounded-lg bg-red-900/20 border border-red-800">
-                <span className="text-red-400 shrink-0 mt-0.5">✗</span>
-                <div>
-                  <p className="text-sm text-red-300 font-medium">Configuration failed</p>
-                  <p className="text-xs text-red-400/80 mt-1">{progressError}</p>
+            {progressError ? (
+              <div className="flex flex-col gap-4">
+                <div className="flex items-start gap-2 p-4 rounded-lg bg-red-900/20 border border-red-800">
+                  <span className="text-red-400 shrink-0 mt-0.5">✗</span>
+                  <div>
+                    <p className="text-sm text-red-300 font-medium">Configuration failed</p>
+                    <p className="text-xs text-red-400/80 mt-1">{progressError}</p>
+                  </div>
                 </div>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setProgressSteps({});
+                    setProgressError('');
+                    setStep('method');
+                  }}
+                  className="w-full py-3 rounded-lg border border-slate-700 text-slate-300 hover:text-white hover:border-slate-500 text-sm transition-colors"
+                >
+                  Try again
+                </button>
               </div>
-            )}
+            ) : null}
           </Card>
         )}
 

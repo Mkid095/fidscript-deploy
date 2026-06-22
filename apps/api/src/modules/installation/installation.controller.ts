@@ -64,16 +64,4 @@ export class InstallationController {
       res.end();
     }
   }
-
-  /**
-   * Cache invalidation for the Next.js middleware.
-   * Called by the browser after the SSE stream ends so the middleware
-   * re-checks lifecycle immediately instead of waiting for the 8s TTL.
-   */
-  @Post('invalidate-cache')
-  @HttpCode(HttpStatus.OK)
-  async invalidateCache(): Promise<{ lifecycle: string }> {
-    const status = await this.orchestrator.getStatus();
-    return { lifecycle: status.lifecycle };
-  }
 }
