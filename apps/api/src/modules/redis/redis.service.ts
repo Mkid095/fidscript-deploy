@@ -97,6 +97,28 @@ export class RedisService implements OnModuleDestroy {
   /**
    * Release a distributed lock using Lua compare-and-delete (only deletes if token matches).
    */
+  /**
+   * Renew a lock's TTL using PEXPIRE — only succeeds if the token still owns the lock.
+   * Use this as a heartbeat during long-running operations.
+   */
+  async renewLock(lockKey: string, token: string, ttlMs: number): Promise<boolean> {
+    if (!this.client) return true;
+    try {
+      // Lua: only extend if we still own the lock
+      const result = await this.client.eval(
+        'if redis.call("get", KEYS[1]) == ARGV[1] then return redis.call("pexpire", KEYS[1], ARGV[2]) else return 0 end',
+        { keys: [lockKey], arguments: [token, String(ttlMs)] },
+      );
+      return result === 1;
+    } catch (error) {
+      this.logger.error(`Redis renewLock error for ${lockKey}:`, (error as Error).message);
+      return false;
+    }
+  }
+
+  /**
+   * Release a distributed lock using Lua compare-and-delete (only deletes if token matches).
+   */
   async releaseLock(lockKey: string, token: string): Promise<void> {
     if (!this.client) return;
     try {

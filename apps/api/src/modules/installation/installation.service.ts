@@ -20,6 +20,7 @@ import * as bcrypt from 'bcrypt';
 
 const LOCK_KEY = 'installation:orchestrate';
 const LOCK_TOKEN_TTL_MS = 5 * 60 * 1000;
+const LOCK_RENEW_INTERVAL_MS = 60_000; // renew every 60s during long-running steps
 
 @Injectable()
 export class InstallationOrchestratorService {
@@ -188,7 +189,15 @@ export class InstallationOrchestratorService {
         }
       }
 
+      // Renew lock every 60s during external work — prevents expiry while waiting
+      // for DNS propagation or certificate issuance which can exceed the 5m TTL.
+      const heartbeat = setInterval(() => {
+        this.redis.renewLock(LOCK_KEY, lockToken, LOCK_TOKEN_TTL_MS).catch(() => {/* best-effort */});
+      }, LOCK_RENEW_INTERVAL_MS);
+
       const stepResults = await this.runSteps(dto);
+
+      clearInterval(heartbeat);
 
       // ── Phase 3: Atomic completion (transaction) ─────────────────────
       // All writes here happen together — if any fails, nothing is written.
@@ -258,8 +267,10 @@ export class InstallationOrchestratorService {
       const msg = err instanceof Error ? err.message : String(err);
       this.logger.error(`Installation configure failed at step '${failedStep}': ${msg}`);
 
-      if (operationId) {
-        await this.prisma.installationOperation.update({
+      // Both DB writes in one short transaction — if either fails the whole block
+      // rolls back so operation and lifecycle stay consistent.
+      await this.prisma.$transaction([
+        this.prisma.installationOperation.update({
           where: { id: operationId },
           data: {
             status: 'FAILED',
@@ -267,14 +278,14 @@ export class InstallationOrchestratorService {
             currentStep: failedStep,
             completedAt: new Date(),
           },
-        }).catch(() => null);
-      }
+        }),
+        this.prisma.installationStatus.update({
+          where: { id: 'installation' },
+          data: { lifecycle: 'FAILED' },
+        }),
+      ]).catch(() => null);
 
-      await this.prisma.installationStatus.update({
-        where: { id: 'installation' },
-        data: { lifecycle: 'FAILED' },
-      }).catch(() => null);
-
+      // Events only after DB is consistent
       this.events.emit('installation.lifecycle.operation.completed' as EventType, { operationId, success: false, error: msg, failedStep });
       this.events.emit('installation.lifecycle.changed' as EventType, { lifecycle: 'FAILED' });
       throw err;
@@ -290,38 +301,40 @@ export class InstallationOrchestratorService {
     dto: ConfigureInstallationDto,
     tx: Parameters<Parameters<typeof this.prisma.$transaction>[0]>[0] = this.prisma,
   ): Promise<void> {
-    const existing = await tx.user.findUnique({ where: { email: dto.adminEmail } });
-    if (existing) {
-      this.logger.log(`Admin user ${dto.adminEmail} already exists — skipping`);
-      return;
-    }
-
-    await tx.user.create({
-      data: {
-        email: dto.adminEmail,
-        name: 'Platform Admin',
-        role: Role.ADMIN,
-        preferredAuthMethod: dto.authMethod as AuthMethod,
-        mustChangePassword: dto.authMethod === 'MAGIC_CODE',
-        credentials: dto.authMethod === 'PASSWORD' && dto.adminPassword
-          ? {
-              create: {
-                type: 'PASSWORD',
-                secretHash: bcrypt.hashSync(dto.adminPassword, 12),
-              },
-            }
-          : dto.authMethod === 'MAGIC_CODE'
+    try {
+      await tx.user.create({
+        data: {
+          email: dto.adminEmail,
+          name: 'Platform Admin',
+          role: Role.ADMIN,
+          preferredAuthMethod: dto.authMethod as AuthMethod,
+          mustChangePassword: dto.authMethod === 'MAGIC_CODE',
+          credentials: dto.authMethod === 'PASSWORD' && dto.adminPassword
             ? {
                 create: {
-                  type: 'MAGIC_CODE',
-                  secretHash: '', // filled in on first magic-code login
+                  type: 'PASSWORD',
+                  secretHash: bcrypt.hashSync(dto.adminPassword, 12),
                 },
               }
-            : undefined,
-      },
-    });
-
-    this.logger.log(`Admin user ${dto.adminEmail} created with authMethod=${dto.authMethod}`);
+            : dto.authMethod === 'MAGIC_CODE'
+              ? {
+                  create: {
+                    type: 'MAGIC_CODE',
+                    secretHash: '',
+                  },
+                }
+              : undefined,
+        },
+      });
+      this.logger.log(`Admin user ${dto.adminEmail} created with authMethod=${dto.authMethod}`);
+    } catch (err) {
+      // Unique constraint violation = admin already exists — idempotent, safe to ignore
+      if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === 'P2002') {
+        this.logger.log(`Admin user ${dto.adminEmail} already exists — skipping`);
+        return;
+      }
+      throw err;
+    }
   }
 
   // ─── SSE stream for progress ─────────────────────────────────────
