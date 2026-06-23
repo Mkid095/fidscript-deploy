@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
+import Link from 'next/link';
 import { Button, Card, EmptyState, Spinner } from '@fidscript/ui';
 import { useSearchParams } from 'next/navigation';
 
@@ -55,6 +56,7 @@ export default function LogsPage() {
       }
     }
     loadProjects();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [getSdk]);
 
   async function loadLogs() {
@@ -80,6 +82,7 @@ export default function LogsPage() {
   useEffect(() => {
     if (!selectedProjectId) return;
     loadLogs();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedProjectId, stream, activeLevels, getSdk]);
 
   // Live tail
@@ -157,9 +160,9 @@ export default function LogsPage() {
         title="No projects"
         description="Create a project first to view logs."
         action={
-          <a href="/projects">
+          <Link href="/projects">
             <Button variant="primary" size="sm">Go to Projects</Button>
-          </a>
+          </Link>
         }
       />
     );

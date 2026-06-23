@@ -50,6 +50,7 @@ export default function DeploymentsPage() {
       }
     }
     loadProjects();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [getSdk]);
 
   useEffect(() => {

@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import Image from 'next/image';
 import { HugeiconsIcon } from '@hugeicons/react';
 import { BoltIcon, SourceCodeIcon } from '@hugeicons/core-free-icons';
 
@@ -15,7 +16,7 @@ export function LandingFooter() {
         <div className="grid gap-8 md:grid-cols-4">
           <div>
             <div className="flex items-center gap-2.5 mb-1">
-              <img
+              <Image
                 src="https://res.cloudinary.com/dfp7uhzy3/image/upload/v1782017464/Generated_Image_June_21__2026_-_2_00AM-removebg-preview_ekpdad.png"
                 alt="FIDScript"
                 width={28}

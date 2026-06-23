@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import Image from 'next/image';
 import { HugeiconsIcon } from '@hugeicons/react';
 import { LockPasswordIcon, Mail01Icon } from '@hugeicons/core-free-icons';
 import { Button } from '@fidscript/ui';
@@ -80,7 +81,7 @@ export default function RegisterPage() {
       <Card padding="lg" className="w-full max-w-md border border-[#1e2130]">
         {/* Logo + wordmark */}
         <div className="mb-8 text-center">
-          <img
+          <Image
             src="https://res.cloudinary.com/dfp7uhzy3/image/upload/v1782017464/Generated_Image_June_21__2026_-_2_00AM-removebg-preview_ekpdad.png"
             alt="FIDScript"
             width={72}

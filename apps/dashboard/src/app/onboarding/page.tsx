@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
+import Link from 'next/link';
 import { Button } from '@fidscript/ui';
 import { Card } from '@fidscript/ui';
 import { Spinner } from '@fidscript/ui';
@@ -298,7 +299,7 @@ export default function OnboardingPage() {
             Create a new platform
           </Button>
           <p className="text-xs text-slate-600">
-            Need help? <a href="/docs" className="text-blue-500 hover:text-blue-400">View the docs</a>
+            Need help? <Link href="/docs" className="text-blue-500 hover:text-blue-400">View the docs</Link>
           </p>
         </div>
       </div>
