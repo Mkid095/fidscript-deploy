@@ -35,7 +35,7 @@ function maskConnectionString(connStr: string): string {
   return connStr.replace(/\/\/([^:]+):([^@]+)@/, '//$1:****@');
 }
 
-type Tab = 'overview' | 'backups' | 'settings';
+type Tab = 'overview' | 'backups' | 'connection' | 'versions' | 'settings';
 
 interface PageProps {
   params: Promise<{ id: string }>;
@@ -54,6 +54,10 @@ export default function DatabaseDetailPage({ params }: PageProps) {
   const [rotating, setRotating] = useState(false);
   const [restoringBackupId, setRestoringBackupId] = useState<string | null>(null);
   const [deleting, setDeleting] = useState(false);
+  const [takingBackup, setTakingBackup] = useState(false);
+  const [connectionInfo, setConnectionInfo] = useState<{ host: string; port: number; database: string; connectionString: string } | null>(null);
+  const [poolConnectionInfo, setPoolConnectionInfo] = useState<{ host: string; port: number; database: string; connectionString: string } | null>(null);
+  const [sslEnabled, setSslEnabled] = useState(true);
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
 
   useEffect(() => {
@@ -131,6 +135,49 @@ export default function DatabaseDetailPage({ params }: PageProps) {
     }
   }, [db?.connectionString]);
 
+  const handleTakeBackup = useCallback(async () => {
+    setTakingBackup(true);
+    setToast(null);
+    try {
+      const sdk = getSdk();
+      await sdk.databases.backup(id);
+      const updated = await sdk.databases.listBackups(id);
+      setBackups(updated);
+      setToast({ message: 'Backup started', type: 'success' });
+    } catch (err) {
+      setToast({ message: err instanceof Error ? err.message : 'Backup failed', type: 'error' });
+    } finally {
+      setTakingBackup(false);
+    }
+  }, [id, getSdk]);
+
+  const loadConnectionInfo = useCallback(async (poolOnly: boolean) => {
+    try {
+      const sdk = getSdk();
+      const info = await sdk.databases.getConnection(id, poolOnly);
+      if (poolOnly) {
+        setPoolConnectionInfo(info);
+      } else {
+        setConnectionInfo(info);
+      }
+    } catch {
+      // silently fail — connection tab will show unavailable
+    }
+  }, [id, getSdk]);
+
+  const handleSslToggle = useCallback(async (enabled: boolean) => {
+    setSslEnabled(enabled);
+    setToast(null);
+    try {
+      const sdk = getSdk();
+      await sdk.databases.updateSsl(id, enabled);
+      setToast({ message: `SSL ${enabled ? 'enabled' : 'disabled'}`, type: 'success' });
+    } catch (err) {
+      setSslEnabled(!enabled);
+      setToast({ message: err instanceof Error ? err.message : 'Failed to update SSL', type: 'error' });
+    }
+  }, [id, getSdk]);
+
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-64">
@@ -172,7 +219,7 @@ export default function DatabaseDetailPage({ params }: PageProps) {
 
       {/* Tabs */}
       <div className="flex gap-1 border-b border-[#1e2130] mb-6">
-        {(['overview', 'backups', 'settings'] as Tab[]).map(tab => (
+        {(['overview', 'backups', 'connection', 'versions', 'settings'] as Tab[]).map(tab => (
           <button
             key={tab}
             onClick={() => setActiveTab(tab)}
@@ -190,6 +237,17 @@ export default function DatabaseDetailPage({ params }: PageProps) {
       {/* Overview Tab */}
       {activeTab === 'overview' && (
         <div className="space-y-6">
+          <Card className="border border-[#1e2130]" padding="lg">
+            <h2 className="text-sm font-semibold text-slate-200 mb-3">Environment Variable</h2>
+            <div className="flex items-start gap-3 bg-blue-900/20 border border-blue-800/30 rounded-lg px-4 py-3 text-sm">
+              <span className="text-blue-400 mt-0.5 shrink-0">ℹ</span>
+              <p className="text-slate-300">
+                Use <code className="text-blue-300 font-mono bg-[#080a0d] px-1.5 py-0.5 rounded">DATABASE_URL</code>{' '}
+                in your deployment env vars — the platform injects this automatically.
+              </p>
+            </div>
+          </Card>
+
           <Card className="border border-[#1e2130]" padding="lg">
             <h2 className="text-sm font-semibold text-slate-200 mb-4">Connection</h2>
             <div className="space-y-4">
@@ -271,6 +329,114 @@ export default function DatabaseDetailPage({ params }: PageProps) {
                 </tbody>
               </table>
             </Card>
+          )}
+        </div>
+      )}
+
+      {/* Connection Tab */}
+      {activeTab === 'connection' && (
+        <div className="space-y-6">
+          <Card className="border border-[#1e2130]" padding="lg">
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-sm font-semibold text-slate-200">SSL Connection</h2>
+              <label className="flex items-center gap-2 text-sm text-slate-400 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={sslEnabled}
+                  onChange={e => handleSslToggle(e.target.checked)}
+                  className="w-4 h-4 accent-blue-500"
+                />
+                SSL
+              </label>
+            </div>
+            <div className="space-y-4">
+              <div>
+                <label className="block text-xs text-slate-500 mb-1">Direct connection</label>
+                <div className="flex items-center gap-2">
+                  <code className="flex-1 text-sm text-slate-300 bg-[#080a0d] border border-[#1e2130] rounded px-3 py-2 font-mono truncate">
+                    {connectionInfo ? connectionInfo.connectionString : 'Loading...'}
+                  </code>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => connectionInfo && navigator.clipboard.writeText(connectionInfo.connectionString).then(() => setToast({ message: 'Copied', type: 'success' })).catch(() => setToast({ message: 'Failed to copy', type: 'error' }))}
+                  >
+                    Copy
+                  </Button>
+                  <Button variant="secondary" size="sm" onClick={() => loadConnectionInfo(false)}>
+                    Load
+                  </Button>
+                </div>
+              </div>
+              <div>
+                <label className="block text-xs text-slate-500 mb-1">Pooled (PgBouncer)</label>
+                <div className="flex items-center gap-2">
+                  <code className="flex-1 text-sm text-slate-300 bg-[#080a0d] border border-[#1e2130] rounded px-3 py-2 font-mono truncate">
+                    {poolConnectionInfo ? poolConnectionInfo.connectionString : 'Click Load to fetch'}
+                  </code>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => poolConnectionInfo && navigator.clipboard.writeText(poolConnectionInfo.connectionString).then(() => setToast({ message: 'Copied', type: 'success' })).catch(() => setToast({ message: 'Failed to copy', type: 'error' }))}
+                  >
+                    Copy
+                  </Button>
+                  <Button variant="secondary" size="sm" onClick={() => loadConnectionInfo(true)}>
+                    Load
+                  </Button>
+                </div>
+              </div>
+            </div>
+          </Card>
+        </div>
+      )}
+
+      {/* Versions Tab — backup history as timeline */}
+      {activeTab === 'versions' && (
+        <div className="space-y-4">
+          <div className="flex justify-end mb-2">
+            <Button variant="secondary" size="sm" loading={takingBackup} onClick={handleTakeBackup}>
+              Take backup now
+            </Button>
+          </div>
+          {backups.length === 0 ? (
+            <Card className="border border-[#1e2130]" padding="lg">
+              <p className="text-sm text-slate-500 text-center">No versions available yet.</p>
+            </Card>
+          ) : (
+            <div className="relative">
+              <div className="absolute left-5 top-0 bottom-0 w-px bg-[#1e2130]" />
+              {backups.map((backup, i) => (
+                <div key={backup.id} className="relative flex gap-6 pb-6 last:pb-0">
+                  <div className="relative z-10 flex shrink-0 w-10 h-10 items-center justify-center rounded-full border border-[#1e2130] bg-[#080a0d]">
+                    <span className="text-xs text-slate-400">{i + 1}</span>
+                  </div>
+                  <Card className="flex-1 border border-[#1e2130]" padding="md">
+                    <div className="flex items-start justify-between">
+                      <div>
+                        <p className="text-sm text-slate-200 font-medium">
+                          Backup {formatBytes(backup.sizeBytes)}
+                        </p>
+                        <p className="text-xs text-slate-500 mt-0.5">
+                          {new Date(backup.createdAt).toLocaleString()}
+                        </p>
+                      </div>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        loading={restoringBackupId === backup.id}
+                        onClick={() => handleRestore(backup.id)}
+                      >
+                        Restore
+                      </Button>
+                    </div>
+                    <p className="text-xs text-slate-500 mt-2">
+                      ID: <span className="font-mono text-slate-400">{backup.id}</span>
+                    </p>
+                  </Card>
+                </div>
+              ))}
+            </div>
           )}
         </div>
       )}

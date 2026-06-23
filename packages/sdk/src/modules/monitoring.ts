@@ -113,4 +113,65 @@ export class MonitoringModule {
   async testNotificationChannel(projectId: string, channelId: string) {
     return this.client.post(`/api/v1/projects/${projectId}/monitoring/channels/${channelId}/test`);
   }
+
+  // Alert Rule by ID
+  async getAlertRule(projectId: string, ruleId: string) {
+    return this.client.get<AlertRule>(`/api/v1/projects/${projectId}/monitoring/alerts/rules/${ruleId}`);
+  }
+
+  async updateAlertRule(
+    projectId: string,
+    ruleId: string,
+    data: Partial<{
+      name: string;
+      metric: string;
+      condition: string;
+      threshold: number;
+      severity: string;
+      durationSeconds: number;
+      channels: string[];
+      enabled: boolean;
+    }>,
+  ) {
+    return this.client.patch<AlertRule>(`/api/v1/projects/${projectId}/monitoring/alerts/rules/${ruleId}`, data);
+  }
+
+  async deleteAlertRule(projectId: string, ruleId: string) {
+    return this.client.delete(`/api/v1/projects/${projectId}/monitoring/alerts/rules/${ruleId}`);
+  }
+
+  // Alert evaluations (history)
+  async getAlertEvaluations(projectId: string, ruleId: string, limit = 10) {
+    const res = await this.client.get<{ evaluations: AlertEvaluation[] }>(
+      `/api/v1/projects/${projectId}/monitoring/alerts/rules/${ruleId}/evaluations`,
+      { limit },
+    );
+    return res.evaluations;
+  }
+
+  // Notification Channel by ID
+  async getNotificationChannel(projectId: string, channelId: string) {
+    return this.client.get<NotificationChannel>(`/api/v1/projects/${projectId}/monitoring/channels/${channelId}`);
+  }
+
+  async updateNotificationChannel(
+    projectId: string,
+    channelId: string,
+    data: { name?: string; config?: Record<string, string> },
+  ) {
+    return this.client.patch<NotificationChannel>(`/api/v1/projects/${projectId}/monitoring/channels/${channelId}`, data);
+  }
+
+  async deleteNotificationChannel(projectId: string, channelId: string) {
+    return this.client.delete(`/api/v1/projects/${projectId}/monitoring/channels/${channelId}`);
+  }
+}
+
+export interface AlertEvaluation {
+  id: string;
+  ruleId: string;
+  timestamp: string;
+  value: number;
+  fired: boolean;
+  message?: string;
 }

@@ -5,7 +5,7 @@ import { Button, Card, EmptyState, Input, Modal, Spinner } from '@fidscript/ui';
 import { useRouter } from 'next/navigation';
 
 import { useAuth } from '@/contexts/auth-context';
-import type { Project, AlertRule } from '@/types';
+import type { Project, AlertRule, Alert, NotificationChannel } from '@/types';
 
 const SEVERITY_COLORS: Record<string, string> = {
   warning: 'bg-amber-500/10 text-amber-400',
@@ -19,33 +19,33 @@ export default function MonitoringPage() {
   const [projects, setProjects] = useState<Project[]>([]);
   const [selectedProjectId, setSelectedProjectId] = useState('');
   const [rules, setRules] = useState<AlertRule[]>([]);
+  const [alerts, setAlerts] = useState<Record<string, Alert>>({});
   const [loadingProjects, setLoadingProjects] = useState(true);
   const [loadingRules, setLoadingRules] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [showCreate, setShowCreate] = useState(false);
   const [creating, setCreating] = useState(false);
   const [createError, setCreateError] = useState<string | null>(null);
+  const [channels, setChannels] = useState<NotificationChannel[]>([]);
 
   // Form state
   const [formName, setFormName] = useState('');
   const [formMetric, setFormMetric] = useState('');
-  const [formCondition, setFormCondition] = useState('>');
+  const [formCondition, setFormCondition] = useState('above');
   const [formThreshold, setFormThreshold] = useState('');
   const [formSeverity, setFormSeverity] = useState('warning');
   const [formDuration, setFormDuration] = useState('60');
+  const [formChannel, setFormChannel] = useState('');
 
   const METRICS = [
-    'cpu.usage',
-    'memory.usage',
-    'disk.usage',
-    'http.request.duration',
-    'http.request.count',
-    'http.error.rate',
-    'queue.depth',
-    'queue consumer lag',
-    'db.query.duration',
-    'db.connections',
+    'cpu',
+    'memory',
+    'disk',
+    'deployment_failed',
+    'function_error_rate',
   ];
+
+  const INTERVALS = ['30s', '1m', '5m', '15m'];
 
   useEffect(() => {
     async function loadProjects() {
@@ -65,13 +65,42 @@ export default function MonitoringPage() {
 
   useEffect(() => {
     if (!selectedProjectId) return;
+    async function loadChannels() {
+      try {
+        const sdk = getSdk();
+        const ch = await sdk.monitoring.listNotificationChannels(selectedProjectId);
+        setChannels(ch);
+      } catch {
+        // channels may not exist yet
+      }
+    }
+    loadChannels();
+  }, [selectedProjectId, getSdk]);
+
+  useEffect(() => {
+    if (!selectedProjectId) return;
     async function loadRules() {
       setLoadingRules(true);
       setError(null);
       try {
         const sdk = getSdk();
-        const data = await sdk.monitoring.listAlertRules(selectedProjectId);
-        setRules(data);
+        const [rulesData, alertsData] = await Promise.all([
+          sdk.monitoring.listAlertRules(selectedProjectId),
+          sdk.monitoring.getAlerts(selectedProjectId),
+        ]);
+        setRules(rulesData);
+        // Build a map of ruleId -> latest firing alert
+        const alertMap: Record<string, Alert> = {};
+        for (const alert of alertsData) {
+          if (alert.status === 'firing') {
+            // match by metric + severity as a proxy for ruleId
+            const key = `${alert.severity}`;
+            if (!alertMap[key] || alert.firedAt! > alertMap[key].firedAt!) {
+              alertMap[key] = alert;
+            }
+          }
+        }
+        setAlerts(alertMap);
       } catch (err) {
         setError(err instanceof Error ? err.message : 'Failed to load alert rules');
       } finally {
@@ -94,7 +123,8 @@ export default function MonitoringPage() {
         condition: formCondition,
         threshold: parseFloat(formThreshold),
         severity: formSeverity,
-        durationSeconds: parseInt(formDuration, 10),
+        durationSeconds: parseInt(formDuration.replace(/[^\d]/g, ''), 10),
+        channels: formChannel ? [formChannel] : [],
       });
       const data = await sdk.monitoring.listAlertRules(selectedProjectId);
       setRules(data);
@@ -110,10 +140,11 @@ export default function MonitoringPage() {
   function resetForm() {
     setFormName('');
     setFormMetric('');
-    setFormCondition('>');
+    setFormCondition('above');
     setFormThreshold('');
     setFormSeverity('warning');
-    setFormDuration('60');
+    setFormDuration('1m');
+    setFormChannel('');
   }
 
   if (loadingProjects) {
@@ -208,13 +239,16 @@ export default function MonitoringPage() {
                     </span>
                   </td>
                   <td className="px-4 py-3">
-                    <span className={`text-xs px-2 py-0.5 rounded ${
-                      rule.enabled
-                        ? 'bg-emerald-500/10 text-emerald-400'
-                        : 'bg-slate-700 text-slate-400'
-                    }`}>
-                      {rule.enabled ? 'Active' : 'Disabled'}
-                    </span>
+                    {(() => {
+                      const isFiring = alerts[rule.severity]?.status === 'firing';
+                      if (isFiring) {
+                        return <span className="text-xs px-2 py-0.5 rounded bg-red-500/10 text-red-400">FIRING</span>;
+                      }
+                      if (!rule.enabled) {
+                        return <span className="text-xs px-2 py-0.5 rounded bg-slate-700 text-slate-400">PAUSED</span>;
+                      }
+                      return <span className="text-xs px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-400">ACTIVE</span>;
+                    })()}
                   </td>
                   <td className="px-4 py-3" onClick={e => e.stopPropagation()}>
                     <div className="flex items-center gap-2">
@@ -266,9 +300,9 @@ export default function MonitoringPage() {
                   onChange={e => setFormCondition(e.target.value)}
                   className="bg-[#080a0d] border border-[#1e2130] text-slate-200 rounded-lg px-3 py-2 text-sm w-full"
                 >
-                  {['>', '>=', '<', '<=', '=='].map(c => (
-                    <option key={c} value={c}>{c}</option>
-                  ))}
+                  <option value="above">Above</option>
+                  <option value="below">Below</option>
+                  <option value="equals">Equals</option>
                 </select>
               </div>
               <div>
@@ -297,19 +331,34 @@ export default function MonitoringPage() {
                 </select>
               </div>
               <div>
-                <label className="block text-xs text-slate-400 mb-1">Duration (seconds)</label>
-                <Input
+                <label className="block text-xs text-slate-400 mb-1">Interval</label>
+                <select
                   value={formDuration}
                   onChange={e => setFormDuration(e.target.value)}
-                  placeholder="60"
-                  type="number"
-                  className="bg-[#080a0d] border border-[#1e2130] text-slate-200 placeholder:text-slate-600 w-full"
-                />
+                  className="bg-[#080a0d] border border-[#1e2130] text-slate-200 rounded-lg px-3 py-2 text-sm w-full"
+                >
+                  {INTERVALS.map(i => (
+                    <option key={i} value={i}>{i}</option>
+                  ))}
+                </select>
               </div>
             </div>
             {createError && (
               <p className="text-red-400 text-xs">{createError}</p>
             )}
+            <div>
+              <label className="block text-xs text-slate-400 mb-1">Notification Channel</label>
+              <select
+                value={formChannel}
+                onChange={e => setFormChannel(e.target.value)}
+                className="bg-[#080a0d] border border-[#1e2130] text-slate-200 rounded-lg px-3 py-2 text-sm w-full"
+              >
+                <option value="">No channel (alerts logged only)</option>
+                {channels.map(ch => (
+                  <option key={ch.id} value={ch.id}>{ch.name} ({ch.type})</option>
+                ))}
+              </select>
+            </div>
             <div className="flex justify-end gap-3 pt-2">
               <Button variant="ghost" size="sm" type="button" onClick={() => { setShowCreate(false); resetForm(); }}>
                 Cancel

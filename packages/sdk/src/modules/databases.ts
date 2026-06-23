@@ -53,4 +53,15 @@ export class DatabasesModule {
   async rotatePassword(id: string) {
     return this.client.post(`/api/v1/databases/${id}/rotate-password`);
   }
+
+  async getConnection(id: string, poolOnly = false) {
+    const params = poolOnly ? '?poolOnly=true' : '';
+    return this.client.get<{ host: string; port: number; database: string; connectionString: string }>(
+      `/api/v1/databases/${id}/connection${params}`
+    );
+  }
+
+  async updateSsl(id: string, ssl: boolean) {
+    return this.client.patch(`/api/v1/databases/${id}/connection`, { ssl });
+  }
 }

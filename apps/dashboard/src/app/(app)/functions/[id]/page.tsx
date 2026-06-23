@@ -7,6 +7,7 @@ import { useSearchParams } from 'next/navigation';
 import { Card, Button, Spinner } from '@fidscript/ui';
 
 import { useAuth } from '@/contexts/auth-context';
+import LogViewer from '@/components/log-viewer';
 
 interface FunctionVersion {
   version: string;
@@ -33,19 +34,7 @@ interface Function_ {
   currentVersion?: string;
 }
 
-interface FunctionLog {
-  id: string;
-  timestamp: string;
-  level: string;
-  message: string;
-}
-
 type Tab = 'code' | 'logs' | 'settings' | 'invoke' | 'versions';
-
-const LOG_LEVEL_COLORS: Record<string, string> = {
-  debug: 'text-slate-500', info: 'text-blue-400', warn: 'text-yellow-400',
-  error: 'text-red-400', fatal: 'text-red-600 font-bold',
-};
 
 const STATUS_COLORS: Record<string, string> = {
   PENDING: 'bg-slate-700 text-slate-300', BUILDING: 'bg-blue-900 text-blue-400',
@@ -75,7 +64,6 @@ export default function FunctionDetailPage({ params }: { params: Promise<{ id: s
   const projectId = searchParams.get('project') ?? '';
 
   const [func, setFunc] = useState<Function_ | null>(null);
-  const [logs, setLogs] = useState<FunctionLog[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<Tab>('code');
@@ -108,18 +96,6 @@ export default function FunctionDetailPage({ params }: { params: Promise<{ id: s
     }
     if (projectId) load();
   }, [projectId, functionId, getSdk]);
-
-  useEffect(() => {
-    if (activeTab !== 'logs' || !projectId || !functionId) return;
-    async function loadLogs() {
-      try {
-        const sdk = getSdk();
-        const data = await sdk.functions.getLogs(projectId, functionId);
-        setLogs(data);
-      } catch { /* ignore */ }
-    }
-    loadLogs();
-  }, [activeTab, projectId, functionId, getSdk]);
 
   useEffect(() => {
     if (activeTab !== 'versions' || !projectId || !functionId) return;
@@ -212,7 +188,7 @@ export default function FunctionDetailPage({ params }: { params: Promise<{ id: s
 
   const tabs: { id: Tab; label: string }[] = [
     { id: 'code', label: 'Code' },
-    { id: 'logs', label: `Logs${logs.length > 0 ? ` (${logs.length})` : ''}` },
+    { id: 'logs', label: 'Logs' },
     { id: 'versions', label: `Versions${versions.length > 0 ? ` (${versions.length})` : ''}` },
     { id: 'settings', label: 'Settings' },
     { id: 'invoke', label: 'Invoke' },
@@ -302,47 +278,13 @@ export default function FunctionDetailPage({ params }: { params: Promise<{ id: s
 
       {/* Logs Tab */}
       {activeTab === 'logs' && (
-        <div>
-          <div className="flex items-center justify-between mb-4">
-            <h2 className="text-sm font-semibold text-slate-200">Logs</h2>
-            <Button variant="ghost" size="sm" onClick={async () => {
-              if (!projectId || !functionId) return;
-              const sdk = getSdk();
-              const data = await sdk.functions.getLogs(projectId, functionId);
-              setLogs(data);
-            }}>Refresh</Button>
-          </div>
-          {logs.length === 0 ? (
-            <Card className="border border-[#1e2130]">
-              <p className="text-sm text-slate-500 text-center py-8">No logs yet. Invoke the function to see output.</p>
-            </Card>
-          ) : (
-            <Card className="border border-[#1e2130] overflow-hidden">
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="border-b border-[#1e2130]">
-                    <th className="text-left text-xs text-slate-500 font-medium px-4 py-3">Time</th>
-                    <th className="text-left text-xs text-slate-500 font-medium px-4 py-3">Level</th>
-                    <th className="text-left text-xs text-slate-500 font-medium px-4 py-3">Message</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {logs.map(log => (
-                    <tr key={log.id} className="border-b border-[#1e2130] last:border-0 hover:bg-[#1e2130]/30">
-                      <td className="px-4 py-3 text-slate-500 text-xs font-mono whitespace-nowrap">
-                        {new Date(log.timestamp).toLocaleTimeString()}
-                      </td>
-                      <td className={`px-4 py-3 text-xs font-mono uppercase ${LOG_LEVEL_COLORS[log.level] ?? 'text-slate-400'}`}>
-                        {log.level}
-                      </td>
-                      <td className="px-4 py-3 text-slate-300 text-xs font-mono">{log.message}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </Card>
-          )}
-        </div>
+        <LogViewer
+          projectId={projectId}
+          loadLogs={(sdk, pid) => sdk.functions.getLogs(pid, functionId)}
+          resourceId={functionId}
+          stream="default"
+          height={400}
+        />
       )}
 
 

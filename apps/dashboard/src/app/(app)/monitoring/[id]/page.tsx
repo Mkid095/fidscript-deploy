@@ -1,13 +1,11 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { Button, Card, EmptyState, Spinner } from '@fidscript/ui';
-import { useParams, useSearchParams } from 'next/navigation';
+import { Button, Card, EmptyState, Modal, Spinner } from '@fidscript/ui';
+import { useParams, useSearchParams, useRouter } from 'next/navigation';
 
 import { useAuth } from '@/contexts/auth-context';
-import type { AlertRule, Alert, NotificationChannel } from '@/types';
-
-type Tab = 'overview' | 'history';
+import type { AlertRule, NotificationChannel } from '@/types';
 
 const SEVERITY_COLORS: Record<string, string> = {
   warning: 'bg-amber-500/10 text-amber-400',
@@ -15,77 +13,71 @@ const SEVERITY_COLORS: Record<string, string> = {
   info: 'bg-blue-500/10 text-blue-400',
 };
 
-const STATUS_COLORS: Record<string, string> = {
-  firing: 'bg-red-500/10 text-red-400',
-  pending: 'bg-amber-500/10 text-amber-400',
-  resolved: 'bg-emerald-500/10 text-emerald-400',
-};
-
 export default function AlertDetailPage() {
   const { getSdk } = useAuth();
   const params = useParams();
   const searchParams = useSearchParams();
-  const alertId = params.id as string;
+  const router = useRouter();
+  const ruleId = params.id as string;
   const projectId = searchParams.get('project') ?? '';
 
   const [rule, setRule] = useState<AlertRule | null>(null);
-  const [alerts, setAlerts] = useState<Alert[]>([]);
   const [channels, setChannels] = useState<NotificationChannel[]>([]);
+  const [evaluations, setEvaluations] = useState<AlertEvaluation[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [tab, setTab] = useState<Tab>('overview');
-  const [actionLoading, setActionLoading] = useState(false);
+  const [toggling, setToggling] = useState(false);
+  const [showDelete, setShowDelete] = useState(false);
+  const [deleting, setDeleting] = useState(false);
 
   useEffect(() => {
-    if (!projectId || !alertId) return;
+    if (!projectId || !ruleId) return;
     async function load() {
       setLoading(true);
       setError(null);
       try {
         const sdk = getSdk();
-        const [rules, alertsData, channelsData] = await Promise.all([
-          sdk.monitoring.listAlertRules(projectId),
-          sdk.monitoring.getAlerts(projectId),
+        const [ruleData, chData] = await Promise.all([
+          sdk.monitoring.getAlertRule(projectId, ruleId),
           sdk.monitoring.listNotificationChannels(projectId),
         ]);
-        const matchedRule = rules.find(r => r.id === alertId);
-        setRule(matchedRule ?? null);
-        // Filter alerts for this rule by matching metric + name context
-        setAlerts(alertsData.filter(a => {
-          // The Alert type may not have ruleId, so we match by severity/name context
-          return true; // show all alerts if no rule match
-        }));
-        setChannels(channelsData);
+        setRule(ruleData);
+        setChannels(chData);
+        const evals = await sdk.monitoring.getAlertEvaluations(projectId, ruleId, 10);
+        setEvaluations(evals);
       } catch (err) {
-        setError(err instanceof Error ? err.message : 'Failed to load alert');
+        setError(err instanceof Error ? err.message : 'Failed to load alert rule');
       } finally {
         setLoading(false);
       }
     }
     load();
-  }, [projectId, alertId, getSdk]);
+  }, [projectId, ruleId, getSdk]);
 
-  async function handleAcknowledge(alertId: string) {
-    if (!projectId) return;
-    setActionLoading(true);
+  async function handleToggle() {
+    if (!rule || !projectId) return;
+    setToggling(true);
     try {
       const sdk = getSdk();
-      await sdk.monitoring.acknowledgeAlert(projectId, alertId);
-      setAlerts(prev => prev.map(a => a.id === alertId ? { ...a, status: 'resolved' as const } : a));
+      const updated = await sdk.monitoring.updateAlertRule(projectId, ruleId, {
+        enabled: !rule.enabled,
+      });
+      setRule(updated);
     } finally {
-      setActionLoading(false);
+      setToggling(false);
     }
   }
 
-  async function handleResolve(alertId: string) {
+  async function handleDelete() {
     if (!projectId) return;
-    setActionLoading(true);
+    setDeleting(true);
     try {
       const sdk = getSdk();
-      await sdk.monitoring.resolveAlert(projectId, alertId);
-      setAlerts(prev => prev.map(a => a.id === alertId ? { ...a, status: 'resolved' as const } : a));
-    } finally {
-      setActionLoading(false);
+      await sdk.monitoring.deleteAlertRule(projectId, ruleId);
+      router.push(`/monitoring?project=${projectId}`);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to delete rule');
+      setDeleting(false);
     }
   }
 
@@ -97,10 +89,10 @@ export default function AlertDetailPage() {
     );
   }
 
-  if (error || !rule) {
+  if (error && !rule) {
     return (
       <div className="flex flex-col items-center justify-center min-h-96 gap-4">
-        <p className="text-red-400 text-sm">{error ?? 'Alert rule not found'}</p>
+        <p className="text-red-400 text-sm">{error}</p>
         <Button variant="ghost" size="sm" onClick={() => history.back()}>
           Go back
         </Button>
@@ -108,7 +100,12 @@ export default function AlertDetailPage() {
     );
   }
 
-  const currentAlert = alerts.find(a => a.severity === rule.severity);
+  if (!rule) return null;
+
+  const intervalLabel = (s: number) => {
+    if (s >= 60) return `${s / 60}m`;
+    return `${s}s`;
+  };
 
   return (
     <div>
@@ -119,191 +116,149 @@ export default function AlertDetailPage() {
             <span className={`text-xs px-2 py-0.5 rounded ${SEVERITY_COLORS[rule.severity] ?? 'bg-slate-700 text-slate-400'}`}>
               {rule.severity}
             </span>
-            {currentAlert && (
-              <span className={`text-xs px-2 py-0.5 rounded ${STATUS_COLORS[currentAlert.status] ?? 'bg-slate-700 text-slate-400'}`}>
-                {currentAlert.status.toUpperCase()}
-              </span>
-            )}
+            <span className={`text-xs px-2 py-0.5 rounded ${
+              rule.enabled ? 'bg-emerald-500/10 text-emerald-400' : 'bg-slate-700 text-slate-400'
+            }`}>
+              {rule.enabled ? 'ACTIVE' : 'PAUSED'}
+            </span>
           </div>
           <p className="text-sm text-slate-500 font-mono">
             {rule.metric} {rule.condition} {rule.threshold}
           </p>
         </div>
-      </div>
-
-      {/* Tabs */}
-      <div className="flex gap-1 mb-4 border-b border-[#1e2130]">
-        {(['overview', 'history'] as Tab[]).map(t => (
-          <button
-            key={t}
-            onClick={() => setTab(t)}
-            className={`px-4 py-2 text-sm border-b-2 transition-colors ${
-              tab === t
-                ? 'border-red-500 text-slate-200'
-                : 'border-transparent text-slate-500 hover:text-slate-300'
-            }`}
+        <div className="flex items-center gap-2">
+          <Button
+            variant={rule.enabled ? 'secondary' : 'primary'}
+            size="sm"
+            loading={toggling}
+            onClick={handleToggle}
           >
-            {t.charAt(0).toUpperCase() + t.slice(1)}
-          </button>
-        ))}
+            {rule.enabled ? 'Pause' : 'Resume'}
+          </Button>
+          <Button
+            variant="danger"
+            size="sm"
+            onClick={() => setShowDelete(true)}
+          >
+            Delete
+          </Button>
+        </div>
       </div>
 
-      {tab === 'overview' ? (
-        <div className="space-y-6">
-          {/* Rule config */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <Card className="border border-[#1e2130]" padding="md">
-              <p className="text-xs text-slate-500 mb-1">Metric</p>
-              <p className="text-sm font-mono text-slate-200">{rule.metric}</p>
-            </Card>
-            <Card className="border border-[#1e2130]" padding="md">
-              <p className="text-xs text-slate-500 mb-1">Condition</p>
-              <p className="text-sm text-slate-200">
-                {rule.condition} {rule.threshold} for {rule.durationSeconds}s
-              </p>
-            </Card>
-            <Card className="border border-[#1e2130]" padding="md">
-              <p className="text-xs text-slate-500 mb-1">Severity</p>
-              <p className="text-sm">
-                <span className={`text-xs px-2 py-0.5 rounded ${SEVERITY_COLORS[rule.severity] ?? 'bg-slate-700 text-slate-400'}`}>
-                  {rule.severity}
-                </span>
-              </p>
-            </Card>
-            <Card className="border border-[#1e2130]" padding="md">
-              <p className="text-xs text-slate-500 mb-1">Status</p>
-              <p className="text-sm">
-                <span className={`text-xs px-2 py-0.5 rounded ${rule.enabled ? 'bg-emerald-500/10 text-emerald-400' : 'bg-slate-700 text-slate-400'}`}>
-                  {rule.enabled ? 'Active' : 'Disabled'}
-                </span>
-              </p>
-            </Card>
-          </div>
+      {error && <p className="text-red-400 text-sm mb-4">{error}</p>}
 
-          {/* Notification channels */}
-          <div>
-            <h2 className="text-sm font-semibold text-slate-200 mb-3">Notification Channels</h2>
-            {channels.length === 0 ? (
-              <Card className="border border-[#1e2130]">
-                <p className="text-sm text-slate-500">No notification channels configured.</p>
-              </Card>
-            ) : (
-              <div className="space-y-2">
-                {rule.channels.map((channelId: string) => {
-                  const channel = channels.find(c => c.id === channelId);
-                  if (!channel) return null;
-                  return (
-                    <Card key={channel.id} className="border border-[#1e2130]" padding="sm">
-                      <div className="flex items-center justify-between">
-                        <div>
-                          <p className="text-sm text-slate-200">{channel.name}</p>
-                          <p className="text-xs text-slate-500">{channel.type}</p>
-                        </div>
-                        <span className="text-xs px-2 py-0.5 rounded bg-[#1e2130] text-slate-400">
-                          {channel.type}
-                        </span>
-                      </div>
-                    </Card>
-                  );
-                })}
-              </div>
-            )}
-          </div>
+      {/* Rule config */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+        <Card className="border border-[#1e2130]" padding="md">
+          <p className="text-xs text-slate-500 mb-1">Metric</p>
+          <p className="text-sm font-mono text-slate-200">{rule.metric}</p>
+        </Card>
+        <Card className="border border-[#1e2130]" padding="md">
+          <p className="text-xs text-slate-500 mb-1">Condition</p>
+          <p className="text-sm text-slate-200">{rule.condition} {rule.threshold}</p>
+        </Card>
+        <Card className="border border-[#1e2130]" padding="md">
+          <p className="text-xs text-slate-500 mb-1">Interval</p>
+          <p className="text-sm text-slate-200">{intervalLabel(rule.durationSeconds)}</p>
+        </Card>
+        <Card className="border border-[#1e2130]" padding="md">
+          <p className="text-xs text-slate-500 mb-1">Severity</p>
+          <span className={`text-xs px-2 py-0.5 rounded ${SEVERITY_COLORS[rule.severity] ?? 'bg-slate-700 text-slate-400'}`}>
+            {rule.severity}
+          </span>
+        </Card>
+      </div>
 
-          {/* Active alerts */}
-          {currentAlert && (
-            <div>
-              <h2 className="text-sm font-semibold text-slate-200 mb-3">Current Alert State</h2>
-              <Card className="border border-[#1e2130]" padding="md">
-                <div className="flex items-start justify-between">
-                  <div>
-                    <p className="text-sm text-slate-200 mb-1">{currentAlert.message}</p>
-                    <p className="text-xs text-slate-500">
-                      First triggered: {currentAlert.firstTriggeredAt ? new Date(currentAlert.firstTriggeredAt).toLocaleString() : '—'}
-                    </p>
-                    {currentAlert.firedAt && (
-                      <p className="text-xs text-slate-500">
-                        Fired: {new Date(currentAlert.firedAt).toLocaleString()}
-                      </p>
-                    )}
-                  </div>
-                  <div className="flex gap-2">
-                    {currentAlert.status === 'firing' && (
-                      <Button
-                        variant="secondary"
-                        size="sm"
-                        onClick={() => handleAcknowledge(currentAlert.id)}
-                        loading={actionLoading}
-                      >
-                        Acknowledge
-                      </Button>
-                    )}
-                    {currentAlert.status !== 'resolved' && (
-                      <Button
-                        variant="primary"
-                        size="sm"
-                        onClick={() => handleResolve(currentAlert.id)}
-                        loading={actionLoading}
-                      >
-                        Resolve
-                      </Button>
-                    )}
-                  </div>
-                </div>
-              </Card>
-            </div>
-          )}
-        </div>
-      ) : (
-        <div>
-          <h2 className="text-sm font-semibold text-slate-200 mb-3">Alert History</h2>
-          {alerts.length === 0 ? (
-            <Card className="border border-[#1e2130]">
-              <EmptyState
-                title="No alert history"
-                description="This rule has not triggered any alerts yet."
-              />
-            </Card>
-          ) : (
-            <Card className="border border-[#1e2130] overflow-hidden">
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="border-b border-[#1e2130]">
-                    <th className="text-left text-xs text-slate-500 font-medium px-4 py-3">Severity</th>
-                    <th className="text-left text-xs text-slate-500 font-medium px-4 py-3">Status</th>
-                    <th className="text-left text-xs text-slate-500 font-medium px-4 py-3">Message</th>
-                    <th className="text-left text-xs text-slate-500 font-medium px-4 py-3">Fired</th>
-                    <th className="text-left text-xs text-slate-500 font-medium px-4 py-3">Resolved</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {alerts.map(alert => (
-                    <tr key={alert.id} className="border-b border-[#1e2130] last:border-0 hover:bg-[#1e2130]/30">
-                      <td className="px-4 py-3">
-                        <span className={`text-xs px-2 py-0.5 rounded ${SEVERITY_COLORS[alert.severity] ?? 'bg-slate-700 text-slate-400'}`}>
-                          {alert.severity}
-                        </span>
-                      </td>
-                      <td className="px-4 py-3">
-                        <span className={`text-xs px-2 py-0.5 rounded ${STATUS_COLORS[alert.status] ?? 'bg-slate-700 text-slate-400'}`}>
-                          {alert.status}
-                        </span>
-                      </td>
-                      <td className="px-4 py-3 text-slate-400 text-xs max-w-xs truncate">{alert.message}</td>
-                      <td className="px-4 py-3 text-slate-500 text-xs">
-                        {alert.firedAt ? new Date(alert.firedAt).toLocaleString() : '—'}
-                      </td>
-                      <td className="px-4 py-3 text-slate-500 text-xs">
-                        {alert.resolvedAt ? new Date(alert.resolvedAt).toLocaleString() : '—'}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </Card>
-          )}
+      {/* Notification channels */}
+      {rule.channels.length > 0 && (
+        <div className="mb-6">
+          <h2 className="text-sm font-semibold text-slate-200 mb-3">Notification Channels</h2>
+          <div className="flex flex-wrap gap-2">
+            {rule.channels.map(cid => {
+              const ch = channels.find(c => c.id === cid);
+              return (
+                <span
+                  key={cid}
+                  className="text-xs px-2 py-1 rounded bg-[#1e2130] text-slate-300 border border-[#1e2130]"
+                >
+                  {ch ? `${ch.name} (${ch.type})` : cid}
+                </span>
+              );
+            })}
+          </div>
         </div>
       )}
+
+      {/* Evaluation history */}
+      <div>
+        <h2 className="text-sm font-semibold text-slate-200 mb-3">Recent Evaluations</h2>
+        {evaluations.length === 0 ? (
+          <Card className="border border-[#1e2130]">
+            <EmptyState
+              title="No evaluations yet"
+              description="Evaluations will appear here once the rule starts running."
+            />
+          </Card>
+        ) : (
+          <Card className="border border-[#1e2130] overflow-hidden">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b border-[#1e2130]">
+                  <th className="text-left text-xs text-slate-500 font-medium px-4 py-3">Timestamp</th>
+                  <th className="text-left text-xs text-slate-500 font-medium px-4 py-3">Value</th>
+                  <th className="text-left text-xs text-slate-500 font-medium px-4 py-3">Status</th>
+                </tr>
+              </thead>
+              <tbody>
+                {evaluations.map(ev => (
+                  <tr key={ev.id} className="border-b border-[#1e2130] last:border-0 hover:bg-[#1e2130]/30">
+                    <td className="px-4 py-3 text-slate-400 text-xs">
+                      {new Date(ev.timestamp).toLocaleString()}
+                    </td>
+                    <td className="px-4 py-3 text-slate-300 font-mono text-xs">
+                      {ev.value.toFixed(4)}
+                    </td>
+                    <td className="px-4 py-3">
+                      <span className={`text-xs px-2 py-0.5 rounded ${
+                        ev.fired
+                          ? 'bg-red-500/10 text-red-400'
+                          : 'bg-emerald-500/10 text-emerald-400'
+                      }`}>
+                        {ev.fired ? 'FIRE' : 'OK'}
+                      </span>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </Card>
+        )}
+      </div>
+
+      <Modal isOpen={showDelete} onClose={() => setShowDelete(false)} title="Delete Alert Rule" size="sm">
+        <div className="space-y-4">
+          <p className="text-sm text-slate-400">
+            Are you sure you want to delete <span className="text-slate-200 font-medium">{rule.name}</span>? This cannot be undone.
+          </p>
+          <div className="flex justify-end gap-3">
+            <Button variant="ghost" size="sm" onClick={() => setShowDelete(false)}>
+              Cancel
+            </Button>
+            <Button variant="danger" size="sm" loading={deleting} onClick={handleDelete}>
+              Delete
+            </Button>
+          </div>
+        </div>
+      </Modal>
     </div>
   );
+}
+
+interface AlertEvaluation {
+  id: string;
+  ruleId: string;
+  timestamp: string;
+  value: number;
+  fired: boolean;
+  message?: string;
 }
