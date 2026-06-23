@@ -38,6 +38,10 @@ export class FunctionsModule {
     return this.client.post<Function_>(`/api/v1/projects/${projectId}/functions`, data);
   }
 
+  async update(projectId: string, functionId: string, data: { memoryMb?: number; timeoutSeconds?: number; currentVersion?: string }) {
+    return this.client.patch<Function_>(`/api/v1/projects/${projectId}/functions/${functionId}`, data);
+  }
+
   async deploy(projectId: string, functionId: string, code: string, version?: string) {
     return this.client.post<{ status: string }>(`/api/v1/projects/${projectId}/functions/${functionId}/deploy`, { code, version });
   }

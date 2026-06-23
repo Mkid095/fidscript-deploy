@@ -366,15 +366,41 @@ export default function FunctionDetailPage({ params }: { params: Promise<{ id: s
                 </div>
                 <div className="divide-y divide-[#1e2130]">
                   {versions.map((v, i) => (
-                    <div key={v.version} className="px-4 py-3 hover:bg-[#1e2130]/30 cursor-pointer"
-                      onClick={() => handleDiffSelect(i > 0 ? versions[i-1].version : null, v.version)}>
+                    <div key={v.version} className="px-4 py-3">
                       <div className="flex items-center justify-between">
-                        <span className="text-sm font-mono text-slate-200">{v.version}</span>
-                        <span className={`text-xs px-1.5 py-0.5 rounded ${
-                          v.status === 'success' ? 'bg-emerald-900/30 text-emerald-400' :
-                          v.status === 'error' ? 'bg-red-900/30 text-red-400' :
-                          'bg-slate-800 text-slate-400'
-                        }`}>{v.status}</span>
+                        <div className="flex items-center gap-2">
+                          <button
+                            className="text-xs text-slate-400 hover:text-slate-200 font-mono text-left"
+                            onClick={() => handleDiffSelect(i > 0 ? versions[i-1].version : null, v.version)}
+                          >
+                            {v.version}
+                          </button>
+                          {func?.currentVersion === v.version && (
+                            <span className="text-xs bg-blue-900/30 text-blue-400 px-1.5 py-0.5 rounded">current</span>
+                          )}
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <span className={`text-xs px-1.5 py-0.5 rounded ${
+                            v.status === 'success' ? 'bg-emerald-900/30 text-emerald-400' :
+                            v.status === 'error' ? 'bg-red-900/30 text-red-400' :
+                            'bg-slate-800 text-slate-400'
+                          }`}>{v.status}</span>
+                          {func?.currentVersion !== v.version && (
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={async (e) => {
+                                e.stopPropagation();
+                                if (!projectId || !functionId) return;
+                                const sdk = getSdk();
+                                const updated = await sdk.functions.update(projectId, functionId, { currentVersion: v.version });
+                                setFunc(updated);
+                              }}
+                            >
+                              Promote
+                            </Button>
+                          )}
+                        </div>
                       </div>
                       <p className="text-xs text-slate-500 mt-0.5">
                         {new Date(v.createdAt).toLocaleString()}

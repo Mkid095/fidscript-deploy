@@ -40,6 +40,7 @@ export class FunctionsCrudService {
         timeoutSeconds: dto.timeoutSeconds ?? func.timeoutSeconds,
         envVars: (dto.envVars ?? func.envVars) as any,
         settings: (dto.settings ?? func.settings) as any,
+        currentVersion: dto.currentVersion ?? func.currentVersion,
       },
     });
   }

@@ -54,6 +54,12 @@ export class UpdateFunctionDto {
   @IsOptional()
   @IsObject()
   settings?: Record<string, unknown>;
+
+  /** Set the active version without redeploying (version must already be deployed). */
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  currentVersion?: string;
 }
 
 export class DeployFunctionDto {
