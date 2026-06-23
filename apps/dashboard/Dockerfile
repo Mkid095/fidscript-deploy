@@ -42,6 +42,8 @@ WORKDIR /app
 # server can serve them from ./apps/dashboard/.next/static.
 COPY --from=build /app/apps/dashboard/.next/standalone ./
 COPY --from=build /app/apps/dashboard/.next/static ./apps/dashboard/.next/static
+# Server pages (compiled app routes) — needed for Next.js App Router
+COPY --from=build /app/apps/dashboard/.next/server ./apps/dashboard/.next/server
 
 RUN chown -R node:node /app
 USER node

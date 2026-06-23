@@ -1,40 +1,28 @@
-# Managed by FIDScript Platform — do not edit manually
 http:
   routers:
     fidscript-api:
-      rule: `Host(`api.deploy.fidscript.com`)`
+      rule: "Host(`api.deploy.fidscript.com`)"
       service: fidscript-api
       entryPoints:
         - websecure
       tls:
-        certResolver: myresolver
+        certResolver: letsencrypt-dns
 
     fidscript-dashboard:
-      rule: `Host(`deploy.fidscript.com`)`
+      rule: "Host(`deploy.fidscript.com`)"
       service: fidscript-dashboard
       entryPoints:
         - websecure
       tls:
-        certResolver: myresolver
+        certResolver: letsencrypt-dns
 
   services:
     fidscript-api:
       loadBalancer:
         servers:
-          - url: http://fidscript-api:3001
+          - url: "http://10.0.3.9:3001"
 
     fidscript-dashboard:
       loadBalancer:
         servers:
-          - url: http://fidscript-dashboard:3000
-
-certificatesResolvers:
-  myresolver:
-    acme:
-      email: admin@deploy.fidscript.com
-      storage: /acme-dns/acme.json
-      dnsChallenge:
-        provider: cloudflare
-        resolvers:
-          - 1.1.1.1
-          - 1.0.0.1
+          - url: "http://10.0.3.10:3001"

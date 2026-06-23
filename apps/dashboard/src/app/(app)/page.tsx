@@ -2,9 +2,8 @@
 
 import { useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { Button } from '@fidscript/ui';
-import { Card } from '@fidscript/ui';
-import { Spinner } from '@fidscript/ui';
+import { Button, Card, Spinner } from '@fidscript/ui';
+
 import { CreateProjectModal } from '@/components/projects/create-project-modal';
 import { useAuth } from '@/contexts/auth-context';
 import type { Project } from '@/types';

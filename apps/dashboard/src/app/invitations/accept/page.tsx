@@ -1,15 +1,14 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { Suspense, useEffect, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { Button } from '@fidscript/ui';
-import { Card } from '@fidscript/ui';
-import { Spinner } from '@fidscript/ui';
+import { Button, Card, Spinner } from '@fidscript/ui';
+
 import { useAuth } from '@/contexts/auth-context';
 
 type Status = 'loading' | 'accepting' | 'success' | 'error' | 'unauthenticated';
 
-export default function AcceptInvitationPage() {
+function AcceptInvitationInner() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { getSdk, user } = useAuth();
@@ -27,19 +26,16 @@ export default function AcceptInvitationPage() {
     }
 
     if (!user) {
-      // Redirect to login, returning here after auth
       const next = `/invitations/accept?token=${encodeURIComponent(token)}`;
       router.replace(`/login?next=${encodeURIComponent(next)}`);
       return;
     }
 
-    // User is authed — accept the invitation
     setStatus('accepting');
 
     getSdk().projects.acceptInvitation(token)
       .then(() => {
         setStatus('success');
-        // Project name is not in the accept response; fetch it after redirect
         setTimeout(() => router.push('/'), 2000);
       })
       .catch(err => {
@@ -78,7 +74,6 @@ export default function AcceptInvitationPage() {
     );
   }
 
-  // success
   return (
     <div className="min-h-screen flex items-center justify-center bg-[#080a0d] p-4">
       <Card padding="lg" className="w-full max-w-sm border border-emerald-800 text-center">
@@ -88,5 +83,22 @@ export default function AcceptInvitationPage() {
         <Spinner size="sm" className="mx-auto" />
       </Card>
     </div>
+  );
+}
+
+export default function AcceptInvitationPage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen flex items-center justify-center bg-[#080a0d] p-4">
+        <Card padding="lg" className="w-full max-w-sm border border-[#1e2130] text-center">
+          <div className="mb-4">
+            <Spinner size="lg" className="mx-auto" />
+          </div>
+          <p className="text-sm text-slate-400">Loading invitation…</p>
+        </Card>
+      </div>
+    }>
+      <AcceptInvitationInner />
+    </Suspense>
   );
 }
