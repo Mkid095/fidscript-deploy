@@ -42,7 +42,7 @@ history**. Nothing is left to interpretation.
 | F01 | Public Site (Landing + Docs) | `f01-public-site.md` | marketing | ✅ Implemented — spec to be upgraded |
 | F02 | Authentication | `f02-auth.md` | Phase 03 (auth/app-auth) | ✅ Spec complete + implemented |
 | F03 | First-Run Onboarding | `f03-first-run-onboarding.md` | Phase 01 + `/health` | ✅ Spec done + `/setup` wizard implemented |
-| F04 | Projects | `f04-projects.md` | Phase 04 (PROJ-*) | ✅ Spec done + projects list + create modal implemented |
+| F04 | Projects | `f04-projects.md` | Phase 04 (PROJ-*) | ✅ Spec done + implemented (list + create + project shell + activity feed) |
 | F05 | Project Dashboard Shell | `f05-project-dashboard-shell.md` | navigation | ✅ Spec done + shell implemented |
 | F06 | Deployments UI | `f06-deployments.md` | Phase 06 (DEPL-*) | ✅ Spec done + deployed |
 | F07 | Functions UI | `f07-functions.md` | Phase 10 (FN-*) | ✅ Spec done + implemented |

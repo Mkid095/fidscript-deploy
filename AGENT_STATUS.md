@@ -12,7 +12,7 @@ Current state of FIDScript Deploy development.
 |---|---|
 | **Current mode** | **Three-track execution** — platform (continuous), specs (one feature ahead), features (dependency-gated). Stage 0A+0B auth prereqs closed. F02 spec complete, pending approval. |
 | **Backend runtime** | End-to-end verified on the VPS: 23/23 phases verified, deployments + functions proven live, `/health` 200, soostori decommissioned + DB backed up. |
-| **Frontend status** | F00 ✅ verified. F01 ✅ verified. F02 ✅ spec done (pending approval). F03 ✅ spec done + implemented (`/onboarding` + `/setup`). F04–F11 — spec pending. F06 Deployments UI ✅ implemented. F07–F11 — pending. |
+| **Frontend status** | F00 ✅ verified. F01 ✅ verified. F02 ✅ spec done (pending approval). F03 ✅ spec done + implemented (`/onboarding` + `/setup`). F04 ✅ spec done + implemented (projects list + create modal + project shell + activity feed). F05 ✅ spec done + implemented. F06 ✅ spec done + deployed. F07–F11 — pending. |
 | **Documentation blueprint** | See "Documentation-first phase" section below. |
 | **Snapshot baseline** | Commit `f1dd6f2` (Phase 00-23 scaffold, pre-hardening) |
 | **Reset date** | 2026-06-16 |
