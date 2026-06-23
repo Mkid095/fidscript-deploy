@@ -11,7 +11,7 @@ const nextConfig: NextConfig = {
   // portable standalone output (used by apps/dashboard/Dockerfile).
   outputFileTracingRoot: path.resolve(__dirname, '../..'),
   experimental: {
-    turbo: {
+    turbopack: {
       resolveExtensions: ['.tsx', '.ts', '.jsx', '.js'],
     },
   },
