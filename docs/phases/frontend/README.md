@@ -45,7 +45,7 @@ history**. Nothing is left to interpretation.
 | F04 | Projects | `f04-projects.md` | Phase 04 (PROJ-*) | ✅ Spec done + implemented (list + create + project shell + activity feed) |
 | F05 | Project Dashboard Shell | `f05-project-dashboard-shell.md` | navigation | ✅ Spec done + shell implemented |
 | F06 | Deployments UI | `f06-deployments.md` | Phase 06 (DEPL-*) | ✅ Spec done + deployed |
-| F07 | Functions UI | `f07-functions.md` | Phase 10 (FN-*) | ⏳ Spec done — pending implementation |
+| F07 | Functions UI | `f07-functions-ui.md` | Phase 10 (FN-*) | ✅ Implemented (list + detail + create + invoke; Monaco editor + versions tab + DiffPanel pending) |
 | F08 | Databases UI | `f08-databases.md` | Phase 08 (DB-*) | ⏳ Spec done — pending implementation |
 | F09 | Storage UI | `f09-storage.md` | Phase 05 (STOR-*) | ⏳ Spec done — pending implementation |
 | F10 | Realtime / Queues / Scheduler | `f10-realtime-queues-scheduler.md` | Phase 11/12/13 | ⏳ Spec done — pending implementation |

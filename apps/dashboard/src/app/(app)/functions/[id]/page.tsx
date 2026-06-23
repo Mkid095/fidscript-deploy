@@ -1,15 +1,11 @@
 'use client';
 
-
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useParams, useSearchParams } from 'next/navigation';
-import { Card } from '@fidscript/ui';
-import { Button } from '@fidscript/ui';
-import { Input } from '@fidscript/ui';
-import { Spinner } from '@fidscript/ui';
+import { Card, Button, Spinner } from '@fidscript/ui';
 
-import { makeSdk } from '@/lib/sdk';
+import { useAuth } from '@/contexts/auth-context';
 // Local type definitions mirroring SDK internal interfaces
 interface Function_ {
   id: string;
@@ -45,6 +41,7 @@ const STATUS_COLORS: Record<string, string> = {
 };
 
 export default function FunctionDetailPage() {
+  const { getSdk } = useAuth();
   const params = useParams();
   const searchParams = useSearchParams();
   const functionId = params.id as string;
@@ -62,13 +59,9 @@ export default function FunctionDetailPage() {
 
   useEffect(() => {
     async function load() {
-      const token = localStorage.getItem('fidscript_token');
-      if (!token) { setLoading(false); return; }
       try {
-        const sdk = makeSdk(token);
-        const [funcData] = await Promise.all([
-          sdk.functions.get(projectId, functionId),
-        ]);
+        const sdk = getSdk();
+        const [funcData] = await Promise.all([sdk.functions.get(projectId, functionId)]);
         setFunc(funcData);
       } catch (err) {
         setError(err instanceof Error ? err.message : 'Failed to load function');
@@ -77,24 +70,19 @@ export default function FunctionDetailPage() {
       }
     }
     if (projectId) load();
-  }, [projectId, functionId]);
+  }, [projectId, functionId, getSdk]);
 
   useEffect(() => {
     if (activeTab !== 'logs' || !projectId || !functionId) return;
-
     async function loadLogs() {
       try {
-        const token = localStorage.getItem('fidscript_token');
-        if (!token) return;
-        const sdk = makeSdk(token);
+        const sdk = getSdk();
         const data = await sdk.functions.getLogs(projectId, functionId);
         setLogs(data);
-      } catch {
-        // ignore log errors
-      }
+      } catch { /* ignore log errors */ }
     }
     loadLogs();
-  }, [activeTab, projectId, functionId]);
+  }, [activeTab, projectId, functionId, getSdk]);
 
   async function handleInvoke(e: React.FormEvent) {
     e.preventDefault();
@@ -102,9 +90,7 @@ export default function FunctionDetailPage() {
     setInvokeResult(null);
     setInvokeError(null);
     try {
-      const token = localStorage.getItem('fidscript_token');
-      if (!token) return;
-      const sdk = makeSdk(token);
+      const sdk = getSdk();
       let payload: unknown;
       try {
         payload = JSON.parse(invokeBody);
@@ -195,9 +181,8 @@ export default function FunctionDetailPage() {
               variant="ghost"
               size="sm"
               onClick={async () => {
-                const token = localStorage.getItem('fidscript_token');
-                if (!token || !projectId || !functionId) return;
-                const sdk = makeSdk(token);
+                if (!projectId || !functionId) return;
+                const sdk = getSdk();
                 const data = await sdk.functions.getLogs(projectId, functionId);
                 setLogs(data);
               }}

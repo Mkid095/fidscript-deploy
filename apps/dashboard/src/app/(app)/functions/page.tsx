@@ -1,18 +1,12 @@
 'use client';
 
-
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
-import { Card } from '@fidscript/ui';
-import { Button } from '@fidscript/ui';
-import { Input } from '@fidscript/ui';
-import { Modal } from '@fidscript/ui';
-import { Spinner } from '@fidscript/ui';
-import { EmptyState } from '@fidscript/ui';
+import { Card, Button, Input, Modal, Spinner, EmptyState } from '@fidscript/ui';
 
-import { makeSdk } from '@/lib/sdk';
+import { useAuth } from '@/contexts/auth-context';
 import type { Project } from '@/types';
-// Local type definition mirroring SDK internal Function_ interface
+
 interface Function_ {
   id: string;
   name: string;
@@ -30,7 +24,15 @@ const STATUS_COLORS: Record<string, string> = {
   INACTIVE: 'bg-slate-700 text-slate-400',
 };
 
+const RUNTIMES = [
+  { value: 'node', label: 'Node.js', available: true },
+  { value: 'python', label: 'Python', available: true },
+  { value: 'go', label: 'Go', available: false },
+  { value: 'rust', label: 'Rust', available: false },
+];
+
 export default function FunctionsPage() {
+  const { getSdk } = useAuth();
   const [projects, setProjects] = useState<Project[]>([]);
   const [selectedProjectId, setSelectedProjectId] = useState('');
   const [functions, setFunctions] = useState<Function_[]>([]);
@@ -45,35 +47,27 @@ export default function FunctionsPage() {
 
   useEffect(() => {
     async function load() {
-      const token = localStorage.getItem('fidscript_token');
-      if (!token) { setLoadingProjects(false); return; }
       try {
-        const sdk = makeSdk(token);
+        const sdk = getSdk();
         const data = await sdk.projects.list();
         setProjects(data);
         if (data.length > 0 && !selectedProjectId) {
           setSelectedProjectId(data[0].id);
         }
-      } catch {
-        // ignore
-      } finally {
+      } catch { /* ignore */ } finally {
         setLoadingProjects(false);
       }
     }
     load();
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [getSdk, selectedProjectId]);
 
   useEffect(() => {
     if (!selectedProjectId) return;
-
     async function loadFunctions() {
       setLoadingFunctions(true);
       setError(null);
       try {
-        const token = localStorage.getItem('fidscript_token');
-        if (!token) return;
-        const sdk = makeSdk(token);
+        const sdk = getSdk();
         const data = await sdk.functions.list(selectedProjectId);
         setFunctions(data);
       } catch (err) {
@@ -83,7 +77,7 @@ export default function FunctionsPage() {
       }
     }
     loadFunctions();
-  }, [selectedProjectId]);
+  }, [selectedProjectId, getSdk]);
 
   async function handleCreate(e: React.FormEvent) {
     e.preventDefault();
@@ -91,9 +85,7 @@ export default function FunctionsPage() {
     setCreating(true);
     setCreateError(null);
     try {
-      const token = localStorage.getItem('fidscript_token');
-      if (!token) return;
-      const sdk = makeSdk(token);
+      const sdk = getSdk();
       const created = await sdk.functions.create(selectedProjectId, { name: newName.trim(), runtime: newRuntime });
       setFunctions(prev => [...prev, created]);
       setNewName('');
@@ -143,9 +135,7 @@ export default function FunctionsPage() {
         </select>
       </div>
 
-      {error && (
-        <p className="text-red-400 mb-4 text-sm">{error}</p>
-      )}
+      {error && <p className="text-red-400 mb-4 text-sm">{error}</p>}
 
       {loadingFunctions ? (
         <div className="flex items-center justify-center min-h-48">
@@ -181,12 +171,14 @@ export default function FunctionsPage() {
                   <td className="px-4 py-3">
                     <Link
                       href={`/functions/${fn.id}?project=${selectedProjectId}`}
-                      className="text-slate-200 hover:text-blue-400 no-underline"
+                      className="text-slate-200 hover:text-blue-400"
                     >
                       {fn.name}
                     </Link>
                   </td>
-                  <td className="px-4 py-3 text-slate-400 text-xs">{fn.runtime}</td>
+                  <td className="px-4 py-3">
+                    <span className="text-xs text-slate-400">{fn.runtime}</span>
+                  </td>
                   <td className="px-4 py-3">
                     <span className={`text-xs px-2 py-0.5 rounded-full capitalize ${STATUS_COLORS[fn.status] ?? 'bg-slate-700 text-slate-300'}`}>
                       {fn.status ?? 'UNKNOWN'}
@@ -198,7 +190,7 @@ export default function FunctionsPage() {
                   <td className="px-4 py-3">
                     <Link
                       href={`/functions/${fn.id}?project=${selectedProjectId}`}
-                      className="text-xs text-slate-400 hover:text-slate-200 no-underline"
+                      className="text-xs text-slate-400 hover:text-slate-200"
                     >
                       View
                     </Link>
@@ -233,10 +225,11 @@ export default function FunctionsPage() {
               onChange={e => setNewRuntime(e.target.value)}
               className="bg-[#080a0d] border border-[#1e2130] text-slate-200 rounded-lg px-3 py-2 text-sm w-full"
             >
-              <option value="node">Node.js</option>
-              <option value="python">Python</option>
-              <option value="go">Go</option>
-              <option value="rust">Rust</option>
+              {RUNTIMES.map(r => (
+                <option key={r.value} value={r.value} disabled={!r.available} style={!r.available ? { opacity: 0.4 } : undefined}>
+                  {r.label}{!r.available ? ' (not yet available)' : ''}
+                </option>
+              ))}
             </select>
           </div>
           {createError && <p className="text-red-400 text-xs mb-4">{createError}</p>}
