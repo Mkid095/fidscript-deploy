@@ -1,13 +1,14 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { useParams, useRouter, useSearchParams } from 'next/navigation';
+import { useParams, useRouter, useSearchParams, usePathname } from 'next/navigation';
 
 import { useAuth } from '@/contexts/auth-context';
 import { DeploymentsSection } from './sections/deployments';
 import { OverviewSection } from './sections/overview';
 import { SettingsSection } from './sections/settings';
 import { MembersSection } from './sections/members';
+import { ActivityFeed } from './sections/activity';
 import type { Project } from '@/types';
 
 const SECTIONS: Record<string, React.ComponentType<{ project: Project }>> = {
@@ -15,21 +16,26 @@ const SECTIONS: Record<string, React.ComponentType<{ project: Project }>> = {
   deployments: DeploymentsSection,
   members:     MembersSection,
   settings:    SettingsSection,
+  activity:    ActivityFeed,
 };
 
 export default function ProjectPage() {
   const params = useParams();
   const router = useRouter();
   const searchParams = useSearchParams();
+  const pathname = usePathname();
   const { getSdk } = useAuth();
   const projectId = params.projectId as string;
 
-  // Redirect /projects/:id → /projects/:id?section=deployments if no section param.
+  // Derive section from URL path (/projects/:id/activity → activity) or ?section= query.
+  // Falls back to deployments if neither is set.
   useEffect(() => {
-    if (!searchParams.get('section')) {
+    const match = pathname?.match(/\/projects\/[^/]+\/([^/]+)/);
+    const pathSection = match ? match[1] : null;
+    if (!searchParams.get('section') && !pathSection) {
       router.replace(`/projects/${projectId}?section=deployments`);
     }
-  }, [projectId, router, searchParams]);
+  }, [projectId, router, searchParams, pathname]);
 
   const [project, setProject] = useState<Project | null>(null);
 
@@ -37,7 +43,10 @@ export default function ProjectPage() {
     getSdk().projects.get(projectId).then(setProject).catch(() => {});
   }, [projectId, getSdk]);
 
-  const section = searchParams.get('section') ?? 'deployments';
+  // Section from path first (/projects/:id/activity → activity), then from query param.
+  const pathMatch = pathname?.match(/\/projects\/[^/]+\/([^/]+)/);
+  const pathSection = pathMatch ? pathMatch[1] : null;
+  const section = pathSection ?? searchParams.get('section') ?? 'deployments';
   const SectionComponent = SECTIONS[section];
 
   return (

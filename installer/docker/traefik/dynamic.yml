@@ -25,4 +25,4 @@ http:
     fidscript-dashboard:
       loadBalancer:
         servers:
-          - url: "http://10.0.3.10:3001"
+          - url: "http://10.0.3.11:3001"
