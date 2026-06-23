@@ -38,22 +38,26 @@ const AuthContext = createContext<AuthContextValue | null>(null);
 
 const ACCESS_TOKEN_KEY = 'fidscript_access_token';
 const REFRESH_TOKEN_KEY = 'fidscript_refresh_token';
+// Legacy alias — some pages read this key directly
+const LEGACY_TOKEN_KEY = 'fidscript_token';
 
 function getStoredTokens(): { accessToken: string | null; refreshToken: string | null } {
   if (typeof window === 'undefined') return { accessToken: null, refreshToken: null };
   return {
-    accessToken: localStorage.getItem(ACCESS_TOKEN_KEY),
+    accessToken: localStorage.getItem(ACCESS_TOKEN_KEY) ?? localStorage.getItem(LEGACY_TOKEN_KEY),
     refreshToken: localStorage.getItem(REFRESH_TOKEN_KEY),
   };
 }
 
 function storeTokens(accessToken: string, refreshToken: string): void {
   localStorage.setItem(ACCESS_TOKEN_KEY, accessToken);
+  localStorage.setItem(LEGACY_TOKEN_KEY, accessToken);
   localStorage.setItem(REFRESH_TOKEN_KEY, refreshToken);
 }
 
 function clearTokens(): void {
   localStorage.removeItem(ACCESS_TOKEN_KEY);
+  localStorage.removeItem(LEGACY_TOKEN_KEY);
   localStorage.removeItem(REFRESH_TOKEN_KEY);
 }
 
