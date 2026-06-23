@@ -309,6 +309,9 @@ export class InstallationOrchestratorService {
           role: Role.ADMIN,
           preferredAuthMethod: dto.authMethod as AuthMethod,
           mustChangePassword: dto.authMethod === 'MAGIC_CODE',
+          passwordHash: dto.authMethod === 'PASSWORD' && dto.adminPassword
+            ? bcrypt.hashSync(dto.adminPassword, 12)
+            : null,
           credentials: dto.authMethod === 'PASSWORD' && dto.adminPassword
             ? {
                 create: {

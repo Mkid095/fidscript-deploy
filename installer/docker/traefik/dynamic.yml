@@ -1,206 +1,40 @@
+# Managed by FIDScript Platform — do not edit manually
 http:
-  middlewares:
-    security-headers:
-      headers:
-        frameDeny: true
-        browserXssFilter: true
-        contentTypeNosniff: true
-        sslRedirect: true
-        stsSeconds: 31536000
-        stsIncludeSubdomains: true
-        stsPreload: true
-
-    compress:
-      compress: {}
-
-    app-redirect:
-      redirectRegex:
-        regex: "^/$"
-        replacement: "/projects"
-        permanent: true
-
   routers:
-    dashboard:
-      rule: "Host(`deploy.fidscript.com`) && !PathPrefix(`/api`)"
-      service: dashboard
-      middlewares:
-        - security-headers
-        - compress
+    fidscript-api:
+      rule: `Host(`api.deploy.fidscript.com`)`
+      service: fidscript-api
+      entryPoints:
+        - websecure
       tls:
-        certResolver: letsencrypt-dns
+        certResolver: myresolver
 
-    app:
-      rule: "Host(`app.deploy.fidscript.com`)"
-      priority: 50
-      service: dashboard
-      middlewares:
-        - security-headers
-        - app-redirect
+    fidscript-dashboard:
+      rule: `Host(`deploy.fidscript.com`)`
+      service: fidscript-dashboard
+      entryPoints:
+        - websecure
       tls:
-        certResolver: letsencrypt-dns
-
-    deployments-wildcard:
-      rule: "HostRegexp(`^.+.deploy.fidscript.com$`)"
-      service: api
-      middlewares:
-        - security-headers
-        - compress
-      tls:
-        certResolver: letsencrypt-dns
-
-    metrics:
-      rule: "Host(`deploy.fidscript.com`) && PathPrefix(`/metrics`)"
-      service: api
-      middlewares:
-        - security-headers
-      tls:
-        certResolver: letsencrypt-dns
-
-    api:
-      rule: "PathPrefix(`/api`) && !Path(`/install.sh`)"
-      service: api
-      middlewares:
-        - security-headers
-        - compress
-      tls:
-        certResolver: letsencrypt-dns
-
-    install-sh:
-      rule: "Path(`/install.sh`)"
-      service: api
-      priority: 200
-      tls:
-        certResolver: letsencrypt-dns
-
-    minio-console:
-      rule: "Host(`storage.deploy.fidscript.com`)"
-      service: minio-console
-      middlewares:
-        - security-headers
-        - compress
-      tls:
-        certResolver: letsencrypt-dns
-
-    jmap:
-      rule: "Host(`jmap.deploy.fidscript.com`)"
-      service: stalwart-jmap
-      middlewares:
-        - security-headers
-      tls:
-        certResolver: letsencrypt-dns
-
-    acme-challenge:
-      rule: "PathPrefix(`/.well-known/acme-challenge/`)"
-      service: stalwart-acme
-      middlewares:
-        - security-headers
-
-    whatsapp-fidscript:
-      rule: "Host(`whatsapp.fidscript.com`)"
-      service: whatsapp-frontend-new
-      middlewares:
-        - security-headers
-      tls:
-        certResolver: letsencrypt-dns
-
-    apiwhatsapp-fidscript:
-      rule: "Host(`apiwhatsapp.fidscript.com`)"
-      service: whatsapp-admin-api
-      middlewares:
-        - security-headers
-      tls:
-        certResolver: letsencrypt-dns
-
-    docs-nextmavens:
-      rule: "Host(`docs.nextmavens.cloud`)"
-      service: docs-nextmavens-static
-      middlewares:
-        - security-headers
-      tls:
-        certResolver: letsencrypt-dns
-
-    whatsapp-nextmavens:
-      rule: "Host(`whatsapp.nextmavens.cloud`)"
-      service: whatsapp-nextmavens-static
-      middlewares:
-        - security-headers
-      tls:
-        certResolver: letsencrypt-dns
-
-    soostori:
-      rule: "Host(`soostori.co.ke`) || Host(`www.soostori.co.ke`)"
-      service: soostori-api
-      middlewares:
-        - security-headers
-        - compress
-      tls:
-        certResolver: letsencrypt-dns
-
-    soostori-deploy:
-      rule: "Host(`deploy.soostori.co.ke`)"
-      service: soostori-api
-      middlewares:
-        - security-headers
-      tls:
-        certResolver: letsencrypt-dns
+        certResolver: myresolver
 
   services:
-    dashboard:
+    fidscript-api:
       loadBalancer:
         servers:
-          - url: "http://fidscript_dashboard:3001"
+          - url: http://fidscript-api:3001
 
-    api:
+    fidscript-dashboard:
       loadBalancer:
         servers:
-          - url: "http://fidscript_api:3001"
+          - url: http://fidscript-dashboard:3000
 
-    minio-console:
-      loadBalancer:
-        servers:
-          - url: "http://fidscript_minio:9001"
-
-    stalwart-jmap:
-      loadBalancer:
-        servers:
-          - url: "http://fidscript_stalwart:8080"
-
-    stalwart-acme:
-      loadBalancer:
-        servers:
-          - url: "http://127.0.0.1:8080"
-
-    whatsapp-evolution:
-      loadBalancer:
-        servers:
-          - url: "http://172.18.0.4:8080"
-
-    whatsapp-frontend:
-      loadBalancer:
-        servers:
-          - url: "http://172.18.0.10:80"
-
-    whatsapp-frontend-new:
-      loadBalancer:
-        servers:
-          - url: "http://172.18.0.10:80"
-
-    whatsapp-admin-api:
-      loadBalancer:
-        servers:
-          - url: "http://172.18.0.6:3001"
-
-    docs-nextmavens-static:
-      loadBalancer:
-        servers:
-          - url: "http://127.0.0.1:8082"
-
-    whatsapp-nextmavens-static:
-      loadBalancer:
-        servers:
-          - url: "http://127.0.0.1:8083"
-
-    soostori-api:
-      loadBalancer:
-        servers:
-          - url: "http://10.0.1.11:3000"
+certificatesResolvers:
+  myresolver:
+    acme:
+      email: admin@deploy.fidscript.com
+      storage: /acme-dns/acme.json
+      dnsChallenge:
+        provider: cloudflare
+        resolvers:
+          - 1.1.1.1
+          - 1.0.0.1

@@ -8,7 +8,7 @@ services:
       - "443:443"
     volumes:
       - ./traefik/traefik.yml:/etc/traefik/traefik.yml:ro
-      - ./traefik/dynamic.yml:/etc/traefik/dynamic.yml:ro
+      - ./traefik/dynamic.yml:/etc/traefik/dynamic.yml:rw
       - ./traefik/certs:/certs:ro
       - ./secrets:/run/secrets:ro
       - fidscript_acme_dns:/acme-dns
@@ -258,6 +258,7 @@ services:
       - ./secrets:/run/secrets:ro
       - /var/run/docker.sock:/var/run/docker.sock
       - ../scripts:/usr/local/share/fidscript:ro
+      - ./traefik/dynamic.yml:/etc/traefik/dynamic.yml:rw
     # The deployment worker runs `docker build`/`docker run` against the host
     # daemon via the mounted socket. The socket is root:docker on the host
     # (host GID in DOCKER_GID); adding that GID here grants the non-root
