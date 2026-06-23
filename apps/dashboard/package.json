@@ -17,6 +17,7 @@
     "@fidscript/ui": "workspace:*",
     "@hugeicons/core-free-icons": "^4.2.1",
     "@hugeicons/react": "^1.1.7",
+    "@monaco-editor/react": "^4.7.0",
     "@tailwindcss/postcss": "^4",
     "next": "^15.0.0",
     "react": "^19.0.0",
