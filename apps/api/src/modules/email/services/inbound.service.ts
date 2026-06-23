@@ -50,10 +50,17 @@ export class EmailInboundService {
 
     await this.eventService.emit('email.received', {
       messageId: emailMessage.id,
+      // jmapMessageId will be populated by a future Stalwart Sieve script enhancement
+      // that echoes the JMAP Message-Id header. Until then, inbound attachment
+      // extraction is a no-op (attachmentStorageService guards on jmapMessageId presence).
+      jmapMessageId: undefined as string | undefined,
       projectId: domain.projectId,
       mailboxId: mailbox?.id,
+      // Mailbox localPart is needed by the listener to resolve JMAP credentials
+      mailboxLocal: mailbox?.localPart ?? localPart,
       from: payload.from,
       to: payload.to,
+      subject: payload.subject,
     });
 
     if (alias) {

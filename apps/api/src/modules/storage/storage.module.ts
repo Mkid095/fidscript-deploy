@@ -27,6 +27,6 @@ import { StorageProviderFactory } from '@/modules/storage/providers/storage-prov
     TelegramProvider,
     StorageProviderFactory,
   ],
-  exports: [StorageService, MinioProvider],
+  exports: [StorageService, MinioProvider, StorageProviderFactory],
 })
 export class StorageModule {}

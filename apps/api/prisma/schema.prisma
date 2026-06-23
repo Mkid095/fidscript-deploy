@@ -1,11 +1,11 @@
 generator client {
-  provider      = "prisma-client-js"
+  provider        = "prisma-client-js"
   // The runtime image installs openssl 3 (Debian Bookworm default + the apt
   // openssl package), so the query/client engine MUST be generated for
   // debian-openssl-3.0.x — otherwise the client fails to load at runtime
   // with "Prisma Client was generated for debian-openssl-1.1.x, but the
   // actual deployment required debian-openssl-3.0.x".
-  binaryTargets = ["native", "debian-openssl-3.0.x"]
+  binaryTargets   = ["native", "debian-openssl-3.0.x"]
   previewFeatures = ["multiSchema"]
 }
 
@@ -18,19 +18,19 @@ datasource db {
 }
 
 model User {
-  id                 String    @id @default(uuid())
-  email              String    @unique @db.VarChar(255)
-  passwordHash       String?   @map("password_hash") @db.VarChar(255)
-  name               String?   @db.VarChar(255)
-  avatarUrl          String?   @map("avatar_url") @db.Text
-  role               Role      @default(USER)
-  mfaEnabled         Boolean   @default(false) @map("mfa_enabled")
-  mfaSecret          String?   @map("mfa_secret") @db.VarChar(255)
-  mustChangePassword Boolean   @default(false) @map("must_change_password")
+  id                  String     @id @default(uuid())
+  email               String     @unique @db.VarChar(255)
+  passwordHash        String?    @map("password_hash") @db.VarChar(255)
+  name                String?    @db.VarChar(255)
+  avatarUrl           String?    @map("avatar_url") @db.Text
+  role                Role       @default(USER)
+  mfaEnabled          Boolean    @default(false) @map("mfa_enabled")
+  mfaSecret           String?    @map("mfa_secret") @db.VarChar(255)
+  mustChangePassword  Boolean    @default(false) @map("must_change_password")
   preferredAuthMethod AuthMethod @default(PASSWORD) @map("preferred_auth_method")
-  lastLoginAt        DateTime? @map("last_login_at") @db.Timestamptz
-  createdAt          DateTime  @default(now()) @map("created_at") @db.Timestamptz
-  updatedAt          DateTime  @updatedAt @map("updated_at") @db.Timestamptz
+  lastLoginAt         DateTime?  @map("last_login_at") @db.Timestamptz
+  createdAt           DateTime   @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt           DateTime   @updatedAt @map("updated_at") @db.Timestamptz
 
   sessions    Session[]
   apiKeys     ApiKey[]
@@ -39,21 +39,23 @@ model User {
   memberships ProjectMember[]
   credentials UserCredential[]
 
-  @@schema("identity")
   @@map("users")
+  @@schema("identity")
 }
 
 enum Role {
-  @@schema("public")
   USER
   ADMIN
   OWNER
+
+  @@schema("public")
 }
 
 enum AuthMethod {
-  @@schema("public")
   PASSWORD
   MAGIC_CODE
+
+  @@schema("public")
 }
 
 model Session {
@@ -67,8 +69,8 @@ model Session {
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
-  @@schema("identity")
   @@map("sessions")
+  @@schema("identity")
 }
 
 model ApiKey {
@@ -83,8 +85,8 @@ model ApiKey {
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
-  @@schema("identity")
   @@map("api_keys")
+  @@schema("identity")
 }
 
 model AuditLog {
@@ -99,8 +101,8 @@ model AuditLog {
 
   user User? @relation(fields: [userId], references: [id], onDelete: SetNull)
 
-  @@schema("identity")
   @@map("audit_logs")
+  @@schema("identity")
 }
 
 // Platform magic-code (6-digit OTP) for passwordless/second-factor login.
@@ -116,8 +118,8 @@ model MagicCode {
   createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz
 
   @@index([email, consumed, createdAt])
-  @@schema("identity")
   @@map("magic_codes")
+  @@schema("identity")
 }
 
 // =============================================
@@ -176,8 +178,8 @@ model Project {
   invitations          ProjectInvitation[]
   apiKeys              ProjectApiKey[]
 
-  @@schema("projects")
   @@map("projects")
+  @@schema("projects")
 }
 
 model ProjectEnv {
@@ -191,8 +193,8 @@ model ProjectEnv {
   project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
 
   @@unique([projectId, key])
-  @@schema("projects")
   @@map("env_vars")
+  @@schema("projects")
 }
 
 model ProjectInvitation {
@@ -211,8 +213,8 @@ model ProjectInvitation {
 
   @@index([projectId, email])
   @@index([tokenHash])
-  @@schema("projects")
   @@map("invitations")
+  @@schema("projects")
 }
 
 model ProjectApiKey {
@@ -228,27 +230,29 @@ model ProjectApiKey {
   project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
 
   @@index([projectId])
-  @@schema("projects")
   @@map("api_keys")
+  @@schema("projects")
 }
 
 enum ProjectType {
-  @@schema("public")
   FRONTEND
   BACKEND
   WORKER
   CRON
   DOCKER
   STATIC
+
+  @@schema("public")
 }
 
 enum ProjectStatus {
-  @@schema("public")
   CREATING
   ACTIVE
   SUSPENDED
   ARCHIVED
   DELETED
+
+  @@schema("public")
 }
 
 model ProjectMember {
@@ -262,8 +266,8 @@ model ProjectMember {
   user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([projectId, userId])
-  @@schema("projects")
   @@map("project_members")
+  @@schema("projects")
 }
 
 model ProjectSettings {
@@ -278,8 +282,8 @@ model ProjectSettings {
   project          Project     @relation(fields: [projectId], references: [id], onDelete: Cascade)
   activeDeployment Deployment? @relation("ActiveDeployment", fields: [activeDeploymentId], references: [id])
 
-  @@schema("projects")
   @@map("project_settings")
+  @@schema("projects")
 }
 
 // =============================================
@@ -299,8 +303,8 @@ model Bucket {
   project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
   files   File[]
 
-  @@schema("storage")
   @@map("buckets")
+  @@schema("storage")
 }
 
 model File {
@@ -316,8 +320,8 @@ model File {
 
   bucket Bucket @relation(fields: [bucketId], references: [id], onDelete: Cascade)
 
-  @@schema("storage")
   @@map("files")
+  @@schema("storage")
 }
 
 // =============================================
@@ -342,8 +346,8 @@ model Release {
 
   @@unique([projectId, version])
   @@index([projectId, createdAt])
-  @@schema("projects")
   @@map("releases")
+  @@schema("projects")
 }
 
 model Deployment {
@@ -364,12 +368,11 @@ model Deployment {
   activeFor    ProjectSettings? @relation("ActiveDeployment")
   domains      Domain[]
 
-  @@schema("projects")
   @@map("deployments")
+  @@schema("projects")
 }
 
 enum DeploymentStatus {
-  @@schema("public")
   PENDING
   QUEUED
   BUILDING
@@ -379,6 +382,8 @@ enum DeploymentStatus {
   STOPPED
   BLOCKED
   ROLLED_BACK
+
+  @@schema("public")
 }
 
 model BuildConfig {
@@ -395,8 +400,8 @@ model BuildConfig {
 
   project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
 
-  @@schema("projects")
   @@map("build_configs")
+  @@schema("projects")
 }
 
 // =============================================
@@ -435,8 +440,8 @@ model Domain {
   healthChecks  DomainHealthCheck[]
 
   @@unique([projectId, domain])
-  @@schema("projects")
   @@map("domains")
+  @@schema("projects")
 }
 
 // Stored DNS provider connections for Mode B (Cloudflare Auto) and future providers.
@@ -454,8 +459,8 @@ model DomainConnection {
 
   domains Domain[]
 
-  @@schema("projects")
   @@map("dns_connections")
+  @@schema("projects")
 }
 
 // Tracks operational history of every domain check.
@@ -478,12 +483,11 @@ model DomainHealthCheck {
   domain Domain @relation(fields: [domainId], references: [id], onDelete: Cascade)
 
   @@index([domainId, checkedAt])
-  @@schema("projects")
   @@map("domain_health_checks")
+  @@schema("projects")
 }
 
 enum DomainStatus {
-  @@schema("public")
   PENDING // Domain added, no verification attempted yet
   OWNERSHIP_PENDING // TXT record created, waiting for ownership confirmation
   VALIDATING // Ownership confirmed, checking DNS propagation + routing
@@ -491,15 +495,18 @@ enum DomainStatus {
   ACTIVE // All checks passed: DNS + routing + SSL all done, serving traffic
   BROKEN // Was ACTIVE but DNS/routing/cert has failed
   FAILED // Verification failed (permanent)
+
+  @@schema("public")
 }
 
 enum SslStatus {
-  @@schema("public")
   PENDING // Not yet issued
   ISSUING // ACME certificate in flight
   ACTIVE // Certificate issued and serving
   FAILED // Cert issuance or renewal failed
   EXPIRED // Cert was valid but has expired
+
+  @@schema("public")
 }
 
 // =============================================
@@ -525,8 +532,8 @@ model AppUser {
   oauthAccounts AppOAuthAccount[]
 
   @@unique([projectId, email])
-  @@schema("projects")
   @@map("app_users")
+  @@schema("projects")
 }
 
 model AppSession {
@@ -542,8 +549,8 @@ model AppSession {
 
   user AppUser @relation(fields: [userId], references: [id], onDelete: Cascade)
 
-  @@schema("projects")
   @@map("app_sessions")
+  @@schema("projects")
 }
 
 model AppRole {
@@ -557,8 +564,8 @@ model AppRole {
   users   AppUserRole[]
 
   @@unique([projectId, name])
-  @@schema("projects")
   @@map("app_roles")
+  @@schema("projects")
 }
 
 model AppUserRole {
@@ -570,16 +577,16 @@ model AppUserRole {
   role AppRole @relation(fields: [roleId], references: [id], onDelete: Cascade)
 
   @@id([userId, roleId])
-  @@schema("projects")
   @@map("app_user_roles")
+  @@schema("projects")
 }
 
 enum AuthProviderName {
   GOOGLE
   GITHUB
 
-  @@schema("projects")
   @@map("AuthProviderName")
+  @@schema("projects")
 }
 
 model AuthProvider {
@@ -598,8 +605,8 @@ model AuthProvider {
 
   @@unique([projectId, provider])
   @@index([projectId])
-  @@schema("projects")
   @@map("auth_providers")
+  @@schema("projects")
 }
 
 model AppOAuthAccount {
@@ -617,8 +624,8 @@ model AppOAuthAccount {
   @@unique([provider, providerUserId])
   @@unique([appUserId, provider])
   @@index([projectId])
-  @@schema("projects")
   @@map("app_oauth_accounts")
+  @@schema("projects")
 }
 
 // =============================================
@@ -649,16 +656,17 @@ model EmailDomain {
   suppressions     EmailSuppression[]
 
   @@unique([projectId, domain])
-  @@schema("email")
   @@map("domains")
+  @@schema("email")
 }
 
 enum EmailDomainStatus {
-  @@schema("public")
   PENDING // Created, ownership token generated — waiting for TXT record
   VERIFIED // Ownership TXT confirmed, DNS (DKIM/SPF/DMARC/MX) configured
   ACTIVE // All checks passed — can send/receive
   FAILED // Verification failed permanently
+
+  @@schema("public")
 }
 
 // Real mailbox accounts on Stalwart (IMAP/SMTP access).
@@ -678,8 +686,8 @@ model EmailMailbox {
   messages EmailMessage[]
 
   @@unique([domainId, localPart])
-  @@schema("email")
   @@map("mailboxes")
+  @@schema("email")
 }
 
 // Alias addresses that forward to mailboxes, external addresses, or webhooks.
@@ -699,8 +707,8 @@ model EmailAlias {
   domain EmailDomain @relation(fields: [domainId], references: [id], onDelete: Cascade)
 
   @@unique([domainId, localPart])
-  @@schema("email")
   @@map("aliases")
+  @@schema("email")
 }
 
 // Sender identities for API-based sending (Resend-style).
@@ -717,8 +725,8 @@ model SenderIdentity {
   messages EmailMessage[]
 
   @@unique([domainId, email])
-  @@schema("email")
   @@map("sender_identities")
+  @@schema("email")
 }
 
 // API keys for programmatic email sending (Resend-style auth).
@@ -735,8 +743,8 @@ model EmailApiKey {
   project Project         @relation(fields: [projectId], references: [id], onDelete: Cascade)
   usages  EmailApiUsage[]
 
-  @@schema("email")
   @@map("api_keys")
+  @@schema("email")
 }
 
 // Email messages — metadata only. Body is read from Stalwart via JMAP at display time.
@@ -765,8 +773,8 @@ model EmailMessage {
 
   @@index([mailboxId, createdAt])
   @@index([projectId, createdAt])
-  @@schema("email")
   @@map("messages")
+  @@schema("email")
 }
 
 // Catch-all rules — forwarded to a mailbox, external address, or webhook.
@@ -783,8 +791,8 @@ model CatchAllRule {
   domain EmailDomain @relation(fields: [domainId], references: [id], onDelete: Cascade)
 
   @@unique([domainId])
-  @@schema("email")
   @@map("catch_all_rules")
+  @@schema("email")
 }
 
 // Suppression list entries — prevents sending to known bad recipients.
@@ -799,16 +807,17 @@ model EmailSuppression {
   domain EmailDomain @relation(fields: [domainId], references: [id], onDelete: Cascade)
 
   @@unique([domainId, email])
-  @@schema("email")
   @@map("suppressions")
+  @@schema("email")
 }
 
 enum SuppressionReason {
-  @@schema("public")
   BOUNCE // Permanent failure (550 user unknown)
   COMPLAINT // Spam complaint (FBL)
   UNSUBSCRIBE // Recipient unsubscribed
   MANUAL // Manually suppressed by user
+
+  @@schema("public")
 }
 
 // Tracks per-project per-key email API usage for rate limiting and billing.
@@ -834,12 +843,11 @@ model EmailApiUsage {
 
   @@unique([projectId, apiKeyId, date])
   @@index([projectId, date])
-  @@schema("email")
   @@map("api_usage")
+  @@schema("email")
 }
 
 enum EmailStatus {
-  @@schema("public")
   // Message submitted to SMTP but not yet accepted by remote server
   QUEUED
   // Message accepted by remote MTA (Stalwart outbound relay)
@@ -850,6 +858,51 @@ enum EmailStatus {
   BOUNCED
   // Local failure (validation, auth, network)
   FAILED
+
+  @@schema("public")
+}
+
+// Platform-wide attachment storage config — admin-selected backend for where
+// email attachments (both inbound and outbound) are persisted. The credentials
+// JSON is encrypted with the platform ENCRYPTION_KEY (see CryptoService).
+// Singleton row keyed by id="singleton".
+model EmailAttachmentConfig {
+  id          String   @id @default("singleton")
+  // internal (MinIO/VPS) | telegram | cloudinary
+  provider    String   @default("internal") @db.VarChar(20)
+  // Encrypted credentials blob; shape depends on `provider`:
+  //   telegram  -> { botToken, chatId }
+  //   cloudinary -> { cloudName, apiKey, apiSecret }
+  //   internal  -> null
+  credentials Json?
+  isActive    Boolean  @default(true) @map("is_active")
+  updatedAt   DateTime @updatedAt @map("updated_at") @db.Timestamptz
+
+  @@map("attachment_config")
+  @@schema("email")
+}
+
+// One row per attachment stored off-Stalwart. `messageId` is either a JMAP
+// email id (inbound) or a platform send id (outbound). `storageKey` is the
+// provider-specific key: a MinIO object key, a Telegram file_id, or a
+// Cloudinary public_id.
+model EmailAttachment {
+  id              String   @id @default(uuid())
+  messageId       String   @map("message_id") @db.VarChar(255)
+  // Mailbox local part (e.g. "alert") — used to resolve JMAP access for inbound
+  mailboxLocal    String   @map("mailbox_local") @db.VarChar(255)
+  filename        String   @db.VarChar(500)
+  mimeType        String   @db.VarChar(255)
+  sizeBytes       BigInt   @map("size_bytes")
+  storageKey      String   @map("storage_key") @db.VarChar(1000)
+  storageProvider String   @map("storage_provider") @db.VarChar(20)
+  // "inbound" (arrived in a platform mailbox) | "outbound" (sent via compose)
+  direction       String   @db.VarChar(10)
+  createdAt       DateTime @default(now()) @map("created_at") @db.Timestamptz
+
+  @@index([messageId])
+  @@map("email_attachments")
+  @@schema("email")
 }
 
 // =============================================
@@ -870,8 +923,8 @@ model RealtimeChannel {
   presence RealtimePresence[]
 
   @@unique([projectId, name])
-  @@schema("realtime")
   @@map("channels")
+  @@schema("realtime")
 }
 
 model RealtimeMessage {
@@ -884,8 +937,8 @@ model RealtimeMessage {
 
   channel RealtimeChannel @relation(fields: [channelId], references: [id], onDelete: Cascade)
 
-  @@schema("realtime")
   @@map("messages")
+  @@schema("realtime")
 }
 
 model RealtimePresence {
@@ -899,8 +952,8 @@ model RealtimePresence {
   channel RealtimeChannel @relation(fields: [channelId], references: [id], onDelete: Cascade)
 
   @@unique([projectId, userId, channelId])
-  @@schema("realtime")
   @@map("presence")
+  @@schema("realtime")
 }
 
 // =============================================
@@ -937,8 +990,8 @@ model ManagedDatabase {
   provider  String  @default("internal-postgres") @db.VarChar(50)
 
   @@unique([projectId, environment, name])
-  @@schema("databases")
   @@map("managed")
+  @@schema("databases")
 }
 
 model DatabaseBackup {
@@ -953,8 +1006,8 @@ model DatabaseBackup {
 
   database ManagedDatabase @relation(fields: [databaseId], references: [id], onDelete: Cascade)
 
-  @@schema("databases")
   @@map("backups")
+  @@schema("databases")
 }
 
 // Per-database metrics snapshot written by the scheduler (Phase 14).
@@ -977,8 +1030,8 @@ model DatabaseMetric {
   database ManagedDatabase @relation(fields: [databaseId], references: [id], onDelete: Cascade)
 
   @@index([databaseId, recordedAt])
-  @@schema("infrastructure")
   @@map("database_metrics")
+  @@schema("infrastructure")
 }
 
 // =============================================
@@ -1004,8 +1057,8 @@ model Function {
   logs    FunctionLog[]
 
   @@unique([projectId, name])
-  @@schema("functions")
   @@map("instances")
+  @@schema("functions")
 }
 
 model FunctionLog {
@@ -1022,8 +1075,8 @@ model FunctionLog {
 
   function Function @relation(fields: [functionId], references: [id], onDelete: Cascade)
 
-  @@schema("functions")
   @@map("logs")
+  @@schema("functions")
 }
 
 // =============================================
@@ -1050,8 +1103,8 @@ model Queue {
   messages QueueMessage[]
 
   @@unique([projectId, name])
-  @@schema("queues")
   @@map("instances")
+  @@schema("queues")
 }
 
 model QueueMessage {
@@ -1070,8 +1123,8 @@ model QueueMessage {
 
   queue Queue @relation(fields: [queueId], references: [id], onDelete: Cascade)
 
-  @@schema("queues")
   @@map("messages")
+  @@schema("queues")
 }
 
 // =============================================
@@ -1100,8 +1153,8 @@ model CronJob {
   runs    CronJobRun[]
 
   @@unique([projectId, name])
-  @@schema("scheduler")
   @@map("cron_jobs")
+  @@schema("scheduler")
 }
 
 model CronJobRun {
@@ -1115,8 +1168,8 @@ model CronJobRun {
 
   cronJob CronJob @relation(fields: [cronJobId], references: [id], onDelete: Cascade)
 
-  @@schema("scheduler")
   @@map("runs")
+  @@schema("scheduler")
 }
 
 // =============================================
@@ -1134,8 +1187,8 @@ model Metric {
   project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
 
   @@index([projectId, metric, timestamp])
-  @@schema("monitoring")
   @@map("metrics")
+  @@schema("monitoring")
 }
 
 model AlertRule {
@@ -1155,8 +1208,8 @@ model AlertRule {
   project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
   alerts  Alert[]
 
-  @@schema("monitoring")
   @@map("alert_rules")
+  @@schema("monitoring")
 }
 
 model Alert {
@@ -1176,8 +1229,8 @@ model Alert {
   rule          AlertRule      @relation(fields: [ruleId], references: [id], onDelete: Cascade)
   notifications Notification[]
 
-  @@schema("monitoring")
   @@map("alerts")
+  @@schema("monitoring")
 }
 
 /// Delivery record for a single notification attempt on an alert.
@@ -1195,8 +1248,8 @@ model Notification {
   alert Alert @relation(fields: [alertId], references: [id], onDelete: Cascade)
 
   @@index([alertId])
-  @@schema("monitoring")
   @@map("notifications")
+  @@schema("monitoring")
 }
 
 model NotificationChannel {
@@ -1210,8 +1263,8 @@ model NotificationChannel {
 
   project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
 
-  @@schema("monitoring")
   @@map("notification_channels")
+  @@schema("monitoring")
 }
 
 // =============================================
@@ -1230,8 +1283,8 @@ model LogStream {
   entries LogEntry[]
 
   @@unique([projectId, name])
-  @@schema("logging")
   @@map("streams")
+  @@schema("logging")
 }
 
 model LogEntry {
@@ -1246,8 +1299,8 @@ model LogEntry {
 
   @@index([streamId, timestamp])
   @@index([streamId, level])
-  @@schema("logging")
   @@map("entries")
+  @@schema("logging")
 }
 
 // =============================================
@@ -1269,8 +1322,8 @@ model Template {
   project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
 
   @@unique([projectId, name])
-  @@schema("templates")
   @@map("instances")
+  @@schema("templates")
 }
 
 // =============================================
@@ -1292,8 +1345,8 @@ model AIConversation {
   messages AIMessage[]
 
   @@index([projectId, createdAt])
-  @@schema("ai")
   @@map("conversations")
+  @@schema("ai")
 }
 
 model AIMessage {
@@ -1309,8 +1362,8 @@ model AIMessage {
 
   conversation AIConversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
 
-  @@schema("ai")
   @@map("messages")
+  @@schema("ai")
 }
 
 // =============================================
@@ -1350,8 +1403,8 @@ model MarketplaceItem {
   @@index([type, status, isActive])
   @@index([type, category])
   @@index([authorId])
-  @@schema("marketplace")
   @@map("items")
+  @@schema("marketplace")
 }
 
 model MarketplaceReview {
@@ -1370,8 +1423,8 @@ model MarketplaceReview {
   item MarketplaceItem @relation(fields: [itemId], references: [id], onDelete: Cascade)
 
   @@unique([itemId, userId])
-  @@schema("marketplace")
   @@map("reviews")
+  @@schema("marketplace")
 }
 
 // =============================================
@@ -1393,8 +1446,8 @@ model PlatformEvent {
   @@index([type, timestamp])
   @@index([resourceType, resourceId])
   @@index([actorId])
-  @@schema("platform")
   @@map("events")
+  @@schema("platform")
 }
 
 // =============================================
@@ -1402,13 +1455,14 @@ model PlatformEvent {
 // =============================================
 
 enum InstallationLifecycle {
-  @@schema("public")
   UNCONFIGURED
   CONFIGURING
   CONFIGURED
   FAILED
   DEGRADED
   RECONFIGURING
+
+  @@schema("public")
 }
 
 // Singleton — id="installation" is the only row.
@@ -1418,8 +1472,8 @@ model InstallationStatus {
   lastOperationId String?               @map("last_operation_id")
   updatedAt       DateTime              @updatedAt @map("updated_at") @db.Timestamptz
 
-  @@schema("platform")
   @@map("installation_status")
+  @@schema("platform")
 }
 
 // One row per execution of an installation operation (configure, change-domain, retry).
@@ -1436,8 +1490,8 @@ model InstallationOperation {
   completedAt      DateTime? @map("completed_at") @db.Timestamptz
 
   @@index([status])
-  @@schema("platform")
   @@map("installation_operations")
+  @@schema("platform")
 }
 
 // Audit trail — every change to InstallationSettings is snapshot-recorded.
@@ -1449,27 +1503,27 @@ model InstallationSettingsVersion {
   snapshot    Json
   operationId String?  @map("operation_id") @db.VarChar(36)
 
-  @@schema("platform")
   @@map("installation_settings_versions")
+  @@schema("platform")
 }
 
 // The actual desired-state configuration — not operational state.
 model InstallationSettings {
-  id               String   @id @default("installation")
-  platformName     String   @default("FIDScript Deploy") @map("platform_name") @db.VarChar(255)
-  platformDomain   String   @default("") @map("platform_domain") @db.VarChar(255)
-  serverIp         String   @default("") @map("server_ip") @db.VarChar(45)
-  adminEmail       String   @default("") @map("admin_email") @db.VarChar(255)
+  id             String     @id @default("installation")
+  platformName   String     @default("FIDScript Deploy") @map("platform_name") @db.VarChar(255)
+  platformDomain String     @default("") @map("platform_domain") @db.VarChar(255)
+  serverIp       String     @default("") @map("server_ip") @db.VarChar(45)
+  adminEmail     String     @default("") @map("admin_email") @db.VarChar(255)
   // Auth method for the admin account: PASSWORD (email+password) or MAGIC_CODE (email-only, code per login)
-  authMethod       AuthMethod @default(PASSWORD) @map("auth_method")
-  dnsMode          String   @default("cloudflare_auto") @map("dns_mode") @db.VarChar(50)
+  authMethod     AuthMethod @default(PASSWORD) @map("auth_method")
+  dnsMode        String     @default("cloudflare_auto") @map("dns_mode") @db.VarChar(50)
   // Cloudflare API token lives in /run/secrets/cf_api_token — never in the database
-  branding         Json?
-  createdAt        DateTime @default(now()) @map("created_at") @db.Timestamptz
-  updatedAt        DateTime @updatedAt @map("updated_at") @db.Timestamptz
+  branding       Json?
+  createdAt      DateTime   @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt      DateTime   @updatedAt @map("updated_at") @db.Timestamptz
 
-  @@schema("platform")
   @@map("installation_settings")
+  @@schema("platform")
 }
 
 // =============================================
@@ -1481,8 +1535,8 @@ enum CredentialType {
   MAGIC_CODE
   PASSKEY
 
-  @@schema("identity")
   @@map("CredentialType")
+  @@schema("identity")
 }
 
 model UserCredential {
@@ -1498,6 +1552,6 @@ model UserCredential {
   // MagicCode rows are separate (identity.magic_codes) — they are one-time tokens, not credentials.
 
   @@unique([userId, type])
-  @@schema("identity")
   @@map("user_credentials")
+  @@schema("identity")
 }

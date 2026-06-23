@@ -8,6 +8,9 @@ import { EmailMessageController } from './controllers/email-message.controller';
 import { EmailCatchAllController } from './controllers/email-catch-all.controller';
 import { EmailInboundController } from './controllers/email-inbound.controller';
 import { EmailEventsController } from './controllers/email-events.controller';
+import { PlatformMailboxController } from './controllers/platform-mailbox-message.controller';
+import { PlatformAdminMailController } from './controllers/platform-admin-mail.controller';
+import { AttachmentConfigController } from './controllers/attachment-config.controller';
 import { EmailService } from './email.service';
 import { EmailDomainService } from './services/domain.service';
 import { EmailMailboxService } from './services/mailbox.service';
@@ -33,11 +36,17 @@ import { WebhookService } from './services/webhook.service';
 import { EmailMailboxListService } from './services/email-mailbox-crud.service';
 import { EmailBootstrapService } from './services/email-bootstrap.service';
 import { DomainsModule } from '@/modules/domains/domains.module';
+import { QueuesModule } from '@/modules/queues/queues.module';
+import { StorageModule } from '@/modules/storage/storage.module';
 import { IEmailProvider, EMAIL_PROVIDER } from './providers/i-email-provider';
 import { StalwartEmailProvider } from './providers/stalwart-email.provider';
+import { PlatformMailboxMessageService } from './services/platform-mailbox-message.service';
+import { AttachmentConfigService } from './services/attachment-config.service';
+import { AttachmentStorageService } from './services/attachment-storage.service';
+import { EmailAttachmentListener } from './services/attachment-event-listener.service';
 
 @Module({
-  imports: [DomainsModule],
+  imports: [DomainsModule, QueuesModule, StorageModule],
   controllers: [
     EmailDomainController,
     EmailMailboxController,
@@ -48,6 +57,9 @@ import { StalwartEmailProvider } from './providers/stalwart-email.provider';
     EmailCatchAllController,
     EmailInboundController,
     EmailEventsController,
+    PlatformMailboxController,
+    PlatformAdminMailController,
+    AttachmentConfigController,
   ],
   providers: [
     EmailService,
@@ -83,6 +95,10 @@ import { StalwartEmailProvider } from './providers/stalwart-email.provider';
     EmailMailboxListService,
     EmailBootstrapService,
     PlatformMailService,
+    PlatformMailboxMessageService,
+    AttachmentConfigService,
+    AttachmentStorageService,
+    EmailAttachmentListener,
   ],
   exports: [
     EmailService,
@@ -110,6 +126,9 @@ import { StalwartEmailProvider } from './providers/stalwart-email.provider';
     EMAIL_PROVIDER,
     WebhookService,
     PlatformMailService,
+    PlatformMailboxMessageService,
+    AttachmentConfigService,
+    AttachmentStorageService,
   ],
 })
 export class EmailModule {}
