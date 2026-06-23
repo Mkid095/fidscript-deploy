@@ -7,6 +7,7 @@ import { QueuesService } from '@/modules/queues/queues.service';
 import {
   CreateQueueDto, UpdateQueueDto, PublishMessageDto, PublishBatchDto,
   ConsumeMessageDto, AcknowledgeMessageDto, RetryMessageDto, MoveToDeadLetterDto,
+  PurgeQueueDto,
 } from '@/modules/queues/dto/index';
 
 @ApiTags('queues')
@@ -58,4 +59,11 @@ export class QueuesController {
     @Param('queueId') q: string,
     @Query() query: { status?: string; limit?: number; cursor?: string },
   ) { return this.queues.getQueueMessages(p, q, query); }
+
+  @Post(':queueId/purge')
+  async purgeQueue(
+    @Param('projectId') p: string,
+    @Param('queueId') q: string,
+    @Body() dto: PurgeQueueDto,
+  ) { return this.queues.purgeQueue(p, q, dto); }
 }

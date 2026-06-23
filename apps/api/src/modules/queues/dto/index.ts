@@ -51,3 +51,8 @@ export class MoveToDeadLetterDto {
   messageIds!: string[];
   reason?: string;
 }
+
+export class PurgeQueueDto {
+  /** If true, also purges dead-letter messages for this queue. Default false. */
+  includeDlq?: boolean;
+}

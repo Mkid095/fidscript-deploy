@@ -1,12 +1,9 @@
 'use client';
 
-
 import { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
-import { useParams, useSearchParams } from 'next/navigation';
-import { Card } from '@fidscript/ui';
-import { Button } from '@fidscript/ui';
-import { Spinner } from '@fidscript/ui';
+import { useRouter, useParams, useSearchParams } from 'next/navigation';
+import { Card, Button, Spinner, Modal } from '@fidscript/ui';
 
 import { useAuth } from '@/contexts/auth-context';
 import type { Deployment } from '@/types';
@@ -144,6 +141,11 @@ export default function DeploymentDetailPage() {
   const [deployment, setDeployment] = useState<Deployment | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [actionLoading, setActionLoading] = useState<string | null>(null);
+  const [showStop, setShowStop] = useState(false);
+  const [showDelete, setShowDelete] = useState(false);
+  const [showRebuild, setShowRebuild] = useState(false);
+  const router = useRouter();
 
   useEffect(() => {
     async function load() {
@@ -166,6 +168,50 @@ export default function DeploymentDetailPage() {
         <Spinner size="lg" />
       </div>
     );
+  }
+
+  async function handleStop() {
+    if (!projectId || !deploymentId) return;
+    setActionLoading('stop');
+    try {
+      const sdk = getSdk();
+      const updated = await sdk.deployments.stop(projectId, deploymentId);
+      setDeployment(updated);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Stop failed');
+    } finally {
+      setActionLoading(null);
+      setShowStop(false);
+    }
+  }
+
+  async function handleRebuild() {
+    if (!projectId || !deploymentId) return;
+    setActionLoading('rebuild');
+    try {
+      const sdk = getSdk();
+      const updated = await sdk.deployments.restart(projectId, deploymentId);
+      setDeployment(updated);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Rebuild failed');
+    } finally {
+      setActionLoading(null);
+      setShowRebuild(false);
+    }
+  }
+
+  async function handleDelete() {
+    if (!projectId || !deploymentId) return;
+    setActionLoading('delete');
+    try {
+      const sdk = getSdk();
+      await sdk.deployments.destroy(projectId, deploymentId);
+      router.push(`/deployments${projectId ? `?project=${projectId}` : ''}`);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Delete failed');
+      setActionLoading(null);
+      setShowDelete(false);
+    }
   }
 
   if (error || !deployment) {
@@ -257,12 +303,45 @@ export default function DeploymentDetailPage() {
 
       {/* Actions */}
       <div className="flex items-center gap-3">
-        <Button variant="secondary" size="sm">Rebuild</Button>
+        <Button variant="secondary" size="sm" onClick={() => setShowRebuild(true)}>Rebuild</Button>
         {isLive && (
-          <Button variant="danger" size="sm">Stop</Button>
+          <Button variant="danger" size="sm" onClick={() => setShowStop(true)}>Stop</Button>
         )}
-        <Button variant="danger" size="sm">Delete</Button>
+        <Button variant="danger" size="sm" onClick={() => setShowDelete(true)}>Delete</Button>
       </div>
+
+      {/* Stop Modal */}
+      <Modal isOpen={showStop} onClose={() => setShowStop(false)} title="Stop Deployment" size="sm">
+        <div className="space-y-4">
+          <p className="text-sm text-slate-400">Stop this deployment? It will remain deployed but the build will be cancelled.</p>
+          <div className="flex justify-end gap-3">
+            <Button variant="ghost" size="sm" onClick={() => setShowStop(false)}>Cancel</Button>
+            <Button variant="danger" size="sm" loading={actionLoading === 'stop'} onClick={handleStop}>Stop</Button>
+          </div>
+        </div>
+      </Modal>
+
+      {/* Delete Modal */}
+      <Modal isOpen={showDelete} onClose={() => setShowDelete(false)} title="Delete Deployment" size="sm">
+        <div className="space-y-4">
+          <p className="text-sm text-slate-400">Permanently delete this deployment? This cannot be undone.</p>
+          <div className="flex justify-end gap-3">
+            <Button variant="ghost" size="sm" onClick={() => setShowDelete(false)}>Cancel</Button>
+            <Button variant="danger" size="sm" loading={actionLoading === 'delete'} onClick={handleDelete}>Delete</Button>
+          </div>
+        </div>
+      </Modal>
+
+      {/* Rebuild Modal */}
+      <Modal isOpen={showRebuild} onClose={() => setShowRebuild(false)} title="Rebuild Deployment" size="sm">
+        <div className="space-y-4">
+          <p className="text-sm text-slate-400">Trigger a new build from the same source?</p>
+          <div className="flex justify-end gap-3">
+            <Button variant="ghost" size="sm" onClick={() => setShowRebuild(false)}>Cancel</Button>
+            <Button variant="primary" size="sm" loading={actionLoading === 'rebuild'} onClick={handleRebuild}>Rebuild</Button>
+          </div>
+        </div>
+      </Modal>
     </div>
   );
 }

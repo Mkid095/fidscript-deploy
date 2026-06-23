@@ -28,4 +28,5 @@ export class QueuesService {
   moveToDeadLetter(projectId: string, queueId: string, dto: any) { return this.consumer.moveToDeadLetter(projectId, queueId, dto); }
   getQueueMessages(projectId: string, queueId: string, dto?: any) { return this.consumer.getQueueMessages(projectId, queueId, dto?.status, dto?.limit, dto?.cursor); }
   getQueueStats(projectId: string, queueId: string) { return this.consumer.getQueueStats(projectId, queueId); }
+  purgeQueue(projectId: string, queueId: string, dto: any) { return this.consumer.purgeQueue(projectId, queueId, dto); }
 }

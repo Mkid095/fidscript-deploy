@@ -2,7 +2,7 @@ import { Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '@/prisma/prisma.service';
 import { EventService } from '@/modules/events/event.service';
 import { JetStreamQueueService } from './jetstream-queue.service';
-import { ConsumeMessageDto, AcknowledgeMessageDto, RetryMessageDto, MoveToDeadLetterDto } from '@/modules/queues/dto/index';
+import { ConsumeMessageDto, AcknowledgeMessageDto, RetryMessageDto, MoveToDeadLetterDto, PurgeQueueDto } from '@/modules/queues/dto/index';
 import { Prisma } from '@prisma/client';
 
 @Injectable()
@@ -142,6 +142,45 @@ export class QueueConsumerService {
       projectId,
     });
     return { moved: dto.messageIds.length, dlqId: dlq.id };
+  }
+
+  /**
+   * purgeQueue — delete all messages for a queue from Prisma (and optionally its DLQ).
+   * The actual JetStream purge is done asynchronously.
+   */
+  async purgeQueue(projectId: string, queueId: string, dto: PurgeQueueDto) {
+    const queue = await this.findQueue(projectId, queueId);
+
+    const where = { queueId };
+
+    // Always delete main queue messages; optionally include DLQ
+    const mainDeleted = await this.prisma.queueMessage.deleteMany({ where });
+
+    let dlqDeleted = 0;
+    if (dto.includeDlq && queue.deadLetterQueue) {
+      const dlq = await this.prisma.queue.findFirst({
+        where: { projectId, name: queue.deadLetterQueue },
+      });
+      if (dlq) {
+        const result = await this.prisma.queueMessage.deleteMany({ where: { queueId: dlq.id } });
+        dlqDeleted = result.count;
+      }
+    }
+
+    // Also purge the JetStream stream
+    await this.jsQueue.purgeStream(projectId, queue.name).catch(() => {/* non-fatal */});
+    if (dto.includeDlq && queue.deadLetterQueue) {
+      await this.jsQueue.purgeStream(projectId, queue.deadLetterQueue).catch(() => {/* non-fatal */});
+    }
+
+    await this.eventService.emit('queues.message.purged' as any, {
+      queueId,
+      projectId,
+      mainDeleted: mainDeleted.count,
+      dlqDeleted,
+    });
+
+    return { purged: mainDeleted.count, dlqPurged: dlqDeleted };
   }
 
   /**

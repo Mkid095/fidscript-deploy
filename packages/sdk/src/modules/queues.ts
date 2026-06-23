@@ -58,4 +58,32 @@ export class QueuesModule {
   async retry(projectId: string, queueId: string, messageIds: string[]) {
     return this.client.post(`/api/v1/projects/${projectId}/queues/${queueId}/retry`, { messageIds });
   }
+
+  async getMessages(projectId: string, queueId: string, opts?: { status?: string; limit?: number; cursor?: string }) {
+    const res = await this.client.get<{ messages: QueueMessage[]; nextCursor: string | null }>(
+      `/api/v1/projects/${projectId}/queues/${queueId}/messages`,
+      opts,
+    );
+    return res;
+  }
+
+  async purge(projectId: string, queueId: string, includeDlq = false) {
+    return this.client.post<{ purged: number; dlqPurged: number }>(
+      `/api/v1/projects/${projectId}/queues/${queueId}/purge`,
+      { includeDlq },
+    );
+  }
+
+  async getStats(projectId: string, queueId: string) {
+    return this.client.get<{
+      queueId: string;
+      jsDepth: number;
+      pending: number;
+      delivered: number;
+      acknowledged: number;
+      failed: number;
+      deadLettered: number;
+      total: number;
+    }>(`/api/v1/projects/${projectId}/queues/${queueId}/stats`);
+  }
 }

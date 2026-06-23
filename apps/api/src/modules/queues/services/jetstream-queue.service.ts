@@ -120,6 +120,18 @@ export class JetStreamQueueService {
     }
   }
 
+  async purgeStream(projectId: string, queueName: string): Promise<void> {
+    if (!this.jsm) return;
+    // Purge messages matching the queue's subject filter within the shared stream
+    const subject = this.subjectFor(projectId, queueName);
+    try {
+      await this.jsm.streams.purge(QUEUES_STREAM, { filter: subject });
+      this.logger.debug(`Purged JetStream messages for ${subject}`);
+    } catch (err) {
+      this.logger.warn(`Failed to purge stream ${subject}: ${(err as Error).message}`);
+    }
+  }
+
   get STREAM_NAME(): string {
     return QUEUES_STREAM;
   }
