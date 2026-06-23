@@ -40,16 +40,16 @@ history**. Nothing is left to interpretation.
 |------:|-------|------|-------------|--------|
 | F00 | Design System & App Foundation | `f00-design-system.md` | foundation | ✅ Spec done (light) — upgrade to full template |
 | F01 | Public Site (Landing + Docs) | `f01-public-site.md` | marketing | ✅ Implemented — spec to be upgraded |
-| F02 | Authentication | `f02-auth.md` | Phase 03 (auth/app-auth) | ✅ **Spec complete** (exemplar) — pending approval |
-| F03 | First-Run Onboarding | _todo_ | Phase 01 + `/health` | Spec pending |
-| F04 | Projects | _todo_ | Phase 04 (PROJ-*) | Spec pending |
-| F05 | Project Dashboard Shell | _todo_ | navigation | Spec pending |
-| F06 | Deployments UI | _todo_ | Phase 06 (DEPL-*) | Spec pending |
-| F07 | Functions UI | _todo_ | Phase 10 (FN-*) | Spec pending |
-| F08 | Databases UI | _todo_ | Phase 08 (DB-*) | Spec pending |
-| F09 | Storage UI | _todo_ | Phase 05 (STOR-*) | Spec pending |
-| F10 | Realtime / Queues / Scheduler | _todo_ | Phase 11/12/13 | Spec pending |
-| F11 | Email / Domains / Monitoring / Logs / Settings / MCP | _todo_ | 07/09/14/15/17 | Spec pending |
+| F02 | Authentication | `f02-auth.md` | Phase 03 (auth/app-auth) | ✅ Spec complete + implemented |
+| F03 | First-Run Onboarding | `f03-first-run-onboarding.md` | Phase 01 + `/health` | ✅ Spec done + `/setup` wizard implemented |
+| F04 | Projects | `f04-projects.md` | Phase 04 (PROJ-*) | ✅ Spec done + projects list + create modal implemented |
+| F05 | Project Dashboard Shell | `f05-project-dashboard-shell.md` | navigation | ✅ Spec done + shell implemented |
+| F06 | Deployments UI | `f06-deployments.md` | Phase 06 (DEPL-*) | ✅ Spec done + deployed |
+| F07 | Functions UI | `f07-functions.md` | Phase 10 (FN-*) | ✅ Spec done + implemented |
+| F08 | Databases UI | `f08-databases.md` | Phase 08 (DB-*) | ✅ Spec done + implemented |
+| F09 | Storage UI | `f09-storage.md` | Phase 05 (STOR-*) | ✅ Spec done + implemented |
+| F10 | Realtime / Queues / Scheduler | `f10-realtime-queues-scheduler.md` | Phase 11/12/13 | ✅ Spec done + implemented |
+| F11 | Email / Domains / Monitoring / Logs / Settings / MCP | `f11-email-domains-monitoring.md` | 07/09/14/15/17 | ✅ Spec done + implemented |
 
 **Implementation order respects dependencies** (see each spec's §15). F02 (auth) gates everything under
 `/dashboard/*`; F04 (projects) gates all project-scoped service screens.
