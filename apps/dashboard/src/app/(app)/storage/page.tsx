@@ -1,14 +1,8 @@
 'use client';
 
-
 import { useEffect, useState, useCallback } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { Card } from '@fidscript/ui';
-import { Button } from '@fidscript/ui';
-import { Input } from '@fidscript/ui';
-import { Spinner } from '@fidscript/ui';
-import { EmptyState } from '@fidscript/ui';
-import { Toast } from '@fidscript/ui';
+import { Card, Button, Input, Spinner, EmptyState, Toast } from '@fidscript/ui';
 
 import { useAuth } from '@/contexts/auth-context';
 import type { Project } from '@/types';
@@ -20,6 +14,12 @@ interface Bucket {
   status: string;
   createdAt: string;
 }
+
+const PROVIDERS = [
+  { value: 'minio', label: 'MinIO', available: true },
+  { value: 'cloudinary', label: 'Cloudinary', available: false },
+  { value: 'telegram', label: 'Telegram', available: false },
+];
 
 export default function StoragePage() {
   const { getSdk } = useAuth();
@@ -190,7 +190,15 @@ export default function StoragePage() {
                   <div>
                     <h3 className="text-sm font-semibold text-slate-200">{bucket.name}</h3>
                     <p className="text-xs text-slate-500 mt-0.5">
-                      Provider: {bucket.provider} &middot; Created {new Date(bucket.createdAt).toLocaleDateString()}
+                      {(() => {
+                        const p = PROVIDERS.find(x => x.value === bucket.provider);
+                        return (
+                          <span style={!p?.available ? { opacity: 0.5 } : undefined}>
+                            {p?.label ?? bucket.provider}{!p?.available ? ' (not yet available)' : ''}
+                          </span>
+                        );
+                      })()}
+                      &middot; Created {new Date(bucket.createdAt).toLocaleDateString()}
                     </p>
                   </div>
                   <span className={`text-xs px-2 py-0.5 rounded-full border ${

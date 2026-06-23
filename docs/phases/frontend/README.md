@@ -46,10 +46,10 @@ history**. Nothing is left to interpretation.
 | F05 | Project Dashboard Shell | `f05-project-dashboard-shell.md` | navigation | ✅ Spec done + shell implemented |
 | F06 | Deployments UI | `f06-deployments.md` | Phase 06 (DEPL-*) | ✅ Spec done + deployed |
 | F07 | Functions UI | `f07-functions-ui.md` | Phase 10 (FN-*) | ✅ Implemented (list + detail + create + invoke; Monaco editor + versions tab + DiffPanel pending) |
-| F08 | Databases UI | `f08-databases.md` | Phase 08 (DB-*) | ⏳ Spec done — pending implementation |
-| F09 | Storage UI | `f09-storage.md` | Phase 05 (STOR-*) | ⏳ Spec done — pending implementation |
-| F10 | Realtime / Queues / Scheduler | `f10-realtime-queues-scheduler.md` | Phase 11/12/13 | ⏳ Spec done — pending implementation |
-| F11 | Email / Domains / Monitoring / Logs / Settings / MCP | `f11-email-domains-monitoring.md` | 07/09/14/15/17 | ⏳ Spec done — pending implementation |
+| F08 | Databases UI | `f08-databases.md` | Phase 08 (DB-*) | ✅ Implemented (list + detail + create + rotate + restore; MySQL pending) |
+| F09 | Storage UI | `f09-storage.md` | Phase 05 (STOR-*) | ✅ Implemented (bucket list + detail + upload + delete; Cloudinary + Telegram pending) |
+| F10 | Realtime / Queues / Scheduler | `f10-realtime-queues-scheduler.md` | Phase 11/12/13 | ✅ Implemented (queue list + detail; cron list + detail) |
+| F11 | Email / Domains / Monitoring / Logs / Settings / MCP | `f11-email-domains-monitoring.md` | 07/09/14/15/17 | ✅ Implemented (email list + domain detail; monitoring + logs + settings pending deep spec) |
 
 **Implementation order respects dependencies** (see each spec's §15). F02 (auth) gates everything under
 `/dashboard/*`; F04 (projects) gates all project-scoped service screens.

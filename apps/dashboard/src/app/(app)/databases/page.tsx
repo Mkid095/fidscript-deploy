@@ -1,16 +1,11 @@
 'use client';
 
-
 import { useEffect, useState, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
-import { Card } from '@fidscript/ui';
-import { Button } from '@fidscript/ui';
-import { Input } from '@fidscript/ui';
-import { Spinner } from '@fidscript/ui';
-import { EmptyState } from '@fidscript/ui';
-import { Toast } from '@fidscript/ui';
+import { Card, Button, Input, Spinner, EmptyState, Toast } from '@fidscript/ui';
 
 import { useAuth } from '@/contexts/auth-context';
+import type { Project } from '@/types';
 
 interface Database {
   id: string;
@@ -125,6 +120,7 @@ export default function DatabasesPage() {
                 >
                   <option value="postgres">PostgreSQL</option>
                   <option value="redis">Redis</option>
+                  <option value="mysql" disabled style={{ opacity: 0.4 }}>MySQL (not yet available)</option>
                 </select>
               </div>
               <Button type="submit" variant="primary" size="sm" loading={creating}>

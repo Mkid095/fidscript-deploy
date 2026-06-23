@@ -1,12 +1,8 @@
 'use client';
 
-
 import { useEffect, useState } from 'react';
+import { Button, Card, EmptyState, Spinner } from '@fidscript/ui';
 import { useParams, useSearchParams } from 'next/navigation';
-import { Card } from '@fidscript/ui';
-import { Button } from '@fidscript/ui';
-import { Spinner } from '@fidscript/ui';
-import { EmptyState } from '@fidscript/ui';
 
 import { useAuth } from '@/contexts/auth-context';
 import type { AlertRule, Alert, NotificationChannel } from '@/types';

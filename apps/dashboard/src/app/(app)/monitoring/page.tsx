@@ -1,14 +1,8 @@
 'use client';
 
-
 import { useEffect, useState } from 'react';
+import { Button, Card, EmptyState, Input, Modal, Spinner } from '@fidscript/ui';
 import { useRouter } from 'next/navigation';
-import { Card } from '@fidscript/ui';
-import { Button } from '@fidscript/ui';
-import { Input } from '@fidscript/ui';
-import { Modal } from '@fidscript/ui';
-import { Spinner } from '@fidscript/ui';
-import { EmptyState } from '@fidscript/ui';
 
 import { useAuth } from '@/contexts/auth-context';
 import type { Project, AlertRule } from '@/types';

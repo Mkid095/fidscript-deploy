@@ -12,7 +12,7 @@ Current state of FIDScript Deploy development.
 |---|---|
 | **Current mode** | **Three-track execution** — platform (continuous), specs (one feature ahead), features (dependency-gated). Stage 0A+0B auth prereqs closed. F02 spec complete, pending approval. |
 | **Backend runtime** | End-to-end verified on the VPS: 23/23 phases verified, deployments + functions proven live, `/health` 200, soostori decommissioned + DB backed up. |
-| **Frontend status** | F00 ✅ verified. F01 ✅ verified. F02 ✅ implemented. F03 ✅ implemented (`/onboarding` + `/setup`). F04 ✅ implemented (projects list + create modal + project shell + activity feed). F05 ✅ implemented. F06 ✅ deployed. F07 ✅ implemented (list + detail + create + invoke; Monaco + versions + DiffPanel pending). F08–F11 — pending. |
+| **Frontend status** | F00 ✅ verified. F01 ✅ verified. F02 ✅ implemented. F03 ✅ implemented (`/onboarding` + `/setup`). F04 ✅ implemented (projects list + create modal + project shell + activity feed). F05 ✅ implemented. F06 ✅ deployed. F07 ✅ implemented (list + detail + create + invoke; Monaco + versions + DiffPanel pending). F08 ✅ implemented (databases list + detail + rotate + restore). F09 ✅ implemented (bucket list + detail + upload). F10 ✅ implemented (queues + scheduler). F11 ✅ implemented (email list + domain detail; monitoring + logs + settings audit pending). |
 | **Documentation blueprint** | See "Documentation-first phase" section below. |
 | **Snapshot baseline** | Commit `f1dd6f2` (Phase 00-23 scaffold, pre-hardening) |
 | **Reset date** | 2026-06-16 |

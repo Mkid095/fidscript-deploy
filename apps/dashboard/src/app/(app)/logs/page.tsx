@@ -1,12 +1,8 @@
 'use client';
 
-
 import { useEffect, useRef, useState } from 'react';
+import { Button, Card, EmptyState, Spinner } from '@fidscript/ui';
 import { useSearchParams } from 'next/navigation';
-import { Card } from '@fidscript/ui';
-import { Button } from '@fidscript/ui';
-import { Spinner } from '@fidscript/ui';
-import { EmptyState } from '@fidscript/ui';
 
 import { useAuth } from '@/contexts/auth-context';
 import type { Project, LogEntry } from '@/types';
