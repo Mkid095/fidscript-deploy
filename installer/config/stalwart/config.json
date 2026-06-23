@@ -1,0 +1,49 @@
+{
+  "@type": "RocksDb",
+  "path": "/var/lib/stalwart/data",
+  "BlobStore": {
+    "@type": "RocksDb",
+    "path": "/var/lib/stalwart/blob"
+  },
+  "SearchStore": {
+    "@type": "RocksDb",
+    "path": "/var/lib/stalwart/fts"
+  },
+  "LookupStore": {
+    "@type": "Memory"
+  },
+  "Directory": {
+    "@type": "Internal"
+  },
+  "Authentication": {
+    "fallback-admin": {
+      "user": "admin",
+      "secret": "$2b$12$CwO2G5zD5Q8tOKPlm6sOcuJMVsw1LxzFvI2Dp43v/udnET2i0UViK"
+    }
+  },
+  "server": {
+    "hostname": "deploy.fidscript.com",
+    "listener": {
+      "smtp": {
+        "bind": "[::]:25",
+        "protocol": "smtp"
+      },
+      "submissions": {
+        "bind": "[::]:465",
+        "protocol": "smtp",
+        "useTls": true,
+        "tlsImplicit": true
+      },
+      "imaptls": {
+        "bind": "[::]:993",
+        "protocol": "imap",
+        "useTls": true,
+        "tlsImplicit": true
+      },
+      "http": {
+        "protocol": "http",
+        "bind": "[::]:8080"
+      }
+    }
+  }
+}

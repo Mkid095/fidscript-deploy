@@ -10,6 +10,15 @@ const nextConfig: NextConfig = {
   // Monorepo root: makes `next build` trace the whole workspace and emit a
   // portable standalone output (used by apps/dashboard/Dockerfile).
   outputFileTracingRoot: path.resolve(__dirname, '../..'),
+  images: {
+    remotePatterns: [
+      {
+        protocol: 'https',
+        hostname: 'res.cloudinary.com',
+        pathname: '/dfp7uhzy3/image/upload/**',
+      },
+    ],
+  },
   experimental: {
     turbopack: {
       resolveExtensions: ['.tsx', '.ts', '.jsx', '.js'],

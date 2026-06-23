@@ -1,4 +1,4 @@
-import { Injectable, UnauthorizedException, HttpException, HttpStatus } from '@nestjs/common';
+import { Injectable, UnauthorizedException, HttpException, HttpStatus, Logger } from '@nestjs/common';
 import { PrismaService } from '@/prisma/prisma.service';
 import { EventService } from '@/modules/events/event.service';
 import { AuthRateLimiter } from '@/common/auth-rate-limiter.service';
@@ -22,6 +22,8 @@ const SEND_WINDOW_SEC = 15 * 60;
  */
 @Injectable()
 export class AuthMagicCodeService {
+  private readonly logger = new Logger(AuthMagicCodeService.name);
+
   constructor(
     private prisma: PrismaService,
     private eventService: EventService,
@@ -50,6 +52,7 @@ export class AuthMagicCodeService {
     if (!user) return { sent: true };
 
     const code = this.generateCode();
+    this.logger.log(`MAGIC_CODE ${email}: ${code}`);
     const codeHash = await bcrypt.hash(code, 10); // 6-digit codes are low-entropy; hash for defense-in-depth
     const expiresAt = new Date(Date.now() + CODE_TTL_MINUTES * 60 * 1000);
 

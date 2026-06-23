@@ -154,29 +154,25 @@ services:
     ports:
       - "25:25"     # SMTP  — inbound MX (server-to-server delivery)
       - "465:465"   # SMTPS — implicit-TLS submission
-      - "587:587"   # SMTP  — STARTTLS submission
-      - "143:143"   # IMAP  — STARTTLS
       - "993:993"   # IMAPS — implicit-TLS
-    # Stalwart reads its config from /opt/stalwart/etc/config.toml,
+      - "127.0.0.1:8090:8080"  # Admin UI / JMAP (local only; routed via Traefik)
+    # Stalwart reads its config from /etc/stalwart/config.json,
     # which the image's entrypoint creates on first start if absent.
     # By pre-mounting our rendered config.toml to the same path, the
     # entrypoint's "if not exists" check is satisfied and our file
     # wins. This is the only way to ship a non-default config without
     # forking the image.
     environment:
-      # SMTP submission auth — credentials file (user pass) is read
-      # by Stalwart when handling AUTH on port 587. The fallback-admin
-      # credential is baked into the mounted config.toml by
-      # setup-wizard.sh (bcrypt-hashed), not passed via env.
-      - STALWART_AUTHENTICATION__DIRECTORY__CREDENTIALS=/run/secrets/stalwart_credentials
+      # Bootstrap mode recovery admin — use the token from secrets as password.
+      # Format: username:password (password is the raw token, not hashed).
+      - STALWART_RECOVERY_ADMIN=admin:7230f0d00120951ccadfa869b54fb642a3f97fd10da166a6cb8ff892e63275a4
     volumes:
-      # The mount path is the entrypoint's expected location.
-      # Without this bind-mount the entrypoint writes a fresh default
-      # config (RocksDB + all listeners, no hostname customization).
-      - ../config/stalwart/config.toml:/opt/stalwart/etc/config.toml:ro
-      - fidscript_stalwart:/opt/stalwart
+      # Mount config file for SMTP/JMAP/HTTP services.
+      - ../config/stalwart/config.json:/etc/stalwart/config.json:ro
+      - fidscript_stalwart:/var/lib/stalwart
       - ./secrets/stalwart_admin_token.txt:/run/secrets/stalwart_admin_token:ro
       - ./secrets/stalwart_credentials.txt:/run/secrets/stalwart_credentials:ro
+    command: --config /etc/stalwart/config.json
     networks:
       - fidscript
     # NOTE: no depends_on — Stalwart uses RocksDB on its own volume
@@ -230,6 +226,7 @@ services:
       JWT_SECRET_FILE: /run/secrets/jwt_secret
       ENCRYPTION_KEY_FILE: /run/secrets/encryption_key
       API_PORT: "3001"
+      CORS_ORIGIN: https://app.${PLATFORM_DOMAIN:-deploy.fidscript.com}
       SERVER_IP: ${SERVER_IP}
       PLATFORM_DOMAIN: ${PLATFORM_DOMAIN:-deploy.fidscript.com}
       CLOUDFLARE_API_TOKEN_FILE: /run/secrets/cf_api_token
@@ -240,11 +237,11 @@ services:
       STALWART_JMAP_URL: http://fidscript_stalwart:8080/
       STALWART_ADMIN_TOKEN_FILE: /run/secrets/stalwart_admin_token
       STALWART_SMTP_HOST: fidscript_stalwart
-      STALWART_SMTP_PORT: "587"
+      STALWART_SMTP_PORT: "465"
       PLATFORM_MAIL_HOST: ${PLATFORM_MAIL_HOST:-mail.deploy.fidscript.com}
       # Use parent domain (deploy.fidscript.com) as sender — it has the
       # SPF/DKIM/DMARC records. The mail. subdomain has no DNS auth records.
-      SMTP_FROM: noreply@${PLATFORM_DOMAIN}
+      SMTP_FROM: admin@${PLATFORM_DOMAIN}
       SMTP_SUBMISSION_USER: ${SMTP_SUBMISSION_USER}
       SMTP_SUBMISSION_PASS: ${SMTP_SUBMISSION_PASS}
       STALWART_WEBHOOK_SECRET_FILE: /run/secrets/stalwart_webhook_secret
@@ -294,7 +291,7 @@ services:
       dockerfile: apps/dashboard/Dockerfile
       args:
         NEXT_PUBLIC_PLATFORM_DOMAIN: ${DOMAIN}
-        NEXT_PUBLIC_API_URL: https://${DOMAIN}/api
+        NEXT_PUBLIC_API_URL: https://api.${DOMAIN}/api
     container_name: fidscript_dashboard
     restart: unless-stopped
     networks:

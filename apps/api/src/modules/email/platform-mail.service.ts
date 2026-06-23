@@ -66,9 +66,16 @@ export class PlatformMailService {
 
   async send(dto: { to: string; subject: string; text?: string; html?: string }): Promise<{ status: 'sent' | 'failed'; error?: string }> {
     const smtpHost = this.config.get<string>('STALWART_SMTP_HOST', 'fidscript_stalwart');
-    const smtpPort = this.config.get<number>('STALWART_SMTP_PORT', 465);
+    // CRITICAL: env-var values come back as STRINGS, so the original
+    // `smtpPort === 465` check was always false → `secure: false` → no
+    // implicit TLS → Stalwart (which only speaks TLS on 465) sits silent
+    // and we get "Greeting never received" 30s later. Coerce to number.
+    const smtpPort = Number(this.config.get('STALWART_SMTP_PORT', 465));
     const from = this.config.get<string>('SMTP_FROM', 'noreply@localhost');
     // Use SMTP_SUBMISSION_USER/PASS for authenticated submission (from .env/docker-compose).
+    // The user must be the FULL EMAIL (e.g. "admin@deploy.fidscript.com"), not just the
+    // local part — Stalwart v0.16 SMTP AUTH keys on the full principal name. Without
+    // the @domain the server returns "535 Authentication credentials invalid".
     const smtpUser = this.config.get<string>('SMTP_SUBMISSION_USER', 'admin');
     const smtpPass = this.config.get<string>('SMTP_SUBMISSION_PASS', this.adminToken);
 
@@ -79,16 +86,24 @@ export class PlatformMailService {
       secure: smtpPort === 465,
       auth: { user: smtpUser, pass: smtpPass },
       tls: { rejectUnauthorized: false },
+      // Aggressive timeouts: the SMTP server is on the same Docker network
+      // (zero-hop). 5s connect, 5s greeting is plenty; if the connection
+      // doesn't complete in that time, fail fast and log the error so
+      // operators see a clear "Greeting never received" rather than a
+      // 60s silent hang.
+      connectionTimeout: 5000,
+      greetingTimeout: 5000,
     });
 
     try {
-      await transporter.sendMail({
+      const info = await transporter.sendMail({
         from,
         to: dto.to,
         subject: dto.subject,
         text: dto.text,
         html: dto.html,
       });
+      this.logger.log(`platform mail to ${dto.to} queued: ${info.messageId}`);
       return { status: 'sent' };
     } catch (err) {
       const error = err instanceof Error ? err.message : String(err);

@@ -14,6 +14,7 @@ http:
 
   routers:
     # ── Public API ───────────────────────────────────────────────────────────
+    # ── API on subdomain ──────────────────────────────────────────────────────
     api:
       rule: "Host(`api.deploy.fidscript.com`)"
       service: fidscript-api
@@ -22,6 +23,17 @@ http:
         - compress
       tls:
         certResolver: letsencrypt-dns
+
+    # ── API on root domain path ────────────────────────────────────────────────
+    api-root:
+      rule: "Host(`deploy.fidscript.com`) && PathPrefix(`/api`)"
+      service: fidscript-api
+      middlewares:
+        - security-headers
+        - compress
+      tls:
+        certResolver: letsencrypt-dns
+      priority: 30
 
     # ── Dashboard (app subdomain) — must come BEFORE wildcard ─────────────────
     dashboard-app:
@@ -90,7 +102,20 @@ http:
       middlewares:
         - security-headers
 
+    # ── Stalwart admin (setup wizard on high port) ──────────────────────────
+    stalwart-admin:
+      rule: "Host(`stalwart-admin.deploy.fidscript.com`)"
+      service: fidscript-stalwart-admin-svc
+      middlewares:
+        - security-headers
+      tls:
+        certResolver: letsencrypt-dns
+
   services:
+    fidscript-stalwart-admin-svc:
+      loadBalancer:
+        servers:
+          - url: "http://10.0.3.7:8080"
     fidscript-api:
       loadBalancer:
         servers:

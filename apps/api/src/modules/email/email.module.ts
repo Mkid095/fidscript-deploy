@@ -33,6 +33,8 @@ import { WebhookService } from './services/webhook.service';
 import { EmailMailboxListService } from './services/email-mailbox-crud.service';
 import { EmailBootstrapService } from './services/email-bootstrap.service';
 import { DomainsModule } from '@/modules/domains/domains.module';
+import { IEmailProvider, EMAIL_PROVIDER } from './providers/i-email-provider';
+import { StalwartEmailProvider } from './providers/stalwart-email.provider';
 
 @Module({
   imports: [DomainsModule],
@@ -68,6 +70,15 @@ import { DomainsModule } from '@/modules/domains/domains.module';
     StalwartAccountService,
     StalwartIdentityService,
     StalwartSieveService,
+    StalwartEmailProvider,
+    {
+      // The platform talks to the mail server only through the IEmailProvider
+      // interface; the concrete StalwartEmailProvider is the only impl today.
+      // Add new providers (M365, Google Workspace) by adding an alternate
+      // binding here and switching based on tenant config.
+      provide: EMAIL_PROVIDER,
+      useExisting: StalwartEmailProvider,
+    },
     WebhookService,
     EmailMailboxListService,
     EmailBootstrapService,
@@ -95,6 +106,8 @@ import { DomainsModule } from '@/modules/domains/domains.module';
     StalwartAccountService,
     StalwartIdentityService,
     StalwartSieveService,
+    StalwartEmailProvider,
+    EMAIL_PROVIDER,
     WebhookService,
     PlatformMailService,
   ],
