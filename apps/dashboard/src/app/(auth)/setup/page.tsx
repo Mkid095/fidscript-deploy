@@ -1,8 +1,8 @@
 'use client';
 
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { HugeiconsIcon } from '@hugeicons/react';
-import { Mail01Icon, LockPasswordIcon, CheckmarkCircle01Icon, Key01Icon } from '@hugeicons/core-free-icons';
+import { Mail01Icon, LockPasswordIcon, CheckmarkCircle01Icon } from '@hugeicons/core-free-icons';
 import { Button } from '@fidscript/ui';
 import { Input } from '@fidscript/ui';
 import { Card } from '@fidscript/ui';
@@ -33,6 +33,11 @@ const STEP_LABELS: Record<string, string> = {
   health: 'Health',
 };
 
+function getApiBase(): string {
+  if (typeof window === 'undefined') return 'http://localhost:3001';
+  return `${window.location.protocol}//${window.location.host}`;
+}
+
 function fetchJson<T>(url: string, init?: RequestInit): Promise<T> {
   return fetch(url, {
     ...init,
@@ -57,6 +62,11 @@ export default function SetupPage() {
   const [confirmPassword, setConfirmPassword] = useState('');
   const [formError, setFormError] = useState('');
 
+  // Inline domain validation
+  const [domainError, setDomainError] = useState<string | null>(null);
+  const [validatingDomain, setValidatingDomain] = useState(false);
+  const domainValidAbortRef = useRef<AbortController | null>(null);
+
   // Progress state
   const [progressSteps, setProgressSteps] = useState<Record<string, 'pending' | 'done' | 'error'>>({});
   const [currentStep, setCurrentStep] = useState('');
@@ -69,9 +79,48 @@ export default function SetupPage() {
 
   useEffect(() => {
     fetchJson<DiscoveryInfo>('/api/v1/installation/discover')
-      .then(data => setServerIp(data.serverIp))
+      .then(data => {
+        if (data.lifecycle === 'CONFIGURED') {
+          window.location.href = '/login';
+        } else {
+          setServerIp(data.serverIp);
+        }
+      })
       .catch(() => {/* non-fatal */});
   }, []);
+
+  // Debounced API validation for domain field while typing.
+  useEffect(() => {
+    if (!platformDomain) { setDomainError(null); setValidatingDomain(false); return; }
+    const re = /^(?:[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?\.)+[a-zA-Z]{2,}$/;
+    if (!re.test(platformDomain) || platformDomain.startsWith('.')) {
+      setDomainError('Enter a valid domain like deploy.example.com');
+      return;
+    }
+    setDomainError(null);
+
+    const timer = setTimeout(() => {
+      domainValidAbortRef.current?.abort();
+      const controller = new AbortController();
+      domainValidAbortRef.current = controller;
+      setValidatingDomain(true);
+      const current = platformDomain;
+      fetch(
+        `${getApiBase()}/api/v1/installation/validate?platformDomain=${encodeURIComponent(current)}`,
+        { signal: controller.signal }
+      )
+        .then(res => res.json())
+        .then((payload: { validations: Array<{ step: string; valid: boolean; issues: string[] }> }) => {
+          if (current !== platformDomain) return;
+          const dnsVal = payload.validations?.find(v => v.step === 'dns');
+          if (dnsVal && !dnsVal.valid) setDomainError(dnsVal.issues[0] ?? 'Domain validation failed');
+        })
+        .catch(err => { if (err.name !== 'AbortError') setDomainError('Validation request failed'); })
+        .finally(() => { if (current === platformDomain) setValidatingDomain(false); });
+    }, 500);
+
+    return () => { clearTimeout(timer); domainValidAbortRef.current?.abort(); };
+  }, [platformDomain]);
 
   // ── Method selection ──────────────────────────────────────────────────────
 
@@ -85,6 +134,7 @@ export default function SetupPage() {
 
   function validateDomainForm(): boolean {
     if (!platformDomain.trim()) { setFormError('Platform domain is required'); return false; }
+    if (domainError) { setFormError(domainError); return false; }
     if (!adminEmail.trim()) { setFormError('Admin email is required'); return false; }
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(adminEmail)) { setFormError('Enter a valid admin email address'); return false; }
     if (authMethod === 'PASSWORD') {
@@ -292,15 +342,29 @@ export default function SetupPage() {
                 className="bg-[#080a0d] border border-[#1e2130] text-slate-200 placeholder:text-slate-600"
               />
 
-              <Input
-                label="Platform Domain"
-                type="text"
-                value={platformDomain}
-                onChange={e => setPlatformDomain(e.target.value)}
-                placeholder="deploy.mycompany.com"
-                required
-                className="bg-[#080a0d] border border-[#1e2130] text-slate-200 placeholder:text-slate-600"
-              />
+              <div>
+                <label htmlFor="platformDomain" className="block text-xs text-slate-400 mb-1.5">
+                  Platform Domain
+                  {validatingDomain ? (
+                    <span className="ml-2 text-yellow-400">checking…</span>
+                  ) : platformDomain && !domainError ? (
+                    <span className="ml-1 text-emerald-400">✓</span>
+                  ) : null}
+                </label>
+                <input
+                  id="platformDomain"
+                  type="text"
+                  value={platformDomain}
+                  onChange={e => { setPlatformDomain(e.target.value); setFormError(''); }}
+                  placeholder="deploy.mycompany.com"
+                  className="w-full bg-[#080a0d] border border-[#1e2130] text-slate-200 rounded px-3 py-2 text-sm focus:outline-none focus:border-blue-500 placeholder:text-slate-600"
+                />
+                {domainError ? (
+                  <p className="text-xs text-red-400 mt-1">{domainError}</p>
+                ) : !domainError && platformDomain ? (
+                  <p className="text-xs text-emerald-400 mt-1">Looks good</p>
+                ) : null}
+              </div>
 
               <Input
                 label="Cloudflare API Token"

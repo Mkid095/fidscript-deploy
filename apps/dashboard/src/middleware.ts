@@ -44,8 +44,8 @@ export async function middleware(req: NextRequest) {
   // API routes — always pass through
   if (pathname.startsWith('/api/')) return NextResponse.next();
 
-  // /setup — always accessible
-  if (pathname === '/setup') return NextResponse.next();
+  // /setup and /onboarding — always accessible (both are installation entry points)
+  if (pathname === '/setup' || pathname === '/onboarding') return NextResponse.next();
 
   // Skip static assets
   if (pathname.startsWith('/_next/') || pathname === '/favicon.ico') return NextResponse.next();
