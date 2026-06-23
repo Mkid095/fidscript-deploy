@@ -1,168 +1,123 @@
 /**
- * Stalwart account (mailbox user) management for v0.15.5.
+ * Stalwart account (mailbox user) management — v0.16 only.
  *
- * In Stalwart v0.15, accounts (principals) are created and managed via the
- * REST API at /api/principal — NOT via JMAP. There is no x:Account/set
- * or x:Account/get in v0.15.5; those were added in v0.16.
+ * In Stalwart v0.15 the principal REST API at `/api/principal` was the only
+ * way to manage accounts. That endpoint was removed in v0.16 — accounts are
+ * now created/managed exclusively via JMAP admin methods
+ * (`x:Account/set`, `x:AccountPassword/set`, etc.) under the
+ * `urn:stalwart:jmap` capability.
  *
- * The REST API accepts:
- *   POST /api/principal  { name, secrets?, type?, description? }
- *   GET  /api/principal  → { data: { items: [...], total } }
- *   GET  /api/principal/{id}  → { error: "notFound", item: "id" }
+ * This service is now a thin, backward-compatible wrapper around
+ * `IEmailProvider` so existing call sites (`mailbox.service`,
+ * `mailbox-cleanup.service`, `domain-cleanup.service`, `stalwart-jmap.service`)
+ * keep working while the heavy lifting is done by `StalwartEmailProvider`.
  *
- * Authentication to the REST API uses HTTP Basic (same as JMAP).
+ * v0.16 credential format: `credentials` is an object map keyed by
+ * integer-string (a `map<integer, Credential>` type), not a list. The
+ * primary password lives at key `0` with `@type: "Password"`. See
+ * https://stalw.art/docs/management/cli/create#multi-variant-objects.
  */
-import { Injectable, InternalServerErrorException } from '@nestjs/common';
-import { ConfigService } from '@nestjs/config';
-import { StalwartJmapService } from '@/modules/email/stalwart/stalwart-core.service';
-
-interface PrincipalItem {
-  id: number;
-  type: string;
-  name: string;
-  description?: string;
-  secrets?: string[];
-}
-
-interface PrincipalListResponse {
-  data: {
-    items: PrincipalItem[];
-    total: number;
-  };
-}
+import { Inject, Injectable, InternalServerErrorException } from '@nestjs/common';
+import { EMAIL_PROVIDER, IEmailProvider } from '@/modules/email/providers/i-email-provider';
 
 @Injectable()
 export class StalwartAccountService {
-  private readonly baseURL: string;
-
-  constructor(
-    private configService: ConfigService,
-    private stalwartCore: StalwartJmapService,
-  ) {
-    // The REST API is at the same host as JMAP, no /jmap suffix
-    const jmapUrl = this.configService.get('STALWART_JMAP_URL', 'http://fidscript_stalwart:8080');
-    this.baseURL = jmapUrl;
-  }
+  constructor(@Inject(EMAIL_PROVIDER) private readonly email: IEmailProvider) {}
 
   /**
-   * Make an authenticated HTTP request to the Stalwart REST API.
-   * v0.15 uses HTTP Basic auth (same credentials as JMAP).
-   */
-  private async api<T>(path: string, method = 'GET', body?: unknown): Promise<T> {
-    const adminToken = this.configService.get('STALWART_ADMIN_TOKEN', '');
-    const credentials = Buffer.from('admin:' + adminToken).toString('base64');
-    const axios = require('axios') as typeof import('axios');
-    const response = await axios.create({
-      baseURL: this.baseURL,
-      headers: {
-        Authorization: `Basic ${credentials}`,
-        'Content-Type': 'application/json',
-      },
-      timeout: 15000,
-    }).request<T>({ url: path, method, data: body });
-    return response.data;
-  }
-
-  /**
-   * Create an IMAP/SMTP mailbox account (principal) in Stalwart v0.15.
-   * The account is created via POST /api/principal with a plaintext password.
-   * Stalwart stores the credentials for IMAP/SMTP PLAIN auth on port 465/993.
+   * Create an IMAP/SMTP mailbox account in Stalwart v0.16.
+   *
+   * The password is stored by the provider (currently Stalwart's internal
+   * directory, bcrypt-hashed). For v0.16 the returned id is the JMAP
+   * account id (e.g. "d" — a short opaque string assigned by the server).
    */
   async createAccount(
     email: string,
     password: string,
     displayName?: string,
-    _quotaMb = 1024,
+    quotaMb = 1024,
   ): Promise<{ id: string; name: string }> {
-    try {
-      const body: Record<string, unknown> = {
-        name: email,
-        type: 'individual',
-        secrets: [password],
-        // The address MUST be in `emails` for recipient validation to accept
-        // inbound delivery for this mailbox (the `name` alone is not enough).
-        emails: [email],
-      };
-      if (displayName) body.description = displayName;
-
-      const response = await this.api<{ data: number }>('/api/principal', 'POST', body);
-      // Response: { data: <numeric_id> }
-      if (!response.data || typeof response.data !== 'number') {
-        throw new InternalServerErrorException(
-          `Stalwart /api/principal did not return an account ID: ${JSON.stringify(response)}`,
-        );
-      }
-      return { id: String(response.data), name: email };
-    } catch (err) {
-      if (err instanceof InternalServerErrorException) throw err;
-      const msg = err instanceof Error ? err.message : String(err);
-      throw new InternalServerErrorException(`Failed to create Stalwart account: ${msg}`);
+    const [localPart, domain] = email.split('@', 2);
+    if (!localPart || !domain) {
+      throw new InternalServerErrorException(`Invalid email address: ${email}`);
     }
+    const d = await this.email.ensureDomain({ name: domain, isEnabled: true });
+    const m = await this.email.createMailbox({
+      name: localPart,
+      domainId: d.id,
+      description: displayName,
+      password,
+      quotaBytes: quotaMb * 1024 * 1024,
+    });
+    return { id: m.id, name: email };
   }
 
   /**
-   * Enable or disable an account by updating its status.
-   * In v0.15, principals don't have an explicit "active" status field via the REST API.
-   * This is a no-op — account status is implicit from whether secrets are set.
+   * Enable or disable an account by updating its `isEnabled` flag.
+   * v0.16 supports this directly on `x:Account/set` (no separate
+   * "suspend" concept; the operator just toggles the flag and the
+   * SMTP/IMAP/JMAP services all check it before authenticating).
    */
   async setAccountStatus(stalwartAccountId: string, active: boolean): Promise<void> {
-    if (!active) {
-      // In v0.15, disabling means removing secrets (no auth possible without password)
-      // but there is no PATCH /api/principal endpoint. Log and continue.
-    }
-    // v0.15 has no account status management via REST API
+    await this.email.setMailboxEnabled(stalwartAccountId, active);
   }
 
   /**
-   * Delete a principal from Stalwart v0.15.
-   * There is no DELETE /api/principal in v0.15. Principals cannot be removed
-   * via the REST API in this version. Log a warning.
+   * Remove a principal/account from Stalwart. v0.16 supports
+   * `x:Account/set` with `destroy: [id]`, which the provider implements
+   * for both individual and group accounts.
    */
   async deleteAccount(stalwartAccountId: string): Promise<void> {
-    // v0.15: Principals cannot be deleted via REST API
+    await this.email.deleteMailbox(stalwartAccountId);
   }
 
   /**
    * Update the password (secret) for an existing account.
-   * In v0.15, there is no PATCH /api/principal — secrets are write-once.
+   * v0.16: `x:Account/set` with `update.<id>.credentials.0.secret`.
    */
   async setAccountPassword(stalwartAccountId: string, newPassword: string): Promise<void> {
-    // v0.15: Password cannot be updated via REST API
+    await this.email.setMailboxPassword(stalwartAccountId, newPassword);
   }
 
   /**
-   * List all principals (accounts) in Stalwart v0.15.
+   * List all mailboxes in Stalwart. The provider filters by domain id
+   * server-side when given; this convenience wrapper does not.
    */
   async listAccounts(): Promise<Array<{ id: string; name: string; status: string }>> {
-    const response = await this.api<PrincipalListResponse>('/api/principal');
-    return (response.data?.items ?? []).map((p) => ({
-      id: String(p.id),
-      name: p.name,
-      status: 'active',
+    const all = await this.email.listMailboxes();
+    return all.map((m) => ({
+      id: m.id,
+      name: m.name,
+      status: m.isEnabled ? 'active' : 'disabled',
     }));
   }
 
   /**
-   * Idempotently ensure a DOMAIN principal exists. In Stalwart v0.15 a domain
-   * is treated as LOCAL (mail accepted/delivered for it) only when a principal
-   * of type "domain" exists for it. Created via POST /api/principal.
+   * Idempotently ensure a DOMAIN exists in Stalwart.
+   * v0.16: `x:Domain/set` create-or-update.
    */
   async ensureDomainPrincipal(domain: string): Promise<void> {
-    const res = await this.api<PrincipalListResponse>('/api/principal');
-    const exists = (res.data?.items ?? []).some((p) => p.type === 'domain' && p.name === domain);
-    if (exists) return;
-    await this.api('/api/principal', 'POST', { type: 'domain', name: domain, description: `${domain} (local)` });
+    await this.email.ensureDomain({ name: domain, isEnabled: true });
   }
 
   /**
-   * Idempotently ensure an INDIVIDUAL account (mailbox) exists. Skips creation
-   * if a principal with this email already exists (no password overwrite —
-   * v0.15 secrets are write-once anyway).
+   * Idempotently ensure a mailbox exists.
+   * Used by the system-mailbox bootstrap path; safe to call repeatedly.
    */
   async ensureAccount(email: string, password: string, displayName?: string): Promise<void> {
-    const res = await this.api<PrincipalListResponse>('/api/principal');
-    const exists = (res.data?.items ?? []).some((p) => p.name === email);
-    if (exists) return;
+    const all = await this.email.listMailboxes();
+    const matches = await Promise.all(
+      all.map(async (m) => ({
+        m,
+        full: `${m.name}@${await this.domainName(m.domainId)}`,
+      })),
+    );
+    if (matches.some((x) => x.full === email)) return;
     await this.createAccount(email, password, displayName);
+  }
+
+  private async domainName(domainId: string): Promise<string> {
+    const list = await this.email.listDomains();
+    return list.find((d) => d.id === domainId)?.name ?? domainId;
   }
 }
