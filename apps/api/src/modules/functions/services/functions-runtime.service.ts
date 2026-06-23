@@ -39,6 +39,10 @@ export class FunctionsRuntimeService {
     }
 
     const version = dto.version || `${Date.now()}`;
+
+    // Save versioned snapshot (readable but not the active handler)
+    await fs.writeFile(path.join(functionDir, `handler.v${version}.${ext}`), dto.code, { mode: 0o444 });
+
     await this.prisma.function.update({
       where: { id: functionId },
       data: { currentVersion: version, status: 'deployed' },
@@ -112,5 +116,28 @@ export class FunctionsRuntimeService {
       distinct: ['version'],
       orderBy: { createdAt: 'desc' },
     });
+  }
+
+  async getFunctionCode(projectId: string, functionId: string, version?: string) {
+    const func = await this.prisma.function.findFirst({ where: { id: functionId, projectId } });
+    if (!func) throw new NotFoundException('Function not found');
+    const ext = func.runtime === 'nodejs' ? 'js' : func.runtime === 'python' ? 'py' : 'txt';
+    const functionDir = path.join(this.functionsPath, projectId, functionId);
+
+    async function fileExists(p: string) {
+      try { await fs.access(p, fs.constants.F_OK); return true; } catch { return false; }
+    }
+
+    if (version) {
+      const versionedPath = path.join(functionDir, `handler.v${version}.${ext}`);
+      if (await fileExists(versionedPath)) {
+        return { code: await fs.readFile(versionedPath, 'utf8'), versioned: true };
+      }
+    }
+    const currentPath = path.join(functionDir, `handler.${ext}`);
+    if (await fileExists(currentPath)) {
+      return { code: await fs.readFile(currentPath, 'utf8'), versioned: false };
+    }
+    return { code: null, versioned: false };
   }
 }

@@ -97,4 +97,14 @@ export class FunctionsController {
   async getFunctionVersions(@Param('projectId') projectId: string, @Param('functionId') functionId: string) {
     return this.functionsService.getFunctionVersions(projectId, functionId);
   }
+
+  @Get(':functionId/code')
+  @ApiOperation({ summary: 'Get function code (optionally at a specific version)' })
+  async getFunctionCode(
+    @Param('projectId') projectId: string,
+    @Param('functionId') functionId: string,
+    @Query() query: { version?: string },
+  ) {
+    return this.functionsService.getFunctionCode(projectId, functionId, query.version);
+  }
 }

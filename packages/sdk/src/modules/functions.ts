@@ -9,6 +9,12 @@ export interface Function_ {
   createdAt: string;
 }
 
+export interface FunctionVersion {
+  version: string;
+  createdAt: string;
+  status: string;
+}
+
 export interface FunctionLog {
   id: string;
   timestamp: string;
@@ -34,6 +40,17 @@ export class FunctionsModule {
 
   async deploy(projectId: string, functionId: string, code: string, version?: string) {
     return this.client.post<{ status: string }>(`/api/v1/projects/${projectId}/functions/${functionId}/deploy`, { code, version });
+  }
+
+  async listVersions(projectId: string, functionId: string) {
+    return this.client.get<FunctionVersion[]>(`/api/v1/projects/${projectId}/functions/${functionId}/versions`);
+  }
+
+  async getCode(projectId: string, functionId: string, version?: string) {
+    return this.client.get<{ code: string | null; versioned: boolean }>(
+      `/api/v1/projects/${projectId}/functions/${functionId}/code`,
+      { version },
+    );
   }
 
   async invoke(projectId: string, functionId: string, payload?: unknown) {

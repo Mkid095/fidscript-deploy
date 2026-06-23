@@ -18,4 +18,5 @@ export class FunctionsService {
   invokeFunction(projectId: string, functionId: string, dto: any) { return this.runtime.invokeFunction(projectId, functionId, dto); }
   getFunctionLogs(projectId: string, functionId: string, limit?: number, cursor?: string) { return this.runtime.getFunctionLogs(projectId, functionId, limit, cursor); }
   getFunctionVersions(projectId: string, functionId: string) { return this.runtime.getFunctionVersions(projectId, functionId); }
+  getFunctionCode(projectId: string, functionId: string, version?: string) { return this.runtime.getFunctionCode(projectId, functionId, version); }
 }

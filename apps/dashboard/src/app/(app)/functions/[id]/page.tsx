@@ -8,7 +8,17 @@ import { Card, Button, Spinner } from '@fidscript/ui';
 
 import { useAuth } from '@/contexts/auth-context';
 
+interface FunctionVersion {
+  version: string;
+  createdAt: string;
+  status: string;
+}
+
 const MonacoEditor = dynamic(() => import('@monaco-editor/react'), {
+  ssr: false,
+  loading: () => <div className="flex items-center justify-center h-full bg-[#0f1217]"><Spinner size="md" /></div>,
+});
+const DiffEditor = dynamic(() => import('@monaco-editor/react').then(m => m.DiffEditor), {
   ssr: false,
   loading: () => <div className="flex items-center justify-center h-full bg-[#0f1217]"><Spinner size="md" /></div>,
 });
@@ -30,7 +40,7 @@ interface FunctionLog {
   message: string;
 }
 
-type Tab = 'code' | 'logs' | 'settings' | 'invoke';
+type Tab = 'code' | 'logs' | 'settings' | 'invoke' | 'versions';
 
 const LOG_LEVEL_COLORS: Record<string, string> = {
   debug: 'text-slate-500', info: 'text-blue-400', warn: 'text-yellow-400',
@@ -77,6 +87,10 @@ export default function FunctionDetailPage({ params }: { params: Promise<{ id: s
   const [invokeResult, setInvokeResult] = useState<string | null>(null);
   const [invokeError, setInvokeError] = useState<string | null>(null);
   const [invoking, setInvoking] = useState(false);
+  const [versions, setVersions] = useState<FunctionVersion[]>([]);
+  const [diffVersions, setDiffVersions] = useState<[string | null, string | null]>([null, null]);
+  const [diffCode, setDiffCode] = useState<{ left: string; right: string } | null>(null);
+  const [loadingVersions, setLoadingVersions] = useState(false);
 
   useEffect(() => {
     async function load() {
@@ -106,6 +120,33 @@ export default function FunctionDetailPage({ params }: { params: Promise<{ id: s
     }
     loadLogs();
   }, [activeTab, projectId, functionId, getSdk]);
+
+  useEffect(() => {
+    if (activeTab !== 'versions' || !projectId || !functionId) return;
+    async function loadVersions() {
+      setLoadingVersions(true);
+      try {
+        const sdk = getSdk();
+        const data = await sdk.functions.listVersions(projectId, functionId);
+        setVersions(data);
+      } catch { /* ignore */ } finally {
+        setLoadingVersions(false);
+      }
+    }
+    loadVersions();
+  }, [activeTab, projectId, functionId, getSdk]);
+
+  function handleDiffSelect(v1: string | null, v2: string) {
+    setDiffVersions([v1, v2]);
+    if (!projectId || !functionId) return;
+    const sdk = getSdk();
+    Promise.all([
+      v1 ? sdk.functions.getCode(projectId, functionId, v1) : Promise.resolve({ code: '' }),
+      sdk.functions.getCode(projectId, functionId, v2),
+    ]).then(([left, right]) => {
+      setDiffCode({ left: left.code ?? '', right: right.code ?? '' });
+    });
+  }
 
   const handleSaveDraft = useCallback(() => {
     localStorage.setItem(`fn_draft_${functionId}`, code);
@@ -172,6 +213,7 @@ export default function FunctionDetailPage({ params }: { params: Promise<{ id: s
   const tabs: { id: Tab; label: string }[] = [
     { id: 'code', label: 'Code' },
     { id: 'logs', label: `Logs${logs.length > 0 ? ` (${logs.length})` : ''}` },
+    { id: 'versions', label: `Versions${versions.length > 0 ? ` (${versions.length})` : ''}` },
     { id: 'settings', label: 'Settings' },
     { id: 'invoke', label: 'Invoke' },
   ];
@@ -299,6 +341,84 @@ export default function FunctionDetailPage({ params }: { params: Promise<{ id: s
                 </tbody>
               </table>
             </Card>
+          )}
+        </div>
+      )}
+
+
+      {/* Versions Tab */}
+      {activeTab === 'versions' && (
+        <div className="space-y-4">
+          {loadingVersions ? (
+            <div className="flex items-center justify-center py-16"><Spinner size="md" /></div>
+          ) : versions.length === 0 ? (
+            <Card className="border border-[#1e2130]">
+              <p className="text-sm text-slate-500 text-center py-8">
+                No versions deployed yet. Use the Code tab to deploy your first version.
+              </p>
+            </Card>
+          ) : (
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+              {/* Version list */}
+              <Card className="border border-[#1e2130]" padding="none">
+                <div className="px-4 py-3 border-b border-[#1e2130]">
+                  <h3 className="text-sm font-semibold text-slate-200">Deployments</h3>
+                </div>
+                <div className="divide-y divide-[#1e2130]">
+                  {versions.map((v, i) => (
+                    <div key={v.version} className="px-4 py-3 hover:bg-[#1e2130]/30 cursor-pointer"
+                      onClick={() => handleDiffSelect(i > 0 ? versions[i-1].version : null, v.version)}>
+                      <div className="flex items-center justify-between">
+                        <span className="text-sm font-mono text-slate-200">{v.version}</span>
+                        <span className={`text-xs px-1.5 py-0.5 rounded ${
+                          v.status === 'success' ? 'bg-emerald-900/30 text-emerald-400' :
+                          v.status === 'error' ? 'bg-red-900/30 text-red-400' :
+                          'bg-slate-800 text-slate-400'
+                        }`}>{v.status}</span>
+                      </div>
+                      <p className="text-xs text-slate-500 mt-0.5">
+                        {new Date(v.createdAt).toLocaleString()}
+                      </p>
+                    </div>
+                  ))}
+                </div>
+              </Card>
+
+              {/* Diff panel */}
+              <Card className="border border-[#1e2130]" padding="none">
+                <div className="px-4 py-3 border-b border-[#1e2130] flex items-center justify-between">
+                  <h3 className="text-sm font-semibold text-slate-200">Diff</h3>
+                  {diffVersions[1] && (
+                    <span className="text-xs text-slate-500 font-mono">
+                      ← {diffVersions[0] ?? 'current'} → {diffVersions[1]}
+                    </span>
+                  )}
+                </div>
+                {diffCode ? (
+                  <div style={{ height: 400 }}>
+                    <DiffEditor
+                      height="100%"
+                      language={getLang(func?.runtime ?? 'node')}
+                      original={diffCode.left}
+                      modified={diffCode.right}
+                      theme="vs-dark"
+                      options={{
+                        readOnly: true,
+                        fontSize: 12,
+                        fontFamily: '"Fira Code", monospace',
+                        minimap: { enabled: false },
+                        renderSideBySide: true,
+                        scrollBeyondLastLine: false,
+                      }}
+                    />
+                  </div>
+                ) : (
+                  <div className="flex items-center justify-center h-64 text-sm text-slate-500">
+                    Select a version to compare
+                  </div>
+                )}
+              </Card>
+            </div>
           )}
         </div>
       )}
