@@ -10,10 +10,11 @@ import { Modal } from '@fidscript/ui';
 import { Spinner } from '@fidscript/ui';
 import { EmptyState } from '@fidscript/ui';
 
-import { makeSdk } from '@/lib/sdk';
+import { useAuth } from '@/contexts/auth-context';
 import type { CronJob, CronJobRun } from '@/types';
 
 export default function JobDetailPage() {
+  const { getSdk } = useAuth();
   const params = useParams();
   const searchParams = useSearchParams();
   const jobId = params.id as string;
@@ -41,9 +42,7 @@ export default function JobDetailPage() {
       setLoading(true);
       setError(null);
       try {
-        const token = localStorage.getItem('fidscript_token');
-        if (!token) return;
-        const sdk = makeSdk(token);
+        const sdk = getSdk();
         const [jobData, runsData] = await Promise.all([
           sdk.cron.get(projectId, jobId),
           sdk.cron.getRuns(projectId, jobId),
@@ -58,7 +57,7 @@ export default function JobDetailPage() {
       }
     }
     load();
-  }, [projectId, jobId]);
+  }, [projectId, jobId, getSdk]);
 
   function populateForm(j: CronJob) {
     setFormName(j.name);
@@ -72,9 +71,7 @@ export default function JobDetailPage() {
     if (!projectId || !jobId) return;
     setRunning(true);
     try {
-      const token = localStorage.getItem('fidscript_token');
-      if (!token) return;
-      const sdk = makeSdk(token);
+      const sdk = getSdk();
       await sdk.cron.trigger(projectId, jobId);
       const runsData = await sdk.cron.getRuns(projectId, jobId);
       setRuns(runsData);
@@ -89,9 +86,7 @@ export default function JobDetailPage() {
     setSaving(true);
     setSaveError(null);
     try {
-      const token = localStorage.getItem('fidscript_token');
-      if (!token) return;
-      const sdk = makeSdk(token);
+      const sdk = getSdk();
       const data: Parameters<typeof sdk.cron.update>[2] = {
         name: formName.trim(),
         cronExpression: formExpression.trim(),

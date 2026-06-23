@@ -8,7 +8,8 @@ import { Button } from '@fidscript/ui';
 import { Spinner } from '@fidscript/ui';
 import { Toast } from '@fidscript/ui';
 
-import { makeSdk } from '@/lib/sdk';
+import { useAuth } from '@/contexts/auth-context';
+
 interface Database {
   id: string;
   name: string;
@@ -24,12 +25,6 @@ interface DatabaseBackup {
   databaseId: string;
   sizeBytes: number;
   createdAt: string;
-}
-
-function getSdk() {
-  const token = localStorage.getItem('fidscript_token');
-  if (!token) throw new Error('Not authenticated');
-  return makeSdk(token);
 }
 
 function formatBytes(bytes: number): string {
@@ -52,6 +47,7 @@ interface PageProps {
 
 export default function DatabaseDetailPage({ params }: PageProps) {
   const { id } = use(params);
+  const { getSdk } = useAuth();
 
   const [db, setDb] = useState<Database | null>(null);
   const [backups, setBackups] = useState<DatabaseBackup[]>([]);
@@ -83,7 +79,7 @@ export default function DatabaseDetailPage({ params }: PageProps) {
       }
     }
     load();
-  }, [id]);
+  }, [id, getSdk]);
 
   const handleRotate = useCallback(async () => {
     setRotating(true);
@@ -99,7 +95,7 @@ export default function DatabaseDetailPage({ params }: PageProps) {
     } finally {
       setRotating(false);
     }
-  }, [id]);
+  }, [id, getSdk]);
 
   const handleRestore = useCallback(async (backupId: string) => {
     setRestoringBackupId(backupId);
@@ -113,7 +109,7 @@ export default function DatabaseDetailPage({ params }: PageProps) {
     } finally {
       setRestoringBackupId(null);
     }
-  }, [id]);
+  }, [id, getSdk]);
 
   const handleDelete = useCallback(async () => {
     if (!window.confirm('Are you sure you want to delete this database? This action cannot be undone.')) return;
@@ -127,7 +123,7 @@ export default function DatabaseDetailPage({ params }: PageProps) {
       setToast({ message: err instanceof Error ? err.message : 'Delete failed', type: 'error' });
       setDeleting(false);
     }
-  }, [id]);
+  }, [id, getSdk]);
 
   const handleCopyConnection = useCallback(async () => {
     if (!db?.connectionString) return;

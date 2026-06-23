@@ -10,7 +10,7 @@ import { Modal } from '@fidscript/ui';
 import { Spinner } from '@fidscript/ui';
 import { EmptyState } from '@fidscript/ui';
 
-import { makeSdk } from '@/lib/sdk';
+import { useAuth } from '@/contexts/auth-context';
 import type { Project, AlertRule } from '@/types';
 
 const SEVERITY_COLORS: Record<string, string> = {
@@ -20,6 +20,7 @@ const SEVERITY_COLORS: Record<string, string> = {
 };
 
 export default function MonitoringPage() {
+  const { getSdk } = useAuth();
   const router = useRouter();
   const [projects, setProjects] = useState<Project[]>([]);
   const [selectedProjectId, setSelectedProjectId] = useState('');
@@ -54,10 +55,8 @@ export default function MonitoringPage() {
 
   useEffect(() => {
     async function loadProjects() {
-      const token = localStorage.getItem('fidscript_token');
-      if (!token) { setLoadingProjects(false); return; }
       try {
-        const sdk = makeSdk(token);
+        const sdk = getSdk();
         const data = await sdk.projects.list();
         setProjects(data);
         if (data.length > 0) setSelectedProjectId(data[0].id);
@@ -68,7 +67,7 @@ export default function MonitoringPage() {
       }
     }
     loadProjects();
-  }, []);
+  }, [getSdk]);
 
   useEffect(() => {
     if (!selectedProjectId) return;
@@ -76,9 +75,7 @@ export default function MonitoringPage() {
       setLoadingRules(true);
       setError(null);
       try {
-        const token = localStorage.getItem('fidscript_token');
-        if (!token) return;
-        const sdk = makeSdk(token);
+        const sdk = getSdk();
         const data = await sdk.monitoring.listAlertRules(selectedProjectId);
         setRules(data);
       } catch (err) {
@@ -88,7 +85,7 @@ export default function MonitoringPage() {
       }
     }
     loadRules();
-  }, [selectedProjectId]);
+  }, [selectedProjectId, getSdk]);
 
   async function handleCreate(e: React.FormEvent) {
     e.preventDefault();
@@ -96,9 +93,7 @@ export default function MonitoringPage() {
     setCreating(true);
     setCreateError(null);
     try {
-      const token = localStorage.getItem('fidscript_token');
-      if (!token) return;
-      const sdk = makeSdk(token);
+      const sdk = getSdk();
       await sdk.monitoring.createAlertRule(selectedProjectId, {
         name: formName.trim(),
         metric: formMetric,

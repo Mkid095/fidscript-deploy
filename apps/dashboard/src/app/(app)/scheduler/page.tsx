@@ -10,7 +10,7 @@ import { Modal } from '@fidscript/ui';
 import { Spinner } from '@fidscript/ui';
 import { EmptyState } from '@fidscript/ui';
 
-import { makeSdk } from '@/lib/sdk';
+import { useAuth } from '@/contexts/auth-context';
 import type { Project, CronJob } from '@/types';
 
 function computeNextRun(expression: string): string {
@@ -30,6 +30,7 @@ function computeNextRun(expression: string): string {
 }
 
 export default function SchedulerPage() {
+  const { getSdk } = useAuth();
   const router = useRouter();
   const [projects, setProjects] = useState<Project[]>([]);
   const [selectedProjectId, setSelectedProjectId] = useState('');
@@ -53,10 +54,8 @@ export default function SchedulerPage() {
 
   useEffect(() => {
     async function loadProjects() {
-      const token = localStorage.getItem('fidscript_token');
-      if (!token) { setLoadingProjects(false); return; }
       try {
-        const sdk = makeSdk(token);
+        const sdk = getSdk();
         const data = await sdk.projects.list();
         setProjects(data);
         if (data.length > 0) setSelectedProjectId(data[0].id);
@@ -67,7 +66,7 @@ export default function SchedulerPage() {
       }
     }
     loadProjects();
-  }, []);
+  }, [getSdk]);
 
   useEffect(() => {
     if (!selectedProjectId) return;
@@ -75,9 +74,7 @@ export default function SchedulerPage() {
       setLoadingJobs(true);
       setError(null);
       try {
-        const token = localStorage.getItem('fidscript_token');
-        if (!token) return;
-        const sdk = makeSdk(token);
+        const sdk = getSdk();
         const data = await sdk.cron.list(selectedProjectId);
         setJobs(data);
       } catch (err) {
@@ -87,7 +84,7 @@ export default function SchedulerPage() {
       }
     }
     loadJobs();
-  }, [selectedProjectId]);
+  }, [selectedProjectId, getSdk]);
 
   async function handleCreate(e: React.FormEvent) {
     e.preventDefault();
@@ -95,9 +92,7 @@ export default function SchedulerPage() {
     setCreating(true);
     setCreateError(null);
     try {
-      const token = localStorage.getItem('fidscript_token');
-      if (!token) return;
-      const sdk = makeSdk(token);
+      const sdk = getSdk();
       const data = {
         name: formName.trim(),
         cronExpression: formExpression.trim(),
@@ -120,9 +115,7 @@ export default function SchedulerPage() {
     if (!selectedProjectId) return;
     setTogglingId(job.id);
     try {
-      const token = localStorage.getItem('fidscript_token');
-      if (!token) return;
-      const sdk = makeSdk(token);
+      const sdk = getSdk();
       await sdk.cron.update(selectedProjectId, job.id, { enabled: !job.enabled });
       setJobs(prev => prev.map(j => j.id === job.id ? { ...j, enabled: !j.enabled } : j));
     } finally {

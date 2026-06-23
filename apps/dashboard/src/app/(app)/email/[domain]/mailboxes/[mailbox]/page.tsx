@@ -11,7 +11,8 @@ import { Modal } from '@fidscript/ui';
 import { Spinner } from '@fidscript/ui';
 import { EmptyState } from '@fidscript/ui';
 
-import { makeSdk } from '@/lib/sdk';
+import { useAuth } from '@/contexts/auth-context';
+
 // Local type definitions mirroring SDK internal modules
 interface EmailMessage {
   id: string;
@@ -34,6 +35,7 @@ const READ_COLORS: Record<string, string> = {
 };
 
 export default function MailboxPage() {
+  const { getSdk } = useAuth();
   const params = useParams();
   const domainId = params.domain as string;
   const mailboxId = params.mailbox as string;
@@ -52,10 +54,8 @@ export default function MailboxPage() {
 
   useEffect(() => {
     async function load() {
-      const token = localStorage.getItem('fidscript_token');
-      if (!token) { setLoading(false); return; }
       try {
-        const sdk = makeSdk(token);
+        const sdk = getSdk();
         // We don't have a getMailbox method, but we have listMailboxes to verify existence
         const mailboxes = await sdk.email.listMailboxes(domainId);
         const found = mailboxes.find(m => m.id === mailboxId);
@@ -69,7 +69,7 @@ export default function MailboxPage() {
       }
     }
     load();
-  }, [domainId, mailboxId]);
+  }, [domainId, mailboxId, getSdk]);
 
   async function handleSend(e: React.FormEvent) {
     e.preventDefault();
@@ -78,9 +78,7 @@ export default function MailboxPage() {
     setSendError(null);
     setSendSuccess(false);
     try {
-      const token = localStorage.getItem('fidscript_token');
-      if (!token) return;
-      const sdk = makeSdk(token);
+      const sdk = getSdk();
       // send requires projectId, not domainId
       await sdk.email.send(domainId, {
         to: composeTo.trim(),

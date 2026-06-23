@@ -10,7 +10,7 @@ import { Spinner } from '@fidscript/ui';
 import { EmptyState } from '@fidscript/ui';
 import { Toast } from '@fidscript/ui';
 
-import { makeSdk } from '@/lib/sdk';
+import { useAuth } from '@/contexts/auth-context';
 import type { Project } from '@/types';
 
 interface Bucket {
@@ -21,13 +21,8 @@ interface Bucket {
   createdAt: string;
 }
 
-function getSdk() {
-  const token = localStorage.getItem('fidscript_token');
-  if (!token) throw new Error('Not authenticated');
-  return makeSdk(token);
-}
-
 export default function StoragePage() {
+  const { getSdk } = useAuth();
   const router = useRouter();
   const searchParams = useSearchParams();
   const projectId = searchParams.get('project') ?? '';
@@ -57,7 +52,7 @@ export default function StoragePage() {
       }
     }
     loadProjects();
-  }, []);
+  }, [getSdk]);
 
   useEffect(() => {
     if (!selectedProject) return;
@@ -80,7 +75,7 @@ export default function StoragePage() {
     const url = new URL(window.location.href);
     url.searchParams.set('project', selectedProject);
     router.replace(url.pathname + url.search);
-  }, [selectedProject, router]);
+  }, [selectedProject, router, getSdk]);
 
   const handleCreate = useCallback(async (e: React.FormEvent) => {
     e.preventDefault();
@@ -99,7 +94,7 @@ export default function StoragePage() {
     } finally {
       setCreating(false);
     }
-  }, [newName, selectedProject]);
+  }, [newName, selectedProject, getSdk]);
 
   return (
     <div>

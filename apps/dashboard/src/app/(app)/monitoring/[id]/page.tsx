@@ -8,7 +8,7 @@ import { Button } from '@fidscript/ui';
 import { Spinner } from '@fidscript/ui';
 import { EmptyState } from '@fidscript/ui';
 
-import { makeSdk } from '@/lib/sdk';
+import { useAuth } from '@/contexts/auth-context';
 import type { AlertRule, Alert, NotificationChannel } from '@/types';
 
 type Tab = 'overview' | 'history';
@@ -26,6 +26,7 @@ const STATUS_COLORS: Record<string, string> = {
 };
 
 export default function AlertDetailPage() {
+  const { getSdk } = useAuth();
   const params = useParams();
   const searchParams = useSearchParams();
   const alertId = params.id as string;
@@ -45,9 +46,7 @@ export default function AlertDetailPage() {
       setLoading(true);
       setError(null);
       try {
-        const token = localStorage.getItem('fidscript_token');
-        if (!token) return;
-        const sdk = makeSdk(token);
+        const sdk = getSdk();
         const [rules, alertsData, channelsData] = await Promise.all([
           sdk.monitoring.listAlertRules(projectId),
           sdk.monitoring.getAlerts(projectId),
@@ -55,7 +54,7 @@ export default function AlertDetailPage() {
         ]);
         const matchedRule = rules.find(r => r.id === alertId);
         setRule(matchedRule ?? null);
-        // Filter alerts for this rule by matching metric + name
+        // Filter alerts for this rule by matching metric + name context
         setAlerts(alertsData.filter(a => {
           // The Alert type may not have ruleId, so we match by severity/name context
           return true; // show all alerts if no rule match
@@ -68,15 +67,13 @@ export default function AlertDetailPage() {
       }
     }
     load();
-  }, [projectId, alertId]);
+  }, [projectId, alertId, getSdk]);
 
   async function handleAcknowledge(alertId: string) {
     if (!projectId) return;
     setActionLoading(true);
     try {
-      const token = localStorage.getItem('fidscript_token');
-      if (!token) return;
-      const sdk = makeSdk(token);
+      const sdk = getSdk();
       await sdk.monitoring.acknowledgeAlert(projectId, alertId);
       setAlerts(prev => prev.map(a => a.id === alertId ? { ...a, status: 'resolved' as const } : a));
     } finally {
@@ -88,9 +85,7 @@ export default function AlertDetailPage() {
     if (!projectId) return;
     setActionLoading(true);
     try {
-      const token = localStorage.getItem('fidscript_token');
-      if (!token) return;
-      const sdk = makeSdk(token);
+      const sdk = getSdk();
       await sdk.monitoring.resolveAlert(projectId, alertId);
       setAlerts(prev => prev.map(a => a.id === alertId ? { ...a, status: 'resolved' as const } : a));
     } finally {

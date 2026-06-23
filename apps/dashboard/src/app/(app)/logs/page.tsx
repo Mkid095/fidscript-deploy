@@ -8,7 +8,7 @@ import { Button } from '@fidscript/ui';
 import { Spinner } from '@fidscript/ui';
 import { EmptyState } from '@fidscript/ui';
 
-import { makeSdk } from '@/lib/sdk';
+import { useAuth } from '@/contexts/auth-context';
 import type { Project, LogEntry } from '@/types';
 
 const STREAMS = ['default', 'build', 'access', 'error'] as const;
@@ -26,6 +26,7 @@ type Stream = typeof STREAMS[number];
 type Level = typeof LEVELS[number];
 
 export default function LogsPage() {
+  const { getSdk } = useAuth();
   const searchParams = useSearchParams();
   const projectIdParam = searchParams.get('project');
 
@@ -44,10 +45,8 @@ export default function LogsPage() {
 
   useEffect(() => {
     async function loadProjects() {
-      const token = localStorage.getItem('fidscript_token');
-      if (!token) { setLoadingProjects(false); return; }
       try {
-        const sdk = makeSdk(token);
+        const sdk = getSdk();
         const data = await sdk.projects.list();
         setProjects(data);
         if (!selectedProjectId && data.length > 0) {
@@ -60,16 +59,14 @@ export default function LogsPage() {
       }
     }
     loadProjects();
-  }, []);
+  }, [getSdk]);
 
   async function loadLogs() {
     if (!selectedProjectId) return;
     setLoadingLogs(true);
     setError(null);
     try {
-      const token = localStorage.getItem('fidscript_token');
-      if (!token) return;
-      const sdk = makeSdk(token);
+      const sdk = getSdk();
       const levelFilter = Array.from(activeLevels).join(',');
       const result = await sdk.logs.getLogs(selectedProjectId, {
         stream,
@@ -87,7 +84,7 @@ export default function LogsPage() {
   useEffect(() => {
     if (!selectedProjectId) return;
     loadLogs();
-  }, [selectedProjectId, stream, activeLevels]);
+  }, [selectedProjectId, stream, activeLevels, getSdk]);
 
   // Live tail
   useEffect(() => {
@@ -99,9 +96,7 @@ export default function LogsPage() {
     let cancelled = false;
 
     async function startStream() {
-      const token = localStorage.getItem('fidscript_token');
-      if (!token) return;
-      const sdk = makeSdk(token);
+      const sdk = getSdk();
       const levelFilter = Array.from(activeLevels).join(',');
       const iterator = sdk.logs.streamLogs(selectedProjectId, {
         stream,
@@ -121,7 +116,7 @@ export default function LogsPage() {
 
     startStream();
     return () => { cancelled = true; streamRef.current = null; };
-  }, [live, selectedProjectId, stream, activeLevels]);
+  }, [live, selectedProjectId, stream, activeLevels, getSdk]);
 
   useEffect(() => {
     if (autoScroll) {

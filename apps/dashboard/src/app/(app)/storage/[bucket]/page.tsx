@@ -10,7 +10,8 @@ import { Spinner } from '@fidscript/ui';
 import { EmptyState } from '@fidscript/ui';
 import { Toast } from '@fidscript/ui';
 
-import { makeSdk } from '@/lib/sdk';
+import { useAuth } from '@/contexts/auth-context';
+
 interface StorageFile {
   id: string;
   key: string;
@@ -19,12 +20,6 @@ interface StorageFile {
   sizeBytes: number;
   etag: string;
   createdAt: string;
-}
-
-function getSdk() {
-  const token = localStorage.getItem('fidscript_token');
-  if (!token) throw new Error('Not authenticated');
-  return makeSdk(token);
 }
 
 function formatBytes(bytes: number): string {
@@ -41,6 +36,7 @@ interface PageProps {
 
 export default function BucketDetailPage({ params }: PageProps) {
   const { bucket: bucketId } = use(params);
+  const { getSdk } = useAuth();
   const router = useRouter();
   const searchParams = useSearchParams();
   const projectId = searchParams.get('project') ?? '';
@@ -65,7 +61,7 @@ export default function BucketDetailPage({ params }: PageProps) {
     } finally {
       setLoading(false);
     }
-  }, [projectId, bucketId]);
+  }, [projectId, bucketId, getSdk]);
 
   useEffect(() => {
     loadFiles();
@@ -89,7 +85,7 @@ export default function BucketDetailPage({ params }: PageProps) {
       setUploading(false);
       e.target.value = '';
     }
-  }, [projectId, bucketId]);
+  }, [projectId, bucketId, getSdk]);
 
   const handleDelete = useCallback(async (fileId: string, fileName: string) => {
     if (!projectId || !bucketId) return;
@@ -105,7 +101,7 @@ export default function BucketDetailPage({ params }: PageProps) {
     } finally {
       setDeletingId(null);
     }
-  }, [projectId, bucketId]);
+  }, [projectId, bucketId, getSdk]);
 
   const handleCopyUrl = useCallback(async (fileId: string, fileName: string) => {
     if (!projectId || !bucketId) return;
@@ -117,7 +113,7 @@ export default function BucketDetailPage({ params }: PageProps) {
     } catch {
       setToast({ message: 'Failed to get URL', type: 'error' });
     }
-  }, [projectId, bucketId]);
+  }, [projectId, bucketId, getSdk]);
 
   return (
     <div>

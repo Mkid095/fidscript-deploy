@@ -11,7 +11,8 @@ import { Modal } from '@fidscript/ui';
 import { Spinner } from '@fidscript/ui';
 import { EmptyState } from '@fidscript/ui';
 
-import { makeSdk } from '@/lib/sdk';
+import { useAuth } from '@/contexts/auth-context';
+
 // Local type definitions mirroring SDK internal modules
 interface Domain {
   id: string;
@@ -46,6 +47,7 @@ const STATUS_COLORS: Record<string, string> = {
 };
 
 export default function DomainPage() {
+  const { getSdk } = useAuth();
   const params = useParams();
   const domainId = params.domain as string;
 
@@ -66,10 +68,8 @@ export default function DomainPage() {
 
   useEffect(() => {
     async function load() {
-      const token = localStorage.getItem('fidscript_token');
-      if (!token) { setLoading(false); return; }
       try {
-        const sdk = makeSdk(token);
+        const sdk = getSdk();
         const [domainData, mailboxesData, aliasesData] = await Promise.all([
           sdk.domains.get(domainId),
           sdk.email.listMailboxes(domainId),
@@ -85,7 +85,7 @@ export default function DomainPage() {
       }
     }
     load();
-  }, [domainId]);
+  }, [domainId, getSdk]);
 
   async function handleCreateMailbox(e: React.FormEvent) {
     e.preventDefault();
@@ -93,9 +93,7 @@ export default function DomainPage() {
     setCreating(true);
     setCreateError(null);
     try {
-      const token = localStorage.getItem('fidscript_token');
-      if (!token) return;
-      const sdk = makeSdk(token);
+      const sdk = getSdk();
       const created = await sdk.email.createMailbox(domainId, newMailboxEmail.trim(), newMailboxName.trim() || undefined);
       setMailboxes(prev => [...prev, created]);
       setNewMailboxEmail('');
@@ -114,9 +112,7 @@ export default function DomainPage() {
     setCreating(true);
     setCreateError(null);
     try {
-      const token = localStorage.getItem('fidscript_token');
-      if (!token) return;
-      const sdk = makeSdk(token);
+      const sdk = getSdk();
       const forwards = newAliasForward.split(',').map(s => s.trim()).filter(Boolean);
       const created = await sdk.email.createAlias(domainId, newAliasAddress.trim(), forwards);
       setAliases(prev => [...prev, created]);
@@ -132,9 +128,7 @@ export default function DomainPage() {
 
   async function handleDeleteMailbox(id: string) {
     try {
-      const token = localStorage.getItem('fidscript_token');
-      if (!token) return;
-      const sdk = makeSdk(token);
+      const sdk = getSdk();
       await sdk.email.deleteMailbox(domainId, id);
       setMailboxes(prev => prev.filter(m => m.id !== id));
     } catch {
@@ -144,9 +138,7 @@ export default function DomainPage() {
 
   async function handleDeleteAlias(id: string) {
     try {
-      const token = localStorage.getItem('fidscript_token');
-      if (!token) return;
-      const sdk = makeSdk(token);
+      const sdk = getSdk();
       await sdk.email.deleteAlias(domainId, id);
       setAliases(prev => prev.filter(a => a.id !== id));
     } catch {

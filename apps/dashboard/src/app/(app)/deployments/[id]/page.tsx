@@ -8,7 +8,7 @@ import { Card } from '@fidscript/ui';
 import { Button } from '@fidscript/ui';
 import { Spinner } from '@fidscript/ui';
 
-import { makeSdk } from '@/lib/sdk';
+import { useAuth } from '@/contexts/auth-context';
 import type { Deployment } from '@/types';
 
 const STATUS_COLORS: Record<string, string> = {
@@ -70,6 +70,7 @@ function Stepper({ status }: { status: string }) {
 }
 
 function LogConsole({ deploymentId, projectId }: { deploymentId: string; projectId: string }) {
+  const { getSdk } = useAuth();
   const [logLines, setLogLines] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -79,11 +80,9 @@ function LogConsole({ deploymentId, projectId }: { deploymentId: string; project
     let cancelled = false;
 
     async function stream() {
-      const token = localStorage.getItem('fidscript_token');
-      if (!token) return;
-      const sdk = makeSdk(token);
-
       try {
+        const sdk = getSdk();
+
         async function pollLogs() {
           while (!cancelled) {
             const data = await sdk.deployments.getLogs(projectId, deploymentId) as any;
@@ -106,7 +105,7 @@ function LogConsole({ deploymentId, projectId }: { deploymentId: string; project
 
     stream();
     return () => { cancelled = true; };
-  }, [deploymentId, projectId]);
+  }, [deploymentId, projectId, getSdk]);
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -136,6 +135,7 @@ function LogConsole({ deploymentId, projectId }: { deploymentId: string; project
 }
 
 export default function DeploymentDetailPage() {
+  const { getSdk } = useAuth();
   const params = useParams();
   const searchParams = useSearchParams();
   const deploymentId = params.id as string;
@@ -147,10 +147,8 @@ export default function DeploymentDetailPage() {
 
   useEffect(() => {
     async function load() {
-      const token = localStorage.getItem('fidscript_token');
-      if (!token) { setLoading(false); return; }
       try {
-        const sdk = makeSdk(token);
+        const sdk = getSdk();
         const data = await sdk.deployments.get(projectId, deploymentId);
         setDeployment(data as Deployment);
       } catch (err) {
@@ -160,7 +158,7 @@ export default function DeploymentDetailPage() {
       }
     }
     load();
-  }, [deploymentId, projectId]);
+  }, [deploymentId, projectId, getSdk]);
 
   if (loading) {
     return (

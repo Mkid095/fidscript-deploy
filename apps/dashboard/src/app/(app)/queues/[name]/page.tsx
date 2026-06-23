@@ -5,17 +5,17 @@ import { useEffect, useState } from 'react';
 import { useParams, useSearchParams } from 'next/navigation';
 import { Card } from '@fidscript/ui';
 import { Button } from '@fidscript/ui';
-import { Input } from '@fidscript/ui';
 import { Modal } from '@fidscript/ui';
 import { Spinner } from '@fidscript/ui';
 import { EmptyState } from '@fidscript/ui';
 
-import { makeSdk } from '@/lib/sdk';
+import { useAuth } from '@/contexts/auth-context';
 import type { Queue, QueueMessage } from '@/types';
 
 type Tab = 'messages' | 'dlq';
 
 export default function QueueDetailPage() {
+  const { getSdk } = useAuth();
   const params = useParams();
   const searchParams = useSearchParams();
   const queueId = params.name as string;
@@ -39,9 +39,7 @@ export default function QueueDetailPage() {
       setLoading(true);
       setError(null);
       try {
-        const token = localStorage.getItem('fidscript_token');
-        if (!token) return;
-        const sdk = makeSdk(token);
+        const sdk = getSdk();
         const [queueData, msgs] = await Promise.all([
           sdk.queues.get(projectId, queueId),
           sdk.queues.consume(projectId, queueId, 50, 10),
@@ -56,7 +54,7 @@ export default function QueueDetailPage() {
       }
     }
     load();
-  }, [projectId, queueId]);
+  }, [projectId, queueId, getSdk]);
 
   async function handlePublish(e: React.FormEvent) {
     e.preventDefault();
@@ -64,9 +62,7 @@ export default function QueueDetailPage() {
     setPublishing(true);
     setPublishError(null);
     try {
-      const token = localStorage.getItem('fidscript_token');
-      if (!token) return;
-      const sdk = makeSdk(token);
+      const sdk = getSdk();
       let parsed: string | object;
       try { parsed = JSON.parse(publishPayload); } catch { parsed = publishPayload; }
       await sdk.queues.publish(projectId, queueId, parsed);
@@ -83,9 +79,7 @@ export default function QueueDetailPage() {
     if (!projectId || !queueId) return;
     setActionLoading(msgId);
     try {
-      const token = localStorage.getItem('fidscript_token');
-      if (!token) return;
-      const sdk = makeSdk(token);
+      const sdk = getSdk();
       await sdk.queues.retry(projectId, queueId, [msgId]);
       setMessages(prev => prev.filter(m => m.id !== msgId));
     } finally {
@@ -97,9 +91,7 @@ export default function QueueDetailPage() {
     if (!projectId || !queueId) return;
     setActionLoading(msgId);
     try {
-      const token = localStorage.getItem('fidscript_token');
-      if (!token) return;
-      const sdk = makeSdk(token);
+      const sdk = getSdk();
       await sdk.queues.ack(projectId, queueId, [msgId]);
       setMessages(prev => prev.filter(m => m.id !== msgId));
       setDlqMessages(prev => prev.filter(m => m.id !== msgId));

@@ -10,10 +10,11 @@ import { Modal } from '@fidscript/ui';
 import { Spinner } from '@fidscript/ui';
 import { EmptyState } from '@fidscript/ui';
 
-import { makeSdk } from '@/lib/sdk';
+import { useAuth } from '@/contexts/auth-context';
 import type { Project, Queue } from '@/types';
 
 export default function QueuesPage() {
+  const { getSdk } = useAuth();
   const router = useRouter();
   const [projects, setProjects] = useState<Project[]>([]);
   const [selectedProjectId, setSelectedProjectId] = useState('');
@@ -29,10 +30,8 @@ export default function QueuesPage() {
 
   useEffect(() => {
     async function loadProjects() {
-      const token = localStorage.getItem('fidscript_token');
-      if (!token) { setLoadingProjects(false); return; }
       try {
-        const sdk = makeSdk(token);
+        const sdk = getSdk();
         const data = await sdk.projects.list();
         setProjects(data);
         if (data.length > 0) setSelectedProjectId(data[0].id);
@@ -43,7 +42,7 @@ export default function QueuesPage() {
       }
     }
     loadProjects();
-  }, []);
+  }, [getSdk]);
 
   useEffect(() => {
     if (!selectedProjectId) return;
@@ -51,9 +50,7 @@ export default function QueuesPage() {
       setLoadingQueues(true);
       setError(null);
       try {
-        const token = localStorage.getItem('fidscript_token');
-        if (!token) return;
-        const sdk = makeSdk(token);
+        const sdk = getSdk();
         const data = await sdk.queues.list(selectedProjectId);
         setQueues(data);
       } catch (err) {
@@ -63,7 +60,7 @@ export default function QueuesPage() {
       }
     }
     loadQueues();
-  }, [selectedProjectId]);
+  }, [selectedProjectId, getSdk]);
 
   async function handleCreate(e: React.FormEvent) {
     e.preventDefault();
@@ -71,9 +68,7 @@ export default function QueuesPage() {
     setCreating(true);
     setCreateError(null);
     try {
-      const token = localStorage.getItem('fidscript_token');
-      if (!token) return;
-      const sdk = makeSdk(token);
+      const sdk = getSdk();
       await sdk.queues.create(selectedProjectId, { name: newName.trim(), type: newType });
       const data = await sdk.queues.list(selectedProjectId);
       setQueues(data);

@@ -10,7 +10,8 @@ import { Spinner } from '@fidscript/ui';
 import { EmptyState } from '@fidscript/ui';
 import { Toast } from '@fidscript/ui';
 
-import { makeSdk } from '@/lib/sdk';
+import { useAuth } from '@/contexts/auth-context';
+
 interface Database {
   id: string;
   name: string;
@@ -21,13 +22,8 @@ interface Database {
   createdAt: string;
 }
 
-function getSdk() {
-  const token = localStorage.getItem('fidscript_token');
-  if (!token) throw new Error('Not authenticated');
-  return makeSdk(token);
-}
-
 export default function DatabasesPage() {
+  const { getSdk } = useAuth();
   const router = useRouter();
 
   const [databases, setDatabases] = useState<Database[]>([]);
@@ -55,7 +51,7 @@ export default function DatabasesPage() {
       }
     }
     load();
-  }, []);
+  }, [getSdk]);
 
   const handleCreate = useCallback(async (e: React.FormEvent) => {
     e.preventDefault();
@@ -82,7 +78,7 @@ export default function DatabasesPage() {
     } finally {
       setCreating(false);
     }
-  }, [newName, newType]);
+  }, [newName, newType, getSdk]);
 
   return (
     <div>

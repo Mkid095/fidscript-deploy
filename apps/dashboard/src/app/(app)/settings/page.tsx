@@ -6,7 +6,6 @@ import { Card } from '@fidscript/ui';
 import { Button } from '@fidscript/ui';
 import { Spinner } from '@fidscript/ui';
 
-import { makeSdk } from '@/lib/sdk';
 import { useAuth } from '@/contexts/auth-context';
 
 interface ApiKey {
@@ -16,7 +15,7 @@ interface ApiKey {
 }
 
 export default function SettingsPage() {
-  const { user } = useAuth();
+  const { user, getSdk } = useAuth();
   const [apiKeys, setApiKeys] = useState<ApiKey[]>([]);
   const [loadingKeys, setLoadingKeys] = useState(true);
   const [revoking, setRevoking] = useState<string | null>(null);
@@ -26,9 +25,7 @@ export default function SettingsPage() {
     async function loadKeys() {
       setLoadingKeys(true);
       try {
-        const token = localStorage.getItem('fidscript_token');
-        if (!token) return;
-        const sdk = makeSdk(token);
+        const sdk = getSdk();
         const projects = await sdk.projects.list();
         if (projects.length === 0) { setLoadingKeys(false); return; }
         // fetch API keys from the first project for now (user-level keys would be a separate endpoint)
@@ -41,16 +38,14 @@ export default function SettingsPage() {
       }
     }
     loadKeys();
-  }, []);
+  }, [getSdk]);
 
   async function handleRevoke(keyId: string) {
     if (!confirm('Revoke this API key? This cannot be undone.')) return;
     setRevoking(keyId);
     setRevokeError(null);
     try {
-      const token = localStorage.getItem('fidscript_token');
-      if (!token) return;
-      const sdk = makeSdk(token);
+      const sdk = getSdk();
       const projects = await sdk.projects.list();
       if (projects.length > 0) {
         await sdk.projects.revokeApiKey(projects[0].id, keyId);

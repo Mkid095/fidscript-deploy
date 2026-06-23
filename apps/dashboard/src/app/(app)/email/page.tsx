@@ -10,8 +10,9 @@ import { Modal } from '@fidscript/ui';
 import { Spinner } from '@fidscript/ui';
 import { EmptyState } from '@fidscript/ui';
 
-import { makeSdk } from '@/lib/sdk';
+import { useAuth } from '@/contexts/auth-context';
 import type { Project } from '@/types';
+
 // Domain type — not re-exported from SDK, define locally
 interface Domain {
   id: string;
@@ -38,6 +39,7 @@ const DNS_COLORS: Record<string, string> = {
 };
 
 export default function EmailPage() {
+  const { getSdk } = useAuth();
   const [projects, setProjects] = useState<Project[]>([]);
   const [selectedProjectId, setSelectedProjectId] = useState('');
   const [domains, setDomains] = useState<Domain[]>([]);
@@ -51,10 +53,8 @@ export default function EmailPage() {
 
   useEffect(() => {
     async function load() {
-      const token = localStorage.getItem('fidscript_token');
-      if (!token) { setLoadingProjects(false); return; }
       try {
-        const sdk = makeSdk(token);
+        const sdk = getSdk();
         const data = await sdk.projects.list();
         setProjects(data);
         if (data.length > 0 && !selectedProjectId) {
@@ -68,7 +68,7 @@ export default function EmailPage() {
     }
     load();
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [getSdk]);
 
   useEffect(() => {
     if (!selectedProjectId) return;
@@ -77,9 +77,7 @@ export default function EmailPage() {
       setLoadingDomains(true);
       setError(null);
       try {
-        const token = localStorage.getItem('fidscript_token');
-        if (!token) return;
-        const sdk = makeSdk(token);
+        const sdk = getSdk();
         const allDomains = await sdk.domains.list();
         // Filter to domains belonging to this project
         const projectDomains = allDomains.filter(d => d.projectId === selectedProjectId);
@@ -91,7 +89,7 @@ export default function EmailPage() {
       }
     }
     loadDomains();
-  }, [selectedProjectId]);
+  }, [selectedProjectId, getSdk]);
 
   async function handleAddDomain(e: React.FormEvent) {
     e.preventDefault();
@@ -99,9 +97,7 @@ export default function EmailPage() {
     setAdding(true);
     setAddError(null);
     try {
-      const token = localStorage.getItem('fidscript_token');
-      if (!token) return;
-      const sdk = makeSdk(token);
+      const sdk = getSdk();
       const created = await sdk.domains.create(selectedProjectId, newDomain.trim());
       setDomains(prev => [...prev, created]);
       setNewDomain('');

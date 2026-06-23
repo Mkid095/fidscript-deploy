@@ -9,7 +9,7 @@ import { Button } from '@fidscript/ui';
 import { Spinner } from '@fidscript/ui';
 import { EmptyState } from '@fidscript/ui';
 
-import { makeSdk } from '@/lib/sdk';
+import { useAuth } from '@/contexts/auth-context';
 import type { Project, Deployment } from '@/types';
 
 const STATUS_COLORS: Record<string, string> = {
@@ -23,6 +23,7 @@ const STATUS_COLORS: Record<string, string> = {
 };
 
 export default function DeploymentsPage() {
+  const { getSdk } = useAuth();
   const searchParams = useSearchParams();
   const projectId = searchParams.get('project');
 
@@ -35,10 +36,8 @@ export default function DeploymentsPage() {
 
   useEffect(() => {
     async function loadProjects() {
-      const token = localStorage.getItem('fidscript_token');
-      if (!token) { setLoadingProjects(false); return; }
       try {
-        const sdk = makeSdk(token);
+        const sdk = getSdk();
         const data = await sdk.projects.list();
         setProjects(data);
         if (!selectedProjectId && data.length > 0) {
@@ -51,7 +50,7 @@ export default function DeploymentsPage() {
       }
     }
     loadProjects();
-  }, []);
+  }, [getSdk]);
 
   useEffect(() => {
     if (!selectedProjectId) return;
@@ -60,9 +59,7 @@ export default function DeploymentsPage() {
       setLoadingDeployments(true);
       setError(null);
       try {
-        const token = localStorage.getItem('fidscript_token');
-        if (!token) return;
-        const sdk = makeSdk(token);
+        const sdk = getSdk();
         const data = await sdk.deployments.list(selectedProjectId);
         setDeployments((data as any).deployments ?? data);
       } catch (err) {
@@ -72,7 +69,7 @@ export default function DeploymentsPage() {
       }
     }
     loadDeployments();
-  }, [selectedProjectId]);
+  }, [selectedProjectId, getSdk]);
 
   function handleProjectChange(id: string) {
     setSelectedProjectId(id);
