@@ -12,7 +12,7 @@ export function LandingNav() {
   return (
     <header className="sticky top-0 z-50 border-b border-slate-900 bg-ink-900/80 backdrop-blur-md">
       <nav className="mx-auto flex max-w-6xl items-center justify-between px-6 py-4">
-        <Link href="/" className="flex items-center gap-2.5">
+        <Link href="/home" className="flex items-center gap-2.5">
           <span className="flex h-8 w-8 items-center justify-center rounded-lg border border-fire-500/30 bg-fire-500/10 text-fire-500">
             <HugeiconsIcon icon={BoltIcon} size={18} color="currentColor" className="animate-pulse-slow" />
           </span>

@@ -1,31 +1,44 @@
 import { NextRequest, NextResponse } from 'next/server';
 
-// 30-second in-memory lifecycle cache (survives Next.js hot-reload via globalThis)
 const CACHE_TTL_MS = 8_000;
-const lifecycleCache = (globalThis as Record<string, unknown>).__lifecycle_cache__ as Map<string, { value: string; timestamp: number }> | undefined;
-function getCache() {
-  if (!lifecycleCache) {
-    (globalThis as Record<string, unknown>).__lifecycle_cache__ = new Map<string, { value: string; timestamp: number }>();
-    return (globalThis as Record<string, unknown>).__lifecycle_cache__ as Map<string, { value: string; timestamp: number }>;
-  }
-  return lifecycleCache;
+
+// Internal API base — always use Docker internal network, not the external hostname.
+// This runs inside the dashboard container so fidscript_api is DNS-resolvable.
+const INTERNAL_API = 'http://fidscript_api:3001';
+
+interface CacheEntry<T> { value: T; timestamp: number }
+
+function getCacheMap<T>() {
+  const key = `__middleware_cache__`;
+  const existing = (globalThis as Record<string, unknown>)[key];
+  if (existing instanceof Map) return existing as Map<string, CacheEntry<T>>;
+  const map = new Map<string, CacheEntry<T>>();
+  (globalThis as Record<string, unknown>)[key] = map;
+  return map;
 }
 
-async function getInstallationLifecycle(apiBase: string): Promise<string | null> {
-  const cache = getCache();
-  const cached = cache.get('lifecycle');
+async function fetchInstallation() {
+  const cache = getCacheMap<unknown>();
   const now = Date.now();
-  if (cached && now - cached.timestamp < CACHE_TTL_MS) return cached.value;
+
+  const cachedLifecycle = cache.get('lifecycle');
+  if (cachedLifecycle && now - cachedLifecycle.timestamp < CACHE_TTL_MS) {
+    return {
+      lifecycle: cachedLifecycle.value as string,
+      platformDomain: (cache.get('platformDomain')?.value as string) ?? null,
+    };
+  }
 
   let lifecycle: string | null = null;
+  let platformDomain: string | null = null;
+
   try {
     const controller = new AbortController();
-    const t = setTimeout(() => controller.abort(), 500);
-    const res = await fetch(`${apiBase}/api/v1/installation/status`, {
+    const t = setTimeout(() => controller.abort(), 800);
+    const res = await fetch(`${INTERNAL_API}/api/v1/installation/status`, {
       method: 'GET',
       headers: { 'Content-Type': 'application/json' },
       signal: controller.signal,
-      cache: 'no-store',
     });
     clearTimeout(t);
     if (res.ok) {
@@ -34,12 +47,29 @@ async function getInstallationLifecycle(apiBase: string): Promise<string | null>
     }
   } catch { /* fail open */ }
 
+  try {
+    const controller = new AbortController();
+    const t = setTimeout(() => controller.abort(), 800);
+    const res = await fetch(`${INTERNAL_API}/api/v1/installation/settings`, {
+      method: 'GET',
+      signal: controller.signal,
+    });
+    clearTimeout(t);
+    if (res.ok) {
+      const json = await res.json() as { platformDomain?: string };
+      platformDomain = json.platformDomain ?? null;
+    }
+  } catch { /* not fatal */ }
+
   cache.set('lifecycle', { value: lifecycle ?? 'UNKNOWN', timestamp: now });
-  return lifecycle;
+  if (platformDomain) cache.set('platformDomain', { value: platformDomain, timestamp: now });
+
+  return { lifecycle, platformDomain };
 }
 
 export async function middleware(req: NextRequest) {
   const pathname = req.nextUrl.pathname;
+  const host = req.headers.get('host') ?? '';
 
   // API routes — always pass through
   if (pathname.startsWith('/api/')) return NextResponse.next();
@@ -50,14 +80,21 @@ export async function middleware(req: NextRequest) {
   // Skip static assets
   if (pathname.startsWith('/_next/') || pathname === '/favicon.ico') return NextResponse.next();
 
-  // Determine the API base from the request
-  const protocol = req.headers.get('x-forwarded-proto') ?? 'https';
-  const host = req.headers.get('host') ?? '';
-  const apiBase = `${protocol}://${host}`;
+  const { lifecycle, platformDomain } = await fetchInstallation();
 
-  const lifecycle = await getInstallationLifecycle(apiBase);
+  // Request host matches the configured platform domain → serve landing at /home
+  // e.g. someone visits deploy.fidscript.com → redirect to /home (landing page)
+  if (platformDomain && host === platformDomain) {
+    if (pathname === '/' || pathname === '') {
+      const url = req.nextUrl.clone();
+      url.pathname = '/home';
+      return NextResponse.redirect(url);
+    }
+    return NextResponse.next();
+  }
 
-  // UNCONFIGURED / CONFIGURING / FAILED → redirect everything non-API to /setup
+  // Everything else (app subdomain or unknown host) → dashboard
+  // Gate on lifecycle so UNCONFIGURED → /setup
   if (lifecycle === 'UNCONFIGURED' || lifecycle === 'CONFIGURING' || lifecycle === 'FAILED') {
     if (pathname !== '/setup') {
       const url = req.nextUrl.clone();
@@ -66,7 +103,6 @@ export async function middleware(req: NextRequest) {
     }
   }
 
-  // CONFIGURED → let through normally
   return NextResponse.next();
 }
 

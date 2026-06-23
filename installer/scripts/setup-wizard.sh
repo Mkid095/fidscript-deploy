@@ -311,29 +311,38 @@ http:
     compress:
       compress: {}
   routers:
-    dashboard:
-      rule: "Host(\`${DOMAIN}\`) && !PathPrefix(\`/api\`) && !PathPrefix(\`/metrics\`)"
+    # ── Dashboard (app subdomain) — must come BEFORE wildcard ─────────────────
+    dashboard-app:
+      rule: "Host(\`app.${DOMAIN}\`)"
       service: dashboard
       middlewares:
         - security-headers
         - compress
       tls:
         certResolver: ${CERT_RESOLVER}
+      priority: 20
+    # ── Landing / marketing (root domain) ────────────────────────────────────
+    dashboard-root:
+      rule: "Host(\`${DOMAIN}\`)"
+      service: dashboard
+      middlewares:
+        - security-headers
+        - compress
+      tls:
+        certResolver: ${CERT_RESOLVER}
+      priority: 10
+    # ── Per-deployment subdomains: 2+ label subdomain → API ──────────────────
+    # Matches: foo.${DOMAIN}, bar.${DOMAIN} etc. (NOT: app.${DOMAIN}, api.${DOMAIN})
     deployments-wildcard:
-      rule: "HostRegexp(\`^.+\\.${DOMAIN}$\`)"
+      rule: "HostRegexp(\`^[^.]+\\.[^.]+\\.${DOMAIN}$\`)"
       service: api
       middlewares:
         - security-headers
         - compress
       tls:
         certResolver: ${CERT_RESOLVER}
-    metrics:
-      rule: "Host(\`${DOMAIN}\`) && PathPrefix(\`/metrics\`)"
-      service: api
-      middlewares:
-        - security-headers
-      tls:
-        certResolver: ${CERT_RESOLVER}
+      priority: 5
+    # ── API path prefix → API backend ─────────────────────────────────────────
     api:
       rule: "PathPrefix(\`/api\`) && !Path(\`/install.sh\`)"
       service: api
@@ -342,10 +351,20 @@ http:
         - compress
       tls:
         certResolver: ${CERT_RESOLVER}
+    # ── Install script endpoint ─────────────────────────────────────────────────
     install-sh:
       rule: "Path(\`/install.sh\`)"
       service: api
       priority: 200
+    # ── Metrics endpoint ──────────────────────────────────────────────────────
+    metrics:
+      rule: "Host(\`${DOMAIN}\`) && PathPrefix(\`/metrics\`)"
+      service: api
+      middlewares:
+        - security-headers
+      tls:
+        certResolver: ${CERT_RESOLVER}
+    # ── MinIO console ─────────────────────────────────────────────────────────
     minio-console:
       rule: "Host(\`storage.${DOMAIN}\`)"
       service: minio-console
@@ -354,6 +373,7 @@ http:
         - compress
       tls:
         certResolver: ${CERT_RESOLVER}
+    # ── Stalwart JMAP ────────────────────────────────────────────────────────
     jmap:
       rule: "Host(\`jmap.${DOMAIN}\`)"
       service: stalwart-jmap
@@ -361,6 +381,7 @@ http:
         - security-headers
       tls:
         certResolver: ${CERT_RESOLVER}
+    # ── ACME challenge (Let's Encrypt) ────────────────────────────────────────
     acme-challenge:
       rule: "PathPrefix(\`/.well-known/acme-challenge/\`)"
       service: stalwart-acme

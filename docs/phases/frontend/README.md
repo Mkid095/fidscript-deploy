@@ -45,11 +45,11 @@ history**. Nothing is left to interpretation.
 | F04 | Projects | `f04-projects.md` | Phase 04 (PROJ-*) | ✅ Spec done + implemented (list + create + project shell + activity feed) |
 | F05 | Project Dashboard Shell | `f05-project-dashboard-shell.md` | navigation | ✅ Spec done + shell implemented |
 | F06 | Deployments UI | `f06-deployments.md` | Phase 06 (DEPL-*) | ✅ Spec done + deployed |
-| F07 | Functions UI | `f07-functions.md` | Phase 10 (FN-*) | ✅ Spec done + implemented |
-| F08 | Databases UI | `f08-databases.md` | Phase 08 (DB-*) | ✅ Spec done + implemented |
-| F09 | Storage UI | `f09-storage.md` | Phase 05 (STOR-*) | ✅ Spec done + implemented |
-| F10 | Realtime / Queues / Scheduler | `f10-realtime-queues-scheduler.md` | Phase 11/12/13 | ✅ Spec done + implemented |
-| F11 | Email / Domains / Monitoring / Logs / Settings / MCP | `f11-email-domains-monitoring.md` | 07/09/14/15/17 | ✅ Spec done + implemented |
+| F07 | Functions UI | `f07-functions.md` | Phase 10 (FN-*) | ⏳ Spec done — pending implementation |
+| F08 | Databases UI | `f08-databases.md` | Phase 08 (DB-*) | ⏳ Spec done — pending implementation |
+| F09 | Storage UI | `f09-storage.md` | Phase 05 (STOR-*) | ⏳ Spec done — pending implementation |
+| F10 | Realtime / Queues / Scheduler | `f10-realtime-queues-scheduler.md` | Phase 11/12/13 | ⏳ Spec done — pending implementation |
+| F11 | Email / Domains / Monitoring / Logs / Settings / MCP | `f11-email-domains-monitoring.md` | 07/09/14/15/17 | ⏳ Spec done — pending implementation |
 
 **Implementation order respects dependencies** (see each spec's §15). F02 (auth) gates everything under
 `/dashboard/*`; F04 (projects) gates all project-scoped service screens.

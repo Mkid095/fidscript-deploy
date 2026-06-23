@@ -1,20 +1,94 @@
 http:
+  middlewares:
+    security-headers:
+      headers:
+        frameDeny: true
+        browserXssFilter: true
+        contentTypeNosniff: true
+        sslRedirect: true
+        stsSeconds: 31536000
+        stsIncludeSubdomains: true
+        stsPreload: true
+    compress:
+      compress: {}
+
   routers:
-    fidscript-api:
+    # ── Public API ───────────────────────────────────────────────────────────
+    api:
       rule: "Host(`api.deploy.fidscript.com`)"
       service: fidscript-api
-      entryPoints:
-        - websecure
+      middlewares:
+        - security-headers
+        - compress
       tls:
         certResolver: letsencrypt-dns
 
-    fidscript-dashboard:
-      rule: "Host(`deploy.fidscript.com`)"
+    # ── Dashboard (app subdomain) — must come BEFORE wildcard ─────────────────
+    dashboard-app:
+      rule: "Host(`app.deploy.fidscript.com`)"
       service: fidscript-dashboard
-      entryPoints:
-        - websecure
+      middlewares:
+        - security-headers
+        - compress
       tls:
         certResolver: letsencrypt-dns
+      priority: 20
+
+    # ── Landing / marketing (root domain) ────────────────────────────────────
+    dashboard-root:
+      rule: "Host(`deploy.fidscript.com`)"
+      service: fidscript-dashboard
+      middlewares:
+        - security-headers
+        - compress
+      tls:
+        certResolver: letsencrypt-dns
+      priority: 10
+
+    # ── Wildcard: 2+ label subdomain → API (apps.<domain>, <anything>.<domain>) ─
+    # Does NOT match: app.<domain> (1 label) or api.<domain> (handled above)
+    # Pattern: anything.anything.deploy.fidscript.com (at least 2 dots before domain)
+    deployments-wildcard:
+      rule: "HostRegexp(`^[^.]+\\.[^.]+\\.deploy\\.fidscript\\.com$`)"
+      service: fidscript-api
+      middlewares:
+        - security-headers
+        - compress
+      tls:
+        certResolver: letsencrypt-dns
+      priority: 5
+
+    # ── Per-service subdomains ───────────────────────────────────────────────
+    minio-console:
+      rule: "Host(`storage.deploy.fidscript.com`)"
+      service: fidscript-minio-console
+      middlewares:
+        - security-headers
+        - compress
+      tls:
+        certResolver: letsencrypt-dns
+
+    jmap:
+      rule: "Host(`jmap.deploy.fidscript.com`)"
+      service: fidscript-stalwart-jmap
+      middlewares:
+        - security-headers
+      tls:
+        certResolver: letsencrypt-dns
+
+    metrics:
+      rule: "Host(`deploy.fidscript.com`) && PathPrefix(`/metrics`)"
+      service: fidscript-api
+      middlewares:
+        - security-headers
+      tls:
+        certResolver: letsencrypt-dns
+
+    acme-challenge:
+      rule: "PathPrefix(`/.well-known/acme-challenge/`)"
+      service: fidscript-stalwart-acme
+      middlewares:
+        - security-headers
 
   services:
     fidscript-api:
@@ -25,4 +99,19 @@ http:
     fidscript-dashboard:
       loadBalancer:
         servers:
-          - url: "http://10.0.3.11:3001"
+          - url: "http://10.0.3.10:3001"
+
+    fidscript-minio-console:
+      loadBalancer:
+        servers:
+          - url: "http://fidscript_minio:9001"
+
+    fidscript-stalwart-jmap:
+      loadBalancer:
+        servers:
+          - url: "http://fidscript_stalwart:8080"
+
+    fidscript-stalwart-acme:
+      loadBalancer:
+        servers:
+          - url: "http://127.0.0.1:8080"
