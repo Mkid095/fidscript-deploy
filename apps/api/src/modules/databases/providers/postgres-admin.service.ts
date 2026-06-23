@@ -79,6 +79,10 @@ export class PostgresAdminService implements OnModuleInit {
   }
 
   getAdminHost() { return this.adminHost; }
+  getAdminUser() { return this.adminUser; }
+  getAdminPassword() { return this.adminPassword; }
+  getAdminPort() { return this.adminPort; }
+  getAdminDatabase() { return this.adminDatabase; }
   getPgbouncerHost() { return this.configService.get<string>('PGBOUNCER_HOST', 'pgbouncer'); }
   getPgbouncerPort() { return this.configService.get<number>('PGBOUNCER_PORT', 6432); }
 }

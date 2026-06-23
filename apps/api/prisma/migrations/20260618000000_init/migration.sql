@@ -174,7 +174,7 @@ CREATE TABLE "projects.project_settings" (
 );
 
 -- CreateTable
-CREATE TABLE "storage.buckets" (
+CREATE TABLE "buckets" (
     "id" TEXT NOT NULL,
     "project_id" TEXT NOT NULL,
     "name" VARCHAR(255) NOT NULL,
@@ -184,11 +184,11 @@ CREATE TABLE "storage.buckets" (
     "max_size_bytes" BIGINT,
     "created_at" TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
 
-    CONSTRAINT "storage.buckets_pkey" PRIMARY KEY ("id")
+    CONSTRAINT "buckets_pkey" PRIMARY KEY ("id")
 );
 
 -- CreateTable
-CREATE TABLE "storage.files" (
+CREATE TABLE "files" (
     "id" TEXT NOT NULL,
     "bucket_id" TEXT NOT NULL,
     "key" VARCHAR(1024) NOT NULL,
@@ -199,7 +199,7 @@ CREATE TABLE "storage.files" (
     "metadata" JSONB NOT NULL DEFAULT '{}',
     "created_at" TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
 
-    CONSTRAINT "storage.files_pkey" PRIMARY KEY ("id")
+    CONSTRAINT "files_pkey" PRIMARY KEY ("id")
 );
 
 -- CreateTable
@@ -360,7 +360,7 @@ CREATE TABLE "projects.app_user_roles" (
 );
 
 -- CreateTable
-CREATE TABLE "email.domains" (
+CREATE TABLE "domains" (
     "id" TEXT NOT NULL,
     "project_id" TEXT NOT NULL,
     "domain" VARCHAR(255) NOT NULL,
@@ -374,11 +374,11 @@ CREATE TABLE "email.domains" (
     "verified_at" TIMESTAMPTZ,
     "created_at" TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
 
-    CONSTRAINT "email.domains_pkey" PRIMARY KEY ("id")
+    CONSTRAINT "domains_pkey" PRIMARY KEY ("id")
 );
 
 -- CreateTable
-CREATE TABLE "email.mailboxes" (
+CREATE TABLE "mailboxes" (
     "id" TEXT NOT NULL,
     "domain_id" TEXT NOT NULL,
     "localPart" VARCHAR(255) NOT NULL,
@@ -389,11 +389,11 @@ CREATE TABLE "email.mailboxes" (
     "created_at" TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updated_at" TIMESTAMPTZ NOT NULL,
 
-    CONSTRAINT "email.mailboxes_pkey" PRIMARY KEY ("id")
+    CONSTRAINT "mailboxes_pkey" PRIMARY KEY ("id")
 );
 
 -- CreateTable
-CREATE TABLE "email.aliases" (
+CREATE TABLE "aliases" (
     "id" TEXT NOT NULL,
     "domain_id" TEXT NOT NULL,
     "localPart" VARCHAR(255) NOT NULL,
@@ -403,11 +403,11 @@ CREATE TABLE "email.aliases" (
     "created_at" TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updated_at" TIMESTAMPTZ NOT NULL,
 
-    CONSTRAINT "email.aliases_pkey" PRIMARY KEY ("id")
+    CONSTRAINT "aliases_pkey" PRIMARY KEY ("id")
 );
 
 -- CreateTable
-CREATE TABLE "email.sender_identities" (
+CREATE TABLE "sender_identities" (
     "id" TEXT NOT NULL,
     "domain_id" TEXT NOT NULL,
     "email" VARCHAR(255) NOT NULL,
@@ -415,11 +415,11 @@ CREATE TABLE "email.sender_identities" (
     "is_verified" BOOLEAN NOT NULL DEFAULT false,
     "created_at" TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
 
-    CONSTRAINT "email.sender_identities_pkey" PRIMARY KEY ("id")
+    CONSTRAINT "sender_identities_pkey" PRIMARY KEY ("id")
 );
 
 -- CreateTable
-CREATE TABLE "email.api_keys" (
+CREATE TABLE "api_keys" (
     "id" TEXT NOT NULL,
     "project_id" TEXT NOT NULL,
     "name" VARCHAR(255) NOT NULL,
@@ -428,11 +428,11 @@ CREATE TABLE "email.api_keys" (
     "last_used_at" TIMESTAMPTZ,
     "created_at" TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
 
-    CONSTRAINT "email.api_keys_pkey" PRIMARY KEY ("id")
+    CONSTRAINT "api_keys_pkey" PRIMARY KEY ("id")
 );
 
 -- CreateTable
-CREATE TABLE "email.messages" (
+CREATE TABLE "messages" (
     "id" TEXT NOT NULL,
     "mailbox_id" TEXT,
     "sender_identity_id" TEXT,
@@ -449,11 +449,11 @@ CREATE TABLE "email.messages" (
     "error" TEXT,
     "created_at" TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
 
-    CONSTRAINT "email.messages_pkey" PRIMARY KEY ("id")
+    CONSTRAINT "messages_pkey" PRIMARY KEY ("id")
 );
 
 -- CreateTable
-CREATE TABLE "email.catch_all_rules" (
+CREATE TABLE "catch_all_rules" (
     "id" TEXT NOT NULL,
     "domain_id" TEXT NOT NULL,
     "target" JSONB NOT NULL,
@@ -461,22 +461,22 @@ CREATE TABLE "email.catch_all_rules" (
     "messages_per_minute" INTEGER NOT NULL DEFAULT 60,
     "created_at" TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
 
-    CONSTRAINT "email.catch_all_rules_pkey" PRIMARY KEY ("id")
+    CONSTRAINT "catch_all_rules_pkey" PRIMARY KEY ("id")
 );
 
 -- CreateTable
-CREATE TABLE "email.suppressions" (
+CREATE TABLE "suppressions" (
     "id" TEXT NOT NULL,
     "domain_id" TEXT NOT NULL,
     "email" VARCHAR(255) NOT NULL,
     "reason" "SuppressionReason" NOT NULL,
     "created_at" TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
 
-    CONSTRAINT "email.suppressions_pkey" PRIMARY KEY ("id")
+    CONSTRAINT "suppressions_pkey" PRIMARY KEY ("id")
 );
 
 -- CreateTable
-CREATE TABLE "email.api_usage" (
+CREATE TABLE "api_usage" (
     "id" TEXT NOT NULL,
     "project_id" TEXT NOT NULL,
     "api_key_id" TEXT NOT NULL,
@@ -489,11 +489,11 @@ CREATE TABLE "email.api_usage" (
     "blocked_until" TIMESTAMPTZ,
     "last_failure_at" TIMESTAMPTZ,
 
-    CONSTRAINT "email.api_usage_pkey" PRIMARY KEY ("id")
+    CONSTRAINT "api_usage_pkey" PRIMARY KEY ("id")
 );
 
 -- CreateTable
-CREATE TABLE "realtime.channels" (
+CREATE TABLE "channels" (
     "id" TEXT NOT NULL,
     "project_id" TEXT NOT NULL,
     "name" VARCHAR(255) NOT NULL,
@@ -502,11 +502,11 @@ CREATE TABLE "realtime.channels" (
     "access_token" VARCHAR(255),
     "created_at" TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
 
-    CONSTRAINT "realtime.channels_pkey" PRIMARY KEY ("id")
+    CONSTRAINT "channels_pkey" PRIMARY KEY ("id")
 );
 
 -- CreateTable
-CREATE TABLE "realtime.messages" (
+CREATE TABLE "messages" (
     "id" TEXT NOT NULL,
     "channel_id" TEXT NOT NULL,
     "userId" VARCHAR(255) NOT NULL,
@@ -514,11 +514,11 @@ CREATE TABLE "realtime.messages" (
     "event" VARCHAR(100) NOT NULL DEFAULT 'message',
     "created_at" TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
 
-    CONSTRAINT "realtime.messages_pkey" PRIMARY KEY ("id")
+    CONSTRAINT "messages_pkey" PRIMARY KEY ("id")
 );
 
 -- CreateTable
-CREATE TABLE "realtime.presence" (
+CREATE TABLE "presence" (
     "id" TEXT NOT NULL,
     "project_id" TEXT NOT NULL,
     "channel_id" TEXT NOT NULL,
@@ -526,11 +526,11 @@ CREATE TABLE "realtime.presence" (
     "status" VARCHAR(50) NOT NULL DEFAULT 'online',
     "updated_at" TIMESTAMPTZ NOT NULL,
 
-    CONSTRAINT "realtime.presence_pkey" PRIMARY KEY ("id")
+    CONSTRAINT "presence_pkey" PRIMARY KEY ("id")
 );
 
 -- CreateTable
-CREATE TABLE "databases.managed" (
+CREATE TABLE "managed" (
     "id" TEXT NOT NULL,
     "project_id" TEXT NOT NULL,
     "name" VARCHAR(255) NOT NULL,
@@ -552,11 +552,11 @@ CREATE TABLE "databases.managed" (
     "cluster_id" TEXT,
     "provider" VARCHAR(50) NOT NULL DEFAULT 'internal-postgres',
 
-    CONSTRAINT "databases.managed_pkey" PRIMARY KEY ("id")
+    CONSTRAINT "managed_pkey" PRIMARY KEY ("id")
 );
 
 -- CreateTable
-CREATE TABLE "databases.backups" (
+CREATE TABLE "backups" (
     "id" TEXT NOT NULL,
     "database_id" TEXT NOT NULL,
     "filename" VARCHAR(500),
@@ -566,11 +566,11 @@ CREATE TABLE "databases.backups" (
     "created_at" TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "completed_at" TIMESTAMPTZ,
 
-    CONSTRAINT "databases.backups_pkey" PRIMARY KEY ("id")
+    CONSTRAINT "backups_pkey" PRIMARY KEY ("id")
 );
 
 -- CreateTable
-CREATE TABLE "infrastructure.database_metrics" (
+CREATE TABLE "database_metrics" (
     "id" TEXT NOT NULL,
     "database_id" TEXT NOT NULL,
     "recorded_at" TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -582,11 +582,11 @@ CREATE TABLE "infrastructure.database_metrics" (
     "last_backup_size" BIGINT NOT NULL DEFAULT 0,
     "backup_verified" BOOLEAN NOT NULL DEFAULT false,
 
-    CONSTRAINT "infrastructure.database_metrics_pkey" PRIMARY KEY ("id")
+    CONSTRAINT "database_metrics_pkey" PRIMARY KEY ("id")
 );
 
 -- CreateTable
-CREATE TABLE "functions.instances" (
+CREATE TABLE "instances" (
     "id" TEXT NOT NULL,
     "project_id" TEXT NOT NULL,
     "name" VARCHAR(255) NOT NULL,
@@ -601,11 +601,11 @@ CREATE TABLE "functions.instances" (
     "created_at" TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updated_at" TIMESTAMPTZ NOT NULL,
 
-    CONSTRAINT "functions.instances_pkey" PRIMARY KEY ("id")
+    CONSTRAINT "instances_pkey" PRIMARY KEY ("id")
 );
 
 -- CreateTable
-CREATE TABLE "functions.logs" (
+CREATE TABLE "logs" (
     "id" TEXT NOT NULL,
     "function_id" TEXT NOT NULL,
     "version" VARCHAR(100) NOT NULL,
@@ -617,11 +617,11 @@ CREATE TABLE "functions.logs" (
     "error_message" TEXT,
     "created_at" TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
 
-    CONSTRAINT "functions.logs_pkey" PRIMARY KEY ("id")
+    CONSTRAINT "logs_pkey" PRIMARY KEY ("id")
 );
 
 -- CreateTable
-CREATE TABLE "queues.instances" (
+CREATE TABLE "instances" (
     "id" TEXT NOT NULL,
     "project_id" TEXT NOT NULL,
     "name" VARCHAR(255) NOT NULL,
@@ -637,11 +637,11 @@ CREATE TABLE "queues.instances" (
     "created_at" TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updated_at" TIMESTAMPTZ NOT NULL,
 
-    CONSTRAINT "queues.instances_pkey" PRIMARY KEY ("id")
+    CONSTRAINT "instances_pkey" PRIMARY KEY ("id")
 );
 
 -- CreateTable
-CREATE TABLE "queues.messages" (
+CREATE TABLE "messages" (
     "id" TEXT NOT NULL,
     "queue_id" TEXT NOT NULL,
     "body" TEXT NOT NULL,
@@ -655,11 +655,11 @@ CREATE TABLE "queues.messages" (
     "error_message" TEXT,
     "created_at" TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
 
-    CONSTRAINT "queues.messages_pkey" PRIMARY KEY ("id")
+    CONSTRAINT "messages_pkey" PRIMARY KEY ("id")
 );
 
 -- CreateTable
-CREATE TABLE "scheduler.cron_jobs" (
+CREATE TABLE "cron_jobs" (
     "id" TEXT NOT NULL,
     "project_id" TEXT NOT NULL,
     "name" VARCHAR(255) NOT NULL,
@@ -677,11 +677,11 @@ CREATE TABLE "scheduler.cron_jobs" (
     "created_at" TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updated_at" TIMESTAMPTZ NOT NULL,
 
-    CONSTRAINT "scheduler.cron_jobs_pkey" PRIMARY KEY ("id")
+    CONSTRAINT "cron_jobs_pkey" PRIMARY KEY ("id")
 );
 
 -- CreateTable
-CREATE TABLE "scheduler.runs" (
+CREATE TABLE "runs" (
     "id" TEXT NOT NULL,
     "cron_job_id" TEXT NOT NULL,
     "status" VARCHAR(50) NOT NULL DEFAULT 'running',
@@ -690,11 +690,11 @@ CREATE TABLE "scheduler.runs" (
     "error_message" TEXT,
     "created_at" TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
 
-    CONSTRAINT "scheduler.runs_pkey" PRIMARY KEY ("id")
+    CONSTRAINT "runs_pkey" PRIMARY KEY ("id")
 );
 
 -- CreateTable
-CREATE TABLE "monitoring.metrics" (
+CREATE TABLE "metrics" (
     "id" TEXT NOT NULL,
     "project_id" TEXT NOT NULL,
     "metric" VARCHAR(255) NOT NULL,
@@ -702,11 +702,11 @@ CREATE TABLE "monitoring.metrics" (
     "labels" JSONB NOT NULL DEFAULT '{}',
     "timestamp" TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
 
-    CONSTRAINT "monitoring.metrics_pkey" PRIMARY KEY ("id")
+    CONSTRAINT "metrics_pkey" PRIMARY KEY ("id")
 );
 
 -- CreateTable
-CREATE TABLE "monitoring.alert_rules" (
+CREATE TABLE "alert_rules" (
     "id" TEXT NOT NULL,
     "project_id" TEXT NOT NULL,
     "name" VARCHAR(255) NOT NULL,
@@ -720,11 +720,11 @@ CREATE TABLE "monitoring.alert_rules" (
     "created_at" TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updated_at" TIMESTAMPTZ NOT NULL,
 
-    CONSTRAINT "monitoring.alert_rules_pkey" PRIMARY KEY ("id")
+    CONSTRAINT "alert_rules_pkey" PRIMARY KEY ("id")
 );
 
 -- CreateTable
-CREATE TABLE "monitoring.alerts" (
+CREATE TABLE "alerts" (
     "id" TEXT NOT NULL,
     "project_id" TEXT NOT NULL,
     "rule_id" TEXT NOT NULL,
@@ -735,11 +735,11 @@ CREATE TABLE "monitoring.alerts" (
     "resolved_at" TIMESTAMPTZ,
     "created_at" TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
 
-    CONSTRAINT "monitoring.alerts_pkey" PRIMARY KEY ("id")
+    CONSTRAINT "alerts_pkey" PRIMARY KEY ("id")
 );
 
 -- CreateTable
-CREATE TABLE "monitoring.notification_channels" (
+CREATE TABLE "notification_channels" (
     "id" TEXT NOT NULL,
     "project_id" TEXT NOT NULL,
     "name" VARCHAR(255) NOT NULL,
@@ -748,11 +748,11 @@ CREATE TABLE "monitoring.notification_channels" (
     "created_at" TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updated_at" TIMESTAMPTZ NOT NULL,
 
-    CONSTRAINT "monitoring.notification_channels_pkey" PRIMARY KEY ("id")
+    CONSTRAINT "notification_channels_pkey" PRIMARY KEY ("id")
 );
 
 -- CreateTable
-CREATE TABLE "logging.streams" (
+CREATE TABLE "streams" (
     "id" TEXT NOT NULL,
     "project_id" TEXT NOT NULL,
     "name" VARCHAR(255) NOT NULL,
@@ -760,11 +760,11 @@ CREATE TABLE "logging.streams" (
     "retentionDays" INTEGER NOT NULL DEFAULT 30,
     "created_at" TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
 
-    CONSTRAINT "logging.streams_pkey" PRIMARY KEY ("id")
+    CONSTRAINT "streams_pkey" PRIMARY KEY ("id")
 );
 
 -- CreateTable
-CREATE TABLE "logging.entries" (
+CREATE TABLE "entries" (
     "id" TEXT NOT NULL,
     "stream_id" TEXT NOT NULL,
     "level" VARCHAR(20) NOT NULL,
@@ -772,11 +772,11 @@ CREATE TABLE "logging.entries" (
     "metadata" JSONB NOT NULL DEFAULT '{}',
     "timestamp" TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
 
-    CONSTRAINT "logging.entries_pkey" PRIMARY KEY ("id")
+    CONSTRAINT "entries_pkey" PRIMARY KEY ("id")
 );
 
 -- CreateTable
-CREATE TABLE "templates.instances" (
+CREATE TABLE "instances" (
     "id" TEXT NOT NULL,
     "project_id" TEXT NOT NULL,
     "name" VARCHAR(255) NOT NULL,
@@ -788,11 +788,11 @@ CREATE TABLE "templates.instances" (
     "created_at" TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updated_at" TIMESTAMPTZ NOT NULL,
 
-    CONSTRAINT "templates.instances_pkey" PRIMARY KEY ("id")
+    CONSTRAINT "instances_pkey" PRIMARY KEY ("id")
 );
 
 -- CreateTable
-CREATE TABLE "ai.conversations" (
+CREATE TABLE "conversations" (
     "id" TEXT NOT NULL,
     "project_id" TEXT NOT NULL,
     "user_id" TEXT,
@@ -803,11 +803,11 @@ CREATE TABLE "ai.conversations" (
     "created_at" TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updated_at" TIMESTAMPTZ NOT NULL,
 
-    CONSTRAINT "ai.conversations_pkey" PRIMARY KEY ("id")
+    CONSTRAINT "conversations_pkey" PRIMARY KEY ("id")
 );
 
 -- CreateTable
-CREATE TABLE "ai.messages" (
+CREATE TABLE "messages" (
     "id" TEXT NOT NULL,
     "conversation_id" TEXT NOT NULL,
     "role" VARCHAR(50) NOT NULL,
@@ -818,11 +818,11 @@ CREATE TABLE "ai.messages" (
     "metadata" JSONB NOT NULL DEFAULT '{}',
     "created_at" TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
 
-    CONSTRAINT "ai.messages_pkey" PRIMARY KEY ("id")
+    CONSTRAINT "messages_pkey" PRIMARY KEY ("id")
 );
 
 -- CreateTable
-CREATE TABLE "marketplace.items" (
+CREATE TABLE "items" (
     "id" TEXT NOT NULL,
     "type" VARCHAR(50) NOT NULL,
     "name" VARCHAR(255) NOT NULL,
@@ -850,11 +850,11 @@ CREATE TABLE "marketplace.items" (
     "created_at" TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updated_at" TIMESTAMPTZ NOT NULL,
 
-    CONSTRAINT "marketplace.items_pkey" PRIMARY KEY ("id")
+    CONSTRAINT "items_pkey" PRIMARY KEY ("id")
 );
 
 -- CreateTable
-CREATE TABLE "marketplace.reviews" (
+CREATE TABLE "reviews" (
     "id" TEXT NOT NULL,
     "item_id" TEXT NOT NULL,
     "user_id" VARCHAR(255),
@@ -867,7 +867,7 @@ CREATE TABLE "marketplace.reviews" (
     "created_at" TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updated_at" TIMESTAMPTZ NOT NULL,
 
-    CONSTRAINT "marketplace.reviews_pkey" PRIMARY KEY ("id")
+    CONSTRAINT "reviews_pkey" PRIMARY KEY ("id")
 );
 
 -- CreateTable
@@ -935,88 +935,88 @@ CREATE UNIQUE INDEX "projects.app_users_project_id_email_key" ON "projects.app_u
 CREATE UNIQUE INDEX "projects.app_roles_project_id_name_key" ON "projects.app_roles"("project_id", "name");
 
 -- CreateIndex
-CREATE UNIQUE INDEX "email.domains_project_id_domain_key" ON "email.domains"("project_id", "domain");
+CREATE UNIQUE INDEX "domains_project_id_domain_key" ON "domains"("project_id", "domain");
 
 -- CreateIndex
-CREATE UNIQUE INDEX "email.mailboxes_domain_id_localPart_key" ON "email.mailboxes"("domain_id", "localPart");
+CREATE UNIQUE INDEX "mailboxes_domain_id_localPart_key" ON "mailboxes"("domain_id", "localPart");
 
 -- CreateIndex
-CREATE UNIQUE INDEX "email.aliases_domain_id_localPart_key" ON "email.aliases"("domain_id", "localPart");
+CREATE UNIQUE INDEX "aliases_domain_id_localPart_key" ON "aliases"("domain_id", "localPart");
 
 -- CreateIndex
-CREATE UNIQUE INDEX "email.sender_identities_domain_id_email_key" ON "email.sender_identities"("domain_id", "email");
+CREATE UNIQUE INDEX "sender_identities_domain_id_email_key" ON "sender_identities"("domain_id", "email");
 
 -- CreateIndex
-CREATE INDEX "email.messages_mailbox_id_created_at_idx" ON "email.messages"("mailbox_id", "created_at");
+CREATE INDEX "messages_mailbox_id_created_at_idx" ON "messages"("mailbox_id", "created_at");
 
 -- CreateIndex
-CREATE INDEX "email.messages_project_id_created_at_idx" ON "email.messages"("project_id", "created_at");
+CREATE INDEX "messages_project_id_created_at_idx" ON "messages"("project_id", "created_at");
 
 -- CreateIndex
-CREATE UNIQUE INDEX "email.catch_all_rules_domain_id_key" ON "email.catch_all_rules"("domain_id");
+CREATE UNIQUE INDEX "catch_all_rules_domain_id_key" ON "catch_all_rules"("domain_id");
 
 -- CreateIndex
-CREATE UNIQUE INDEX "email.suppressions_domain_id_email_key" ON "email.suppressions"("domain_id", "email");
+CREATE UNIQUE INDEX "suppressions_domain_id_email_key" ON "suppressions"("domain_id", "email");
 
 -- CreateIndex
-CREATE INDEX "email.api_usage_project_id_date_idx" ON "email.api_usage"("project_id", "date");
+CREATE INDEX "api_usage_project_id_date_idx" ON "api_usage"("project_id", "date");
 
 -- CreateIndex
-CREATE UNIQUE INDEX "email.api_usage_project_id_api_key_id_date_key" ON "email.api_usage"("project_id", "api_key_id", "date");
+CREATE UNIQUE INDEX "api_usage_project_id_api_key_id_date_key" ON "api_usage"("project_id", "api_key_id", "date");
 
 -- CreateIndex
-CREATE UNIQUE INDEX "realtime.channels_project_id_name_key" ON "realtime.channels"("project_id", "name");
+CREATE UNIQUE INDEX "channels_project_id_name_key" ON "channels"("project_id", "name");
 
 -- CreateIndex
-CREATE UNIQUE INDEX "realtime.presence_project_id_userId_channel_id_key" ON "realtime.presence"("project_id", "userId", "channel_id");
+CREATE UNIQUE INDEX "presence_project_id_userId_channel_id_key" ON "presence"("project_id", "userId", "channel_id");
 
 -- CreateIndex
-CREATE UNIQUE INDEX "databases.managed_project_id_environment_name_key" ON "databases.managed"("project_id", "environment", "name");
+CREATE UNIQUE INDEX "managed_project_id_environment_name_key" ON "managed"("project_id", "environment", "name");
 
 -- CreateIndex
-CREATE INDEX "infrastructure.database_metrics_database_id_recorded_at_idx" ON "infrastructure.database_metrics"("database_id", "recorded_at");
+CREATE INDEX "database_metrics_database_id_recorded_at_idx" ON "database_metrics"("database_id", "recorded_at");
 
 -- CreateIndex
-CREATE UNIQUE INDEX "functions.instances_project_id_name_key" ON "functions.instances"("project_id", "name");
+CREATE UNIQUE INDEX "instances_project_id_name_key" ON "instances"("project_id", "name");
 
 -- CreateIndex
-CREATE UNIQUE INDEX "queues.instances_project_id_name_key" ON "queues.instances"("project_id", "name");
+CREATE UNIQUE INDEX "instances_project_id_name_key" ON "instances"("project_id", "name");
 
 -- CreateIndex
-CREATE UNIQUE INDEX "scheduler.cron_jobs_project_id_name_key" ON "scheduler.cron_jobs"("project_id", "name");
+CREATE UNIQUE INDEX "cron_jobs_project_id_name_key" ON "cron_jobs"("project_id", "name");
 
 -- CreateIndex
-CREATE INDEX "monitoring.metrics_project_id_metric_timestamp_idx" ON "monitoring.metrics"("project_id", "metric", "timestamp");
+CREATE INDEX "metrics_project_id_metric_timestamp_idx" ON "metrics"("project_id", "metric", "timestamp");
 
 -- CreateIndex
-CREATE UNIQUE INDEX "logging.streams_project_id_name_key" ON "logging.streams"("project_id", "name");
+CREATE UNIQUE INDEX "streams_project_id_name_key" ON "streams"("project_id", "name");
 
 -- CreateIndex
-CREATE INDEX "logging.entries_stream_id_timestamp_idx" ON "logging.entries"("stream_id", "timestamp");
+CREATE INDEX "entries_stream_id_timestamp_idx" ON "entries"("stream_id", "timestamp");
 
 -- CreateIndex
-CREATE INDEX "logging.entries_stream_id_level_idx" ON "logging.entries"("stream_id", "level");
+CREATE INDEX "entries_stream_id_level_idx" ON "entries"("stream_id", "level");
 
 -- CreateIndex
-CREATE UNIQUE INDEX "templates.instances_project_id_name_key" ON "templates.instances"("project_id", "name");
+CREATE UNIQUE INDEX "instances_project_id_name_key" ON "instances"("project_id", "name");
 
 -- CreateIndex
-CREATE INDEX "ai.conversations_project_id_created_at_idx" ON "ai.conversations"("project_id", "created_at");
+CREATE INDEX "conversations_project_id_created_at_idx" ON "conversations"("project_id", "created_at");
 
 -- CreateIndex
-CREATE UNIQUE INDEX "marketplace.items_slug_key" ON "marketplace.items"("slug");
+CREATE UNIQUE INDEX "items_slug_key" ON "items"("slug");
 
 -- CreateIndex
-CREATE INDEX "marketplace.items_type_status_is_active_idx" ON "marketplace.items"("type", "status", "is_active");
+CREATE INDEX "items_type_status_is_active_idx" ON "items"("type", "status", "is_active");
 
 -- CreateIndex
-CREATE INDEX "marketplace.items_type_category_idx" ON "marketplace.items"("type", "category");
+CREATE INDEX "items_type_category_idx" ON "items"("type", "category");
 
 -- CreateIndex
-CREATE INDEX "marketplace.items_author_id_idx" ON "marketplace.items"("author_id");
+CREATE INDEX "items_author_id_idx" ON "items"("author_id");
 
 -- CreateIndex
-CREATE UNIQUE INDEX "marketplace.reviews_item_id_user_id_key" ON "marketplace.reviews"("item_id", "user_id");
+CREATE UNIQUE INDEX "reviews_item_id_user_id_key" ON "reviews"("item_id", "user_id");
 
 -- CreateIndex
 CREATE INDEX "platform.events_type_timestamp_idx" ON "platform.events"("type", "timestamp");
@@ -1061,10 +1061,10 @@ ALTER TABLE "projects.project_settings" ADD CONSTRAINT "projects.project_setting
 ALTER TABLE "projects.project_settings" ADD CONSTRAINT "projects.project_settings_active_deployment_id_fkey" FOREIGN KEY ("active_deployment_id") REFERENCES "projects.deployments"("id") ON DELETE SET NULL ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE "storage.buckets" ADD CONSTRAINT "storage.buckets_project_id_fkey" FOREIGN KEY ("project_id") REFERENCES "projects.projects"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+ALTER TABLE "buckets" ADD CONSTRAINT "buckets_project_id_fkey" FOREIGN KEY ("project_id") REFERENCES "projects.projects"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE "storage.files" ADD CONSTRAINT "storage.files_bucket_id_fkey" FOREIGN KEY ("bucket_id") REFERENCES "storage.buckets"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+ALTER TABLE "files" ADD CONSTRAINT "files_bucket_id_fkey" FOREIGN KEY ("bucket_id") REFERENCES "buckets"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE "projects.releases" ADD CONSTRAINT "projects.releases_project_id_fkey" FOREIGN KEY ("project_id") REFERENCES "projects.projects"("id") ON DELETE CASCADE ON UPDATE CASCADE;
@@ -1109,107 +1109,107 @@ ALTER TABLE "projects.app_user_roles" ADD CONSTRAINT "projects.app_user_roles_us
 ALTER TABLE "projects.app_user_roles" ADD CONSTRAINT "projects.app_user_roles_role_id_fkey" FOREIGN KEY ("role_id") REFERENCES "projects.app_roles"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE "email.domains" ADD CONSTRAINT "email.domains_project_id_fkey" FOREIGN KEY ("project_id") REFERENCES "projects.projects"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+ALTER TABLE "domains" ADD CONSTRAINT "domains_project_id_fkey" FOREIGN KEY ("project_id") REFERENCES "projects.projects"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE "email.mailboxes" ADD CONSTRAINT "email.mailboxes_domain_id_fkey" FOREIGN KEY ("domain_id") REFERENCES "email.domains"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+ALTER TABLE "mailboxes" ADD CONSTRAINT "mailboxes_domain_id_fkey" FOREIGN KEY ("domain_id") REFERENCES "domains"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE "email.aliases" ADD CONSTRAINT "email.aliases_domain_id_fkey" FOREIGN KEY ("domain_id") REFERENCES "email.domains"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+ALTER TABLE "aliases" ADD CONSTRAINT "aliases_domain_id_fkey" FOREIGN KEY ("domain_id") REFERENCES "domains"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE "email.sender_identities" ADD CONSTRAINT "email.sender_identities_domain_id_fkey" FOREIGN KEY ("domain_id") REFERENCES "email.domains"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+ALTER TABLE "sender_identities" ADD CONSTRAINT "sender_identities_domain_id_fkey" FOREIGN KEY ("domain_id") REFERENCES "domains"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE "email.api_keys" ADD CONSTRAINT "email.api_keys_project_id_fkey" FOREIGN KEY ("project_id") REFERENCES "projects.projects"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+ALTER TABLE "api_keys" ADD CONSTRAINT "api_keys_project_id_fkey" FOREIGN KEY ("project_id") REFERENCES "projects.projects"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE "email.messages" ADD CONSTRAINT "email.messages_mailbox_id_fkey" FOREIGN KEY ("mailbox_id") REFERENCES "email.mailboxes"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+ALTER TABLE "messages" ADD CONSTRAINT "messages_mailbox_id_fkey" FOREIGN KEY ("mailbox_id") REFERENCES "mailboxes"("id") ON DELETE SET NULL ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE "email.messages" ADD CONSTRAINT "email.messages_sender_identity_id_fkey" FOREIGN KEY ("sender_identity_id") REFERENCES "email.sender_identities"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+ALTER TABLE "messages" ADD CONSTRAINT "messages_sender_identity_id_fkey" FOREIGN KEY ("sender_identity_id") REFERENCES "sender_identities"("id") ON DELETE SET NULL ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE "email.messages" ADD CONSTRAINT "email.messages_project_id_fkey" FOREIGN KEY ("project_id") REFERENCES "projects.projects"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+ALTER TABLE "messages" ADD CONSTRAINT "messages_project_id_fkey" FOREIGN KEY ("project_id") REFERENCES "projects.projects"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE "email.catch_all_rules" ADD CONSTRAINT "email.catch_all_rules_domain_id_fkey" FOREIGN KEY ("domain_id") REFERENCES "email.domains"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+ALTER TABLE "catch_all_rules" ADD CONSTRAINT "catch_all_rules_domain_id_fkey" FOREIGN KEY ("domain_id") REFERENCES "domains"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE "email.suppressions" ADD CONSTRAINT "email.suppressions_domain_id_fkey" FOREIGN KEY ("domain_id") REFERENCES "email.domains"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+ALTER TABLE "suppressions" ADD CONSTRAINT "suppressions_domain_id_fkey" FOREIGN KEY ("domain_id") REFERENCES "domains"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE "email.api_usage" ADD CONSTRAINT "email.api_usage_project_id_fkey" FOREIGN KEY ("project_id") REFERENCES "projects.projects"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+ALTER TABLE "api_usage" ADD CONSTRAINT "api_usage_project_id_fkey" FOREIGN KEY ("project_id") REFERENCES "projects.projects"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE "email.api_usage" ADD CONSTRAINT "email.api_usage_api_key_id_fkey" FOREIGN KEY ("api_key_id") REFERENCES "email.api_keys"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+ALTER TABLE "api_usage" ADD CONSTRAINT "api_usage_api_key_id_fkey" FOREIGN KEY ("api_key_id") REFERENCES "api_keys"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE "realtime.channels" ADD CONSTRAINT "realtime.channels_project_id_fkey" FOREIGN KEY ("project_id") REFERENCES "projects.projects"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+ALTER TABLE "channels" ADD CONSTRAINT "channels_project_id_fkey" FOREIGN KEY ("project_id") REFERENCES "projects.projects"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE "realtime.messages" ADD CONSTRAINT "realtime.messages_channel_id_fkey" FOREIGN KEY ("channel_id") REFERENCES "realtime.channels"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+ALTER TABLE "messages" ADD CONSTRAINT "messages_channel_id_fkey" FOREIGN KEY ("channel_id") REFERENCES "channels"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE "realtime.presence" ADD CONSTRAINT "realtime.presence_channel_id_fkey" FOREIGN KEY ("channel_id") REFERENCES "realtime.channels"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+ALTER TABLE "presence" ADD CONSTRAINT "presence_channel_id_fkey" FOREIGN KEY ("channel_id") REFERENCES "channels"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE "databases.managed" ADD CONSTRAINT "databases.managed_project_id_fkey" FOREIGN KEY ("project_id") REFERENCES "projects.projects"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+ALTER TABLE "managed" ADD CONSTRAINT "managed_project_id_fkey" FOREIGN KEY ("project_id") REFERENCES "projects.projects"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE "databases.backups" ADD CONSTRAINT "databases.backups_database_id_fkey" FOREIGN KEY ("database_id") REFERENCES "databases.managed"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+ALTER TABLE "backups" ADD CONSTRAINT "backups_database_id_fkey" FOREIGN KEY ("database_id") REFERENCES "managed"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE "infrastructure.database_metrics" ADD CONSTRAINT "infrastructure.database_metrics_database_id_fkey" FOREIGN KEY ("database_id") REFERENCES "databases.managed"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+ALTER TABLE "database_metrics" ADD CONSTRAINT "database_metrics_database_id_fkey" FOREIGN KEY ("database_id") REFERENCES "managed"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE "functions.instances" ADD CONSTRAINT "functions.instances_project_id_fkey" FOREIGN KEY ("project_id") REFERENCES "projects.projects"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+ALTER TABLE "instances" ADD CONSTRAINT "instances_project_id_fkey" FOREIGN KEY ("project_id") REFERENCES "projects.projects"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE "functions.logs" ADD CONSTRAINT "functions.logs_function_id_fkey" FOREIGN KEY ("function_id") REFERENCES "functions.instances"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+ALTER TABLE "logs" ADD CONSTRAINT "logs_function_id_fkey" FOREIGN KEY ("function_id") REFERENCES "instances"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE "queues.instances" ADD CONSTRAINT "queues.instances_project_id_fkey" FOREIGN KEY ("project_id") REFERENCES "projects.projects"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+ALTER TABLE "instances" ADD CONSTRAINT "instances_project_id_fkey" FOREIGN KEY ("project_id") REFERENCES "projects.projects"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE "queues.messages" ADD CONSTRAINT "queues.messages_queue_id_fkey" FOREIGN KEY ("queue_id") REFERENCES "queues.instances"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+ALTER TABLE "messages" ADD CONSTRAINT "messages_queue_id_fkey" FOREIGN KEY ("queue_id") REFERENCES "instances"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE "scheduler.cron_jobs" ADD CONSTRAINT "scheduler.cron_jobs_project_id_fkey" FOREIGN KEY ("project_id") REFERENCES "projects.projects"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+ALTER TABLE "cron_jobs" ADD CONSTRAINT "cron_jobs_project_id_fkey" FOREIGN KEY ("project_id") REFERENCES "projects.projects"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE "scheduler.runs" ADD CONSTRAINT "scheduler.runs_cron_job_id_fkey" FOREIGN KEY ("cron_job_id") REFERENCES "scheduler.cron_jobs"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+ALTER TABLE "runs" ADD CONSTRAINT "runs_cron_job_id_fkey" FOREIGN KEY ("cron_job_id") REFERENCES "cron_jobs"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE "monitoring.metrics" ADD CONSTRAINT "monitoring.metrics_project_id_fkey" FOREIGN KEY ("project_id") REFERENCES "projects.projects"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+ALTER TABLE "metrics" ADD CONSTRAINT "metrics_project_id_fkey" FOREIGN KEY ("project_id") REFERENCES "projects.projects"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE "monitoring.alert_rules" ADD CONSTRAINT "monitoring.alert_rules_project_id_fkey" FOREIGN KEY ("project_id") REFERENCES "projects.projects"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+ALTER TABLE "alert_rules" ADD CONSTRAINT "alert_rules_project_id_fkey" FOREIGN KEY ("project_id") REFERENCES "projects.projects"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE "monitoring.alerts" ADD CONSTRAINT "monitoring.alerts_project_id_fkey" FOREIGN KEY ("project_id") REFERENCES "projects.projects"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+ALTER TABLE "alerts" ADD CONSTRAINT "alerts_project_id_fkey" FOREIGN KEY ("project_id") REFERENCES "projects.projects"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE "monitoring.alerts" ADD CONSTRAINT "monitoring.alerts_rule_id_fkey" FOREIGN KEY ("rule_id") REFERENCES "monitoring.alert_rules"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+ALTER TABLE "alerts" ADD CONSTRAINT "alerts_rule_id_fkey" FOREIGN KEY ("rule_id") REFERENCES "alert_rules"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE "monitoring.notification_channels" ADD CONSTRAINT "monitoring.notification_channels_project_id_fkey" FOREIGN KEY ("project_id") REFERENCES "projects.projects"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+ALTER TABLE "notification_channels" ADD CONSTRAINT "notification_channels_project_id_fkey" FOREIGN KEY ("project_id") REFERENCES "projects.projects"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE "logging.streams" ADD CONSTRAINT "logging.streams_project_id_fkey" FOREIGN KEY ("project_id") REFERENCES "projects.projects"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+ALTER TABLE "streams" ADD CONSTRAINT "streams_project_id_fkey" FOREIGN KEY ("project_id") REFERENCES "projects.projects"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE "logging.entries" ADD CONSTRAINT "logging.entries_stream_id_fkey" FOREIGN KEY ("stream_id") REFERENCES "logging.streams"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+ALTER TABLE "entries" ADD CONSTRAINT "entries_stream_id_fkey" FOREIGN KEY ("stream_id") REFERENCES "streams"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE "templates.instances" ADD CONSTRAINT "templates.instances_project_id_fkey" FOREIGN KEY ("project_id") REFERENCES "projects.projects"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+ALTER TABLE "instances" ADD CONSTRAINT "instances_project_id_fkey" FOREIGN KEY ("project_id") REFERENCES "projects.projects"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE "ai.conversations" ADD CONSTRAINT "ai.conversations_project_id_fkey" FOREIGN KEY ("project_id") REFERENCES "projects.projects"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+ALTER TABLE "conversations" ADD CONSTRAINT "conversations_project_id_fkey" FOREIGN KEY ("project_id") REFERENCES "projects.projects"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE "ai.messages" ADD CONSTRAINT "ai.messages_conversation_id_fkey" FOREIGN KEY ("conversation_id") REFERENCES "ai.conversations"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+ALTER TABLE "messages" ADD CONSTRAINT "messages_conversation_id_fkey" FOREIGN KEY ("conversation_id") REFERENCES "conversations"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE "marketplace.reviews" ADD CONSTRAINT "marketplace.reviews_item_id_fkey" FOREIGN KEY ("item_id") REFERENCES "marketplace.items"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+ALTER TABLE "reviews" ADD CONSTRAINT "reviews_item_id_fkey" FOREIGN KEY ("item_id") REFERENCES "items"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 

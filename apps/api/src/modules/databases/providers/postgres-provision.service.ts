@@ -31,9 +31,9 @@ export class PostgresProvisionService {
 
     const ownerPool = new Pool({
       host: this.admin.getAdminHost(),
-      port: 5432,
-      user: this.admin.getAdminHost(),
-      password: '',
+      port: this.admin.getAdminPort(),
+      user: this.admin.getAdminUser(),
+      password: this.admin.getAdminPassword(),
       database: dbName,
       max: 2,
     });

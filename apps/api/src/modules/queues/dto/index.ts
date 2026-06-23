@@ -1,12 +1,49 @@
+import { IsString, IsOptional, IsNumber, IsEnum } from 'class-validator';
+import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+
 export class CreateQueueDto {
+  @ApiProperty({ description: 'Queue name (unique per project)' })
+  @IsString()
   name!: string;
+
+  @ApiPropertyOptional({ enum: ['stream', 'queue', 'workqueue'], default: 'stream' })
+  @IsOptional()
+  @IsEnum(['stream', 'queue', 'workqueue'])
   type?: 'stream' | 'queue' | 'workqueue';
+
+  @ApiPropertyOptional({ default: 7 })
+  @IsOptional()
+  @IsNumber()
   retentionDays?: number;
+
+  @ApiPropertyOptional({ default: 100000 })
+  @IsOptional()
+  @IsNumber()
   maxMessages?: number;
+
+  @ApiPropertyOptional({ default: 1073741824 })
+  @IsOptional()
+  @IsNumber()
   maxBytes?: number;
+
+  @ApiPropertyOptional({ default: 1 })
+  @IsOptional()
+  @IsNumber()
   replicas?: number;
+
+  @ApiPropertyOptional({ default: 3 })
+  @IsOptional()
+  @IsNumber()
   retryAttempts?: number;
+
+  @ApiPropertyOptional({ default: 60 })
+  @IsOptional()
+  @IsNumber()
   retryDelaySeconds?: number;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
   deadLetterQueue?: string;
 }
 
