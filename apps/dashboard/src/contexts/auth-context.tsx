@@ -62,9 +62,12 @@ function clearTokens(): void {
 }
 
 function getNextRoute(): string {
-  if (typeof window === 'undefined') return '/dashboard';
+  if (typeof window === 'undefined') return '/projects';
   const params = new URLSearchParams(window.location.search);
-  return params.get('next') || '/dashboard';
+  // ponytail: ?next= comes from AuthGuard when an unauthenticated user visits a
+  // protected route. Default to /projects so the user lands on the project
+  // picker — they pick a project, then the project dashboard takes over.
+  return params.get('next') || '/projects';
 }
 
 export function AuthProvider({ children }: { children: ReactNode }) {

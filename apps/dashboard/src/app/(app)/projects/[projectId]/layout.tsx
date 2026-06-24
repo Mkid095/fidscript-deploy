@@ -124,9 +124,9 @@ export default function ProjectLayout({ children }: { children: React.ReactNode 
       <div className="flex-1 flex flex-col overflow-hidden">
         {/* Header */}
         <header className="h-14 bg-[#0f1117] border-b border-[#1e2130] flex items-center px-4 gap-4 flex-shrink-0">
-          {/* Logo */}
+          {/* Logo — clicking takes you back to the project picker */}
           <Link
-            href="/dashboard"
+            href="/projects"
             className="text-sm font-bold text-slate-300 hover:text-slate-100 mr-2 flex-shrink-0"
           >
             FIDScript

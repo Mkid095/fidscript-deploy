@@ -1318,3 +1318,89 @@ These decisions are pending and will be documented as ADRs:
 | SDK language priorities | Pending |
 | MCP server implementation | Pending |
 | Backup strategy | Pending |
+
+---
+
+## ADR-036: Twenty Design Principles for FIDScript's Frontend (Workspace-First UX)
+
+**Status:** Accepted — 2026-06-24
+**Context:** Frontend blueprint is frozen. Before F02–F11 implementation resumes, the
+design intent captured in the user's strategic design note is locked here so every spec,
+every screen, every component inherits it.
+
+**Decision:** FIDScript's frontend follows these twenty principles as non-negotiable UX
+contracts. Every screen spec, component spec, and review must hold itself against them.
+Each principle is one rung on the same ladder; together they describe the
+"workspace, not CRUD table" feel.
+
+### The principles
+
+1. **Workspace, not CRUD table** — Projects page = a workspace. Each card answers: What is it? Is it healthy? Can I open it? Nothing else.
+2. **Project dashboard feels like entering a server** — Breadcrumb: Projects / <project> / <section>. Left = sidebar nav. Right = operational content. Attention never split.
+3. **No empty pages** — Every module with zero state shows a "next action" CTA ("Enable Prometheus", "Create Mailbox"), never a "Nothing here." Dead ends are bugs.
+4. **Progressive disclosure** — Primary fields visible. Advanced (charset, extensions, replication, collation, etc.) tucked under a `▼ Advanced` disclosure. 90% never open it.
+5. **One hero action per page** — Projects → "New Project". Deployments → "Deploy". Email → "Create Mailbox". No hunting.
+6. **Never expose IDs** — `my-api`, not `7f9d10e86`. IDs in APIs only; users see slugs/names.
+7. **Universal status colors** — Green=healthy, blue=running, yellow=pending, orange=warning, red=failed, gray=stopped. Never invented colors.
+8. **Search-first, not filter-first** — Every list page starts with `Search…`. 300 deployments / 90 databases / 150 domains must remain navigable.
+9. **Keyboard-first** — Arrow keys, Enter, Delete, Escape, Ctrl+K. The platform must be navigable without a mouse.
+10. **Global Command Palette (Ctrl+K)** — Highest ROI feature. Create deployment / Create project / Restart nginx / Open logs / Search domain / Invite member. Once adopted, navigation fades.
+11. **Real-time everywhere** — No refresh buttons. Deployment finishes → card updates. Container crashes → sidebar updates. Email arrives → inbox updates. Logs stream live.
+12. **Right panel over modal overload** — Slide-in panels preserve context. Modals stack and lose the user's place. Edit/delete = right panel.
+13. **Activity timeline per project** — One chronological feed: deployments, DB creates, DNS updates, mailbox creates, bucket deletes, SSL renewals. Cross-service, ordered.
+14. **Deep-linkable everywhere** — `/projects/my-api/deployments`, `/projects/my-api/storage`, `/projects/my-api/email`. No hidden UI state.
+15. **Skeletons, not spinners** — Loading states that mirror the final layout. The page must never jump.
+16. **Onboarding overlay on first login** — 4-step path: Create project → Deploy app → Connect domain → Enable email. Progress bar `■■■■□□□□`.
+17. **No dashboard clutter** — Default view = deployments + health + recent activity + resource usage. Advanced metrics live under Monitoring.
+18. **Standardized page layout** — Title / Description / Primary action / divider / content / secondary actions. Same skeleton on every module.
+19. **One-click everything** — Every action audited against "can this be one click?" Restart, redeploy, rollback, open logs, view metrics.
+20. **Scale from day one** — 1 project / 50 / 500 all feel fast. Virtualization, lazy loading, pagination, background fetching where they pay off.
+
+### The Workspace Overview — landing page after picking a project
+
+Distinct enough to call out: opening a project does NOT drop users into Deployments by
+default. Instead they land on a **Workspace Overview** that gives situational awareness:
+
+```
+<Project name>     🟢 Healthy
+
+Deployments      12
+Services          8
+Databases         3
+Domains           4
+Mailboxes        15
+
+Latest Deployment
+2 minutes ago
+
+Recent Activity
+• Deployment succeeded
+• SSL certificate renewed
+• Database backup completed
+
+Quick Actions
+[Deploy] [View Logs] [Restart Service] [Add Domain]
+```
+
+This is the spec for the F05 (Project Dashboard Shell) hero screen. The 14 sidebar items
+remain; the overview is the default `/projects/[id]` route and Deployments becomes
+`/projects/[id]/deployments`.
+
+### Consequences
+
+- **Spec updates required:** `docs/product/user-experience-spec.md` must adopt these
+  principles. `docs/product/screens/index.md` must add a `WORKSPACE_OVERVIEW` screen
+  entry per project. `docs/phases/frontend/f05-*.md` (when written) must spec the
+  Workspace Overview as the landing route.
+- **Component additions:** SearchInput (input + keybinding-aware), CommandPalette
+  (Ctrl+K), ActivityTimeline, Skeleton primitives, RightPanel slide-in.
+- **Existing partial coverage:** principle 6 (no IDs) and principle 7 (status colors)
+  are partially honored by the current ProjectCard; principle 12 (panels over modals)
+  will require refactoring the create/edit/delete modals on the projects page into a
+  right panel — record as a follow-up.
+- **Anti-patterns banned:** filter-first lists, modal stacks, "Nothing here." dead ends,
+  status colors outside the universal palette, ID exposure in the chrome.
+
+**Why:** The design note from 2026-06-24 crystallized the *feel* of the platform.
+Capturing it as an ADR means any future contributor — agent or human — has a single
+reference when deciding whether a screen is right.

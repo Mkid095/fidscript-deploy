@@ -15,12 +15,16 @@ export class AuthProfileService {
       where: { id: userId },
       select: {
         id: true, email: true, name: true, avatarUrl: true, role: true,
-        mfaEnabled: true, mustChangePassword: true, lastLoginAt: true, createdAt: true,
-        credentials: { select: { type: true } },
+        mfaEnabled: true, mustChangePassword: true, preferredAuthMethod: true,
+        lastLoginAt: true, createdAt: true,
       },
     });
     if (!user) throw new NotFoundException('User not found');
-    return user;
+    // ponytail: SDK auth.me() does `r.user`, so the API must wrap. Drift between
+    // service-level getProfile() (returns User) and the HTTP contract ({ user: User })
+    // is resolved at the controller boundary. AuthGuard and the dashboard both expect
+    // the wrapped shape.
+    return { user };
   }
 
   async updateProfile(userId: string, dto: { name?: string; avatarUrl?: string }) {

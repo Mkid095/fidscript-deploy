@@ -1,130 +1,110 @@
 'use client';
 
-import { useState, type ReactNode } from 'react';
+import { type ReactNode } from 'react';
 import Link from 'next/link';
+import Image from 'next/image';
 import { usePathname } from 'next/navigation';
+import { HugeiconsIcon } from '@hugeicons/react';
+import { ArrowTurnBackwardIcon, Home01Icon, Logout01Icon } from '@hugeicons/core-free-icons';
 import { Button } from '@fidscript/ui';
 
 import { useAuth } from '@/contexts/auth-context';
 import { AuthGuard } from '@/components/auth-guard';
 
-interface NavItem {
-  label: string;
-  href: string;
-}
-
-const NAV_ITEMS: NavItem[] = [
-  { label: 'Dashboard', href: '/' },
-  { label: 'Projects', href: '/projects' },
-  { label: 'Deployments', href: '/deployments' },
-  { label: 'Storage', href: '/storage' },
-  { label: 'Databases', href: '/databases' },
-  { label: 'Email', href: '/email' },
-  { label: 'Functions', href: '/functions' },
-  { label: 'Queues', href: '/queues' },
-  { label: 'Scheduler', href: '/scheduler' },
-  { label: 'Monitoring', href: '/monitoring' },
-  { label: 'Logs', href: '/logs' },
-  { label: 'Settings', href: '/settings' },
-];
-
-function Sidebar({
-  collapsed,
-  onToggle,
-}: {
-  collapsed: boolean;
-  onToggle: () => void;
-}) {
-  const { user } = useAuth();
-
-  return (
-    <aside
-      className="min-h-screen flex flex-col bg-[#0f1117] border-r border-[#1e2130] flex-shrink-0 transition-all duration-200"
-      style={{ width: collapsed ? 64 : 240 }}
-    >
-      <div
-        className="flex items-center border-b border-[#1e2130] gap-2"
-        style={{ padding: '1rem', justifyContent: collapsed ? 'center' : 'flex-start' }}
-      >
-        <button
-          onClick={onToggle}
-          className="bg-none border-none text-slate-500 cursor-pointer p-0.5 text-lg leading-none"
-          aria-label={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
-        >
-          {collapsed ? '»' : '«'}
-        </button>
-        {!collapsed && (
-          <span className="text-base font-bold text-slate-200 whitespace-nowrap">FIDScript</span>
-        )}
-      </div>
-
-      <nav className="flex-1 overflow-y-auto p-2">
-        {NAV_ITEMS.map(item => (
-          <Link
-            key={item.href}
-            href={item.href}
-            className="flex items-center gap-3 px-3 py-2 mb-1 rounded-md text-slate-400 hover:text-slate-200 hover:bg-[#1e2130] text-sm transition-colors duration-150"
-            style={{ justifyContent: collapsed ? 'center' : 'flex-start' }}
-          >
-            <span className="text-base flex-shrink-0 w-4 text-center">{item.label.charAt(0)}</span>
-            {!collapsed && <span>{item.label}</span>}
-          </Link>
-        ))}
-      </nav>
-
-      {!collapsed && user && (
-        <div className="px-4 py-3 border-t border-[#1e2130] text-xs text-slate-500 truncate">
-          {user.email}
-        </div>
-      )}
-    </aside>
-  );
-}
-
-function TopBar() {
-  const { user, logout } = useAuth();
-
-  return (
-    <header className="h-14 bg-[#0f1117] border-b border-[#1e2130] flex items-center justify-end px-6 gap-4 flex-shrink-0">
-      {user && (
-        <>
-          <span className="text-sm text-slate-500">{user.name || user.email}</span>
-          <Button variant="ghost" size="sm" onClick={logout}>Sign out</Button>
-        </>
-      )}
-    </header>
-  );
-}
-
-function Shell({ children }: { children: ReactNode }) {
-  const [collapsed, setCollapsed] = useState(false);
-
-  return (
-    <div className="flex min-h-screen">
-      <Sidebar collapsed={collapsed} onToggle={() => setCollapsed(c => !c)} />
-      <div className="flex-1 flex flex-col overflow-hidden">
-        <TopBar />
-        <main className="flex-1 overflow-y-auto p-6">{children}</main>
-      </div>
-    </div>
-  );
-}
-
 /**
- * Outer app layout — transparent for project routes (which have their own chrome via
- * the nested projects/[projectId]/layout.tsx). Renders plain children when the URL
- * starts with /projects/, letting the project layout provide the full shell.
+ * Top-level layout for the (app) route group.
+ *
+ * Structure:
+ *   - Top bar: logo on the left, breadcrumb (back to /projects) in the middle,
+ *     user avatar + sign-out on the right. No sidebar — the platform's primary
+ *     navigation surface is the projects list at /projects, not a sidebar menu.
+ *   - Content: children.
+ *
+ * Project-specific routes under /projects/[projectId] get their own sidebar via
+ * the nested projects/[projectId]/layout.tsx (the project dashboard). The
+ * isProjectRoute branch renders <>{children}</> so the project dashboard owns
+ * its full chrome.
+ *
+ * ponytail: the breadcrumb's "back to /projects" button only renders when the
+ * user is on a project sub-route. On /projects itself, the user is already at
+ * the project picker — no back link needed.
  */
 export default function AppLayout({ children }: { children: ReactNode }) {
   const pathname = usePathname();
-  const isProjectRoute = pathname?.startsWith('/projects/');
+  const { user, logout } = useAuth();
+  const isProjectRoute = pathname?.startsWith('/projects/') ?? false;
 
   return (
     <AuthGuard>
-      {isProjectRoute
-        ? <>{children}</>
-        : <Shell>{children}</Shell>
-      }
+      {isProjectRoute ? (
+        <>{children}</>
+      ) : (
+        <div className="min-h-screen flex flex-col bg-[#080a0d]">
+          <header className="h-14 bg-[#0f1117] border-b border-[#1e2130] flex items-center px-6 gap-4 flex-shrink-0">
+            {/* Logo — links home */}
+            <Link
+              href="/projects"
+              className="flex items-center gap-2 group"
+              aria-label="FIDScript home"
+            >
+              <Image
+                src="https://res.cloudinary.com/dfp7uhzy3/image/upload/v1782017464/Generated_Image_June_21__2026_-_2_00AM-removebg-preview_ekpdad.png"
+                alt="FIDScript"
+                width={28}
+                height={28}
+                className="rounded-md"
+              />
+              <span className="text-sm font-bold tracking-widest text-orange-500 uppercase group-hover:text-orange-400 transition-colors">
+                fidscript
+              </span>
+            </Link>
+
+            {/* Breadcrumb — only show on project sub-routes (the user clicks
+                into a project and the back link brings them here). On the
+                /projects list itself, no breadcrumb is shown. */}
+            {isProjectRoute && (
+              <Link
+                href="/projects"
+                className="flex items-center gap-1 text-xs text-slate-500 hover:text-slate-300 transition-colors ml-2"
+              >
+                <HugeiconsIcon icon={ArrowTurnBackwardIcon} size={12} />
+                <span>Back to projects</span>
+              </Link>
+            )}
+
+            <div className="flex-1" />
+
+            {/* User controls */}
+            {user && (
+              <div className="flex items-center gap-3">
+                {/* Account chip — initial avatar, profile UI is on the punch list
+                    (F02 follow-up), not implemented yet. The chip stays as a
+                    visual anchor so the layout doesn't shift when we wire it. */}
+                <div className="flex items-center gap-2 px-2.5 py-1 rounded-md bg-[#1e2130] border border-[#2a2d3a]">
+                  <div className="w-6 h-6 rounded-full bg-[#080a0d] text-orange-400 text-xs font-semibold flex items-center justify-center">
+                    {(user.name || user.email).charAt(0).toUpperCase()}
+                  </div>
+                  <span className="hidden md:inline text-xs text-slate-300 max-w-[160px] truncate">
+                    {user.name || user.email}
+                  </span>
+                </div>
+
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={logout}
+                  className="flex items-center gap-1.5"
+                >
+                  <HugeiconsIcon icon={Logout01Icon} size={14} />
+                  Sign out
+                </Button>
+              </div>
+            )}
+          </header>
+
+          <main className="flex-1 overflow-y-auto p-6">{children}</main>
+        </div>
+      )}
     </AuthGuard>
   );
 }

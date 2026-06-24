@@ -20,6 +20,7 @@ export interface Project {
   status: string;
   ownerId: string;
   role?: string; // 'owner' | 'admin' | 'developer' | 'viewer'
+  description?: string;
   lastActivityAt?: string;
   lastDeployAt?: string;
   region?: string;

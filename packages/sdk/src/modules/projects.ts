@@ -8,6 +8,7 @@ export interface Project {
   status: string;
   ownerId: string;
   role?: string;
+  description?: string;
   lastActivityAt?: string;
   lastDeployAt?: string;
   region?: string;

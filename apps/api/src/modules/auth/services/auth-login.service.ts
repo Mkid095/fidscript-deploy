@@ -54,12 +54,20 @@ export class AuthLoginService {
       throw new UnauthorizedException('Invalid credentials');
     }
 
-    // If user prefers magic code, reject password login and tell them to use magic code.
+    // If user prefers magic code, allow password login anyway when the user has
+    // explicitly added a PASSWORD credential (preferredAuthMethod is just the
+    // default surface in the UI; the credential table is the source of truth).
     if (user.preferredAuthMethod === 'MAGIC_CODE') {
-      await this.rateLimiter.consume(acctKey, LOGIN_ACCT_LIMIT, LOGIN_WINDOW_SEC);
-      throw new UnauthorizedException(
-        'This account uses magic code login. Use the magic code option instead.',
-      );
+      const hasPasswordCredential = await this.prisma.userCredential.findFirst({
+        where: { userId: user.id, type: 'PASSWORD' },
+        select: { id: true },
+      });
+      if (!hasPasswordCredential) {
+        await this.rateLimiter.consume(acctKey, LOGIN_ACCT_LIMIT, LOGIN_WINDOW_SEC);
+        throw new UnauthorizedException(
+          'This account uses magic code login. Use the magic code option instead.',
+        );
+      }
     }
 
     if (!user.passwordHash) {
