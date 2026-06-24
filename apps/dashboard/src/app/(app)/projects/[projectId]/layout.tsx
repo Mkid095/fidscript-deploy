@@ -3,6 +3,9 @@
 import { useEffect, useState, useCallback } from 'react';
 import { useParams, useRouter, usePathname } from 'next/navigation';
 import Link from 'next/link';
+import Image from 'next/image';
+import { HugeiconsIcon } from '@hugeicons/react';
+import { ChevronRightIcon } from '@hugeicons/core-free-icons';
 import { Spinner } from '@fidscript/ui';
 
 import type { Project } from '@/types';
@@ -10,7 +13,7 @@ import { useAuth } from '@/contexts/auth-context';
 import { ProjectProvider } from '@/contexts/project-context';
 import { ProjectSidebar } from '@/components/layout/project-sidebar';
 import { ProjectSwitcherModal } from '@/components/layout/project-switcher-modal';
-import { NotificationBell } from '@/components/layout/notification-bell';
+import { AvatarDropdown } from '@/components/layout/avatar-dropdown';
 
 const SIDEBAR_KEY = 'fidscript.sidebar.collapsed';
 const SECTION_KEY = (id: string) => `fidscript.lastSection.${id}`;
@@ -125,45 +128,44 @@ export default function ProjectLayout({ children }: { children: React.ReactNode 
       {/* Main content */}
       <div className="flex-1 flex flex-col overflow-hidden">
         {/* Header */}
-        <header className="h-14 bg-[#0f1117] border-b border-[#1e2130] flex items-center px-4 gap-4 flex-shrink-0">
-          {/* Logo — clicking takes you back to the project picker */}
+        <header className="h-14 bg-[#0f1117] border-b border-[#1e2130] flex items-center px-4 gap-3 flex-shrink-0">
+          {/* Logo — links back to the project picker */}
           <Link
             href="/projects"
-            className="text-sm font-bold text-slate-300 hover:text-slate-100 mr-2 flex-shrink-0"
+            className="flex items-center gap-2 group flex-shrink-0"
+            aria-label="FIDScript — back to projects"
           >
-            FIDScript
+            <Image
+              src="https://res.cloudinary.com/dfp7uhzy3/image/upload/v1782017464/Generated_Image_June_21__2026_-_2_00AM-removebg-preview_ekpdad.png"
+              alt="FIDScript"
+              width={26}
+              height={26}
+              className="rounded-md"
+            />
+            <span className="text-sm font-bold tracking-widest text-orange-500 uppercase group-hover:text-orange-400 transition-colors">
+              fidscript
+            </span>
           </Link>
 
           {/* Breadcrumb */}
           <nav className="flex items-center gap-1 text-sm text-slate-500 min-w-0">
-            <Link href="/projects" className="hover:text-slate-300 transition-colors">Projects</Link>
-            <span className="text-slate-700">›</span>
+            <HugeiconsIcon icon={ChevronRightIcon} size={12} className="text-slate-700 flex-shrink-0" />
             <button
               onClick={() => setShowSwitcher(true)}
-              className="hover:text-slate-300 transition-colors truncate max-w-[160px]"
+              className="hover:text-slate-200 transition-colors truncate max-w-[160px] text-slate-400 font-medium"
             >
               {project.name}
             </button>
-            <span className="text-slate-700">›</span>
-            <span className="text-slate-300 capitalize">{effectiveSection}</span>
+            <HugeiconsIcon icon={ChevronRightIcon} size={12} className="text-slate-700 flex-shrink-0" />
+            <span className="text-slate-300 font-medium capitalize">{effectiveSection}</span>
           </nav>
 
           <div className="flex-1" />
 
           {/* Right controls */}
           <div className="flex items-center gap-2">
-            {/* Command palette hint */}
-            <button className="hidden md:flex items-center gap-1.5 px-2.5 py-1.5 rounded-md bg-[#1e2130] border border-[#2a2d3a] text-xs text-slate-500 hover:text-slate-300 hover:border-[#3a3d4a] transition-colors">
-              <span>⌘K</span>
-            </button>
-
-            {/* Notification bell */}
-            <NotificationBell projectId={projectId} sdk={getSdk()} />
-
-            {/* Account */}
-            <button className="w-8 h-8 rounded-full bg-[#1e2130] border border-[#2a2d3a] text-xs text-slate-400 flex items-center justify-center font-medium hover:border-[#3a3d4a] transition-colors">
-              {project.name?.charAt(0).toUpperCase()}
-            </button>
+            {/* Account menu */}
+            <AvatarDropdown />
           </div>
         </header>
 
