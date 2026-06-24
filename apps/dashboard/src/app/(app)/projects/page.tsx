@@ -107,12 +107,14 @@ export default function ProjectsPage() {
 
   // API contract: PATCH requires admin/owner; DELETE requires owner only.
   // Developer can see + navigate; cannot edit or delete.
+  // role is returned uppercase from auth.me() (e.g. 'ADMIN') and lowercase from
+  // the projects list (e.g. 'owner') — normalize both to lowercase for comparison.
   const canEdit = (p?: Project) =>
-    (user?.role === 'owner' || user?.role === 'admin') ||
-    (p && (p.role === 'owner' || p.role === 'admin'));
+    ([user?.role, p?.role].some(r => r?.toLowerCase() === 'owner') ||
+    [user?.role, p?.role].some(r => r?.toLowerCase() === 'admin'));
   // Delete is owner-only (API enforces this server-side too).
   const canDelete = (p?: Project) =>
-    (user?.role === 'owner') || (p && p.role === 'owner');
+    [user?.role, p?.role].some(r => r?.toLowerCase() === 'owner');
 
   // ── Load ───────────────────────────────────────────────────────────────
   const load = useCallback(async () => {
