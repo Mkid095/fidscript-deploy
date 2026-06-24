@@ -26,7 +26,7 @@ type ProjectType = 'frontend' | 'backend' | 'worker' | 'cron' | 'docker' | 'stat
 const PROJECT_TYPES: ProjectType[] = ['frontend', 'backend', 'worker', 'cron', 'docker', 'static'];
 
 // Universal status palette per ADR-036 principle 7.
-// Green=healthy, blue=running, yellow=pending, orange=warning, red=failed, gray=stopped.
+// Maps every ProjectStatus value to a visible style.
 const STATUS_PALETTE: Record<string, string> = {
   ACTIVE: 'bg-emerald-900/30 text-emerald-400 border-emerald-800/60',
   HEALTHY: 'bg-emerald-900/30 text-emerald-400 border-emerald-800/60',
@@ -36,6 +36,8 @@ const STATUS_PALETTE: Record<string, string> = {
   SUSPENDED: 'bg-yellow-900/30 text-yellow-400 border-yellow-800/60',
   FAILED: 'bg-red-900/30 text-red-400 border-red-800/60',
   STOPPED: 'bg-slate-800 text-slate-400 border-slate-700',
+  CREATING: 'bg-blue-900/30 text-blue-300 border-blue-800/60',
+  ARCHIVED: 'bg-purple-900/30 text-purple-300 border-purple-800/60',
 };
 
 function slugify(name: string): string {
@@ -209,7 +211,7 @@ export default function ProjectsPage() {
     setEditing(p);
     setEditName(p.name);
     setEditType((p.type as ProjectType) ?? 'frontend');
-    setEditDescription('');
+    setEditDescription(p.description ?? '');
     setEditError(null);
     setActivePanel('edit');
   }
@@ -374,7 +376,7 @@ export default function ProjectsPage() {
             <ProjectCard
               key={project.id}
               project={project}
-              onOpen={() => router.push(`/projects/${project.id}`)}
+              onOpen={() => router.push(`/projects/${project.slug}`)}
               onEdit={canEdit(project) ? () => openEdit(project) : undefined}
               onDelete={canDelete(project) ? () => openDelete(project) : undefined}
             />
@@ -422,11 +424,12 @@ export default function ProjectsPage() {
           name={editName} onNameChange={setEditName}
           type={editType} onTypeChange={setEditType}
           description={editDescription} onDescriptionChange={setEditDescription}
-          slug={slugify(editName)}
+          slug=""
           error={editError}
           descriptionPlaceholder={editing?.description ?? 'What does this project do?'}
           nameLabel="Project name"
           showType
+          slugLabel={editing?.slug}
         />
       </RightPanel>
 
@@ -512,9 +515,9 @@ function ProjectCard({ project, onOpen, onEdit, onDelete }: ProjectCardProps) {
 
   return (
     <div className="group relative rounded-lg border border-[#1e2130] bg-[#0f1117] hover:border-blue-500/50 transition-colors">
-      {/* Main clickable area */}
+      {/* Main clickable area — slug-based URL per ADR-036 principle 6 */}
       <Link
-        href={`/projects/${project.id}`}
+        href={`/projects/${project.slug}`}
         className="block p-5 no-underline"
       >
         <div className="flex items-start justify-between gap-3 mb-2">
@@ -624,6 +627,8 @@ interface ProjectFormProps {
   showType?: boolean;
   type?: ProjectType;
   onTypeChange?: (v: ProjectType) => void;
+  /** Read-only real slug — shown in Edit panel. When absent the live slug preview is shown instead. */
+  slugLabel?: string;
 }
 
 function ProjectForm({
@@ -634,6 +639,7 @@ function ProjectForm({
   showType,
   type = 'frontend',
   onTypeChange,
+  slugLabel,
 }: ProjectFormProps) {
   return (
     <div className="space-y-4">
@@ -646,11 +652,18 @@ function ProjectForm({
           autoFocus
           className="bg-[#080a0d] border border-[#1e2130] text-slate-200 placeholder:text-slate-600"
         />
-        {name && (
+        {name && slugLabel ? (
+          // Edit panel: show the real server-assigned slug, read-only.
           <p className="text-xs text-slate-500 mt-1.5">
-            Slug: <span className="font-mono text-slate-300">{slug || '—'}</span>
+            Slug: <span className="font-mono text-slate-300">{slugLabel}</span>
           </p>
-        )}
+        ) : name && slug ? (
+          // Create panel: show a live preview (server appends a random suffix to this).
+          <p className="text-xs text-slate-500 mt-1.5">
+            Slug preview: <span className="font-mono text-slate-300">{slug}</span>
+            <span className="text-slate-600"> (a suffix will be added)</span>
+          </p>
+        ) : null}
       </div>
 
       {showType && onTypeChange && (
