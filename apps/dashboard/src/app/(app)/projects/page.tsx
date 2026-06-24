@@ -314,7 +314,9 @@ export default function ProjectsPage() {
       {/* Header — title + search + hero action (ADR-036 principle 5) */}
       <div className="flex items-center justify-between gap-4 mb-6">
         <div>
-          <h1 className="text-xl font-bold text-slate-200 mb-1">Projects</h1>
+          <h1 className="text-xl font-bold text-slate-200 mb-1">
+            {user?.name ? `Welcome back, ${user.name}` : 'Projects'}
+          </h1>
           <p className="text-sm text-slate-500" aria-live="polite">
             {loading
               ? 'Loading…'
