@@ -19,6 +19,7 @@
     "allowJs": true,
     "incremental": true,
     "isolatedModules": true,
+    "skipLibCheck": true,
     "plugins": [
       {
         "name": "next"

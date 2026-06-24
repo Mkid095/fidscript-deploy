@@ -9,6 +9,14 @@ export interface Deployment {
   rolledBackToId: string | null;
   createdAt: string;
   completedAt: string | null;
+  // Enriched fields from the API response
+  branch?: string;
+  commitSha?: string;
+  commitMessage?: string;
+  imageTag?: string;
+  sourceUrl?: string;
+  sourceType?: 'git' | 'archive';
+  createdBy?: string;
 }
 
 export interface DeploymentListResult {
@@ -95,9 +103,10 @@ export class DeploymentsModule {
     );
   }
 
-  async rollback(projectId: string, deploymentId: string) {
+  async rollback(projectId: string, deploymentId: string, targetDeploymentId?: string) {
     return this.client.post<Deployment>(
       `/api/v1/projects/${projectId}/deployments/${deploymentId}/rollback`,
+      targetDeploymentId ? { targetDeploymentId } : {},
     );
   }
 

@@ -54,6 +54,12 @@ export interface Deployment {
   completedAt: string | null;
   version?: string;
   commitSha?: string;
+  commitMessage?: string;
+  branch?: string;
+  imageTag?: string;
+  sourceUrl?: string;
+  sourceType?: 'git' | 'archive';
+  createdBy?: string;
 }
 
 export type LogLevel = 'debug' | 'info' | 'warn' | 'error' | 'fatal';
