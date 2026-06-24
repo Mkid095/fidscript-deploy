@@ -1,6 +1,6 @@
 import { Injectable, Logger, Inject } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { CloudflareDnsProvider } from '@/modules/domains/providers/cloudflare-dns.provider';
+import { CloudflareDnsProvider } from '@/modules/domains/providers/cloudflare-platform.service';
 import { CloudflareZoneService } from '@/modules/domains/providers/cloudflare-zone.service';
 import { Step } from './interfaces';
 import { StepValidationIssue, StepResult } from '../dto';

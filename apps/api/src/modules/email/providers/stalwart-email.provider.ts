@@ -29,6 +29,7 @@
 import { Injectable, Logger, InternalServerErrorException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { AxiosInstance } from 'axios';
+import { basicAuthHeader } from '@/common/basic-auth';
 import {
   IEmailProvider,
   ProviderDomain,
@@ -66,14 +67,14 @@ export class StalwartEmailProvider implements IEmailProvider {
       this.config.get<string>('STALWART_ADMIN_TOKEN', ''),
     );
     this.adminEmail = user;
-    const credentials = Buffer.from(`${user}:${pass}`).toString('base64');
+    const credentials = basicAuthHeader(user, pass);
 
     const axios = require('axios') as typeof import('axios');
     this.client = axios.create({
       baseURL,
       headers: {
         'Content-Type': 'application/json',
-        Authorization: `Basic ${credentials}`,
+        Authorization: credentials,
       },
       timeout: 15000,
     });
@@ -297,14 +298,6 @@ export class StalwartEmailProvider implements IEmailProvider {
       isEnabled: m.isEnabled,
       targets: [],
     }));
-  }
-
-  async setAliasTargets(_id: string, _targets: ProviderAlias['targets']): Promise<void> {
-    // TODO: rebuild Sieve on the alias account with the new routing rules.
-    // For now this is a no-op — the platform DB is the source of truth and
-    // the Sieve rebuild is triggered by `SieveRebuildService` on alias
-    // create/update/delete. This method exists to satisfy the interface
-    // and will be wired up in Phase 09 finalization.
   }
 
   async setAliasEnabled(id: string, enabled: boolean): Promise<void> {

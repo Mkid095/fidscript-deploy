@@ -29,7 +29,7 @@ WORKDIR /app
 # blank "Error: Schema engine error:" with no further detail. curl is
 # also installed for the runtime healthcheck (compose's "test" command)
 # and for the api's Stalwart JMAP connectivity probe (see
-# email/stalwart/stalwart-jmap.service.ts). git lets the deployment worker
+# email/stalwart/stalwart-core.service.ts). git lets the deployment worker
 # clone user source repos. docker-ce-cli + docker-buildx-plugin let the
 # deployment worker run `docker build`/`docker run` against the host daemon
 # (socket mounted in docker-compose); buildx is required because the worker

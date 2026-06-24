@@ -13,7 +13,7 @@ import { DomainMxService } from '@/modules/domains/services/domain-mx.service';
 import { DomainChecksService } from '@/modules/domains/services/domain-checks.service';
 import { DomainCloudflareAutoService } from '@/modules/domains/services/domain-cloudflare-auto.service';
 import { DomainAccessService } from '@/modules/domains/services/domain-access.service';
-import { CloudflareDnsProvider } from '@/modules/domains/providers/cloudflare-dns.provider';
+import { CloudflareDnsProvider } from '@/modules/domains/providers/cloudflare-platform.service';
 import { CloudflareZoneService } from '@/modules/domains/providers/cloudflare-zone.service';
 import { CloudflareDnsMappersService } from '@/modules/domains/providers/cloudflare-dns-mappers.service';
 

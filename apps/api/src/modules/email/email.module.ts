@@ -11,7 +11,6 @@ import { EmailEventsController } from './controllers/email-events.controller';
 import { PlatformMailboxController } from './controllers/platform-mailbox-message.controller';
 import { PlatformAdminMailController } from './controllers/platform-admin-mail.controller';
 import { AttachmentConfigController } from './controllers/attachment-config.controller';
-import { EmailService } from './email.service';
 import { EmailDomainService } from './services/domain.service';
 import { EmailMailboxService } from './services/mailbox.service';
 import { EmailAliasService } from './services/alias.service';
@@ -62,7 +61,6 @@ import { EmailAttachmentListener } from './services/attachment-event-listener.se
     AttachmentConfigController,
   ],
   providers: [
-    EmailService,
     EmailDomainService,
     EmailMailboxService,
     EmailAliasService,
@@ -101,7 +99,6 @@ import { EmailAttachmentListener } from './services/attachment-event-listener.se
     EmailAttachmentListener,
   ],
   exports: [
-    EmailService,
     EmailDomainService,
     EmailMailboxService,
     EmailMailboxListService,

@@ -8,7 +8,7 @@
  * backend (Stalwart now; Microsoft 365, Google Workspace, or Postmark later)
  * so the rest of the platform can stay backend-agnostic.
  *
- * Why this lives in its own interface (and not on `EmailService`):
+ * Why this lives in its own interface:
  *   - The platform has two kinds of "email" — system mail (magic codes,
  *     platform notifications) and tenant mail (user mailboxes per project).
  *     Both flow through the same provider.
@@ -116,7 +116,7 @@ export interface IEmailProvider {
   createAlias(input: CreateAliasInput): Promise<ProviderAlias>;
   getAlias(id: string): Promise<ProviderAlias | null>;
   listAliases(domainId?: string): Promise<ProviderAlias[]>;
-  setAliasTargets(id: string, targets: ProviderAlias['targets']): Promise<void>;
+  // ponytail: setAliasTargets dropped — SieveRebuildService owns alias routing.
   setAliasEnabled(id: string, enabled: boolean): Promise<void>;
   deleteAlias(id: string): Promise<void>;
 
