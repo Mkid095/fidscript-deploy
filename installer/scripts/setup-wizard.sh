@@ -129,8 +129,7 @@ step_dns() {
     "https://api.cloudflare.com/client/v4/zones?name=${DOMAIN#*.}&status=active" \
     -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" \
     -H "Content-Type: application/json")
-  DNS_ZONE_ID=$(echo "$ZONE_RESULT" | python3 -c \
-    "import sys,json; d=json.load(sys.stdin); print(d.get('result',[{}])[0].get('id',''))" 2>/dev/null)
+  DNS_ZONE_ID=$(echo "$ZONE_RESULT" | jq -r '.result[0].id // empty' 2>/dev/null)
   if [[ -z "$DNS_ZONE_ID" ]]; then
     warn "Token invalid or no zone found. Check permissions."
     warn "Continuing without Cloudflare — create DNS records manually."

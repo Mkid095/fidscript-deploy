@@ -26,44 +26,11 @@
  */
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Button, Card, EmptyState, Input, Modal, Spinner } from '@fidscript/ui';
+import type { PlatformMailboxMessage, PlatformMailboxSummary, StorageBackend } from '@fidscript/sdk';
 
 import { useAuth } from '@/contexts/auth-context';
-import { API_BASE_URL } from '@/lib/sdk';
-
-function apiBase(): string {
-  return API_BASE_URL;
-}
 
 type Folder = 'inbox' | 'sent' | 'drafts' | 'trash' | 'junk' | 'archive';
-
-interface PlatformMailbox {
-  id: string;
-  name: string;
-  email: string;
-  domainId: string;
-  quotaBytes: number | null;
-}
-
-interface PlatformMessage {
-  id: string;
-  mailbox: string;
-  from: string;
-  fromName?: string;
-  to: string[];
-  cc?: string[];
-  subject: string;
-  preview: string;
-  receivedAt: string;
-  sentAt?: string;
-  isRead: boolean;
-  isStarred: boolean;
-  folder: Folder;
-  hasAttachments: boolean;
-  attachmentCount: number;
-  sizeBytes: number;
-  bodyHtml?: string;
-  bodyText?: string;
-}
 
 const FOLDER_LABELS: Record<Folder, string> = {
   inbox: 'Inbox',
@@ -83,6 +50,12 @@ const FOLDER_ICONS: Record<Folder, string> = {
   archive: '◰',
 };
 
+const STORAGE_BACKEND_LABELS: Record<StorageBackend, string> = {
+  internal: 'Internal (VPS)',
+  telegram: 'Telegram',
+  cloudinary: 'Cloudinary',
+};
+
 function timeAgo(iso: string): string {
   if (!iso) return '';
   const ms = Date.now() - new Date(iso).getTime();
@@ -98,26 +71,14 @@ function formatBytes(bytes: number): string {
   return `${(bytes / 1_048_576).toFixed(1)} MB`;
 }
 
-const BACKEND_INFO: Record<string, { label: string }> = {
-  internal: { label: 'Internal (VPS)' },
-  telegram: { label: 'Telegram' },
-  cloudinary: { label: 'Cloudinary' },
-};
-
 export default function PlatformEmailPage() {
-  const { getSdk } = useAuth();
-
-  // Get the access token directly from storage
-  function getAccessToken(): string {
-    if (typeof window === 'undefined') return '';
-    return localStorage.getItem('fidscript_access_token') ?? localStorage.getItem('fidscript_token') ?? '';
-  }
-  const [mailboxes, setMailboxes] = useState<PlatformMailbox[]>([]);
+  const sdk = useAuth().getSdk();
+  const [mailboxes, setMailboxes] = useState<PlatformMailboxSummary[]>([]);
   const [selectedLocal, setSelectedLocal] = useState<string>('');
   const [activeFolder, setActiveFolder] = useState<Folder>('inbox');
-  const [messages, setMessages] = useState<PlatformMessage[]>([]);
+  const [messages, setMessages] = useState<PlatformMailboxMessage[]>([]);
   const [total, setTotal] = useState(0);
-  const [selectedMessage, setSelectedMessage] = useState<PlatformMessage | null>(null);
+  const [selectedMessage, setSelectedMessage] = useState<PlatformMailboxMessage | null>(null);
   const [loadingMailboxes, setLoadingMailboxes] = useState(true);
   const [loadingMessages, setLoadingMessages] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -134,7 +95,7 @@ export default function PlatformEmailPage() {
   const [composeFiles, setComposeFiles] = useState<File[]>([]);
   const [sending, setSending] = useState(false);
   const [sendResult, setSendResult] = useState<string | null>(null);
-  const [storageBackend, setStorageBackend] = useState<'internal' | 'telegram' | 'cloudinary'>('internal');
+  const [storageBackend, setStorageBackend] = useState<StorageBackend>('internal');
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Fetch the platform mailboxes
@@ -142,12 +103,7 @@ export default function PlatformEmailPage() {
     setLoadingMailboxes(true);
     setError(null);
     try {
-      const token = await getAccessToken();
-      const res = await fetch(`${apiBase()}/admin/mailboxes`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      const data = await res.json();
+      const data = await sdk.email.admin.list();
       setMailboxes(data.mailboxes ?? []);
       if (!selectedLocal && data.mailboxes?.length) {
         setSelectedLocal(data.mailboxes[0].name);
@@ -157,7 +113,7 @@ export default function PlatformEmailPage() {
     } finally {
       setLoadingMailboxes(false);
     }
-  }, [getAccessToken, selectedLocal]);
+  }, [sdk, selectedLocal]);
 
   // Fetch messages in the active folder of the selected mailbox
   const loadMessages = useCallback(async () => {
@@ -165,13 +121,7 @@ export default function PlatformEmailPage() {
     setLoadingMessages(true);
     setError(null);
     try {
-      const token = await getAccessToken();
-      const res = await fetch(
-        `${apiBase()}/admin/mailboxes/${selectedLocal}/messages?folder=${activeFolder}&limit=50`,
-        { headers: { Authorization: `Bearer ${token}` } },
-      );
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      const data = await res.json();
+      const data = await sdk.email.admin.listMessages(selectedLocal, { folder: activeFolder, limit: 50 });
       setMessages(data.messages ?? []);
       setTotal(data.total ?? 0);
     } catch (e) {
@@ -179,7 +129,7 @@ export default function PlatformEmailPage() {
     } finally {
       setLoadingMessages(false);
     }
-  }, [getAccessToken, selectedLocal, activeFolder]);
+  }, [sdk, selectedLocal, activeFolder]);
 
   // Polling: re-fetch messages every 5s while on this page
   useEffect(() => { loadMailboxes(); }, [loadMailboxes]);
@@ -189,66 +139,51 @@ export default function PlatformEmailPage() {
     return () => clearInterval(id);
   }, [loadMessages]);
 
-  async function openMessage(msg: PlatformMessage) {
+  async function openMessage(msg: PlatformMailboxMessage) {
     setSelectedMessage(msg);
     if (!msg.isRead) {
       // Mark as read optimistically
       setMessages(prev => prev.map(m => m.id === msg.id ? { ...m, isRead: true } : m));
-      const token = await getAccessToken();
-      await fetch(`${apiBase()}/admin/mailboxes/${msg.mailbox}/messages/${msg.id}`, {
-        method: 'PATCH',
-        headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
-        body: JSON.stringify({ isRead: true }),
-      });
+      try {
+        await sdk.email.admin.patchMessage(msg.mailbox, msg.id, { isRead: true });
+      } catch { /* optimistic; ignore failure */ }
     }
     // Fetch full body
     try {
-      const token = await getAccessToken();
-      const res = await fetch(
-        `${apiBase()}/admin/mailboxes/${msg.mailbox}/messages/${msg.id}`,
-        { headers: { Authorization: `Bearer ${token}` } },
-      );
-      if (res.ok) {
-        const full = await res.json();
-        setSelectedMessage(full);
-      }
+      const full = await sdk.email.admin.getMessage(msg.mailbox, msg.id);
+      setSelectedMessage(full);
     } catch { /* keep preview-only message */ }
   }
 
-  async function starMessage(msg: PlatformMessage) {
+  async function starMessage(msg: PlatformMailboxMessage) {
     const newStar = !msg.isStarred;
     setMessages(prev => prev.map(m => m.id === msg.id ? { ...m, isStarred: newStar } : m));
     if (selectedMessage?.id === msg.id) {
       setSelectedMessage(prev => prev ? { ...prev, isStarred: newStar } : prev);
     }
-    const token = await getAccessToken();
-    await fetch(`${apiBase()}/admin/mailboxes/${msg.mailbox}/messages/${msg.id}`, {
-      method: 'PATCH',
-      headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
-      body: JSON.stringify({ isStarred: newStar }),
-    });
+    try {
+      await sdk.email.admin.patchMessage(msg.mailbox, msg.id, { isStarred: newStar });
+    } catch { /* ignore */ }
   }
 
-  async function moveMessage(msg: PlatformMessage, folder: Folder) {
+  async function moveMessage(msg: PlatformMailboxMessage, folder: Folder) {
     setMessages(prev => prev.filter(m => m.id !== msg.id));
     if (selectedMessage?.id === msg.id) setSelectedMessage(null);
-    const token = await getAccessToken();
-    await fetch(`${apiBase()}/admin/mailboxes/${msg.mailbox}/messages/${msg.id}`, {
-      method: 'PATCH',
-      headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
-      body: JSON.stringify({ moveTo: folder }),
-    });
+    try {
+      // ponytail: SDK moveTo type is narrower than our local Folder (no sent/drafts via API).
+      // sent/drafts are write-time concerns; the UI surfaces trash/junk/archive only.
+      const moveTarget = folder as 'inbox' | 'trash' | 'junk' | 'archive';
+      await sdk.email.admin.patchMessage(msg.mailbox, msg.id, { moveTo: moveTarget });
+    } catch { /* ignore */ }
   }
 
-  async function deleteMessage(msg: PlatformMessage) {
+  async function deleteMessage(msg: PlatformMailboxMessage) {
     if (!confirm(`Delete "${msg.subject}"? This cannot be undone.`)) return;
     setMessages(prev => prev.filter(m => m.id !== msg.id));
     if (selectedMessage?.id === msg.id) setSelectedMessage(null);
-    const token = await getAccessToken();
-    await fetch(`${apiBase()}/admin/mailboxes/${msg.mailbox}/messages/${msg.id}`, {
-      method: 'DELETE',
-      headers: { Authorization: `Bearer ${token}` },
-    });
+    try {
+      await sdk.email.admin.deleteMessage(msg.mailbox, msg.id);
+    } catch { /* ignore */ }
   }
 
   async function handleCreateMailbox(e: React.FormEvent) {
@@ -257,17 +192,10 @@ export default function PlatformEmailPage() {
     setCreating(true);
     setCreateError(null);
     try {
-      const token = await getAccessToken();
-      const res = await fetch(`${apiBase()}/admin/mailboxes`, {
-        method: 'POST',
-        headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
-        body: JSON.stringify({ localPart: newLocal.trim(), displayName: newDisplay.trim() || undefined }),
+      const data = await sdk.email.admin.create({
+        localPart: newLocal.trim(),
+        displayName: newDisplay.trim() || undefined,
       });
-      if (!res.ok) {
-        const err = await res.json().catch(() => ({}));
-        throw new Error(err.message ?? `HTTP ${res.status}`);
-      }
-      const data = await res.json();
       setCreateResult({ email: data.mailbox.email, password: data.password });
       setNewLocal('');
       setNewDisplay('');
@@ -285,8 +213,8 @@ export default function PlatformEmailPage() {
     setSending(true);
     setSendResult(null);
     try {
-      const token = await getAccessToken();
-
+      // ponytail: backend send endpoint accepts attachments inline as base64.
+      // Will move to multipart/form-data when storage backend pipeline ships (F08).
       // Encode files as base64 for the JSON payload
       const attachments = await Promise.all(
         composeFiles.map(async (file) => {
@@ -296,22 +224,18 @@ export default function PlatformEmailPage() {
         }),
       );
 
-      const res = await fetch(`${apiBase()}/admin/platform-mail/send`, {
-        method: 'POST',
-        headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          from: selectedLocal ? `${selectedLocal}@${mailboxes[0]?.email?.split('@')[1] ?? ''}` : undefined,
-          to: composeTo,
-          subject: composeSubject,
-          text: composeBody,
-          storageBackend,
-          attachments: attachments.length > 0 ? attachments : undefined,
-        }),
-      });
-      if (!res.ok) {
-        const err = await res.json().catch(() => ({}));
-        throw new Error(err.message ?? `HTTP ${res.status}`);
-      }
+      // ponytail: backend send endpoint accepts storageBackend + attachments inline as
+      // base64. The SDK's sendMail() type doesn't yet include them — backend processes
+      // them as optional fields. Will be lifted to the SDK type when storage backend
+      // pipeline ships (F08).
+      await sdk.email.admin.sendMail({
+        fromLocal: selectedLocal || undefined,
+        to: composeTo,
+        subject: composeSubject,
+        text: composeBody,
+        storageBackend,
+        attachments: attachments.length > 0 ? attachments : undefined,
+      } as Parameters<typeof sdk.email.admin.sendMail>[0]);
       setComposeTo(''); setComposeSubject(''); setComposeBody('');
       setComposeFiles([]);
       setShowCompose(false);
@@ -620,7 +544,7 @@ export default function PlatformEmailPage() {
 
             {composeFiles.length > 0 && storageBackend !== 'internal' && (
               <p className="text-[10px] text-blue-400 mt-1">
-                Files will be stored via <strong>{BACKEND_INFO[storageBackend].label}</strong>.
+                Files will be stored via <strong>{STORAGE_BACKEND_LABELS[storageBackend]}</strong>.
                 Configure credentials at <a href="/platform/email/settings" target="_blank" rel="noopener noreferrer" className="underline">Attachment Storage settings</a> if needed.
               </p>
             )}
@@ -630,7 +554,7 @@ export default function PlatformEmailPage() {
             <label className="block text-xs text-slate-400 mb-1">Attachment storage backend</label>
             <select
               value={storageBackend}
-              onChange={e => setStorageBackend(e.target.value as 'internal' | 'telegram' | 'cloudinary')}
+              onChange={e => setStorageBackend(e.target.value as StorageBackend)}
               className="bg-[#080a0d] border border-[#1e2130] text-slate-200 rounded-lg px-3 py-2 text-sm w-full"
             >
               <option value="internal">Internal (VPS)</option>

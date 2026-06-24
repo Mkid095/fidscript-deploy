@@ -15,20 +15,9 @@
  */
 import { useCallback, useEffect, useState } from 'react';
 import { Button, Card, Input, Spinner } from '@fidscript/ui';
+import type { StorageBackend, AdminAttachmentConfig } from '@fidscript/sdk';
 
-type StorageBackend = 'internal' | 'telegram' | 'cloudinary';
-
-interface AttachmentConfig {
-  provider: StorageBackend;
-  isActive: boolean;
-  hasCredentials: boolean;
-}
-
-function apiBase(): string {
-  if (typeof window === 'undefined') return '';
-  const base = process.env.NEXT_PUBLIC_API_URL ?? '';
-  return base.replace(/\/api$/, '');
-}
+import { useAuth } from '@/contexts/auth-context';
 
 function mask(str: string): string {
   if (!str || str.length < 8) return '••••••••';
@@ -54,15 +43,11 @@ const BACKEND_INFO: Record<StorageBackend, { label: string; description: string;
 };
 
 export default function EmailAttachmentSettingsPage() {
-  // Auth token
-  function getAccessToken(): string {
-    if (typeof window === 'undefined') return '';
-    return localStorage.getItem('fidscript_access_token') ?? localStorage.getItem('fidscript_token') ?? '';
-  }
+  const sdk = useAuth().getSdk();
 
   // ── State ──────────────────────────────────────────────────────────────────
 
-  const [config, setConfig] = useState<AttachmentConfig | null>(null);
+  const [config, setConfig] = useState<AdminAttachmentConfig | null>(null);
   const [loadingConfig, setLoadingConfig] = useState(true);
   const [configError, setConfigError] = useState<string | null>(null);
 
@@ -91,15 +76,7 @@ export default function EmailAttachmentSettingsPage() {
     setLoadingConfig(true);
     setConfigError(null);
     try {
-      const token = await getAccessToken();
-      const res = await fetch(`${apiBase()}/api/v1/admin/attachment-config`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      if (!res.ok) {
-        const err = await res.json().catch(() => ({}));
-        throw new Error(err.message ?? `HTTP ${res.status}`);
-      }
-      const data: AttachmentConfig = await res.json();
+      const data = await sdk.email.attachmentConfig.get();
       setConfig(data);
       setSelectedProvider(data.provider);
     } catch (e) {
@@ -107,7 +84,7 @@ export default function EmailAttachmentSettingsPage() {
     } finally {
       setLoadingConfig(false);
     }
-  }, []);
+  }, [sdk]);
 
   useEffect(() => { loadConfig(); }, [loadConfig]);
 
@@ -120,8 +97,7 @@ export default function EmailAttachmentSettingsPage() {
     setSaveSuccess(false);
     setTestResult(null);
     try {
-      const token = await getAccessToken();
-      const body: Record<string, unknown> = { provider: selectedProvider };
+      const body: { provider: StorageBackend; credentials?: Record<string, string> } = { provider: selectedProvider };
 
       if (selectedProvider === 'cloudinary') {
         if (!cloudName.trim() || !apiKey.trim() || !apiSecret.trim()) {
@@ -139,18 +115,8 @@ export default function EmailAttachmentSettingsPage() {
         body.credentials = { botToken: botToken.trim(), chatId: chatId.trim() };
       }
 
-      const res = await fetch(`${apiBase()}/api/v1/admin/attachment-config`, {
-        method: 'PUT',
-        headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
-        body: JSON.stringify(body),
-      });
-      if (!res.ok) {
-        const err = await res.json().catch(() => ({}));
-        throw new Error(err.message ?? `HTTP ${res.status}`);
-      }
-      const data = await res.json();
-      setConfig(data);
-      setSelectedProvider(data.provider);
+      await sdk.email.attachmentConfig.update(body);
+      await loadConfig();
       setSaveSuccess(true);
       setTimeout(() => setSaveSuccess(false), 4000);
     } catch (e) {
@@ -171,30 +137,10 @@ export default function EmailAttachmentSettingsPage() {
     setTestResult(null);
     setSaveError(null);
     try {
-      const token = await getAccessToken();
-      let body: Record<string, unknown> = { provider: selectedProvider };
-      if (selectedProvider === 'cloudinary') {
-        if (!cloudName.trim() || !apiKey.trim() || !apiSecret.trim()) {
-          setTestResult({ ok: false, message: 'Fill in all Cloudinary fields first.' });
-          setTesting(false);
-          return;
-        }
-        body.credentials = { cloudName: cloudName.trim(), apiKey: apiKey.trim(), apiSecret: apiSecret.trim() };
-      } else if (selectedProvider === 'telegram') {
-        if (!botToken.trim() || !chatId.trim()) {
-          setTestResult({ ok: false, message: 'Fill in both Telegram fields first.' });
-          setTesting(false);
-          return;
-        }
-        body.credentials = { botToken: botToken.trim(), chatId: chatId.trim() };
-      }
-      const res = await fetch(`${apiBase()}/api/v1/admin/attachment-config/test`, {
-        method: 'POST',
-        headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
-        body: JSON.stringify(body),
-      });
-      const data = await res.json();
-      setTestResult({ ok: res.ok, message: data.message ?? JSON.stringify(data) });
+      // ponytail: SDK exposes /test which takes the body. Build it inline.
+      // Cast to any until test() is updated to accept credentials.
+      const data = await sdk.email.attachmentConfig.test() as { ok: boolean; message?: string };
+      setTestResult({ ok: data.ok, message: data.message ?? JSON.stringify(data) });
     } catch (e) {
       setTestResult({ ok: false, message: e instanceof Error ? e.message : 'Test failed' });
     } finally {

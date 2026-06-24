@@ -1,5 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
+import { createStalwartTransport } from '@/modules/email/common/stalwart-transport';
 import * as fs from 'fs';
 
 /**
@@ -45,14 +46,12 @@ export class PlatformMailService {
     const start = Date.now();
 
     try {
-      const { default: nodemailer } = await import('nodemailer');
-      const transporter = nodemailer.createTransport({
+      const transporter = await createStalwartTransport({
         host: smtpHost,
         port: smtpPort,
-        secure: smtpPort === 465,
-        auth: { user: smtpUser, pass: smtpPass },
-        tls: { rejectUnauthorized: false },
-        connectionTimeout: 5000,
+        user: smtpUser,
+        pass: smtpPass,
+        connectionTimeoutMs: 5000,
       });
 
       // Verify the connection without sending a message.
@@ -79,20 +78,18 @@ export class PlatformMailService {
     const smtpUser = this.config.get<string>('SMTP_SUBMISSION_USER', 'admin');
     const smtpPass = this.config.get<string>('SMTP_SUBMISSION_PASS', this.adminToken);
 
-    const { default: nodemailer } = await import('nodemailer');
-    const transporter = nodemailer.createTransport({
+    const transporter = await createStalwartTransport({
       host: smtpHost,
       port: smtpPort,
-      secure: smtpPort === 465,
-      auth: { user: smtpUser, pass: smtpPass },
-      tls: { rejectUnauthorized: false },
+      user: smtpUser,
+      pass: smtpPass,
       // Aggressive timeouts: the SMTP server is on the same Docker network
       // (zero-hop). 5s connect, 5s greeting is plenty; if the connection
       // doesn't complete in that time, fail fast and log the error so
       // operators see a clear "Greeting never received" rather than a
       // 60s silent hang.
-      connectionTimeout: 5000,
-      greetingTimeout: 5000,
+      connectionTimeoutMs: 5000,
+      greetingTimeoutMs: 5000,
     });
 
     try {

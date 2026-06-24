@@ -4,6 +4,7 @@ import { PrismaService } from '@/prisma/prisma.service';
 import { EventService } from '@/modules/events/event.service';
 import { RateLimitService } from '@/modules/email/services/rate-limit.service';
 import { SendEmailDto } from '@/modules/email/dto/send-email.dto';
+import { createStalwartTransport } from '@/modules/email/common/stalwart-transport';
 import * as crypto from 'crypto';
 import * as fs from 'fs';
 
@@ -74,18 +75,12 @@ export class SmtpSendService {
     // Stalwart v0.15.5: port 465 (implicit TLS), AUTH PLAIN with admin token.
     const smtpHost = this.configService.get<string>('STALWART_SMTP_HOST', 'fidscript_stalwart');
     const smtpPort = this.configService.get<number>('STALWART_SMTP_PORT', 465);
-    const secure = smtpPort === 465;
 
-    const { default: nodemailer } = await import('nodemailer');
-    const transporter = nodemailer.createTransport({
+    const transporter = await createStalwartTransport({
       host: smtpHost,
       port: smtpPort,
-      secure, // true = implicit TLS on 465, false = STARTTLS on 587
-      auth: { user: 'admin', pass: this.adminToken },
-      // Internal hop to our own Stalwart over the docker network: Stalwart
-      // presents a self-signed cert, which nodemailer would otherwise reject.
-      // This is not a public relay — disable cert verification for the hop.
-      tls: { rejectUnauthorized: false },
+      user: 'admin',
+      pass: this.adminToken,
     });
 
     let messageId = `<${Date.now()}-${crypto.randomBytes(6).toString('hex')}@${
@@ -105,7 +100,7 @@ export class SmtpSendService {
         replyTo: dto.replyTo,
       });
       messageId = res.messageId ?? messageId;
-      accepted = (res.accepted ?? [dto.to]).filter((a): a is string => typeof a === 'string');
+      accepted = (res.accepted ?? [dto.to]).filter((a: unknown): a is string => typeof a === 'string');
     } catch (err) {
       errorMsg = err instanceof Error ? err.message : String(err);
       result = errorMsg.includes('bounce') || errorMsg.includes('550') ? 'bounced' : 'failed';
