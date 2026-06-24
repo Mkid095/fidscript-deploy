@@ -27,6 +27,7 @@
 import { Injectable, Logger, InternalServerErrorException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { AxiosInstance } from 'axios';
+import { basicAuthHeader } from '@/common/basic-auth';
 
 export interface JmapResponse {
   sessionState: string;
@@ -45,7 +46,7 @@ export class StalwartJmapService {
     const baseURL =
       this.configService.get('STALWART_JMAP_URL', 'http://fidscript_stalwart:8080') + '/jmap';
     const adminToken = this.configService.get('STALWART_ADMIN_TOKEN', '');
-    const credentials = Buffer.from('admin:' + adminToken).toString('base64');
+    const credentials = basicAuthHeader('admin', adminToken);
 
     this.client = this.makeClient(baseURL, credentials);
   }
@@ -58,7 +59,7 @@ export class StalwartJmapService {
       headers: {
         'Content-Type': 'application/json',
         // v0.15.5 uses HTTP Basic auth — NOT Bearer token
-        Authorization: `Basic ${credentials}`,
+        Authorization: credentials,
       },
       timeout: 15000,
     });

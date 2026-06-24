@@ -28,6 +28,7 @@ import { ConfigService } from '@nestjs/config';
 import { AxiosInstance } from 'axios';
 import * as http from 'http';
 import { IEmailProvider, EMAIL_PROVIDER, ProviderMessage } from '@/modules/email/providers/i-email-provider';
+import { basicAuthHeader } from '@/common/basic-auth';
 
 export interface PlatformMessage {
   id: string;
@@ -92,7 +93,7 @@ export class PlatformMailboxMessageService {
       : mailboxLocalPartOrEmail;
     const user = `${localPart}@${domain}`;
     const pass = this.smtpPassword;
-    const creds = Buffer.from(`${user}:${pass}`).toString('base64');
+    const creds = basicAuthHeader(user, pass);
 
     // 1. Hit /jmap/session to get the accountId
     const session = await new Promise<{ primaryAccounts: Record<string, string>; accounts: Record<string, unknown> }>(

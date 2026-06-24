@@ -6,13 +6,19 @@ import { MinioProvider } from './minio.provider';
 
 @Injectable()
 export class StorageProviderFactory {
-  constructor(private minioProvider: MinioProvider) {}
+  constructor(
+    private minioProvider: MinioProvider,
+    private cloudinaryProvider: CloudinaryProvider,
+    private telegramProvider: TelegramProvider,
+  ) {}
 
+  // ponytail: was `new CloudinaryProvider()` / `new TelegramProvider()` here — bypassed DI
+  // and broke singleton/observability guarantees. Now constructor-injected like MinioProvider.
   get(provider: string): StorageProvider {
     switch (provider) {
       case 'internal': return this.minioProvider;
-      case 'cloudinary': return new CloudinaryProvider();
-      case 'telegram': return new TelegramProvider();
+      case 'cloudinary': return this.cloudinaryProvider;
+      case 'telegram': return this.telegramProvider;
       default: throw new Error(`Unknown storage provider: ${provider}`);
     }
   }

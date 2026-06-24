@@ -1,6 +1,7 @@
 import { Injectable, Logger, Inject } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { DnsProvider } from '@/modules/domains/providers/dns-provider.interface';
+import { basicAuthHeader } from '@/common/basic-auth';
 import axios from 'axios';
 
 /**
@@ -39,13 +40,12 @@ export class DkimService {
 
   /** Authenticated call to the Stalwart management REST API (HTTP Basic). */
   private async stalwartApi<T>(path: string, method = 'GET', body?: unknown): Promise<T> {
-    const credentials = Buffer.from(`admin:${this.adminToken}`).toString('base64');
     const res = await axios.request<T>({
       baseURL: this.baseURL,
       url: path,
       method,
       data: body,
-      headers: { Authorization: `Basic ${credentials}`, 'Content-Type': 'application/json' },
+      headers: { Authorization: basicAuthHeader('admin', this.adminToken), 'Content-Type': 'application/json' },
       timeout: 15_000,
       // Stalwart returns 200 with an {error:...} body for logical failures
       // (e.g. fieldAlreadyExists); don't throw on non-2xx, inspect the body.

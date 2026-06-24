@@ -17,19 +17,14 @@ import { ConfigService } from '@nestjs/config';
 import { PrismaService } from '@/prisma/prisma.service';
 import { CryptoService } from '@/modules/crypto/crypto.service';
 import { StorageProviderFactory } from '@/modules/storage/providers/storage-provider.factory';
+import { TelegramCredentials } from '@/modules/storage/providers/telegram.provider';
+import { CloudinaryCredentials } from '@/modules/storage/providers/cloudinary.provider';
+// ponytail: credential interfaces live in the storage providers (the actual consumers).
+// Re-export for backward compatibility — safe to remove once all callers import from storage/providers.
+
+export type { TelegramCredentials, CloudinaryCredentials };
 
 export type StorageBackend = 'internal' | 'telegram' | 'cloudinary';
-
-export interface TelegramCredentials {
-  botToken: string;
-  chatId: string;
-}
-
-export interface CloudinaryCredentials {
-  cloudName: string;
-  apiKey: string;
-  apiSecret: string;
-}
 
 export interface AttachmentConfig {
   provider: StorageBackend;
