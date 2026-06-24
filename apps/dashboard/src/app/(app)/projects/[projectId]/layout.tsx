@@ -117,7 +117,7 @@ export default function ProjectLayout({ children }: { children: React.ReactNode 
 
   return (
     <ProjectProvider projectId={projectId} project={project}>
-    <div className="flex min-h-screen bg-[#080a0d]">
+    <div className="flex h-screen bg-[#080a0d] overflow-hidden">
       {/* Project sidebar */}
       <ProjectSidebar
         project={project}

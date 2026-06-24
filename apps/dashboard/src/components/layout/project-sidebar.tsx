@@ -65,7 +65,7 @@ export function ProjectSidebar({ project, collapsed, onCollapse }: ProjectSideba
 
   return (
     <aside
-      className="flex flex-col bg-[#0c0e14] border-r border-[#1e2130] flex-shrink-0 transition-all duration-200"
+      className="flex flex-col bg-[#0c0e14] border-r border-[#1e2130] flex-shrink-0 transition-all duration-200 overflow-hidden"
       style={{ width: collapsed ? 64 : 232 }}
     >
       {/* Project header */}
@@ -98,7 +98,7 @@ export function ProjectSidebar({ project, collapsed, onCollapse }: ProjectSideba
       </div>
 
       {/* Nav — independently scrollable */}
-      <nav className="flex-1 overflow-y-auto px-2 py-1 min-h-0">
+      <nav className="flex-1 min-h-0 overflow-y-auto px-2 py-1">
         <div className="space-y-0.5">
           {NAV_ITEMS.map(item => {
             const href = `/projects/${project.id}/${item.href}`;
