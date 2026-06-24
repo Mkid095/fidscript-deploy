@@ -68,37 +68,51 @@ export function ProjectSidebar({ project, collapsed, onCollapse }: ProjectSideba
       className="flex flex-col bg-[#0c0e14] border-r border-[#1e2130] flex-shrink-0 transition-all duration-200 overflow-hidden"
       style={{ width: collapsed ? 64 : 232 }}
     >
-      {/* Project header */}
+      {/* Header: project name + All projects breadcrumb */}
       <div
-        className="flex items-center border-b border-[#1e2130] gap-2 flex-shrink-0"
-        style={{ padding: collapsed ? '0.75rem 0.5rem' : '0.75rem 1rem', justifyContent: collapsed ? 'center' : 'flex-start' }}
+        className="flex flex-col border-b border-[#1e2130] flex-shrink-0"
+        style={{ padding: collapsed ? '0.625rem 0.5rem' : '0.625rem 0.75rem' }}
       >
-        <button
-          onClick={() => onCollapse(!collapsed)}
-          className="bg-none border-none text-slate-600 cursor-pointer p-1 rounded hover:text-slate-300 hover:bg-[#1e2130] transition-colors"
-          aria-label={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
-        >
-          <HugeiconsIcon icon={collapsed ? ArrowRight01Icon : ArrowLeft02Icon} size={14} />
-        </button>
+        {/* Project name — always shown */}
+        <div className="flex items-center justify-between gap-2 mb-1.5">
+          <span
+            className="text-sm font-semibold text-slate-200 truncate"
+            title={project.name}
+          >
+            {collapsed ? project.name.charAt(0).toUpperCase() : project.name}
+          </span>
+          {collapsed && (
+            <Link
+              href="/projects"
+              className="text-slate-600 hover:text-slate-300 transition-colors p-0.5 rounded hover:bg-[#1e2130]"
+              aria-label="All projects"
+            >
+              <HugeiconsIcon icon={ArrowLeft01Icon} size={12} />
+            </Link>
+          )}
+        </div>
+
+        {/* All projects link — full row, acts as breadcrumb */}
         {!collapsed && (
-          <span className="text-sm font-semibold text-slate-200 truncate flex-1">{project.name}</span>
+          <Link
+            href="/projects"
+            className="group flex items-center gap-1.5 text-xs text-slate-500 hover:text-slate-200 transition-colors py-1 px-1.5 rounded hover:bg-[#1e2130] w-full"
+          >
+            <HugeiconsIcon icon={ArrowLeft01Icon} size={11} className="text-slate-600 group-hover:text-slate-400 flex-shrink-0" />
+            <span>All projects</span>
+          </Link>
         )}
       </div>
 
-      {/* Back to projects — visually distinct section */}
-      <div className="px-2 pt-2 pb-1 flex-shrink-0">
-        <Link
-          href="/projects"
-          className="group flex items-center gap-2 px-2.5 py-2 rounded-md text-xs text-slate-400 hover:text-slate-100 hover:bg-[#1e2130] transition-colors border border-[#1e2130] hover:border-[#2e3140]"
-          style={{ justifyContent: collapsed ? 'center' : 'flex-start' }}
-        >
-          <HugeiconsIcon icon={ArrowLeft01Icon} size={13} className="text-slate-600 group-hover:text-slate-400 flex-shrink-0" />
-          {!collapsed && <span className="font-medium">All projects</span>}
-        </Link>
-      </div>
-
       {/* Nav — independently scrollable */}
-      <nav className="flex-1 min-h-0 overflow-y-auto px-2 py-1">
+      <nav className="flex-1 min-h-0 overflow-y-auto px-2 py-2">
+        {/* Section label */}
+        {!collapsed && (
+          <p className="text-[10px] font-semibold tracking-widest text-slate-700 uppercase mb-2 px-1.5">
+            Navigation
+          </p>
+        )}
+
         <div className="space-y-0.5">
           {NAV_ITEMS.map(item => {
             const href = `/projects/${project.id}/${item.href}`;
@@ -135,18 +149,30 @@ export function ProjectSidebar({ project, collapsed, onCollapse }: ProjectSideba
         </div>
       </nav>
 
-      {/* Footer: project status */}
-      {!collapsed && (
-        <div className="px-4 py-3 border-t border-[#1e2130] flex items-center gap-2.5 flex-shrink-0">
-          <span className={`w-2 h-2 rounded-full flex-shrink-0 ${
-            project.status === 'ACTIVE' ? 'bg-emerald-500' :
-            project.status === 'SUSPENDED' ? 'bg-amber-500' :
-            project.status === 'CREATING' ? 'bg-blue-500 animate-pulse' :
-            'bg-slate-600'
-          }`} />
-          <span className="text-xs text-slate-500 capitalize">{project.status?.toLowerCase()}</span>
-        </div>
-      )}
+      {/* Footer: status + collapse toggle */}
+      <div className="border-t border-[#1e2130] flex items-center justify-between gap-2 flex-shrink-0"
+        style={{ padding: collapsed ? '0.625rem 0.5rem' : '0.625rem 0.75rem' }}
+      >
+        {!collapsed && (
+          <div className="flex items-center gap-2">
+            <span className={`w-2 h-2 rounded-full flex-shrink-0 ${
+              project.status === 'ACTIVE' ? 'bg-emerald-500' :
+              project.status === 'SUSPENDED' ? 'bg-amber-500' :
+              project.status === 'CREATING' ? 'bg-blue-500 animate-pulse' :
+              'bg-slate-600'
+            }`} />
+            <span className="text-xs text-slate-500 capitalize">{project.status?.toLowerCase()}</span>
+          </div>
+        )}
+        <button
+          onClick={() => onCollapse(!collapsed)}
+          className="bg-none border-none text-slate-600 cursor-pointer p-1 rounded hover:text-slate-300 hover:bg-[#1e2130] transition-colors ml-auto"
+          aria-label={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+          title={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+        >
+          <HugeiconsIcon icon={collapsed ? ArrowRight01Icon : ArrowLeft02Icon} size={13} />
+        </button>
+      </div>
     </aside>
   );
 }
