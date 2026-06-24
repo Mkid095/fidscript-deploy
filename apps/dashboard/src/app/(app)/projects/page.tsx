@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useCallback, useRef } from 'react';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { HugeiconsIcon } from '@hugeicons/react';
 import {
   Add01Icon,
@@ -44,7 +44,10 @@ function slugify(name: string): string {
   return name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
 }
 
-/** "2 min ago" / "3 days ago" / "Just now" — best-effort relative time, no i18n. */
+/** Unicode NFC normalization — ensures "café" and "café" match the same way. */
+function normalize(str: string): string {
+  return str.trim().toLowerCase().normalize('NFC');
+}
 function relativeTime(iso?: string): string {
   if (!iso) return '—';
   const t = new Date(iso).getTime();
@@ -60,13 +63,16 @@ function relativeTime(iso?: string): string {
 export default function ProjectsPage() {
   const { user, getSdk } = useAuth();
   const router = useRouter();
+  const searchParams = useSearchParams();
+  // Debounce timer for URL sync — avoids flooding the URL on rapid keystrokes.
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // ── Data state ─────────────────────────────────────────────────────────
   const [projects, setProjects] = useState<Project[]>([]);
   const [loading, setLoading] = useState(true);
   const [loadingInitial, setLoadingInitial] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
-  const [search, setSearch] = useState('');
+  const [search, setSearch] = useState(searchParams.get('q') ?? '');
   // Rate-limit countdown shown in the load error banner.
   const [rateLimitCountdown, setRateLimitCountdown] = useState<number | null>(null);
   const abortRef = useRef<AbortController | null>(null);
@@ -277,13 +283,29 @@ export default function ProjectsPage() {
     }
   }
 
-  // ── Search-first filter (ADR-036 principle 8) ─────────────────────────
-  const q = search.trim().toLowerCase();
+  // ── Search handler — debounced URL sync (ADR-036 principle 8) ──────────
+  function handleSearchChange(value: string) {
+    setSearch(value);
+    // Debounce: update ?q= 300ms after the user stops typing.
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+    debounceRef.current = setTimeout(() => {
+      const params = new URLSearchParams(searchParams.toString());
+      if (value.trim()) {
+        params.set('q', value.trim());
+      } else {
+        params.delete('q');
+      }
+      router.replace(`${location.pathname}?${params.toString()}`, { scroll: false });
+    }, 300);
+  }
+
+  // ── Filter (locale-aware: NFC Unicode normalization) ─────────────────
+  const q = normalize(search);
   const filtered = q
     ? projects.filter(p =>
-        p.name.toLowerCase().includes(q) ||
-        p.slug.toLowerCase().includes(q) ||
-        (p.description ?? '').toLowerCase().includes(q),
+        normalize(p.name).includes(q) ||
+        normalize(p.slug).includes(q) ||
+        normalize(p.description ?? '').includes(q),
       )
     : projects;
 
@@ -308,7 +330,7 @@ export default function ProjectsPage() {
             <HugeiconsIcon icon={Search01Icon} size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-600 pointer-events-none" />
             <Input
               value={search}
-              onChange={e => setSearch(e.target.value)}
+              onChange={e => handleSearchChange(e.target.value)}
               placeholder="Search projects…"
               aria-label="Search projects"
               className="pl-9 bg-[#080a0d] border border-[#1e2130] text-slate-200 placeholder:text-slate-600"
