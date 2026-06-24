@@ -48,9 +48,19 @@ export function RightPanel({
   footer,
   size = 'md',
 }: RightPanelProps) {
+  // Form footer discriminated by submitLabel — the field exists only on RightPanelFormFooter,
+  // never on ReactNode. Declare before hooks so the loadingRef can reference it.
+  const formFooter: RightPanelFormFooter | null =
+    footer && typeof footer === 'object' && !React.isValidElement(footer) && 'submitLabel' in (footer as RightPanelFormFooter)
+      ? (footer as RightPanelFormFooter)
+      : null;
+
   const overlayRef = useRef<HTMLDivElement>(null);
   const panelRef = useRef<HTMLDivElement>(null);
   const lastFocusRef = useRef<HTMLElement | null>(null);
+  // Track loading in a ref so the escape handler always reads the current value.
+  const loadingRef = useRef(false);
+  loadingRef.current = formFooter?.loading ?? false;
 
   useEffect(() => {
     if (!isOpen) return;
@@ -58,7 +68,8 @@ export function RightPanel({
     lastFocusRef.current = document.activeElement as HTMLElement | null;
 
     const handleEscape = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') onClose();
+      // Don't close on Escape while a submit is in-flight.
+      if (e.key === 'Escape' && !loadingRef.current) onClose();
     };
     document.addEventListener('keydown', handleEscape);
     document.body.style.overflow = 'hidden';
@@ -79,18 +90,11 @@ export function RightPanel({
 
   if (!isOpen) return null;
 
-  // Form footer discriminated by submitLabel — the field exists only on RightPanelFormFooter,
-  // never on ReactNode (which is always an object too, but never has submitLabel).
-  const formFooter: RightPanelFormFooter | null =
-    footer && typeof footer === 'object' && !React.isValidElement(footer) && 'submitLabel' in (footer as RightPanelFormFooter)
-      ? (footer as RightPanelFormFooter)
-      : null;
-
   return (
     <div
       ref={overlayRef}
       className="fixed inset-0 z-50 flex justify-end bg-black/60 backdrop-blur-sm"
-      onClick={(e) => e.target === overlayRef.current && onClose()}
+      onClick={(e) => e.target === overlayRef.current && !(footer && typeof footer === 'object' && 'loading' in footer && footer.loading) && onClose()}
       role="dialog"
       aria-modal="true"
       aria-labelledby={title ? 'right-panel-title' : undefined}

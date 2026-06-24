@@ -101,7 +101,7 @@ export function ProjectSidebar({ project, collapsed, onCollapse }: ProjectSideba
       <nav className="flex-1 overflow-y-auto p-2">
         {NAV_ITEMS.map(item => {
           const href = `/projects/${project.id}/${item.href}`;
-          const active = isActive(pathname, `/projects/${project.id}/${item.id}`);
+          const active = isActive(`/projects/${project.id}/${item.id}`, pathname);
           const locked = (item.adminOnly && !['owner', 'admin'].includes(role)) ||
                          (item.ownerOnly && role !== 'owner');
 

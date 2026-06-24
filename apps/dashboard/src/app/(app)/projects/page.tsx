@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback, useRef } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { HugeiconsIcon } from '@hugeicons/react';
@@ -15,12 +15,15 @@ import {
   Time01Icon,
 } from '@hugeicons/core-free-icons';
 import { Button, Card, EmptyState, Input, RightPanel, Spinner } from '@fidscript/ui';
+import { AuthError, RateLimitError } from '@fidscript/sdk';
 
 import { useAuth } from '@/contexts/auth-context';
 import type { Project } from '@/types';
 
-type ProjectType = 'frontend' | 'backend' | 'fullstack' | 'static' | 'api';
-const PROJECT_TYPES: ProjectType[] = ['frontend', 'backend', 'fullstack', 'static', 'api'];
+// Must match the Prisma ProjectType enum exactly (API rejects anything else).
+// FRONTEND | BACKEND | WORKER | CRON | DOCKER | STATIC
+type ProjectType = 'frontend' | 'backend' | 'worker' | 'cron' | 'docker' | 'static';
+const PROJECT_TYPES: ProjectType[] = ['frontend', 'backend', 'worker', 'cron', 'docker', 'static'];
 
 // Universal status palette per ADR-036 principle 7.
 // Green=healthy, blue=running, yellow=pending, orange=warning, red=failed, gray=stopped.
@@ -59,8 +62,13 @@ export default function ProjectsPage() {
   // ── Data state ─────────────────────────────────────────────────────────
   const [projects, setProjects] = useState<Project[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadingInitial, setLoadingInitial] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [search, setSearch] = useState('');
+  // Rate-limit countdown shown in the load error banner.
+  const [rateLimitCountdown, setRateLimitCountdown] = useState<number | null>(null);
+  const abortRef = useRef<AbortController | null>(null);
+  const rateLimitTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   // ── Right-panel state (ADR-036 principle 12) ──────────────────────────
   // ponytail: one open at a time. The previous <Modal> design had three
@@ -70,9 +78,8 @@ export default function ProjectsPage() {
   const [editing, setEditing] = useState<Project | null>(null);
   const [deleting, setDeleting] = useState<Project | null>(null);
 
-  // Create fields
+  // Create fields — name-only: type is set by the server, user edits it later if they want
   const [name, setName] = useState('');
-  const [type, setType] = useState<ProjectType>('frontend');
   const [description, setDescription] = useState('');
   const [creating, setCreating] = useState(false);
   const [createError, setCreateError] = useState<string | null>(null);
@@ -90,30 +97,82 @@ export default function ProjectsPage() {
   const [deletingNow, setDeletingNow] = useState(false);
   const [deleteError, setDeleteError] = useState<string | null>(null);
 
-  const canMutate = (p?: Project) =>
-    ['owner', 'admin', 'developer'].includes(user?.role ?? '') ||
-    (p && (p.role === 'owner' || p.role === 'admin' || p.role === 'developer'));
+  // API contract: PATCH requires admin/owner; DELETE requires owner only.
+  // Developer can see + navigate; cannot edit or delete.
+  const canEdit = (p?: Project) =>
+    (user?.role === 'owner' || user?.role === 'admin') ||
+    (p && (p.role === 'owner' || p.role === 'admin'));
+  // Delete is owner-only (API enforces this server-side too).
+  const canDelete = (p?: Project) =>
+    (user?.role === 'owner') || (p && p.role === 'owner');
 
   // ── Load ───────────────────────────────────────────────────────────────
   const load = useCallback(async () => {
+    // Cancel any in-flight request before starting a new one.
+    abortRef.current?.abort();
+    abortRef.current = new AbortController();
+    // Clear any previous rate-limit countdown.
+    if (rateLimitTimerRef.current) {
+      clearInterval(rateLimitTimerRef.current);
+      rateLimitTimerRef.current = null;
+    }
     setLoading(true);
     setLoadError(null);
+    setRateLimitCountdown(null);
+
+    let isRateLimit = false;
     try {
       const sdk = getSdk();
       const data = await sdk.projects.list();
-      setProjects(Array.isArray(data) ? data : (data as any).projects ?? []);
+      const list = Array.isArray(data) ? data : (data as any).projects ?? [];
+      // Filter DELETED — soft-delete sets status, not remove the row.
+      // The API doesn't filter them server-side, so we do it client-side.
+      setProjects(list.filter((p: Project) => p.status !== 'DELETED'));
     } catch (err) {
-      setLoadError(err instanceof Error ? err.message : 'Failed to load projects');
+      if (err instanceof AuthError) {
+        router.replace('/login');
+        return;
+      }
+      if (err instanceof RateLimitError && err.retryAfterMs) {
+        isRateLimit = true;
+        let remaining = Math.ceil(err.retryAfterMs / 1000);
+        setRateLimitCountdown(remaining);
+        rateLimitTimerRef.current = setInterval(() => {
+          remaining -= 1;
+          setRateLimitCountdown(remaining > 0 ? remaining : null);
+          if (remaining <= 0 && rateLimitTimerRef.current) {
+            clearInterval(rateLimitTimerRef.current);
+            rateLimitTimerRef.current = null;
+          }
+        }, 1000);
+        setLoadError(`Rate limited. Retrying in ${remaining}s…`);
+        return;
+      }
+      if (!isRateLimit) {
+        setLoadError(err instanceof Error ? err.message : 'Failed to load projects');
+      }
     } finally {
       setLoading(false);
+      setLoadingInitial(false);
     }
-  }, [getSdk]);
+  }, [getSdk, router]);
+
+  // Cleanup on unmount: cancel any pending request and clear rate-limit timer.
+  useEffect(() => {
+    return () => {
+      abortRef.current?.abort();
+      if (rateLimitTimerRef.current) {
+        clearInterval(rateLimitTimerRef.current);
+        rateLimitTimerRef.current = null;
+      }
+    };
+  }, []);
 
   useEffect(() => { load(); }, [load]);
 
   // ── Create ─────────────────────────────────────────────────────────────
   function openCreate() {
-    setName(''); setType('frontend'); setDescription(''); setCreateError(null);
+    setName(''); setDescription(''); setCreateError(null);
     setActivePanel('create');
   }
   async function handleCreate() {
@@ -124,7 +183,6 @@ export default function ProjectsPage() {
       const sdk = getSdk();
       const created = await sdk.projects.create({
         name: name.trim(),
-        type,
         description: description.trim() || undefined,
       });
       setActivePanel(null);
@@ -132,6 +190,14 @@ export default function ProjectsPage() {
       // it, they want to see it, not bounce back to the list.
       router.push(`/projects/${created.id}`);
     } catch (err) {
+      if (err instanceof AuthError) {
+        router.replace('/login');
+        return;
+      }
+      if (err instanceof RateLimitError) {
+        setCreateError('Rate limited. Please wait a moment and try again.');
+        return;
+      }
       setCreateError(err instanceof Error ? err.message : 'Failed to create project');
     } finally {
       setCreating(false);
@@ -162,6 +228,14 @@ export default function ProjectsPage() {
       setActivePanel(null);
       await load();
     } catch (err) {
+      if (err instanceof AuthError) {
+        router.replace('/login');
+        return;
+      }
+      if (err instanceof RateLimitError) {
+        setEditError('Rate limited. Please wait a moment and try again.');
+        return;
+      }
       setEditError(err instanceof Error ? err.message : 'Failed to save');
     } finally {
       setSavingEdit(false);
@@ -187,6 +261,14 @@ export default function ProjectsPage() {
       setActivePanel(null);
       await load();
     } catch (err) {
+      if (err instanceof AuthError) {
+        router.replace('/login');
+        return;
+      }
+      if (err instanceof RateLimitError) {
+        setDeleteError('Rate limited. Please wait a moment and try again.');
+        return;
+      }
       setDeleteError(err instanceof Error ? err.message : 'Failed to delete');
     } finally {
       setDeletingNow(false);
@@ -230,10 +312,10 @@ export default function ProjectsPage() {
               className="pl-9 bg-[#080a0d] border border-[#1e2130] text-slate-200 placeholder:text-slate-600"
             />
           </div>
-          <Button variant="ghost" size="sm" onClick={load} title="Refresh" aria-label="Refresh">
+          <Button variant="ghost" size="sm" onClick={load} title="Refresh" aria-label="Refresh" disabled={loading}>
             <HugeiconsIcon icon={Refresh01Icon} size={14} />
           </Button>
-          {canMutate() && (
+          {canEdit() && (
             <Button variant="primary" size="sm" onClick={openCreate} className="flex items-center gap-1.5">
               <HugeiconsIcon icon={Add01Icon} size={14} />
               New project
@@ -244,8 +326,15 @@ export default function ProjectsPage() {
 
       {loadError && (
         <div className="bg-red-950/30 border border-red-800 rounded-lg p-3 mb-4 text-sm text-red-400 flex items-center justify-between">
-          <span>{loadError}</span>
-          <button onClick={load} className="text-xs text-red-300 hover:text-red-200 underline">Retry</button>
+          <span className="flex items-center gap-2">
+            {rateLimitCountdown !== null && (
+              <HugeiconsIcon icon={Time01Icon} size={14} className="text-amber-400 flex-shrink-0" />
+            )}
+            {loadError}
+          </span>
+          {!rateLimitCountdown && (
+            <button onClick={load} className="text-xs text-red-300 hover:text-red-200 underline">Retry</button>
+          )}
         </div>
       )}
 
@@ -258,7 +347,7 @@ export default function ProjectsPage() {
             icon={<HugeiconsIcon icon={Folder01Icon} size={48} className="text-slate-600" />}
             title="No projects yet"
             description="Create your first project to start deploying apps, databases, and more."
-            action={canMutate() ? (
+            action={canEdit() ? (
               <Button variant="primary" size="sm" onClick={openCreate} className="flex items-center gap-1.5">
                 <HugeiconsIcon icon={Add01Icon} size={14} />
                 Create your first project
@@ -286,8 +375,8 @@ export default function ProjectsPage() {
               key={project.id}
               project={project}
               onOpen={() => router.push(`/projects/${project.id}`)}
-              onEdit={canMutate(project) ? () => openEdit(project) : undefined}
-              onDelete={canMutate(project) ? () => openDelete(project) : undefined}
+              onEdit={canEdit(project) ? () => openEdit(project) : undefined}
+              onDelete={canDelete(project) ? () => openDelete(project) : undefined}
             />
           ))}
         </div>
@@ -298,7 +387,7 @@ export default function ProjectsPage() {
         isOpen={activePanel === 'create'}
         onClose={() => setActivePanel(null)}
         title="New project"
-        subtitle="Pick a name and type. You can change everything later."
+        subtitle="Pick a name. You can configure everything else from the dashboard."
         footer={{
           onCancel: () => setActivePanel(null),
           onSubmit: handleCreate,
@@ -309,7 +398,6 @@ export default function ProjectsPage() {
       >
         <ProjectForm
           name={name} onNameChange={setName}
-          type={type} onTypeChange={setType}
           description={description} onDescriptionChange={setDescription}
           slug={slug}
           error={createError}
@@ -338,6 +426,7 @@ export default function ProjectsPage() {
           error={editError}
           descriptionPlaceholder={editing?.description ?? 'What does this project do?'}
           nameLabel="Project name"
+          showType
         />
       </RightPanel>
 
@@ -525,21 +614,26 @@ function SkeletonGrid() {
 interface ProjectFormProps {
   name: string;
   onNameChange: (v: string) => void;
-  type: ProjectType;
-  onTypeChange: (v: ProjectType) => void;
   description: string;
   onDescriptionChange: (v: string) => void;
   slug: string;
   error: string | null;
   descriptionPlaceholder?: string;
   nameLabel?: string;
+  /** Render the type picker — only shown in the Edit panel. */
+  showType?: boolean;
+  type?: ProjectType;
+  onTypeChange?: (v: ProjectType) => void;
 }
 
 function ProjectForm({
-  name, onNameChange, type, onTypeChange,
+  name, onNameChange,
   description, onDescriptionChange, slug, error,
   descriptionPlaceholder = 'What does this project do?',
   nameLabel = 'Project name',
+  showType,
+  type = 'frontend',
+  onTypeChange,
 }: ProjectFormProps) {
   return (
     <div className="space-y-4">
@@ -559,18 +653,20 @@ function ProjectForm({
         )}
       </div>
 
-      <div>
-        <label className="block text-xs text-slate-400 mb-1.5">Type</label>
-        <select
-          value={type}
-          onChange={e => onTypeChange(e.target.value as ProjectType)}
-          className="w-full bg-[#080a0d] border border-[#1e2130] text-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-orange-500"
-        >
-          {PROJECT_TYPES.map(t => (
-            <option key={t} value={t}>{t}</option>
-          ))}
-        </select>
-      </div>
+      {showType && onTypeChange && (
+        <div>
+          <label className="block text-xs text-slate-400 mb-1.5">Type</label>
+          <select
+            value={type}
+            onChange={e => onTypeChange(e.target.value as ProjectType)}
+            className="w-full bg-[#080a0d] border border-[#1e2130] text-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-orange-500"
+          >
+            {PROJECT_TYPES.map(t => (
+              <option key={t} value={t}>{t}</option>
+            ))}
+          </select>
+        </div>
+      )}
 
       <div>
         <label className="block text-xs text-slate-400 mb-1.5">Description</label>
