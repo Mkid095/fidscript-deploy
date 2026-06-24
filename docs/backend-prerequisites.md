@@ -157,7 +157,7 @@ non-authorized roles and the gaps must be closed before any production claim. Pe
 
 | ID | Title | Category | Blocks | Suggested fix | Status |
 |---|---|---|---|---|---|
-| `PREREQ-EMAIL-1` | Stalwart v0.15.5 suspend is a DB flag only | audit-gap | F11 (Mailbox detail) | `setAccountStatus`/`deleteAccount`/`setAccountPassword` are no-ops in Stalwart 0.15.5 — a "suspended" mailbox can still log in via IMAP/SMTP. UI surfaces this honestly (`<MailboxStatusPill>` note). Fix = upgrade Stalwart OR rotate credentials on suspend. | 🟧 UI-honest |
+| `PREREQ-EMAIL-1` | Stalwart suspend semantics (status flag vs. credential rotation) | audit-gap | F06 (Mailbox detail — dashboard) | On v0.16 a suspended mailbox (`isEnabled=false`) can no longer log in, so the credential-rotation workaround from v0.15.5 is no longer needed. Remaining work is the dashboard UX: `MailboxStatusPill` should show "suspended" distinctly from "deleted", and the suspend control should require explicit confirmation. Spec lives in `docs/phases/frontend/f06-email.md` when written. | 🟧 UI-honest |
 
 ---
 

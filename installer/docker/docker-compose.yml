@@ -207,6 +207,13 @@ services:
     env_file:
       - ./secrets/api.env
     environment:
+      # First-run admin seed (consumed by apps/api/prisma/seed.ts via ADMIN_EMAIL/ADMIN_PASSWORD).
+      # The seed runs on every container start (entrypoint.sh line 56) and is idempotent —
+      # if the admin user already exists, it skips. ponytail: this is the minimum
+      # needed for the dashboard's login to work end-to-end; the full F03 onboarding
+      # flow will replace this with a proper install wizard.
+      ADMIN_EMAIL: ${ADMIN_EMAIL}
+      ADMIN_PASSWORD: ${ADMIN_PASSWORD}
       DATABASE_URL: postgresql://fidscript:${POSTGRES_PASSWORD}@pgbouncer:6432/fidscript?pgbouncer=true
       DIRECT_URL: postgresql://fidscript:${POSTGRES_PASSWORD}@postgres:5432/fidscript
       DB_ADMIN_USER: fidscript

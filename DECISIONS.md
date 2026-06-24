@@ -1404,3 +1404,81 @@ remain; the overview is the default `/projects/[id]` route and Deployments becom
 **Why:** The design note from 2026-06-24 crystallized the *feel* of the platform.
 Capturing it as an ADR means any future contributor — agent or human — has a single
 reference when deciding whether a screen is right.
+
+---
+
+## ADR-037: EmailProvider Abstraction (Single Implementation, Clear Contract)
+
+**Status:** Accepted — 2026-06-24
+**Context:** Phase 09 (Email / Stalwart) had direct calls to Stalwart's JMAP wire format
+sprinkled across `StalwartAccountService`, `MailboxService`, `AliasService`, `DomainService`,
+`MessageService`, and the bootstrap path. The 2026-06-24 v0.16 migration (the JMAP session
+endpoint moved from `/jmap` to `/jmap/`, `x:Account/set` gained the `credentials.<n>.secret`
+shape, etc.) forced touching every caller. A second provider migration — or even a unit
+test that didn't need a real Stalwart container — was effectively impossible.
+
+**Decision:** Introduce `IEmailProvider` in `apps/api/src/modules/email/providers/i-email-provider.ts`.
+It defines the full surface the email module needs (domain CRUD, mailbox CRUD, alias CRUD,
+sender identity CRUD, message list/get, attachment get/put, send). The single concrete
+implementation, `StalwartEmailProvider`, lives in `stalwart-email.provider.ts` and is the
+only file in the module allowed to import from `@/modules/email/stalwart/*` JMAP helpers.
+All higher-level services depend on `@Inject('EMAIL_PROVIDER')` and never reference Stalwart
+APIs directly. The provider is wired in `email.module.ts` with `useClass: StalwartEmailProvider`.
+
+**Consequences:**
+- *Testability:* a `FakeEmailProvider` can stand in for tests without spinning up Stalwart.
+- *Future migration:* when Stalwart 0.x → 1.x ships a breaking API change, the work is
+  contained to one file. Adding a real second provider (e.g., Stalwart → Dovecot) is also
+  one file.
+- *YAGNI discipline:* ADR rule 5 says "no interface with one implementation." This is the
+  exception — the abstraction pays for itself because the wire format has already changed
+  twice in 30 days (v0.15.5 → v0.16) and will change again. The interface is a boundary
+  that earns its keep by absorbing future migrations. Documented here so the YAGNI
+  principle is not later cited to dissolve the abstraction.
+- *Boot cost:* zero at runtime — DI resolves the class instance directly.
+
+**Why:** A 3rd-party mail server upgrade is a recurring event. The cost of the abstraction
+is <200 LOC and the savings compound with every future migration.
+
+---
+
+## ADR-038: Ponytail Cleanup Is Policy, Not a One-Off
+
+**Status:** Accepted — 2026-06-24
+**Context:** The ponytail audit on 2026-06-24 surfaced 18 findings across the repo (2 dead
+apps, 3 dead packages, 1 real security defect — default JWT secret in `packages/config` — and
+4 duplication patterns). All 18 were applied in three commits (C1 deletions, C2 dedup+DI,
+C3 refactors), removing ~600 lines + 2 apps + 3 packages. The temptation is to treat this as
+a one-time cleanup and forget about it.
+
+**Decision:** Ponytail audits are **policy**, not a project. The trigger is whenever a new
+PR adds a file, a layer, or an interface with no second consumer. The 4 patterns that
+emerged are now standing rules:
+
+1. **No `as any` for known SDK gaps.** Fix the SDK type (one line in
+   `packages/sdk/src/modules/*.ts`) rather than papering over it with a cast at every
+   consumer site. Example: `Project.description?: string` was added to the SDK type
+   instead of `as any` in the dashboard edit modal.
+2. **No hand-rolled helpers when the platform ships it.** `Buffer.from(u:p).toString('base64')`
+   for HTTP Basic auth → `basicAuthHeader(user, pass)` in `apps/api/src/common/basic-auth.ts`,
+   consolidated across 5 sites.
+3. **No parallel nodemailer builders.** Two services (SmtpSendService, PlatformMailService)
+   were rebuilding the same Stalwart transporter with slightly different timeouts. One
+   helper (`createStalwartTransport(opts)`) takes a config object; both call sites pass
+   their own opts. No shared "default" transport — callers stay explicit.
+4. **No `null`-bypass DI.** `StorageProviderFactory` previously `new`-ed Cloudinary and
+   Telegram providers in its switch, bypassing NestJS DI. Now it injects all three and
+   the switch just routes the existing singleton. Means tests can override any provider
+   without monkey-patching the factory.
+
+**Consequences:**
+- The `ponytail:ponytail-audit` skill is part of the standard PR review surface for any
+  PR > 200 LOC or any new module. Not enforced as a hook — enforced by human review
+  ("does this PR have a ponytail review?") and self-audited before merge.
+- The "dead-letter bin" rule: if a file has zero consumers and zero callers of its consumers
+  (verified by grep), delete it the same commit that touches its parent module. The repo's
+  recent drift toward 5+ deleted packages demonstrates the value of this rule.
+
+**Why:** The platform grew 23 backend phases in 5 weeks; some of that growth produced
+artifacts that are not load-bearing. Letting them rot is how the audit gap happened in
+the first place.

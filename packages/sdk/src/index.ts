@@ -27,7 +27,7 @@ import { DeploymentsModule } from './modules/deployments';
 import { StorageModule } from './modules/storage';
 import { DatabasesModule } from './modules/databases';
 import { DomainsModule } from './modules/domains';
-import { EmailModule, AdminMailboxModule, AdminAttachmentConfigModule, PlatformMailboxMessage, PlatformMailboxSummary, PlatformMailboxesResponse, CreatePlatformMailboxResponse, ListPlatformMessagesResponse, AdminSendMailResponse, AdminAttachmentConfig, StorageBackend } from './modules/email';
+import { EmailModule, AdminMailboxModule, AdminAttachmentConfigModule, PlatformMailboxMessage, PlatformMailboxSummary, PlatformMailboxesResponse, CreatePlatformMailboxResponse, ListPlatformMessagesResponse, AdminSendMailResponse, AdminAttachmentConfig, StorageBackend, MailboxMessage } from './modules/email';
 import { FunctionsModule } from './modules/functions';
 import { QueuesModule } from './modules/queues';
 import { CronModule } from './modules/cron';
@@ -46,7 +46,7 @@ import {
 export { FidscriptClient, FidscriptClientOptions };
 export { FidscriptError, AuthError, NotFoundError, ValidationError, RateLimitError };
 export { AuthModule, ProjectsModule, DeploymentsModule, StorageModule, DatabasesModule, DomainsModule, EmailModule, FunctionsModule, QueuesModule, CronModule, RealtimeModule, MonitoringModule, LoggingModule, TemplatesModule };
-export { AdminMailboxModule, AdminAttachmentConfigModule, type PlatformMailboxMessage, type PlatformMailboxSummary, type PlatformMailboxesResponse, type CreatePlatformMailboxResponse, type ListPlatformMessagesResponse, type AdminSendMailResponse, type AdminAttachmentConfig, type StorageBackend };
+export { AdminMailboxModule, AdminAttachmentConfigModule, type PlatformMailboxMessage, type PlatformMailboxSummary, type PlatformMailboxesResponse, type CreatePlatformMailboxResponse, type ListPlatformMessagesResponse, type AdminSendMailResponse, type AdminAttachmentConfig, type StorageBackend, type MailboxMessage };
 
 export interface FidscriptSDK {
   auth: AuthModule;

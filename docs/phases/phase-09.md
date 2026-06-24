@@ -23,33 +23,32 @@ The platform serves three distinct email products under one API:
 
 ## Current State
 
-**Verified 2026-06-18 (initial) · Verified 2026-06-19 (deliverability + dynamism fixes).** As of 2026-06-19:
+**Verified 2026-06-18 (initial) · Verified 2026-06-19 (deliverability + dynamism fixes) · Re-verified 2026-06-24 (Stalwart v0.16 + EmailProvider abstraction).** As of 2026-06-24:
 
 - **Schema restructured** — `email.domains`, `email.mailboxes`, `email.aliases`, `email.sender_identities`, `email.api_keys`, `email.messages`, `email.catch_all_rules`, `email.api_usage`, `email.suppressions`
 - **Domain lifecycle** — PENDING → VERIFIED → ACTIVE (or FAILED). Ownership TXT + DNS setup combined into one verify step; full DNS (DKIM/SPF/DMARC/MX) validated in second step.
 - **Platform generates mailbox passwords** — `resetMailboxPassword` never accepts user-supplied passwords; platform generates `crypto.randomBytes` and returns once.
 - **Suppression list** — `email.suppressions` table with reasons: BOUNCE / COMPLAINT / UNSUBSCRIBE / MANUAL. Hard bounces add recipient to suppression; `sendEmail` checks suppression before sending. Sender identities are NOT invalidated.
 - **Catch-all rate limiting** — `CatchAllRule.messagesPerMinute` (default 60) prevents spam amplification via public catch-all domains.
-- **Ownership verification** — TXT token generated at domain creation; verified before DNS configuration
-- **Stalwart JMAP client** — `StalwartJmapService` calls `POST /jmap` with bearer auth
-- **All endpoints implemented** — domains, mailboxes, aliases (mailbox/external/webhook targets), sender identities, API keys, messages, catch-all
-- **Alias routing in Stalwart** — aliases synced via Sieve script on target mailbox; rebuilt whenever aliases change
-- **Webhook delivery** — inbound mail on alias with webhook target fires delivery webhook with retry (3x exponential backoff)
-- **Events wired** — full set including `email.webhook_triggered`, `email.opened`, `email.clicked`, `email.complained`
-- **API key scopes** — string array `["email.send", "email.domains.read", ...]`; `ForbiddenException` if scope missing
-- **Rate limiting** — `dailyLimit`, `monthlyLimit`, `blockedUntil`, `lastFailureAt` per key per day
-- **No MinIO for messages** — body read from Stalwart via JMAP at display time; metadata only in Postgres
-- **Webhook security** — `X-Stalwart-Signature` HMAC-SHA256 on all inbound/bounce webhooks
-- **Bounce ingestion** — `EmailEventsController.handleBounce` updates message status, adds to suppression list, emits `email.bounced`
-- **SMTP status model** — `QUEUED → SUBMITTED → ACCEPTED → BOUNCED/FAILED`
-- **Inbound webhook** — `X-Stalwart-Signature` HMAC verification on both `/email/inbound/webhook` and `/email/events/bounce`
-- **Platform SMTP credentials** — `SMTP_SUBMISSION_USER/PASS` generated at install time; `SmtpSendService` uses them when no `from` address is supplied; Stalwart credentials file mounted for SMTP AUTH on port 587
-- **Traefik mail routes** — `jmap.$DOMAIN`, `imap.$DOMAIN`, and ACME HTTP-01 challenge route to Stalwart now configured in `dynamic.yml` and setup wizard
+- **Ownership verification** — TXT token generated at domain creation; verified before DNS configuration.
+- **Stalwart v0.16.10** — running on `stalwartlabs/stalwart:v0.16.10` with RocksDB. The config template (`installer/config/stalwart/config.toml.template`) is v0.16-schema. **JMAP session endpoint moved from `/jmap` (v0.15) to `POST /jmap/` per RFC 9051**, Basic-auth-based session discovery, and `x:Account/set` with `credentials.<n>.secret` for password provisioning.
+- **`IEmailProvider` abstraction** — `apps/api/src/modules/email/providers/i-email-provider.ts` defines the contract (domain/mailbox/alias/identity CRUD + send + list messages). The only implementation today is `StalwartEmailProvider` (`stalwart-email.provider.ts`). All higher-level services (`StalwartAccountService`, `MailboxService`, `AliasService`, `DomainService`, etc.) depend on the abstract interface — never on Stalwart's wire format directly. Provider is registered with `@Inject('EMAIL_PROVIDER')` in `email.module.ts`.
+- **No MinIO for messages** — body read from Stalwart via JMAP at display time; metadata only in Postgres.
+- **Webhook security** — `X-Stalwart-Signature` HMAC-SHA256 on all inbound/bounce webhooks.
+- **Bounce ingestion** — `EmailEventsController.handleBounce` updates message status, adds to suppression list, emits `email.bounced`.
+- **SMTP status model** — `QUEUED → SUBMITTED → ACCEPTED → BOUNCED/FAILED`.
+- **Inbound webhook** — `X-Stalwart-Signature` HMAC verification on both `/email/inbound/webhook` and `/email/events/bounce`.
+- **Platform SMTP credentials** — `SMTP_SUBMISSION_USER/PASS` generated at install time; `SmtpSendService` uses them when no `from` address is supplied; Stalwart credentials file mounted for SMTP AUTH on port 587.
+- **Traefik mail routes** — `jmap.$DOMAIN`, `imap.$DOMAIN`, and ACME HTTP-01 challenge route to Stalwart now configured in `dynamic.yml` and setup wizard.
+- **Email attachment storage abstraction (2026-06-24)** — `attachment-storage.service.ts` + `attachment-config.service.ts` swap between **internal / Telegram / Cloudinary** at runtime without code changes. The provider switch is admin-configurable via `PUT /admin/attachment-config` and exposed in the dashboard at `/platform/email/settings`. `AttachmentEventListener` automatically stores any new inbound attachment. See ADR-037.
+- **Ponytail cleanup pass (2026-06-24)** — orphaned `email-provider.interface.ts` (SENDER, unused), `smtp.provider.ts`, `resend.provider.ts`, the empty `EmailService` class, and the `stalwart-jmap.service.ts` re-export shim were all deleted. The `Stalwart nodemailer transport` builder is shared between `SmtpSendService` and `PlatformMailService` via `email/common/stalwart-transport.ts`. Basic-auth headers consolidated into `common/basic-auth.ts`. ~600 lines removed, zero behavior change. See ADR-038 for the policy context.
+- **SDK admin mail module (2026-06-24)** — `packages/sdk` `EmailModule.admin` exposes mailbox CRUD, message list/get/patch/delete, and admin send. `EmailModule.attachmentConfig` exposes provider config get/update/test. Dashboard `/platform/email` and `/platform/email/settings` pages migrated from inline `fetch` to SDK calls — no more local `getAccessToken()`/`apiBase()` helpers in those routes.
 
 ## Known Gaps (honest)
 
-- **Mailbox IMAP/SMTP login is broken** (2026-06-19). Mailboxes created via `StalwartAccountService.createAccount` store the password as **plaintext** in the principal's `secrets`. Stalwart's default `passwordHashAlgorithm = argon2id` does not accept it on `AUTHENTICATE PLAIN` — the connection is dropped after auth. **Impact:** outbound sending (admin-token auth) and inbound delivery both work; only *reading* a hosted mailbox via IMAP/SMTP/JMAP login is broken. **Fix (Phase A deliverability):** hash the password before storing (argon2id to match `passwordHashAlgorithm`), or store with the right scheme prefix so Stalwart verifies it correctly.
-- **`stalwart-cli export account` from inside the container is broken** after setting `server.hostname = mail.<domain>`: the JMAP session advertises `http://mail.<domain>:8080/jmap/`, which is unroutable from inside the container (only `fidscript_stalwart:8080` is routable). External JMAP clients use `jmap.<domain>` via Traefik, which is correct. Cosmetic only.
+- **`PREREQ-EMAIL-1` (still open):** Stalwart v0.16's `setAccountStatus`/`deleteAccount`/`setAccountPassword` are functional but `suspend` semantics rely on `isEnabled = false`. A "suspended" mailbox can no longer log in (v0.16 closes the v0.15.5 gap the audit flagged), but the platform-level concept of "suspend vs. delete" still needs the dashboard UX distinction — `MailboxStatusPill` must surface suspended state and the suspend control must require explicit confirmation. UI work tracked under F06 (Email) per `docs/IMPLEMENTATION_ROADMAP.md`.
+- **`stalwart-cli export account` from inside the container is cosmetic-broken** after setting `server.hostname = mail.<domain>`: the JMAP session advertises `http://mail.<domain>:8080/jmap/`, which is unroutable from inside the container (only `fidscript_stalwart:8080` is routable). External JMAP clients use `jmap.<domain>` via Traefik, which is correct. Cosmetic only.
+- **No email inbox/outbox UI yet** — backend is complete and end-to-end verified (inbound, outbound, magic-code auth, API keys, attachments, suppression). F06 dashboard work is the only remaining slice; spec pending per rule 14.
 
 ## Schema
 

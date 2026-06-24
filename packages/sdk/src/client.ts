@@ -113,9 +113,9 @@ export class FidscriptClient {
     );
   }
 
-  async delete<T>(path: string): Promise<T> {
+  async delete<T>(path: string, data?: unknown): Promise<T> {
     return withRetry(
-      () => this.http.delete<T>(path).then(r => r.data).catch(mapError),
+      () => this.http.delete<T>(path, { data }).then(r => r.data).catch(mapError),
       this.maxRetries,
     );
   }

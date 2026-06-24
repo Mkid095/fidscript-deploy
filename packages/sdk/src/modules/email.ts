@@ -9,6 +9,25 @@ export interface EmailMessage {
   createdAt: string;
 }
 
+/** A message row inside a project mailbox — shape returned by MAIL-25/26/27/28/29. */
+export interface MailboxMessage {
+  id: string;
+  mailboxId: string | null;
+  senderIdentityId: string | null;
+  projectId: string;
+  from: string;
+  to: string;
+  subject: string;
+  sizeBytes: string | number; // Prisma BigInt serialized as string
+  isRead: boolean;
+  isStarred: boolean;
+  isDraft: boolean;
+  spamScore: number | null;
+  status: string;
+  error: string | null;
+  createdAt: string;
+}
+
 export interface Mailbox {
   id: string;
   email: string;
@@ -174,5 +193,34 @@ export class EmailModule {
 
   async deleteAlias(projectId: string, aliasId: string) {
     return this.client.delete(`/api/v1/projects/${projectId}/email/aliases/${aliasId}`);
+  }
+
+  /** List messages for a project (optionally filtered by mailboxId + folder).
+   *  Maps to MAIL-25. */
+  async listMessages(
+    projectId: string,
+    params: { mailboxId?: string; folder?: 'inbox' | 'sent' | 'drafts' | 'trash' | 'spam'; limit?: number; offset?: number; unread?: boolean } = {},
+  ): Promise<MailboxMessage[]> {
+    return this.client.get(`/api/v1/projects/${projectId}/email/messages`, params);
+  }
+
+  /** Get a single message with body. Maps to MAIL-26. */
+  async getMessage(projectId: string, messageId: string): Promise<MailboxMessage> {
+    return this.client.get(`/api/v1/projects/${projectId}/email/messages/${messageId}`);
+  }
+
+  /** Mark messages read/unread in bulk. Maps to MAIL-27. */
+  async markMessagesRead(projectId: string, messageIds: string[], isRead: boolean): Promise<{ updated: number }> {
+    return this.client.patch(`/api/v1/projects/${projectId}/email/messages/read`, { messageIds, isRead });
+  }
+
+  /** Star or unstar a single message. Maps to MAIL-28. */
+  async starMessage(projectId: string, messageId: string, starred: boolean): Promise<MailboxMessage> {
+    return this.client.patch(`/api/v1/projects/${projectId}/email/messages/${messageId}/star?starred=${starred}`);
+  }
+
+  /** Delete messages in bulk. Maps to MAIL-29. */
+  async deleteMessages(projectId: string, messageIds: string[]): Promise<{ deleted: number }> {
+    return this.client.delete(`/api/v1/projects/${projectId}/email/messages`, { messageIds });
   }
 }
