@@ -5,11 +5,10 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { usePathname } from 'next/navigation';
 import { HugeiconsIcon } from '@hugeicons/react';
-import { ArrowTurnBackwardIcon, Home01Icon, Logout01Icon } from '@hugeicons/core-free-icons';
-import { Button } from '@fidscript/ui';
+import { ArrowTurnBackwardIcon } from '@hugeicons/core-free-icons';
 
-import { useAuth } from '@/contexts/auth-context';
 import { AuthGuard } from '@/components/auth-guard';
+import { AvatarDropdown } from '@/components/layout/avatar-dropdown';
 
 /**
  * Top-level layout for the (app) route group.
@@ -31,7 +30,6 @@ import { AuthGuard } from '@/components/auth-guard';
  */
 export default function AppLayout({ children }: { children: ReactNode }) {
   const pathname = usePathname();
-  const { user, logout } = useAuth();
   const isProjectRoute = pathname?.startsWith('/projects/') ?? false;
 
   return (
@@ -74,32 +72,8 @@ export default function AppLayout({ children }: { children: ReactNode }) {
 
             <div className="flex-1" />
 
-            {/* User controls */}
-            {user && (
-              <div className="flex items-center gap-3">
-                {/* Account chip — initial avatar, profile UI is on the punch list
-                    (F02 follow-up), not implemented yet. The chip stays as a
-                    visual anchor so the layout doesn't shift when we wire it. */}
-                <div className="flex items-center gap-2 px-2.5 py-1 rounded-md bg-[#1e2130] border border-[#2a2d3a]">
-                  <div className="w-6 h-6 rounded-full bg-[#080a0d] text-orange-400 text-xs font-semibold flex items-center justify-center">
-                    {(user.name || user.email).charAt(0).toUpperCase()}
-                  </div>
-                  <span className="hidden md:inline text-xs text-slate-300 max-w-[160px] truncate">
-                    {user.name || user.email}
-                  </span>
-                </div>
-
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={logout}
-                  className="flex items-center gap-1.5"
-                >
-                  <HugeiconsIcon icon={Logout01Icon} size={14} />
-                  Sign out
-                </Button>
-              </div>
-            )}
+            {/* User account dropdown */}
+            <AvatarDropdown />
           </header>
 
           <main className="flex-1 overflow-y-auto p-6">{children}</main>
