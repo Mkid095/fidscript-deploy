@@ -6,6 +6,7 @@ import { Button, Card, EmptyState, Spinner } from '@fidscript/ui';
 import { useSearchParams } from 'next/navigation';
 
 import { useAuth } from '@/contexts/auth-context';
+import { useShellProjectId } from '@/contexts/project-context';
 import type { Project, LogEntry } from '@/types';
 
 const STREAMS = ['default', 'build', 'access', 'error'] as const;
@@ -26,13 +27,15 @@ export default function LogsPage() {
   const { getSdk } = useAuth();
   const searchParams = useSearchParams();
   const projectIdParam = searchParams.get('project');
+  const shellProjectId = useShellProjectId();
 
   const [projects, setProjects] = useState<Project[]>([]);
-  const [selectedProjectId, setSelectedProjectId] = useState<string>(projectIdParam ?? '');
+  const [pickedProjectId, setPickedProjectId] = useState<string>(projectIdParam ?? '');
+  const selectedProjectId = shellProjectId ?? pickedProjectId;
   const [stream, setStream] = useState<Stream>('default');
   const [activeLevels, setActiveLevels] = useState<Set<Level>>(new Set(LEVELS));
   const [logs, setLogs] = useState<LogEntry[]>([]);
-  const [loadingProjects, setLoadingProjects] = useState(true);
+  const [loadingProjects, setLoadingProjects] = useState(!shellProjectId);
   const [loadingLogs, setLoadingLogs] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [autoScroll, setAutoScroll] = useState(true);
@@ -41,13 +44,14 @@ export default function LogsPage() {
   const streamRef = useRef<AsyncIterator<LogEntry> | null>(null);
 
   useEffect(() => {
+    if (shellProjectId) return;
     async function loadProjects() {
       try {
         const sdk = getSdk();
         const data = await sdk.projects.list();
         setProjects(data);
-        if (!selectedProjectId && data.length > 0) {
-          setSelectedProjectId(data[0].id);
+        if (!pickedProjectId && data.length > 0) {
+          setPickedProjectId(data[0].id);
         }
       } catch {
         // ignore
@@ -57,7 +61,7 @@ export default function LogsPage() {
     }
     loadProjects();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [getSdk]);
+  }, [getSdk, shellProjectId]);
 
   async function loadLogs() {
     if (!selectedProjectId) return;
@@ -136,7 +140,7 @@ export default function LogsPage() {
   }
 
   function handleProjectChange(id: string) {
-    setSelectedProjectId(id);
+    setPickedProjectId(id);
     const url = new URL(window.location.href);
     url.searchParams.set('project', id);
     window.location.href = url.toString();
@@ -185,19 +189,21 @@ export default function LogsPage() {
       {/* Controls */}
       <Card className="border border-[#1e2130] mb-6">
         <div className="flex flex-col gap-4">
-          {/* Project selector */}
-          <div>
-            <label className="block text-xs text-slate-400 mb-1">Project</label>
-            <select
-              value={selectedProjectId}
-              onChange={e => handleProjectChange(e.target.value)}
-              className="bg-[#080a0d] border border-[#1e2130] text-slate-200 rounded-lg px-3 py-2 text-sm min-w-52"
-            >
-              {projects.map(p => (
-                <option key={p.id} value={p.id}>{p.name}</option>
-              ))}
-            </select>
-          </div>
+          {/* Project selector — hidden when the project shell already chose a project */}
+          {!shellProjectId && (
+            <div>
+              <label className="block text-xs text-slate-400 mb-1">Project</label>
+              <select
+                value={pickedProjectId}
+                onChange={e => handleProjectChange(e.target.value)}
+                className="bg-[#080a0d] border border-[#1e2130] text-slate-200 rounded-lg px-3 py-2 text-sm min-w-52"
+              >
+                {projects.map(p => (
+                  <option key={p.id} value={p.id}>{p.name}</option>
+                ))}
+              </select>
+            </div>
+          )}
 
           {/* Stream selector */}
           <div>

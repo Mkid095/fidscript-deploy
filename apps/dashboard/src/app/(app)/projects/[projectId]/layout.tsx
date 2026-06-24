@@ -7,6 +7,7 @@ import { Spinner } from '@fidscript/ui';
 
 import type { Project } from '@/types';
 import { useAuth } from '@/contexts/auth-context';
+import { ProjectProvider } from '@/contexts/project-context';
 import { ProjectSidebar } from '@/components/layout/project-sidebar';
 import { ProjectSwitcherModal } from '@/components/layout/project-switcher-modal';
 import { NotificationBell } from '@/components/layout/notification-bell';
@@ -112,6 +113,7 @@ export default function ProjectLayout({ children }: { children: React.ReactNode 
   const effectiveSection = currentSection || lastSection || 'deployments';
 
   return (
+    <ProjectProvider projectId={projectId} project={project}>
     <div className="flex min-h-screen bg-[#080a0d]">
       {/* Project sidebar */}
       <ProjectSidebar
@@ -180,5 +182,6 @@ export default function ProjectLayout({ children }: { children: React.ReactNode 
         />
       )}
     </div>
+    </ProjectProvider>
   );
 }

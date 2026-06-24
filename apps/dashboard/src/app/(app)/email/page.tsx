@@ -5,6 +5,7 @@ import { Button, Card, EmptyState, Input, Modal, Spinner } from '@fidscript/ui';
 import Link from 'next/link';
 
 import { useAuth } from '@/contexts/auth-context';
+import { useShellProjectId } from '@/contexts/project-context';
 import type { Project } from '@/types';
 
 // Domain type — not re-exported from SDK, define locally
@@ -34,10 +35,12 @@ const DNS_COLORS: Record<string, string> = {
 
 export default function EmailPage() {
   const { getSdk } = useAuth();
+  const shellProjectId = useShellProjectId();
   const [projects, setProjects] = useState<Project[]>([]);
-  const [selectedProjectId, setSelectedProjectId] = useState('');
+  const [pickedProjectId, setPickedProjectId] = useState('');
+  const selectedProjectId = shellProjectId ?? pickedProjectId;
   const [domains, setDomains] = useState<Domain[]>([]);
-  const [loadingProjects, setLoadingProjects] = useState(true);
+  const [loadingProjects, setLoadingProjects] = useState(!shellProjectId);
   const [loadingDomains, setLoadingDomains] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [showAdd, setShowAdd] = useState(false);
@@ -46,13 +49,14 @@ export default function EmailPage() {
   const [addError, setAddError] = useState<string | null>(null);
 
   useEffect(() => {
+    if (shellProjectId) return;
     async function load() {
       try {
         const sdk = getSdk();
         const data = await sdk.projects.list();
         setProjects(data);
-        if (data.length > 0 && !selectedProjectId) {
-          setSelectedProjectId(data[0].id);
+        if (data.length > 0 && !pickedProjectId) {
+          setPickedProjectId(data[0].id);
         }
       } catch {
         // ignore
@@ -62,7 +66,7 @@ export default function EmailPage() {
     }
     load();
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [getSdk]);
+  }, [getSdk, shellProjectId]);
 
   useEffect(() => {
     if (!selectedProjectId) return;
@@ -125,20 +129,22 @@ export default function EmailPage() {
         </Button>
       </div>
 
-      {/* Project selector */}
-      <div className="mb-6">
-        <label className="block text-xs text-slate-400 mb-1">Project</label>
-        <select
-          value={selectedProjectId}
-          onChange={e => setSelectedProjectId(e.target.value)}
-          className="bg-[#080a0d] border border-[#1e2130] text-slate-200 rounded-lg px-3 py-2 text-sm min-w-52"
-        >
-          <option value="">Select a project</option>
-          {projects.map(p => (
-            <option key={p.id} value={p.id}>{p.name}</option>
-          ))}
-        </select>
-      </div>
+      {/* Project selector — hidden when the project shell already chose a project */}
+      {!shellProjectId && (
+        <div className="mb-6">
+          <label className="block text-xs text-slate-400 mb-1">Project</label>
+          <select
+            value={pickedProjectId}
+            onChange={e => setPickedProjectId(e.target.value)}
+            className="bg-[#080a0d] border border-[#1e2130] text-slate-200 rounded-lg px-3 py-2 text-sm min-w-52"
+          >
+            <option value="">Select a project</option>
+            {projects.map(p => (
+              <option key={p.id} value={p.id}>{p.name}</option>
+            ))}
+          </select>
+        </div>
+      )}
 
       {error && (
         <p className="text-red-400 mb-4 text-sm">{error}</p>

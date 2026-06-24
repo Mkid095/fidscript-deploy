@@ -5,6 +5,7 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { Card, Button, Input, Spinner, EmptyState, Toast } from '@fidscript/ui';
 
 import { useAuth } from '@/contexts/auth-context';
+import { useShellProjectId } from '@/contexts/project-context';
 import type { Project } from '@/types';
 
 interface Bucket {
@@ -25,10 +26,11 @@ export default function StoragePage() {
   const { getSdk } = useAuth();
   const router = useRouter();
   const searchParams = useSearchParams();
+  const shellProjectId = useShellProjectId();
   const projectId = searchParams.get('project') ?? '';
 
   const [projects, setProjects] = useState<Project[]>([]);
-  const [selectedProject, setSelectedProject] = useState(projectId);
+  const [selectedProject, setSelectedProject] = useState(shellProjectId ?? projectId);
   const [buckets, setBuckets] = useState<Bucket[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -39,6 +41,7 @@ export default function StoragePage() {
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
 
   useEffect(() => {
+    if (shellProjectId) return; // shell chose; nothing to load
     async function loadProjects() {
       try {
         const sdk = getSdk();
@@ -53,7 +56,7 @@ export default function StoragePage() {
     }
     loadProjects();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [getSdk]);
+  }, [getSdk, shellProjectId]);
 
   useEffect(() => {
     if (!selectedProject) return;
@@ -107,7 +110,7 @@ export default function StoragePage() {
           </p>
         </div>
         <div className="flex items-center gap-3">
-          {projects.length > 0 && (
+          {!shellProjectId && projects.length > 0 && (
             <select
               value={selectedProject}
               onChange={e => setSelectedProject(e.target.value)}

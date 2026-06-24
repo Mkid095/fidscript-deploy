@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { Card, Button, Input, Modal, Spinner, EmptyState } from '@fidscript/ui';
 
 import { useAuth } from '@/contexts/auth-context';
+import { useShellProjectId } from '@/contexts/project-context';
 import type { Project } from '@/types';
 
 interface Function_ {
@@ -33,10 +34,14 @@ const RUNTIMES = [
 
 export default function FunctionsPage() {
   const { getSdk } = useAuth();
+  // ponytail: if we're under the project shell, the shell already chose the project.
+  // Skip the project-list fetch + the picker UI; use the shell's projectId directly.
+  const shellProjectId = useShellProjectId();
   const [projects, setProjects] = useState<Project[]>([]);
-  const [selectedProjectId, setSelectedProjectId] = useState('');
+  const [pickedProjectId, setPickedProjectId] = useState('');
+  const selectedProjectId = shellProjectId ?? pickedProjectId;
   const [functions, setFunctions] = useState<Function_[]>([]);
-  const [loadingProjects, setLoadingProjects] = useState(true);
+  const [loadingProjects, setLoadingProjects] = useState(!shellProjectId);
   const [loadingFunctions, setLoadingFunctions] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [showCreate, setShowCreate] = useState(false);
@@ -46,20 +51,21 @@ export default function FunctionsPage() {
   const [createError, setCreateError] = useState<string | null>(null);
 
   useEffect(() => {
+    if (shellProjectId) return; // shell chose; nothing to do
     async function load() {
       try {
         const sdk = getSdk();
         const data = await sdk.projects.list();
         setProjects(data);
-        if (data.length > 0 && !selectedProjectId) {
-          setSelectedProjectId(data[0].id);
+        if (data.length > 0 && !pickedProjectId) {
+          setPickedProjectId(data[0].id);
         }
       } catch { /* ignore */ } finally {
         setLoadingProjects(false);
       }
     }
     load();
-  }, [getSdk, selectedProjectId]);
+  }, [getSdk, pickedProjectId, shellProjectId]);
 
   useEffect(() => {
     if (!selectedProjectId) return;
@@ -120,20 +126,22 @@ export default function FunctionsPage() {
         </Button>
       </div>
 
-      {/* Project selector */}
-      <div className="mb-6">
-        <label className="block text-xs text-slate-400 mb-1">Project</label>
-        <select
-          value={selectedProjectId}
-          onChange={e => setSelectedProjectId(e.target.value)}
-          className="bg-[#080a0d] border border-[#1e2130] text-slate-200 rounded-lg px-3 py-2 text-sm min-w-52"
-        >
-          <option value="">Select a project</option>
-          {projects.map(p => (
-            <option key={p.id} value={p.id}>{p.name}</option>
-          ))}
-        </select>
-      </div>
+      {/* Project selector — hidden when the project shell already chose a project */}
+      {!shellProjectId && (
+        <div className="mb-6">
+          <label className="block text-xs text-slate-400 mb-1">Project</label>
+          <select
+            value={pickedProjectId}
+            onChange={e => setPickedProjectId(e.target.value)}
+            className="bg-[#080a0d] border border-[#1e2130] text-slate-200 rounded-lg px-3 py-2 text-sm min-w-52"
+          >
+            <option value="">Select a project</option>
+            {projects.map(p => (
+              <option key={p.id} value={p.id}>{p.name}</option>
+            ))}
+          </select>
+        </div>
+      )}
 
       {error && <p className="text-red-400 mb-4 text-sm">{error}</p>}
 

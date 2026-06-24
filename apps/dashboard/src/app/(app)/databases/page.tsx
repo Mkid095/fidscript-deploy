@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { Card, Button, Input, Spinner, EmptyState, Toast } from '@fidscript/ui';
 
 import { useAuth } from '@/contexts/auth-context';
+import { useShellProjectId } from '@/contexts/project-context';
 import type { Project } from '@/types';
 
 interface Database {
@@ -20,6 +21,7 @@ interface Database {
 export default function DatabasesPage() {
   const { getSdk } = useAuth();
   const router = useRouter();
+  const shellProjectId = useShellProjectId();
 
   const [databases, setDatabases] = useState<Database[]>([]);
   const [loading, setLoading] = useState(true);
@@ -56,7 +58,7 @@ export default function DatabasesPage() {
     try {
       const sdk = getSdk();
       const projects = await sdk.projects.list();
-      const projectId = projects[0]?.id;
+      const projectId = shellProjectId ?? projects[0]?.id;
       if (!projectId) {
         setCreateError('No project found. Create a project first.');
         setCreating(false);
@@ -73,7 +75,7 @@ export default function DatabasesPage() {
     } finally {
       setCreating(false);
     }
-  }, [newName, newType, getSdk]);
+  }, [newName, newType, getSdk, shellProjectId]);
 
   return (
     <div>

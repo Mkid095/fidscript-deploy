@@ -5,6 +5,7 @@ import { Button, Card, EmptyState, Input, Modal, Spinner } from '@fidscript/ui';
 import { useRouter } from 'next/navigation';
 
 import { useAuth } from '@/contexts/auth-context';
+import { useShellProjectId } from '@/contexts/project-context';
 import type { Project, CronJob } from '@/types';
 
 function computeNextRun(expression: string): string {
@@ -26,10 +27,12 @@ function computeNextRun(expression: string): string {
 export default function SchedulerPage() {
   const { getSdk } = useAuth();
   const router = useRouter();
+  const shellProjectId = useShellProjectId();
   const [projects, setProjects] = useState<Project[]>([]);
-  const [selectedProjectId, setSelectedProjectId] = useState('');
+  const [pickedProjectId, setPickedProjectId] = useState('');
+  const selectedProjectId = shellProjectId ?? pickedProjectId;
   const [jobs, setJobs] = useState<CronJob[]>([]);
-  const [loadingProjects, setLoadingProjects] = useState(true);
+  const [loadingProjects, setLoadingProjects] = useState(!shellProjectId);
   const [loadingJobs, setLoadingJobs] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [showCreate, setShowCreate] = useState(false);
@@ -47,12 +50,13 @@ export default function SchedulerPage() {
   const [formHeaders, setFormHeaders] = useState('{}');
 
   useEffect(() => {
+    if (shellProjectId) return;
     async function loadProjects() {
       try {
         const sdk = getSdk();
         const data = await sdk.projects.list();
         setProjects(data);
-        if (data.length > 0) setSelectedProjectId(data[0].id);
+        if (data.length > 0) setPickedProjectId(data[0].id);
       } catch {
         // ignore
       } finally {
@@ -60,7 +64,7 @@ export default function SchedulerPage() {
       }
     }
     loadProjects();
-  }, [getSdk]);
+  }, [getSdk, shellProjectId]);
 
   useEffect(() => {
     if (!selectedProjectId) return;
@@ -150,16 +154,20 @@ export default function SchedulerPage() {
       </div>
 
       <div className="mb-6">
-        <label className="block text-xs text-slate-400 mb-1">Project</label>
-        <select
-          value={selectedProjectId}
-          onChange={e => setSelectedProjectId(e.target.value)}
-          className="bg-[#080a0d] border border-[#1e2130] text-slate-200 rounded-lg px-3 py-2 text-sm min-w-52"
-        >
-          {projects.map(p => (
-            <option key={p.id} value={p.id}>{p.name}</option>
-          ))}
-        </select>
+        {!shellProjectId && (
+          <>
+            <label className="block text-xs text-slate-400 mb-1">Project</label>
+            <select
+              value={pickedProjectId}
+              onChange={e => setPickedProjectId(e.target.value)}
+              className="bg-[#080a0d] border border-[#1e2130] text-slate-200 rounded-lg px-3 py-2 text-sm min-w-52"
+            >
+              {projects.map(p => (
+                <option key={p.id} value={p.id}>{p.name}</option>
+              ))}
+            </select>
+          </>
+        )}
       </div>
 
       {error && (

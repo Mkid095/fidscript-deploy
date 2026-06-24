@@ -1,25 +1,56 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { HugeiconsIcon } from '@hugeicons/react';
-import { Add01Icon, Edit01Icon, Delete01Icon, Folder01Icon } from '@hugeicons/core-free-icons';
-import { Button } from '@fidscript/ui';
-import { Spinner } from '@fidscript/ui';
-import { EmptyState } from '@fidscript/ui';
-import { Input } from '@fidscript/ui';
-import { Modal } from '@fidscript/ui';
+import {
+  Add01Icon,
+  Edit01Icon,
+  Delete01Icon,
+  Folder01Icon,
+  Search01Icon,
+  Refresh01Icon,
+  AlertCircleIcon,
+  Time01Icon,
+} from '@hugeicons/core-free-icons';
+import { Button, Card, EmptyState, Input, RightPanel, Spinner } from '@fidscript/ui';
 
 import { useAuth } from '@/contexts/auth-context';
 import type { Project } from '@/types';
+
+type ProjectType = 'frontend' | 'backend' | 'fullstack' | 'static' | 'api';
+const PROJECT_TYPES: ProjectType[] = ['frontend', 'backend', 'fullstack', 'static', 'api'];
+
+// Universal status palette per ADR-036 principle 7.
+// Green=healthy, blue=running, yellow=pending, orange=warning, red=failed, gray=stopped.
+const STATUS_PALETTE: Record<string, string> = {
+  ACTIVE: 'bg-emerald-900/30 text-emerald-400 border-emerald-800/60',
+  HEALTHY: 'bg-emerald-900/30 text-emerald-400 border-emerald-800/60',
+  RUNNING: 'bg-blue-900/30 text-blue-400 border-blue-800/60',
+  PENDING: 'bg-yellow-900/30 text-yellow-400 border-yellow-800/60',
+  WARNING: 'bg-orange-900/30 text-orange-400 border-orange-800/60',
+  SUSPENDED: 'bg-yellow-900/30 text-yellow-400 border-yellow-800/60',
+  FAILED: 'bg-red-900/30 text-red-400 border-red-800/60',
+  STOPPED: 'bg-slate-800 text-slate-400 border-slate-700',
+};
 
 function slugify(name: string): string {
   return name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
 }
 
-type ProjectType = 'frontend' | 'backend' | 'fullstack' | 'static' | 'api';
-const PROJECT_TYPES: ProjectType[] = ['frontend', 'backend', 'fullstack', 'static', 'api'];
+/** "2 min ago" / "3 days ago" / "Just now" — best-effort relative time, no i18n. */
+function relativeTime(iso?: string): string {
+  if (!iso) return '—';
+  const t = new Date(iso).getTime();
+  if (Number.isNaN(t)) return '—';
+  const diff = Date.now() - t;
+  if (diff < 60_000) return 'Just now';
+  if (diff < 3_600_000) return `${Math.floor(diff / 60_000)} min ago`;
+  if (diff < 86_400_000) return `${Math.floor(diff / 3_600_000)} hr ago`;
+  if (diff < 604_800_000) return `${Math.floor(diff / 86_400_000)} days ago`;
+  return new Date(iso).toLocaleDateString();
+}
 
 export default function ProjectsPage() {
   const { user, getSdk } = useAuth();
@@ -29,9 +60,17 @@ export default function ProjectsPage() {
   const [projects, setProjects] = useState<Project[]>([]);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
+  const [search, setSearch] = useState('');
 
-  // ── Create modal state ──────────────────────────────────────────────────
-  const [showCreate, setShowCreate] = useState(false);
+  // ── Right-panel state (ADR-036 principle 12) ──────────────────────────
+  // ponytail: one open at a time. The previous <Modal> design had three
+  // modals with separate state; collapsing to a single "active panel" state
+  // is fewer lines and impossible-to-misuse (only one is open at a time).
+  const [activePanel, setActivePanel] = useState<'create' | 'edit' | 'delete' | null>(null);
+  const [editing, setEditing] = useState<Project | null>(null);
+  const [deleting, setDeleting] = useState<Project | null>(null);
+
+  // Create fields
   const [name, setName] = useState('');
   const [type, setType] = useState<ProjectType>('frontend');
   const [description, setDescription] = useState('');
@@ -39,52 +78,45 @@ export default function ProjectsPage() {
   const [createError, setCreateError] = useState<string | null>(null);
   const slug = slugify(name);
 
-  // ── Edit modal state ───────────────────────────────────────────────────
-  const [editing, setEditing] = useState<Project | null>(null);
+  // Edit fields
   const [editName, setEditName] = useState('');
   const [editType, setEditType] = useState<ProjectType>('frontend');
   const [editDescription, setEditDescription] = useState('');
   const [savingEdit, setSavingEdit] = useState(false);
   const [editError, setEditError] = useState<string | null>(null);
 
-  // ── Delete confirm state ────────────────────────────────────────────────
-  const [deleting, setDeleting] = useState<Project | null>(null);
+  // Delete fields — destructive confirm requires an explicit "I understand" tick
+  const [deleteAck, setDeleteAck] = useState(false);
   const [deletingNow, setDeletingNow] = useState(false);
   const [deleteError, setDeleteError] = useState<string | null>(null);
 
-  // ── Permission helper ──────────────────────────────────────────────────
-  const canMutate = (p: Project) =>
+  const canMutate = (p?: Project) =>
     ['owner', 'admin', 'developer'].includes(user?.role ?? '') ||
-    p.role === 'owner' || p.role === 'admin' || p.role === 'developer';
+    (p && (p.role === 'owner' || p.role === 'admin' || p.role === 'developer'));
 
-  // ── Load projects ──────────────────────────────────────────────────────
-  useEffect(() => {
-    let cancelled = false;
-    async function load() {
-      try {
-        const sdk = getSdk();
-        const data = await sdk.projects.list();
-        if (!cancelled) setProjects(Array.isArray(data) ? data : (data as any).projects ?? []);
-      } catch (err) {
-        if (!cancelled) setLoadError(err instanceof Error ? err.message : 'Failed to load projects');
-      } finally {
-        if (!cancelled) setLoading(false);
-      }
+  // ── Load ───────────────────────────────────────────────────────────────
+  const load = useCallback(async () => {
+    setLoading(true);
+    setLoadError(null);
+    try {
+      const sdk = getSdk();
+      const data = await sdk.projects.list();
+      setProjects(Array.isArray(data) ? data : (data as any).projects ?? []);
+    } catch (err) {
+      setLoadError(err instanceof Error ? err.message : 'Failed to load projects');
+    } finally {
+      setLoading(false);
     }
-    load();
-    return () => { cancelled = true; };
   }, [getSdk]);
+
+  useEffect(() => { load(); }, [load]);
 
   // ── Create ─────────────────────────────────────────────────────────────
   function openCreate() {
     setName(''); setType('frontend'); setDescription(''); setCreateError(null);
-    setShowCreate(true);
+    setActivePanel('create');
   }
-  function closeCreate() {
-    setShowCreate(false); setCreateError(null);
-  }
-  async function handleCreate(e: React.FormEvent) {
-    e.preventDefault();
+  async function handleCreate() {
     if (!name.trim()) return;
     setCreating(true);
     setCreateError(null);
@@ -95,7 +127,7 @@ export default function ProjectsPage() {
         type,
         description: description.trim() || undefined,
       });
-      closeCreate();
+      setActivePanel(null);
       // ponytail: jump straight into the new project — the user just created
       // it, they want to see it, not bounce back to the list.
       router.push(`/projects/${created.id}`);
@@ -113,31 +145,22 @@ export default function ProjectsPage() {
     setEditType((p.type as ProjectType) ?? 'frontend');
     setEditDescription('');
     setEditError(null);
+    setActivePanel('edit');
   }
-  function closeEdit() {
-    setEditing(null); setEditError(null);
-  }
-  async function handleSaveEdit(e: React.FormEvent) {
-    e.preventDefault();
+  async function handleSaveEdit() {
     if (!editing || !editName.trim()) return;
     setSavingEdit(true);
     setEditError(null);
     try {
       const sdk = getSdk();
-      // ponytail: type is sent on update too; description only if non-empty so
-      // the API doesn't clobber existing values with empty strings.
-      // ponytail: type is sent on update too; description only if non-empty so
-      // the API doesn't clobber existing values with empty strings.
       const trimmedDesc = editDescription.trim();
       await sdk.projects.update(editing.id, {
         name: editName.trim(),
         type: editType,
         ...(trimmedDesc ? { description: trimmedDesc } : {}),
       });
-      // Refresh list
-      const data = await sdk.projects.list();
-      setProjects(Array.isArray(data) ? data : (data as any).projects ?? []);
-      closeEdit();
+      setActivePanel(null);
+      await load();
     } catch (err) {
       setEditError(err instanceof Error ? err.message : 'Failed to save');
     } finally {
@@ -147,13 +170,13 @@ export default function ProjectsPage() {
 
   // ── Delete ─────────────────────────────────────────────────────────────
   function openDelete(p: Project) {
-    setDeleting(p); setDeleteError(null);
-  }
-  function closeDelete() {
-    setDeleting(null); setDeleteError(null);
+    setDeleting(p);
+    setDeleteAck(false);
+    setDeleteError(null);
+    setActivePanel('delete');
   }
   async function handleConfirmDelete() {
-    if (!deleting) return;
+    if (!deleting || !deleteAck) return;
     setDeletingNow(true);
     setDeleteError(null);
     try {
@@ -161,11 +184,8 @@ export default function ProjectsPage() {
       await sdk.projects.delete(deleting.id);
       // ponytail: removing the project here does NOT cascade to its data
       // (deployments, env vars, etc.) — the API handles that server-side.
-      // The SDK call returns void; the next list() call will exclude the
-      // deleted project.
-      const data = await sdk.projects.list();
-      setProjects(Array.isArray(data) ? data : (data as any).projects ?? []);
-      closeDelete();
+      setActivePanel(null);
+      await load();
     } catch (err) {
       setDeleteError(err instanceof Error ? err.message : 'Failed to delete');
     } finally {
@@ -173,65 +193,95 @@ export default function ProjectsPage() {
     }
   }
 
-  // ── Loading / error states ─────────────────────────────────────────────
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center min-h-96">
-        <Spinner size="lg" />
-      </div>
-    );
-  }
+  // ── Search-first filter (ADR-036 principle 8) ─────────────────────────
+  const q = search.trim().toLowerCase();
+  const filtered = q
+    ? projects.filter(p =>
+        p.name.toLowerCase().includes(q) ||
+        p.slug.toLowerCase().includes(q) ||
+        (p.description ?? '').toLowerCase().includes(q),
+      )
+    : projects;
 
   return (
-    <div className="max-w-5xl mx-auto">
-      {/* Header */}
-      <div className="flex items-center justify-between mb-6">
+    <div className="max-w-6xl mx-auto">
+      {/* Header — title + search + hero action (ADR-036 principle 5) */}
+      <div className="flex items-center justify-between gap-4 mb-6">
         <div>
           <h1 className="text-xl font-bold text-slate-200 mb-1">Projects</h1>
           <p className="text-sm text-slate-500">
-            {projects.length === 0
-              ? 'No projects yet'
-              : `${projects.length} project${projects.length !== 1 ? 's' : ''}`}
+            {loading
+              ? 'Loading…'
+              : q
+                ? `${filtered.length} of ${projects.length} project${projects.length !== 1 ? 's' : ''}`
+                : `${projects.length} project${projects.length !== 1 ? 's' : ''}`}
           </p>
         </div>
-        {canMutate({ role: user?.role } as Project) && (
-          <Button variant="primary" size="sm" onClick={openCreate} className="flex items-center gap-1.5">
-            <HugeiconsIcon icon={Add01Icon} size={14} />
-            New project
+
+        <div className="flex items-center gap-2 flex-1 max-w-md justify-end">
+          {/* Search input — always visible, never behind a button */}
+          <div className="relative flex-1 max-w-xs">
+            <HugeiconsIcon icon={Search01Icon} size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-600 pointer-events-none" />
+            <Input
+              value={search}
+              onChange={e => setSearch(e.target.value)}
+              placeholder="Search projects…"
+              aria-label="Search projects"
+              className="pl-9 bg-[#080a0d] border border-[#1e2130] text-slate-200 placeholder:text-slate-600"
+            />
+          </div>
+          <Button variant="ghost" size="sm" onClick={load} title="Refresh" aria-label="Refresh">
+            <HugeiconsIcon icon={Refresh01Icon} size={14} />
           </Button>
-        )}
+          {canMutate() && (
+            <Button variant="primary" size="sm" onClick={openCreate} className="flex items-center gap-1.5">
+              <HugeiconsIcon icon={Add01Icon} size={14} />
+              New project
+            </Button>
+          )}
+        </div>
       </div>
 
       {loadError && (
         <div className="bg-red-950/30 border border-red-800 rounded-lg p-3 mb-4 text-sm text-red-400 flex items-center justify-between">
           <span>{loadError}</span>
-          <button
-            onClick={() => window.location.reload()}
-            className="text-xs text-red-300 hover:text-red-200 underline"
-          >
-            Retry
-          </button>
+          <button onClick={load} className="text-xs text-red-300 hover:text-red-200 underline">Retry</button>
         </div>
       )}
 
-      {/* Empty state */}
-      {projects.length === 0 && !loadError ? (
-        <EmptyState
-          icon={<HugeiconsIcon icon={Folder01Icon} size={48} className="text-slate-600" />}
-          title="No projects yet"
-          description="Create your first project to start deploying apps, databases, and more."
-          action={
-            canMutate({ role: user?.role } as Project) ? (
+      {/* Body */}
+      {loading ? (
+        <SkeletonGrid />
+      ) : projects.length === 0 ? (
+        <Card className="border border-[#1e2130]">
+          <EmptyState
+            icon={<HugeiconsIcon icon={Folder01Icon} size={48} className="text-slate-600" />}
+            title="No projects yet"
+            description="Create your first project to start deploying apps, databases, and more."
+            action={canMutate() ? (
               <Button variant="primary" size="sm" onClick={openCreate} className="flex items-center gap-1.5">
                 <HugeiconsIcon icon={Add01Icon} size={14} />
                 Create your first project
               </Button>
-            ) : undefined
-          }
-        />
+            ) : undefined}
+          />
+        </Card>
+      ) : filtered.length === 0 ? (
+        <Card className="border border-[#1e2130]">
+          <EmptyState
+            icon={<HugeiconsIcon icon={Search01Icon} size={48} className="text-slate-600" />}
+            title="No matches"
+            description={`No projects match "${search}".`}
+            action={
+              <Button variant="ghost" size="sm" onClick={() => setSearch('')}>
+                Clear search
+              </Button>
+            }
+          />
+        </Card>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
-          {projects.map(project => (
+          {filtered.map(project => (
             <ProjectCard
               key={project.id}
               project={project}
@@ -243,148 +293,121 @@ export default function ProjectsPage() {
         </div>
       )}
 
-      {/* ── Create modal ── */}
-      {showCreate && (
-        <Modal isOpen={true} title="Create project" onClose={closeCreate}>
-          <form id="create-form" onSubmit={handleCreate} className="space-y-4">
-            <Input
-              label="Project name"
-              value={name}
-              onChange={e => setName(e.target.value)}
-              placeholder="my-app"
-              autoFocus
-              className="bg-[#080a0d] border border-[#1e2130] text-slate-200 placeholder:text-slate-600"
-            />
-            {name && (
-              <p className="text-xs text-slate-500 -mt-2">
-                Slug: <span className="font-mono text-slate-300">{slug}</span>
-              </p>
-            )}
+      {/* ── Right panel: Create ── */}
+      <RightPanel
+        isOpen={activePanel === 'create'}
+        onClose={() => setActivePanel(null)}
+        title="New project"
+        subtitle="Pick a name and type. You can change everything later."
+        footer={{
+          onCancel: () => setActivePanel(null),
+          onSubmit: handleCreate,
+          submitLabel: 'Create project',
+          loading: creating,
+          submitDisabled: !name.trim(),
+        }}
+      >
+        <ProjectForm
+          name={name} onNameChange={setName}
+          type={type} onTypeChange={setType}
+          description={description} onDescriptionChange={setDescription}
+          slug={slug}
+          error={createError}
+        />
+      </RightPanel>
 
-            <div>
-              <label className="block text-xs text-slate-400 mb-1">Type</label>
-              <select
-                value={type}
-                onChange={e => setType(e.target.value as ProjectType)}
-                className="w-full bg-[#080a0d] border border-[#1e2130] text-slate-200 rounded-lg px-3 py-2 text-sm"
-              >
-                {PROJECT_TYPES.map(t => (
-                  <option key={t} value={t}>{t}</option>
-                ))}
-              </select>
-            </div>
+      {/* ── Right panel: Edit ── */}
+      <RightPanel
+        isOpen={activePanel === 'edit' && !!editing}
+        onClose={() => setActivePanel(null)}
+        title={editing ? `Edit "${editing.name}"` : 'Edit project'}
+        subtitle="Changes save immediately to this project only."
+        footer={{
+          onCancel: () => setActivePanel(null),
+          onSubmit: handleSaveEdit,
+          submitLabel: 'Save changes',
+          loading: savingEdit,
+          submitDisabled: !editName.trim(),
+        }}
+      >
+        <ProjectForm
+          name={editName} onNameChange={setEditName}
+          type={editType} onTypeChange={setEditType}
+          description={editDescription} onDescriptionChange={setEditDescription}
+          slug={slugify(editName)}
+          error={editError}
+          descriptionPlaceholder={editing?.description ?? 'What does this project do?'}
+          nameLabel="Project name"
+        />
+      </RightPanel>
 
-            <Input
-              label="Description (optional)"
-              value={description}
-              onChange={e => setDescription(e.target.value)}
-              placeholder="What does this project do?"
-              className="bg-[#080a0d] border border-[#1e2130] text-slate-200 placeholder:text-slate-600"
-            />
-
-            {createError && <p className="text-sm text-red-400">{createError}</p>}
-
-            <div className="flex gap-2 justify-end pt-2">
-              <Button variant="ghost" size="sm" type="button" onClick={closeCreate}>
-                Cancel
-              </Button>
-              <Button
-                variant="primary"
-                size="sm"
-                type="submit"
-                loading={creating}
-                disabled={!name.trim()}
-              >
-                {creating ? 'Creating…' : 'Create'}
-              </Button>
-            </div>
-          </form>
-        </Modal>
-      )}
-
-      {/* ── Edit modal ── */}
-      {editing && (
-        <Modal isOpen={true} title={`Edit "${editing.name}"`} onClose={closeEdit}>
-          <form onSubmit={handleSaveEdit} className="space-y-4">
-            <Input
-              label="Project name"
-              value={editName}
-              onChange={e => setEditName(e.target.value)}
-              autoFocus
-              className="bg-[#080a0d] border border-[#1e2130] text-slate-200 placeholder:text-slate-600"
-            />
-
-            <div>
-              <label className="block text-xs text-slate-400 mb-1">Type</label>
-              <select
-                value={editType}
-                onChange={e => setEditType(e.target.value as ProjectType)}
-                className="w-full bg-[#080a0d] border border-[#1e2130] text-slate-200 rounded-lg px-3 py-2 text-sm"
-              >
-                {PROJECT_TYPES.map(t => (
-                  <option key={t} value={t}>{t}</option>
-                ))}
-              </select>
-            </div>
-
-            <Input
-              label="Description"
-              value={editDescription}
-              onChange={e => setEditDescription(e.target.value)}
-              placeholder={editing.description ?? 'What does this project do?'}
-              className="bg-[#080a0d] border border-[#1e2130] text-slate-200 placeholder:text-slate-600"
-            />
-
-            {editError && <p className="text-sm text-red-400">{editError}</p>}
-
-            <div className="flex gap-2 justify-end pt-2">
-              <Button variant="ghost" size="sm" type="button" onClick={closeEdit}>
-                Cancel
-              </Button>
-              <Button variant="primary" size="sm" type="submit" loading={savingEdit}>
-                {savingEdit ? 'Saving…' : 'Save'}
-              </Button>
-            </div>
-          </form>
-        </Modal>
-      )}
-
-      {/* ── Delete confirm modal ── */}
-      {deleting && (
-        <Modal isOpen={true} title="Delete project?" onClose={closeDelete}>
+      {/* ── Right panel: Delete (destructive) ── */}
+      <RightPanel
+        isOpen={activePanel === 'delete' && !!deleting}
+        onClose={() => setActivePanel(null)}
+        title="Delete project?"
+        footer={{
+          onCancel: () => setActivePanel(null),
+          onSubmit: handleConfirmDelete,
+          submitLabel: 'Delete project',
+          loading: deletingNow,
+          submitDisabled: !deleteAck,
+          submitDanger: true,
+          hideCancel: false,
+        }}
+      >
+        {deleting && (
           <div className="space-y-4">
             <p className="text-sm text-slate-300">
-              Delete <strong className="text-slate-100">{deleting.name}</strong>?
-              This will remove the project and all of its data: deployments,
-              environment variables, secrets, and any associated storage.
+              You are about to permanently delete <strong className="text-slate-100">{deleting.name}</strong>.
+              This will remove the project and the following data, which cannot be recovered:
             </p>
-            <p className="text-xs text-amber-400">
-              This action cannot be undone.
-            </p>
+            <ul className="space-y-1.5 text-sm text-slate-400 ml-1">
+              <li className="flex items-center gap-2">
+                <HugeiconsIcon icon={AlertCircleIcon} size={14} className="text-red-400 flex-shrink-0" />
+                Deployments and release history
+              </li>
+              <li className="flex items-center gap-2">
+                <HugeiconsIcon icon={AlertCircleIcon} size={14} className="text-red-400 flex-shrink-0" />
+                Environment variables and secrets
+              </li>
+              <li className="flex items-center gap-2">
+                <HugeiconsIcon icon={AlertCircleIcon} size={14} className="text-red-400 flex-shrink-0" />
+                Database instances and backups
+              </li>
+              <li className="flex items-center gap-2">
+                <HugeiconsIcon icon={AlertCircleIcon} size={14} className="text-red-400 flex-shrink-0" />
+                Storage buckets and uploaded files
+              </li>
+              <li className="flex items-center gap-2">
+                <HugeiconsIcon icon={AlertCircleIcon} size={14} className="text-red-400 flex-shrink-0" />
+                Email mailboxes, aliases, and messages
+              </li>
+              <li className="flex items-center gap-2">
+                <HugeiconsIcon icon={AlertCircleIcon} size={14} className="text-red-400 flex-shrink-0" />
+                Custom domains and DNS records
+              </li>
+            </ul>
+            <label className="flex items-start gap-2 pt-3 border-t border-slate-800 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={deleteAck}
+                onChange={e => setDeleteAck(e.target.checked)}
+                className="mt-0.5 w-4 h-4 rounded border-slate-600 bg-slate-800 text-red-500 focus:ring-red-500 focus:ring-offset-0"
+              />
+              <span className="text-sm text-slate-300">
+                I understand this will permanently delete <strong className="text-slate-100">{deleting.name}</strong> and all of its data.
+              </span>
+            </label>
             {deleteError && <p className="text-sm text-red-400">{deleteError}</p>}
-            <div className="flex gap-2 justify-end pt-2">
-              <Button variant="ghost" size="sm" type="button" onClick={closeDelete}>
-                Cancel
-              </Button>
-              <Button
-                variant="danger"
-                size="sm"
-                onClick={handleConfirmDelete}
-                loading={deletingNow}
-                className="flex items-center gap-1.5"
-              >
-                <HugeiconsIcon icon={Delete01Icon} size={14} />
-                {deletingNow ? 'Deleting…' : 'Delete project'}
-              </Button>
-            </div>
           </div>
-        </Modal>
-      )}
+        )}
+      </RightPanel>
     </div>
   );
 }
 
-/* ── Project card ── */
+/* ── Project card (always-visible actions per user request) ── */
 interface ProjectCardProps {
   project: Project;
   onOpen: () => void;
@@ -393,15 +416,19 @@ interface ProjectCardProps {
 }
 
 function ProjectCard({ project, onOpen, onEdit, onDelete }: ProjectCardProps) {
+  // Per ADR-036 principle 1: card answers "what is it, is it healthy, can I open it"
+  const lastActive = project.lastActivityAt ?? project.updatedAt;
+  const statusKey = (project.status ?? '').toUpperCase();
+  const statusColor = STATUS_PALETTE[statusKey] ?? 'bg-slate-800 text-slate-400 border-slate-700';
+
   return (
-    <div className="group relative rounded-lg border border-[#1e2130] bg-[#0f1117] hover:border-blue-500 transition-colors duration-150">
+    <div className="group relative rounded-lg border border-[#1e2130] bg-[#0f1117] hover:border-blue-500/50 transition-colors">
       {/* Main clickable area */}
-      <button
-        type="button"
-        onClick={onOpen}
-        className="w-full text-left p-5"
+      <Link
+        href={`/projects/${project.id}`}
+        className="block p-5 no-underline"
       >
-        <div className="flex items-start justify-between mb-3">
+        <div className="flex items-start justify-between gap-3 mb-2">
           <div className="min-w-0 flex-1">
             <h3 className="text-sm font-semibold text-slate-200 truncate group-hover:text-blue-300 transition-colors">
               {project.name}
@@ -410,45 +437,44 @@ function ProjectCard({ project, onOpen, onEdit, onDelete }: ProjectCardProps) {
               {project.slug}
             </p>
           </div>
-          <span
-            className={`ml-2 flex-shrink-0 text-xs px-2 py-0.5 rounded-full border capitalize ${
-              project.status === 'ACTIVE'
-                ? 'bg-emerald-900/30 text-emerald-400 border-emerald-800/60'
-                : project.status === 'SUSPENDED'
-                ? 'bg-amber-900/30 text-amber-400 border-amber-800/60'
-                : 'bg-[#1e2130] text-slate-400 border-[#2a2d3a]'
-            }`}
-          >
+        </div>
+
+        {/* Health indicator: status pill + last-active line (ADR-036 principle 1) */}
+        <div className="flex items-center gap-2 mb-3">
+          <span className={`text-xs px-2 py-0.5 rounded-full border capitalize ${statusColor}`}>
             {project.status?.toLowerCase() ?? 'unknown'}
           </span>
+          {lastActive && (
+            <span className="text-xs text-slate-500 flex items-center gap-1">
+              <HugeiconsIcon icon={Time01Icon} size={12} className="text-slate-600" />
+              {relativeTime(lastActive)}
+            </span>
+          )}
         </div>
 
         {project.description && (
-          <p className="text-xs text-slate-500 line-clamp-2 mb-3">
+          <p className="text-xs text-slate-500 line-clamp-2 mb-3 min-h-[2rem]">
             {project.description}
           </p>
         )}
 
-        <div className="flex items-center justify-between mt-3">
-          <span className="text-xs px-2 py-0.5 rounded bg-[#1e2130] text-slate-500 border border-[#2a2d3a] capitalize">
+        <div className="flex items-center justify-between pt-2 border-t border-[#1e2130]">
+          <span className="text-xs px-2 py-0.5 rounded bg-[#1e2130] text-slate-400 border border-[#2a2d3a] capitalize">
             {project.type}
           </span>
-          <span className="text-xs text-slate-600">
-            {project.updatedAt ? new Date(project.updatedAt).toLocaleDateString() : '—'}
-          </span>
+          <span className="text-xs text-slate-600">Open →</span>
         </div>
-      </button>
+      </Link>
 
-      {/* Action buttons — only render if the user can mutate. Positioned
-          absolutely so they don't shift the card layout. */}
+      {/* Always-visible action buttons (user explicitly requested these not be hover-only) */}
       {(onEdit || onDelete) && (
-        <div className="absolute top-2 right-2 flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+        <div className="absolute top-2 right-2 flex items-center gap-1">
           {onEdit && (
             <button
               type="button"
-              onClick={e => { e.stopPropagation(); onEdit(); }}
-              className="p-1.5 rounded-md text-slate-500 hover:text-slate-200 hover:bg-[#1e2130] transition-colors"
-              aria-label="Edit project"
+              onClick={e => { e.preventDefault(); e.stopPropagation(); onEdit(); }}
+              className="p-1.5 rounded-md text-slate-500 hover:text-blue-300 hover:bg-[#1e2130] transition-colors"
+              aria-label={`Edit ${project.name}`}
               title="Edit"
             >
               <HugeiconsIcon icon={Edit01Icon} size={14} />
@@ -457,9 +483,9 @@ function ProjectCard({ project, onOpen, onEdit, onDelete }: ProjectCardProps) {
           {onDelete && (
             <button
               type="button"
-              onClick={e => { e.stopPropagation(); onDelete(); }}
+              onClick={e => { e.preventDefault(); e.stopPropagation(); onDelete(); }}
               className="p-1.5 rounded-md text-slate-500 hover:text-red-400 hover:bg-[#1e2130] transition-colors"
-              aria-label="Delete project"
+              aria-label={`Delete ${project.name}`}
               title="Delete"
             >
               <HugeiconsIcon icon={Delete01Icon} size={14} />
@@ -467,6 +493,97 @@ function ProjectCard({ project, onOpen, onEdit, onDelete }: ProjectCardProps) {
           )}
         </div>
       )}
+    </div>
+  );
+}
+
+/* ── Skeleton cards (ADR-036 principle 15) ── */
+function SkeletonGrid() {
+  return (
+    <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+      {[0, 1, 2].map(i => (
+        <div key={i} className="rounded-lg border border-[#1e2130] bg-[#0f1117] p-5 animate-pulse">
+          <div className="h-4 bg-[#1e2130] rounded w-2/3 mb-2" />
+          <div className="h-3 bg-[#1e2130] rounded w-1/2 mb-4" />
+          <div className="flex items-center gap-2 mb-3">
+            <div className="h-4 w-16 bg-[#1e2130] rounded-full" />
+            <div className="h-3 w-20 bg-[#1e2130] rounded" />
+          </div>
+          <div className="h-3 bg-[#1e2130] rounded w-full mb-2" />
+          <div className="h-3 bg-[#1e2130] rounded w-4/5 mb-4" />
+          <div className="flex items-center justify-between pt-2 border-t border-[#1e2130]">
+            <div className="h-3 w-14 bg-[#1e2130] rounded" />
+            <div className="h-3 w-10 bg-[#1e2130] rounded" />
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+/* ── Shared form (used by both Create and Edit panels) ── */
+interface ProjectFormProps {
+  name: string;
+  onNameChange: (v: string) => void;
+  type: ProjectType;
+  onTypeChange: (v: ProjectType) => void;
+  description: string;
+  onDescriptionChange: (v: string) => void;
+  slug: string;
+  error: string | null;
+  descriptionPlaceholder?: string;
+  nameLabel?: string;
+}
+
+function ProjectForm({
+  name, onNameChange, type, onTypeChange,
+  description, onDescriptionChange, slug, error,
+  descriptionPlaceholder = 'What does this project do?',
+  nameLabel = 'Project name',
+}: ProjectFormProps) {
+  return (
+    <div className="space-y-4">
+      <div>
+        <Input
+          label={nameLabel}
+          value={name}
+          onChange={e => onNameChange(e.target.value)}
+          placeholder="my-app"
+          autoFocus
+          className="bg-[#080a0d] border border-[#1e2130] text-slate-200 placeholder:text-slate-600"
+        />
+        {name && (
+          <p className="text-xs text-slate-500 mt-1.5">
+            Slug: <span className="font-mono text-slate-300">{slug || '—'}</span>
+          </p>
+        )}
+      </div>
+
+      <div>
+        <label className="block text-xs text-slate-400 mb-1.5">Type</label>
+        <select
+          value={type}
+          onChange={e => onTypeChange(e.target.value as ProjectType)}
+          className="w-full bg-[#080a0d] border border-[#1e2130] text-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-orange-500"
+        >
+          {PROJECT_TYPES.map(t => (
+            <option key={t} value={t}>{t}</option>
+          ))}
+        </select>
+      </div>
+
+      <div>
+        <label className="block text-xs text-slate-400 mb-1.5">Description</label>
+        <textarea
+          value={description}
+          onChange={e => onDescriptionChange(e.target.value)}
+          placeholder={descriptionPlaceholder}
+          rows={3}
+          className="w-full bg-[#080a0d] border border-[#1e2130] text-slate-200 placeholder:text-slate-600 rounded-lg px-3 py-2 text-sm resize-none focus:outline-none focus:border-orange-500"
+        />
+      </div>
+
+      {error && <p className="text-sm text-red-400">{error}</p>}
     </div>
   );
 }
