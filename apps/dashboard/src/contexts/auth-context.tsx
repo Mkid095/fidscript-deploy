@@ -9,6 +9,7 @@ import {
   useState,
   type ReactNode,
 } from 'react';
+import { useRouter } from 'next/navigation';
 import { type FidscriptSDK } from '@fidscript/sdk';
 
 import { makeSdk } from '@/lib/sdk';
@@ -71,6 +72,7 @@ function getNextRoute(): string {
 }
 
 export function AuthProvider({ children }: { children: ReactNode }) {
+  const router = useRouter();
   const [state, setState] = useState<AuthState>({
     user: null,
     loading: true,
@@ -149,14 +151,22 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }
 
   async function logout(): Promise<void> {
-    try {
-      if (sdkRef.current) await sdkRef.current.auth.logout();
-    } finally {
-      clearTokens();
-      sdkRef.current = null;
-      setState({ user: null, loading: false, error: null });
-      window.location.href = '/login';
+    // Call logout endpoint with the current access token, then clear everything.
+    // Use router.push instead of window.location.href to avoid a hard reload race
+    // where the browser cancels the in-flight logout request.
+    const accessToken = localStorage.getItem(ACCESS_TOKEN_KEY);
+    if (accessToken) {
+      try {
+        const sdk = makeSdk(accessToken);
+        await sdk.auth.logout();
+      } catch {
+        //best-effort: clear tokens locally even if server call fails
+      }
     }
+    clearTokens();
+    sdkRef.current = null;
+    setState({ user: null, loading: false, error: null });
+    router.push('/login');
   }
 
   async function register(email: string, name: string, password: string, authMethod: 'PASSWORD' | 'MAGIC_CODE'): Promise<void> {
