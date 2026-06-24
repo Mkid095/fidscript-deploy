@@ -315,7 +315,7 @@ export default function ProjectsPage() {
       <div className="flex items-center justify-between gap-4 mb-6">
         <div>
           <h1 className="text-xl font-bold text-slate-200 mb-1">Projects</h1>
-          <p className="text-sm text-slate-500">
+          <p className="text-sm text-slate-500" aria-live="polite">
             {loading
               ? 'Loading…'
               : q
@@ -369,8 +369,10 @@ export default function ProjectsPage() {
         <Card className="border border-[#1e2130]">
           <EmptyState
             icon={<HugeiconsIcon icon={Folder01Icon} size={48} className="text-slate-600" />}
-            title="No projects yet"
-            description="Create your first project to start deploying apps, databases, and more."
+            title={canEdit() ? 'No projects yet' : 'No projects'}
+            description={canEdit()
+              ? 'Create your first project to start deploying apps, databases, and more.'
+              : 'No projects have been created yet. Contact your project owner to get access.'}
             action={canEdit() ? (
               <Button variant="primary" size="sm" onClick={openCreate} className="flex items-center gap-1.5">
                 <HugeiconsIcon icon={Add01Icon} size={14} />
@@ -386,14 +388,14 @@ export default function ProjectsPage() {
             title="No matches"
             description={`No projects match "${search}".`}
             action={
-              <Button variant="ghost" size="sm" onClick={() => setSearch('')}>
+              <Button variant="ghost" size="sm" onClick={() => { setSearch(''); router.replace('/projects', { scroll: false }); }}>
                 Clear search
               </Button>
             }
           />
         </Card>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4" aria-live="polite" aria-label="Projects list">
           {filtered.map(project => (
             <ProjectCard
               key={project.id}
