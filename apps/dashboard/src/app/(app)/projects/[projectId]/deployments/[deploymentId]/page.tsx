@@ -432,24 +432,34 @@ function DeploymentDetailInner() {
 
   useEffect(() => { load(); }, [load]);
 
-  // SSE streaming for in-flight deployments
+  // Poll for log + status updates while the deployment is in-flight.
+  // The backend stores build logs as a single text column (Release.buildLogs)
+  // and surfaces them via the one-shot `getLogs` endpoint — there is no SSE
+  // stream endpoint. Polling every 2.5s matches the previous working LogConsole.
   useEffect(() => {
     if (!deployment || !['PENDING','QUEUED','BUILDING','DEPLOYING'].includes(deployment.status)) return;
     setLogStream(true);
-    // Use EventSource for log streaming if the backend supports it
-    let es: EventSource | null = null;
-    try {
-      const token = localStorage.getItem('fidscript_access_token');
-      es = new EventSource(`/api/v1/projects/${projectId}/deployments/${deploymentId}/logs/stream?token=${token}`);
-      es.onmessage = (e) => {
-        try {
-          const data = JSON.parse(e.data);
-          setLogs(prev => prev + '\n' + (data.line ?? data.log ?? ''));
-        } catch {}
-      };
-      es.onerror = () => { es?.close(); setLogStream(false); };
-    } catch { setLogStream(false); }
-    return () => { es?.close(); };
+    let cancelled = false;
+    const interval = setInterval(async () => {
+      try {
+        const sdk = getSdk();
+        const [dep, logData] = await Promise.all([
+          sdk.deployments.get(projectId, deploymentId),
+          sdk.deployments.getLogs(projectId, deploymentId),
+        ]);
+        if (cancelled) return;
+        setDeployment(dep as Deployment);
+        setLogs(typeof logData === 'string' ? logData : (logData as any).logs ?? JSON.stringify(logData));
+        // Stop polling once the deployment reaches a terminal state.
+        if (dep && !['PENDING','QUEUED','BUILDING','DEPLOYING'].includes((dep as Deployment).status)) {
+          setLogStream(false);
+          clearInterval(interval);
+        }
+      } catch {
+        // Swallow transient polling errors — the next tick retries.
+      }
+    }, 2500);
+    return () => { cancelled = true; clearInterval(interval); setLogStream(false); };
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [projectId, deploymentId, deployment?.status]);
 

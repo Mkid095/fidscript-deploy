@@ -10,3 +10,8 @@ export { RightPanel } from './components/RightPanel';
 export { Toast } from './components/Toast';
 export { Spinner } from './components/Spinner';
 export { EmptyState } from './components/EmptyState';
+export { Stepper } from './components/Stepper';
+export type { StepperStep } from './components/Stepper';
+export { Dropzone } from './components/Dropzone';
+export { Tabs } from './components/Tabs';
+export type { TabItem } from './components/Tabs';
