@@ -131,14 +131,45 @@ export class DeploymentStateService implements OnModuleInit {
   }
 
   private parseSource(deployment: any) {
-    // deployment.release.sourceUrl carries the git URL from the create DTO.
+    // The source is encoded into release.sourceUrl at creation time:
+    //   git:     the raw URL
+    //   archive: "archive://<bucketId>/<objectKey>"
+    // The optional dockerfilePath is appended as a query param "?dockerfile=<path>"
+    // for both source types (it was previously dropped, so custom Dockerfile
+    // paths never reached the build runner).
     const release = deployment.release;
     if (!release) return { type: 'git' as const, url: '', branch: 'main' };
-    if (release.sourceUrl) return { type: 'git' as const, url: release.sourceUrl, branch: release.branch || 'main' };
+
+    const rawUrl: string = release.sourceUrl || '';
+    const dockerfilePath = this.extractQuery(rawUrl, 'dockerfile');
+
+    // Archive source
+    const archiveMatch = rawUrl.match(/^archive:\/\/([^/]+)\/(.+?)(?:\?.*)?$/);
+    if (archiveMatch) {
+      return {
+        type: 'archive' as const,
+        archiveBucketId: archiveMatch[1],
+        archiveObjectKey: archiveMatch[2],
+        dockerfilePath,
+      };
+    }
+
+    // Git source — strip any query string before passing the URL to git clone.
+    const gitUrl = rawUrl.split('?')[0];
+    if (gitUrl) return { type: 'git' as const, url: gitUrl, branch: release.branch || 'main', dockerfilePath };
     // Fallback: platform-level sourceRepo from cloned projects
     const project = deployment.project;
-    if (project?.sourceRepo) return { type: 'git' as const, url: project.sourceRepo, branch: release.branch || 'main' };
-    return { type: 'git' as const, url: '', branch: release.branch || 'main' };
+    if (project?.sourceRepo) return { type: 'git' as const, url: project.sourceRepo, branch: release.branch || 'main', dockerfilePath };
+    return { type: 'git' as const, url: '', branch: release.branch || 'main', dockerfilePath };
+  }
+
+  /** Extract a query param from a URL-like string. Returns undefined if absent. */
+  private extractQuery(url: string, key: string): string | undefined {
+    const qIndex = url.indexOf('?');
+    if (qIndex === -1) return undefined;
+    const params = new URLSearchParams(url.slice(qIndex + 1));
+    const val = params.get(key);
+    return val ?? undefined;
   }
 
   private async releaseLock(projectId: string, deploymentId: string) {

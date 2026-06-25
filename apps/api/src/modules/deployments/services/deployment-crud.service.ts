@@ -19,12 +19,27 @@ export class DeploymentCrudService {
     await this.checkAccessOrThrow(userId, projectId);
 
     const version = this.generateVersion();
+    // Encode the source into sourceUrl so the build runner can reconstruct it.
+    //   git:     the raw URL (backward compatible)
+    //   archive: "archive://<bucketId>/<objectKey>"
+    // The optional dockerfilePath is appended as "?dockerfile=<path>" so it
+    // reaches the build runner (it was previously dropped).
+    const dockerfilePath =
+      dto.source?.archive?.dockerfilePath || dto.source?.git?.dockerfilePath;
+    const dockerQuery = dockerfilePath ? `?dockerfile=${encodeURIComponent(dockerfilePath)}` : '';
+
+    let sourceUrl: string | undefined;
+    if (dto.source?.type === 'archive' && dto.source.archive?.bucketId && dto.source.archive?.objectKey) {
+      sourceUrl = `archive://${dto.source.archive.bucketId}/${dto.source.archive.objectKey}${dockerQuery}`;
+    } else {
+      sourceUrl = (dto.source?.git?.url) ? `${dto.source.git.url}${dockerQuery}` : undefined;
+    }
     const release = await this.prisma.release.create({
       data: {
         projectId, version,
         commitSha: dto.commitSha || '',
         branch: dto.branch || project.sourceBranch || 'main',
-        sourceUrl: dto.source?.git?.url || undefined,
+        sourceUrl,
         imageTag: `fidscript/${project.slug}:${version}`,
         createdBy: userId,
       },
@@ -48,17 +63,26 @@ export class DeploymentCrudService {
     await this.checkAccessOrThrow(userId, projectId);
     const skip = (page - 1) * limit;
     const [deployments, total] = await Promise.all([
-      this.prisma.deployment.findMany({ where: { projectId }, orderBy: { createdAt: 'desc' }, skip, take: limit }),
+      this.prisma.deployment.findMany({
+        where: { projectId },
+        orderBy: { createdAt: 'desc' },
+        skip,
+        take: limit,
+        include: { release: true },
+      }),
       this.prisma.deployment.count({ where: { projectId } }),
     ]);
-    return { deployments: deployments.map(d => this.formatDeployment(d)), pagination: { page, limit, total, pages: Math.ceil(total / limit) } };
+    return { deployments: deployments.map(d => this.formatDeployment(d, d.release)), pagination: { page, limit, total, pages: Math.ceil(total / limit) } };
   }
 
   async get(userId: string, projectId: string, deploymentId: string) {
     await this.checkAccessOrThrow(userId, projectId);
-    const deployment = await this.prisma.deployment.findUnique({ where: { id: deploymentId } });
+    const deployment = await this.prisma.deployment.findUnique({
+      where: { id: deploymentId },
+      include: { release: true },
+    });
     if (!deployment || deployment.projectId !== projectId) throw new NotFoundException('Deployment not found');
-    return this.formatDeployment(deployment);
+    return this.formatDeployment(deployment, deployment.release);
   }
 
   async getLogs(userId: string, projectId: string, deploymentId: string) {
@@ -129,8 +153,41 @@ export class DeploymentCrudService {
 
   private generateVersion() { return `${Date.now().toString(36)}-${Math.random().toString(36).substring(2, 6)}`; }
 
-  private formatDeployment(d: any) {
-    return { id: d.id, projectId: d.projectId, releaseId: d.releaseId || null, status: d.status?.toLowerCase(), deploymentUrl: d.deploymentUrl || null, rolledBackToId: d.rolledBackToId || null, createdAt: d.createdAt, completedAt: d.completedAt || null };
+  private formatDeployment(d: any, release?: any) {
+    return {
+      id: d.id,
+      projectId: d.projectId,
+      releaseId: d.releaseId || null,
+      status: d.status?.toLowerCase(),
+      deploymentUrl: d.deploymentUrl || null,
+      rolledBackToId: d.rolledBackToId || null,
+      createdAt: d.createdAt,
+      completedAt: d.completedAt || null,
+      branch: release?.branch || null,
+      commitSha: release?.commitSha || null,
+      commitMessage: release?.commitMessage || null,
+      imageTag: release?.imageTag || null,
+      // Strip the internal "?dockerfile=..." query and archive:// scheme from
+      // the value exposed to the frontend — callers see a clean git URL or
+      // the raw object key for archive sources.
+      sourceUrl: this.cleanSourceUrlForApi(release?.sourceUrl),
+      sourceType: release?.sourceUrl?.startsWith('archive://') ? 'archive'
+        : release?.sourceUrl ? 'git' : null,
+      version: release?.version || null,
+    };
+  }
+
+  /**
+   * Remove the internal encoding from a stored sourceUrl before returning it
+   * via the API. Git URLs keep their scheme/host but lose the dockerfile query;
+   * archive sources return their object key only.
+   */
+  private cleanSourceUrlForApi(raw?: string): string | null {
+    if (!raw) return null;
+    const noQuery = raw.split('?')[0];
+    const archiveMatch = noQuery.match(/^archive:\/\/[^/]+\/(.+)$/);
+    if (archiveMatch) return archiveMatch[1];
+    return noQuery;
   }
 
   private formatBuildConfig(c: any) {

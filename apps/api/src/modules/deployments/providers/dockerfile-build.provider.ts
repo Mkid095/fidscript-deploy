@@ -27,8 +27,17 @@ export class DockerfileBuildProvider implements BuildProvider {
           credentials: source.credentials,
           workspace: ws,
         });
+      } else if (source.type === 'archive') {
+        if (!source.archiveBucketId || !source.archiveObjectKey) {
+          throw new Error('Archive source requires bucketId and objectKey.');
+        }
+        await this.workspace.fetchArchiveSource({
+          bucketId: source.archiveBucketId,
+          objectKey: source.archiveObjectKey,
+          workspace: ws,
+        });
       } else {
-        throw new Error('Archive source not yet supported by DockerfileBuildProvider. Use source.type=git.');
+        throw new Error(`Unsupported source type: ${source.type}`);
       }
 
       const dockerfilePath = source.dockerfilePath
@@ -68,6 +77,14 @@ export class DockerfileBuildProvider implements BuildProvider {
           credentials: source.credentials,
           workspace: ws,
         });
+      } else if (source.type === 'archive') {
+        addLog(`[DockerfileBuildProvider] Downloading archive ${source.archiveObjectKey} from bucket ${source.archiveBucketId}…`);
+        await this.workspace.fetchArchiveSource({
+          bucketId: source.archiveBucketId!,
+          objectKey: source.archiveObjectKey!,
+          workspace: ws,
+        });
+        addLog(`[DockerfileBuildProvider] Archive extracted to build workspace`);
       }
 
       // `docker build -f <path>` resolves a RELATIVE path against the process

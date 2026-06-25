@@ -38,6 +38,9 @@ export interface BuildContext {
     branch?: string;
     credentials?: string;
     dockerfilePath?: string;
+    /** For archive sources: the storage bucket ID + object key to download. */
+    archiveBucketId?: string;
+    archiveObjectKey?: string;
   };
   buildCommand?: string;
   outputDirectory?: string;
