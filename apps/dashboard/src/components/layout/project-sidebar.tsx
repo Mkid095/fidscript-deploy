@@ -33,8 +33,12 @@ export interface NavItem {
   ownerOnly?: boolean;
 }
 
-const NAV_ITEMS: NavItem[] = [
-  { id: 'deployments', label: 'Deployments', href: '/deployments', icon: Rocket01Icon },
+// Priority items shown directly in the mobile bottom bar; the rest go in the
+// "More" sheet. Exported so MobileTabBar can reuse the same model.
+export const MOBILE_PRIORITY_IDS = ['services', 'databases', 'storage', 'logs'];
+
+export const NAV_ITEMS: NavItem[] = [
+  { id: 'services',   label: 'Services',   href: '/services',   icon: Rocket01Icon },
   { id: 'functions',   label: 'Functions',   href: '/functions',   icon: SourceCodeIcon },
   { id: 'databases',   label: 'Databases',   href: '/databases',   icon: Database01Icon },
   { id: 'storage',     label: 'Storage',     href: '/storage',     icon: HardDriveIcon },
@@ -65,7 +69,7 @@ export function ProjectSidebar({ project, collapsed, onCollapse }: ProjectSideba
 
   return (
     <aside
-      className="flex flex-col bg-[#0c0e14] border-r border-[#1e2130] flex-shrink-0 transition-all duration-200 overflow-hidden"
+      className="hidden md:flex flex-col bg-[#0c0e14] border-r border-[#1e2130] flex-shrink-0 transition-all duration-200 overflow-hidden"
       style={{ width: collapsed ? 64 : 232 }}
     >
       {/* Header: project name + All projects breadcrumb */}

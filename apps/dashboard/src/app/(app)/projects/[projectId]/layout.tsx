@@ -12,6 +12,7 @@ import type { Project } from '@/types';
 import { useAuth } from '@/contexts/auth-context';
 import { ProjectProvider } from '@/contexts/project-context';
 import { ProjectSidebar } from '@/components/layout/project-sidebar';
+import { MobileTabBar } from '@/components/layout/mobile-tab-bar';
 import { ProjectSwitcherModal } from '@/components/layout/project-switcher-modal';
 import { AvatarDropdown } from '@/components/layout/avatar-dropdown';
 
@@ -169,11 +170,14 @@ export default function ProjectLayout({ children }: { children: React.ReactNode 
           </div>
         </header>
 
-        {/* Content */}
-        <main className="flex-1 overflow-y-auto">
+        {/* Content — extra bottom padding on mobile clears the fixed tab bar */}
+        <main className="flex-1 overflow-y-auto pb-16 md:pb-0">
           {children}
         </main>
       </div>
+
+      {/* Mobile bottom tab bar (hidden on >= md where the sidebar shows) */}
+      <MobileTabBar project={project} />
 
       {/* Project switcher modal */}
       {showSwitcher && (
