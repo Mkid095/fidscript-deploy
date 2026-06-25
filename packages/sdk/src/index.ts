@@ -35,6 +35,7 @@ import { RealtimeModule } from './modules/realtime';
 import { MonitoringModule } from './modules/monitoring';
 import { LoggingModule } from './modules/logging';
 import { TemplatesModule } from './modules/templates';
+import { GithubModule } from './modules/github';
 import {
   FidscriptError,
   AuthError,
@@ -45,7 +46,7 @@ import {
 
 export { FidscriptClient, FidscriptClientOptions };
 export { FidscriptError, AuthError, NotFoundError, ValidationError, RateLimitError };
-export { AuthModule, ProjectsModule, DeploymentsModule, StorageModule, DatabasesModule, DomainsModule, EmailModule, FunctionsModule, QueuesModule, CronModule, RealtimeModule, MonitoringModule, LoggingModule, TemplatesModule };
+export { AuthModule, ProjectsModule, DeploymentsModule, StorageModule, DatabasesModule, DomainsModule, EmailModule, FunctionsModule, QueuesModule, CronModule, RealtimeModule, MonitoringModule, LoggingModule, TemplatesModule, GithubModule };
 export { AdminMailboxModule, AdminAttachmentConfigModule, type PlatformMailboxMessage, type PlatformMailboxSummary, type PlatformMailboxesResponse, type CreatePlatformMailboxResponse, type ListPlatformMessagesResponse, type AdminSendMailResponse, type AdminAttachmentConfig, type StorageBackend, type MailboxMessage };
 
 export interface FidscriptSDK {
@@ -63,6 +64,7 @@ export interface FidscriptSDK {
   monitoring: MonitoringModule;
   logs: LoggingModule;
   templates: TemplatesModule;
+  github: GithubModule;
 }
 
 export function createFidscript(options: {
@@ -87,5 +89,6 @@ export function createFidscript(options: {
     monitoring: new MonitoringModule(client),
     logs: new LoggingModule(client),
     templates: new TemplatesModule(client),
+    github: new GithubModule(client),
   };
 }

@@ -38,6 +38,7 @@ model User {
   projects    Project[]        @relation("ProjectOwner")
   memberships ProjectMember[]
   credentials UserCredential[]
+  githubConnection GithubConnection?
 
   @@map("users")
   @@schema("identity")
@@ -119,6 +120,27 @@ model MagicCode {
 
   @@index([email, consumed, createdAt])
   @@map("magic_codes")
+  @@schema("identity")
+}
+
+// Global GitHub OAuth connection — stored at the platform user level,
+// not per-project. Used for deployments across all projects.
+model GithubConnection {
+  id              String    @id @default(uuid())
+  userId          String    @unique @map("user_id")
+  githubUserId    String    @map("github_user_id") @db.VarChar(255)
+  username        String    @db.VarChar(255)
+  avatarUrl       String?   @map("avatar_url") @db.Text
+  encryptedToken  String    @map("encrypted_token") @db.Text
+  encryptedRefresh String?  @map("encrypted_refresh") @db.Text
+  tokenExpiresAt  DateTime? @map("token_expires_at") @db.Timestamptz
+  scopes          String    @default("read:user,repo") @db.VarChar(500)
+  createdAt      DateTime  @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt      DateTime  @updatedAt @map("updated_at") @db.Timestamptz
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("github_connections")
   @@schema("identity")
 }
 

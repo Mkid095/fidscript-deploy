@@ -6,6 +6,7 @@ import { PassportModule } from '@nestjs/passport';
 import { resolveJwtSecret } from '@/common/secrets';
 import { AppAuthController } from '@/modules/app-auth/controllers/app-auth.controller';
 import { AuthProvidersController } from '@/modules/app-auth/auth-providers/auth-providers.controller';
+import { UserGithubController } from '@/modules/app-auth/controllers/user-github.controller';
 import { AppAuthUserService } from '@/modules/app-auth/services/app-auth-user.service';
 import { AppAuthManagementService } from '@/modules/app-auth/services/app-auth-management.service';
 import { AppAuthRegisterService } from '@/modules/app-auth/services/app-auth-register.service';
@@ -13,6 +14,7 @@ import { AppAuthLoginService } from '@/modules/app-auth/services/app-auth-login.
 import { AppAuthTokenService } from '@/modules/app-auth/services/app-auth-token.service';
 import { MagicCodeService } from '@/modules/app-auth/services/magic-code.service';
 import { OAuthService } from '@/modules/app-auth/services/oauth.service';
+import { UserGithubService } from '@/modules/app-auth/services/user-github.service';
 import { AppAuthRoleService } from '@/modules/app-auth/services/app-auth-role.service';
 import { AuthProvidersService } from '@/modules/app-auth/auth-providers/auth-providers.service';
 import { AppJwtStrategy } from '@/modules/app-auth/jwt/app-jwt.strategy';
@@ -33,7 +35,7 @@ import { ProjectsModule } from '@/modules/projects/projects.module';
       inject: [ConfigService],
     }),
   ],
-  controllers: [AppAuthController, AuthProvidersController],
+  controllers: [AppAuthController, AuthProvidersController, UserGithubController],
   providers: [
     AppAuthUserService,
     AppAuthRegisterService,
@@ -41,12 +43,13 @@ import { ProjectsModule } from '@/modules/projects/projects.module';
     AppAuthTokenService,
     MagicCodeService,
     OAuthService,
+    UserGithubService,
     AppAuthRoleService,
     AppAuthManagementService,
     AuthProvidersService,
     AppJwtStrategy,
     AppJwtGuard,
   ],
-  exports: [AppAuthUserService, AppAuthRoleService, AppJwtGuard, AppAuthTokenService, AppAuthManagementService],
+  exports: [AppAuthUserService, AppAuthRoleService, AppJwtGuard, AppAuthTokenService, AppAuthManagementService, UserGithubService],
 })
 export class AppAuthModule {}

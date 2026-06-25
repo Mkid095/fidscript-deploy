@@ -6,7 +6,7 @@ import { useSearchParams, useRouter } from 'next/navigation';
 import { Card, Button, Spinner } from '@fidscript/ui';
 import { HugeiconsIcon } from '@hugeicons/react';
 // eslint-disable-next-line import/order
-import { Rocket01Icon, GitBranchIcon, CheckmarkCircle02Icon, StopCircleIcon, PlayCircleIcon, MoreHorizontalIcon, RefreshIcon, Copy01Icon, Search01Icon, Delete01Icon, RotateClockwiseIcon, File01Icon, ExternalLinkIcon } from '@hugeicons/core-free-icons';
+import { Rocket01Icon, GitBranchIcon, CheckmarkCircle02Icon, StopCircleIcon, PlayCircleIcon, MoreHorizontalIcon, RefreshIcon, Copy01Icon, Search01Icon, Delete01Icon, RotateClockwiseIcon, File01Icon, ExternalLinkIcon, GithubIcon } from '@hugeicons/core-free-icons';
 
 // eslint-disable-next-line import/order
 import type { FidscriptSDK } from '@fidscript/sdk';
@@ -285,6 +285,8 @@ function DeploymentsSectionInner({ project }: Props) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [showNewModal, setShowNewModal] = useState(false);
+  const [githubStatus, setGithubStatus] = useState<{ connected: boolean; username?: string; avatarUrl?: string } | null>(null);
+  const [githubConnecting, setGithubConnecting] = useState(false);
   const [inlineUrl, setInlineUrl] = useState('');
   const [inlineSubmitting, setInlineSubmitting] = useState(false);
   const [refreshKey, setRefreshKey] = useState(0);
@@ -306,6 +308,22 @@ function DeploymentsSectionInner({ project }: Props) {
   }, [project.id, getSdk, refreshKey]);
 
   useEffect(() => { load(); }, [load]);
+
+  // ── GitHub connection check ────────────────────────────────────────────
+  useEffect(() => {
+    getSdk().github.status().then(setGithubStatus).catch(() => setGithubStatus({ connected: false }));
+  }, [getSdk]);
+
+  async function handleConnectGithub() {
+    setGithubConnecting(true);
+    try {
+      const { url } = await getSdk().github.connect();
+      window.location.href = url;
+    } catch {
+      showToast({ type: 'error', message: 'Failed to start GitHub OAuth — check API is reachable' });
+      setGithubConnecting(false);
+    }
+  }
 
   // ── Realtime subscription ────────────────────────────────────────────────
   useEffect(() => {
@@ -421,9 +439,9 @@ function DeploymentsSectionInner({ project }: Props) {
             <HugeiconsIcon icon={RefreshIcon} size={13} />
             Refresh
           </button>
-          <Button variant="primary" size="sm" onClick={() => setShowNewModal(true)}>
-            <HugeiconsIcon icon={Rocket01Icon} size={13} />
-            New deployment
+          <Button variant="primary" size="sm" onClick={() => githubStatus?.connected ? setShowNewModal(true) : handleConnectGithub()}>
+            <HugeiconsIcon icon={githubStatus?.connected ? Rocket01Icon : GithubIcon} size={13} />
+            {githubStatus?.connected ? 'New deployment' : 'Connect GitHub'}
           </Button>
         </div>
       </div>
@@ -433,28 +451,38 @@ function DeploymentsSectionInner({ project }: Props) {
         <Card className="border border-[#1e2130] py-8 px-5">
           <div className="flex flex-col items-center text-center mb-5">
             <div className="w-10 h-10 rounded-full bg-[#1e2130] flex items-center justify-center mb-3">
-              <HugeiconsIcon icon={Rocket01Icon} size={18} className="text-slate-600" />
+              <HugeiconsIcon icon={githubStatus?.connected ? GithubIcon : Rocket01Icon} size={18} className={githubStatus?.connected ? 'text-slate-300' : 'text-slate-600'} />
             </div>
-            <p className="text-sm font-medium text-slate-300 mb-1">No deployments yet</p>
-            <p className="text-xs text-slate-500">Paste a Git URL below to deploy your first release.</p>
+            <p className="text-sm font-medium text-slate-300 mb-1">
+              {githubStatus?.connected ? 'No deployments yet' : 'Connect GitHub to deploy'}
+            </p>
+            <p className="text-xs text-slate-500">
+              {githubStatus?.connected
+                ? 'Paste a Git URL below to deploy your first release.'
+                : 'Connect your GitHub account to browse repos and deploy in one click.'}
+            </p>
           </div>
-          <form onSubmit={handleInlineDeploy} className="flex gap-2.5 max-w-xl mx-auto">
-            <input
-              value={inlineUrl}
-              onChange={e => setInlineUrl(e.target.value)}
-              placeholder="https://github.com/user/repo"
-              className="flex-1 px-3.5 py-2.5 rounded-lg bg-[#080a0d] border border-[#1e2130] text-sm text-slate-200 placeholder:text-slate-600 focus:outline-none focus:ring-2 focus:ring-red-500/40 focus:border-red-500 transition-all"
-            />
-            <Button
-              type="submit"
-              variant="primary"
-              size="sm"
-              loading={inlineSubmitting}
-              disabled={!inlineUrl.trim()}
-            >
-              Deploy
-            </Button>
-          </form>
+
+          {githubStatus?.connected ? (
+            <form onSubmit={handleInlineDeploy} className="flex gap-2.5 max-w-xl mx-auto">
+              <input
+                value={inlineUrl}
+                onChange={e => setInlineUrl(e.target.value)}
+                placeholder="https://github.com/user/repo"
+                className="flex-1 px-3.5 py-2.5 rounded-lg bg-[#080a0d] border border-[#1e2130] text-sm text-slate-200 placeholder:text-slate-600 focus:outline-none focus:ring-2 focus:ring-red-500/40 focus:border-red-500 transition-all"
+              />
+              <Button type="submit" variant="primary" size="sm" loading={inlineSubmitting} disabled={!inlineUrl.trim()}>
+                Deploy
+              </Button>
+            </form>
+          ) : (
+            <div className="flex justify-center">
+              <Button variant="primary" size="sm" onClick={handleConnectGithub} loading={githubConnecting}>
+                <HugeiconsIcon icon={GithubIcon} size={14} />
+                {githubConnecting ? 'Redirecting…' : 'Connect GitHub'}
+              </Button>
+            </div>
+          )}
         </Card>
       )}
 
