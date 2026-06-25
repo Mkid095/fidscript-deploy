@@ -27,4 +27,9 @@ export class UpdateBuildConfigDto {
   @IsNumber()
   @IsOptional()
   healthCheckPort?: number;
+
+  @ApiPropertyOptional({ description: 'Seconds to wait for the container to become healthy before marking FAILED' })
+  @IsNumber()
+  @IsOptional()
+  startupTimeoutSeconds?: number;
 }

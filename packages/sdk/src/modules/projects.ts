@@ -52,9 +52,11 @@ export async function* paginate<T>(
 export class ProjectsModule {
   constructor(private client: FidscriptClient) {}
 
-  async list() {
-    const res = await this.client.get<{ projects: Project[] }>('/api/v1/projects');
-    return res.projects;
+  async list(options?: { includeDeleted?: boolean }) {
+    const params: Record<string, unknown> = {};
+    if (options?.includeDeleted) params.includeDeleted = true;
+    const res = await this.client.get<{ projects: Project[]; pagination: { page: number; limit: number; total: number; pages: number } }>('/api/v1/projects', params);
+    return res;
   }
 
   listAll() {
@@ -77,6 +79,21 @@ export class ProjectsModule {
     return this.client.delete(`/api/v1/projects/${id}`);
   }
 
+  /** Request a purge verification code (sent to owner email) */
+  async requestPurge(id: string) {
+    return this.client.post<{ success: boolean; expiresAt: string; message: string }>(`/api/v1/projects/${id}/request-purge`);
+  }
+
+  /** Permanently delete a soft-deleted project after email verification */
+  async purge(id: string, code: string) {
+    return this.client.post<{ success: boolean }>(`/api/v1/projects/${id}/purge`, { code });
+  }
+
+  /** Restore a soft-deleted project */
+  async restore(id: string) {
+    return this.client.post<{ success: boolean }>(`/api/v1/projects/${id}/restore`);
+  }
+
   // Members
   async listMembers(projectId: string) {
     const res = await this.client.get<{ members: ProjectMember[] }>(`/api/v1/projects/${projectId}/members`);
@@ -91,14 +108,24 @@ export class ProjectsModule {
     return this.client.delete(`/api/v1/projects/${projectId}/members/${userId}`);
   }
 
-  // Env vars
+  // Env vars — endpoint path is /env-vars (controller route), NOT /env.
   async getEnvVars(projectId: string) {
-    const res = await this.client.get<{ envVars: EnvVar[] }>(`/api/v1/projects/${projectId}/env`);
+    const res = await this.client.get<{ envVars: EnvVar[] }>(`/api/v1/projects/${projectId}/env-vars`);
     return res.envVars;
   }
 
+  /**
+   * Upsert env vars. The controller DTO expects an array of {key, value}
+   * items (UpdateEnvVarsDto), so we convert the Record to that shape here.
+   */
   async setEnvVars(projectId: string, envVars: Record<string, string>) {
-    return this.client.put(`/api/v1/projects/${projectId}/env`, { envVars });
+    const items = Object.entries(envVars).map(([key, value]) => ({ key, value }));
+    return this.client.put(`/api/v1/projects/${projectId}/env-vars`, { envVars: items });
+  }
+
+  /** Delete a single env var by key. */
+  async deleteEnvVar(projectId: string, key: string) {
+    return this.client.delete(`/api/v1/projects/${projectId}/env-vars/${encodeURIComponent(key)}`);
   }
 
   // API Keys
