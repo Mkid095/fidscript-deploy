@@ -124,6 +124,72 @@ function parseLogLines(raw: string): LogLine[] {
   }
 }
 
+/**
+ * LivePreview — inline iframe preview of the deployed app (Vercel-style).
+ * Shows a sandboxed iframe of the deployment URL with open-in-new-tab +
+ * copy URL + reload controls. Collapsed by default; expands on click.
+ */
+function LivePreview({ url }: { url: string }) {
+  const [expanded, setExpanded] = useState(false);
+  const [iframeKey, setIframeKey] = useState(0);
+
+  return (
+    <Card className="border border-[#1e2130] p-0 overflow-hidden">
+      {/* Header bar */}
+      <div className="flex items-center gap-3 px-4 py-3 border-b border-[#1e2130]">
+        <div className="flex items-center gap-2 flex-1 min-w-0">
+          <span className="w-2 h-2 rounded-full bg-emerald-500 flex-shrink-0" />
+          <span className="text-xs font-semibold text-slate-300 uppercase tracking-wider">Live preview</span>
+          <a href={url} target="_blank" rel="noopener noreferrer" className="text-xs text-blue-500 hover:text-blue-400 truncate font-mono">
+            {url.replace(/^https?:\/\//, '')}
+          </a>
+        </div>
+        <div className="flex items-center gap-1 flex-shrink-0">
+          {expanded && (
+            <>
+              <button
+                onClick={() => setIframeKey(k => k + 1)}
+                className="p-1.5 rounded text-slate-500 hover:text-slate-300 hover:bg-[#1e2130] transition-colors"
+                title="Reload preview"
+                aria-label="Reload preview"
+              >
+                <HugeiconsIcon icon={RefreshIcon} size={13} />
+              </button>
+              <a
+                href={url}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="p-1.5 rounded text-slate-500 hover:text-slate-300 hover:bg-[#1e2130] transition-colors"
+                title="Open in new tab"
+                aria-label="Open in new tab"
+              >
+                <HugeiconsIcon icon={ExternalLinkIcon} size={13} />
+              </a>
+            </>
+          )}
+          <Button variant="ghost" size="sm" onClick={() => setExpanded(v => !v)}>
+            {expanded ? 'Hide' : 'Preview'}
+          </Button>
+        </div>
+      </div>
+
+      {/* Iframe */}
+      {expanded && (
+        <div className="relative bg-white" style={{ height: 'min(60vh, 500px)' }}>
+          <iframe
+            key={iframeKey}
+            src={url}
+            className="w-full h-full border-0"
+            sandbox="allow-scripts allow-same-origin allow-forms allow-popups"
+            title="Deployment preview"
+            loading="lazy"
+          />
+        </div>
+      )}
+    </Card>
+  );
+}
+
 function LogViewer({ logs }: { logs: string }) {
   const [show, setShow] = useState(false);
   const [activeLevels, setActiveLevels] = useState<Set<LogLevel>>(new Set(LOG_LEVELS));
@@ -649,6 +715,11 @@ function DeploymentDetailInner() {
 
       {/* Build logs */}
       {logs && <LogViewer logs={logs} />}
+
+      {/* Live preview — shown when deployment is live with a URL */}
+      {deployment.status === 'SUCCESS' && deployment.deploymentUrl && (
+        <LivePreview url={deployment.deploymentUrl} />
+      )}
 
       {/* Rollback picker modal */}
       {showRollbackPicker && (

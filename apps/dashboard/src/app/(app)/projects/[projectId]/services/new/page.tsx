@@ -599,6 +599,12 @@ function NewDeploymentPage({ project }: { project: NonNullable<ReturnType<typeof
                   </>
                 )}
                 <ReviewRow label="Dockerfile" value={dockerfilePath || './Dockerfile (auto)'} mono />
+                <div className="pt-3 border-t border-[#1e2130] mt-1">
+                  <dt className="text-xs text-slate-500 mb-1">Deployment URL (after success)</dt>
+                  <dd className="text-sm font-mono text-blue-400">
+                    https://{project.slug}.apps.{process.env.NEXT_PUBLIC_PLATFORM_DOMAIN ?? 'deploy.fidscript.com'}
+                  </dd>
+                </div>
               </dl>
               <div className="mt-5 pt-4 border-t border-[#1e2130]">
                 <p className="text-xs text-slate-500">
