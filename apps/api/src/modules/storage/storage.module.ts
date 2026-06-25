@@ -1,4 +1,6 @@
 import { Module } from '@nestjs/common';
+import { AuthModule } from '@/modules/auth/auth.module';
+import { ProjectsModule } from '@/modules/projects/projects.module';
 import { StorageController } from '@/modules/storage/controllers/storage.controller';
 import { StorageService } from '@/modules/storage/services/storage.service';
 import { StorageBucketService } from '@/modules/storage/services/storage-bucket.service';
@@ -13,6 +15,7 @@ import { TelegramProvider } from '@/modules/storage/providers/telegram.provider'
 import { StorageProviderFactory } from '@/modules/storage/providers/storage-provider.factory';
 
 @Module({
+  imports: [AuthModule, ProjectsModule],
   controllers: [StorageController],
   providers: [
     StorageService,

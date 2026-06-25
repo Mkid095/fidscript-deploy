@@ -20,6 +20,7 @@ import { MfaService } from '@/modules/auth/mfa/mfa.service';
 import { JwtAuthGuard } from '@/modules/auth/jwt-auth.guard';
 import { PlatformAdminGuard } from '@/modules/auth/guards/platform-admin.guard';
 import { InstallationGuard } from '@/modules/auth/guards/installation.guard';
+import { ApiKeyOrJwtGuard } from '@/modules/auth/guards/api-key-or-jwt.guard';
 import { InstallationModule } from '@/modules/installation/installation.module';
 
 @Module({
@@ -51,9 +52,10 @@ import { InstallationModule } from '@/modules/installation/installation.module';
     JwtStrategy,
     MfaService,
     JwtAuthGuard,
+    ApiKeyOrJwtGuard,
     PlatformAdminGuard,
     InstallationGuard,
   ],
-  exports: [AuthService, JwtAuthGuard, PlatformAdminGuard, InstallationGuard],
+  exports: [AuthService, JwtAuthGuard, ApiKeyOrJwtGuard, PlatformAdminGuard, InstallationGuard, JwtModule],
 })
 export class AuthModule {}
