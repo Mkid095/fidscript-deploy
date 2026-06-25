@@ -9,43 +9,104 @@ import {
   HttpCode,
   HttpStatus,
   NotFoundException,
+  Res,
+  Req,
+  Body,
 } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
+import { Response, Request } from 'express';
 import { JwtAuthGuard } from '@/modules/auth/jwt-auth.guard';
 import { CurrentUser, AuthUser } from '@/modules/auth/current-user.decorator';
 import { UserGithubService } from '../services/user-github.service';
 
 @ApiTags('github')
 @Controller('users/me/github')
-@UseGuards(JwtAuthGuard)
-@ApiBearerAuth()
 export class UserGithubController {
   constructor(private readonly githubService: UserGithubService) {}
 
+  /**
+   * GET /users/me/github/connect
+   *
+   * Returns the GitHub OAuth URL in the X-GitHub-OAuth-Url response header (HTTP 200).
+   * The frontend opens this URL in a popup window so the user's dashboard session
+   * is preserved while GitHub authorization runs in the popup.
+   *
+   * Authenticated endpoint (requires JWT) — the dashboard is already logged in.
+   */
   @Get('connect')
-  @HttpCode(HttpStatus.FOUND)
-  @ApiOperation({ summary: 'Redirect to GitHub OAuth authorize URL' })
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Return GitHub OAuth authorize URL (open in popup)' })
   async connect(
     @CurrentUser() user: AuthUser,
+    @Res() res: Response,
     @Query('redirect') redirectAfterUrl?: string,
   ) {
     const { url } = await this.githubService.buildAuthorizeUrl(user.userId, redirectAfterUrl);
-    return { url };
+    res.setHeader('X-GitHub-OAuth-Url', url);
+    return res.status(200).json({ url });
   }
 
+  /**
+   * GET /users/me/github/callback
+   *
+   * GitHub redirects here after the user approves/denies access.
+   * This endpoint is NOT behind the JWT guard — GitHub doesn't know our JWT.
+   * It renders a minimal HTML page that:
+   *   1. Sends the code/error to the opener via postMessage
+   *   2. Closes the popup window
+   *
+   * The frontend (opener) then makes POST /exchange to complete the flow server-side.
+   */
   @Get('callback')
+  @ApiOperation({ summary: 'GitHub OAuth callback — closes popup via postMessage' })
+  async callback(@Req() req: Request, @Res() res: Response) {
+    const code = req.query.code as string | undefined;
+    const state = req.query.state as string | undefined;
+    const error = req.query.error as string | undefined;
+    const errorDescription = req.query.error_description as string | undefined;
+
+    const html = `<!DOCTYPE html><html><body><script>
+      try {
+        window.opener.postMessage({
+          type: 'github-oauth-callback'${code ? `, code: '${code}'` : ''}${error ? `, error: '${error}', errorDescription: '${errorDescription || ''}'` : ''}${state ? `, state: '${state}'` : ''}
+        }, '*');
+      } catch(e) {}
+      setTimeout(() => window.close(), 500);
+    </script><p style="font-family:sans-serif;font-size:14px;color:#666;padding:20px">
+      ${error ? 'GitHub authorization failed. You can close this window.' : 'Authorization complete! This window will close automatically.'}
+    </p></body></html>`;
+
+    return res
+      .header('Content-Type', 'text/html; charset=utf-8')
+      .status(200)
+      .send(html);
+  }
+
+  /**
+   * POST /users/me/github/exchange
+   *
+   * Called by the frontend after the popup closes — exchanges the GitHub code
+   * for a stored connection. Completes the OAuth flow server-side.
+   */
+  @Post('exchange')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
   @HttpCode(HttpStatus.OK)
-  @ApiOperation({ summary: 'Handle GitHub OAuth callback — stores token, returns connection info' })
-  async callback(
+  @ApiOperation({ summary: 'Exchange GitHub OAuth code for a connection (called after popup closes)' })
+  async exchange(
     @CurrentUser() user: AuthUser,
-    @Query('code') code: string,
-    @Query('state') state?: string,
+    @Body() body: { code?: string; state?: string },
   ) {
-    if (!code) throw new NotFoundException('Missing code parameter');
-    return this.githubService.handleCallback(user.userId, code, state);
+    if (!body.code) throw new NotFoundException('Missing code parameter');
+    const result = await this.githubService.handleCallback(body.code, body.state ?? '');
+    return result;
   }
 
   @Get('status')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
   @ApiOperation({ summary: 'Return the current GitHub connection status for this user' })
   async status(@CurrentUser() user: AuthUser) {
     const conn = await this.githubService.getConnection(user.userId);
@@ -59,6 +120,8 @@ export class UserGithubController {
   }
 
   @Delete('disconnect')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Remove the GitHub connection for this user' })
   async disconnect(@CurrentUser() user: AuthUser) {
@@ -67,6 +130,8 @@ export class UserGithubController {
   }
 
   @Get('repos')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
   @ApiOperation({ summary: "List the authenticated user's GitHub repositories" })
   async listRepos(
     @CurrentUser() user: AuthUser,
@@ -81,6 +146,8 @@ export class UserGithubController {
   }
 
   @Get('repos/:owner/:repo/branches')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
   @ApiOperation({ summary: 'List branches for a GitHub repository' })
   async listBranches(
     @CurrentUser() user: AuthUser,

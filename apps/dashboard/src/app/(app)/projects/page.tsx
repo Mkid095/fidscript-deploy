@@ -13,6 +13,9 @@ import {
   Refresh01Icon,
   AlertCircleIcon,
   Time01Icon,
+  ArchiveRestoreIcon,
+  EyeIcon,
+  EyeOffIcon,
 } from '@hugeicons/core-free-icons';
 import { Button, Card, EmptyState, Input, RightPanel, Spinner } from '@fidscript/ui';
 import { AuthError, RateLimitError } from '@fidscript/sdk';
@@ -72,6 +75,8 @@ export default function ProjectsPage() {
   const [loading, setLoading] = useState(true);
   const [loadingInitial, setLoadingInitial] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
+  const [showDeleted, setShowDeleted] = useState(false);
+  const [deletedProjects, setDeletedProjects] = useState<Project[]>([]);
   const [search, setSearch] = useState(searchParams.get('q') ?? '');
   // Rate-limit countdown shown in the load error banner.
   const [rateLimitCountdown, setRateLimitCountdown] = useState<number | null>(null);
@@ -82,7 +87,7 @@ export default function ProjectsPage() {
   // ponytail: one open at a time. The previous <Modal> design had three
   // modals with separate state; collapsing to a single "active panel" state
   // is fewer lines and impossible-to-misuse (only one is open at a time).
-  const [activePanel, setActivePanel] = useState<'create' | 'edit' | 'delete' | null>(null);
+  const [activePanel, setActivePanel] = useState<'create' | 'edit' | 'delete' | 'purge' | null>(null);
   const [editing, setEditing] = useState<Project | null>(null);
   const [deleting, setDeleting] = useState<Project | null>(null);
 
@@ -104,6 +109,13 @@ export default function ProjectsPage() {
   const [deleteAck, setDeleteAck] = useState(false);
   const [deletingNow, setDeletingNow] = useState(false);
   const [deleteError, setDeleteError] = useState<string | null>(null);
+
+  // Purge (permanent delete) state
+  const [purgeProject, setPurgeProject] = useState<Project | null>(null);
+  const [purgeCode, setPurgeCode] = useState('');
+  const [purgeRequested, setPurgeRequested] = useState(false);
+  const [purgeVerifying, setPurgeVerifying] = useState(false);
+  const [purgeError, setPurgeError] = useState<string | null>(null);
 
   // API contract: PATCH requires admin/owner; DELETE requires owner only.
   // Developer can see + navigate; cannot edit or delete.
@@ -133,11 +145,14 @@ export default function ProjectsPage() {
     let isRateLimit = false;
     try {
       const sdk = getSdk();
-      const data = await sdk.projects.list();
-      const list = Array.isArray(data) ? data : (data as any).projects ?? [];
-      // Filter DELETED — soft-delete sets status, not remove the row.
-      // The API doesn't filter them server-side, so we do it client-side.
-      setProjects(list.filter((p: Project) => p.status !== 'DELETED'));
+      const [activeData, deletedData] = await Promise.all([
+        sdk.projects.list(),
+        sdk.projects.list({ includeDeleted: true }),
+      ]);
+      const activeList = activeData.projects ?? [];
+      const deletedList = deletedData.projects ?? [];
+      setProjects(activeList.filter((p: Project) => !p.deletedAt));
+      setDeletedProjects(deletedList.filter((p: Project) => !!p.deletedAt));
     } catch (err) {
       if (err instanceof AuthError) {
         router.replace('/login');
@@ -194,6 +209,7 @@ export default function ProjectsPage() {
       const created = await sdk.projects.create({
         name: name.trim(),
         description: description.trim() || undefined,
+        type: 'frontend',
       });
       setActivePanel(null);
       // ponytail: jump straight into the new project — the user just created
@@ -285,6 +301,55 @@ export default function ProjectsPage() {
     }
   }
 
+  // ── Purge (permanent delete) ─────────────────────────────────────────
+  function openPurge(p: Project) {
+    setPurgeProject(p);
+    setPurgeCode('');
+    setPurgeRequested(false);
+    setPurgeError(null);
+    setActivePanel('purge');
+  }
+
+  async function handleRequestPurge() {
+    if (!purgeProject) return;
+    setPurgeVerifying(true);
+    setPurgeError(null);
+    try {
+      const sdk = getSdk();
+      await sdk.projects.requestPurge(purgeProject.id);
+      setPurgeRequested(true);
+    } catch (err) {
+      setPurgeError(err instanceof Error ? err.message : 'Failed to send verification code');
+    } finally {
+      setPurgeVerifying(false);
+    }
+  }
+
+  async function handleConfirmPurge() {
+    if (!purgeProject || !purgeCode.trim()) return;
+    setPurgeVerifying(true);
+    setPurgeError(null);
+    try {
+      const sdk = getSdk();
+      await sdk.projects.purge(purgeProject.id, purgeCode.trim());
+      setActivePanel(null);
+      await load();
+    } catch (err) {
+      setPurgeError(err instanceof Error ? err.message : 'Invalid or expired code');
+    } finally {
+      setPurgeVerifying(false);
+    }
+  }
+
+  // ── Restore ────────────────────────────────────────────────────────
+  async function handleRestore(p: Project) {
+    try {
+      const sdk = getSdk();
+      await sdk.projects.restore(p.id);
+      await load();
+    } catch {}
+  }
+
   // ── Search handler — debounced URL sync (ADR-036 principle 8) ──────────
   function handleSearchChange(value: string) {
     setSearch(value);
@@ -343,6 +408,20 @@ export default function ProjectsPage() {
           <Button variant="ghost" size="sm" onClick={load} title="Refresh" aria-label="Refresh" disabled={loading}>
             <HugeiconsIcon icon={Refresh01Icon} size={14} />
           </Button>
+          {deletedProjects.length > 0 && (
+            <Button
+              variant={showDeleted ? 'secondary' : 'ghost'}
+              size="sm"
+              onClick={() => setShowDeleted(v => !v)}
+              title="Deleted projects"
+              aria-label="Toggle deleted projects"
+            >
+              <HugeiconsIcon icon={showDeleted ? EyeOffIcon : EyeIcon} size={14} />
+              {deletedProjects.length > 0 && (
+                <span className="ml-1 text-xs text-slate-400">{deletedProjects.length}</span>
+              )}
+            </Button>
+          )}
           {canEdit() && (
             <Button variant="primary" size="sm" onClick={openCreate} className="flex items-center gap-1.5">
               <HugeiconsIcon icon={Add01Icon} size={14} />
@@ -409,6 +488,28 @@ export default function ProjectsPage() {
               onDelete={canDelete(project) ? () => openDelete(project) : undefined}
             />
           ))}
+        </div>
+      )}
+
+      {/* ── Trash section ── */}
+      {showDeleted && deletedProjects.length > 0 && (
+        <div className="mt-10">
+          <div className="flex items-center gap-2 mb-4">
+            <h2 className="text-sm font-semibold text-slate-300">Deleted projects</h2>
+            <span className="text-xs text-slate-500">
+              {deletedProjects.length} item{deletedProjects.length !== 1 ? 's' : ''} · purged after 30 days
+            </span>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4" aria-live="polite" aria-label="Deleted projects">
+            {deletedProjects.map(project => (
+              <DeletedProjectCard
+                key={project.id}
+                project={project}
+                onRestore={canDelete(project) ? () => handleRestore(project) : undefined}
+                onPurge={canDelete(project) ? () => openPurge(project) : undefined}
+              />
+            ))}
+          </div>
         </div>
       )}
 
@@ -523,6 +624,141 @@ export default function ProjectsPage() {
           </div>
         )}
       </RightPanel>
+
+      {/* ── Right panel: Purge (permanent delete with verification) ── */}
+      <RightPanel
+        isOpen={activePanel === 'purge' && !!purgeProject}
+        onClose={() => setActivePanel(null)}
+        title="Permanently delete?"
+        footer={{
+          onCancel: () => setActivePanel(null),
+          onSubmit: purgeRequested ? handleConfirmPurge : handleRequestPurge,
+          submitLabel: purgeRequested ? 'Delete permanently' : 'Send verification code',
+          loading: purgeVerifying,
+          submitDisabled: purgeRequested && !purgeCode.trim(),
+          submitDanger: true,
+          hideCancel: false,
+        }}
+      >
+        {purgeProject && (
+          <div className="space-y-4">
+            {!purgeRequested ? (
+              <>
+                <p className="text-sm text-slate-300">
+                  Permanently deleting <strong className="text-slate-100">{purgeProject.name}</strong> cannot be undone.
+                  A verification code will be sent to your email address.
+                </p>
+                <div className="bg-amber-950/30 border border-amber-800/50 rounded-lg p-3 text-xs text-amber-300">
+                  This project will be permanently removed from the system along with all deployments, databases, and storage.
+                </div>
+              </>
+            ) : (
+              <>
+                <p className="text-sm text-slate-300">
+                  A verification code was sent to your email. Enter it below to confirm permanent deletion of{' '}
+                  <strong className="text-slate-100">{purgeProject.name}</strong>.
+                </p>
+                <div>
+                  <Input
+                    label="Verification code"
+                    value={purgeCode}
+                    onChange={e => setPurgeCode(e.target.value)}
+                    placeholder="000000"
+                    autoFocus
+                    className="bg-[#080a0d] border border-[#1e2130] text-slate-200 placeholder:text-slate-600 font-mono text-center text-lg tracking-widest"
+                  />
+                </div>
+                <p className="text-xs text-slate-500">
+                  Didn&apos;t receive it?{' '}
+                  <button
+                    onClick={handleRequestPurge}
+                    disabled={purgeVerifying}
+                    className="text-blue-400 hover:text-blue-300 underline disabled:opacity-50"
+                  >
+                    Resend
+                  </button>
+                </p>
+              </>
+            )}
+            {purgeError && <p className="text-sm text-red-400">{purgeError}</p>}
+          </div>
+        )}
+      </RightPanel>
+    </div>
+  );
+}
+
+/* ── Deleted project card (trash section) ── */
+interface DeletedProjectCardProps {
+  project: Project;
+  onRestore?: () => void;
+  onPurge?: () => void;
+}
+
+function DeletedProjectCard({ project, onRestore, onPurge }: DeletedProjectCardProps) {
+  const deletedAt = project.deletedAt ? relativeTime(project.deletedAt) : null;
+
+  return (
+    <div className="group relative rounded-lg border border-red-900/30 bg-red-950/10 opacity-75">
+      <div className="p-5">
+        <div className="flex items-start justify-between gap-3 mb-2">
+          <div className="min-w-0 flex-1">
+            <h3 className="text-sm font-semibold text-slate-300 truncate">
+              {project.name}
+            </h3>
+            <p className="text-xs text-slate-500 font-mono truncate mt-0.5">
+              {project.slug}
+            </p>
+          </div>
+        </div>
+
+        <div className="flex items-center gap-2 mb-3">
+          <span className="text-xs px-2 py-0.5 rounded-full border bg-red-900/30 text-red-400 border-red-800/50">
+            Deleted {deletedAt}
+          </span>
+        </div>
+
+        {project.description && (
+          <p className="text-xs text-slate-500 line-clamp-2 mb-3 min-h-[2rem]">
+            {project.description}
+          </p>
+        )}
+
+        <div className="flex items-center justify-between pt-2 border-t border-red-900/30">
+          <span className="text-xs px-2 py-0.5 rounded bg-red-950/50 text-slate-400 border border-red-900/30 capitalize">
+            {project.type}
+          </span>
+          <span className="text-xs text-slate-600">Permanently removed</span>
+        </div>
+      </div>
+
+      {/* Restore + Purge actions */}
+      {(onRestore || onPurge) && (
+        <div className="absolute top-2 right-2 flex items-center gap-1">
+          {onRestore && (
+            <button
+              type="button"
+              onClick={e => { e.preventDefault(); e.stopPropagation(); onRestore(); }}
+              className="p-1.5 rounded-md text-slate-500 hover:text-emerald-400 hover:bg-[#1e2130] transition-colors"
+              aria-label={`Restore ${project.name}`}
+              title="Restore"
+            >
+              <HugeiconsIcon icon={ArchiveRestoreIcon} size={14} />
+            </button>
+          )}
+          {onPurge && (
+            <button
+              type="button"
+              onClick={e => { e.preventDefault(); e.stopPropagation(); onPurge(); }}
+              className="p-1.5 rounded-md text-slate-500 hover:text-red-400 hover:bg-[#1e2130] transition-colors"
+              aria-label={`Permanently delete ${project.name}`}
+              title="Delete permanently"
+            >
+              <HugeiconsIcon icon={Delete01Icon} size={14} />
+            </button>
+          )}
+        </div>
+      )}
     </div>
   );
 }

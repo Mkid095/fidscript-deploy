@@ -317,10 +317,20 @@ function DeploymentsSectionInner({ project }: Props) {
   async function handleConnectGithub() {
     setGithubConnecting(true);
     try {
-      const { url } = await getSdk().github.connect();
-      window.location.href = url;
-    } catch {
-      showToast({ type: 'error', message: 'Failed to start GitHub OAuth — check API is reachable' });
+      const sdk = getSdk();
+      await sdk.github.connect();
+      // Popup handles the OAuth flow; refresh githubStatus to reflect the new connection.
+      const status = await sdk.github.status();
+      setGithubStatus(status);
+    } catch (err) {
+      // AuthError = token expired / session invalid → redirect to login
+      if (err && (err as any).name === 'AuthError') {
+        router.replace('/login');
+        return;
+      }
+      const msg = err instanceof Error ? err.message : 'Failed to connect to GitHub';
+      showToast({ type: 'error', message: msg });
+    } finally {
       setGithubConnecting(false);
     }
   }
@@ -536,6 +546,7 @@ function DeploymentsSectionInner({ project }: Props) {
       {showNewModal && (
         <NewDeploymentModal
           project={project}
+          githubStatus={githubStatus}
           onClose={() => setShowNewModal(false)}
           onCreated={load}
         />

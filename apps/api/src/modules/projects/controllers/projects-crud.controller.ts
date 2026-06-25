@@ -46,6 +46,22 @@ export class ProjectsCrudController {
     return this.projects.delete(user.userId, id);
   }
 
+  /** Request a purge verification code — sent to owner email */
+  @Post(':id/request-purge')
+  @HttpCode(HttpStatus.OK)
+  async requestPurge(@Req() req: Request, @Param('id') id: string) {
+    const user = req.user as { userId: string };
+    return this.projects.requestPurgeVerification(user.userId, id);
+  }
+
+  /** Permanently delete after email verification */
+  @Post(':id/purge')
+  @HttpCode(HttpStatus.OK)
+  async purge(@Req() req: Request, @Param('id') id: string, @Body() body: { code: string }) {
+    const user = req.user as { userId: string };
+    return this.projects.purge(user.userId, id, body.code);
+  }
+
   @Post(':id/suspend')
   @HttpCode(HttpStatus.OK)
   async suspend(@Req() req: Request, @Param('id') id: string) {

@@ -28,6 +28,7 @@ export interface Project {
   subdomain?: string;
   createdAt: string;
   updatedAt: string;
+  deletedAt?: string | null;
 }
 
 export interface ProjectMember {

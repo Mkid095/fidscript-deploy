@@ -46,9 +46,9 @@ export default function StoragePage() {
       try {
         const sdk = getSdk();
         const data = await sdk.projects.list();
-        setProjects(data);
-        if (!selectedProject && data.length > 0) {
-          setSelectedProject(data[0].id);
+        setProjects(data.projects ?? []);
+        if (!selectedProject && (data.projects ?? []).length > 0) {
+          setSelectedProject((data.projects ?? [])[0].id);
         }
       } catch {
         // auth guard handles redirect

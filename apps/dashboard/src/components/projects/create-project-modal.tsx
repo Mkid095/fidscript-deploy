@@ -79,7 +79,7 @@ export function CreateProjectModal({ open, onClose, onCreated }: CreateProjectMo
       setChecking(true);
       try {
         const sdk = getSdk();
-        const projects = await sdk.projects.list();
+        const { projects } = await sdk.projects.list();
         const exists = projects.some(p => p.name.toLowerCase() === name.trim().toLowerCase());
         setDuplicateError(exists ? `A project named "${name.trim()}" already exists.` : null);
       } catch { /* ignore */ } finally { setChecking(false); }

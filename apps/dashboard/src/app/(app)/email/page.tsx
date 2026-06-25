@@ -54,9 +54,9 @@ export default function EmailPage() {
       try {
         const sdk = getSdk();
         const data = await sdk.projects.list();
-        setProjects(data);
-        if (data.length > 0 && !pickedProjectId) {
-          setPickedProjectId(data[0].id);
+        setProjects(data.projects ?? []);
+        if ((data.projects ?? []).length > 0 && !pickedProjectId) {
+          setPickedProjectId((data.projects ?? [])[0].id);
         }
       } catch {
         // ignore

@@ -50,7 +50,7 @@ async function fetchInstallation() {
   try {
     const controller = new AbortController();
     const t = setTimeout(() => controller.abort(), 800);
-    const res = await fetch(`${INTERNAL_API}/api/v1/installation/settings`, {
+    const res = await fetch(`${INTERNAL_API}/api/v1/installation/status`, {
       method: 'GET',
       signal: controller.signal,
     });

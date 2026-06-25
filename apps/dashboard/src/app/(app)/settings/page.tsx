@@ -35,7 +35,7 @@ export default function SettingsPage() {
       setLoadingKeys(true);
       try {
         const sdk = getSdk();
-        const projects = await sdk.projects.list();
+        const { projects } = await sdk.projects.list();
         if (projects.length === 0) { setLoadingKeys(false); return; }
         const keys = await sdk.projects.listApiKeys(projects[0].id);
         setApiKeys(keys);
@@ -53,7 +53,7 @@ export default function SettingsPage() {
       setLoadingChannels(true);
       try {
         const sdk = getSdk();
-        const projects = await sdk.projects.list();
+        const { projects } = await sdk.projects.list();
         if (projects.length === 0) { setLoadingChannels(false); return; }
         const ch = await sdk.monitoring.listNotificationChannels(projects[0].id);
         setChannels(ch);
@@ -72,7 +72,7 @@ export default function SettingsPage() {
     setRevokeError(null);
     try {
       const sdk = getSdk();
-      const projects = await sdk.projects.list();
+      const { projects } = await sdk.projects.list();
       if (projects.length > 0) {
         await sdk.projects.revokeApiKey(projects[0].id, keyId);
         setApiKeys(prev => prev.filter(k => k.id !== keyId));
@@ -96,7 +96,7 @@ export default function SettingsPage() {
     setChannelError(null);
     try {
       const sdk = getSdk();
-      const projects = await sdk.projects.list();
+      const { projects } = await sdk.projects.list();
       if (projects.length === 0) return;
       const config: Record<string, string> =
         channelType === 'email'
@@ -123,7 +123,7 @@ export default function SettingsPage() {
     setTestingId(channelId);
     try {
       const sdk = getSdk();
-      const projects = await sdk.projects.list();
+      const { projects } = await sdk.projects.list();
       if (projects.length === 0) return;
       await sdk.monitoring.testNotificationChannel(projects[0].id, channelId);
       alert('Test notification sent!');
@@ -139,7 +139,7 @@ export default function SettingsPage() {
     setDeletingId(channelId);
     try {
       const sdk = getSdk();
-      const projects = await sdk.projects.list();
+      const { projects } = await sdk.projects.list();
       if (projects.length === 0) return;
       await sdk.monitoring.deleteNotificationChannel(projects[0].id, channelId);
       setChannels(prev => prev.filter(c => c.id !== channelId));

@@ -21,6 +21,8 @@ export class ProjectsService {
   get(userId: string, projectId: string) { return this.crud.get(userId, projectId); }
   update(userId: string, projectId: string, dto: any) { return this.crud.update(userId, projectId, dto); }
   delete(userId: string, projectId: string) { return this.crud.delete(userId, projectId); }
+  requestPurgeVerification(userId: string, projectId: string) { return this.crud.requestPurgeVerification(userId, projectId); }
+  purge(userId: string, projectId: string, code: string) { return this.crud.purge(userId, projectId, code); }
   suspend(userId: string, projectId: string) { return this.crud.suspend(userId, projectId); }
   archive(userId: string, projectId: string) { return this.crud.archive(userId, projectId); }
   restore(userId: string, projectId: string) { return this.crud.restore(userId, projectId); }

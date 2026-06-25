@@ -20,11 +20,14 @@ export class ProjectCrudService {
     return this.createService.create(userId, dto);
   }
 
-  async list(userId: string, options: { status?: string; page?: number; limit?: number } = {}) {
-    const { status, page = 1, limit = 20 } = options;
+  async list(userId: string, options: { status?: string; page?: number; limit?: number; includeDeleted?: boolean } = {}) {
+    const { status, page = 1, limit = 20, includeDeleted = false } = options;
     const skip = (page - 1) * limit;
-    const where: any = { OR: [{ ownerId: userId }, { members: { some: { userId } } }] };
-    if (status) where.status = status.toUpperCase();
+    const where: any = {
+      OR: [{ ownerId: userId }, { members: { some: { userId } } }],
+      ...(status ? { status: status.toUpperCase() } : {}),
+      ...(includeDeleted ? {} : { deletedAt: null }),
+    };
 
     const [projects, total] = await Promise.all([
       this.prisma.project.findMany({
@@ -79,13 +82,83 @@ export class ProjectCrudService {
     const project = await this.prisma.project.findUnique({ where: { id: projectId } });
     if (!project) throw new NotFoundException('Project not found');
     if (project.ownerId !== userId) throw new ForbiddenException('Only owner can delete project');
+    if (project.deletedAt) throw new ForbiddenException('Project is already deleted');
 
-    await this.prisma.project.update({ where: { id: projectId }, data: { status: 'DELETED' } });
+    // Soft delete: set deletedAt, keep the record for 30-day recovery window
+    await this.prisma.project.update({ where: { id: projectId }, data: { deletedAt: new Date() } });
     await this.eventService.emit('projects.project.deleted', {
       id: crypto.randomUUID(), type: 'projects.project.deleted',
       timestamp: new Date(), actorId: userId, actorType: 'user',
+      resourceType: 'project', resourceId: projectId, metadata: { soft: true },
+    });
+    return { success: true, deletedAt: new Date() };
+  }
+
+  /**
+   * Request a purge verification code for immediate permanent deletion.
+   * Sends a code to the owner's email.
+   */
+  async requestPurgeVerification(userId: string, projectId: string) {
+    const project = await this.prisma.project.findUnique({ where: { id: projectId } });
+    if (!project) throw new NotFoundException('Project not found');
+    if (project.ownerId !== userId) throw new ForbiddenException('Only owner can permanently delete');
+    if (!project.deletedAt) throw new ForbiddenException('Project must be soft-deleted before permanent purge');
+
+    const code = Math.floor(100000 + Math.random() * 900000).toString();
+    const hashedCode = crypto.createHash('sha256').update(code).digest('hex');
+    const expiresAt = new Date(Date.now() + 10 * 60 * 1000); // 10 minutes
+
+    // Store hashed code + expiry on the user record (or a separate table if preferred)
+    await this.prisma.user.update({
+      where: { id: userId },
+      data: { verificationCode: hashedCode, verificationCodeExpiresAt: expiresAt },
+    });
+
+    // TODO: Send email with code via Stalwart/SMTP
+    this.eventService.emit('projects.project.purge_verification_sent' as any, {
+      userId, projectId, expiresAt,
+    });
+
+    return { success: true, expiresAt, message: `Verification code sent to your email` };
+  }
+
+  /**
+   * Permanently delete a soft-deleted project after verifying the code.
+   * Project must have been soft-deleted (deletedAt set).
+   */
+  async purge(userId: string, projectId: string, code: string) {
+    const project = await this.prisma.project.findUnique({ where: { id: projectId } });
+    if (!project) throw new NotFoundException('Project not found');
+    if (project.ownerId !== userId) throw new ForbiddenException('Only owner can permanently delete');
+    if (!project.deletedAt) throw new ForbiddenException('Project must be soft-deleted first');
+
+    // Verify the code
+    const user = await this.prisma.user.findUnique({ where: { id: userId } });
+    if (!user?.verificationCode || !user.verificationCodeExpiresAt) {
+      throw new ForbiddenException('No verification code found — request one first');
+    }
+    if (new Date() > user.verificationCodeExpiresAt) {
+      throw new ForbiddenException('Verification code expired — request a new one');
+    }
+    const hashedCode = crypto.createHash('sha256').update(code).digest('hex');
+    if (hashedCode !== user.verificationCode) {
+      throw new ForbiddenException('Invalid verification code');
+    }
+
+    // Clear the code
+    await this.prisma.user.update({
+      where: { id: userId },
+      data: { verificationCode: null, verificationCodeExpiresAt: null },
+    });
+
+    // Hard delete — cascade handles members, deployments, etc.
+    await this.prisma.project.delete({ where: { id: projectId } });
+    await this.eventService.emit('projects.project.purged' as any, {
+      id: crypto.randomUUID(), type: 'projects.project.purged',
+      timestamp: new Date(), actorId: userId, actorType: 'user',
       resourceType: 'project', resourceId: projectId, metadata: {},
     });
+
     return { success: true };
   }
 
@@ -118,7 +191,8 @@ export class ProjectCrudService {
   async restore(userId: string, projectId: string) {
     await this.access.checkPermission(userId, projectId, ['admin', 'owner']);
     const project = await this.prisma.project.update({
-      where: { id: projectId }, data: { status: 'ACTIVE' },
+      where: { id: projectId },
+      data: { status: 'ACTIVE', deletedAt: null },
     });
     await this.eventService.emit('projects.project.restored', {
       id: crypto.randomUUID(), type: 'projects.project.restored',

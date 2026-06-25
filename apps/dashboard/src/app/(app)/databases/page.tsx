@@ -57,8 +57,8 @@ export default function DatabasesPage() {
     setCreateError(null);
     try {
       const sdk = getSdk();
-      const projects = await sdk.projects.list();
-      const projectId = shellProjectId ?? projects[0]?.id;
+      const { projects: projectList } = await sdk.projects.list();
+      const projectId = shellProjectId ?? (projectList ?? [])[0]?.id;
       if (!projectId) {
         setCreateError('No project found. Create a project first.');
         setCreating(false);

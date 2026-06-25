@@ -49,9 +49,9 @@ export default function LogsPage() {
       try {
         const sdk = getSdk();
         const data = await sdk.projects.list();
-        setProjects(data);
-        if (!pickedProjectId && data.length > 0) {
-          setPickedProjectId(data[0].id);
+        setProjects(data.projects ?? []);
+        if (!pickedProjectId && (data.projects ?? []).length > 0) {
+          setPickedProjectId((data.projects ?? [])[0].id);
         }
       } catch {
         // ignore

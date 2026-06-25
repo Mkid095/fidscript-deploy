@@ -14,6 +14,7 @@ export class ProjectFormatService {
       sourceRepo: project.sourceRepo, sourceBranch: project.sourceBranch,
       lastDeployAt: project.lastDeployAt, lastActivityAt,
       createdAt: project.createdAt, updatedAt: project.updatedAt,
+      deletedAt: project.deletedAt,
       ...(extras.role !== undefined && { role: extras.role }),
     };
   }
