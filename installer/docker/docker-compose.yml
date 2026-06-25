@@ -1,6 +1,23 @@
 services:
+  # Docker socket → TCP proxy. Traefik's Go Docker client pins to API 1.24
+  # over the raw socket (which the modern daemon rejects, min 1.40). This tiny
+  # Node.js proxy rewrites the API version in the URL path (v1.24 → v1.41).
+  docker-proxy:
+    image: node:20-alpine
+    container_name: fidscript_docker_tcp
+    restart: unless-stopped
+    working_dir: /
+    command: node /proxy.js
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - ./docker-version-proxy.js:/proxy.js:ro
+    networks:
+      - fidscript
+
   traefik:
-    image: traefik:v3.0
+    # v3.2+ fixes the Docker provider API version negotiation bug
+    # (v3.0.x pins to API 1.24 which modern daemons reject).
+    image: traefik:v3.3
     container_name: fidscript_traefik
     restart: unless-stopped
     ports:
@@ -13,9 +30,6 @@ services:
       - ./secrets:/run/secrets:ro
       - fidscript_acme_dns:/acme-dns
       - fidscript_acme_http:/acme-http
-      # Docker socket — lets the Traefik Docker provider discover deployed
-      # app containers by their traefik.* labels (per-container Host rules).
-      - /var/run/docker.sock:/var/run/docker.sock:ro
     environment:
       CLOUDFLARE_DNS_API_TOKEN_FILE: /run/secrets/cf_api_token
     networks:

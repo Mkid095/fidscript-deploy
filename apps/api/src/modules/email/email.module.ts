@@ -1,4 +1,4 @@
-import { Module } from '@nestjs/common';
+import { Module, forwardRef } from '@nestjs/common';
 import { EmailDomainController } from './controllers/email-domain.controller';
 import { EmailMailboxController } from './controllers/email-mailbox.controller';
 import { EmailAliasController } from './controllers/email-alias.controller';
@@ -45,7 +45,7 @@ import { AttachmentStorageService } from './services/attachment-storage.service'
 import { EmailAttachmentListener } from './services/attachment-event-listener.service';
 
 @Module({
-  imports: [DomainsModule, QueuesModule, StorageModule],
+  imports: [DomainsModule, QueuesModule, forwardRef(() => StorageModule)],
   controllers: [
     EmailDomainController,
     EmailMailboxController,

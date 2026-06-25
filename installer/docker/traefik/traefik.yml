@@ -14,20 +14,6 @@ entryPoints:
   websecure:
     address: ":443"
 
-# ─────────────────────────────────────────────────────────────
-# Certificate resolvers
-# ─────────────────────────────────────────────────────────────
-#
-# 1. letsencrypt-dns — DNS-01 challenge via Cloudflare
-#    Issues wildcards (*.apps.deploy.fidscript.com) and any
-#    domain where we control DNS (deploy.fidscript.com zone).
-#    Requires CF_API_TOKEN env var in the Traefik container.
-#
-# 2. letsencrypt-http — HTTP-01 challenge fallback
-#    For custom domains where the user points their DNS CNAME
-#    to our server IP but we don't control their zone.
-#    Requires port 80 to be reachable from Let's Encrypt servers.
-#
 certificatesResolvers:
   letsencrypt-dns:
     acme:
@@ -38,7 +24,6 @@ certificatesResolvers:
         resolvers:
           - "1.1.1.1"
           - "1.0.0.1"
-      # Production ACME endpoint — do not change
       caServer: https://acme-v02.api.letsencrypt.org/directory
 
   letsencrypt-http:
@@ -53,10 +38,10 @@ providers:
   file:
     filename: /etc/traefik/dynamic.yml
     watch: true
-  # Docker provider — discovers deployed app containers by their traefik.*
-  # labels. Only containers with traefik.enable=true are exposed (per-container
-  # Host rules set by DockerBuildArgsService). Restricted to the fidscript-app
-  # network so platform infrastructure containers aren't surfaced.
+  # Docker provider — via a socat TCP proxy that bridges the raw unix socket
+  # to TCP. Over TCP the Go Docker client negotiates the API version
+  # automatically (unlike the raw socket where it pins to 1.24).
   docker:
+    endpoint: "http://fidscript_docker_tcp:2375"
     exposedByDefault: false
     network: fidscript-app

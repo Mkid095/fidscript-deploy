@@ -22,10 +22,12 @@ import { PlatformAdminGuard } from '@/modules/auth/guards/platform-admin.guard';
 import { InstallationGuard } from '@/modules/auth/guards/installation.guard';
 import { ApiKeyOrJwtGuard } from '@/modules/auth/guards/api-key-or-jwt.guard';
 import { InstallationModule } from '@/modules/installation/installation.module';
+import { ProjectsModule } from '@/modules/projects/projects.module';
 
 @Module({
   imports: [
     InstallationModule,
+    ProjectsModule,
     EmailModule,
     PassportModule.register({ defaultStrategy: 'jwt' }),
     JwtModule.registerAsync({
