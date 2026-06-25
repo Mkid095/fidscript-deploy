@@ -317,6 +317,9 @@ ENVEOF
 info ".env written: ${INSTALL_DIR}/docker/.env"
 
 # api.env — used by pgbouncer and other services via env_file
+# GitHub OAuth: create an OAuth App at github.com/settings/developers
+#   Callback URL: https://api.<your-domain>/api/v1/users/me/github/callback
+# Replace the placeholder values below with your real GitHub OAuth App credentials.
 cat > "${SECRETS_DIR}/api.env" << ENVEOF
 POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
 REDIS_PASSWORD=${REDIS_PASSWORD}
@@ -325,6 +328,9 @@ MINIO_SECRET_KEY=${MINIO_SECRET_KEY}
 SMTP_SUBMISSION_USER=submission@${PUBLIC_IP:-localhost}
 SMTP_SUBMISSION_PASS=${SMTP_SUBMISSION_PASS}
 SYSTEM_MAILBOX_PASSWORD=${SYSTEM_MAILBOX_PASSWORD}
+# GitHub OAuth — replace with your real credentials from github.com/settings/developers
+GITHUB_CLIENT_ID=REPLACE_WITH_YOUR_GITHUB_OAUTH_CLIENT_ID
+GITHUB_CLIENT_SECRET=REPLACE_WITH_YOUR_GITHUB_OAUTH_CLIENT_SECRET
 ENVEOF
 chmod 600 "${SECRETS_DIR}/api.env"
 info "api.env written: ${SECRETS_DIR}/api.env"

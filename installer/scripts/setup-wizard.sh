@@ -230,6 +230,10 @@ MINIO_SECRET_KEY=$MINIO_SECRET_KEY
 SMTP_SUBMISSION_USER=admin
 SMTP_SUBMISSION_PASS=$STALWART_ADMIN_TOKEN
 SYSTEM_MAILBOX_PASSWORD=$SYSTEM_MAILBOX_PASSWORD
+# GitHub OAuth — replace with your real credentials from github.com/settings/developers
+# Callback URL: https://api.\${DOMAIN}/api/v1/users/me/github/callback
+GITHUB_CLIENT_ID=$GITHUB_CLIENT_ID
+GITHUB_CLIENT_SECRET=$GITHUB_CLIENT_SECRET
 APIENV
 chmod 600 "$SECRETS_DIR/api.env"
 
