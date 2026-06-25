@@ -53,3 +53,10 @@ providers:
   file:
     filename: /etc/traefik/dynamic.yml
     watch: true
+  # Docker provider — discovers deployed app containers by their traefik.*
+  # labels. Only containers with traefik.enable=true are exposed (per-container
+  # Host rules set by DockerBuildArgsService). Restricted to the fidscript-app
+  # network so platform infrastructure containers aren't surfaced.
+  docker:
+    exposedByDefault: false
+    network: fidscript-app

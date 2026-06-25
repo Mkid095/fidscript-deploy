@@ -13,6 +13,9 @@ services:
       - ./secrets:/run/secrets:ro
       - fidscript_acme_dns:/acme-dns
       - fidscript_acme_http:/acme-http
+      # Docker socket — lets the Traefik Docker provider discover deployed
+      # app containers by their traefik.* labels (per-container Host rules).
+      - /var/run/docker.sock:/var/run/docker.sock:ro
     environment:
       CLOUDFLARE_DNS_API_TOKEN_FILE: /run/secrets/cf_api_token
     networks:
@@ -236,6 +239,7 @@ services:
       CORS_ORIGIN: https://app.${PLATFORM_DOMAIN:-deploy.fidscript.com}
       SERVER_IP: ${SERVER_IP}
       PLATFORM_DOMAIN: ${PLATFORM_DOMAIN:-deploy.fidscript.com}
+      PLATFORM_PUBLIC_URL: https://api.${PLATFORM_DOMAIN:-deploy.fidscript.com}
       CLOUDFLARE_API_TOKEN_FILE: /run/secrets/cf_api_token
       # Stalwart / Email
       # StalwartJmapService appends '/jmap' to baseURL on every call,
@@ -298,7 +302,7 @@ services:
       dockerfile: apps/dashboard/Dockerfile
       args:
         NEXT_PUBLIC_PLATFORM_DOMAIN: ${DOMAIN}
-        NEXT_PUBLIC_API_URL: https://api.${DOMAIN}/api
+        NEXT_PUBLIC_API_URL: https://api.${DOMAIN}
     container_name: fidscript_dashboard
     restart: unless-stopped
     networks:
