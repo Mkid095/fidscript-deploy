@@ -132,6 +132,7 @@ function NewDeploymentPage({ project }: { project: NonNullable<ReturnType<typeof
 
   // Shared config
   const [dockerfilePath, setDockerfilePath] = useState('');
+  const [autoDeploy, setAutoDeploy] = useState(true);
   const [submitting, setSubmitting] = useState(false);
 
   // ── Load GitHub status ──────────────────────────────────────────────────────
@@ -605,6 +606,15 @@ function NewDeploymentPage({ project }: { project: NonNullable<ReturnType<typeof
                     https://{project.slug}.apps.{process.env.NEXT_PUBLIC_PLATFORM_DOMAIN ?? 'deploy.fidscript.com'}
                   </dd>
                 </div>
+                {sourceType === 'git' && (
+                  <div className="pt-3 border-t border-[#1e2130] mt-1 flex items-center justify-between gap-3">
+                    <div>
+                      <dt className="text-xs text-slate-400 font-medium">Auto-deploy on push</dt>
+                      <dd className="text-[10px] text-slate-600 mt-0.5">New commits to this branch will automatically trigger a deployment.</dd>
+                    </div>
+                    <ToggleSwitch checked={autoDeploy} onChange={setAutoDeploy} />
+                  </div>
+                )}
               </dl>
               <div className="mt-5 pt-4 border-t border-[#1e2130]">
                 <p className="text-xs text-slate-500">
@@ -695,5 +705,27 @@ function ReviewRow({ label, value, mono }: { label: string; value: string; mono?
       <dt className="text-xs text-slate-500 flex-shrink-0 pt-0.5">{label}</dt>
       <dd className={`text-sm text-slate-200 text-right min-w-0 truncate ${mono ? 'font-mono' : ''}`}>{value}</dd>
     </div>
+  );
+}
+
+/** Accessible toggle switch (checkbox styled as a pill). */
+function ToggleSwitch({ checked, onChange, disabled }: { checked: boolean; onChange: (v: boolean) => void; disabled?: boolean }) {
+  return (
+    <button
+      type="button"
+      role="switch"
+      aria-checked={checked}
+      disabled={disabled}
+      onClick={() => onChange(!checked)}
+      className={`relative inline-flex h-5 w-9 flex-shrink-0 rounded-full transition-colors duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-red-500/40 ${
+        checked ? 'bg-red-600' : 'bg-[#2a2d3a]'
+      } ${disabled ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`}
+    >
+      <span
+        className={`inline-block h-4 w-4 rounded-full bg-white shadow-sm transition-transform duration-200 mt-0.5 ${
+          checked ? 'translate-x-4' : 'translate-x-0.5'
+        }`}
+      />
+    </button>
   );
 }

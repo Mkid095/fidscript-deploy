@@ -4,13 +4,15 @@ import { ConfigService } from '@nestjs/config';
 import { PrismaService } from '@/prisma/prisma.service';
 import { CryptoService } from '@/modules/crypto/crypto.service';
 import { EventService } from '@/modules/events/event.service';
+import { RedisService } from '@/modules/redis/redis.service';
 import * as crypto from 'crypto';
 
 const GITHUB_AUTH_URL = 'https://github.com/login/oauth/authorize';
 const GITHUB_TOKEN_URL = 'https://github.com/login/oauth/access_token';
 const GITHUB_USER_URL = 'https://api.github.com/user';
 const GITHUB_REPOS_URL = 'https://api.github.com/user/repos';
-const GITHUB_SCOPES = 'read:user,user:email,repo';
+// admin:repo_hook lets us register push-to-deploy webhooks on connected repos.
+const GITHUB_SCOPES = 'read:user,user:email,repo,admin:repo_hook';
 
 const STATE_TTL_SEC = 5 * 60;
 
@@ -55,7 +57,8 @@ export class UserGithubService {
     private prisma: PrismaService,
     private cryptoService: CryptoService,
     private eventService: EventService,
-    private configService: ConfigService,
+    private redis: RedisService,
+    configService: ConfigService,
   ) {
     this.platformBaseUrl =
       configService.get<string>('PLATFORM_PUBLIC_URL') ||
@@ -79,11 +82,10 @@ export class UserGithubService {
 
     const state = crypto.randomBytes(32).toString('base64url');
     const payload: GithubStatePayload = { userId, redirectAfterUrl };
-    // Store state in Redis — but if Redis isn't available, skip it (dev mode)
-    try {
-      const { RedisService } = await import('@/modules/redis/redis.service');
-      // Dynamic import to avoid circular deps — RedisService is a singleton
-    } catch {}
+
+    // Store state → userId mapping in Redis (TTL 5 min). Used in callback to
+    // recover the userId when GitHub redirects back without our JWT.
+    await this.redis.set(`github:oauth:state:${state}`, payload, STATE_TTL_SEC);
 
     const params = new URLSearchParams({
       client_id: this.githubClientId,
@@ -101,12 +103,19 @@ export class UserGithubService {
 
   // ── Step 2: Exchange code for token + store ───────────────────────────────────
 
-  async handleCallback(userId: string, code: string, state?: string): Promise<{
+  async handleCallback(code: string, state: string): Promise<{
     username: string;
     avatarUrl?: string;
     scopes: string;
   }> {
-    if (!code) throw new BadRequestException('Missing OAuth code');
+    if (!code || !state) throw new BadRequestException('Missing OAuth code or state');
+
+    // Look up userId from the state that GitHub returned.
+    const payload = await this.redis.get<GithubStatePayload>(`github:oauth:state:${state}`);
+    if (!payload) throw new BadRequestException('Invalid or expired OAuth state');
+    await this.redis.del(`github:oauth:state:${state}`); // one-shot
+
+    const { userId } = payload;
 
     // Exchange code for token
     let tokenData: GithubTokenResponse;

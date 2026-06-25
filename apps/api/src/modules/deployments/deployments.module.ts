@@ -1,7 +1,9 @@
 import { Module } from '@nestjs/common';
 import { DeploymentsController } from './deployments.controller';
+import { GithubWebhookController } from './controllers/github-webhook.controller';
 import { DeploymentsService } from './deployments.service';
 import { DeploymentCrudService } from './services/deployment-crud.service';
+import { GithubWebhookService } from './services/github-webhook.service';
 import { BuildRunnerService } from './runner/build-runner.service';
 import { DockerRunService } from './runner/docker-run.service';
 import { DeploymentWorkerService } from './runner/deployment-worker.service';
@@ -17,10 +19,11 @@ import { StorageModule } from '@/modules/storage/storage.module';
 
 @Module({
   imports: [StorageModule],
-  controllers: [DeploymentsController],
+  controllers: [DeploymentsController, GithubWebhookController],
   providers: [
     DeploymentsService,
     DeploymentCrudService,
+    GithubWebhookService,
     BuildRunnerService,
     DockerRunService,
     DeploymentWorkerService,
@@ -34,6 +37,6 @@ import { StorageModule } from '@/modules/storage/storage.module';
     DockerfileBuildProvider,
     { provide: 'BUILD_PROVIDER', useExisting: DockerfileBuildProvider },
   ],
-  exports: [DeploymentsService, DeploymentWorkerService, DeploymentCrudService],
+  exports: [DeploymentsService, DeploymentWorkerService, DeploymentCrudService, GithubWebhookService],
 })
 export class DeploymentsModule {}

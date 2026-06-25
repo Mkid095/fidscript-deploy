@@ -13,9 +13,12 @@ import {
   HttpStatus,
 } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
-import { JwtAuthGuard } from '../auth/jwt-auth.guard';
+import { JwtAuthGuard } from '@/modules/auth/jwt-auth.guard';
 import { DeploymentsService } from './deployments.service';
+import { GithubWebhookService } from './services/github-webhook.service';
 import { CreateDeploymentDto, UpdateBuildConfigDto } from './dto/index';
+import { PrismaService } from '@/prisma/prisma.service';
+import { CryptoService } from '@/modules/crypto/crypto.service';
 import { Request } from 'express';
 
 @ApiTags('deployments')
@@ -23,7 +26,12 @@ import { Request } from 'express';
 @UseGuards(JwtAuthGuard)
 @ApiBearerAuth()
 export class DeploymentsController {
-  constructor(private deploymentsService: DeploymentsService) {}
+  constructor(
+    private deploymentsService: DeploymentsService,
+    private webhookService: GithubWebhookService,
+    private prisma: PrismaService,
+    private crypto: CryptoService,
+  ) {}
 
   @Get('deployments')
   @ApiOperation({ summary: 'List deployments' })
@@ -51,7 +59,36 @@ export class DeploymentsController {
     @Body() dto: CreateDeploymentDto,
   ) {
     const user = req.user as { userId: string };
-    return this.deploymentsService.create(user.userId, projectId, dto);
+    const result = await this.deploymentsService.create(user.userId, projectId, dto);
+
+    // Register a push-to-deploy webhook on the GitHub repo (idempotent).
+    // Best-effort — a failure here doesn't block the deployment.
+    if (dto.source?.type === 'git' && dto.source.git?.url && dto.source.git.url.includes('github.com')) {
+      this.registerWebhookAsync(user.userId, projectId, dto.source.git.url).catch(() => {});
+    }
+
+    return result;
+  }
+
+  /**
+   * Register a GitHub webhook for push-to-deploy. Fetches the user's GitHub
+   * token from their encrypted connection, extracts owner/repo from the URL,
+   * and calls the webhook service.
+   */
+  private async registerWebhookAsync(userId: string, projectId: string, gitUrl: string) {
+    const match = gitUrl.match(/github\.com[/:]([^/]+\/[^/.]+)/);
+    if (!match) return;
+    const repoFullName = match[1];
+
+    const conn = await this.prisma.$queryRaw<{ encrypted_token: string }[]>`
+      SELECT encrypted_token FROM identity.github_connections WHERE user_id = ${userId} LIMIT 1
+    `.then(rows => rows[0]);
+    if (!conn?.encrypted_token) return;
+
+    let token: string;
+    try { token = this.crypto.decrypt(conn.encrypted_token); } catch { return; }
+
+    await this.webhookService.registerWebhook(projectId, repoFullName, token);
   }
 
   @Get('deployments/:id')
@@ -140,5 +177,26 @@ export class DeploymentsController {
   ) {
     const user = req.user as { userId: string };
     return this.deploymentsService.updateBuildConfig(user.userId, projectId, dto);
+  }
+
+  /**
+   * Toggle push-to-deploy (auto-deploy) for a project. When enabled, pushes
+   * to the project's source branch trigger a new deployment via the GitHub
+   * webhook receiver.
+   */
+  @Patch('auto-deploy')
+  @ApiOperation({ summary: 'Toggle auto-deploy on push' })
+  async toggleAutoDeploy(
+    @Req() req: Request,
+    @Param('projectId') projectId: string,
+    @Body() body: { enabled: boolean },
+  ) {
+    const user = req.user as { userId: string };
+    await this.deploymentsService.getBuildConfig(user.userId, projectId); // access check
+    await this.prisma.project.update({
+      where: { id: projectId },
+      data: { autoDeploy: body.enabled },
+    });
+    return { autoDeploy: body.enabled };
   }
 }
