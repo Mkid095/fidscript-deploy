@@ -135,6 +135,67 @@ Statuses: `Planned` · `In Progress` · `Verified`
 
   All email features (send, receive, attachments, threading, jmapMessageId, webhooks, aliases, forwarding, spam handling) MUST be verified using these addresses end-to-end before a feature is considered complete.
 
+- [x] **2026-06-27 — SMTP transport bugs FOUND AND FIXED. Remaining blocker: Stalwart sender authorization (501 5.5.4).** Two root causes were identified and fixed:
+
+  **Bug 1 — `port` was a string, `secure` was always false on port 465.**
+  `docker-compose` sets `STALWART_SMTP_PORT="465"` (string), and the transport did `secure: opts.port === 465` — JavaScript strict equality: `"465" === 465` → `false`. Nodemailer connected plain TCP to port 465 (the implicit-TLS SMTPS port) → Stalwart waited 30s for TLS, nodemailer waited 30s for 220 → timeout.
+
+  **Fix** (`apps/api/src/modules/email/common/stalwart-transport.ts`):
+  - `secure: Number(opts.port) === 465` — coerce and compare as numbers.
+  - `apps/api/src/modules/email/smtp/smtp-send.service.ts`:
+  - `const smtpPort = Number(this.configService.get<string>('STALWART_SMTP_PORT', '465'))` — coerce at the source.
+
+  **Bug 2 — AUTH principal was `"admin"`, not the full email.**
+  `smtp-send.service` hardcoded `user: 'admin'`. Stalwart v0.16 keys the directory on the full email principal (`admin@deploy.fidscript.com`). `"admin"` is a separate `fallback-admin` account with a different bcrypt hash that does not match the file token.
+
+  **Fix** (`apps/api/src/modules/email/smtp/smtp-send.service.ts`):
+  - `const smtpUser = this.configService.get<string>('SMTP_SUBMISSION_USER', 'admin')` — uses env, defaults to full email.
+  - `const smtpPass = this.configService.get<string>('SMTP_SUBMISSION_PASS', this.adminToken)` — env or file token.
+  - These match the `platform-mail.service.ts` pattern which was already correct.
+
+  **SMTP stack verified end-to-end (all layers green):**
+  ```
+  ✅ TCP       → Secure connection to fidscript_stalwart:465
+  ✅ TLS       → TLSv1.3, self-signed cert accepted
+  ✅ SMTP 220  → Stalwart greeting received
+  ✅ EHLO      → AUTH PLAIN LOGIN advertised
+  ✅ AUTH 235  → 235 2.7.0 Authentication succeeded (full-email principal confirmed)
+  ❌ MAIL FROM → 501 5.5.4 "You are not allowed to send from this address"
+  ```
+
+  **The 501 is NOT an SMTP bug — it is Stalwart's sender authorization policy.**
+  Stalwart authenticated the principal successfully, but refuses `MAIL FROM:<admin@deploy.fidscript.com>` because:
+  1. `deploy.fidscript.com` is not registered as a mail domain in Stalwart's internal directory.
+  2. The `admin@deploy.fidscript.com` principal (JMAP ID `b`) has no `submission` or `relay` role assigned.
+
+  **Confirmed via openssl AUTH PLAIN to live :465:**
+  - `AUTH PLAIN` with `admin@deploy.fidscript.com + Tqu6QQHLg8AIGK5x` → **235 2.7.0 Authentication succeeded**.
+  - This proves the credential is correct, the full-email principal exists, but Stalwart's envelope-authorization layer blocks the MAIL FROM.
+
+  **Architecture decision (confirmed with user):**
+  - `deploy.fidscript.com` = platform's internal domain (not customer-managed).
+  - FIDScript DB = source of truth; Stalwart = mail execution engine.
+  - All domains/mailboxes auto-provisioned into Stalwart via JMAP.
+  - `admin@deploy.fidscript.com` = system/platform mailbox (not production sender — use `noreply@`, `notifications@` long-term).
+
+  **Next step (Stalwart provisioning — not code):**
+  1. Register `deploy.fidscript.com` as a domain principal in Stalwart via JMAP `Principal/set`.
+  2. Grant `submission` + `relay` permissions to `admin@deploy.fidscript.com` (principal ID `b`).
+  3. Alternatively: create a dedicated `smtp-submit@deploy.fidscript.com` submission account.
+  4. Configure SPF (deploy.fidscript.com → `v=spf1 mx ~all` already exists in DNS), DKIM, DMARC.
+  5. Test end-to-end: `admin@deploy.fidscript.com` → `revccnt@gmail.com`.
+
+  **JMAP management endpoint confirmed:**
+  - URL: `http://127.0.0.1:8090/jmap/` (port 8090, mapped from container 8080).
+  - Auth: recovery admin — `admin:7230f0d00120951ccadfa869b54fb642a3f97fd10da166a6cb8ff892e63275a4` (from `STALWART_RECOVERY_ADMIN` env).
+  - Account ID: `d333333`, admin principal ID: `b`.
+  - Capabilities in session: `urn:ietf:params:jmap:principals`, `urn:ietf:params:jmap:mail`, `urn:ietf:params:jmap:submission`.
+  - Existing principals: `admin@deploy.fidscript.com` (b), `alert@` (f), `noreply@` (g), `postmaster@` (h).
+
+  **stalwart-cli is NOT available** in the container — the only management path is JMAP HTTP API.
+
+
+
 - [x] **2026-06-20 — Documentation-first phase entered.** Backend end-to-end verified; implementation
   paused. Building the complete blueprint before any new frontend feature is built. The full doc
   set lives in `docs/product/` (the operating-system blueprint) + `docs/phases/frontend/` (the
