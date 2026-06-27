@@ -194,7 +194,50 @@ Statuses: `Planned` · `In Progress` · `Verified`
 
   **stalwart-cli is NOT available** in the container — the only management path is JMAP HTTP API.
 
+- [x] **2026-06-27 — Complete email pipeline achieved: outbound + inbound end-to-end confirmed.**
 
+  **Outbound** (✅ CONFIRMED):
+  - `admin@deploy.fidscript.com` → `revccnt@gmail.com` — delivered to Gmail inbox
+  - Stalwart queues with ID `45fe9ef8fa00000`, reports `250 2.0.0 Message queued`
+  - SMTP transport: TLS on 465, full-email principal AUTH, MAIL FROM authorization passes
+  - Both port coercion bug (string "465" → `Number()`) and full-email AUTH principal fixed
+
+  **Inbound** (✅ CONFIRMED):
+  - External mail from `nobody@gmail.com` → `admin@deploy.fidscript.com` arrives in mailbox
+  - MX record `mail.deploy.fidscript.com → 72.61.89.110:25` correctly routes to Stalwart
+  - Stalwart stores in RocksDB, retrievable via JMAP `Email/query` (accountId: `b`)
+  - Spam filtering: external mail with softfail SPF lands in Junk (by design — DKIM not published)
+  - JMAP Email/set can move emails between mailboxes (tested: Junk → Inbox)
+
+  **Critical Stalwart fix discovered — Domain.directoryId must be set:**
+  - Domain `deploy.fidscript.com` had `directoryId: null`, causing all inbound mail to go to outbound queue
+  - Fix: created SQL directory (`ix3oiqmaabaa`) via `x:Directory/set`, linked to domain via `x:Domain/set`
+  - Without this, Stalwart treats incoming mail as relay attempts
+
+  **DNS issues blocking full deliverability:**
+  - DKIM: NOT published — both `v1-ed25519-20260623._domainkey` and `v1-rsa-20260623._domainkey` records ready in Stalwart zone file, need adding to Cloudflare
+  - DMARC: two conflicting records (`p=none` + `p=quarantine`) — `p=none` must be deleted
+  - SPF: `v=spf1 mx ~all` (softfail) — should be `-all` (hardfail) for better deliverability
+
+  **DKIM records ready for Cloudflare publish:**
+  ```
+  v1-ed25519-20260623._domainkey.deploy.fidscript.com. 300 IN TXT "v=DKIM1; k=ed25519; h=sha256; p=TK+LlpWLxx8UmCsfwZqa/91LLxHb2NtSM9Fvk8UQKyo="
+  v1-rsa-20260623._domainkey.deploy.fidscript.com. 300 IN TXT "v=DKIM1; k=rsa; h=sha256; p=MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAuzsCYDVNfI4GCCNWAka1O5QPhNV4mXJutkzQlJ9hKKXyDwGwveb9LjtB5rHrdqp/ito1kN9YSt4hvYexx8Y0uGJiOw+Gtd6KU7x0eaTpwY45U92KaDCQ2Tz2jGBhqRxECxWFrwuV7wsmYJuzNZv0I1fcnPJFteFBKFEWnVKX+ejYwUIPXLHhf1B9stpbwF/Awo/lVrKP32sGUH59Dx0TNPWt6NmzlVPAZP0AZ/RZV9Rf0tjPE3QvCXBZnYQA0RKTGeQByp5ZJPE78VAAALrgq7zVFuDOUDKHsR88i98hFUo9lpuLUjcvnxGPiZ8NTYQ5Q/Jyt+cOJ3t82o08cjPhXQIDAQAB"
+  ```
+
+  **JMAP API reference:**
+  - Endpoint: `http://127.0.0.1:8090/jmap/` (container port 8080)
+  - Auth: Basic auth with `STALWART_RECOVERY_ADMIN` env var (user:password → base64)
+  - Required capabilities: `urn:ietf:params:jmap:core`, `urn:ietf:params:jmap:mail`, `urn:ietf:params:jmap:principals`
+  - Admin accountId: `b` (matches principal ID), NOT `d333333`
+  - Admin mailbox: Inbox ID `a`, Junk ID `c`, Sent ID `e`, Drafts ID `d`, Trash ID `b`
+  - JMAP format: `{"using":[...], "methodCalls":[["MethodName", {...}, "tag1"]]}`
+
+  **Next steps (priority order):**
+  1. Publish DKIM records to Cloudflare DNS
+  2. Fix DMARC duplicate + upgrade SPF to hardfail
+  3. Build JMAP Push webhook receiver (`email-inbound.controller.ts`) — fires on new mail
+  4. Dashboard email UI: list, read, star, delete in `apps/dashboard/`
 
 - [x] **2026-06-20 — Documentation-first phase entered.** Backend end-to-end verified; implementation
   paused. Building the complete blueprint before any new frontend feature is built. The full doc
