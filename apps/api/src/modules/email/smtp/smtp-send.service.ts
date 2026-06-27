@@ -81,11 +81,24 @@ export class SmtpSendService {
     // + Number(opts.port) in the transport is defense in depth.
     const smtpPort = Number(this.configService.get<string>('STALWART_SMTP_PORT', '465'));
 
+    // AUTH must use the FULL principal name (the full email), not the local
+    // part alone. Stalwart v0.16 keys the directory on the full email
+    // (e.g. "admin@deploy.fidscript.com"), so user="admin" returns 535 5.7.8
+    // even with the correct password. The compose env SMTP_SUBMISSION_USER
+    // (set to the full email) + SMTP_SUBMISSION_PASS (the matching token;
+    // default = the file token) is the right credential. Confirmed end-to-end
+    // by openssl AUTH PLAIN to the live :465 -> 235 2.7.0 Authentication
+    // succeeded (with this exact full-email + file-token combination), while
+    // the hardcoded "admin" principal is a separate fallback-admin account
+    // whose bcrypt does NOT match the file token.
+    const smtpUser = this.configService.get<string>('SMTP_SUBMISSION_USER', 'admin');
+    const smtpPass = this.configService.get<string>('SMTP_SUBMISSION_PASS', this.adminToken);
+
     const transporter = await createStalwartTransport({
       host: smtpHost,
       port: smtpPort,
-      user: 'admin',
-      pass: this.adminToken,
+      user: smtpUser,
+      pass: smtpPass,
     });
 
     let messageId = `<${Date.now()}-${crypto.randomBytes(6).toString('hex')}@${
