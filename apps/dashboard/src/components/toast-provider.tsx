@@ -30,17 +30,17 @@ const ICONS: Record<ToastType, typeof CheckmarkCircle02Icon> = {
 };
 
 const COLORS: Record<ToastType, string> = {
-  success: 'border-emerald-800 bg-emerald-950/80 text-emerald-300',
-  error:   'border-red-800 bg-red-950/80 text-red-300',
-  warning: 'border-amber-800 bg-amber-950/80 text-amber-300',
-  info:    'border-blue-800 bg-blue-950/80 text-blue-300',
+  success: 'border-[var(--success)]/30 bg-emerald-950/80 text-[var(--success)]',
+  error:   'border-[var(--danger)]/30 bg-red-950/80 text-[var(--danger)]',
+  warning: 'border-[var(--warning)]/30 bg-amber-950/80 text-[var(--warning)]',
+  info:    'border-blue-800 bg-blue-950/80 text-[var(--accent)]',
 };
 
 const ICON_COLORS: Record<ToastType, string> = {
-  success: 'text-emerald-400',
-  error:   'text-red-400',
-  warning: 'text-amber-400',
-  info:    'text-blue-400',
+  success: 'text-[var(--success)]',
+  error:   'text-[var(--danger)]',
+  warning: 'text-[var(--warning)]',
+  info:    'text-[var(--accent)]',
 };
 
 function ToastItem({ toast, onRemove }: { toast: Toast; onRemove: (id: string) => void }) {
@@ -85,7 +85,7 @@ function ToastItem({ toast, onRemove }: { toast: Toast; onRemove: (id: string) =
       <p className="text-sm flex-1 leading-snug">{toast.message}</p>
       <button
         onClick={handleDismiss}
-        className="text-slate-600 hover:text-slate-400 transition-colors flex-shrink-0 p-0.5 -mr-1 -mt-0.5"
+        className="text-[var(--text-dim)] hover:text-[var(--text-muted)] transition-colors flex-shrink-0 p-0.5 -mr-1 -mt-0.5"
         aria-label="Dismiss"
       >
         <HugeiconsIcon icon={CancelCircleIcon} size={14} />

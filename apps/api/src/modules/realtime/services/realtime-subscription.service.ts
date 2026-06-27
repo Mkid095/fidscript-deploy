@@ -23,16 +23,26 @@ export class RealtimeSubscriptionService {
 
   async subscribeToProject(
     client: Socket,
-    userId: string,
+    identity: { userId: string; projectId?: string; isApiKey?: boolean },
     projectId: string,
   ): Promise<{ success: boolean; projectId?: string; error?: string }> {
+    // BaaS path: a project API key authorizes access to that project's room
+    // only — the key's project must match the requested project.
+    if (identity.isApiKey) {
+      if (!identity.projectId || identity.projectId !== projectId) {
+        return { success: false, error: 'Not a member of this project' };
+      }
+      client.join(projectRoom(projectId));
+      return { success: true, projectId };
+    }
+
     const [project, member] = await Promise.all([
       this.prisma.project.findUnique({
         where: { id: projectId },
         select: { ownerId: true },
       }),
       this.prisma.projectMember.findUnique({
-        where: { projectId_userId: { projectId, userId } },
+        where: { projectId_userId: { projectId, userId: identity.userId } },
         select: { id: true, role: true },
       }),
     ]);
@@ -40,10 +50,10 @@ export class RealtimeSubscriptionService {
     if (!project) {
       return { success: false, error: 'Project not found' };
     }
-    const authorized = project.ownerId === userId || !!member;
+    const authorized = project.ownerId === identity.userId || !!member;
     if (!authorized) {
       this.logger.debug(
-        `subscribe denied: user ${userId} is neither owner nor member of project ${projectId}`,
+        `subscribe denied: user ${identity.userId} is neither owner nor member of project ${projectId}`,
       );
       return { success: false, error: 'Not a member of this project' };
     }

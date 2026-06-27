@@ -3,6 +3,9 @@ import { PrismaService } from '@/prisma/prisma.service';
 import { EventService } from '@/modules/events/event.service';
 import { DeploymentWorkerService } from '@/modules/deployments/runner/deployment-worker.service';
 import { CreateDeploymentDto, UpdateBuildConfigDto } from '@/modules/deployments/dto/index';
+import { NodeBuildpackProvider } from '@/modules/deployments/providers/node-buildpack.provider';
+import { DockerBuildWorkspaceService } from '@/modules/deployments/providers/docker-build-workspace.service';
+import { UserGithubService } from '@/modules/app-auth/services/user-github.service';
 import * as crypto from 'crypto';
 
 @Injectable()
@@ -11,7 +14,42 @@ export class DeploymentCrudService {
     private prisma: PrismaService,
     private eventService: EventService,
     private worker: DeploymentWorkerService,
+    private buildpackProvider: NodeBuildpackProvider,
+    private workspace: DockerBuildWorkspaceService,
+    private github: UserGithubService,
   ) {}
+
+  // ─── Framework detection (pre-deploy) ──────────────────────────────────────
+
+  /**
+   * Clone a repo shallowly, run framework detection, and return a BuildPlan
+   * — without deploying. Used by the wizard's "Auto-detect" step.
+   */
+ async detectFramework(userId: string, projectId: string, dto: { gitUrl: string; branch?: string; credentials?: string }) {
+  await this.checkAccessOrThrow(userId, projectId);
+  const ws = this.workspace.prepareWorkspace();
+  try {
+    // Use explicit credentials if provided, otherwise fall back to the user's
+    // connected GitHub token so private repos clone without prompting (which
+    // would fail in the non-TTY server environment and cause a 400 here).
+    const credentials = dto.credentials ?? (await this.github.getCloneCredentials(userId)) ?? undefined;
+    await this.workspace.fetchGitSource({
+      url: dto.gitUrl,
+      branch: dto.branch || 'main',
+      credentials,
+      workspace: ws,
+    });
+    const info = await this.buildpackProvider.detectFramework(ws);
+    return this.buildpackProvider.toBuildPlan(info);
+  } catch (err) {
+    const message = err instanceof Error ? err.message : 'Framework detection failed';
+    throw new BadRequestException(message);
+  } finally {
+    this.workspace.cleanupWorkspace(ws);
+  }
+}
+
+  // ─── Deployment CRUD ───────────────────────────────────────────────────────
 
   async create(userId: string, projectId: string, dto: CreateDeploymentDto) {
     const project = await this.prisma.project.findUnique({ where: { id: projectId } });
@@ -41,6 +79,7 @@ export class DeploymentCrudService {
         branch: dto.branch || project.sourceBranch || 'main',
         sourceUrl,
         imageTag: `fidscript/${project.slug}:${version}`,
+        commitMessage: dto.commitMessage || '',
         createdBy: userId,
       },
     });
@@ -53,7 +92,7 @@ export class DeploymentCrudService {
       id: crypto.randomUUID(), type: 'deployments.deployment.created',
       timestamp: new Date(), actorId: userId, actorType: 'user',
       resourceType: 'deployment', resourceId: deployment.id,
-      metadata: { deploymentId: deployment.id, releaseId: release.id, projectId, userId, strategy: dto.strategy, branch: dto.branch, source: dto.source },
+      metadata: { deploymentId: deployment.id, releaseId: release.id, projectId, userId, branch: dto.branch, source: dto.source, envVars: dto.envVars },
     });
 
     return this.formatDeployment(deployment);
@@ -106,11 +145,8 @@ export class DeploymentCrudService {
     config = await this.prisma.buildConfig.update({
       where: { projectId },
       data: {
-        ...(dto.strategy && { strategy: dto.strategy }),
-        ...(dto.buildCommand !== undefined && { buildCommand: dto.buildCommand }),
-        ...(dto.outputDirectory !== undefined && { outputDirectory: dto.outputDirectory }),
-        ...(dto.healthCheckPath !== undefined && { healthCheckPath: dto.healthCheckPath }),
-        ...(dto.healthCheckPort !== undefined && { healthCheckPort: dto.healthCheckPort }),
+        ...(dto.buildTarget !== undefined && { buildTarget: dto.buildTarget }),
+        ...(dto.startupTimeoutSeconds !== undefined && { startupTimeoutSeconds: dto.startupTimeoutSeconds }),
       },
     });
     return this.formatBuildConfig(config);
@@ -191,6 +227,13 @@ export class DeploymentCrudService {
   }
 
   private formatBuildConfig(c: any) {
-    return { id: c.id, projectId: c.projectId, strategy: c.strategy, buildCommand: c.buildCommand, outputDirectory: c.outputDirectory, healthCheckPath: c.healthCheckPath, healthCheckPort: c.healthCheckPort, startupTimeoutSeconds: c.startupTimeoutSeconds, createdAt: c.createdAt, updatedAt: c.updatedAt };
+    return {
+      id: c.id,
+      projectId: c.projectId,
+      buildTarget: c.buildTarget || null,
+      startupTimeoutSeconds: c.startupTimeoutSeconds ?? 120,
+      createdAt: c.createdAt,
+      updatedAt: c.updatedAt,
+    };
   }
 }

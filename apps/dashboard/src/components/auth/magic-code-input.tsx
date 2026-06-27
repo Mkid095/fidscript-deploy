@@ -68,12 +68,12 @@ export function MagicCodeInput({
           onPaste={handlePaste}
           className={`
             w-12 h-14 text-center text-xl font-mono rounded-lg
-            bg-slate-900 border text-white
-            placeholder:text-slate-600
-            focus:outline-none focus:ring-2 focus:ring-red-500/50
+            bg-[var(--surface-2)] border text-[var(--text)]
+            placeholder:text-[var(--text-dim)]
+            focus:outline-none focus:ring-2 focus:ring-[var(--danger)]/50
             disabled:opacity-50 disabled:cursor-not-allowed
             transition-colors duration-150
-            ${error ? 'border-red-500 animate-shake' : 'border-slate-700 focus:border-slate-500'}
+            ${error ? 'border-[var(--danger)] animate-shake' : 'border-[var(--rail-light)] focus:border-slate-500'}
           `}
           style={{ animation: error ? 'shake 0.3s ease-in-out' : undefined }}
         />

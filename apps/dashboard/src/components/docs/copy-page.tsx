@@ -23,9 +23,9 @@ export function CopyPage() {
   return (
     <button
       onClick={copy}
-      className="flex items-center gap-1.5 rounded-lg border border-slate-800 bg-ink-900 px-3 py-1.5 text-xs font-semibold text-slate-300 transition hover:border-fire-500/40 hover:text-white"
+      className="flex items-center gap-1.5 rounded-lg border border-[var(--rail)] bg-[var(--surface)] px-3 py-1.5 text-xs font-semibold text-[var(--text-muted)] transition hover:border-[var(--accent)]/40 hover:text-[var(--text)]"
     >
-      <HugeiconsIcon icon={copied ? Tick01Icon : Copy01Icon} size={14} color="currentColor" className={copied ? 'text-emerald-400' : ''} />
+      <HugeiconsIcon icon={copied ? Tick01Icon : Copy01Icon} size={14} color="currentColor" className={copied ? 'text-[var(--success)]' : ''} />
       {copied ? 'Copied' : 'Copy page'}
     </button>
   );

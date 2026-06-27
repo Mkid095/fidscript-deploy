@@ -6,16 +6,16 @@ import {
 
 /** Small presentational helpers so doc pages read like prose, not JSX soup. */
 export const H2 = ({ children }: { children: ReactNode }) => (
-  <h2 className="mt-8 mb-3 text-xl font-bold tracking-tight text-white">{children}</h2>
+  <h2 className="mt-8 mb-3 text-xl font-bold tracking-tight text-[var(--text)]">{children}</h2>
 );
 export const P = ({ children }: { children: ReactNode }) => (
-  <p className="mb-4 leading-relaxed text-slate-400">{children}</p>
+  <p className="mb-4 leading-relaxed text-[var(--text-muted)]">{children}</p>
 );
 export const Code = ({ children }: { children: ReactNode }) => (
-  <code className="rounded bg-ink-800 px-1.5 py-0.5 font-mono text-[0.85em] text-fire-400">{children}</code>
+  <code className="rounded bg-[var(--surface-3)] px-1.5 py-0.5 font-mono text-[0.85em] text-[var(--accent)]">{children}</code>
 );
 export const Pre = ({ children }: { children: ReactNode }) => (
-  <pre className="my-4 overflow-x-auto rounded-xl border border-slate-800 bg-ink-950 p-4 font-mono text-sm text-slate-300">
+  <pre className="my-4 overflow-x-auto rounded-xl border border-[var(--rail)] bg-[var(--canvas)] p-4 font-mono text-sm text-[var(--text-muted)]">
     {children}
   </pre>
 );
@@ -44,7 +44,7 @@ export const DOCS: Doc[] = [
         </P>
         <H2>Prerequisites</H2>
         <P>
-          A fresh <strong className="text-slate-200">Ubuntu 22.04 / 24.04</strong> (or Debian 11/12) VPS
+          A fresh <strong className="text-[var(--text)]">Ubuntu 22.04 / 24.04</strong> (or Debian 11/12) VPS
           with root access and at least 4&nbsp;GB of RAM. Docker is installed automatically if missing.
         </P>
         <H2>One-command install</H2>
@@ -144,18 +144,18 @@ curl -sSL https://deploy.fidscript.com/install.sh | bash</Pre>
       <>
         <H2>Eleven services, one stack</H2>
         <P>Every project gets access to the full platform surface:</P>
-        <ul className="mb-4 space-y-1.5 text-slate-400">
-          <li>• <strong className="text-slate-200">Deployments</strong> — Dockerfile builds, routing, health checks</li>
-          <li>• <strong className="text-slate-200">Databases</strong> — Postgres + PgBouncer per project</li>
-          <li>• <strong className="text-slate-200">Edge Functions</strong> — sandboxed Node/Python</li>
-          <li>• <strong className="text-slate-200">Realtime</strong> — socket.io rooms + Redis adapter</li>
-          <li>• <strong className="text-slate-200">Queues</strong> — NATS JetStream durable queues</li>
-          <li>• <strong className="text-slate-200">Scheduler</strong> — cron that survives restarts</li>
-          <li>• <strong className="text-slate-200">Email</strong> — Stalwart SMTP/JMAP</li>
-          <li>• <strong className="text-slate-200">Storage</strong> — S3-compatible MinIO</li>
-          <li>• <strong className="text-slate-200">Auth</strong> — email/password + magic-code</li>
-          <li>• <strong className="text-slate-200">Domains &amp; TLS</strong> — Cloudflare + Traefik ACME</li>
-          <li>• <strong className="text-slate-200">Monitoring</strong> — metrics, alerts, channels</li>
+        <ul className="mb-4 space-y-1.5 text-[var(--text-muted)]">
+          <li>• <strong className="text-[var(--text)]">Deployments</strong> — Dockerfile builds, routing, health checks</li>
+          <li>• <strong className="text-[var(--text)]">Databases</strong> — Postgres + PgBouncer per project</li>
+          <li>• <strong className="text-[var(--text)]">Edge Functions</strong> — sandboxed Node/Python</li>
+          <li>• <strong className="text-[var(--text)]">Realtime</strong> — socket.io rooms + Redis adapter</li>
+          <li>• <strong className="text-[var(--text)]">Queues</strong> — NATS JetStream durable queues</li>
+          <li>• <strong className="text-[var(--text)]">Scheduler</strong> — cron that survives restarts</li>
+          <li>• <strong className="text-[var(--text)]">Email</strong> — Stalwart SMTP/JMAP</li>
+          <li>• <strong className="text-[var(--text)]">Storage</strong> — S3-compatible MinIO</li>
+          <li>• <strong className="text-[var(--text)]">Auth</strong> — email/password + magic-code</li>
+          <li>• <strong className="text-[var(--text)]">Domains &amp; TLS</strong> — Cloudflare + Traefik ACME</li>
+          <li>• <strong className="text-[var(--text)]">Monitoring</strong> — metrics, alerts, channels</li>
         </ul>
       </>
     ),

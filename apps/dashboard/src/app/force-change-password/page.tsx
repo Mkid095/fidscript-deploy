@@ -63,13 +63,13 @@ export default function ForceChangePasswordPage() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-[#080a0d] p-4">
-      <Card padding="lg" className="w-full max-w-md border border-[#1e2130]">
+    <div className="min-h-screen flex items-center justify-center bg-[var(--surface-2)] p-4">
+      <Card padding="lg" className="w-full max-w-md border border-[var(--rail)]">
         <div className="mb-6 text-center">
-          <h1 className="text-xl font-bold text-slate-200 mb-1">
+          <h1 className="text-xl font-bold text-[var(--text)] mb-1">
             {hasPasswordCredential ? 'Change your password' : 'Create a password'}
           </h1>
-          <p className="text-sm text-slate-500">
+          <p className="text-sm text-[var(--text-muted)]">
             {hasPasswordCredential
               ? 'Choose a new password to replace your current one.'
               : 'You are using a magic code login. Create a password to secure your account.'}
@@ -86,7 +86,7 @@ export default function ForceChangePasswordPage() {
                 onChange={(e) => setCurrentPassword(e.target.value)}
                 placeholder="Enter your current password"
                 autoComplete="current-password"
-                className="bg-[#080a0d] border border-[#1e2130] text-slate-200 placeholder:text-slate-600"
+                className="bg-[var(--surface-2)] border border-[var(--rail)] text-[var(--text)] placeholder:text-[var(--text-dim)]"
               />
             )}
 
@@ -98,7 +98,7 @@ export default function ForceChangePasswordPage() {
                 onChange={(e) => setNewPassword(e.target.value)}
                 placeholder="At least 12 characters"
                 autoComplete="new-password"
-                className="bg-[#080a0d] border border-[#1e2130] text-slate-200 placeholder:text-slate-600"
+                className="bg-[var(--surface-2)] border border-[var(--rail)] text-[var(--text)] placeholder:text-[var(--text-dim)]"
               />
               <PasswordStrength password={newPassword} />
             </div>
@@ -110,11 +110,11 @@ export default function ForceChangePasswordPage() {
               onChange={(e) => setConfirm(e.target.value)}
               placeholder="Re-enter new password"
               autoComplete="new-password"
-              className="bg-[#080a0d] border border-[#1e2130] text-slate-200 placeholder:text-slate-600"
+              className="bg-[var(--surface-2)] border border-[var(--rail)] text-[var(--text)] placeholder:text-[var(--text-dim)]"
             />
 
             {(validationError || serverError || error) && (
-              <p className="text-sm text-red-400">
+              <p className="text-sm text-[var(--danger)]">
                 {validationError || serverError || error}
               </p>
             )}

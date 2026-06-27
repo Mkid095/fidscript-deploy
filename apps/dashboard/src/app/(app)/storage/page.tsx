@@ -104,8 +104,8 @@ export default function StoragePage() {
     <div>
       <div className="flex items-center justify-between mb-6">
         <div>
-          <h1 className="text-xl font-bold text-slate-200 mb-1">Storage</h1>
-          <p className="text-sm text-slate-500">
+          <h1 className="text-xl font-bold text-[var(--text)] mb-1">Storage</h1>
+          <p className="text-sm text-[var(--text-muted)]">
             {buckets.length} bucket{buckets.length !== 1 ? 's' : ''}
           </p>
         </div>
@@ -114,7 +114,7 @@ export default function StoragePage() {
             <select
               value={selectedProject}
               onChange={e => setSelectedProject(e.target.value)}
-              className="bg-[#080a0d] border border-[#1e2130] text-slate-200 rounded-lg px-3 py-2 text-sm"
+              className="bg-[var(--surface-2)] border border-[var(--rail)] text-[var(--text)] rounded-lg px-3 py-2 text-sm"
             >
               <option value="">Select project</option>
               {projects.map(p => (
@@ -134,21 +134,21 @@ export default function StoragePage() {
       </div>
 
       {error && (
-        <p className="text-red-400 mb-4 text-sm">{error}</p>
+        <p className="text-[var(--danger)] mb-4 text-sm">{error}</p>
       )}
 
       {showCreate && (
-        <Card className="border border-[#1e2130] mb-6" padding="lg">
-          <h2 className="text-sm font-semibold text-slate-200 mb-4">New Bucket</h2>
+        <Card className="border border-[var(--rail)] mb-6" padding="lg">
+          <h2 className="text-sm font-semibold text-[var(--text)] mb-4">New Bucket</h2>
           <form onSubmit={handleCreate} noValidate>
             <div className="flex gap-3 flex-wrap items-end">
               <div>
-                <label className="block text-xs text-slate-400 mb-1">Bucket name</label>
+                <label className="block text-xs text-[var(--text-muted)] mb-1">Bucket name</label>
                 <Input
                   value={newName}
                   onChange={e => setNewName(e.target.value)}
                   placeholder="my-bucket"
-                  className="bg-[#080a0d] border border-[#1e2130] text-slate-200 placeholder:text-slate-600"
+                  className="bg-[var(--surface-2)] border border-[var(--rail)] text-[var(--text)] placeholder:text-[var(--text-dim)]"
                 />
               </div>
               <Button type="submit" variant="primary" size="sm" loading={creating}>
@@ -156,7 +156,7 @@ export default function StoragePage() {
               </Button>
             </div>
             {createError && (
-              <p className="text-red-400 text-xs mt-3">{createError}</p>
+              <p className="text-[var(--danger)] text-xs mt-3">{createError}</p>
             )}
           </form>
         </Card>
@@ -189,11 +189,11 @@ export default function StoragePage() {
               className="cursor-pointer"
               onClick={() => router.push(`/storage/${bucket.id}?project=${selectedProject}`)}
             >
-              <Card className="border border-[#1e2130] hover:border-blue-500 transition-colors" padding="md">
+              <Card className="border border-[var(--rail)] hover:border-[var(--accent)] transition-colors" padding="md">
                 <div className="flex items-center justify-between">
                   <div>
-                    <h3 className="text-sm font-semibold text-slate-200">{bucket.name}</h3>
-                    <p className="text-xs text-slate-500 mt-0.5">
+                    <h3 className="text-sm font-semibold text-[var(--text)]">{bucket.name}</h3>
+                    <p className="text-xs text-[var(--text-muted)] mt-0.5">
                       {(() => {
                         const p = PROVIDERS.find(x => x.value === bucket.provider);
                         return (
@@ -207,8 +207,8 @@ export default function StoragePage() {
                   </div>
                   <span className={`text-xs px-2 py-0.5 rounded-full border ${
                     bucket.status === 'active'
-                      ? 'bg-emerald-900/20 border-emerald-800 text-emerald-400'
-                      : 'bg-[#1e2130] border-[#1e2130] text-slate-400'
+                      ? 'bg-[var(--success)]/10 border-[var(--success)]/30 text-[var(--success)]'
+                      : 'bg-[var(--rail)] border-[var(--rail)] text-[var(--text-muted)]'
                   }`}>
                     {bucket.status}
                   </span>

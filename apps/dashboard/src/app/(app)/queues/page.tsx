@@ -91,8 +91,8 @@ export default function QueuesPage() {
     <div>
       <div className="flex items-center justify-between mb-6">
         <div>
-          <h1 className="text-xl font-bold text-slate-200 mb-1">Queues</h1>
-          <p className="text-sm text-slate-500">
+          <h1 className="text-xl font-bold text-[var(--text)] mb-1">Queues</h1>
+          <p className="text-sm text-[var(--text-muted)]">
             {queues.length} queue{queues.length !== 1 ? 's' : ''}
           </p>
         </div>
@@ -104,11 +104,11 @@ export default function QueuesPage() {
       <div className="mb-6">
         {!shellProjectId && (
           <>
-            <label className="block text-xs text-slate-400 mb-1">Project</label>
+            <label className="block text-xs text-[var(--text-muted)] mb-1">Project</label>
             <select
               value={pickedProjectId}
               onChange={e => setPickedProjectId(e.target.value)}
-              className="bg-[#080a0d] border border-[#1e2130] text-slate-200 rounded-lg px-3 py-2 text-sm min-w-52"
+              className="bg-[var(--surface-2)] border border-[var(--rail)] text-[var(--text)] rounded-lg px-3 py-2 text-sm min-w-52"
             >
               {projects.map(p => (
                 <option key={p.id} value={p.id}>{p.name}</option>
@@ -119,7 +119,7 @@ export default function QueuesPage() {
       </div>
 
       {error && (
-        <p className="text-red-400 mb-4 text-sm">{error}</p>
+        <p className="text-[var(--danger)] mb-4 text-sm">{error}</p>
       )}
 
       {loadingQueues ? (
@@ -127,7 +127,7 @@ export default function QueuesPage() {
           <Spinner size="lg" />
         </div>
       ) : queues.length === 0 ? (
-        <Card className="border border-[#1e2130]">
+        <Card className="border border-[var(--rail)]">
           <EmptyState
             title="No queues"
             description="Create a queue to start managing message streams."
@@ -139,49 +139,49 @@ export default function QueuesPage() {
           />
         </Card>
       ) : (
-        <Card className="border border-[#1e2130] overflow-hidden">
+        <Card className="border border-[var(--rail)] overflow-hidden">
           <table className="w-full text-sm">
             <thead>
-              <tr className="border-b border-[#1e2130]">
-                <th className="text-left text-xs text-slate-500 font-medium px-4 py-3">Name</th>
-                <th className="text-left text-xs text-slate-500 font-medium px-4 py-3">Type</th>
-                <th className="text-left text-xs text-slate-500 font-medium px-4 py-3">Status</th>
-                <th className="text-left text-xs text-slate-500 font-medium px-4 py-3">Created</th>
-                <th className="text-left text-xs text-slate-500 font-medium px-4 py-3">Actions</th>
+              <tr className="border-b border-[var(--rail)]">
+                <th className="text-left text-xs text-[var(--text-muted)] font-medium px-4 py-3">Name</th>
+                <th className="text-left text-xs text-[var(--text-muted)] font-medium px-4 py-3">Type</th>
+                <th className="text-left text-xs text-[var(--text-muted)] font-medium px-4 py-3">Status</th>
+                <th className="text-left text-xs text-[var(--text-muted)] font-medium px-4 py-3">Created</th>
+                <th className="text-left text-xs text-[var(--text-muted)] font-medium px-4 py-3">Actions</th>
               </tr>
             </thead>
             <tbody>
               {queues.map(queue => (
                 <tr
                   key={queue.id}
-                  className="border-b border-[#1e2130] last:border-0 hover:bg-[#1e2130]/30 cursor-pointer"
+                  className="border-b border-[var(--rail)] last:border-0 hover:bg-[var(--rail)]/30 cursor-pointer"
                   onClick={() => router.push(`/queues/${queue.id}?project=${selectedProjectId}`)}
                 >
                   <td className="px-4 py-3">
-                    <span className="font-medium text-slate-200">{queue.name}</span>
+                    <span className="font-medium text-[var(--text)]">{queue.name}</span>
                   </td>
                   <td className="px-4 py-3">
-                    <span className="text-xs px-2 py-0.5 rounded bg-[#1e2130] text-slate-400 border border-[#1e2130]">
+                    <span className="text-xs px-2 py-0.5 rounded bg-[var(--rail)] text-[var(--text-muted)] border border-[var(--rail)]">
                       {queue.type}
                     </span>
                   </td>
                   <td className="px-4 py-3">
                     <span className={`text-xs px-2 py-0.5 rounded ${
                       queue.status === 'active'
-                        ? 'bg-emerald-500/10 text-emerald-400'
-                        : 'bg-slate-700 text-slate-400'
+                        ? 'bg-[var(--success)]/10 text-[var(--success)]'
+                        : 'bg-[var(--rail)] text-[var(--text-muted)]'
                     }`}>
                       {queue.status}
                     </span>
                   </td>
-                  <td className="px-4 py-3 text-slate-500 text-xs">
+                  <td className="px-4 py-3 text-[var(--text-muted)] text-xs">
                     {new Date(queue.createdAt).toLocaleDateString()}
                   </td>
                   <td className="px-4 py-3" onClick={e => e.stopPropagation()}>
                     <div className="flex items-center gap-2">
                       <button
                         onClick={() => router.push(`/queues/${queue.id}?project=${selectedProjectId}`)}
-                        className="text-xs text-slate-400 hover:text-slate-200 bg-none border-none cursor-pointer p-0"
+                        className="text-xs text-[var(--text-muted)] hover:text-[var(--text)] bg-none border-none cursor-pointer p-0"
                       >
                         View
                       </button>
@@ -198,20 +198,20 @@ export default function QueuesPage() {
         <form onSubmit={handleCreate} noValidate>
           <div className="space-y-4">
             <div>
-              <label className="block text-xs text-slate-400 mb-1">Queue name</label>
+              <label className="block text-xs text-[var(--text-muted)] mb-1">Queue name</label>
               <Input
                 value={newName}
                 onChange={e => setNewName(e.target.value)}
                 placeholder="my-queue"
-                className="bg-[#080a0d] border border-[#1e2130] text-slate-200 placeholder:text-slate-600 w-full"
+                className="bg-[var(--surface-2)] border border-[var(--rail)] text-[var(--text)] placeholder:text-[var(--text-dim)] w-full"
               />
             </div>
             <div>
-              <label className="block text-xs text-slate-400 mb-1">Type</label>
+              <label className="block text-xs text-[var(--text-muted)] mb-1">Type</label>
               <select
                 value={newType}
                 onChange={e => setNewType(e.target.value)}
-                className="bg-[#080a0d] border border-[#1e2130] text-slate-200 rounded-lg px-3 py-2 text-sm w-full"
+                className="bg-[var(--surface-2)] border border-[var(--rail)] text-[var(--text)] rounded-lg px-3 py-2 text-sm w-full"
               >
                 <option value="redis">Redis</option>
                 <option value="nats">NATS</option>
@@ -219,7 +219,7 @@ export default function QueuesPage() {
               </select>
             </div>
             {createError && (
-              <p className="text-red-400 text-xs">{createError}</p>
+              <p className="text-[var(--danger)] text-xs">{createError}</p>
             )}
             <div className="flex justify-end gap-3 pt-2">
               <Button variant="ghost" size="sm" type="button" onClick={() => setShowCreate(false)}>

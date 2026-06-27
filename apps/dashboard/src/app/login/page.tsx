@@ -100,8 +100,8 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-[#080a0d] p-4">
-      <Card padding="lg" className="w-full max-w-md border border-[#1e2130]">
+    <div className="min-h-screen flex items-center justify-center bg-[var(--surface-2)] p-4">
+      <Card padding="lg" className="w-full max-w-md border border-[var(--rail)]">
         {/* Logo + wordmark */}
         <div className="mb-8 text-center">
           <Image
@@ -111,8 +111,8 @@ export default function LoginPage() {
             height={72}
             className="mx-auto mb-3 rounded-xl"
           />
-          <p className="text-sm font-bold tracking-widest text-orange-500 uppercase">fidscript deploy</p>
-          <p className="text-xs text-slate-500 mt-0.5">by NextMavens</p>
+          <p className="text-sm font-bold tracking-widest text-[var(--warning)] uppercase">fidscript deploy</p>
+          <p className="text-xs text-[var(--text-muted)] mt-0.5">by NextMavens</p>
         </div>
 
         {/* ── Email + method selector — always visible ── */}
@@ -126,19 +126,19 @@ export default function LoginPage() {
               onBlur={handleEmailBlur}
               placeholder="you@example.com"
               autoComplete="email"
-              className="bg-[#080a0d] border border-[#1e2130] text-slate-200 placeholder:text-slate-600"
+              className="bg-[var(--surface-2)] border border-[var(--rail)] text-[var(--text)] placeholder:text-[var(--text-dim)]"
             />
           </div>
 
           {/* Method tabs — explicit, always clickable. Auto-detect just pre-selects. */}
-          <div className="flex border-b border-[#1e2130]">
+          <div className="flex border-b border-[var(--rail)]">
             <button
               type="button"
               onClick={() => { setAuthMethod('PASSWORD'); setValidationError(''); setMagicError(''); setStep('email'); }}
               className={`flex-1 py-2 text-xs uppercase tracking-wider transition-colors border-b-2 ${
                 authMethod === 'PASSWORD'
-                  ? 'border-blue-500 text-slate-200'
-                  : 'border-transparent text-slate-500 hover:text-slate-300'
+                  ? 'border-[var(--accent)] text-[var(--text)]'
+                  : 'border-transparent text-[var(--text-muted)] hover:text-[var(--text-muted)]'
               }`}
             >
               <HugeiconsIcon icon={LockPasswordIcon} size={14} className="inline mr-1" />
@@ -149,8 +149,8 @@ export default function LoginPage() {
               onClick={() => { setAuthMethod('MAGIC_CODE'); setValidationError(''); setPassword(''); }}
               className={`flex-1 py-2 text-xs uppercase tracking-wider transition-colors border-b-2 ${
                 authMethod === 'MAGIC_CODE'
-                  ? 'border-orange-500 text-slate-200'
-                  : 'border-transparent text-slate-500 hover:text-slate-300'
+                  ? 'border-[var(--warning)] text-[var(--text)]'
+                  : 'border-transparent text-[var(--text-muted)] hover:text-[var(--text-muted)]'
               }`}
             >
               <HugeiconsIcon icon={Mail01Icon} size={14} className="inline mr-1" />
@@ -169,12 +169,12 @@ export default function LoginPage() {
                   onChange={e => { setPassword(e.target.value); setValidationError(''); }}
                   placeholder="Enter your password"
                   autoComplete="current-password"
-                  className="bg-[#080a0d] border border-[#1e2130] text-slate-200 placeholder:text-slate-600"
+                  className="bg-[var(--surface-2)] border border-[var(--rail)] text-[var(--text)] placeholder:text-[var(--text-dim)]"
                 />
               </div>
 
               {(validationError || error) && (
-                <p className="text-sm text-red-400" role="alert">{validationError || error}</p>
+                <p className="text-sm text-[var(--danger)]" role="alert">{validationError || error}</p>
               )}
 
               <Button
@@ -191,7 +191,7 @@ export default function LoginPage() {
               {step === 'email' ? (
                 <>
                   {(validationError || error) && (
-                    <p className="text-sm text-red-400" role="alert">{validationError || error}</p>
+                    <p className="text-sm text-[var(--danger)]" role="alert">{validationError || error}</p>
                   )}
                   <Button
                     type="button"
@@ -206,8 +206,8 @@ export default function LoginPage() {
               ) : (
                 <>
                   <div className="text-center space-y-1">
-                    <p className="text-sm text-slate-400">Check your inbox</p>
-                    <p className="text-sm text-slate-300 font-medium">{maskedEmail}</p>
+                    <p className="text-sm text-[var(--text-muted)]">Check your inbox</p>
+                    <p className="text-sm text-[var(--text-muted)] font-medium">{maskedEmail}</p>
                   </div>
                   <MagicCodeInput
                     onComplete={handleCodeComplete}
@@ -215,7 +215,7 @@ export default function LoginPage() {
                     error={!!magicError}
                   />
                   {magicError && (
-                    <p className="text-sm text-red-400 text-center" role="alert">{magicError}</p>
+                    <p className="text-sm text-[var(--danger)] text-center" role="alert">{magicError}</p>
                   )}
                   {code && !magicError && (
                     <p className="text-sm text-green-400 text-center">Verifying…</p>
@@ -224,13 +224,13 @@ export default function LoginPage() {
                     <button
                       type="button"
                       onClick={() => { setStep('email'); setCode(''); setMagicError(''); }}
-                      className="text-xs text-slate-500 hover:text-slate-300"
+                      className="text-xs text-[var(--text-muted)] hover:text-[var(--text-muted)]"
                     >
                       Use different email
                     </button>
                   </div>
                   {countdown > 0 && (
-                    <p className="text-center text-xs text-slate-500">
+                    <p className="text-center text-xs text-[var(--text-muted)]">
                       Resend in {countdown}s
                     </p>
                   )}
@@ -238,7 +238,7 @@ export default function LoginPage() {
                     <button
                       type="button"
                       onClick={handleSendCode}
-                      className="text-xs text-blue-500 hover:text-blue-400 text-center"
+                      className="text-xs text-[var(--accent)] hover:text-[var(--accent)] text-center"
                     >
                       Resend code
                     </button>
@@ -248,9 +248,9 @@ export default function LoginPage() {
             </div>
           )}
 
-          <p className="text-center text-xs text-slate-500">
+          <p className="text-center text-xs text-[var(--text-muted)]">
             No account?{' '}
-            <a href="/register" className="text-blue-500 hover:text-blue-400">
+            <a href="/register" className="text-[var(--accent)] hover:text-[var(--accent)]">
               Register
             </a>
           </p>

@@ -25,7 +25,9 @@ import { AuthModule } from './modules/auth';
 import { ProjectsModule } from './modules/projects';
 import { DeploymentsModule } from './modules/deployments';
 import { StorageModule } from './modules/storage';
-import { DatabasesModule } from './modules/databases';
+import { DatabasesModule, DatabaseProvider } from './modules/databases';
+export { DatabaseProvider };
+export type { Database, TableInfo, ColumnInfo, RealtimeEvent, MigrationRecord, DataResult, Op, LiveQueryResult } from './modules/databases';
 import { DomainsModule } from './modules/domains';
 import { EmailModule, AdminMailboxModule, AdminAttachmentConfigModule, PlatformMailboxMessage, PlatformMailboxSummary, PlatformMailboxesResponse, CreatePlatformMailboxResponse, ListPlatformMessagesResponse, AdminSendMailResponse, AdminAttachmentConfig, StorageBackend, MailboxMessage } from './modules/email';
 import { FunctionsModule } from './modules/functions';
@@ -55,6 +57,8 @@ export interface FidscriptSDK {
   deployments: DeploymentsModule;
   storage: StorageModule;
   databases: DatabasesModule;
+  /** Convenience: returns a DatabaseProvider for the given database id. */
+  database(databaseId: string): DatabaseProvider;
   domains: DomainsModule;
   email: EmailModule;
   functions: FunctionsModule;
@@ -72,6 +76,7 @@ export function createFidscript(options: {
   baseURL: string;
   timeout?: number;
   maxRetries?: number;
+  onUnauthorized?: () => Promise<string | null>;
 }): FidscriptSDK {
   const client = new FidscriptClient(options);
   return {
@@ -80,6 +85,7 @@ export function createFidscript(options: {
     deployments: new DeploymentsModule(client),
     storage: new StorageModule(client),
     databases: new DatabasesModule(client),
+    database: (id: string) => new DatabasesModule(client).database(id),
     domains: new DomainsModule(client),
     email: new EmailModule(client),
     functions: new FunctionsModule(client),

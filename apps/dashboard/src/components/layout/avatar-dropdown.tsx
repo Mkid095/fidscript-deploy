@@ -17,19 +17,19 @@ function getInitials(name?: string, email?: string): string {
 function getAvatarColor(name?: string): string {
   // Pick a deterministic warm color from the user's name
   const colors = [
-    'bg-orange-600',
-    'bg-amber-600',
-    'bg-red-600',
-    'bg-rose-600',
-    'bg-pink-600',
-    'bg-fuchsia-600',
-    'bg-purple-600',
-    'bg-violet-600',
-    'bg-indigo-600',
-    'bg-blue-600',
-    'bg-cyan-600',
-    'bg-teal-600',
-    'bg-emerald-600',
+    'bg-[var(--warning)]',
+    'bg-[var(--warning)]',
+    'bg-[var(--danger)]',
+    'bg-[var(--danger)]',
+    'bg-[var(--brand)]',
+    'bg-[var(--brand)]',
+    'bg-[var(--brand)]',
+    'bg-[var(--accent)]',
+    'bg-[var(--accent)]',
+    'bg-[var(--accent-dim)]',
+    'bg-[var(--info)]',
+    'bg-[var(--success)]',
+    'bg-[var(--success)]',
   ];
   const idx = (name ?? 'x').charCodeAt(0) % colors.length;
   return colors[idx];
@@ -70,23 +70,23 @@ export function AvatarDropdown() {
       <button
         type="button"
         onClick={() => setOpen(v => !v)}
-        className="flex items-center gap-2 pl-2 pr-3 py-1.5 rounded-full bg-[#1e2130] border border-[#2a2d3a] hover:border-[#3a3d4a] transition-colors cursor-pointer"
+        className="flex items-center gap-2 pl-2 pr-3 py-1.5 rounded-full bg-[var(--rail)] border border-[var(--rail-light)] hover:border-[#3a3d4a] transition-colors cursor-pointer"
         aria-label="Account menu"
         aria-expanded={open}
         aria-haspopup="menu"
       >
         <div
-          className={`w-7 h-7 rounded-full ${color} text-white text-xs font-semibold flex items-center justify-center flex-shrink-0`}
+          className={`w-7 h-7 rounded-full ${color} text-[var(--text)] text-xs font-semibold flex items-center justify-center flex-shrink-0`}
         >
           {initials}
         </div>
-        <span className="hidden md:inline text-xs text-slate-300 max-w-[140px] truncate">
+        <span className="hidden md:inline text-xs text-[var(--text-muted)] max-w-[140px] truncate">
           {user.name || user.email}
         </span>
         <HugeiconsIcon
           icon={ChevronDownIcon}
           size={12}
-          className={`hidden md:block text-slate-500 transition-transform duration-150 ${open ? 'rotate-180' : ''}`}
+          className={`hidden md:block text-[var(--text-muted)] transition-transform duration-150 ${open ? 'rotate-180' : ''}`}
         />
       </button>
 
@@ -94,12 +94,12 @@ export function AvatarDropdown() {
       {open && (
         <div
           role="menu"
-          className="absolute right-0 top-full mt-2 w-56 bg-[#0f1217] border border-[#1e2130] rounded-xl shadow-xl shadow-black/40 z-50 py-1 animate-in fade-in slide-in-from-top-2 duration-150"
+          className="absolute right-0 top-full mt-2 w-56 bg-[var(--surface-2)] border border-[var(--rail)] rounded-xl shadow-xl shadow-black/40 z-50 py-1 animate-in fade-in slide-in-from-top-2 duration-150"
         >
           {/* User info */}
-          <div className="px-4 py-3 border-b border-[#1e2130]">
-            <p className="text-sm font-medium text-slate-200 truncate">{user.name || 'Your account'}</p>
-            <p className="text-xs text-slate-500 truncate mt-0.5">{user.email}</p>
+          <div className="px-4 py-3 border-b border-[var(--rail)]">
+            <p className="text-sm font-medium text-[var(--text)] truncate">{user.name || 'Your account'}</p>
+            <p className="text-xs text-[var(--text-muted)] truncate mt-0.5">{user.email}</p>
           </div>
 
           {/* Menu items */}
@@ -108,9 +108,9 @@ export function AvatarDropdown() {
               href="/settings"
               role="menuitem"
               onClick={() => setOpen(false)}
-              className="flex items-center gap-3 w-full px-4 py-2 text-sm text-slate-300 hover:bg-[#1e2130] hover:text-slate-100 transition-colors cursor-pointer"
+              className="flex items-center gap-3 w-full px-4 py-2 text-sm text-[var(--text-muted)] hover:bg-[var(--rail)] hover:text-[var(--text)] transition-colors cursor-pointer"
             >
-              <HugeiconsIcon icon={Settings02Icon} size={15} className="text-slate-500" />
+              <HugeiconsIcon icon={Settings02Icon} size={15} className="text-[var(--text-muted)]" />
               Account settings
             </Link>
 
@@ -122,9 +122,9 @@ export function AvatarDropdown() {
                 await logout();
                 router.push('/login');
               }}
-              className="flex items-center gap-3 w-full px-4 py-2 text-sm text-red-400 hover:bg-[#1e2130] hover:text-red-300 transition-colors cursor-pointer"
+              className="flex items-center gap-3 w-full px-4 py-2 text-sm text-[var(--danger)] hover:bg-[var(--rail)] hover:text-[var(--danger)] transition-colors cursor-pointer"
             >
-              <HugeiconsIcon icon={Logout01Icon} size={15} className="text-red-500" />
+              <HugeiconsIcon icon={Logout01Icon} size={15} className="text-[var(--danger)]" />
               Sign out
             </button>
           </div>

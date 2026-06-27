@@ -113,16 +113,16 @@ export default function BucketDetailPage({ params }: PageProps) {
   return (
     <div>
       {/* Breadcrumb */}
-      <div className="flex items-center gap-2 text-sm text-slate-500 mb-6">
-        <Link href="/storage" className="hover:text-slate-300">Storage</Link>
+      <div className="flex items-center gap-2 text-sm text-[var(--text-muted)] mb-6">
+        <Link href="/storage" className="hover:text-[var(--text-muted)]">Storage</Link>
         <span>&rsaquo;</span>
-        <span className="text-slate-200">{bucketId}</span>
+        <span className="text-[var(--text)]">{bucketId}</span>
       </div>
 
       <div className="flex items-center justify-between mb-6">
         <div>
-          <h1 className="text-xl font-bold text-slate-200 mb-1">{bucketId}</h1>
-          <p className="text-sm text-slate-500">
+          <h1 className="text-xl font-bold text-[var(--text)] mb-1">{bucketId}</h1>
+          <p className="text-sm text-[var(--text-muted)]">
             {files.length} object{files.length !== 1 ? 's' : ''}
           </p>
         </div>
@@ -146,7 +146,7 @@ export default function BucketDetailPage({ params }: PageProps) {
       </div>
 
       {error && (
-        <p className="text-red-400 mb-4 text-sm">{error}</p>
+        <p className="text-[var(--danger)] mb-4 text-sm">{error}</p>
       )}
 
       {loading ? (
@@ -159,27 +159,27 @@ export default function BucketDetailPage({ params }: PageProps) {
           description="Upload your first file to get started."
         />
       ) : (
-        <Card className="border border-[#1e2130]" padding="none">
+        <Card className="border border-[var(--rail)]" padding="none">
           <table className="w-full text-sm">
             <thead>
-              <tr className="border-b border-[#1e2130]">
-                <th className="text-left text-xs text-slate-500 font-medium px-4 py-3">Name</th>
-                <th className="text-left text-xs text-slate-500 font-medium px-4 py-3 hidden md:table-cell">Size</th>
-                <th className="text-left text-xs text-slate-500 font-medium px-4 py-3 hidden lg:table-cell">Modified</th>
-                <th className="text-right text-xs text-slate-500 font-medium px-4 py-3">Actions</th>
+              <tr className="border-b border-[var(--rail)]">
+                <th className="text-left text-xs text-[var(--text-muted)] font-medium px-4 py-3">Name</th>
+                <th className="text-left text-xs text-[var(--text-muted)] font-medium px-4 py-3 hidden md:table-cell">Size</th>
+                <th className="text-left text-xs text-[var(--text-muted)] font-medium px-4 py-3 hidden lg:table-cell">Modified</th>
+                <th className="text-right text-xs text-[var(--text-muted)] font-medium px-4 py-3">Actions</th>
               </tr>
             </thead>
             <tbody>
               {files.map(file => (
-                <tr key={file.id} className="border-b border-[#1e2130] last:border-0 hover:bg-[#1e2130]/30">
+                <tr key={file.id} className="border-b border-[var(--rail)] last:border-0 hover:bg-[var(--rail)]/30">
                   <td className="px-4 py-3">
-                    <span className="text-slate-200 font-medium">{file.originalName ?? file.key}</span>
-                    <p className="text-xs text-slate-500 md:hidden">{formatBytes(file.sizeBytes)}</p>
+                    <span className="text-[var(--text)] font-medium">{file.originalName ?? file.key}</span>
+                    <p className="text-xs text-[var(--text-muted)] md:hidden">{formatBytes(file.sizeBytes)}</p>
                   </td>
-                  <td className="px-4 py-3 text-slate-400 hidden md:table-cell">
+                  <td className="px-4 py-3 text-[var(--text-muted)] hidden md:table-cell">
                     {formatBytes(file.sizeBytes)}
                   </td>
-                  <td className="px-4 py-3 text-slate-400 hidden lg:table-cell">
+                  <td className="px-4 py-3 text-[var(--text-muted)] hidden lg:table-cell">
                     {new Date(file.createdAt).toLocaleString()}
                   </td>
                   <td className="px-4 py-3 text-right">

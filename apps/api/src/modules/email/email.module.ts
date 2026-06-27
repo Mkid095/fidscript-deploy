@@ -1,6 +1,7 @@
 import { Module, forwardRef } from '@nestjs/common';
 import { AuthModule } from '@/modules/auth/auth.module';
 import { ProjectsModule } from '@/modules/projects/projects.module';
+import { RealtimeModule } from '@/modules/realtime/realtime.module';
 import { EmailDomainController } from './controllers/email-domain.controller';
 import { EmailMailboxController } from './controllers/email-mailbox.controller';
 import { EmailAliasController } from './controllers/email-alias.controller';
@@ -45,6 +46,7 @@ import { PlatformMailboxMessageService } from './services/platform-mailbox-messa
 import { AttachmentConfigService } from './services/attachment-config.service';
 import { AttachmentStorageService } from './services/attachment-storage.service';
 import { EmailAttachmentListener } from './services/attachment-event-listener.service';
+import { EmailSyncService } from './services/email-sync.service';
 
 @Module({
   // AuthModule: provides JwtService + ApiKeyOrJwtGuard (for BaaS email.send
@@ -58,6 +60,7 @@ import { EmailAttachmentListener } from './services/attachment-event-listener.se
     forwardRef(() => StorageModule),
     forwardRef(() => AuthModule),
     ProjectsModule,
+    RealtimeModule,
   ],
   controllers: [
     EmailDomainController,
@@ -110,6 +113,7 @@ import { EmailAttachmentListener } from './services/attachment-event-listener.se
     AttachmentConfigService,
     AttachmentStorageService,
     EmailAttachmentListener,
+    EmailSyncService,
   ],
   exports: [
     EmailDomainService,
@@ -139,6 +143,7 @@ import { EmailAttachmentListener } from './services/attachment-event-listener.se
     PlatformMailboxMessageService,
     AttachmentConfigService,
     AttachmentStorageService,
+    EmailSyncService,
   ],
 })
 export class EmailModule {}

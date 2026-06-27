@@ -1,20 +1,11 @@
 'use client';
+/* eslint-disable import/order */
 
 import { useEffect, useState, useCallback, use } from 'react';
 import Link from 'next/link';
 import { Card, Button, Spinner, Toast } from '@fidscript/ui';
-
+import type { Database } from '@fidscript/sdk';
 import { useAuth } from '@/contexts/auth-context';
-
-interface Database {
-  id: string;
-  name: string;
-  type: 'postgres' | 'redis';
-  status: string;
-  connectionString?: string;
-  ownerId: string;
-  createdAt: string;
-}
 
 interface DatabaseBackup {
   id: string;
@@ -189,12 +180,12 @@ export default function DatabaseDetailPage({ params }: PageProps) {
   if (error || !db) {
     return (
       <div>
-        <div className="flex items-center gap-2 text-sm text-slate-500 mb-6">
-          <Link href="/databases" className="hover:text-slate-300">Databases</Link>
+        <div className="flex items-center gap-2 text-sm text-[var(--text-muted)] mb-6">
+          <Link href="/databases" className="hover:text-[var(--text-muted)]">Databases</Link>
           <span>&rsaquo;</span>
-          <span className="text-red-400">{error ?? 'Not found'}</span>
+          <span className="text-[var(--danger)]">{error ?? 'Not found'}</span>
         </div>
-        <p className="text-red-400">{error ?? 'Database not found'}</p>
+        <p className="text-[var(--danger)]">{error ?? 'Database not found'}</p>
       </div>
     );
   }
@@ -204,29 +195,29 @@ export default function DatabaseDetailPage({ params }: PageProps) {
   return (
     <div>
       {/* Breadcrumb */}
-      <div className="flex items-center gap-2 text-sm text-slate-500 mb-6">
-        <Link href="/databases" className="hover:text-slate-300">Databases</Link>
+      <div className="flex items-center gap-2 text-sm text-[var(--text-muted)] mb-6">
+        <Link href="/databases" className="hover:text-[var(--text-muted)]">Databases</Link>
         <span>&rsaquo;</span>
-        <span className="text-slate-200">{db.name}</span>
+        <span className="text-[var(--text)]">{db.name}</span>
       </div>
 
       <div className="flex items-center justify-between mb-6">
         <div>
-          <h1 className="text-xl font-bold text-slate-200 mb-1">{db.name}</h1>
-          <p className="text-sm text-slate-500">Type: {db.type} &middot; Status: {db.status}</p>
+          <h1 className="text-xl font-bold text-[var(--text)] mb-1">{db.name}</h1>
+          <p className="text-sm text-[var(--text-muted)]">Type: {db.type} &middot; Status: {db.status}</p>
         </div>
       </div>
 
       {/* Tabs */}
-      <div className="flex gap-1 border-b border-[#1e2130] mb-6">
+      <div className="flex gap-1 border-b border-[var(--rail)] mb-6">
         {(['overview', 'backups', 'connection', 'versions', 'settings'] as Tab[]).map(tab => (
           <button
             key={tab}
             onClick={() => setActiveTab(tab)}
             className={`px-4 py-2 text-sm capitalize transition-colors ${
               activeTab === tab
-                ? 'text-blue-400 border-b-2 border-blue-400'
-                : 'text-slate-500 hover:text-slate-300'
+                ? 'text-[var(--accent)] border-b-2 border-blue-400'
+                : 'text-[var(--text-muted)] hover:text-[var(--text-muted)]'
             }`}
           >
             {tab}
@@ -237,24 +228,24 @@ export default function DatabaseDetailPage({ params }: PageProps) {
       {/* Overview Tab */}
       {activeTab === 'overview' && (
         <div className="space-y-6">
-          <Card className="border border-[#1e2130]" padding="lg">
-            <h2 className="text-sm font-semibold text-slate-200 mb-3">Environment Variable</h2>
+          <Card className="border border-[var(--rail)]" padding="lg">
+            <h2 className="text-sm font-semibold text-[var(--text)] mb-3">Environment Variable</h2>
             <div className="flex items-start gap-3 bg-blue-900/20 border border-blue-800/30 rounded-lg px-4 py-3 text-sm">
-              <span className="text-blue-400 mt-0.5 shrink-0">ℹ</span>
-              <p className="text-slate-300">
-                Use <code className="text-blue-300 font-mono bg-[#080a0d] px-1.5 py-0.5 rounded">DATABASE_URL</code>{' '}
+              <span className="text-[var(--accent)] mt-0.5 shrink-0">ℹ</span>
+              <p className="text-[var(--text-muted)]">
+                Use <code className="text-[var(--accent)] font-mono bg-[var(--surface-2)] px-1.5 py-0.5 rounded">DATABASE_URL</code>{' '}
                 in your deployment env vars — the platform injects this automatically.
               </p>
             </div>
           </Card>
 
-          <Card className="border border-[#1e2130]" padding="lg">
-            <h2 className="text-sm font-semibold text-slate-200 mb-4">Connection</h2>
+          <Card className="border border-[var(--rail)]" padding="lg">
+            <h2 className="text-sm font-semibold text-[var(--text)] mb-4">Connection</h2>
             <div className="space-y-4">
               <div>
-                <label className="block text-xs text-slate-500 mb-1">Connection string</label>
+                <label className="block text-xs text-[var(--text-muted)] mb-1">Connection string</label>
                 <div className="flex items-center gap-2">
-                  <code className="flex-1 text-sm text-slate-300 bg-[#080a0d] border border-[#1e2130] rounded px-3 py-2 font-mono truncate">
+                  <code className="flex-1 text-sm text-[var(--text-muted)] bg-[var(--surface-2)] border border-[var(--rail)] rounded px-3 py-2 font-mono truncate">
                     {showPassword && db.connectionString ? db.connectionString : maskedConnStr}
                   </code>
                   <Button
@@ -290,28 +281,28 @@ export default function DatabaseDetailPage({ params }: PageProps) {
       {activeTab === 'backups' && (
         <div>
           {backups.length === 0 ? (
-            <Card className="border border-[#1e2130]" padding="lg">
-              <p className="text-sm text-slate-500 text-center">No backups available yet.</p>
+            <Card className="border border-[var(--rail)]" padding="lg">
+              <p className="text-sm text-[var(--text-muted)] text-center">No backups available yet.</p>
             </Card>
           ) : (
-            <Card className="border border-[#1e2130]" padding="none">
+            <Card className="border border-[var(--rail)]" padding="none">
               <table className="w-full text-sm">
                 <thead>
-                  <tr className="border-b border-[#1e2130]">
-                    <th className="text-left text-xs text-slate-500 font-medium px-4 py-3">ID</th>
-                    <th className="text-left text-xs text-slate-500 font-medium px-4 py-3 hidden md:table-cell">Size</th>
-                    <th className="text-left text-xs text-slate-500 font-medium px-4 py-3 hidden lg:table-cell">Created</th>
-                    <th className="text-right text-xs text-slate-500 font-medium px-4 py-3">Actions</th>
+                  <tr className="border-b border-[var(--rail)]">
+                    <th className="text-left text-xs text-[var(--text-muted)] font-medium px-4 py-3">ID</th>
+                    <th className="text-left text-xs text-[var(--text-muted)] font-medium px-4 py-3 hidden md:table-cell">Size</th>
+                    <th className="text-left text-xs text-[var(--text-muted)] font-medium px-4 py-3 hidden lg:table-cell">Created</th>
+                    <th className="text-right text-xs text-[var(--text-muted)] font-medium px-4 py-3">Actions</th>
                   </tr>
                 </thead>
                 <tbody>
                   {backups.map(backup => (
-                    <tr key={backup.id} className="border-b border-[#1e2130] last:border-0">
-                      <td className="px-4 py-3 text-slate-200 font-mono text-xs">{backup.id}</td>
-                      <td className="px-4 py-3 text-slate-400 hidden md:table-cell">
+                    <tr key={backup.id} className="border-b border-[var(--rail)] last:border-0">
+                      <td className="px-4 py-3 text-[var(--text)] font-mono text-xs">{backup.id}</td>
+                      <td className="px-4 py-3 text-[var(--text-muted)] hidden md:table-cell">
                         {formatBytes(backup.sizeBytes)}
                       </td>
-                      <td className="px-4 py-3 text-slate-400 hidden lg:table-cell">
+                      <td className="px-4 py-3 text-[var(--text-muted)] hidden lg:table-cell">
                         {new Date(backup.createdAt).toLocaleString()}
                       </td>
                       <td className="px-4 py-3 text-right">
@@ -336,24 +327,24 @@ export default function DatabaseDetailPage({ params }: PageProps) {
       {/* Connection Tab */}
       {activeTab === 'connection' && (
         <div className="space-y-6">
-          <Card className="border border-[#1e2130]" padding="lg">
+          <Card className="border border-[var(--rail)]" padding="lg">
             <div className="flex items-center justify-between mb-4">
-              <h2 className="text-sm font-semibold text-slate-200">SSL Connection</h2>
-              <label className="flex items-center gap-2 text-sm text-slate-400 cursor-pointer">
+              <h2 className="text-sm font-semibold text-[var(--text)]">SSL Connection</h2>
+              <label className="flex items-center gap-2 text-sm text-[var(--text-muted)] cursor-pointer">
                 <input
                   type="checkbox"
                   checked={sslEnabled}
                   onChange={e => handleSslToggle(e.target.checked)}
-                  className="w-4 h-4 accent-blue-500"
+                  className="w-4 h-4 accent-[var(--accent)]"
                 />
                 SSL
               </label>
             </div>
             <div className="space-y-4">
               <div>
-                <label className="block text-xs text-slate-500 mb-1">Direct connection</label>
+                <label className="block text-xs text-[var(--text-muted)] mb-1">Direct connection</label>
                 <div className="flex items-center gap-2">
-                  <code className="flex-1 text-sm text-slate-300 bg-[#080a0d] border border-[#1e2130] rounded px-3 py-2 font-mono truncate">
+                  <code className="flex-1 text-sm text-[var(--text-muted)] bg-[var(--surface-2)] border border-[var(--rail)] rounded px-3 py-2 font-mono truncate">
                     {connectionInfo ? connectionInfo.connectionString : 'Loading...'}
                   </code>
                   <Button
@@ -369,9 +360,9 @@ export default function DatabaseDetailPage({ params }: PageProps) {
                 </div>
               </div>
               <div>
-                <label className="block text-xs text-slate-500 mb-1">Pooled (PgBouncer)</label>
+                <label className="block text-xs text-[var(--text-muted)] mb-1">Pooled (PgBouncer)</label>
                 <div className="flex items-center gap-2">
-                  <code className="flex-1 text-sm text-slate-300 bg-[#080a0d] border border-[#1e2130] rounded px-3 py-2 font-mono truncate">
+                  <code className="flex-1 text-sm text-[var(--text-muted)] bg-[var(--surface-2)] border border-[var(--rail)] rounded px-3 py-2 font-mono truncate">
                     {poolConnectionInfo ? poolConnectionInfo.connectionString : 'Click Load to fetch'}
                   </code>
                   <Button
@@ -400,24 +391,24 @@ export default function DatabaseDetailPage({ params }: PageProps) {
             </Button>
           </div>
           {backups.length === 0 ? (
-            <Card className="border border-[#1e2130]" padding="lg">
-              <p className="text-sm text-slate-500 text-center">No versions available yet.</p>
+            <Card className="border border-[var(--rail)]" padding="lg">
+              <p className="text-sm text-[var(--text-muted)] text-center">No versions available yet.</p>
             </Card>
           ) : (
             <div className="relative">
-              <div className="absolute left-5 top-0 bottom-0 w-px bg-[#1e2130]" />
+              <div className="absolute left-5 top-0 bottom-0 w-px bg-[var(--rail)]" />
               {backups.map((backup, i) => (
                 <div key={backup.id} className="relative flex gap-6 pb-6 last:pb-0">
-                  <div className="relative z-10 flex shrink-0 w-10 h-10 items-center justify-center rounded-full border border-[#1e2130] bg-[#080a0d]">
-                    <span className="text-xs text-slate-400">{i + 1}</span>
+                  <div className="relative z-10 flex shrink-0 w-10 h-10 items-center justify-center rounded-full border border-[var(--rail)] bg-[var(--surface-2)]">
+                    <span className="text-xs text-[var(--text-muted)]">{i + 1}</span>
                   </div>
-                  <Card className="flex-1 border border-[#1e2130]" padding="md">
+                  <Card className="flex-1 border border-[var(--rail)]" padding="md">
                     <div className="flex items-start justify-between">
                       <div>
-                        <p className="text-sm text-slate-200 font-medium">
+                        <p className="text-sm text-[var(--text)] font-medium">
                           Backup {formatBytes(backup.sizeBytes)}
                         </p>
-                        <p className="text-xs text-slate-500 mt-0.5">
+                        <p className="text-xs text-[var(--text-muted)] mt-0.5">
                           {new Date(backup.createdAt).toLocaleString()}
                         </p>
                       </div>
@@ -430,8 +421,8 @@ export default function DatabaseDetailPage({ params }: PageProps) {
                         Restore
                       </Button>
                     </div>
-                    <p className="text-xs text-slate-500 mt-2">
-                      ID: <span className="font-mono text-slate-400">{backup.id}</span>
+                    <p className="text-xs text-[var(--text-muted)] mt-2">
+                      ID: <span className="font-mono text-[var(--text-muted)]">{backup.id}</span>
                     </p>
                   </Card>
                 </div>
@@ -445,8 +436,8 @@ export default function DatabaseDetailPage({ params }: PageProps) {
       {activeTab === 'settings' && (
         <div className="space-y-6">
           <Card className="border border-red-900/30" padding="lg">
-            <h2 className="text-sm font-semibold text-red-400 mb-4">Danger Zone</h2>
-            <p className="text-sm text-slate-400 mb-4">
+            <h2 className="text-sm font-semibold text-[var(--danger)] mb-4">Danger Zone</h2>
+            <p className="text-sm text-[var(--text-muted)] mb-4">
               Permanently delete this database and all its data. This cannot be undone.
             </p>
             <Button

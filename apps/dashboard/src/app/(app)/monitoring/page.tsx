@@ -9,9 +9,9 @@ import { useShellProjectId } from '@/contexts/project-context';
 import type { Project, AlertRule, Alert, NotificationChannel } from '@/types';
 
 const SEVERITY_COLORS: Record<string, string> = {
-  warning: 'bg-amber-500/10 text-amber-400',
-  critical: 'bg-red-500/10 text-red-400',
-  info: 'bg-blue-500/10 text-blue-400',
+  warning: 'bg-[var(--warning)]/10 text-[var(--warning)]',
+  critical: 'bg-[var(--danger)]/10 text-[var(--danger)]',
+  info: 'bg-[var(--accent)]/10 text-[var(--accent)]',
 };
 
 export default function MonitoringPage() {
@@ -163,8 +163,8 @@ export default function MonitoringPage() {
     <div>
       <div className="flex items-center justify-between mb-6">
         <div>
-          <h1 className="text-xl font-bold text-slate-200 mb-1">Monitoring</h1>
-          <p className="text-sm text-slate-500">
+          <h1 className="text-xl font-bold text-[var(--text)] mb-1">Monitoring</h1>
+          <p className="text-sm text-[var(--text-muted)]">
             {rules.length} alert rule{rules.length !== 1 ? 's' : ''}
           </p>
         </div>
@@ -176,11 +176,11 @@ export default function MonitoringPage() {
       <div className="mb-6">
         {!shellProjectId && (
           <>
-            <label className="block text-xs text-slate-400 mb-1">Project</label>
+            <label className="block text-xs text-[var(--text-muted)] mb-1">Project</label>
             <select
               value={pickedProjectId}
               onChange={e => setPickedProjectId(e.target.value)}
-              className="bg-[#080a0d] border border-[#1e2130] text-slate-200 rounded-lg px-3 py-2 text-sm min-w-52"
+              className="bg-[var(--surface-2)] border border-[var(--rail)] text-[var(--text)] rounded-lg px-3 py-2 text-sm min-w-52"
             >
               {projects.map(p => (
                 <option key={p.id} value={p.id}>{p.name}</option>
@@ -191,7 +191,7 @@ export default function MonitoringPage() {
       </div>
 
       {error && (
-        <p className="text-red-400 mb-4 text-sm">{error}</p>
+        <p className="text-[var(--danger)] mb-4 text-sm">{error}</p>
       )}
 
       {loadingRules ? (
@@ -199,7 +199,7 @@ export default function MonitoringPage() {
           <Spinner size="lg" />
         </div>
       ) : rules.length === 0 ? (
-        <Card className="border border-[#1e2130]">
+        <Card className="border border-[var(--rail)]">
           <EmptyState
             title="No alert rules"
             description="Create an alert rule to get notified when metrics cross thresholds."
@@ -211,38 +211,38 @@ export default function MonitoringPage() {
           />
         </Card>
       ) : (
-        <Card className="border border-[#1e2130] overflow-hidden">
+        <Card className="border border-[var(--rail)] overflow-hidden">
           <table className="w-full text-sm">
             <thead>
-              <tr className="border-b border-[#1e2130]">
-                <th className="text-left text-xs text-slate-500 font-medium px-4 py-3">Name</th>
-                <th className="text-left text-xs text-slate-500 font-medium px-4 py-3">Metric</th>
-                <th className="text-left text-xs text-slate-500 font-medium px-4 py-3">Condition</th>
-                <th className="text-left text-xs text-slate-500 font-medium px-4 py-3">Severity</th>
-                <th className="text-left text-xs text-slate-500 font-medium px-4 py-3">Status</th>
-                <th className="text-left text-xs text-slate-500 font-medium px-4 py-3">Actions</th>
+              <tr className="border-b border-[var(--rail)]">
+                <th className="text-left text-xs text-[var(--text-muted)] font-medium px-4 py-3">Name</th>
+                <th className="text-left text-xs text-[var(--text-muted)] font-medium px-4 py-3">Metric</th>
+                <th className="text-left text-xs text-[var(--text-muted)] font-medium px-4 py-3">Condition</th>
+                <th className="text-left text-xs text-[var(--text-muted)] font-medium px-4 py-3">Severity</th>
+                <th className="text-left text-xs text-[var(--text-muted)] font-medium px-4 py-3">Status</th>
+                <th className="text-left text-xs text-[var(--text-muted)] font-medium px-4 py-3">Actions</th>
               </tr>
             </thead>
             <tbody>
               {rules.map(rule => (
                 <tr
                   key={rule.id}
-                  className="border-b border-[#1e2130] last:border-0 hover:bg-[#1e2130]/30 cursor-pointer"
+                  className="border-b border-[var(--rail)] last:border-0 hover:bg-[var(--rail)]/30 cursor-pointer"
                   onClick={() => router.push(`/monitoring/${rule.id}?project=${selectedProjectId}`)}
                 >
                   <td className="px-4 py-3">
-                    <span className="font-medium text-slate-200">{rule.name}</span>
+                    <span className="font-medium text-[var(--text)]">{rule.name}</span>
                   </td>
                   <td className="px-4 py-3">
-                    <span className="font-mono text-xs text-slate-400 bg-[#080a0d] px-2 py-0.5 rounded">
+                    <span className="font-mono text-xs text-[var(--text-muted)] bg-[var(--surface-2)] px-2 py-0.5 rounded">
                       {rule.metric}
                     </span>
                   </td>
-                  <td className="px-4 py-3 text-slate-400 text-xs">
+                  <td className="px-4 py-3 text-[var(--text-muted)] text-xs">
                     {rule.condition} {rule.threshold}
                   </td>
                   <td className="px-4 py-3">
-                    <span className={`text-xs px-2 py-0.5 rounded ${SEVERITY_COLORS[rule.severity] ?? 'bg-slate-700 text-slate-400'}`}>
+                    <span className={`text-xs px-2 py-0.5 rounded ${SEVERITY_COLORS[rule.severity] ?? 'bg-[var(--rail)] text-[var(--text-muted)]'}`}>
                       {rule.severity}
                     </span>
                   </td>
@@ -250,19 +250,19 @@ export default function MonitoringPage() {
                     {(() => {
                       const isFiring = alerts[rule.severity]?.status === 'firing';
                       if (isFiring) {
-                        return <span className="text-xs px-2 py-0.5 rounded bg-red-500/10 text-red-400">FIRING</span>;
+                        return <span className="text-xs px-2 py-0.5 rounded bg-[var(--danger)]/10 text-[var(--danger)]">FIRING</span>;
                       }
                       if (!rule.enabled) {
-                        return <span className="text-xs px-2 py-0.5 rounded bg-slate-700 text-slate-400">PAUSED</span>;
+                        return <span className="text-xs px-2 py-0.5 rounded bg-[var(--rail)] text-[var(--text-muted)]">PAUSED</span>;
                       }
-                      return <span className="text-xs px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-400">ACTIVE</span>;
+                      return <span className="text-xs px-2 py-0.5 rounded bg-[var(--success)]/10 text-[var(--success)]">ACTIVE</span>;
                     })()}
                   </td>
                   <td className="px-4 py-3" onClick={e => e.stopPropagation()}>
                     <div className="flex items-center gap-2">
                       <button
                         onClick={() => router.push(`/monitoring/${rule.id}?project=${selectedProjectId}`)}
-                        className="text-xs text-slate-400 hover:text-slate-200 bg-none border-none cursor-pointer p-0"
+                        className="text-xs text-[var(--text-muted)] hover:text-[var(--text)] bg-none border-none cursor-pointer p-0"
                       >
                         View
                       </button>
@@ -279,20 +279,20 @@ export default function MonitoringPage() {
         <form onSubmit={handleCreate} noValidate>
           <div className="space-y-4">
             <div>
-              <label className="block text-xs text-slate-400 mb-1">Rule name</label>
+              <label className="block text-xs text-[var(--text-muted)] mb-1">Rule name</label>
               <Input
                 value={formName}
                 onChange={e => setFormName(e.target.value)}
                 placeholder="High CPU usage"
-                className="bg-[#080a0d] border border-[#1e2130] text-slate-200 placeholder:text-slate-600 w-full"
+                className="bg-[var(--surface-2)] border border-[var(--rail)] text-[var(--text)] placeholder:text-[var(--text-dim)] w-full"
               />
             </div>
             <div>
-              <label className="block text-xs text-slate-400 mb-1">Metric</label>
+              <label className="block text-xs text-[var(--text-muted)] mb-1">Metric</label>
               <select
                 value={formMetric}
                 onChange={e => setFormMetric(e.target.value)}
-                className="bg-[#080a0d] border border-[#1e2130] text-slate-200 rounded-lg px-3 py-2 text-sm w-full"
+                className="bg-[var(--surface-2)] border border-[var(--rail)] text-[var(--text)] rounded-lg px-3 py-2 text-sm w-full"
               >
                 <option value="">Select a metric...</option>
                 {METRICS.map(m => (
@@ -302,11 +302,11 @@ export default function MonitoringPage() {
             </div>
             <div className="grid grid-cols-2 gap-3">
               <div>
-                <label className="block text-xs text-slate-400 mb-1">Condition</label>
+                <label className="block text-xs text-[var(--text-muted)] mb-1">Condition</label>
                 <select
                   value={formCondition}
                   onChange={e => setFormCondition(e.target.value)}
-                  className="bg-[#080a0d] border border-[#1e2130] text-slate-200 rounded-lg px-3 py-2 text-sm w-full"
+                  className="bg-[var(--surface-2)] border border-[var(--rail)] text-[var(--text)] rounded-lg px-3 py-2 text-sm w-full"
                 >
                   <option value="above">Above</option>
                   <option value="below">Below</option>
@@ -314,24 +314,24 @@ export default function MonitoringPage() {
                 </select>
               </div>
               <div>
-                <label className="block text-xs text-slate-400 mb-1">Threshold</label>
+                <label className="block text-xs text-[var(--text-muted)] mb-1">Threshold</label>
                 <Input
                   value={formThreshold}
                   onChange={e => setFormThreshold(e.target.value)}
                   placeholder="80"
                   type="number"
                   step="any"
-                  className="bg-[#080a0d] border border-[#1e2130] text-slate-200 placeholder:text-slate-600 w-full"
+                  className="bg-[var(--surface-2)] border border-[var(--rail)] text-[var(--text)] placeholder:text-[var(--text-dim)] w-full"
                 />
               </div>
             </div>
             <div className="grid grid-cols-2 gap-3">
               <div>
-                <label className="block text-xs text-slate-400 mb-1">Severity</label>
+                <label className="block text-xs text-[var(--text-muted)] mb-1">Severity</label>
                 <select
                   value={formSeverity}
                   onChange={e => setFormSeverity(e.target.value)}
-                  className="bg-[#080a0d] border border-[#1e2130] text-slate-200 rounded-lg px-3 py-2 text-sm w-full"
+                  className="bg-[var(--surface-2)] border border-[var(--rail)] text-[var(--text)] rounded-lg px-3 py-2 text-sm w-full"
                 >
                   <option value="info">Info</option>
                   <option value="warning">Warning</option>
@@ -339,11 +339,11 @@ export default function MonitoringPage() {
                 </select>
               </div>
               <div>
-                <label className="block text-xs text-slate-400 mb-1">Interval</label>
+                <label className="block text-xs text-[var(--text-muted)] mb-1">Interval</label>
                 <select
                   value={formDuration}
                   onChange={e => setFormDuration(e.target.value)}
-                  className="bg-[#080a0d] border border-[#1e2130] text-slate-200 rounded-lg px-3 py-2 text-sm w-full"
+                  className="bg-[var(--surface-2)] border border-[var(--rail)] text-[var(--text)] rounded-lg px-3 py-2 text-sm w-full"
                 >
                   {INTERVALS.map(i => (
                     <option key={i} value={i}>{i}</option>
@@ -352,14 +352,14 @@ export default function MonitoringPage() {
               </div>
             </div>
             {createError && (
-              <p className="text-red-400 text-xs">{createError}</p>
+              <p className="text-[var(--danger)] text-xs">{createError}</p>
             )}
             <div>
-              <label className="block text-xs text-slate-400 mb-1">Notification Channel</label>
+              <label className="block text-xs text-[var(--text-muted)] mb-1">Notification Channel</label>
               <select
                 value={formChannel}
                 onChange={e => setFormChannel(e.target.value)}
-                className="bg-[#080a0d] border border-[#1e2130] text-slate-200 rounded-lg px-3 py-2 text-sm w-full"
+                className="bg-[var(--surface-2)] border border-[var(--rail)] text-[var(--text)] rounded-lg px-3 py-2 text-sm w-full"
               >
                 <option value="">No channel (alerts logged only)</option>
                 {channels.map(ch => (

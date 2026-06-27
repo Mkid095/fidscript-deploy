@@ -360,6 +360,7 @@ model Release {
   id              String   @id @default(uuid())
   projectId       String   @map("project_id")
   commitSha       String   @db.VarChar(40)
+  commitMessage   String?  @map("commit_message") @db.Text
   branch          String   @default("main") @map("source_branch")
   imageTag        String   @db.VarChar(255) // e.g. "fidscript/<slug>:<version>"
   version         String   @db.VarChar(50) // e.g. "2023-abc123" — immutable once set
@@ -417,11 +418,8 @@ enum DeploymentStatus {
 model BuildConfig {
   id                    String   @id @default(uuid())
   projectId             String   @unique @map("project_id")
-  strategy              String   @default("dockerfile")
-  buildCommand          String?  @map("build_command") @db.Text
-  outputDirectory       String?  @map("output_directory") @db.VarChar(255)
-  healthCheckPath       String?  @map("health_check_path") @db.VarChar(255)
-  healthCheckPort       Int      @default(3000) @map("health_check_port")
+  /// Monorepo app root for turbo/nx monorepos (e.g. "apps/web", "packages/frontend")
+  buildTarget           String?  @map("build_target") @db.VarChar(255)
   startupTimeoutSeconds Int      @default(120) @map("startup_timeout_seconds")
   createdAt             DateTime @default(now()) @map("created_at") @db.Timestamptz
   updatedAt             DateTime @updatedAt @map("updated_at") @db.Timestamptz
@@ -786,6 +784,8 @@ model EmailMessage {
   from             String      @db.VarChar(255)
   to               String      @db.VarChar(255)
   subject          String      @db.VarChar(500)
+  textBody         String?     @db.Text @map("text_body")
+  htmlBody         String?     @db.Text @map("html_body")
   sizeBytes        BigInt      @default(0) @map("size_bytes")
   isRead           Boolean     @default(false) @map("is_read")
   isStarred        Boolean     @default(false) @map("is_starred")
@@ -793,6 +793,8 @@ model EmailMessage {
   spamScore        Float?      @map("spam_score")
   status           EmailStatus @default(QUEUED)
   error            String?     @db.Text
+  jmapMessageId    String?     @map("jmap_message_id") // Stalwart JMAP Message-Id header
+  receivedAt       DateTime?   @map("received_at")    // when Stalwart received the mail
   createdAt        DateTime    @default(now()) @map("created_at") @db.Timestamptz
 
   mailbox        EmailMailbox?   @relation(fields: [mailboxId], references: [id], onDelete: SetNull)
@@ -802,6 +804,17 @@ model EmailMessage {
   @@index([mailboxId, createdAt])
   @@index([projectId, createdAt])
   @@map("messages")
+  @@schema("email")
+}
+
+// Tracks the JMAP state cursor per Stalwart accountId for state-based email polling.
+// Updated after every Email/queryChanges cycle so the next poll picks up only new emails.
+model EmailSyncCursor {
+  accountId    String   @id // stalwart accountId, e.g. "b"
+  lastState    String   @default("")
+  lastPolledAt DateTime @default(now()) @map("last_polled_at") @db.Timestamptz
+
+  @@map("email_sync_cursors")
   @@schema("email")
 }
 
@@ -886,6 +899,8 @@ enum EmailStatus {
   BOUNCED
   // Local failure (validation, auth, network)
   FAILED
+  // Inbound email received via JMAP poll
+  RECEIVED
 
   @@schema("public")
 }

@@ -1,4 +1,4 @@
-import axios, { AxiosInstance, AxiosError } from 'axios';
+import axios, { AxiosInstance, AxiosError, AxiosHeaders } from 'axios';
 import { FidscriptError, AuthError, NotFoundError, ValidationError, RateLimitError } from './modules/errors';
 
 // No hardcoded default — the caller (createFidscript) must pass a baseURL.
@@ -8,6 +8,18 @@ export interface FidscriptClientOptions {
   baseURL: string;
   timeout?: number;
   maxRetries?: number;
+  /**
+   * Invoked once when an authenticated request receives 401 Unauthorized. If it
+   * resolves to a new access token, the failed request is retried once with that
+   * token (and the client's default Authorization header is updated so subsequent
+   * calls use it). If it resolves to null, the original 401 is re-thrown.
+   *
+   * Use this to wire a transparent refresh-token flow without touching every
+   * call site (e.g. the dashboard refreshes its JWT when the short-lived
+   * access token expires mid-session). Concurrent 401s coalesce into a single
+   * refresh so a burst of expired-token errors triggers exactly one refresh.
+   */
+  onUnauthorized?: () => Promise<string | null>;
 }
 
 function mapError(err: unknown): never {
@@ -83,6 +95,31 @@ export class FidscriptClient {
         ...(options.apiKey ? { Authorization: `Bearer ${options.apiKey}` } : {}),
       },
     });
+
+    // Transparent token refresh: on a 401, ask the host app for a fresh access
+    // token and retry the original request once. Concurrent 401s share a single
+    // refresh. `_retried` guards against loops.
+    if (options.onUnauthorized) {
+      const refresh = options.onUnauthorized;
+      let pending: Promise<string | null> | null = null;
+      this.http.interceptors.response.use(
+        (resp) => resp,
+        async (error: AxiosError) => {
+          const cfg = error.config as (typeof error.config & { _retried?: boolean }) | undefined;
+          if (error.response?.status === 401 && cfg && !cfg._retried) {
+            cfg._retried = true;
+            if (!pending) pending = refresh().finally(() => { pending = null; });
+            const newToken = await pending;
+            if (newToken) {
+              this.http.defaults.headers.common.Authorization = `Bearer ${newToken}`;
+              (cfg.headers as AxiosHeaders).set('Authorization', `Bearer ${newToken}`);
+              return this.http.request(cfg);
+            }
+          }
+          return Promise.reject(error);
+        },
+      );
+    }
   }
 
   async get<T>(path: string, params?: Record<string, unknown>): Promise<T> {

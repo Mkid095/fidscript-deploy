@@ -22,14 +22,14 @@ function getStrength(password: string): Strength {
 
 const labelColor: Record<Strength, string> = {
   none: '',
-  weak: 'text-red-400',
-  fair: 'text-yellow-400',
+  weak: 'text-[var(--danger)]',
+  fair: 'text-[var(--warning)]',
   strong: 'text-green-400',
 };
 
 const barColor: Record<Strength, string> = {
-  none: 'bg-slate-700',
-  weak: 'bg-red-500',
+  none: 'bg-[var(--rail)]',
+  weak: 'bg-[var(--danger)]',
   fair: 'bg-yellow-500',
   strong: 'bg-green-500',
 };
@@ -45,7 +45,7 @@ export function PasswordStrength({ password }: PasswordStrengthProps) {
       <div
         key={i}
         className={`h-1 flex-1 rounded-full transition-colors duration-200 ${
-          active ? barColor[strength] : 'bg-slate-700'
+          active ? barColor[strength] : 'bg-[var(--rail)]'
         }`}
       />
     );

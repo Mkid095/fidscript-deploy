@@ -25,12 +25,12 @@ type Folder = 'inbox' | 'sent' | 'trash';
 // Universal status colors per ADR-036. Green=read/healthy, blue=info, yellow=warning.
 const STATUS_PALETTE: Record<string, string> = {
   // MailboxMessage.status (EmailStatus enum from Prisma)
-  QUEUED: 'bg-yellow-900/30 text-yellow-400 border-yellow-800/60',
-  SUBMITTED: 'bg-blue-900/30 text-blue-400 border-blue-800/60',
-  ACCEPTED: 'bg-emerald-900/30 text-emerald-400 border-emerald-800/60',
-  DELIVERED: 'bg-emerald-900/30 text-emerald-400 border-emerald-800/60',
-  BOUNCED: 'bg-red-900/30 text-red-400 border-red-800/60',
-  FAILED: 'bg-red-900/30 text-red-400 border-red-800/60',
+  QUEUED: 'bg-yellow-900/30 text-[var(--warning)] border-yellow-800/60',
+  SUBMITTED: 'bg-[var(--accent)]/10 text-[var(--accent)] border-blue-800/60',
+  ACCEPTED: 'bg-emerald-900/30 text-[var(--success)] border-[var(--success)]/30/60',
+  DELIVERED: 'bg-emerald-900/30 text-[var(--success)] border-[var(--success)]/30/60',
+  BOUNCED: 'bg-red-900/30 text-[var(--danger)] border-[var(--danger)]/30/60',
+  FAILED: 'bg-red-900/30 text-[var(--danger)] border-[var(--danger)]/30/60',
 };
 
 export default function MailboxPage() {
@@ -144,23 +144,23 @@ export default function MailboxPage() {
     <div>
       {/* Breadcrumb */}
       <div className="flex items-center gap-2 mb-6 text-sm">
-        <Link href="/email" className="text-slate-500 hover:text-slate-300 flex items-center gap-1 no-underline">
+        <Link href="/email" className="text-[var(--text-muted)] hover:text-[var(--text-muted)] flex items-center gap-1 no-underline">
           <HugeiconsIcon icon={ArrowLeft01Icon} size={12} />
           Email
         </Link>
-        <span className="text-slate-600">/</span>
-        <h1 className="text-base font-semibold text-slate-200">Mailbox</h1>
+        <span className="text-[var(--text-dim)]">/</span>
+        <h1 className="text-base font-semibold text-[var(--text)]">Mailbox</h1>
       </div>
 
       {/* Toolbar: search + refresh + compose (one hero action per ADR-036 principle 5) */}
       <div className="flex items-center gap-3 mb-4">
         <div className="relative flex-1">
-          <HugeiconsIcon icon={Search01Icon} size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-600" />
+          <HugeiconsIcon icon={Search01Icon} size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--text-dim)]" />
           <Input
             value={search}
             onChange={e => setSearch(e.target.value)}
             placeholder="Search subject, from, to…"
-            className="pl-9 bg-[#080a0d] border border-[#1e2130] text-slate-200 placeholder:text-slate-600"
+            className="pl-9 bg-[var(--surface-2)] border border-[var(--rail)] text-[var(--text)] placeholder:text-[var(--text-dim)]"
           />
         </div>
         <Button variant="ghost" size="sm" onClick={load} title="Refresh">
@@ -173,7 +173,7 @@ export default function MailboxPage() {
       </div>
 
       {/* Folder tabs */}
-      <div className="flex items-center gap-1 mb-4 border-b border-[#1e2130]">
+      <div className="flex items-center gap-1 mb-4 border-b border-[var(--rail)]">
         {(['inbox', 'sent', 'trash'] as Folder[]).map(f => (
           <button
             key={f}
@@ -181,8 +181,8 @@ export default function MailboxPage() {
             onClick={() => { setFolder(f); setSelectedId(null); }}
             className={`px-4 py-2 text-xs uppercase tracking-wider transition-colors border-b-2 capitalize ${
               folder === f
-                ? 'border-orange-500 text-slate-200'
-                : 'border-transparent text-slate-500 hover:text-slate-300'
+                ? 'border-[var(--warning)] text-[var(--text)]'
+                : 'border-transparent text-[var(--text-muted)] hover:text-[var(--text-muted)]'
             }`}
           >
             {f}
@@ -191,7 +191,7 @@ export default function MailboxPage() {
       </div>
 
       {error && (
-        <div className="bg-red-950/30 border border-red-800 rounded-lg p-3 mb-4 text-sm text-red-400">
+        <div className="bg-[var(--danger)]/10 border border-[var(--danger)]/30 rounded-lg p-3 mb-4 text-sm text-[var(--danger)]">
           {error}
         </div>
       )}
@@ -201,7 +201,7 @@ export default function MailboxPage() {
           <Spinner size="lg" />
         </div>
       ) : filtered.length === 0 ? (
-        <Card className="border border-[#1e2130]">
+        <Card className="border border-[var(--rail)]">
           <EmptyState
             title={search ? 'No matches' : folder === 'inbox' ? 'Inbox is empty' : folder === 'sent' ? 'Nothing sent yet' : 'Trash is empty'}
             description={search ? 'Try a different search term.' : folder === 'inbox' ? 'Inbound mail will appear here.' : folder === 'sent' ? 'Mail you send from this mailbox will appear here.' : 'Deleted messages will appear here.'}
@@ -216,14 +216,14 @@ export default function MailboxPage() {
       ) : (
         <div className="grid grid-cols-1 lg:grid-cols-[1fr_1fr] gap-4">
           {/* List */}
-          <Card className="border border-[#1e2130] overflow-hidden">
+          <Card className="border border-[var(--rail)] overflow-hidden">
             <table className="w-full text-sm">
               <thead>
-                <tr className="border-b border-[#1e2130]">
-                  <th className="text-left text-xs text-slate-500 font-medium px-4 py-3 w-8"></th>
-                  <th className="text-left text-xs text-slate-500 font-medium px-4 py-3">From → To</th>
-                  <th className="text-left text-xs text-slate-500 font-medium px-4 py-3">Subject</th>
-                  <th className="text-left text-xs text-slate-500 font-medium px-4 py-3 w-24">Date</th>
+                <tr className="border-b border-[var(--rail)]">
+                  <th className="text-left text-xs text-[var(--text-muted)] font-medium px-4 py-3 w-8"></th>
+                  <th className="text-left text-xs text-[var(--text-muted)] font-medium px-4 py-3">From → To</th>
+                  <th className="text-left text-xs text-[var(--text-muted)] font-medium px-4 py-3">Subject</th>
+                  <th className="text-left text-xs text-[var(--text-muted)] font-medium px-4 py-3 w-24">Date</th>
                 </tr>
               </thead>
               <tbody>
@@ -231,22 +231,22 @@ export default function MailboxPage() {
                   <tr
                     key={msg.id}
                     onClick={() => { setSelectedId(msg.id); if (!msg.isRead) toggleRead(msg); }}
-                    className={`border-b border-[#1e2130] last:border-0 cursor-pointer hover:bg-[#1e2130]/30 ${
-                      selectedId === msg.id ? 'bg-[#1e2130]/50' : ''
+                    className={`border-b border-[var(--rail)] last:border-0 cursor-pointer hover:bg-[var(--rail)]/30 ${
+                      selectedId === msg.id ? 'bg-[var(--rail)]/50' : ''
                     } ${!msg.isRead ? 'bg-blue-950/10' : ''}`}
                   >
                     <td className="px-2 py-3 text-center">
-                      {msg.isStarred && <HugeiconsIcon icon={StarIcon} size={14} className="text-yellow-400" />}
+                      {msg.isStarred && <HugeiconsIcon icon={StarIcon} size={14} className="text-[var(--warning)]" />}
                     </td>
                     <td className="px-4 py-3 text-xs">
-                      <div className={`truncate ${msg.isRead ? 'text-slate-400' : 'text-slate-200 font-medium'}`}>
+                      <div className={`truncate ${msg.isRead ? 'text-[var(--text-muted)]' : 'text-[var(--text)] font-medium'}`}>
                         {folder === 'sent' ? `to ${msg.to}` : msg.from}
                       </div>
                     </td>
-                    <td className={`px-4 py-3 text-xs truncate max-w-xs ${msg.isRead ? 'text-slate-500' : 'text-slate-200'}`}>
+                    <td className={`px-4 py-3 text-xs truncate max-w-xs ${msg.isRead ? 'text-[var(--text-muted)]' : 'text-[var(--text)]'}`}>
                       {msg.subject}
                     </td>
-                    <td className="px-4 py-3 text-xs text-slate-500">
+                    <td className="px-4 py-3 text-xs text-[var(--text-muted)]">
                       {new Date(msg.createdAt).toLocaleDateString()}
                     </td>
                   </tr>
@@ -256,7 +256,7 @@ export default function MailboxPage() {
           </Card>
 
           {/* Right-panel preview (ADR-036 principle 12 — panels over modals) */}
-          <Card className="border border-[#1e2130] p-5">
+          <Card className="border border-[var(--rail)] p-5">
             {selected ? (
               <MessagePreview
                 message={selected}
@@ -265,7 +265,7 @@ export default function MailboxPage() {
                 onDelete={() => deleteMsg(selected)}
               />
             ) : (
-              <div className="text-center text-sm text-slate-500 py-12">
+              <div className="text-center text-sm text-[var(--text-muted)] py-12">
                 Select a message to preview
               </div>
             )}
@@ -281,24 +281,24 @@ export default function MailboxPage() {
       >
         <form onSubmit={handleSend} noValidate>
           <div className="mb-3">
-            <label className="block text-xs text-slate-400 mb-1">To</label>
+            <label className="block text-xs text-[var(--text-muted)] mb-1">To</label>
             <Input value={composeTo} onChange={e => setComposeTo(e.target.value)}
               placeholder="recipient@example.com"
-              className="bg-[#080a0d] border border-[#1e2130] text-slate-200 placeholder:text-slate-600 w-full" />
+              className="bg-[var(--surface-2)] border border-[var(--rail)] text-[var(--text)] placeholder:text-[var(--text-dim)] w-full" />
           </div>
           <div className="mb-3">
-            <label className="block text-xs text-slate-400 mb-1">Subject</label>
+            <label className="block text-xs text-[var(--text-muted)] mb-1">Subject</label>
             <Input value={composeSubject} onChange={e => setComposeSubject(e.target.value)}
               placeholder="Hello"
-              className="bg-[#080a0d] border border-[#1e2130] text-slate-200 placeholder:text-slate-600 w-full" />
+              className="bg-[var(--surface-2)] border border-[var(--rail)] text-[var(--text)] placeholder:text-[var(--text-dim)] w-full" />
           </div>
           <div className="mb-4">
-            <label className="block text-xs text-slate-400 mb-1">Body</label>
+            <label className="block text-xs text-[var(--text-muted)] mb-1">Body</label>
             <textarea value={composeBody} onChange={e => setComposeBody(e.target.value)}
               placeholder="Write your message..." rows={6}
-              className="w-full bg-[#080a0d] border border-[#1e2130] text-slate-200 placeholder:text-slate-600 rounded-lg px-3 py-2 text-sm resize-none" />
+              className="w-full bg-[var(--surface-2)] border border-[var(--rail)] text-[var(--text)] placeholder:text-[var(--text-dim)] rounded-lg px-3 py-2 text-sm resize-none" />
           </div>
-          {sendError && <p className="text-red-400 text-xs mb-4">{sendError}</p>}
+          {sendError && <p className="text-[var(--danger)] text-xs mb-4">{sendError}</p>}
           <div className="flex justify-end gap-3">
             <Button variant="ghost" size="sm" type="button" onClick={() => { setShowCompose(false); setSendError(null); }}>
               Cancel
@@ -329,28 +329,28 @@ function MessagePreview({
     <div className="space-y-3">
       <div className="flex items-start justify-between gap-2">
         <div className="min-w-0 flex-1">
-          <h2 className="text-base font-semibold text-slate-200 truncate">{message.subject}</h2>
-          <p className="text-xs text-slate-500 mt-1">
-            <span className="text-slate-400">{message.from}</span>
+          <h2 className="text-base font-semibold text-[var(--text)] truncate">{message.subject}</h2>
+          <p className="text-xs text-[var(--text-muted)] mt-1">
+            <span className="text-[var(--text-muted)]">{message.from}</span>
             {' → '}
-            <span className="text-slate-400">{message.to}</span>
+            <span className="text-[var(--text-muted)]">{message.to}</span>
           </p>
-          <p className="text-xs text-slate-600 mt-0.5">
+          <p className="text-xs text-[var(--text-dim)] mt-0.5">
             {new Date(message.createdAt).toLocaleString()}
           </p>
         </div>
-        <span className={`text-xs px-2 py-0.5 rounded-full border capitalize whitespace-nowrap ${STATUS_PALETTE[message.status] ?? 'bg-slate-700 text-slate-300 border-slate-600'}`}>
+        <span className={`text-xs px-2 py-0.5 rounded-full border capitalize whitespace-nowrap ${STATUS_PALETTE[message.status] ?? 'bg-[var(--rail)] text-[var(--text-muted)] border-slate-600'}`}>
           {message.status.toLowerCase()}
         </span>
       </div>
 
-      <div className="border-t border-[#1e2130] pt-3">
-        <p className="text-sm text-slate-300 whitespace-pre-wrap">
+      <div className="border-t border-[var(--rail)] pt-3">
+        <p className="text-sm text-[var(--text-muted)] whitespace-pre-wrap">
           {message.error ?? '(message body not loaded — JMAP fetch not yet wired)'}
         </p>
       </div>
 
-      <div className="flex items-center gap-2 pt-2 border-t border-[#1e2130]">
+      <div className="flex items-center gap-2 pt-2 border-t border-[var(--rail)]">
         <Button variant="ghost" size="sm" onClick={onToggleRead} title={message.isRead ? 'Mark unread' : 'Mark read'}>
           <HugeiconsIcon icon={ArrowRight01Icon} size={14} />
           {message.isRead ? 'Unread' : 'Read'}

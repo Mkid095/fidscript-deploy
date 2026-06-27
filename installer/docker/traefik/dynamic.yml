@@ -173,7 +173,7 @@ http:
     whatsapp-frontend-svc:
       loadBalancer:
         servers:
-          - url: "http://10.0.3.11"
+          - url: "http://fidscript_whatsapp_frontend:80"
 
     whatsapp-api-svc:
       loadBalancer:

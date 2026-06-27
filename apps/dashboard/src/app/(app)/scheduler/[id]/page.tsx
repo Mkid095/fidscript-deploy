@@ -108,7 +108,7 @@ export default function JobDetailPage() {
   if (error || !job) {
     return (
       <div className="flex flex-col items-center justify-center min-h-96 gap-4">
-        <p className="text-red-400 text-sm">{error ?? 'Job not found'}</p>
+        <p className="text-[var(--danger)] text-sm">{error ?? 'Job not found'}</p>
         <Button variant="ghost" size="sm" onClick={() => history.back()}>
           Go back
         </Button>
@@ -121,16 +121,16 @@ export default function JobDetailPage() {
       <div className="flex items-center justify-between mb-6">
         <div>
           <div className="flex items-center gap-3 mb-1">
-            <h1 className="text-xl font-bold text-slate-200">{job.name}</h1>
+            <h1 className="text-xl font-bold text-[var(--text)]">{job.name}</h1>
             <span className={`text-xs px-2 py-0.5 rounded ${
               job.enabled
-                ? 'bg-emerald-500/10 text-emerald-400'
-                : 'bg-slate-700 text-slate-400'
+                ? 'bg-[var(--success)]/10 text-[var(--success)]'
+                : 'bg-[var(--rail)] text-[var(--text-muted)]'
             }`}>
               {job.enabled ? 'Enabled' : 'Disabled'}
             </span>
           </div>
-          <p className="text-sm text-slate-500 font-mono">{job.cronExpression}</p>
+          <p className="text-sm text-[var(--text-muted)] font-mono">{job.cronExpression}</p>
         </div>
         <div className="flex items-center gap-2">
           <Button variant="secondary" size="sm" onClick={() => { populateForm(job!); setShowEdit(true); }}>
@@ -144,43 +144,43 @@ export default function JobDetailPage() {
 
       {/* Job config */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-        <Card className="border border-[#1e2130]" padding="md">
-          <p className="text-xs text-slate-500 mb-1">Expression</p>
-          <p className="text-sm font-mono text-slate-200">{job.cronExpression}</p>
+        <Card className="border border-[var(--rail)]" padding="md">
+          <p className="text-xs text-[var(--text-muted)] mb-1">Expression</p>
+          <p className="text-sm font-mono text-[var(--text)]">{job.cronExpression}</p>
         </Card>
-        <Card className="border border-[#1e2130]" padding="md">
-          <p className="text-xs text-slate-500 mb-1">Target</p>
-          <p className="text-sm text-slate-200">
+        <Card className="border border-[var(--rail)]" padding="md">
+          <p className="text-xs text-[var(--text-muted)] mb-1">Target</p>
+          <p className="text-sm text-[var(--text)]">
             {job.targetType === 'function' ? `Function: ${job.functionId}` : job.endpoint ?? '—'}
           </p>
         </Card>
-        <Card className="border border-[#1e2130]" padding="md">
-          <p className="text-xs text-slate-500 mb-1">Last Run</p>
-          <p className="text-sm text-slate-200">
+        <Card className="border border-[var(--rail)]" padding="md">
+          <p className="text-xs text-[var(--text-muted)] mb-1">Last Run</p>
+          <p className="text-sm text-[var(--text)]">
             {job.lastRunAt ? new Date(job.lastRunAt).toLocaleString() : 'Never'}
           </p>
         </Card>
       </div>
 
       {/* Execution history */}
-      <h2 className="text-sm font-semibold text-slate-200 mb-3">Execution History</h2>
+      <h2 className="text-sm font-semibold text-[var(--text)] mb-3">Execution History</h2>
       {runs.length === 0 ? (
-        <Card className="border border-[#1e2130]">
+        <Card className="border border-[var(--rail)]">
           <EmptyState
             title="No runs yet"
             description="Trigger the job manually or wait for the next scheduled run."
           />
         </Card>
       ) : (
-        <Card className="border border-[#1e2130] overflow-hidden">
+        <Card className="border border-[var(--rail)] overflow-hidden">
           <table className="w-full text-sm">
             <thead>
-              <tr className="border-b border-[#1e2130]">
-                <th className="text-left text-xs text-slate-500 font-medium px-4 py-3">Run ID</th>
-                <th className="text-left text-xs text-slate-500 font-medium px-4 py-3">Triggered</th>
-                <th className="text-left text-xs text-slate-500 font-medium px-4 py-3">Status</th>
-                <th className="text-left text-xs text-slate-500 font-medium px-4 py-3">Duration</th>
-                <th className="text-left text-xs text-slate-500 font-medium px-4 py-3">Error</th>
+              <tr className="border-b border-[var(--rail)]">
+                <th className="text-left text-xs text-[var(--text-muted)] font-medium px-4 py-3">Run ID</th>
+                <th className="text-left text-xs text-[var(--text-muted)] font-medium px-4 py-3">Triggered</th>
+                <th className="text-left text-xs text-[var(--text-muted)] font-medium px-4 py-3">Status</th>
+                <th className="text-left text-xs text-[var(--text-muted)] font-medium px-4 py-3">Duration</th>
+                <th className="text-left text-xs text-[var(--text-muted)] font-medium px-4 py-3">Error</th>
               </tr>
             </thead>
             <tbody>
@@ -189,26 +189,26 @@ export default function JobDetailPage() {
                   ? `${Math.round((new Date(run.completedAt).getTime() - new Date(run.startedAt).getTime()) / 1000)}s`
                   : '—';
                 return (
-                  <tr key={run.id} className="border-b border-[#1e2130] last:border-0 hover:bg-[#1e2130]/30">
+                  <tr key={run.id} className="border-b border-[var(--rail)] last:border-0 hover:bg-[var(--rail)]/30">
                     <td className="px-4 py-3">
-                      <span className="font-mono text-xs text-slate-400">{run.id.slice(0, 12)}…</span>
+                      <span className="font-mono text-xs text-[var(--text-muted)]">{run.id.slice(0, 12)}…</span>
                     </td>
-                    <td className="px-4 py-3 text-slate-400 text-xs">
+                    <td className="px-4 py-3 text-[var(--text-muted)] text-xs">
                       {new Date(run.startedAt).toLocaleString()}
                     </td>
                     <td className="px-4 py-3">
                       <span className={`text-xs px-2 py-0.5 rounded ${
                         run.status === 'completed'
-                          ? 'bg-emerald-500/10 text-emerald-400'
+                          ? 'bg-[var(--success)]/10 text-[var(--success)]'
                           : run.status === 'failed'
-                            ? 'bg-red-500/10 text-red-400'
-                            : 'bg-blue-500/10 text-blue-400'
+                            ? 'bg-[var(--danger)]/10 text-[var(--danger)]'
+                            : 'bg-[var(--accent)]/10 text-[var(--accent)]'
                       }`}>
                         {run.status}
                       </span>
                     </td>
-                    <td className="px-4 py-3 text-slate-400 text-xs">{duration}</td>
-                    <td className="px-4 py-3 text-xs text-red-400 max-w-xs truncate">
+                    <td className="px-4 py-3 text-[var(--text-muted)] text-xs">{duration}</td>
+                    <td className="px-4 py-3 text-xs text-[var(--danger)] max-w-xs truncate">
                       {run.errorMessage ?? '—'}
                     </td>
                   </tr>
@@ -223,33 +223,33 @@ export default function JobDetailPage() {
         <form onSubmit={handleSave} noValidate>
           <div className="space-y-4">
             <div>
-              <label className="block text-xs text-slate-400 mb-1">Job name</label>
+              <label className="block text-xs text-[var(--text-muted)] mb-1">Job name</label>
               <Input
                 value={formName}
                 onChange={e => setFormName(e.target.value)}
-                className="bg-[#080a0d] border border-[#1e2130] text-slate-200 w-full"
+                className="bg-[var(--surface-2)] border border-[var(--rail)] text-[var(--text)] w-full"
               />
             </div>
             <div>
-              <label className="block text-xs text-slate-400 mb-1">Cron expression</label>
+              <label className="block text-xs text-[var(--text-muted)] mb-1">Cron expression</label>
               <Input
                 value={formExpression}
                 onChange={e => setFormExpression(e.target.value)}
-                className="bg-[#080a0d] border border-[#1e2130] text-slate-200 w-full font-mono"
+                className="bg-[var(--surface-2)] border border-[var(--rail)] text-[var(--text)] w-full font-mono"
               />
             </div>
             <div>
-              <label className="block text-xs text-slate-400 mb-1">Target type</label>
+              <label className="block text-xs text-[var(--text-muted)] mb-1">Target type</label>
               <div className="flex gap-4">
                 {(['endpoint', 'function'] as const).map(t => (
-                  <label key={t} className="flex items-center gap-2 text-sm text-slate-300 cursor-pointer">
+                  <label key={t} className="flex items-center gap-2 text-sm text-[var(--text-muted)] cursor-pointer">
                     <input
                       type="radio"
                       name="editTargetType"
                       value={t}
                       checked={formTargetType === t}
                       onChange={() => setFormTargetType(t)}
-                      className="accent-red-500"
+                      className="accent-[var(--danger)]"
                     />
                     {t.charAt(0).toUpperCase() + t.slice(1)}
                   </label>
@@ -258,25 +258,25 @@ export default function JobDetailPage() {
             </div>
             {formTargetType === 'endpoint' ? (
               <div>
-                <label className="block text-xs text-slate-400 mb-1">URL</label>
+                <label className="block text-xs text-[var(--text-muted)] mb-1">URL</label>
                 <Input
                   value={formEndpoint}
                   onChange={e => setFormEndpoint(e.target.value)}
-                  className="bg-[#080a0d] border border-[#1e2130] text-slate-200 w-full"
+                  className="bg-[var(--surface-2)] border border-[var(--rail)] text-[var(--text)] w-full"
                 />
               </div>
             ) : (
               <div>
-                <label className="block text-xs text-slate-400 mb-1">Function ID</label>
+                <label className="block text-xs text-[var(--text-muted)] mb-1">Function ID</label>
                 <Input
                   value={formFunctionId}
                   onChange={e => setFormFunctionId(e.target.value)}
-                  className="bg-[#080a0d] border border-[#1e2130] text-slate-200 w-full"
+                  className="bg-[var(--surface-2)] border border-[var(--rail)] text-[var(--text)] w-full"
                 />
               </div>
             )}
             {saveError && (
-              <p className="text-red-400 text-xs">{saveError}</p>
+              <p className="text-[var(--danger)] text-xs">{saveError}</p>
             )}
             <div className="flex justify-end gap-3 pt-2">
               <Button variant="ghost" size="sm" type="button" onClick={() => setShowEdit(false)}>

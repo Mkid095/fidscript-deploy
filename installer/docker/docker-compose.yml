@@ -319,6 +319,13 @@ services:
         NEXT_PUBLIC_API_URL: https://api.${DOMAIN}
     container_name: fidscript_dashboard
     restart: unless-stopped
+    # NEXT_PUBLIC_* vars are read at runtime by client components (see
+    # apps/dashboard/src/lib/sdk.ts). Build args alone are NOT enough — Next.js
+    # standalone doesn't bake them into the client bundle for runtime reads.
+    # Mirror them as runtime env so the SDK can resolve the API base URL.
+    environment:
+      NEXT_PUBLIC_PLATFORM_DOMAIN: ${DOMAIN}
+      NEXT_PUBLIC_API_URL: https://api.${DOMAIN}
     networks:
       - fidscript
     depends_on:

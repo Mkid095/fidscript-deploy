@@ -13,11 +13,11 @@ const STREAMS = ['default', 'build', 'access', 'error'] as const;
 const LEVELS = ['debug', 'info', 'warn', 'error', 'fatal'] as const;
 
 const LEVEL_COLORS: Record<string, string> = {
-  debug: 'bg-slate-700 text-slate-400',
-  info: 'bg-blue-900 text-blue-400',
-  warn: 'bg-yellow-900 text-yellow-400',
-  error: 'bg-red-900 text-red-400',
-  fatal: 'bg-red-900 text-red-400 font-bold',
+  debug: 'bg-[var(--rail)] text-[var(--text-muted)]',
+  info: 'bg-blue-900 text-[var(--accent)]',
+  warn: 'bg-yellow-900 text-[var(--warning)]',
+  error: 'bg-red-900 text-[var(--danger)]',
+  fatal: 'bg-red-900 text-[var(--danger)] font-bold',
 };
 
 type Stream = typeof STREAMS[number];
@@ -177,8 +177,8 @@ export default function LogsPage() {
       {/* Header */}
       <div className="flex items-center justify-between mb-6">
         <div>
-          <h1 className="text-xl font-bold text-slate-200 mb-1">Logs</h1>
-          <p className="text-sm text-slate-500">{logs.length} entries</p>
+          <h1 className="text-xl font-bold text-[var(--text)] mb-1">Logs</h1>
+          <p className="text-sm text-[var(--text-muted)]">{logs.length} entries</p>
         </div>
         <div className="flex items-center gap-2">
           <Button variant="ghost" size="sm" onClick={loadLogs}>Refresh</Button>
@@ -187,16 +187,16 @@ export default function LogsPage() {
       </div>
 
       {/* Controls */}
-      <Card className="border border-[#1e2130] mb-6">
+      <Card className="border border-[var(--rail)] mb-6">
         <div className="flex flex-col gap-4">
           {/* Project selector — hidden when the project shell already chose a project */}
           {!shellProjectId && (
             <div>
-              <label className="block text-xs text-slate-400 mb-1">Project</label>
+              <label className="block text-xs text-[var(--text-muted)] mb-1">Project</label>
               <select
                 value={pickedProjectId}
                 onChange={e => handleProjectChange(e.target.value)}
-                className="bg-[#080a0d] border border-[#1e2130] text-slate-200 rounded-lg px-3 py-2 text-sm min-w-52"
+                className="bg-[var(--surface-2)] border border-[var(--rail)] text-[var(--text)] rounded-lg px-3 py-2 text-sm min-w-52"
               >
                 {projects.map(p => (
                   <option key={p.id} value={p.id}>{p.name}</option>
@@ -207,7 +207,7 @@ export default function LogsPage() {
 
           {/* Stream selector */}
           <div>
-            <label className="block text-xs text-slate-400 mb-2">Stream</label>
+            <label className="block text-xs text-[var(--text-muted)] mb-2">Stream</label>
             <div className="flex gap-2 flex-wrap">
               {STREAMS.map(s => (
                 <button
@@ -215,8 +215,8 @@ export default function LogsPage() {
                   onClick={() => setStream(s)}
                   className={`text-xs px-3 py-1.5 rounded-full border transition-colors ${
                     stream === s
-                      ? 'bg-blue-900 text-blue-300 border-blue-600'
-                      : 'bg-[#0f1117] text-slate-400 border-[#1e2130] hover:border-slate-500'
+                      ? 'bg-blue-900 text-[var(--accent)] border-[var(--accent)]'
+                      : 'bg-[var(--surface-2)] text-[var(--text-muted)] border-[var(--rail)] hover:border-slate-500'
                   } bg-none cursor-pointer`}
                 >
                   {s}
@@ -227,7 +227,7 @@ export default function LogsPage() {
 
           {/* Level filter */}
           <div>
-            <label className="block text-xs text-slate-400 mb-2">Level</label>
+            <label className="block text-xs text-[var(--text-muted)] mb-2">Level</label>
             <div className="flex gap-2 flex-wrap">
               {LEVELS.map(l => (
                 <button
@@ -236,7 +236,7 @@ export default function LogsPage() {
                   className={`text-xs px-3 py-1.5 rounded-full border transition-colors ${
                     activeLevels.has(l)
                       ? `${LEVEL_COLORS[l]} border-transparent`
-                      : 'bg-[#0f1117] text-slate-600 border-[#1e2130] hover:border-slate-500'
+                      : 'bg-[var(--surface-2)] text-[var(--text-dim)] border-[var(--rail)] hover:border-slate-500'
                   } bg-none cursor-pointer`}
                 >
                   {l}
@@ -252,25 +252,25 @@ export default function LogsPage() {
                 type="checkbox"
                 checked={live}
                 onChange={e => setLive(e.target.checked)}
-                className="accent-blue-500"
+                className="accent-[var(--accent)]"
               />
-              <span className="text-sm text-slate-300">Live tail</span>
+              <span className="text-sm text-[var(--text-muted)]">Live tail</span>
             </label>
             <label className="flex items-center gap-2 cursor-pointer">
               <input
                 type="checkbox"
                 checked={autoScroll}
                 onChange={e => setAutoScroll(e.target.checked)}
-                className="accent-blue-500"
+                className="accent-[var(--accent)]"
               />
-              <span className="text-sm text-slate-300">Auto-scroll</span>
+              <span className="text-sm text-[var(--text-muted)]">Auto-scroll</span>
             </label>
           </div>
         </div>
       </Card>
 
       {/* Error */}
-      {error && <p className="text-red-400 mb-4 text-sm">{error}</p>}
+      {error && <p className="text-[var(--danger)] mb-4 text-sm">{error}</p>}
 
       {/* Log list */}
       {loadingLogs && logs.length === 0 ? (
@@ -278,36 +278,36 @@ export default function LogsPage() {
           <Spinner size="lg" />
         </div>
       ) : logs.length === 0 ? (
-        <Card className="border border-[#1e2130]">
+        <Card className="border border-[var(--rail)]">
           <EmptyState title="No logs" description="No log entries match the current filters." />
         </Card>
       ) : (
-        <Card className="border border-[#1e2130] overflow-hidden">
+        <Card className="border border-[var(--rail)] overflow-hidden">
           <div
             ref={listRef}
-            className="bg-[#0a0a0f] text-slate-300 font-mono text-xs overflow-y-auto"
+            className="bg-[#0a0a0f] text-[var(--text-muted)] font-mono text-xs overflow-y-auto"
             style={{ maxHeight: 600 }}
           >
             <table className="w-full">
-              <thead className="sticky top-0 bg-[#0a0a0f] border-b border-[#1e2130]">
+              <thead className="sticky top-0 bg-[#0a0a0f] border-b border-[var(--rail)]">
                 <tr>
-                  <th className="text-left text-slate-500 font-medium px-4 py-2 w-40">Time</th>
-                  <th className="text-left text-slate-500 font-medium px-4 py-2 w-20">Level</th>
-                  <th className="text-left text-slate-500 font-medium px-4 py-2">Message</th>
+                  <th className="text-left text-[var(--text-muted)] font-medium px-4 py-2 w-40">Time</th>
+                  <th className="text-left text-[var(--text-muted)] font-medium px-4 py-2 w-20">Level</th>
+                  <th className="text-left text-[var(--text-muted)] font-medium px-4 py-2">Message</th>
                 </tr>
               </thead>
               <tbody>
                 {logs.map(entry => (
-                  <tr key={entry.id} className="border-b border-[#1e2130]/50 hover:bg-[#1e2130]/20">
-                    <td className="px-4 py-1.5 text-slate-500 whitespace-nowrap">
+                  <tr key={entry.id} className="border-b border-[var(--rail)]/50 hover:bg-[var(--rail)]/20">
+                    <td className="px-4 py-1.5 text-[var(--text-muted)] whitespace-nowrap">
                       {new Date(entry.timestamp).toLocaleTimeString()}
                     </td>
                     <td className="px-4 py-1.5">
-                      <span className={`text-xs px-1.5 py-0.5 rounded ${LEVEL_COLORS[entry.level] ?? 'bg-slate-700 text-slate-300'}`}>
+                      <span className={`text-xs px-1.5 py-0.5 rounded ${LEVEL_COLORS[entry.level] ?? 'bg-[var(--rail)] text-[var(--text-muted)]'}`}>
                         {entry.level}
                       </span>
                     </td>
-                    <td className="px-4 py-1.5 text-slate-300 whitespace-pre-wrap break-all">
+                    <td className="px-4 py-1.5 text-[var(--text-muted)] whitespace-pre-wrap break-all">
                       {entry.message}
                     </td>
                   </tr>

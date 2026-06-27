@@ -1,4 +1,7 @@
 'use client';
+/* eslint-disable import/order */
+
+import { HugeiconsIcon } from '@hugeicons/react';
 
 import { Suspense, useEffect, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
@@ -46,12 +49,12 @@ function AcceptInvitationInner() {
 
   if (status === 'loading' || status === 'accepting') {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-[#080a0d] p-4">
-        <Card padding="lg" className="w-full max-w-sm border border-[#1e2130] text-center">
+      <div className="min-h-screen flex items-center justify-center bg-[var(--surface-2)] p-4">
+        <Card padding="lg" className="w-full max-w-sm border border-[var(--rail)] text-center">
           <div className="mb-4">
             <Spinner size="lg" className="mx-auto" />
           </div>
-          <p className="text-sm text-slate-400">
+          <p className="text-sm text-[var(--text-muted)]">
             {status === 'loading' ? 'Loading invitation…' : 'Accepting invitation…'}
           </p>
         </Card>
@@ -61,11 +64,11 @@ function AcceptInvitationInner() {
 
   if (status === 'error') {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-[#080a0d] p-4">
-        <Card padding="lg" className="w-full max-w-sm border border-[#1e2130] text-center">
-          <div className="text-4xl mb-4">✗</div>
-          <h1 className="text-lg font-semibold text-slate-200 mb-2">Invitation not accepted</h1>
-          <p className="text-sm text-slate-400 mb-6">{error}</p>
+      <div className="min-h-screen flex items-center justify-center bg-[var(--surface-2)] p-4">
+        <Card padding="lg" className="w-full max-w-sm border border-[var(--rail)] text-center">
+          <div className="text-4xl mb-4"></div>
+          <h1 className="text-lg font-semibold text-[var(--text)] mb-2">Invitation not accepted</h1>
+          <p className="text-sm text-[var(--text-muted)] mb-6">{error}</p>
           <Button variant="primary" onClick={() => router.push('/')}>
             Go to dashboard
           </Button>
@@ -75,11 +78,11 @@ function AcceptInvitationInner() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-[#080a0d] p-4">
-      <Card padding="lg" className="w-full max-w-sm border border-emerald-800 text-center">
-        <div className="text-4xl mb-4">✓</div>
-        <h1 className="text-lg font-semibold text-slate-200 mb-2">You&apos;ve joined the project!</h1>
-        <p className="text-sm text-slate-400 mb-6">Redirecting to your dashboard…</p>
+    <div className="min-h-screen flex items-center justify-center bg-[var(--surface-2)] p-4">
+      <Card padding="lg" className="w-full max-w-sm border border-[var(--success)]/30 text-center">
+        <div className="text-4xl mb-4"></div>
+        <h1 className="text-lg font-semibold text-[var(--text)] mb-2">You&apos;ve joined the project!</h1>
+        <p className="text-sm text-[var(--text-muted)] mb-6">Redirecting to your dashboard…</p>
         <Spinner size="sm" className="mx-auto" />
       </Card>
     </div>
@@ -89,12 +92,12 @@ function AcceptInvitationInner() {
 export default function AcceptInvitationPage() {
   return (
     <Suspense fallback={
-      <div className="min-h-screen flex items-center justify-center bg-[#080a0d] p-4">
-        <Card padding="lg" className="w-full max-w-sm border border-[#1e2130] text-center">
+      <div className="min-h-screen flex items-center justify-center bg-[var(--surface-2)] p-4">
+        <Card padding="lg" className="w-full max-w-sm border border-[var(--rail)] text-center">
           <div className="mb-4">
             <Spinner size="lg" className="mx-auto" />
           </div>
-          <p className="text-sm text-slate-400">Loading invitation…</p>
+          <p className="text-sm text-[var(--text-muted)]">Loading invitation…</p>
         </Card>
       </div>
     }>

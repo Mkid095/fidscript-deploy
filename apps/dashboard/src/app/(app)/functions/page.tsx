@@ -18,11 +18,11 @@ interface Function_ {
 }
 
 const STATUS_COLORS: Record<string, string> = {
-  PENDING: 'bg-slate-700 text-slate-300',
-  BUILDING: 'bg-blue-900 text-blue-400',
-  ACTIVE: 'bg-emerald-900 text-emerald-400',
-  FAILED: 'bg-red-900 text-red-400',
-  INACTIVE: 'bg-slate-700 text-slate-400',
+  PENDING: 'bg-[var(--rail)] text-[var(--text-muted)]',
+  BUILDING: 'bg-blue-900 text-[var(--accent)]',
+  ACTIVE: 'bg-emerald-900 text-[var(--success)]',
+  FAILED: 'bg-red-900 text-[var(--danger)]',
+  INACTIVE: 'bg-[var(--rail)] text-[var(--text-muted)]',
 };
 
 const RUNTIMES = [
@@ -116,8 +116,8 @@ export default function FunctionsPage() {
     <div>
       <div className="flex items-center justify-between mb-6">
         <div>
-          <h1 className="text-xl font-bold text-slate-200 mb-1">Functions</h1>
-          <p className="text-sm text-slate-500">
+          <h1 className="text-xl font-bold text-[var(--text)] mb-1">Functions</h1>
+          <p className="text-sm text-[var(--text-muted)]">
             {functions.length} function{functions.length !== 1 ? 's' : ''}
           </p>
         </div>
@@ -129,11 +129,11 @@ export default function FunctionsPage() {
       {/* Project selector — hidden when the project shell already chose a project */}
       {!shellProjectId && (
         <div className="mb-6">
-          <label className="block text-xs text-slate-400 mb-1">Project</label>
+          <label className="block text-xs text-[var(--text-muted)] mb-1">Project</label>
           <select
             value={pickedProjectId}
             onChange={e => setPickedProjectId(e.target.value)}
-            className="bg-[#080a0d] border border-[#1e2130] text-slate-200 rounded-lg px-3 py-2 text-sm min-w-52"
+            className="bg-[var(--surface-2)] border border-[var(--rail)] text-[var(--text)] rounded-lg px-3 py-2 text-sm min-w-52"
           >
             <option value="">Select a project</option>
             {projects.map(p => (
@@ -143,14 +143,14 @@ export default function FunctionsPage() {
         </div>
       )}
 
-      {error && <p className="text-red-400 mb-4 text-sm">{error}</p>}
+      {error && <p className="text-[var(--danger)] mb-4 text-sm">{error}</p>}
 
       {loadingFunctions ? (
         <div className="flex items-center justify-center min-h-48">
           <Spinner size="lg" />
         </div>
       ) : functions.length === 0 ? (
-        <Card className="border border-[#1e2130]">
+        <Card className="border border-[var(--rail)]">
           <EmptyState
             title="No functions"
             description="Create your first serverless function for this project."
@@ -162,43 +162,43 @@ export default function FunctionsPage() {
           />
         </Card>
       ) : (
-        <Card className="border border-[#1e2130] overflow-hidden">
+        <Card className="border border-[var(--rail)] overflow-hidden">
           <table className="w-full text-sm">
             <thead>
-              <tr className="border-b border-[#1e2130]">
-                <th className="text-left text-xs text-slate-500 font-medium px-4 py-3">Name</th>
-                <th className="text-left text-xs text-slate-500 font-medium px-4 py-3">Runtime</th>
-                <th className="text-left text-xs text-slate-500 font-medium px-4 py-3">Status</th>
-                <th className="text-left text-xs text-slate-500 font-medium px-4 py-3">Created</th>
-                <th className="text-left text-xs text-slate-500 font-medium px-4 py-3">Actions</th>
+              <tr className="border-b border-[var(--rail)]">
+                <th className="text-left text-xs text-[var(--text-muted)] font-medium px-4 py-3">Name</th>
+                <th className="text-left text-xs text-[var(--text-muted)] font-medium px-4 py-3">Runtime</th>
+                <th className="text-left text-xs text-[var(--text-muted)] font-medium px-4 py-3">Status</th>
+                <th className="text-left text-xs text-[var(--text-muted)] font-medium px-4 py-3">Created</th>
+                <th className="text-left text-xs text-[var(--text-muted)] font-medium px-4 py-3">Actions</th>
               </tr>
             </thead>
             <tbody>
               {functions.map(fn => (
-                <tr key={fn.id} className="border-b border-[#1e2130] last:border-0 hover:bg-[#1e2130]/30">
+                <tr key={fn.id} className="border-b border-[var(--rail)] last:border-0 hover:bg-[var(--rail)]/30">
                   <td className="px-4 py-3">
                     <Link
                       href={`/functions/${fn.id}?project=${selectedProjectId}`}
-                      className="text-slate-200 hover:text-blue-400"
+                      className="text-[var(--text)] hover:text-[var(--accent)]"
                     >
                       {fn.name}
                     </Link>
                   </td>
                   <td className="px-4 py-3">
-                    <span className="text-xs text-slate-400">{fn.runtime}</span>
+                    <span className="text-xs text-[var(--text-muted)]">{fn.runtime}</span>
                   </td>
                   <td className="px-4 py-3">
-                    <span className={`text-xs px-2 py-0.5 rounded-full capitalize ${STATUS_COLORS[fn.status] ?? 'bg-slate-700 text-slate-300'}`}>
+                    <span className={`text-xs px-2 py-0.5 rounded-full capitalize ${STATUS_COLORS[fn.status] ?? 'bg-[var(--rail)] text-[var(--text-muted)]'}`}>
                       {fn.status ?? 'UNKNOWN'}
                     </span>
                   </td>
-                  <td className="px-4 py-3 text-slate-500 text-xs">
+                  <td className="px-4 py-3 text-[var(--text-muted)] text-xs">
                     {new Date(fn.createdAt).toLocaleDateString()}
                   </td>
                   <td className="px-4 py-3">
                     <Link
                       href={`/functions/${fn.id}?project=${selectedProjectId}`}
-                      className="text-xs text-slate-400 hover:text-slate-200"
+                      className="text-xs text-[var(--text-muted)] hover:text-[var(--text)]"
                     >
                       View
                     </Link>
@@ -218,20 +218,20 @@ export default function FunctionsPage() {
       >
         <form onSubmit={handleCreate} noValidate>
           <div className="mb-3">
-            <label className="block text-xs text-slate-400 mb-1">Function name</label>
+            <label className="block text-xs text-[var(--text-muted)] mb-1">Function name</label>
             <Input
               value={newName}
               onChange={e => setNewName(e.target.value)}
               placeholder="my-function"
-              className="bg-[#080a0d] border border-[#1e2130] text-slate-200 placeholder:text-slate-600 w-full"
+              className="bg-[var(--surface-2)] border border-[var(--rail)] text-[var(--text)] placeholder:text-[var(--text-dim)] w-full"
             />
           </div>
           <div className="mb-4">
-            <label className="block text-xs text-slate-400 mb-1">Runtime</label>
+            <label className="block text-xs text-[var(--text-muted)] mb-1">Runtime</label>
             <select
               value={newRuntime}
               onChange={e => setNewRuntime(e.target.value)}
-              className="bg-[#080a0d] border border-[#1e2130] text-slate-200 rounded-lg px-3 py-2 text-sm w-full"
+              className="bg-[var(--surface-2)] border border-[var(--rail)] text-[var(--text)] rounded-lg px-3 py-2 text-sm w-full"
             >
               {RUNTIMES.map(r => (
                 <option key={r.value} value={r.value} disabled={!r.available} style={!r.available ? { opacity: 0.4 } : undefined}>
@@ -240,7 +240,7 @@ export default function FunctionsPage() {
               ))}
             </select>
           </div>
-          {createError && <p className="text-red-400 text-xs mb-4">{createError}</p>}
+          {createError && <p className="text-[var(--danger)] text-xs mb-4">{createError}</p>}
           <div className="flex justify-end gap-3">
             <Button variant="ghost" size="sm" type="button" onClick={() => { setShowCreate(false); setCreateError(null); }}>
               Cancel

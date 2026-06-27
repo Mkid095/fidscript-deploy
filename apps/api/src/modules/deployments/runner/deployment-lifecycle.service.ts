@@ -2,6 +2,7 @@ import { Injectable, Logger } from '@nestjs/common';
 import { PrismaService } from '@/prisma/prisma.service';
 import { EventService } from '@/modules/events/event.service';
 import { BuildRunnerService } from './build-runner.service';
+import { DockerLifecycleService } from './docker-lifecycle.service';
 
 @Injectable()
 export class DeploymentLifecycleService {
@@ -11,6 +12,7 @@ export class DeploymentLifecycleService {
     private prisma: PrismaService,
     private eventService: EventService,
     private buildRunner: BuildRunnerService,
+    private dockerLifecycle: DockerLifecycleService,
   ) {}
 
   async stopDeployment(deploymentId: string, userId: string): Promise<void> {
@@ -53,9 +55,13 @@ export class DeploymentLifecycleService {
     const containerName = `fidscript-${deployment.project.slug}-${deploymentId}`;
     const imageTag = deployment.release?.imageTag || `fidscript/${deployment.project.slug}:unknown`;
 
+    // Stop + remove the container
     await this.buildRunner.teardown(containerName);
+    // Remove the image to free disk space
+    await this.dockerLifecycle.removeImage(imageTag);
     await this.prisma.deployment.delete({ where: { id: deploymentId } });
     await this.emit(deploymentId, deployment.projectId, userId, 'deployments.deployment.stopped', {});
+    this.logger.log(`Destroyed deployment ${deploymentId} (container + image ${imageTag})`);
   }
 
   private async emit(deploymentId: string, projectId: string, userId: string, type: string, metadata: Record<string, any>) {

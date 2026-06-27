@@ -227,6 +227,32 @@ export class UserGithubService {
     };
   }
 
+  // ── Clone credentials (for the deployment pipeline) ──────────────────────────
+
+  /**
+   * Returns git-clone credentials for a connected GitHub account, in the form
+   * `x-access-token:<token>` — the username GitHub expects for OAuth/PAT auth
+   * over HTTPS. Used by the deployment pipeline (detect + build) to clone
+   * private repos without ever prompting for a username (which would fail in
+   * a non-TTY server environment).
+   *
+   * Returns null if the user has no GitHub connection or the token can't be
+   * decrypted — callers then fall back to anonymous clone (public repos only).
+   */
+  async getCloneCredentials(userId: string): Promise<string | null> {
+    const conn = await this.prisma.$queryRaw<{ encrypted_token: string }[]>`
+      SELECT encrypted_token FROM "identity"."github_connections" WHERE user_id = ${userId}
+    `;
+    if (!conn?.[0]?.encrypted_token) return null;
+    try {
+      const token = this.cryptoService.decrypt(conn[0].encrypted_token);
+      return `x-access-token:${token}`;
+    } catch (err) {
+      this.logger.warn(`Failed to decrypt GitHub token for user=${userId}: ${(err as Error).message}`);
+      return null;
+    }
+  }
+
   // ── Disconnect ──────────────────────────────────────────────────────────────
 
   async disconnect(userId: string): Promise<void> {

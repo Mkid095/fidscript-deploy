@@ -22,17 +22,17 @@ export default async function DocPage({ params }: { params: Promise<{ slug: stri
 
   return (
     <article className="max-w-3xl">
-      <header className="mb-6 flex items-start justify-between gap-4 border-b border-slate-900 pb-5">
+      <header className="mb-6 flex items-start justify-between gap-4 border-b border-[var(--rail)] pb-5">
         <div className="flex items-center gap-3">
-          <span className="flex h-10 w-10 items-center justify-center rounded-lg border border-fire-500/20 bg-fire-500/10 text-fire-500">
+          <span className="flex h-10 w-10 items-center justify-center rounded-lg border border-[var(--accent)]/20 bg-[var(--accent)]/10 text-[var(--accent)]">
             <HugeiconsIcon icon={icon} size={20} color="currentColor" />
           </span>
-          <h1 className="text-2xl font-bold tracking-tight text-white">{title}</h1>
+          <h1 className="text-2xl font-bold tracking-tight text-[var(--text)]">{title}</h1>
         </div>
         <CopyPage />
       </header>
 
-      <div data-doc-content className="prose-invert max-w-none text-slate-300">
+      <div data-doc-content className="prose-invert max-w-none text-[var(--text-muted)]">
         <Content />
       </div>
     </article>

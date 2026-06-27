@@ -17,7 +17,7 @@ COPY . .
 RUN pnpm install --frozen-lockfile
 # turbo respects dependsOn: ["^build"] — builds all dependencies first, then the API
 RUN pnpm --filter @fidscript/api exec prisma generate
-RUN npx turbo build --filter=@fidscript/api
+RUN npx turbo build --filter=@fidscript/api --force
 
 FROM node:20-bookworm-slim AS runtime
 ENV NODE_ENV=production

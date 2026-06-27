@@ -1,12 +1,6 @@
-import { IsString, IsOptional, IsEnum, ValidateNested, IsIn, IsObject } from 'class-validator';
+import { IsString, IsOptional, IsEnum, ValidateNested, IsObject } from 'class-validator';
 import { Type } from 'class-transformer';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-
-export enum BuildStrategy {
-  BUILDPACK = 'buildpack',
-  DOCKERFILE = 'dockerfile',
-  ARCHIVE = 'archive',
-}
 
 export enum SourceType {
   GIT = 'git',
@@ -29,7 +23,7 @@ export class GitSourceDto {
   @IsOptional()
   branch?: string;
 
-  @ApiPropertyOptional({ description: 'Path to Dockerfile (relative to repo root)' })
+  @ApiPropertyOptional({ description: 'Path to Dockerfile (relative to repo root). Overrides auto-detection.' })
   @IsString()
   @IsOptional()
   dockerfilePath?: string;
@@ -46,7 +40,7 @@ export class ArchiveSourceDto {
   @IsOptional()
   objectKey?: string;
 
-  @ApiPropertyOptional({ description: 'Path to Dockerfile in archive (relative to archive root)' })
+  @ApiPropertyOptional({ description: 'Path to Dockerfile in archive (relative to archive root). Overrides auto-detection.' })
   @IsString()
   @IsOptional()
   dockerfilePath?: string;
@@ -87,17 +81,12 @@ export class CreateDeploymentDto {
   @IsOptional()
   commitSha?: string;
 
-  @ApiPropertyOptional({ enum: BuildStrategy })
-  @IsEnum(BuildStrategy)
-  @IsOptional()
-  strategy?: BuildStrategy;
-
   @ApiPropertyOptional()
   @IsString()
   @IsOptional()
   commitMessage?: string;
 
-  @ApiPropertyOptional()
+  @ApiPropertyOptional({ description: 'Environment variables to inject at build and runtime. Overrides project-level env vars.' })
   @IsObject()
   @IsOptional()
   envVars?: Record<string, string>;

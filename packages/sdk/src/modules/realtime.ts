@@ -39,15 +39,24 @@ export class RealtimeModule {
 
   constructor(private client: FidscriptClient) {}
 
-  /** Exchange a user JWT for a realtime connection. */
-  async connect(token: string, _projectId?: string): Promise<void> {
+  /**
+   * Exchange a user JWT for a realtime connection.
+   *
+   * `token` may be a string or a getter. A getter is preferred for long-lived
+   * sessions: socket.io re-evaluates function-form `auth` on every (re)connect,
+   * so a refreshed JWT is picked up automatically instead of reconnecting with
+   * a stale, expired token (which the gateway rejects).
+   */
+  async connect(token: string | (() => string), _projectId?: string): Promise<void> {
     return new Promise((resolve, reject) => {
       // Tear down any existing socket before opening a new one.
       this.socket?.removeAllListeners();
       this.socket?.disconnect();
 
+      const readToken = () => (typeof token === 'function' ? (token as () => string)() : token);
+
       this.socket = io('/realtime', {
-        auth: { token },
+        auth: (cb: (data: { token: string }) => void) => cb({ token: readToken() }),
         transports: ['websocket'],
       });
 

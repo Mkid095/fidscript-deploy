@@ -238,10 +238,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setState(s => ({ ...s, error: null }));
   }
 
-  function getSdk(): FidscriptSDK {
+  // Memoized so consumers (e.g. the project shell layout, deployment detail
+  // page) that depend on getSdk in their own useEffect/useCallback don't have
+  // their effects re-run on every AuthProvider render — which previously caused
+  // flaky full-screen loading spins after navigation.
+  const getSdk = useCallback(function getSdk(): FidscriptSDK {
     if (sdkRef.current) return sdkRef.current;
     throw new Error('Not authenticated — SDK not initialized. Did session restore complete?');
-  }
+  }, []);
 
   return (
     <AuthContext.Provider

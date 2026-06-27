@@ -75,7 +75,7 @@ export class StalwartJmapService {
    *   - urn:ietf:params:jmap:principals
    */
   async jmapCall(
-    methodCalls: Array<[string, Record<string, unknown>]>,
+    methodCalls: Array<[string, Record<string, unknown>, string?]>,
     using?: string[],
   ): Promise<JmapResponse> {
     const capabilities = using ?? [

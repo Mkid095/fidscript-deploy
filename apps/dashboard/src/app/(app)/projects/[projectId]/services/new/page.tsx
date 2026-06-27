@@ -35,6 +35,8 @@ import {
   CheckmarkCircle02Icon,
   Cancel01Icon,
   Upload02Icon,
+  Settings01Icon,
+  Rocket01Icon,
 } from '@hugeicons/core-free-icons';
 
 import { useAuth } from '@/contexts/auth-context';
@@ -92,7 +94,7 @@ function getAccessToken(): string {
 
 export default function NewDeploymentPageWrapper() {
   const { project } = useProjectContext();
-  if (!project) return <div className="p-6 text-sm text-slate-500">Loading project…</div>;
+  if (!project) return <div className="p-6 text-sm text-[var(--text-muted)]">Loading project…</div>;
   return (
     <ToastProvider>
       <NewDeploymentPage project={project} />
@@ -132,14 +134,26 @@ function NewDeploymentPage({ project }: { project: NonNullable<ReturnType<typeof
 
   // Shared config
   const [dockerfilePath, setDockerfilePath] = useState('');
+  const [showAdvanced, setShowAdvanced] = useState(false);
+  const [envText, setEnvText] = useState('');
   const [autoDeploy, setAutoDeploy] = useState(true);
   const [submitting, setSubmitting] = useState(false);
+
+  // Framework detection
+  const [buildPlan, setBuildPlan] = useState<{
+    framework: string; frameworkLabel: string; frameworkVersion?: string;
+    buildCommand: string; outputDirectory: string; port: number; runtime: string; monorepo?: string;
+  } | null>(null);
+  const [detecting, setDetecting] = useState(false);
+  const [detectError, setDetectError] = useState<string | null>(null);
 
   // ── Load GitHub status ──────────────────────────────────────────────────────
 
   useEffect(() => {
     getSdk().github.status().then(setGithubStatus).catch(() => setGithubStatus({ connected: false }));
   }, [getSdk]);
+
+  // Auto-detect framework — defined below after gitUrl/effectiveBranch are available.
 
   const loadRepos = useCallback(async (page: number, append: boolean) => {
     setRepoLoading(true);
@@ -241,6 +255,39 @@ function NewDeploymentPage({ project }: { project: NonNullable<ReturnType<typeof
   const gitUrl = selectedRepo ? `https://github.com/${selectedRepo.full_name}.git` : manualGitUrl.trim();
   const effectiveBranch = selectedRepo ? selectedBranch : (manualGitUrl ? 'main' : '');
 
+  // Auto-detect framework when entering Configure step (step 2) with a git URL.
+  // Calls POST /deployments/detect which clones shallowly + runs detection.
+  const runDetection = useCallback(async () => {
+    if (!project || !gitUrl || buildPlan || detecting) return;
+    setDetecting(true);
+    setDetectError(null);
+    try {
+      const plan = await getSdk().deployments.detect(project.id, {
+        gitUrl,
+        branch: effectiveBranch || 'main',
+        ...(credentials.trim() && { credentials: credentials.trim() }),
+      });
+      setBuildPlan(plan);
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : 'Detection failed';
+      setDetectError(msg);
+    } finally {
+      setDetecting(false);
+    }
+  }, [project, gitUrl, effectiveBranch, credentials, buildPlan, detecting, getSdk]);
+
+  // Trigger detection automatically when step changes to Configure (2)
+  useEffect(() => {
+    if (stepIndex === 2 && sourceType === 'git' && gitUrl && !buildPlan && !detecting) {
+      runDetection();
+    }
+    // Reset detection when leaving the configure step back to repo selection
+    if (stepIndex < 2) {
+      setBuildPlan(null);
+      setDetectError(null);
+    }
+  }, [stepIndex]); // eslint-disable-line react-hooks/exhaustive-deps
+
   const canContinue = useMemo(() => {
     if (stepIndex === 0) return true; // source type always selected
     if (stepIndex === 1) {
@@ -257,6 +304,28 @@ function NewDeploymentPage({ project }: { project: NonNullable<ReturnType<typeof
 
   const handleBack = () => setStepIndex(i => Math.max(i - 1, 0));
 
+  // Parse a .env-style textarea into a Record<string, string>.
+  // Handles KEY=value, KEY="value", comments (#), and blank lines.
+  const parseEnvText = useCallback((text: string): Record<string, string> => {
+    const env: Record<string, string> = {};
+    for (const rawLine of text.split('\n')) {
+      const line = rawLine.trim();
+      if (!line || line.startsWith('#')) continue;
+      const eqIdx = line.indexOf('=');
+      if (eqIdx === -1) continue;
+      const key = line.slice(0, eqIdx).trim();
+      let value = line.slice(eqIdx + 1).trim();
+      // Strip surrounding quotes if present
+      if ((value.startsWith('"') && value.endsWith('"')) || (value.startsWith("'") && value.endsWith("'"))) {
+        value = value.slice(1, -1);
+      }
+      if (key) env[key] = value;
+    }
+    return env;
+  }, []);
+
+  const parsedEnvVars = useMemo(() => parseEnvText(envText), [envText, parseEnvText]);
+
   // ── Submit ──────────────────────────────────────────────────────────────────
 
   const handleDeploy = async () => {
@@ -264,8 +333,10 @@ function NewDeploymentPage({ project }: { project: NonNullable<ReturnType<typeof
     setSubmitting(true);
     try {
       const sdk = getSdk();
+      const envVars = Object.keys(parsedEnvVars).length > 0 ? parsedEnvVars : undefined;
+      let deploymentId: string | undefined;
       if (sourceType === 'git') {
-        await sdk.deployments.create(project.id, {
+        const created = await sdk.deployments.create(project.id, {
           source: {
             type: 'git',
             git: {
@@ -276,9 +347,11 @@ function NewDeploymentPage({ project }: { project: NonNullable<ReturnType<typeof
             },
           },
           branch: effectiveBranch || 'main',
+          ...(envVars && { envVars }),
         });
+        deploymentId = (created as { id?: string }).id;
       } else if (uploadedArchive) {
-        await sdk.deployments.create(project.id, {
+        const created = await sdk.deployments.create(project.id, {
           source: {
             type: 'archive',
             archive: {
@@ -287,10 +360,18 @@ function NewDeploymentPage({ project }: { project: NonNullable<ReturnType<typeof
               ...(dockerfilePath.trim() && { dockerfilePath: dockerfilePath.trim() }),
             },
           },
-        } as any);
+          ...(envVars && { envVars }),
+        });
+        deploymentId = (created as { id?: string }).id;
       }
       showToast({ type: 'success', message: 'Deployment queued — building now.' });
-      router.push(`/projects/${project.id}/services`);
+      // Send the user straight to the live build-log stream (Vercel-style),
+      // not back to the services list — so they can watch + copy the build output.
+      if (deploymentId) {
+        router.push(`/projects/${project.id}/deployments/${deploymentId}`);
+      } else {
+        router.push(`/projects/${project.id}/services`);
+      }
     } catch (err) {
       showToast({ type: 'error', message: err instanceof Error ? err.message : 'Deployment failed' });
     } finally {
@@ -311,20 +392,20 @@ function NewDeploymentPage({ project }: { project: NonNullable<ReturnType<typeof
   return (
     <div className="min-h-full flex flex-col">
       {/* Header */}
-      <div className="px-4 sm:px-6 lg:px-8 pt-6 pb-4 border-b border-[#1e2130]">
+      <div className="px-4 sm:px-6 lg:px-8 pt-6 pb-4 border-b border-[var(--rail)]">
         <div className="max-w-2xl mx-auto">
           <Link
             href={`/projects/${project.id}/services`}
-            className="inline-flex items-center gap-1.5 text-xs text-slate-500 hover:text-slate-300 transition-colors mb-3"
+            className="inline-flex items-center gap-1.5 text-xs text-[var(--text-muted)] hover:text-[var(--text-muted)] transition-colors mb-3"
           >
             <HugeiconsIcon icon={ArrowLeft01Icon} size={12} />
             Back to services
           </Link>
-          <h1 className="text-xl font-bold text-slate-200">New deployment</h1>
+          <h1 className="text-xl font-bold text-[var(--text)]">New deployment</h1>
 
           {/* Mobile compact step indicator */}
-          <p className="sm:hidden mt-2 text-xs text-slate-500">
-            Step {stepIndex + 1} of {STEPS.length}: <span className="text-slate-300 font-medium">{STEPS[stepIndex].label}</span>
+          <p className="sm:hidden mt-2 text-xs text-[var(--text-muted)]">
+            Step {stepIndex + 1} of {STEPS.length}: <span className="text-[var(--text-muted)] font-medium">{STEPS[stepIndex].label}</span>
           </p>
 
           {/* Desktop stepper */}
@@ -345,9 +426,9 @@ function NewDeploymentPage({ project }: { project: NonNullable<ReturnType<typeof
 
           {/* ── Step 1: Source ── */}
           {stepIndex === 0 && (
-            <Card className="border border-[#1e2130] p-5">
-              <h2 className="text-sm font-semibold text-slate-200 mb-1">Choose a source</h2>
-              <p className="text-xs text-slate-500 mb-4">How do you want to provide your code?</p>
+            <Card className="border border-[var(--rail)] p-5">
+              <h2 className="text-sm font-semibold text-[var(--text)] mb-1">Choose a source</h2>
+              <p className="text-xs text-[var(--text-muted)] mb-4">How do you want to provide your code?</p>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 {([
                   { key: 'git', label: 'Git repository', desc: 'Clone from GitHub or any git URL', icon: GithubIcon },
@@ -359,14 +440,14 @@ function NewDeploymentPage({ project }: { project: NonNullable<ReturnType<typeof
                     onClick={() => setSourceType(s.key)}
                     className={`flex items-start gap-3 p-4 rounded-lg border text-left transition-all ${
                       sourceType === s.key
-                        ? 'border-red-500/60 bg-red-500/5'
-                        : 'border-[#1e2130] bg-[#080a0d] hover:border-[#2a2d3a]'
+                        ? 'border-[var(--danger)]/60 bg-[var(--danger)]/5'
+                        : 'border-[var(--rail)] bg-[var(--surface-2)] hover:border-[var(--rail-light)]'
                     }`}
                   >
-                    <HugeiconsIcon icon={s.icon} size={20} className={sourceType === s.key ? 'text-red-400 mt-0.5' : 'text-slate-600 mt-0.5'} />
+                    <HugeiconsIcon icon={s.icon} size={20} className={sourceType === s.key ? 'text-[var(--danger)] mt-0.5' : 'text-[var(--text-dim)] mt-0.5'} />
                     <div>
-                      <p className={`text-sm font-medium ${sourceType === s.key ? 'text-slate-100' : 'text-slate-300'}`}>{s.label}</p>
-                      <p className="text-xs text-slate-600 mt-0.5">{s.desc}</p>
+                      <p className={`text-sm font-medium ${sourceType === s.key ? 'text-[var(--text)]' : 'text-[var(--text-muted)]'}`}>{s.label}</p>
+                      <p className="text-xs text-[var(--text-dim)] mt-0.5">{s.desc}</p>
                     </div>
                   </button>
                 ))}
@@ -379,25 +460,25 @@ function NewDeploymentPage({ project }: { project: NonNullable<ReturnType<typeof
             <>
               {/* GitHub connection banner */}
               {!githubStatus?.connected && (
-                <Card className="border border-[#1e2130] p-5">
+                <Card className="border border-[var(--rail)] p-5">
                   <div className="flex items-center gap-3 mb-3">
-                    <HugeiconsIcon icon={GithubIcon} size={20} className="text-slate-400" />
+                    <HugeiconsIcon icon={GithubIcon} size={20} className="text-[var(--text-muted)]" />
                     <div>
-                      <h2 className="text-sm font-semibold text-slate-200">Connect GitHub</h2>
-                      <p className="text-xs text-slate-500">Browse your repositories and branches with one click.</p>
+                      <h2 className="text-sm font-semibold text-[var(--text)]">Connect GitHub</h2>
+                      <p className="text-xs text-[var(--text-muted)]">Browse your repositories and branches with one click.</p>
                     </div>
                   </div>
                   <Button variant="primary" size="sm" onClick={handleConnectGithub} className="flex items-center gap-2">
                     <HugeiconsIcon icon={GithubIcon} size={14} />
                     Connect GitHub account
                   </Button>
-                  <div className="mt-5 pt-4 border-t border-[#1e2130]">
-                    <p className="text-xs text-slate-500 mb-2">Or paste a git URL manually:</p>
+                  <div className="mt-5 pt-4 border-t border-[var(--rail)]">
+                    <p className="text-xs text-[var(--text-muted)] mb-2">Or paste a git URL manually:</p>
                     <Input
                       value={manualGitUrl}
                       onChange={e => setManualGitUrl(e.target.value)}
                       placeholder="https://github.com/user/repo.git"
-                      className="bg-[#080a0d] border border-[#1e2130] text-slate-200"
+                      className="bg-[var(--surface-2)] border border-[var(--rail)] text-[var(--text)]"
                     />
                   </div>
                 </Card>
@@ -405,43 +486,43 @@ function NewDeploymentPage({ project }: { project: NonNullable<ReturnType<typeof
 
               {/* Repo browser */}
               {githubStatus?.connected && !selectedRepo && (
-                <Card className="border border-[#1e2130] p-0 overflow-hidden">
-                  <div className="p-4 border-b border-[#1e2130]">
-                    <h2 className="text-sm font-semibold text-slate-200 mb-1">Select a repository</h2>
-                    <p className="text-xs text-slate-500">Connected as {githubStatus.username}</p>
+                <Card className="border border-[var(--rail)] p-0 overflow-hidden">
+                  <div className="p-4 border-b border-[var(--rail)]">
+                    <h2 className="text-sm font-semibold text-[var(--text)] mb-1">Select a repository</h2>
+                    <p className="text-xs text-[var(--text-muted)]">Connected as {githubStatus.username}</p>
                   </div>
-                  <div className="p-3 border-b border-[#1e2130]">
+                  <div className="p-3 border-b border-[var(--rail)]">
                     <Input
                       value={repoSearch}
                       onChange={e => setRepoSearch(e.target.value)}
                       placeholder="Search repositories…"
-                      className="bg-[#080a0d] border border-[#1e2130] text-slate-200"
+                      className="bg-[var(--surface-2)] border border-[var(--rail)] text-[var(--text)]"
                     />
                   </div>
-                  <div className="max-h-96 overflow-y-auto divide-y divide-[#1e2130]">
+                  <div className="max-h-96 overflow-y-auto divide-y divide-[var(--rail)]">
                     {repoLoading && repos.length === 0 ? (
                       <div className="flex items-center justify-center py-8"><Spinner /></div>
                     ) : filteredRepos.length === 0 ? (
-                      <p className="text-xs text-slate-500 py-6 text-center">No repositories found.</p>
+                      <p className="text-xs text-[var(--text-muted)] py-6 text-center">No repositories found.</p>
                     ) : (
                       filteredRepos.map(r => (
                         <button
                           key={r.full_name}
                           onClick={() => handleSelectRepo(r)}
-                          className="w-full flex items-center gap-3 px-4 py-2.5 hover:bg-[#1e2130]/50 transition-colors text-left"
+                          className="w-full flex items-center gap-3 px-4 py-2.5 hover:bg-[var(--rail)]/50 transition-colors text-left"
                         >
-                          <HugeiconsIcon icon={r.private ? LockKeyIcon : GithubIcon} size={14} className="text-slate-500 flex-shrink-0" />
+                          <HugeiconsIcon icon={r.private ? LockKeyIcon : GithubIcon} size={14} className="text-[var(--text-muted)] flex-shrink-0" />
                           <div className="min-w-0 flex-1">
-                            <p className="text-sm font-mono text-slate-300 truncate">{r.full_name}</p>
-                            <p className="text-[10px] text-slate-600">{r.private ? 'Private' : 'Public'} · {r.default_branch}</p>
+                            <p className="text-sm font-mono text-[var(--text-muted)] truncate">{r.full_name}</p>
+                            <p className="text-[10px] text-[var(--text-dim)]">{r.private ? 'Private' : 'Public'} · {r.default_branch}</p>
                           </div>
-                          <HugeiconsIcon icon={ArrowRight01Icon} size={12} className="text-slate-700" />
+                          <HugeiconsIcon icon={ArrowRight01Icon} size={12} className="text-[var(--text-dim)]" />
                         </button>
                       ))
                     )}
                   </div>
                   {repoHasMore && (
-                    <div className="p-3 border-t border-[#1e2130]">
+                    <div className="p-3 border-t border-[var(--rail)]">
                       <Button variant="ghost" size="sm" onClick={() => loadRepos(repoPage + 1, true)} loading={repoLoading} className="w-full">
                         Load more
                       </Button>
@@ -452,17 +533,17 @@ function NewDeploymentPage({ project }: { project: NonNullable<ReturnType<typeof
 
               {/* Branch picker */}
               {githubStatus?.connected && selectedRepo && (
-                <Card className="border border-[#1e2130] p-5">
+                <Card className="border border-[var(--rail)] p-5">
                   <button
                     onClick={() => { setSelectedRepo(null); setBranches([]); }}
-                    className="inline-flex items-center gap-1.5 text-xs text-blue-400 hover:text-blue-300 transition-colors mb-4"
+                    className="inline-flex items-center gap-1.5 text-xs text-[var(--accent)] hover:text-[var(--accent)] transition-colors mb-4"
                   >
                     <HugeiconsIcon icon={ArrowLeft01Icon} size={12} />
                     {selectedRepo.full_name}
                   </button>
-                  <h2 className="text-sm font-semibold text-slate-200 mb-3">Select a branch</h2>
+                  <h2 className="text-sm font-semibold text-[var(--text)] mb-3">Select a branch</h2>
                   {branchLoading ? (
-                    <div className="flex items-center gap-2 text-xs text-slate-500 py-2"><Spinner size="sm" /> Loading branches…</div>
+                    <div className="flex items-center gap-2 text-xs text-[var(--text-muted)] py-2"><Spinner size="sm" /> Loading branches…</div>
                   ) : (
                     <div className="flex flex-wrap gap-2">
                       {branches.map(b => (
@@ -471,8 +552,8 @@ function NewDeploymentPage({ project }: { project: NonNullable<ReturnType<typeof
                           onClick={() => setSelectedBranch(b.name)}
                           className={`inline-flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-md border transition-all ${
                             selectedBranch === b.name
-                              ? 'border-red-500/60 bg-red-500/10 text-slate-100'
-                              : 'border-[#1e2130] bg-[#080a0d] text-slate-400 hover:border-[#2a2d3a]'
+                              ? 'border-[var(--danger)]/60 bg-[var(--danger)]/10 text-[var(--text)]'
+                              : 'border-[var(--rail)] bg-[var(--surface-2)] text-[var(--text-muted)] hover:border-[var(--rail-light)]'
                           }`}
                         >
                           <HugeiconsIcon icon={GitBranchIcon} size={11} />
@@ -488,9 +569,9 @@ function NewDeploymentPage({ project }: { project: NonNullable<ReturnType<typeof
 
           {/* ── Step 2: Archive upload ── */}
           {stepIndex === 1 && sourceType === 'archive' && (
-            <Card className="border border-[#1e2130] p-5">
-              <h2 className="text-sm font-semibold text-slate-200 mb-1">Upload an archive</h2>
-              <p className="text-xs text-slate-500 mb-4">Your archive must contain a Dockerfile at the root (or specify a path in the next step).</p>
+            <Card className="border border-[var(--rail)] p-5">
+              <h2 className="text-sm font-semibold text-[var(--text)] mb-1">Upload an archive</h2>
+              <p className="text-xs text-[var(--text-muted)] mb-4">Upload a .zip or .tar.gz containing your project. We&apos;ll auto-detect the framework and build it.</p>
 
               {!archiveFile && !uploadingArchive && (
                 <Dropzone
@@ -506,30 +587,30 @@ function NewDeploymentPage({ project }: { project: NonNullable<ReturnType<typeof
               {uploadingArchive && (
                 <div className="flex flex-col items-center py-8">
                   <Spinner size="lg" />
-                  <p className="text-sm text-slate-400 mt-3">Uploading {archiveFile?.name}…</p>
-                  <p className="text-xs text-slate-600 mt-1">{archiveFile && formatBytes(archiveFile.size)}</p>
+                  <p className="text-sm text-[var(--text-muted)] mt-3">Uploading {archiveFile?.name}…</p>
+                  <p className="text-xs text-[var(--text-dim)] mt-1">{archiveFile && formatBytes(archiveFile.size)}</p>
                 </div>
               )}
 
               {!uploadingArchive && archiveFile && (
-                <div className="rounded-lg border border-[#1e2130] bg-[#080a0d] p-4">
+                <div className="rounded-lg border border-[var(--rail)] bg-[var(--surface-2)] p-4">
                   <div className="flex items-center gap-3">
-                    <HugeiconsIcon icon={uploadedArchive ? CheckmarkCircle02Icon : Cancel01Icon} size={18} className={uploadedArchive ? 'text-emerald-400' : 'text-red-400'} />
+                    <HugeiconsIcon icon={uploadedArchive ? CheckmarkCircle02Icon : Cancel01Icon} size={18} className={uploadedArchive ? 'text-[var(--success)]' : 'text-[var(--danger)]'} />
                     <div className="flex-1 min-w-0">
-                      <p className="text-sm font-medium text-slate-200 truncate">{archiveFile.name}</p>
-                      <p className="text-xs text-slate-600">{formatBytes(archiveFile.size)}</p>
+                      <p className="text-sm font-medium text-[var(--text)] truncate">{archiveFile.name}</p>
+                      <p className="text-xs text-[var(--text-dim)]">{formatBytes(archiveFile.size)}</p>
                     </div>
                     {uploadedArchive && (
                       <button
                         onClick={() => { setArchiveFile(null); setUploadedArchive(null); }}
-                        className="text-xs text-slate-500 hover:text-red-400 transition-colors"
+                        className="text-xs text-[var(--text-muted)] hover:text-[var(--danger)] transition-colors"
                       >
                         Replace
                       </button>
                     )}
                   </div>
                   {!uploadedArchive && (
-                    <p className="text-xs text-red-400 mt-2">Upload failed — try a different file.</p>
+                    <p className="text-xs text-[var(--danger)] mt-2">Upload failed — try a different file.</p>
                   )}
                 </div>
               )}
@@ -538,36 +619,167 @@ function NewDeploymentPage({ project }: { project: NonNullable<ReturnType<typeof
 
           {/* ── Step 3: Configure ── */}
           {stepIndex === 2 && (
-            <Card className="border border-[#1e2130] p-5 space-y-4">
-              <h2 className="text-sm font-semibold text-slate-200">Build configuration</h2>
-
+            <Card className="border border-[var(--rail)] p-5 space-y-5">
+              {/* Framework auto-detection */}
               <div>
-                <label className="block text-xs font-medium text-slate-400 mb-1.5 uppercase tracking-wider">
-                  Dockerfile path <span className="text-slate-600 normal-case font-normal">(optional)</span>
-                </label>
-                <Input
-                  value={dockerfilePath}
-                  onChange={e => setDockerfilePath(e.target.value)}
-                  placeholder="./Dockerfile"
-                  className="bg-[#080a0d] border border-[#1e2130] text-slate-200"
-                />
-                <p className="text-[10px] text-slate-600 mt-1">Defaults to <code className="text-slate-500">./Dockerfile</code> at the source root.</p>
+                <div className="flex items-center gap-2 mb-3">
+                  <HugeiconsIcon icon={Rocket01Icon} size={16} className="text-[var(--success)]" />
+                  <h2 className="text-sm font-semibold text-[var(--text)]">Framework detection</h2>
+                </div>
+
+                {detecting && (
+                  <div className="rounded-lg border border-[var(--rail)] bg-[var(--surface-2)] p-4 flex items-center gap-3">
+                    <Spinner size="sm" />
+                    <div>
+                      <p className="text-sm text-[var(--text-muted)]">Detecting framework…</p>
+                      <p className="text-xs text-[var(--text-dim)]">Cloning repository and analyzing files</p>
+                    </div>
+                  </div>
+                )}
+
+                {!detecting && buildPlan && (
+                  <div className="rounded-lg border border-[var(--success)]/30 bg-[var(--success)]/5 p-4">
+                    <div className="flex items-center gap-2 mb-3">
+                      <HugeiconsIcon icon={CheckmarkCircle02Icon} size={16} className="text-[var(--success)]" />
+                      <span className="text-sm font-semibold text-[var(--text)]">
+                        {buildPlan.frameworkLabel}{buildPlan.frameworkVersion ? ` ${buildPlan.frameworkVersion}` : ''}
+                      </span>
+                      {buildPlan.monorepo && (
+                        <span className="text-[10px] px-1.5 py-0.5 rounded bg-[var(--accent)]/10 text-[var(--accent)] font-mono">
+                          {buildPlan.monorepo} monorepo
+                        </span>
+                      )}
+                    </div>
+                    <div className="grid grid-cols-2 gap-x-4 gap-y-2 text-xs">
+                      <div>
+                        <span className="text-[var(--text-dim)]">Build</span>
+                        <p className="text-[var(--text-muted)] font-mono mt-0.5 truncate">{buildPlan.buildCommand}</p>
+                      </div>
+                      <div>
+                        <span className="text-[var(--text-dim)]">Output</span>
+                        <p className="text-[var(--text-muted)] font-mono mt-0.5">{buildPlan.outputDirectory}</p>
+                      </div>
+                      <div>
+                        <span className="text-[var(--text-dim)]">Port</span>
+                        <p className="text-[var(--text-muted)] font-mono mt-0.5">{buildPlan.port}</p>
+                      </div>
+                      <div>
+                        <span className="text-[var(--text-dim)]">Runtime</span>
+                        <p className="text-[var(--text-muted)] font-mono mt-0.5">{buildPlan.runtime}</p>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {!detecting && detectError && !buildPlan && (
+                  <div className="rounded-lg border border-[var(--warning)]/30 bg-[var(--warning)]/5 p-4 flex items-start justify-between gap-3">
+                    <div className="flex items-start gap-2.5">
+                      <span className="text-xs text-[var(--warning)] mt-0.5"></span>
+                      <div>
+                        <p className="text-sm text-[var(--text-muted)]">Could not auto-detect framework</p>
+                        <p className="text-xs text-[var(--text-dim)] mt-0.5">{detectError}</p>
+                        <p className="text-xs text-[var(--text-dim)] mt-1">The deployment will still proceed — provide a Dockerfile in Advanced settings if the build fails.</p>
+                      </div>
+                    </div>
+                    <button onClick={runDetection} className="text-xs text-[var(--accent)] hover:text-[var(--accent)] flex-shrink-0">
+                      Retry
+                    </button>
+                  </div>
+                )}
+
+                {!detecting && !buildPlan && !detectError && sourceType === 'git' && (
+                  <div className="rounded-lg border border-[var(--rail)] bg-[var(--surface-2)] p-4 flex items-center justify-between gap-3">
+                    <p className="text-xs text-[var(--text-muted)]">Ready to detect your framework.</p>
+                    <button onClick={runDetection} className="text-xs text-[var(--accent)] hover:text-[var(--accent)]">
+                      Detect now
+                    </button>
+                  </div>
+                )}
+
+                {!detecting && !buildPlan && !detectError && sourceType === 'archive' && (
+                  <div className="rounded-lg border border-[var(--rail)] bg-[var(--surface-2)] p-4">
+                    <p className="text-sm text-[var(--text-muted)]">Automatic detection</p>
+                    <p className="text-xs text-[var(--text-muted)] mt-0.5">
+                      We&apos;ll detect your framework when building the archive. Supported: Next.js, Nuxt, Astro, SvelteKit, Vite, Node.js, and static HTML.
+                    </p>
+                  </div>
+                )}
               </div>
 
-              {sourceType === 'git' && !selectedRepo && (
-                <div>
-                  <label className="block text-xs font-medium text-slate-400 mb-1.5 uppercase tracking-wider">
-                    Credentials <span className="text-slate-600 normal-case font-normal">(for private repos)</span>
-                  </label>
-                  <Input
-                    value={credentials}
-                    onChange={e => setCredentials(e.target.value)}
-                    placeholder="Deploy key or user:token"
-                    className="bg-[#080a0d] border border-[#1e2130] text-slate-200"
-                  />
-                  <p className="text-[10px] text-slate-600 mt-1">Stored encrypted, never logged.</p>
-                </div>
-              )}
+              {/* Environment variables */}
+              <div>
+                <label className="block text-xs font-medium text-[var(--text-muted)] mb-1.5 uppercase tracking-wider">
+                  Environment variables <span className="text-[var(--text-dim)] normal-case font-normal">(optional)</span>
+                </label>
+                <p className="text-xs text-[var(--text-muted)] mb-2">
+                  Paste your <code className="text-[var(--text-dim)]">.env</code> file or add <code className="text-[var(--text-dim)]">KEY=value</code> pairs, one per line. These override project-level env vars for this deployment.
+                </p>
+                <textarea
+                  value={envText}
+                  onChange={e => setEnvText(e.target.value)}
+                  placeholder={'DATABASE_URL=postgres://...\nAPI_SECRET=your-secret-here\n# Comments are ignored\nNEXT_PUBLIC_API_URL=https://...'}
+                  rows={6}
+                  className="w-full rounded-md bg-[var(--surface-2)] border border-[var(--rail)] text-[var(--text)] text-xs font-mono px-3 py-2.5 resize-y focus:outline-none focus:border-[var(--danger)]/40 placeholder:text-[var(--text-dim)]"
+                  spellCheck={false}
+                />
+                {Object.keys(parsedEnvVars).length > 0 && (
+                  <div className="mt-2 flex items-center gap-1.5 text-xs text-[var(--success)]">
+                    <HugeiconsIcon icon={CheckmarkCircle02Icon} size={12} />
+                    {Object.keys(parsedEnvVars).length} variable{Object.keys(parsedEnvVars).length === 1 ? '' : 's'} ready
+                  </div>
+                )}
+                <p className="text-[10px] text-[var(--text-dim)] mt-1.5">
+                  Also configurable anytime in <Link href={`/projects/${project.id}/settings`} className="text-[var(--accent)] hover:underline">project settings</Link>.
+                </p>
+              </div>
+
+              {/* Advanced settings (collapsed) */}
+              <div className="border-t border-[var(--rail)] pt-4">
+                <button
+                  type="button"
+                  onClick={() => setShowAdvanced(v => !v)}
+                  className="flex items-center gap-1.5 text-xs text-[var(--text-muted)] hover:text-[var(--text-muted)] transition-colors"
+                >
+                  <HugeiconsIcon icon={Settings01Icon} size={13} />
+                  Advanced settings
+                  <span className={`transition-transform ${showAdvanced ? 'rotate-90' : ''}`}>
+                    <HugeiconsIcon icon={ArrowRight01Icon} size={10} />
+                  </span>
+                </button>
+                {showAdvanced && (
+                  <div className="mt-3 space-y-3">
+                    <div>
+                      <label className="block text-xs font-medium text-[var(--text-muted)] mb-1.5 uppercase tracking-wider">
+                        Dockerfile path <span className="text-[var(--text-dim)] normal-case font-normal">(overrides auto-detect)</span>
+                      </label>
+                      <Input
+                        value={dockerfilePath}
+                        onChange={e => setDockerfilePath(e.target.value)}
+                        placeholder="./Dockerfile"
+                        className="bg-[var(--surface-2)] border border-[var(--rail)] text-[var(--text)]"
+                      />
+                      <p className="text-[10px] text-[var(--text-dim)] mt-1">
+                        Only set this if your project has a custom Dockerfile and you want to bypass automatic detection.
+                      </p>
+                    </div>
+
+                    {sourceType === 'git' && !selectedRepo && (
+                      <div>
+                        <label className="block text-xs font-medium text-[var(--text-muted)] mb-1.5 uppercase tracking-wider">
+                          Credentials <span className="text-[var(--text-dim)] normal-case font-normal">(for private repos)</span>
+                        </label>
+                        <Input
+                          value={credentials}
+                          onChange={e => setCredentials(e.target.value)}
+                          placeholder="Deploy key or user:token"
+                          className="bg-[var(--surface-2)] border border-[var(--rail)] text-[var(--text)]"
+                        />
+                        <p className="text-[10px] text-[var(--text-dim)] mt-1">Stored encrypted, never logged.</p>
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
 
               {/* Build preview */}
               <BuildPreview
@@ -578,14 +790,22 @@ function NewDeploymentPage({ project }: { project: NonNullable<ReturnType<typeof
                 archiveName={archiveFile?.name}
                 archiveSize={archiveFile?.size}
                 dockerfilePath={dockerfilePath}
+                envCount={Object.keys(parsedEnvVars).length}
+                frameworkLabel={buildPlan?.frameworkLabel}
+                frameworkVersion={buildPlan?.frameworkVersion}
+                buildCommand={buildPlan?.buildCommand}
+                outputDirectory={buildPlan?.outputDirectory}
+                port={buildPlan?.port}
+                runtime={buildPlan?.runtime}
+                monorepo={buildPlan?.monorepo}
               />
             </Card>
           )}
 
           {/* ── Step 4: Review ── */}
           {stepIndex === 3 && (
-            <Card className="border border-[#1e2130] p-5">
-              <h2 className="text-sm font-semibold text-slate-200 mb-4">Review & deploy</h2>
+            <Card className="border border-[var(--rail)] p-5">
+              <h2 className="text-sm font-semibold text-[var(--text)] mb-4">Review & deploy</h2>
               <dl className="space-y-3">
                 <ReviewRow label="Source type" value={sourceType === 'git' ? 'Git repository' : 'Archive upload'} />
                 {sourceType === 'git' ? (
@@ -599,27 +819,29 @@ function NewDeploymentPage({ project }: { project: NonNullable<ReturnType<typeof
                     <ReviewRow label="Size" value={archiveFile ? formatBytes(archiveFile.size) : '—'} />
                   </>
                 )}
-                <ReviewRow label="Dockerfile" value={dockerfilePath || './Dockerfile (auto)'} mono />
-                <div className="pt-3 border-t border-[#1e2130] mt-1">
-                  <dt className="text-xs text-slate-500 mb-1">Deployment URL (after success)</dt>
-                  <dd className="text-sm font-mono text-blue-400">
+                <ReviewRow label="Framework" value={buildPlan ? `${buildPlan.frameworkLabel}${buildPlan.frameworkVersion ? ' ' + buildPlan.frameworkVersion : ''}` : 'Auto-detect'} />
+                {dockerfilePath.trim() && <ReviewRow label="Dockerfile" value={dockerfilePath} mono />}
+                <ReviewRow label="Env variables" value={Object.keys(parsedEnvVars).length > 0 ? `${Object.keys(parsedEnvVars).length} set` : 'None'} />
+                <div className="pt-3 border-t border-[var(--rail)] mt-1">
+                  <dt className="text-xs text-[var(--text-muted)] mb-1">Deployment URL (after success)</dt>
+                  <dd className="text-sm font-mono text-[var(--accent)]">
                     https://{project.slug}.apps.{process.env.NEXT_PUBLIC_PLATFORM_DOMAIN ?? 'deploy.fidscript.com'}
                   </dd>
                 </div>
                 {sourceType === 'git' && (
-                  <div className="pt-3 border-t border-[#1e2130] mt-1 flex items-center justify-between gap-3">
+                  <div className="pt-3 border-t border-[var(--rail)] mt-1 flex items-center justify-between gap-3">
                     <div>
-                      <dt className="text-xs text-slate-400 font-medium">Auto-deploy on push</dt>
-                      <dd className="text-[10px] text-slate-600 mt-0.5">New commits to this branch will automatically trigger a deployment.</dd>
+                      <dt className="text-xs text-[var(--text-muted)] font-medium">Auto-deploy on push</dt>
+                      <dd className="text-[10px] text-[var(--text-dim)] mt-0.5">New commits to this branch will automatically trigger a deployment.</dd>
                     </div>
                     <ToggleSwitch checked={autoDeploy} onChange={setAutoDeploy} />
                   </div>
                 )}
               </dl>
-              <div className="mt-5 pt-4 border-t border-[#1e2130]">
-                <p className="text-xs text-slate-500">
-                  Environment variables are managed in <Link href={`/projects/${project.id}/settings`} className="text-blue-400 hover:underline">project settings</Link>.
-                  The deployment will build and start automatically once queued.
+              <div className="mt-5 pt-4 border-t border-[var(--rail)]">
+                <p className="text-xs text-[var(--text-muted)]">
+                  The deployment will build and start automatically once queued. You can edit environment variables anytime in{' '}
+                  <Link href={`/projects/${project.id}/settings`} className="text-[var(--accent)] hover:underline">project settings</Link>.
                 </p>
               </div>
             </Card>
@@ -628,7 +850,7 @@ function NewDeploymentPage({ project }: { project: NonNullable<ReturnType<typeof
       </div>
 
       {/* Sticky footer */}
-      <div className="fixed bottom-0 inset-x-0 border-t border-[#1e2130] bg-[#0c0e14]/95 backdrop-blur-sm">
+      <div className="fixed bottom-0 inset-x-0 border-t border-[var(--rail)] bg-[var(--surface)]/95 backdrop-blur-sm">
         <div className="max-w-2xl mx-auto px-4 sm:px-6 lg:px-8 py-3 flex items-center justify-between gap-3">
           <Button variant="ghost" size="sm" onClick={handleBack} disabled={stepIndex === 0}>
             <HugeiconsIcon icon={ArrowLeft01Icon} size={13} />
@@ -661,6 +883,14 @@ function BuildPreview(props: {
   archiveName?: string;
   archiveSize?: number;
   dockerfilePath: string;
+  envCount?: number;
+  frameworkLabel?: string;
+  frameworkVersion?: string;
+  buildCommand?: string;
+  outputDirectory?: string;
+  port?: number;
+  runtime?: string;
+  monorepo?: string;
 }) {
   const imageName = props.sourceType === 'git'
     ? `fidscript/${props.repoName.replace('/', '-').toLowerCase()}`
@@ -668,30 +898,52 @@ function BuildPreview(props: {
   const tagSuffix = Date.now().toString(36);
 
   return (
-    <div className="rounded-lg bg-[#080a0d] border border-[#1e2130] p-4 space-y-2.5">
-      <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2">What will build</p>
+    <div className="rounded-lg bg-[var(--surface-2)] border border-[var(--rail)] p-4 space-y-2.5">
+      <p className="text-xs font-semibold text-[var(--text-muted)] uppercase tracking-wider mb-2">What will build</p>
       <div className="flex items-start gap-2.5">
-        <HugeiconsIcon icon={props.sourceType === 'git' ? GithubIcon : HardDriveIcon} size={13} className="text-slate-600 mt-0.5 flex-shrink-0" />
+        <HugeiconsIcon icon={props.sourceType === 'git' ? GithubIcon : HardDriveIcon} size={13} className="text-[var(--text-dim)] mt-0.5 flex-shrink-0" />
         <div className="min-w-0">
-          <p className="text-xs font-mono text-slate-300 truncate">
+          <p className="text-xs font-mono text-[var(--text-muted)] truncate">
             {props.sourceType === 'git' ? props.repoName : props.archiveName ?? 'archive'}
           </p>
-          {props.sourceType === 'git' && <p className="text-xs text-slate-600">github.com/{props.repoName}</p>}
+          {props.sourceType === 'git' && <p className="text-xs text-[var(--text-dim)]">github.com/{props.repoName}</p>}
         </div>
       </div>
       {props.sourceType === 'git' && (
-        <div className="flex items-center gap-2 text-xs text-slate-400">
-          <HugeiconsIcon icon={GitBranchIcon} size={13} className="text-slate-600" />
-          <span className="font-mono text-slate-300">{props.branch || 'main'}</span>
+        <div className="flex items-center gap-2 text-xs text-[var(--text-muted)]">
+          <HugeiconsIcon icon={GitBranchIcon} size={13} className="text-[var(--text-dim)]" />
+          <span className="font-mono text-[var(--text-muted)]">{props.branch || 'main'}</span>
         </div>
       )}
-      <div className="flex items-center gap-2 text-xs text-slate-400">
-        <HugeiconsIcon icon={File01Icon} size={13} className="text-slate-600" />
-        <span className="font-mono text-slate-300">{props.dockerfilePath ? `Dockerfile at ${props.dockerfilePath}` : 'Dockerfile (auto-detect)'}</span>
-      </div>
-      <div className="border-t border-[#1e2130] pt-2 mt-1">
-        <p className="text-xs text-slate-600 mb-1">Resulting image tag</p>
-        <code className="text-[10px] font-mono text-slate-400 bg-[#1e2130] px-2 py-1 rounded block truncate">
+      {/* Detected framework */}
+      {props.frameworkLabel ? (
+        <div className="flex items-center gap-2 text-xs text-[var(--success)]">
+          <HugeiconsIcon icon={CheckmarkCircle02Icon} size={13} />
+          <span className="font-mono">{props.frameworkLabel}{props.frameworkVersion ? ` ${props.frameworkVersion}` : ''}</span>
+          {props.monorepo && <span className="text-[10px] text-[var(--accent)]">({props.monorepo})</span>}
+        </div>
+      ) : (
+        <div className="flex items-center gap-2 text-xs text-[var(--text-muted)]">
+          <HugeiconsIcon icon={File01Icon} size={13} className="text-[var(--text-dim)]" />
+          <span className="font-mono text-[var(--text-muted)]">{props.dockerfilePath ? `Dockerfile at ${props.dockerfilePath}` : 'Auto-detect'}</span>
+        </div>
+      )}
+      {/* Build details (if detected) */}
+      {props.frameworkLabel && props.buildCommand && (
+        <div className="text-xs text-[var(--text-dim)] pl-5 space-y-0.5">
+          {props.buildCommand && <p>Build: <span className="font-mono text-[var(--text-muted)]">{props.buildCommand}</span></p>}
+          {props.outputDirectory && <p>Output: <span className="font-mono text-[var(--text-muted)]">{props.outputDirectory}</span> · Port: <span className="font-mono text-[var(--text-muted)]">{props.port}</span></p>}
+        </div>
+      )}
+      {props.envCount != null && props.envCount > 0 && (
+        <div className="flex items-center gap-2 text-xs text-[var(--success)]">
+          <HugeiconsIcon icon={CheckmarkCircle02Icon} size={13} />
+          <span className="font-mono">{props.envCount} env variable{props.envCount === 1 ? '' : 's'}</span>
+        </div>
+      )}
+      <div className="border-t border-[var(--rail)] pt-2 mt-1">
+        <p className="text-xs text-[var(--text-dim)] mb-1">Resulting image tag</p>
+        <code className="text-[10px] font-mono text-[var(--text-muted)] bg-[var(--rail)] px-2 py-1 rounded block truncate">
           {imageName}:{(props.branch || 'archive').replace(/\//g, '-')}-{tagSuffix}
         </code>
       </div>
@@ -702,8 +954,8 @@ function BuildPreview(props: {
 function ReviewRow({ label, value, mono }: { label: string; value: string; mono?: boolean }) {
   return (
     <div className="flex items-start justify-between gap-4">
-      <dt className="text-xs text-slate-500 flex-shrink-0 pt-0.5">{label}</dt>
-      <dd className={`text-sm text-slate-200 text-right min-w-0 truncate ${mono ? 'font-mono' : ''}`}>{value}</dd>
+      <dt className="text-xs text-[var(--text-muted)] flex-shrink-0 pt-0.5">{label}</dt>
+      <dd className={`text-sm text-[var(--text)] text-right min-w-0 truncate ${mono ? 'font-mono' : ''}`}>{value}</dd>
     </div>
   );
 }
@@ -717,8 +969,8 @@ function ToggleSwitch({ checked, onChange, disabled }: { checked: boolean; onCha
       aria-checked={checked}
       disabled={disabled}
       onClick={() => onChange(!checked)}
-      className={`relative inline-flex h-5 w-9 flex-shrink-0 rounded-full transition-colors duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-red-500/40 ${
-        checked ? 'bg-red-600' : 'bg-[#2a2d3a]'
+      className={`relative inline-flex h-5 w-9 flex-shrink-0 rounded-full transition-colors duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--danger)]/40 ${
+        checked ? 'bg-[var(--danger)]' : 'bg-[var(--rail-light)]'
       } ${disabled ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`}
     >
       <span

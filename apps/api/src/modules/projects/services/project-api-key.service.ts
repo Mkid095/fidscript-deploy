@@ -22,7 +22,11 @@ export class ProjectApiKeyService {
     await this.checkPermission(userId, projectId, ['admin', 'owner']);
 
     const key = `fpk_${crypto.randomBytes(PROJECT_API_KEY_BYTES).toString('base64url')}`;
-    const keyHash = await bcrypt.hash(key, BCRYPT_ROUNDS);
+    // Hash the key BODY (without the fpk_ prefix). validateProjectApiKey strips
+    // the prefix with rawKey.slice(4) before bcrypt.compare, so both sides must
+    // agree on whether the prefix is included — previously they disagreed and no
+    // API key ever validated.
+    const keyHash = await bcrypt.hash(key.slice(4), BCRYPT_ROUNDS);
 
     const apiKey = await this.prisma.projectApiKey.create({
       data: {

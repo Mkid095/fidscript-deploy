@@ -14,6 +14,7 @@ import { TokenService } from '@/modules/realtime/services/token.service';
 import { RealtimeSubscriptionService } from '@/modules/realtime/services/realtime-subscription.service';
 import { projectRoom } from '@/modules/realtime/services/realtime-rooms';
 import { RealtimeMessageHandlerService } from './realtime-message-handler.service';
+import { ProjectApiKeyService } from '@/modules/projects/services/project-api-key.service';
 
 const NAMESPACE = '/realtime';
 
@@ -28,6 +29,7 @@ export class RealtimeGateway implements OnGatewayConnection, OnGatewayDisconnect
     private tokenService: TokenService,
     private messages: RealtimeMessageHandlerService,
     private subscriptions: RealtimeSubscriptionService,
+    private apiKeys: ProjectApiKeyService,
   ) {}
 
   onModuleInit() {
@@ -49,6 +51,25 @@ export class RealtimeGateway implements OnGatewayConnection, OnGatewayDisconnect
 
   async handleConnection(client: Socket) {
     try {
+      // API-key auth: an fpk_ key supplied as the handshake token OR via the
+      // x-api-key header. Lets external apps subscribe to realtime (DB row
+      // changes, deployment events, …) without a platform JWT.
+      const authHeader = client.handshake.headers['x-api-key'] as string | undefined;
+      const apiKey =
+        (typeof client.handshake.auth?.token === 'string' && client.handshake.auth.token.startsWith('fpk_')
+          ? (client.handshake.auth.token as string)
+          : undefined) ?? authHeader;
+      if (apiKey) {
+        const result = await this.apiKeys.validateProjectApiKey(apiKey);
+        if (!result) { client.disconnect(); return; }
+        client.data.userId = 'api-key';
+        client.data.projectId = result.projectId;
+        client.data.isApiKey = true;
+        this.channelService.registerSocket('api-key', result.projectId, client.id);
+        client.emit('connected', { socketId: client.id, via: 'api-key' });
+        return;
+      }
+
       const token =
         client.handshake.auth.token ||
         client.handshake.headers.authorization?.replace('Bearer ', '');
@@ -115,7 +136,7 @@ export class RealtimeGateway implements OnGatewayConnection, OnGatewayDisconnect
   ) {
     const result = await this.subscriptions.subscribeToProject(
       client,
-      client.data.userId,
+      { userId: client.data.userId, projectId: client.data.projectId, isApiKey: client.data.isApiKey },
       data.projectId,
     );
     if (!result.success) {

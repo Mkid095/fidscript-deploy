@@ -23,16 +23,16 @@ const IN_FLIGHT_STATUSES = new Set(['PENDING', 'QUEUED', 'BUILDING', 'DEPLOYING'
 
 function statusMeta(status?: string): { label: string; badge: string; dot: string } {
   switch (status?.toUpperCase()) {
-    case 'SUCCESS':    return { label: 'Success',      badge: 'bg-emerald-900/60 text-emerald-400 border-emerald-800', dot: 'bg-emerald-500' };
-    case 'FAILED':     return { label: 'Failed',       badge: 'bg-red-900/60 text-red-400 border-red-800',           dot: 'bg-red-500' };
-    case 'PENDING':    return { label: 'Pending',       badge: 'bg-blue-900/60 text-blue-400 border-blue-800',        dot: 'bg-blue-500 animate-pulse' };
-    case 'QUEUED':     return { label: 'Queued',        badge: 'bg-blue-900/60 text-blue-400 border-blue-800',        dot: 'bg-blue-500 animate-pulse' };
-    case 'BUILDING':   return { label: 'Building',      badge: 'bg-amber-900/60 text-amber-400 border-amber-800',     dot: 'bg-amber-500 animate-pulse' };
-    case 'DEPLOYING':  return { label: 'Deploying',     badge: 'bg-amber-900/60 text-amber-400 border-amber-800',     dot: 'bg-amber-500 animate-pulse' };
-    case 'STOPPED':    return { label: 'Stopped',       badge: 'bg-slate-800 text-slate-400 border-slate-700',        dot: 'bg-slate-500' };
+    case 'SUCCESS':    return { label: 'Success',      badge: 'bg-emerald-900/60 text-[var(--success)] border-[var(--success)]/30', dot: 'bg-[var(--success)]' };
+    case 'FAILED':     return { label: 'Failed',       badge: 'bg-red-900/60 text-[var(--danger)] border-[var(--danger)]/30',           dot: 'bg-[var(--danger)]' };
+    case 'PENDING':    return { label: 'Pending',       badge: 'bg-blue-900/60 text-[var(--accent)] border-blue-800',        dot: 'bg-[var(--accent)] animate-pulse' };
+    case 'QUEUED':     return { label: 'Queued',        badge: 'bg-blue-900/60 text-[var(--accent)] border-blue-800',        dot: 'bg-[var(--accent)] animate-pulse' };
+    case 'BUILDING':   return { label: 'Building',      badge: 'bg-amber-900/60 text-[var(--warning)] border-[var(--warning)]/30',     dot: 'bg-[var(--warning)] animate-pulse' };
+    case 'DEPLOYING':  return { label: 'Deploying',     badge: 'bg-amber-900/60 text-[var(--warning)] border-[var(--warning)]/30',     dot: 'bg-[var(--warning)] animate-pulse' };
+    case 'STOPPED':    return { label: 'Stopped',       badge: 'bg-[var(--rail)] text-[var(--text-muted)] border-[var(--rail-light)]',        dot: 'bg-slate-500' };
     case 'ROLLED_BACK':return { label: 'Rolled back',   badge: 'bg-purple-900/60 text-purple-400 border-purple-800', dot: 'bg-purple-500' };
-    case 'BLOCKED':    return { label: 'Blocked',       badge: 'bg-orange-900/60 text-orange-400 border-orange-800',  dot: 'bg-orange-500' };
-    default:           return { label: status ?? 'Unknown', badge: 'bg-slate-800 text-slate-400 border-slate-700', dot: 'bg-slate-600' };
+    case 'BLOCKED':    return { label: 'Blocked',       badge: 'bg-orange-900/60 text-[var(--warning)] border-orange-800',  dot: 'bg-[var(--warning)]' };
+    default:           return { label: status ?? 'Unknown', badge: 'bg-[var(--rail)] text-[var(--text-muted)] border-[var(--rail-light)]', dot: 'bg-slate-600' };
   }
 }
 
@@ -52,7 +52,7 @@ function formatDuration(start: string, end?: string | null): string {
 function RelativeTime({ iso }: { iso: string }) {
   const diff = Date.now() - new Date(iso).getTime();
   const s = Math.floor(diff / 1000);
-  if (s < 5) return <span className="text-slate-600">just now</span>;
+  if (s < 5) return <span className="text-[var(--text-dim)]">just now</span>;
   if (s < 60) return <span>{s}s ago</span>;
   const m = Math.floor(s / 60);
   if (m < 60) return <span>{m}m ago</span>;
@@ -109,7 +109,7 @@ function DeploymentCard({ deployment, projectId, onUpdate, onRemove }: Deploymen
     : null;
 
   return (
-    <Card className="border border-[#1e2130] py-3 px-4 hover:border-[#2a2d3a] transition-all duration-150 group">
+    <Card className="border border-[var(--rail)] py-3 px-4 hover:border-[var(--rail-light)] transition-all duration-150 group">
       <div className="flex items-start justify-between gap-3">
         {/* Left: status + identity */}
         <div className="flex-1 min-w-0">
@@ -122,39 +122,39 @@ function DeploymentCard({ deployment, projectId, onUpdate, onRemove }: Deploymen
             </span>
             {/* Branch */}
             {deployment.branch && (
-              <span className="flex items-center gap-1 text-xs text-slate-500">
-                <HugeiconsIcon icon={GitBranchIcon} size={11} className="text-slate-600" />
+              <span className="flex items-center gap-1 text-xs text-[var(--text-muted)]">
+                <HugeiconsIcon icon={GitBranchIcon} size={11} className="text-[var(--text-dim)]" />
                 {deployment.branch}
               </span>
             )}
             {/* Commit */}
             {deployment.commitSha && (
-              <code className="text-[10px] font-mono text-slate-600 bg-[#1e2130] px-1.5 py-0.5 rounded">
+              <code className="text-[10px] font-mono text-[var(--text-dim)] bg-[var(--rail)] px-1.5 py-0.5 rounded">
                 {deployment.commitSha.slice(0, 7)}
               </code>
             )}
             {/* Image tag */}
             {deployment.imageTag && (
-              <code className="text-[10px] font-mono text-slate-600 bg-[#1e2130] px-1.5 py-0.5 rounded">
+              <code className="text-[10px] font-mono text-[var(--text-dim)] bg-[var(--rail)] px-1.5 py-0.5 rounded">
                 {deployment.imageTag}
               </code>
             )}
           </div>
 
           {/* Meta row */}
-          <div className="flex items-center gap-3 text-xs text-slate-500 flex-wrap">
+          <div className="flex items-center gap-3 text-xs text-[var(--text-muted)] flex-wrap">
             <span title={new Date(deployment.createdAt).toLocaleString()}>
               <RelativeTime iso={deployment.createdAt} />
             </span>
             {duration !== null && (
-              <span className="text-slate-600">· {formatDuration(deployment.createdAt, deployment.completedAt)}</span>
+              <span className="text-[var(--text-dim)]">· {formatDuration(deployment.createdAt, deployment.completedAt)}</span>
             )}
             {deployment.deploymentUrl && (
               <a
                 href={deployment.deploymentUrl}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="flex items-center gap-1 text-blue-500 hover:text-blue-400 transition-colors"
+                className="flex items-center gap-1 text-[var(--accent)] hover:text-[var(--accent)] transition-colors"
               >
                 <HugeiconsIcon icon={ExternalLinkIcon} size={10} />
                 <span className="truncate max-w-[200px]">{deployment.deploymentUrl.replace(/^https?:\/\//, '')}</span>
@@ -170,7 +170,7 @@ function DeploymentCard({ deployment, projectId, onUpdate, onRemove }: Deploymen
           {/* Logs link */}
           <a
             href={`/projects/${projectId}/deployments/${deployment.id}`}
-            className="flex items-center gap-1.5 text-xs px-2.5 py-1.5 rounded-md bg-[#1e2130] text-slate-400 hover:text-slate-200 border border-[#2a2d3a] hover:border-[#3a3d4a] transition-all"
+            className="flex items-center gap-1.5 text-xs px-2.5 py-1.5 rounded-md bg-[var(--rail)] text-[var(--text-muted)] hover:text-[var(--text)] border border-[var(--rail-light)] hover:border-[#3a3d4a] transition-all"
           >
             <HugeiconsIcon icon={File01Icon} size={12} />
             <span className="hidden sm:inline">Logs</span>
@@ -182,7 +182,7 @@ function DeploymentCard({ deployment, projectId, onUpdate, onRemove }: Deploymen
               onClick={() => handleAction('stop')}
               disabled={!!acting}
               title="Stop deployment"
-              className="flex items-center gap-1.5 text-xs px-2.5 py-1.5 rounded-md bg-[#1e2130] text-slate-400 hover:text-amber-300 border border-[#2a2d3a] hover:border-amber-700 transition-all disabled:opacity-50"
+              className="flex items-center gap-1.5 text-xs px-2.5 py-1.5 rounded-md bg-[var(--rail)] text-[var(--text-muted)] hover:text-[var(--warning)] border border-[var(--rail-light)] hover:border-amber-700 transition-all disabled:opacity-50"
             >
               <HugeiconsIcon icon={StopCircleIcon} size={12} />
               <span className="hidden sm:inline">Stop</span>
@@ -194,7 +194,7 @@ function DeploymentCard({ deployment, projectId, onUpdate, onRemove }: Deploymen
               onClick={() => handleAction('restart')}
               disabled={!!acting}
               title="Restart deployment"
-              className="flex items-center gap-1.5 text-xs px-2.5 py-1.5 rounded-md bg-[#1e2130] text-slate-400 hover:text-emerald-400 border border-[#2a2d3a] hover:border-emerald-700 transition-all disabled:opacity-50"
+              className="flex items-center gap-1.5 text-xs px-2.5 py-1.5 rounded-md bg-[var(--rail)] text-[var(--text-muted)] hover:text-[var(--success)] border border-[var(--rail-light)] hover:border-emerald-700 transition-all disabled:opacity-50"
             >
               <HugeiconsIcon icon={PlayCircleIcon} size={12} />
               <span className="hidden sm:inline">Restart</span>
@@ -205,16 +205,16 @@ function DeploymentCard({ deployment, projectId, onUpdate, onRemove }: Deploymen
           <div className="relative" ref={menuRef}>
             <button
               onClick={() => setMenuOpen(o => !o)}
-              className="w-8 h-8 flex items-center justify-center rounded-md text-slate-600 hover:text-slate-300 hover:bg-[#1e2130] transition-all"
+              className="w-8 h-8 flex items-center justify-center rounded-md text-[var(--text-dim)] hover:text-[var(--text-muted)] hover:bg-[var(--rail)] transition-all"
               aria-label="Deployment menu"
             >
               <HugeiconsIcon icon={MoreHorizontalIcon} size={15} />
             </button>
             {menuOpen && (
-              <div className="absolute right-0 top-full mt-1.5 w-44 bg-[#0f1117] border border-[#1e2130] rounded-lg shadow-2xl z-30 py-1">
+              <div className="absolute right-0 top-full mt-1.5 w-44 bg-[var(--surface-2)] border border-[var(--rail)] rounded-lg shadow-2xl z-30 py-1">
                 <a
                   href={`/projects/${projectId}/deployments/${deployment.id}`}
-                  className="flex items-center gap-2.5 px-3 py-2 text-xs text-slate-400 hover:bg-[#1e2130] hover:text-slate-200 transition-colors"
+                  className="flex items-center gap-2.5 px-3 py-2 text-xs text-[var(--text-muted)] hover:bg-[var(--rail)] hover:text-[var(--text)] transition-colors"
                 >
                   <HugeiconsIcon icon={Search01Icon} size={13} />
                   View detail
@@ -223,14 +223,14 @@ function DeploymentCard({ deployment, projectId, onUpdate, onRemove }: Deploymen
                   <>
                     <button
                       onClick={() => handleAction('restart')}
-                      className="w-full flex items-center gap-2.5 px-3 py-2 text-xs text-slate-400 hover:bg-[#1e2130] hover:text-emerald-400 transition-colors"
+                      className="w-full flex items-center gap-2.5 px-3 py-2 text-xs text-[var(--text-muted)] hover:bg-[var(--rail)] hover:text-[var(--success)] transition-colors"
                     >
                       <HugeiconsIcon icon={RotateClockwiseIcon} size={13} />
                       Rebuild
                     </button>
                     <button
                       onClick={() => handleAction('delete')}
-                      className="w-full flex items-center gap-2.5 px-3 py-2 text-xs text-red-400 hover:bg-[#1e2130] hover:text-red-300 transition-colors"
+                      className="w-full flex items-center gap-2.5 px-3 py-2 text-xs text-[var(--danger)] hover:bg-[var(--rail)] hover:text-[var(--danger)] transition-colors"
                     >
                       <HugeiconsIcon icon={Delete01Icon} size={13} />
                       Delete
@@ -249,23 +249,23 @@ function DeploymentCard({ deployment, projectId, onUpdate, onRemove }: Deploymen
 // ── Skeleton card ─────────────────────────────────────────────────────────────
 function DeploymentCardSkeleton() {
   return (
-    <Card className="border border-[#1e2130] py-4 px-4 animate-pulse">
+    <Card className="border border-[var(--rail)] py-4 px-4 animate-pulse">
       <div className="flex items-start justify-between gap-3">
         <div className="flex-1 space-y-2">
           <div className="flex items-center gap-2">
-            <div className="w-2 h-2 rounded-full bg-slate-700" />
-            <div className="w-16 h-4 rounded-full bg-slate-800" />
-            <div className="w-14 h-3 rounded bg-slate-800" />
+            <div className="w-2 h-2 rounded-full bg-[var(--rail)]" />
+            <div className="w-16 h-4 rounded-full bg-[var(--rail)]" />
+            <div className="w-14 h-3 rounded bg-[var(--rail)]" />
           </div>
           <div className="flex items-center gap-3">
-            <div className="w-16 h-3 rounded bg-slate-800" />
-            <div className="w-20 h-3 rounded bg-slate-800" />
+            <div className="w-16 h-3 rounded bg-[var(--rail)]" />
+            <div className="w-20 h-3 rounded bg-[var(--rail)]" />
           </div>
         </div>
         <div className="flex items-center gap-1.5">
-          <div className="w-14 h-7 rounded-md bg-slate-800" />
-          <div className="w-14 h-7 rounded-md bg-slate-800" />
-          <div className="w-8 h-8 rounded-md bg-slate-800" />
+          <div className="w-14 h-7 rounded-md bg-[var(--rail)]" />
+          <div className="w-14 h-7 rounded-md bg-[var(--rail)]" />
+          <div className="w-8 h-8 rounded-md bg-[var(--rail)]" />
         </div>
       </div>
     </Card>
@@ -338,49 +338,64 @@ function DeploymentsSectionInner({ project }: Props) {
   // ── Realtime subscription ────────────────────────────────────────────────
   useEffect(() => {
     const sdk = getSdk();
-    const rt = (sdk as FidscriptSDK & { realtime?: { subscribeDeployments: (p: string, h: (e: any) => void) => () => void } }).realtime;
+    const rt = (sdk as FidscriptSDK & { realtime?: { connect: (t: string, p: string) => Promise<void>; subscribeDeployments: (p: string, h: (e: any) => void) => () => void } }).realtime;
     if (!rt) return;
 
-    const handler = (event: { eventType?: string; resourceId?: string; payload?: Record<string, any> }) => {
-      const et = event?.eventType;
-      if (!et || !et.startsWith('deployments.deployment.')) return;
-      const updatedId = event?.resourceId;
-      const payload = event?.payload ?? {};
+    const token = typeof window !== 'undefined'
+      ? (localStorage.getItem('fidscript_access_token') ?? localStorage.getItem('fidscript_token') ?? '')
+      : '';
 
-      if (!updatedId) return;
+    let unsub: (() => void) | undefined;
+    let cancelled = false;
 
-      setDeployments(prev => {
-        // Check if this deployment exists in our list
-        const exists = prev.some(d => d.id === updatedId);
-        if (!exists) {
-          // New deployment created — reload the full list to be safe
-          load();
-          return prev;
-        }
+    // Connect first, then subscribe — the realtime gateway requires an active
+    // socket connection before subscribe_project is emitted.
+    // Pass a getter so socket.io re-reads the (possibly refreshed) JWT on every
+    // reconnect instead of pinning a token that may expire mid-session.
+    rt.connect(() => localStorage.getItem('fidscript_access_token') ?? localStorage.getItem('fidscript_token') ?? '', project.id).then(() => {
+      if (cancelled) return;
 
-        // Update in place
-        return prev.map(d => {
-          if (d.id !== updatedId) return d;
-          return {
-            ...d,
-            status: et === 'deployments.deployment.succeeded' ? 'SUCCESS'
-                  : et === 'deployments.deployment.failed'    ? 'FAILED'
-                  : et === 'deployments.deployment.stopped'   ? 'STOPPED'
-                  : et === 'deployments.deployment.building'  ? 'BUILDING'
-                  : et === 'deployments.deployment.queued'   ? 'QUEUED'
-                  : et === 'deployments.deployment.deploying'? 'DEPLOYING'
-                  : et === 'deployments.deployment.blocked'  ? 'BLOCKED'
-                  : d.status,
-            completedAt: payload.completedAt ?? (et === 'deployments.deployment.succeeded' || et === 'deployments.deployment.failed' || et === 'deployments.deployment.stopped'
-              ? new Date().toISOString() : d.completedAt),
-            deploymentUrl: payload.deploymentUrl ?? d.deploymentUrl,
-          };
+      const handler = (event: { type?: string; data?: Record<string, any> }) => {
+        const et = event?.type;
+        if (!et || !et.startsWith('deployments.deployment.')) return;
+        // The realtime bridge sends { type, timestamp, data: metadata }
+        const data = event?.data ?? {};
+        const updatedId = data.deploymentId;
+        if (!updatedId) return;
+
+        setDeployments(prev => {
+          const exists = prev.some(d => d.id === updatedId);
+          if (!exists) {
+            load(); // new deployment — reload the list
+            return prev;
+          }
+          return prev.map(d => {
+            if (d.id !== updatedId) return d;
+            return {
+              ...d,
+              status: et === 'deployments.deployment.succeeded' ? 'SUCCESS'
+                    : et === 'deployments.deployment.failed'    ? 'FAILED'
+                    : et === 'deployments.deployment.stopped'   ? 'STOPPED'
+                    : et === 'deployments.deployment.building'  ? 'BUILDING'
+                    : et === 'deployments.deployment.queued'   ? 'QUEUED'
+                    : et === 'deployments.deployment.deploying'? 'DEPLOYING'
+                    : et === 'deployments.deployment.blocked'  ? 'BLOCKED'
+                    : et === 'deployments.deployment.rolled_back' ? 'ROLLED_BACK'
+                    : d.status,
+              completedAt: data.completedAt ?? (et === 'deployments.deployment.succeeded' || et === 'deployments.deployment.failed' || et === 'deployments.deployment.stopped'
+                ? new Date().toISOString() : d.completedAt),
+              deploymentUrl: data.deploymentUrl ?? d.deploymentUrl,
+            };
+          });
         });
-      });
-    };
+      };
 
-    const unsub = rt.subscribeDeployments(project.id, handler);
-    return unsub;
+      unsub = rt.subscribeDeployments(project.id, handler);
+    }).catch(() => {
+      // Connection failed — polling fallback will still work
+    });
+
+    return () => { cancelled = true; unsub?.(); };
   }, [project.id, getSdk, load]);
 
   // ── Optimistic update helpers ───────────────────────────────────────────
@@ -423,15 +438,15 @@ function DeploymentsSectionInner({ project }: Props) {
     <div className="space-y-4">
       {/* Header row: tabs + actions */}
       <div className="flex items-center justify-between gap-3 flex-wrap">
-        <div className="flex gap-1 bg-[#0f1117] border border-[#1e2130] rounded-lg p-0.5">
+        <div className="flex gap-1 bg-[var(--surface-2)] border border-[var(--rail)] rounded-lg p-0.5">
           {(['active', 'all'] as Tab[]).map(t => (
             <button
               key={t}
               onClick={() => switchTab(t)}
               className={`px-3.5 py-1.5 text-xs rounded-md transition-all ${
                 tab === t
-                  ? 'bg-[#1e2130] text-slate-200 shadow-sm'
-                  : 'text-slate-500 hover:text-slate-300'
+                  ? 'bg-[var(--rail)] text-[var(--text)] shadow-sm'
+                  : 'text-[var(--text-muted)] hover:text-[var(--text-muted)]'
               }`}
             >
               {t === 'active'
@@ -444,7 +459,7 @@ function DeploymentsSectionInner({ project }: Props) {
         <div className="flex items-center gap-2">
           <button
             onClick={load}
-            className="flex items-center gap-1.5 text-xs text-slate-500 hover:text-slate-300 px-2.5 py-1.5 rounded-md hover:bg-[#1e2130] border border-transparent hover:border-[#2a2d3a] transition-all"
+            className="flex items-center gap-1.5 text-xs text-[var(--text-muted)] hover:text-[var(--text-muted)] px-2.5 py-1.5 rounded-md hover:bg-[var(--rail)] border border-transparent hover:border-[var(--rail-light)] transition-all"
           >
             <HugeiconsIcon icon={RefreshIcon} size={13} />
             Refresh
@@ -458,15 +473,15 @@ function DeploymentsSectionInner({ project }: Props) {
 
       {/* Inline git deploy — empty state */}
       {deployments.length === 0 && tab === 'active' && (
-        <Card className="border border-[#1e2130] py-8 px-5">
+        <Card className="border border-[var(--rail)] py-8 px-5">
           <div className="flex flex-col items-center text-center mb-5">
-            <div className="w-10 h-10 rounded-full bg-[#1e2130] flex items-center justify-center mb-3">
-              <HugeiconsIcon icon={githubStatus?.connected ? GithubIcon : Rocket01Icon} size={18} className={githubStatus?.connected ? 'text-slate-300' : 'text-slate-600'} />
+            <div className="w-10 h-10 rounded-full bg-[var(--rail)] flex items-center justify-center mb-3">
+              <HugeiconsIcon icon={githubStatus?.connected ? GithubIcon : Rocket01Icon} size={18} className={githubStatus?.connected ? 'text-[var(--text-muted)]' : 'text-[var(--text-dim)]'} />
             </div>
-            <p className="text-sm font-medium text-slate-300 mb-1">
+            <p className="text-sm font-medium text-[var(--text-muted)] mb-1">
               {githubStatus?.connected ? 'No deployments yet' : 'Connect GitHub to deploy'}
             </p>
-            <p className="text-xs text-slate-500">
+            <p className="text-xs text-[var(--text-muted)]">
               {githubStatus?.connected
                 ? 'Paste a Git URL below to deploy your first release.'
                 : 'Connect your GitHub account to browse repos and deploy in one click.'}
@@ -479,7 +494,7 @@ function DeploymentsSectionInner({ project }: Props) {
                 value={inlineUrl}
                 onChange={e => setInlineUrl(e.target.value)}
                 placeholder="https://github.com/user/repo"
-                className="flex-1 px-3.5 py-2.5 rounded-lg bg-[#080a0d] border border-[#1e2130] text-sm text-slate-200 placeholder:text-slate-600 focus:outline-none focus:ring-2 focus:ring-red-500/40 focus:border-red-500 transition-all"
+                className="flex-1 px-3.5 py-2.5 rounded-lg bg-[var(--surface-2)] border border-[var(--rail)] text-sm text-[var(--text)] placeholder:text-[var(--text-dim)] focus:outline-none focus:ring-2 focus:ring-[var(--danger)]/40 focus:border-[var(--danger)] transition-all"
               />
               <Button type="submit" variant="primary" size="sm" loading={inlineSubmitting} disabled={!inlineUrl.trim()}>
                 Deploy
@@ -499,7 +514,7 @@ function DeploymentsSectionInner({ project }: Props) {
       {/* Error state */}
       {error && (
         <Card className="border border-red-900/50 py-4 px-4">
-          <p className="text-sm text-red-400">{error}</p>
+          <p className="text-sm text-[var(--danger)]">{error}</p>
         </Card>
       )}
 
@@ -512,18 +527,18 @@ function DeploymentsSectionInner({ project }: Props) {
 
       {/* Empty all */}
       {!loading && deployments.length === 0 && tab === 'all' && (
-        <Card className="border border-[#1e2130] py-8 px-4 text-center">
-          <p className="text-sm text-slate-500">No deployments in this project yet.</p>
+        <Card className="border border-[var(--rail)] py-8 px-4 text-center">
+          <p className="text-sm text-[var(--text-muted)]">No deployments in this project yet.</p>
         </Card>
       )}
 
       {/* No active deployments */}
       {!loading && activeDeployments.length === 0 && tab === 'active' && deployments.length > 0 && (
-        <Card className="border border-[#1e2130] py-6 px-4 text-center">
+        <Card className="border border-[var(--rail)] py-6 px-4 text-center">
           <div className="w-8 h-8 rounded-full bg-emerald-900/30 flex items-center justify-center mx-auto mb-2">
-            <HugeiconsIcon icon={CheckmarkCircle02Icon} size={16} className="text-emerald-500" />
+            <HugeiconsIcon icon={CheckmarkCircle02Icon} size={16} className="text-[var(--success)]" />
           </div>
-          <p className="text-sm text-slate-400">All deployments are idle.</p>
+          <p className="text-sm text-[var(--text-muted)]">All deployments are idle.</p>
         </Card>
       )}
 

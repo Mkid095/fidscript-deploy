@@ -14,28 +14,28 @@ export default function DocsLayout({ children }: { children: ReactNode }) {
     // h-screen + overflow-hidden on the root => the sidebar and the content
     // area each get their OWN scroll region. Scrolling a long doc never moves
     // the sidebar (the user's actual complaint).
-    <div className="flex h-screen flex-col overflow-hidden bg-ink-950">
-      <header className="z-50 shrink-0 border-b border-slate-900 bg-ink-900/80 backdrop-blur-md">
+    <div className="flex h-screen flex-col overflow-hidden bg-[var(--canvas)]">
+      <header className="z-50 shrink-0 border-b border-[var(--rail)] bg-[var(--surface)]/80 backdrop-blur-md">
         <div className="mx-auto flex max-w-6xl items-center justify-between px-6 py-3.5">
           <div className="flex items-center gap-3">
             <button
               onClick={() => setOpen((v) => !v)}
-              className="rounded-lg border border-slate-800 p-1.5 text-slate-300 lg:hidden"
+              className="rounded-lg border border-[var(--rail)] p-1.5 text-[var(--text-muted)] lg:hidden"
               aria-label="Toggle navigation"
             >
               <HugeiconsIcon icon={Menu02Icon} size={18} color="currentColor" />
             </button>
             <Link href="/" className="flex items-center gap-2">
-              <span className="flex h-7 w-7 items-center justify-center rounded-lg border border-fire-500/30 bg-fire-500/10 text-fire-500">
+              <span className="flex h-7 w-7 items-center justify-center rounded-lg border border-[var(--accent)]/30 bg-[var(--accent)]/10 text-[var(--accent)]">
                 <HugeiconsIcon icon={BoltIcon} size={15} color="currentColor" />
               </span>
-              <span className="font-mono font-bold text-white">
-                FID<span className="text-fire-500">Script</span>
+              <span className="font-mono font-bold text-[var(--text)]">
+                FID<span className="text-[var(--accent)]">Script</span>
               </span>
-              <span className="ml-1 text-xs font-medium text-slate-500">/ Docs</span>
+              <span className="ml-1 text-xs font-medium text-[var(--text-muted)]">/ Docs</span>
             </Link>
           </div>
-          <Link href="/" className="group flex items-center gap-1 text-xs text-slate-400 transition hover:text-white">
+          <Link href="/" className="group flex items-center gap-1 text-xs text-[var(--text-muted)] transition hover:text-[var(--text)]">
             Back to site
             <HugeiconsIcon icon={ArrowRight02Icon} size={13} color="currentColor" className="transition group-hover:translate-x-0.5" />
           </Link>
@@ -48,7 +48,7 @@ export default function DocsLayout({ children }: { children: ReactNode }) {
 
         {/* sidebar — own scroll region, stays fixed while content scrolls */}
         <aside
-          className={`fixed bottom-0 left-0 top-14 z-50 w-72 overflow-y-auto border-r border-slate-900 bg-ink-900 p-5 transition-transform lg:static lg:top-0 lg:z-0 lg:w-64 lg:shrink-0 lg:translate-x-0 lg:border-r-0 lg:bg-transparent lg:p-0 lg:pr-8 ${
+          className={`fixed bottom-0 left-0 top-14 z-50 w-72 overflow-y-auto border-r border-[var(--rail)] bg-[var(--surface)] p-5 transition-transform lg:static lg:top-0 lg:z-0 lg:w-64 lg:shrink-0 lg:translate-x-0 lg:border-r-0 lg:bg-transparent lg:p-0 lg:pr-8 ${
             open ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'
           }`}
         >

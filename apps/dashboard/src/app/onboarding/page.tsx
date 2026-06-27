@@ -46,10 +46,10 @@ function setOnboardedCookie() {
 
 function HealthRow({ label, detail, ok }: { label: string; detail?: string; ok: boolean | null }) {
   return (
-    <div className="flex items-center gap-4 p-4 rounded-lg bg-[#0f1117] border border-[#1e2130]">
+    <div className="flex items-center gap-4 p-4 rounded-lg bg-[var(--surface-2)] border border-[var(--rail)]">
       <div className="flex-1 min-w-0">
-        <div className="text-sm font-medium text-slate-200">{label}</div>
-        {detail && <div className="text-xs text-slate-500 mt-0.5">{detail}</div>}
+        <div className="text-sm font-medium text-[var(--text)]">{label}</div>
+        {detail && <div className="text-xs text-[var(--text-muted)] mt-0.5">{detail}</div>}
       </div>
       {ok === null ? (
         <div className="w-2 h-2 rounded-full bg-slate-600" />
@@ -265,10 +265,10 @@ export default function OnboardingPage() {
             setConfigLogs(prev => {
               // Always append — do not discard completed steps
               const last = prev[prev.length - 1];
-              if (last && last.text.startsWith('○')) {
-                return [...prev.slice(0, -1), { text: `✓ ${last.text.slice(2)}`, ok: true }, { text: `○ ${data.currentStep}`, ok: true }];
+              if (last && last.text.startsWith('')) {
+                return [...prev.slice(0, -1), { text: ` ${last.text.slice(2)}`, ok: true }, { text: ` ${data.currentStep}`, ok: true }];
               }
-              return [...prev, { text: `○ ${data.currentStep}`, ok: true }];
+              return [...prev, { text: ` ${data.currentStep}`, ok: true }];
             });
           }
         }
@@ -291,15 +291,15 @@ export default function OnboardingPage() {
   // ── Welcome ────────────────────────────────────────────────
   if (step === 'welcome') {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-[#080a0d] p-4">
+      <div className="min-h-screen flex items-center justify-center bg-[var(--surface-2)] p-4">
         <div className="w-full max-w-md text-center">
-          <h1 className="text-3xl font-bold text-slate-200 mb-2">FIDScript</h1>
-          <p className="text-slate-500 mb-8">Self-hosted deployment platform</p>
+          <h1 className="text-3xl font-bold text-[var(--text)] mb-2">FIDScript</h1>
+          <p className="text-[var(--text-muted)] mb-8">Self-hosted deployment platform</p>
           <Button variant="primary" size="lg" onClick={handleStart} className="w-full mb-4">
             Create a new platform
           </Button>
-          <p className="text-xs text-slate-600">
-            Need help? <Link href="/docs" className="text-blue-500 hover:text-blue-400">View the docs</Link>
+          <p className="text-xs text-[var(--text-dim)]">
+            Need help? <Link href="/docs" className="text-[var(--accent)] hover:text-[var(--accent)]">View the docs</Link>
           </p>
         </div>
       </div>
@@ -309,11 +309,11 @@ export default function OnboardingPage() {
   // ── Discovery ──────────────────────────────────────────────
   if (step === 'discovery') {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-[#080a0d] p-4">
-        <Card padding="lg" className="w-full max-w-2xl border border-[#1e2130]">
+      <div className="min-h-screen flex items-center justify-center bg-[var(--surface-2)] p-4">
+        <Card padding="lg" className="w-full max-w-2xl border border-[var(--rail)]">
           <div className="text-center mb-6">
-            <div className="text-lg font-semibold text-slate-200 mb-1">Discovering your system</div>
-            <div className="text-sm text-slate-500">Checking infrastructure before configuration.</div>
+            <div className="text-lg font-semibold text-[var(--text)] mb-1">Discovering your system</div>
+            <div className="text-sm text-[var(--text-muted)]">Checking infrastructure before configuration.</div>
           </div>
           <div className="space-y-2 mb-6">
             {checks.map(c => (
@@ -322,9 +322,9 @@ export default function OnboardingPage() {
           </div>
 
           {discoveryError && (
-            <div className="mb-4 p-3 rounded-lg bg-red-900/30 border border-red-800 text-sm text-red-300">
+            <div className="mb-4 p-3 rounded-lg bg-red-900/30 border border-[var(--danger)]/30 text-sm text-[var(--danger)]">
               <div className="font-medium mb-1">Unable to contact installation service.</div>
-              <div className="text-red-400 text-xs">{discoveryError}</div>
+              <div className="text-[var(--danger)] text-xs">{discoveryError}</div>
               <Button
                 variant="secondary"
                 size="sm"
@@ -339,7 +339,7 @@ export default function OnboardingPage() {
           {/* Manual IP entry when auto-detect fails */}
           {checks.length > 0 && checks.find(c => c.id === 'server')?.detail?.includes('enter manually') && (
             <div className="mb-4">
-              <label className="block text-xs text-slate-400 mb-1.5">Server IP (auto-detect failed)</label>
+              <label className="block text-xs text-[var(--text-muted)] mb-1.5">Server IP (auto-detect failed)</label>
               <input
                 type="text"
                 value={manualIp}
@@ -348,13 +348,13 @@ export default function OnboardingPage() {
                   setServerIpManual(!!e.target.value.trim());
                 }}
                 placeholder="203.0.113.42"
-                className="w-full bg-[#080a0d] border border-[#1e2130] text-slate-200 rounded px-3 py-2 text-sm focus:outline-none focus:border-blue-500"
+                className="w-full bg-[var(--surface-2)] border border-[var(--rail)] text-[var(--text)] rounded px-3 py-2 text-sm focus:outline-none focus:border-[var(--accent)]"
               />
             </div>
           )}
 
           {canContinue && (
-            <div className="p-3 rounded-lg bg-emerald-900/30 border border-emerald-800 text-center text-sm text-emerald-300 mb-4">
+            <div className="p-3 rounded-lg bg-emerald-900/30 border border-[var(--success)]/30 text-center text-sm text-[var(--success)] mb-4">
               All checks passed — ready to configure.
             </div>
           )}
@@ -369,29 +369,29 @@ export default function OnboardingPage() {
   // ── Configure ──────────────────────────────────────────────
   if (step === 'configure') {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-[#080a0d] p-4">
-        <Card padding="lg" className="w-full max-w-md border border-[#1e2130]">
+      <div className="min-h-screen flex items-center justify-center bg-[var(--surface-2)] p-4">
+        <Card padding="lg" className="w-full max-w-md border border-[var(--rail)]">
           <div className="text-center mb-6">
-            <div className="text-lg font-semibold text-slate-200 mb-1">Configure your platform</div>
-            <div className="text-sm text-slate-500">Only the essentials — everything else is in Settings.</div>
+            <div className="text-lg font-semibold text-[var(--text)] mb-1">Configure your platform</div>
+            <div className="text-sm text-[var(--text-muted)]">Only the essentials — everything else is in Settings.</div>
           </div>
           <div className="space-y-4">
             <div>
-              <label className="block text-xs text-slate-400 mb-1.5">Platform name</label>
+              <label className="block text-xs text-[var(--text-muted)] mb-1.5">Platform name</label>
               <input
                 type="text"
                 value={platformName}
                 onChange={e => setPlatformName(e.target.value)}
-                className="w-full bg-[#080a0d] border border-[#1e2130] text-slate-200 rounded px-3 py-2 text-sm focus:outline-none focus:border-blue-500"
+                className="w-full bg-[var(--surface-2)] border border-[var(--rail)] text-[var(--text)] rounded px-3 py-2 text-sm focus:outline-none focus:border-[var(--accent)]"
               />
             </div>
             <div>
-              <label className="block text-xs text-slate-400 mb-1.5">
+              <label className="block text-xs text-[var(--text-muted)] mb-1.5">
                 Platform domain
                 {validating ? (
-                  <span className="ml-2 text-yellow-400">checking…</span>
+                  <span className="ml-2 text-[var(--warning)]">checking…</span>
                 ) : domain && !domainError ? (
-                  <span className="ml-1 text-emerald-400">✓</span>
+                  <span className="ml-1 text-[var(--success)]"></span>
                 ) : null}
               </label>
               <input
@@ -399,22 +399,22 @@ export default function OnboardingPage() {
                 value={domain}
                 onChange={e => setDomain(e.target.value)}
                 placeholder="deploy.example.com"
-                className="w-full bg-[#080a0d] border border-[#1e2130] text-slate-200 rounded px-3 py-2 text-sm focus:outline-none focus:border-blue-500"
+                className="w-full bg-[var(--surface-2)] border border-[var(--rail)] text-[var(--text)] rounded px-3 py-2 text-sm focus:outline-none focus:border-[var(--accent)]"
               />
               {domainError ? (
-                <p className="text-xs text-red-400 mt-1">{domainError}</p>
+                <p className="text-xs text-[var(--danger)] mt-1">{domainError}</p>
               ) : !domainError && domain ? (
-                <p className="text-xs text-emerald-400 mt-1">Looks good</p>
+                <p className="text-xs text-[var(--success)] mt-1">Looks good</p>
               ) : null}
             </div>
             <div>
-              <label className="block text-xs text-slate-400 mb-1.5">Administrator email</label>
+              <label className="block text-xs text-[var(--text-muted)] mb-1.5">Administrator email</label>
               <input
                 type="email"
                 value={adminEmail}
                 onChange={e => setAdminEmail(e.target.value)}
                 placeholder="admin@example.com"
-                className="w-full bg-[#080a0d] border border-[#1e2130] text-slate-200 rounded px-3 py-2 text-sm focus:outline-none focus:border-blue-500"
+                className="w-full bg-[var(--surface-2)] border border-[var(--rail)] text-[var(--text)] rounded px-3 py-2 text-sm focus:outline-none focus:border-[var(--accent)]"
               />
             </div>
           </div>
@@ -434,23 +434,23 @@ export default function OnboardingPage() {
   // ── Progress ───────────────────────────────────────────────
   if (step === 'progress') {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-[#080a0d] p-4">
-        <Card padding="lg" className="w-full max-w-md border border-[#1e2130]">
+      <div className="min-h-screen flex items-center justify-center bg-[var(--surface-2)] p-4">
+        <Card padding="lg" className="w-full max-w-md border border-[var(--rail)]">
           <div className="text-center mb-6">
-            <div className="text-lg font-semibold text-slate-200 mb-1">Configuring your platform</div>
-            <div className="text-sm text-slate-500">This takes about a minute.</div>
+            <div className="text-lg font-semibold text-[var(--text)] mb-1">Configuring your platform</div>
+            <div className="text-sm text-[var(--text-muted)]">This takes about a minute.</div>
           </div>
           <div className="space-y-2 mb-6">
             {configLogs.map((log, i) => (
               <div key={i} className="flex items-center gap-2 text-sm">
-                <span className={`flex-shrink-0 ${log.ok ? 'text-emerald-400' : 'text-red-400'}`}>
-                  {log.ok ? '✓' : '✗'}
+                <span className={`flex-shrink-0 ${log.ok ? 'text-[var(--success)]' : 'text-[var(--danger)]'}`}>
+                  {log.ok ? '' : ''}
                 </span>
-                <span className={log.ok ? 'text-slate-300' : 'text-red-300'}>{log.text}</span>
+                <span className={log.ok ? 'text-[var(--text-muted)]' : 'text-[var(--danger)]'}>{log.text}</span>
               </div>
             ))}
             {!configComplete && (
-              <div className="flex items-center gap-2 text-sm text-slate-500">
+              <div className="flex items-center gap-2 text-sm text-[var(--text-muted)]">
                 <Spinner size="sm" />
                 <span>Processing…</span>
               </div>
@@ -463,13 +463,13 @@ export default function OnboardingPage() {
 
   // ── Complete ───────────────────────────────────────────────
   return (
-    <div className="min-h-screen flex items-center justify-center bg-[#080a0d] p-4">
-      <Card padding="lg" className="w-full max-w-md border border-[#1e2130] text-center">
-        <div className="text-4xl mb-4">✓</div>
-        <div className="text-lg font-semibold text-slate-200 mb-1">Platform configured</div>
-        <div className="text-sm text-slate-500 mb-2">FIDScript is ready.</div>
+    <div className="min-h-screen flex items-center justify-center bg-[var(--surface-2)] p-4">
+      <Card padding="lg" className="w-full max-w-md border border-[var(--rail)] text-center">
+        <div className="text-4xl mb-4"></div>
+        <div className="text-lg font-semibold text-[var(--text)] mb-1">Platform configured</div>
+        <div className="text-sm text-[var(--text-muted)] mb-2">FIDScript is ready.</div>
         {certPending && (
-          <div className="text-xs text-yellow-400 mb-4">
+          <div className="text-xs text-[var(--warning)] mb-4">
             SSL certificate is being provisioned — this usually takes under 2 minutes.
           </div>
         )}

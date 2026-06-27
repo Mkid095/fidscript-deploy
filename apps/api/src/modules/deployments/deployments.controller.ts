@@ -16,7 +16,7 @@ import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { JwtAuthGuard } from '@/modules/auth/jwt-auth.guard';
 import { DeploymentsService } from './deployments.service';
 import { GithubWebhookService } from './services/github-webhook.service';
-import { CreateDeploymentDto, UpdateBuildConfigDto } from './dto/index';
+import { CreateDeploymentDto, UpdateBuildConfigDto, DetectFrameworkDto } from './dto/index';
 import { PrismaService } from '@/prisma/prisma.service';
 import { CryptoService } from '@/modules/crypto/crypto.service';
 import { Request } from 'express';
@@ -89,6 +89,18 @@ export class DeploymentsController {
     try { token = this.crypto.decrypt(conn.encrypted_token); } catch { return; }
 
     await this.webhookService.registerWebhook(projectId, repoFullName, token);
+  }
+
+  @Post('deployments/detect')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Detect framework and build plan for a repository (no deploy)' })
+  async detect(
+    @Req() req: Request,
+    @Param('projectId') projectId: string,
+    @Body() dto: DetectFrameworkDto,
+  ) {
+    const user = req.user as { userId: string };
+    return this.deploymentsService.detectFramework(user.userId, projectId, dto);
   }
 
   @Get('deployments/:id')

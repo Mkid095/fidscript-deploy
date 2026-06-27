@@ -1,6 +1,8 @@
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
+import { HugeiconsIcon } from '@hugeicons/react';
+import { Notification01Icon, Cancel01Icon } from '@hugeicons/core-free-icons';
 import type { FidscriptSDK } from '@fidscript/sdk';
 
 interface PlatformEvent {
@@ -81,49 +83,50 @@ export function NotificationBell({ projectId, sdk }: NotificationBellProps) {
     <div ref={ref} className="relative">
       <button
         onClick={() => setOpen(o => !o)}
-        className="relative w-9 h-9 flex items-center justify-center rounded-md text-slate-500 hover:text-slate-300 hover:bg-[#1e2130] transition-colors"
+        className="relative w-9 h-9 flex items-center justify-center rounded-md text-[var(--text-muted)] hover:text-[var(--text-muted)] hover:bg-[var(--rail)] transition-colors"
         aria-label="Notifications"
       >
-        <span className="text-lg">🔔</span>
+        <HugeiconsIcon icon={Notification01Icon} size={16} strokeWidth={1.5} />
         {events.length > 0 && (
-          <span className="absolute top-1 right-1 w-2 h-2 bg-red-500 rounded-full" />
+          <span className="absolute top-1 right-1 w-2 h-2 bg-[var(--danger)] rounded-full" />
         )}
       </button>
 
       {open && (
-        <div className="absolute right-0 top-full mt-2 w-80 bg-[#0f1117] border border-[#1e2130] rounded-lg shadow-xl z-50">
-          <div className="px-4 py-3 border-b border-[#1e2130] flex items-center justify-between">
-            <span className="text-sm font-semibold text-slate-200">Notifications</span>
+        <div className="absolute right-0 top-full mt-2 w-80 bg-[var(--surface-2)] border border-[var(--rail)] rounded-lg shadow-xl z-50">
+          <div className="px-4 py-3 border-b border-[var(--rail)] flex items-center justify-between">
+            <span className="text-sm font-semibold text-[var(--text)]">Notifications</span>
             <button
               onClick={() => setOpen(false)}
-              className="text-xs text-slate-600 hover:text-slate-400 transition-colors"
+              className="text-xs text-[var(--text-dim)] hover:text-[var(--text-muted)] transition-colors p-1"
+              aria-label="Close"
             >
-              ✕
+              <HugeiconsIcon icon={Cancel01Icon} size={14} strokeWidth={1.5} />
             </button>
           </div>
 
           <div className="max-h-80 overflow-y-auto">
             {loading && (
-              <div className="py-8 text-center text-sm text-slate-500">Loading…</div>
+              <div className="py-8 text-center text-sm text-[var(--text-muted)]">Loading…</div>
             )}
             {error && (
-              <div className="py-6 px-4 text-sm text-red-400">{error}</div>
+              <div className="py-6 px-4 text-sm text-[var(--danger)]">{error}</div>
             )}
             {!loading && !error && events.length === 0 && (
-              <div className="py-8 text-center text-sm text-slate-600">No recent events</div>
+              <div className="py-8 text-center text-sm text-[var(--text-dim)]">No recent events</div>
             )}
             {!loading && !error && events.map(event => {
               const { label, desc, time } = formatEvent(event);
               return (
                 <div
                   key={event.id}
-                  className="px-4 py-3 border-b border-[#1e2130]/50 hover:bg-[#1e2130]/50 transition-colors cursor-pointer"
+                  className="px-4 py-3 border-b border-[var(--rail)]/50 hover:bg-[var(--rail)]/50 transition-colors cursor-pointer"
                 >
                   <div className="flex items-start gap-2">
-                    <span className="mt-0.5 text-slate-600 text-xs">•</span>
+                    <span className="mt-2 w-1 h-1 rounded-full bg-[var(--text-dim)] flex-shrink-0" />
                     <div className="flex-1 min-w-0">
-                      <p className="text-xs text-slate-300 capitalize">{desc}</p>
-                      <p className="text-xs text-slate-600 mt-0.5">{time}</p>
+                      <p className="text-xs text-[var(--text-muted)] capitalize">{desc}</p>
+                      <p className="text-xs text-[var(--text-dim)] mt-0.5">{time}</p>
                     </div>
                   </div>
                 </div>

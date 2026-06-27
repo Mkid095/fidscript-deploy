@@ -150,31 +150,31 @@ export default function SettingsPage() {
 
   return (
     <div className="max-w-2xl">
-      <h1 className="text-xl font-bold text-slate-200 mb-6">Settings</h1>
+      <h1 className="text-xl font-bold text-[var(--text)] mb-6">Settings</h1>
 
       {/* Profile */}
-      <Card className="border border-[#1e2130] mb-6">
-        <h2 className="text-sm font-semibold text-slate-200 mb-4">Profile</h2>
+      <Card className="border border-[var(--rail)] mb-6">
+        <h2 className="text-sm font-semibold text-[var(--text)] mb-4">Profile</h2>
         <div className="flex flex-col gap-3">
           <div>
-            <p className="text-xs text-slate-500 mb-1">Email</p>
-            <p className="text-sm text-slate-200">{user?.email ?? '—'}</p>
+            <p className="text-xs text-[var(--text-muted)] mb-1">Email</p>
+            <p className="text-sm text-[var(--text)]">{user?.email ?? '—'}</p>
           </div>
           <div>
-            <p className="text-xs text-slate-500 mb-1">Name</p>
-            <p className="text-sm text-slate-200">{user?.name ?? '—'}</p>
+            <p className="text-xs text-[var(--text-muted)] mb-1">Name</p>
+            <p className="text-sm text-[var(--text)]">{user?.name ?? '—'}</p>
           </div>
           <div>
-            <p className="text-xs text-slate-500 mb-1">Role</p>
-            <p className="text-sm text-slate-200 capitalize">{user?.role ?? '—'}</p>
+            <p className="text-xs text-[var(--text-muted)] mb-1">Role</p>
+            <p className="text-sm text-[var(--text)] capitalize">{user?.role ?? '—'}</p>
           </div>
         </div>
       </Card>
 
       {/* Notification Channels */}
-      <Card className="border border-[#1e2130] mb-6">
+      <Card className="border border-[var(--rail)] mb-6">
         <div className="flex items-center justify-between mb-4">
-          <h2 className="text-sm font-semibold text-slate-200">Notification Channels</h2>
+          <h2 className="text-sm font-semibold text-[var(--text)]">Notification Channels</h2>
           <Button variant="secondary" size="sm" onClick={() => setShowAddChannel(true)}>
             Add Channel
           </Button>
@@ -183,17 +183,17 @@ export default function SettingsPage() {
         {loadingChannels ? (
           <Spinner size="md" />
         ) : channels.length === 0 ? (
-          <p className="text-sm text-slate-500">No notification channels configured.</p>
+          <p className="text-sm text-[var(--text-muted)]">No notification channels configured.</p>
         ) : (
           <div className="flex flex-col gap-2">
             {channels.map(ch => (
               <div
                 key={ch.id}
-                className="flex items-center justify-between px-3 py-2.5 bg-[#080a0d] border border-[#1e2130] rounded-md"
+                className="flex items-center justify-between px-3 py-2.5 bg-[var(--surface-2)] border border-[var(--rail)] rounded-md"
               >
                 <div>
-                  <p className="text-sm text-slate-200">{ch.name}</p>
-                  <p className="text-xs text-slate-500">
+                  <p className="text-sm text-[var(--text)]">{ch.name}</p>
+                  <p className="text-xs text-[var(--text-muted)]">
                     {ch.type === 'email' ? ch.config.email : ch.config.webhook_url}
                   </p>
                 </div>
@@ -220,43 +220,43 @@ export default function SettingsPage() {
           </div>
         )}
 
-        {channelError && <p className="text-red-400 text-xs mt-3">{channelError}</p>}
+        {channelError && <p className="text-[var(--danger)] text-xs mt-3">{channelError}</p>}
       </Card>
 
       {/* Add Channel Form */}
       {showAddChannel && (
-        <Card className="border border-[#1e2130] mb-6">
-          <h2 className="text-sm font-semibold text-slate-200 mb-4">Add Notification Channel</h2>
+        <Card className="border border-[var(--rail)] mb-6">
+          <h2 className="text-sm font-semibold text-[var(--text)] mb-4">Add Notification Channel</h2>
           <div className="flex flex-col gap-3">
             <div>
-              <label className="block text-xs text-slate-400 mb-1">Type</label>
+              <label className="block text-xs text-[var(--text-muted)] mb-1">Type</label>
               <select
                 value={channelType}
                 onChange={e => setChannelType(e.target.value as 'email' | 'slack')}
-                className="bg-[#080a0d] border border-[#1e2130] text-slate-200 rounded-lg px-3 py-2 text-sm w-full"
+                className="bg-[var(--surface-2)] border border-[var(--rail)] text-[var(--text)] rounded-lg px-3 py-2 text-sm w-full"
               >
                 <option value="email">Email</option>
                 <option value="slack">Slack Webhook</option>
               </select>
             </div>
             <div>
-              <label className="block text-xs text-slate-400 mb-1">Name</label>
+              <label className="block text-xs text-[var(--text-muted)] mb-1">Name</label>
               <Input
                 value={channelName}
                 onChange={e => setChannelName(e.target.value)}
                 placeholder="e.g. On-call team"
-                className="bg-[#080a0d] border border-[#1e2130] text-slate-200 placeholder:text-slate-600 w-full"
+                className="bg-[var(--surface-2)] border border-[var(--rail)] text-[var(--text)] placeholder:text-[var(--text-dim)] w-full"
               />
             </div>
             <div>
-              <label className="block text-xs text-slate-400 mb-1">
+              <label className="block text-xs text-[var(--text-muted)] mb-1">
                 {channelType === 'email' ? 'Email Address' : 'Webhook URL'}
               </label>
               <Input
                 value={channelValue}
                 onChange={e => setChannelValue(e.target.value)}
                 placeholder={channelType === 'email' ? 'team@example.com' : 'https://hooks.slack.com/...'}
-                className="bg-[#080a0d] border border-[#1e2130] text-slate-200 placeholder:text-slate-600 w-full"
+                className="bg-[var(--surface-2)] border border-[var(--rail)] text-[var(--text)] placeholder:text-[var(--text-dim)] w-full"
               />
             </div>
             <div className="flex justify-end gap-3">
@@ -272,25 +272,25 @@ export default function SettingsPage() {
       )}
 
       {/* API Keys */}
-      <Card className="border border-[#1e2130] mb-6">
+      <Card className="border border-[var(--rail)] mb-6">
         <div className="flex items-center justify-between mb-4">
-          <h2 className="text-sm font-semibold text-slate-200">API Keys</h2>
+          <h2 className="text-sm font-semibold text-[var(--text)]">API Keys</h2>
         </div>
 
         {loadingKeys ? (
           <Spinner size="md" />
         ) : apiKeys.length === 0 ? (
-          <p className="text-sm text-slate-500">No API keys created yet.</p>
+          <p className="text-sm text-[var(--text-muted)]">No API keys created yet.</p>
         ) : (
           <div className="flex flex-col gap-2">
             {apiKeys.map(key => (
               <div
                 key={key.id}
-                className="flex items-center justify-between px-3 py-2.5 bg-[#080a0d] border border-[#1e2130] rounded-md"
+                className="flex items-center justify-between px-3 py-2.5 bg-[var(--surface-2)] border border-[var(--rail)] rounded-md"
               >
                 <div>
-                  <p className="text-sm text-slate-200">{key.name}</p>
-                  <p className="text-xs text-slate-500">
+                  <p className="text-sm text-[var(--text)]">{key.name}</p>
+                  <p className="text-xs text-[var(--text-muted)]">
                     Created {new Date(key.createdAt).toLocaleDateString()}
                   </p>
                 </div>
@@ -307,16 +307,16 @@ export default function SettingsPage() {
           </div>
         )}
 
-        {revokeError && <p className="text-red-400 text-xs mt-3">{revokeError}</p>}
+        {revokeError && <p className="text-[var(--danger)] text-xs mt-3">{revokeError}</p>}
       </Card>
 
       {/* Danger Zone */}
-      <Card className="border border-red-500/50">
-        <h2 className="text-sm font-semibold text-red-400 mb-4">Danger Zone</h2>
+      <Card className="border border-[var(--danger)]/50">
+        <h2 className="text-sm font-semibold text-[var(--danger)] mb-4">Danger Zone</h2>
         <div className="flex items-center justify-between gap-4">
           <div>
-            <p className="text-sm font-semibold text-slate-200">Delete Account</p>
-            <p className="text-xs text-slate-500">
+            <p className="text-sm font-semibold text-[var(--text)]">Delete Account</p>
+            <p className="text-xs text-[var(--text-muted)]">
               Permanently delete your account and all associated data. This cannot be undone.
             </p>
           </div>

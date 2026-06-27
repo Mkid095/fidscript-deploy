@@ -9,6 +9,7 @@ import { ArrowTurnBackwardIcon } from '@hugeicons/core-free-icons';
 
 import { AuthGuard } from '@/components/auth-guard';
 import { AvatarDropdown } from '@/components/layout/avatar-dropdown';
+import { ThemeToggle } from '@/components/theme/theme-toggle';
 
 /**
  * Top-level layout for the (app) route group.
@@ -37,8 +38,8 @@ export default function AppLayout({ children }: { children: ReactNode }) {
       {isProjectRoute ? (
         <>{children}</>
       ) : (
-        <div className="min-h-screen flex flex-col bg-[#080a0d]">
-          <header className="h-14 bg-[#0f1117] border-b border-[#1e2130] flex items-center px-6 gap-4 flex-shrink-0">
+        <div className="min-h-screen flex flex-col bg-[var(--surface-2)]">
+          <header className="h-14 bg-[var(--surface-2)] border-b border-[var(--rail)] flex items-center px-6 gap-4 flex-shrink-0">
             {/* Logo — links home */}
             <Link
               href="/projects"
@@ -52,7 +53,7 @@ export default function AppLayout({ children }: { children: ReactNode }) {
                 height={28}
                 className="rounded-md"
               />
-              <span className="text-sm font-bold tracking-widest text-orange-500 uppercase group-hover:text-orange-400 transition-colors">
+              <span className="text-sm font-bold tracking-widest text-[var(--text)] uppercase group-hover:text-[var(--text)] transition-colors">
                 fidscript
               </span>
             </Link>
@@ -63,7 +64,7 @@ export default function AppLayout({ children }: { children: ReactNode }) {
             {isProjectRoute && (
               <Link
                 href="/projects"
-                className="flex items-center gap-1 text-xs text-slate-500 hover:text-slate-300 transition-colors ml-2"
+                className="flex items-center gap-1 text-xs text-[var(--text-muted)] hover:text-[var(--text-muted)] transition-colors ml-2"
               >
                 <HugeiconsIcon icon={ArrowTurnBackwardIcon} size={12} />
                 <span>Back to projects</span>
@@ -71,6 +72,9 @@ export default function AppLayout({ children }: { children: ReactNode }) {
             )}
 
             <div className="flex-1" />
+
+            {/* Theme toggle */}
+            <ThemeToggle />
 
             {/* User account dropdown */}
             <AvatarDropdown />

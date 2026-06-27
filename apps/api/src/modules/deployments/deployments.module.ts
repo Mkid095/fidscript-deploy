@@ -13,12 +13,18 @@ import { DeploymentRollbackService } from './runner/deployment-rollback.service'
 import { DockerLifecycleService } from './runner/docker-lifecycle.service';
 import { DockerBuildArgsService } from './runner/docker-build-args.service';
 import { DockerCommandService } from './runner/docker-command.service';
+import { DeploymentGcService } from './runner/deployment-gc.service';
 import { DockerfileBuildProvider } from './providers/dockerfile-build.provider';
+import { NodeBuildpackProvider } from './providers/node-buildpack.provider';
+import { BuildProviderFactory } from './providers/build-provider.factory';
 import { DockerBuildWorkspaceService } from './providers/docker-build-workspace.service';
 import { StorageModule } from '@/modules/storage/storage.module';
+import { AppAuthModule } from '@/modules/app-auth/app-auth.module';
 
 @Module({
-  imports: [StorageModule],
+  // AppAuthModule gives us UserGithubService so the build pipeline can inject
+  // the connected GitHub token when cloning private repos (detect + deploy).
+  imports: [StorageModule, AppAuthModule],
   controllers: [DeploymentsController, GithubWebhookController],
   providers: [
     DeploymentsService,
@@ -33,10 +39,12 @@ import { StorageModule } from '@/modules/storage/storage.module';
     DockerLifecycleService,
     DockerBuildArgsService,
     DockerCommandService,
+    DeploymentGcService,
     DockerBuildWorkspaceService,
     DockerfileBuildProvider,
-    { provide: 'BUILD_PROVIDER', useExisting: DockerfileBuildProvider },
+    NodeBuildpackProvider,
+    BuildProviderFactory,
   ],
-  exports: [DeploymentsService, DeploymentWorkerService, DeploymentCrudService, GithubWebhookService],
+  exports: [DeploymentsService, DeploymentWorkerService, DeploymentCrudService, GithubWebhookService, BuildProviderFactory],
 })
 export class DeploymentsModule {}

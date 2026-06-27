@@ -7,11 +7,11 @@ interface HealthBadgeProps {
 
 export function HealthBadge({ status, label }: HealthBadgeProps) {
   const config: Record<string, { bg: string; text: string; dot: string; label?: string }> = {
-    idle:    { bg: 'bg-slate-800', text: 'text-slate-400', dot: 'bg-slate-500' },
-    running: { bg: 'bg-slate-800', text: 'text-blue-400', dot: 'bg-blue-500 animate-pulse' },
-    healthy: { bg: 'bg-emerald-900/50', text: 'text-emerald-400', dot: 'bg-emerald-500' },
-    unhealthy:{ bg: 'bg-red-900/50', text: 'text-red-400', dot: 'bg-red-500' },
-    unknown: { bg: 'bg-slate-800', text: 'text-slate-400', dot: 'bg-slate-500' },
+    idle:    { bg: 'bg-[var(--rail)]', text: 'text-[var(--text-muted)]', dot: 'bg-slate-500' },
+    running: { bg: 'bg-[var(--rail)]', text: 'text-[var(--accent)]', dot: 'bg-[var(--accent)] animate-pulse' },
+    healthy: { bg: 'bg-emerald-900/50', text: 'text-[var(--success)]', dot: 'bg-[var(--success)]' },
+    unhealthy:{ bg: 'bg-red-900/50', text: 'text-[var(--danger)]', dot: 'bg-[var(--danger)]' },
+    unknown: { bg: 'bg-[var(--rail)]', text: 'text-[var(--text-muted)]', dot: 'bg-slate-500' },
   };
 
   const c = config[status] ?? config.unknown;

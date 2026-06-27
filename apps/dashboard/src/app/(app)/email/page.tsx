@@ -21,16 +21,16 @@ interface Domain {
 }
 
 const STATUS_COLORS: Record<string, string> = {
-  PENDING: 'bg-slate-700 text-slate-300',
-  VERIFIED: 'bg-blue-900 text-blue-400',
-  ACTIVE: 'bg-emerald-900 text-emerald-400',
-  FAILED: 'bg-red-900 text-red-400',
+  PENDING: 'bg-[var(--rail)] text-[var(--text-muted)]',
+  VERIFIED: 'bg-blue-900 text-[var(--accent)]',
+  ACTIVE: 'bg-emerald-900 text-[var(--success)]',
+  FAILED: 'bg-red-900 text-[var(--danger)]',
 };
 
 const DNS_COLORS: Record<string, string> = {
-  PENDING: 'bg-yellow-900 text-yellow-400',
-  CONFIGURED: 'bg-emerald-900 text-emerald-400',
-  UNKNOWN: 'bg-slate-700 text-slate-400',
+  PENDING: 'bg-yellow-900 text-[var(--warning)]',
+  CONFIGURED: 'bg-emerald-900 text-[var(--success)]',
+  UNKNOWN: 'bg-[var(--rail)] text-[var(--text-muted)]',
 };
 
 export default function EmailPage() {
@@ -119,8 +119,8 @@ export default function EmailPage() {
     <div>
       <div className="flex items-center justify-between mb-6">
         <div>
-          <h1 className="text-xl font-bold text-slate-200 mb-1">Email</h1>
-          <p className="text-sm text-slate-500">
+          <h1 className="text-xl font-bold text-[var(--text)] mb-1">Email</h1>
+          <p className="text-sm text-[var(--text-muted)]">
             {domains.length} domain{domains.length !== 1 ? 's' : ''}
           </p>
         </div>
@@ -132,11 +132,11 @@ export default function EmailPage() {
       {/* Project selector — hidden when the project shell already chose a project */}
       {!shellProjectId && (
         <div className="mb-6">
-          <label className="block text-xs text-slate-400 mb-1">Project</label>
+          <label className="block text-xs text-[var(--text-muted)] mb-1">Project</label>
           <select
             value={pickedProjectId}
             onChange={e => setPickedProjectId(e.target.value)}
-            className="bg-[#080a0d] border border-[#1e2130] text-slate-200 rounded-lg px-3 py-2 text-sm min-w-52"
+            className="bg-[var(--surface-2)] border border-[var(--rail)] text-[var(--text)] rounded-lg px-3 py-2 text-sm min-w-52"
           >
             <option value="">Select a project</option>
             {projects.map(p => (
@@ -147,7 +147,7 @@ export default function EmailPage() {
       )}
 
       {error && (
-        <p className="text-red-400 mb-4 text-sm">{error}</p>
+        <p className="text-[var(--danger)] mb-4 text-sm">{error}</p>
       )}
 
       {loadingDomains ? (
@@ -155,7 +155,7 @@ export default function EmailPage() {
           <Spinner size="lg" />
         </div>
       ) : domains.length === 0 ? (
-        <Card className="border border-[#1e2130]">
+        <Card className="border border-[var(--rail)]">
           <EmptyState
             title="No email domains"
             description="Add a domain to start managing email for this project."
@@ -170,19 +170,19 @@ export default function EmailPage() {
         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
           {domains.map(domain => (
             <Link key={domain.id} href={`/email/${domain.id}`} className="no-underline">
-              <div className="rounded-lg border border-[#1e2130] bg-[#0f1117] p-5 cursor-pointer transition-colors duration-150 hover:border-blue-500">
+              <div className="rounded-lg border border-[var(--rail)] bg-[var(--surface-2)] p-5 cursor-pointer transition-colors duration-150 hover:border-[var(--accent)]">
                 <div className="flex items-start justify-between mb-3">
                   <div>
-                    <h3 className="text-sm font-semibold text-slate-200 mb-0.5">{domain.name}</h3>
-                    <p className="text-xs text-slate-500 font-mono">{domain.id.slice(0, 12)}…</p>
+                    <h3 className="text-sm font-semibold text-[var(--text)] mb-0.5">{domain.name}</h3>
+                    <p className="text-xs text-[var(--text-muted)] font-mono">{domain.id.slice(0, 12)}…</p>
                   </div>
-                  <span className={`text-xs px-2 py-0.5 rounded-full capitalize ${STATUS_COLORS[domain.status ?? 'UNKNOWN'] ?? 'bg-slate-700 text-slate-300'}`}>
+                  <span className={`text-xs px-2 py-0.5 rounded-full capitalize ${STATUS_COLORS[domain.status ?? 'UNKNOWN'] ?? 'bg-[var(--rail)] text-[var(--text-muted)]'}`}>
                     {domain.status ?? 'UNKNOWN'}
                   </span>
                 </div>
                 <div className="flex items-center gap-2">
-                  <span className="text-xs text-slate-500">DNS:</span>
-                  <span className={`text-xs px-2 py-0.5 rounded-full capitalize ${DNS_COLORS[domain.dnsStatus] ?? 'bg-slate-700 text-slate-400'}`}>
+                  <span className="text-xs text-[var(--text-muted)]">DNS:</span>
+                  <span className={`text-xs px-2 py-0.5 rounded-full capitalize ${DNS_COLORS[domain.dnsStatus] ?? 'bg-[var(--rail)] text-[var(--text-muted)]'}`}>
                     {domain.dnsStatus ?? 'UNKNOWN'}
                   </span>
                 </div>
@@ -200,16 +200,16 @@ export default function EmailPage() {
       >
         <form onSubmit={handleAddDomain} noValidate>
           <div className="mb-4">
-            <label className="block text-xs text-slate-400 mb-1">Domain name</label>
+            <label className="block text-xs text-[var(--text-muted)] mb-1">Domain name</label>
             <Input
               value={newDomain}
               onChange={e => setNewDomain(e.target.value)}
               placeholder="mail.example.com"
-              className="bg-[#080a0d] border border-[#1e2130] text-slate-200 placeholder:text-slate-600 w-full"
+              className="bg-[var(--surface-2)] border border-[var(--rail)] text-[var(--text)] placeholder:text-[var(--text-dim)] w-full"
             />
           </div>
           {addError && (
-            <p className="text-red-400 text-xs mb-4">{addError}</p>
+            <p className="text-[var(--danger)] text-xs mb-4">{addError}</p>
           )}
           <div className="flex justify-end gap-3">
             <Button variant="ghost" size="sm" type="button" onClick={() => { setShowAdd(false); setAddError(null); }}>

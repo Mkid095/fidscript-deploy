@@ -24,7 +24,9 @@ export class PostgresProvisionService {
 
     await pool.query(`CREATE DATABASE ${quotedDb}`);
     await pool.query(
-      `CREATE ROLE ${quotedUser} WITH PASSWORD '${safePass}' NOSUPERUSER NOCREATEDB NOCREATEROLE NOINHERIT NOLOGIN CONNECTION LIMIT ${connLimit}`,
+      // LOGIN (not NOLOGIN) — this role IS the account the app pool connects
+      // with. NOLOGIN made every provisioned database unconnectable.
+      `CREATE ROLE ${quotedUser} WITH PASSWORD '${safePass}' NOSUPERUSER NOCREATEDB NOCREATEROLE NOINHERIT LOGIN CONNECTION LIMIT ${connLimit}`,
     );
     await pool.query(`ALTER ROLE ${quotedUser} SET statement_timeout TO '60s'`);
     await pool.query(`GRANT CONNECT ON DATABASE ${quotedDb} TO ${quotedUser}`);

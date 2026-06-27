@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef } from 'react';
 import Image from 'next/image';
 import { HugeiconsIcon } from '@hugeicons/react';
-import { Mail01Icon, LockPasswordIcon, CheckmarkCircle01Icon } from '@hugeicons/core-free-icons';
+import { Mail01Icon, LockPasswordIcon, CheckmarkCircle01Icon, Alert01Icon, AlertCircleIcon } from '@hugeicons/core-free-icons';
 import { Button } from '@fidscript/ui';
 import { Input } from '@fidscript/ui';
 import { Card } from '@fidscript/ui';
@@ -244,7 +244,7 @@ export default function SetupPage() {
   // ── Render ───────────────────────────────────────────────────────────────
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-[#080a0d] p-4">
+    <div className="min-h-screen flex items-center justify-center bg-[var(--surface-2)] p-4">
       <div className="w-full max-w-lg">
 
         {/* Logo + wordmark */}
@@ -256,29 +256,29 @@ export default function SetupPage() {
             height={64}
             className="mx-auto mb-3 rounded-xl"
           />
-          <p className="text-sm font-bold tracking-widest text-orange-500 uppercase">fidscript deploy</p>
+          <p className="text-sm font-bold tracking-widest text-[var(--warning)] uppercase">fidscript deploy</p>
         </div>
 
         {/* ── Step 1: Method selection ───────────────────────────────────── */}
         {step === 'method' && (
           <Card padding="lg">
-            <h1 className="text-xl font-bold text-white mb-1">Platform Setup</h1>
-            <p className="text-sm text-slate-400 mb-8">Configure your platform to get started</p>
+            <h1 className="text-xl font-bold text-[var(--text)] mb-1">Platform Setup</h1>
+            <p className="text-sm text-[var(--text-muted)] mb-8">Configure your platform to get started</p>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               {/* Magic Code option */}
               <button
                 type="button"
                 onClick={() => handleMethodSelect('MAGIC_CODE')}
-                className="group flex flex-col items-start gap-3 p-5 rounded-xl border border-[#1e2130] bg-[#080a0d] hover:border-blue-500/60 hover:bg-slate-900/50 transition-all duration-200 text-left"
+                className="group flex flex-col items-start gap-3 p-5 rounded-xl border border-[var(--rail)] bg-[var(--surface-2)] hover:border-[var(--accent)]/60 hover:bg-[var(--surface-2)]/50 transition-all duration-200 text-left"
               >
-                <HugeiconsIcon icon={Mail01Icon} size={28} className="text-blue-400" />
+                <HugeiconsIcon icon={Mail01Icon} size={28} className="text-[var(--accent)]" />
                 <div>
-                  <p className="font-semibold text-white group-hover:text-blue-300">Magic Code</p>
-                  <p className="text-xs text-slate-400 mt-1 leading-relaxed">
+                  <p className="font-semibold text-[var(--text)] group-hover:text-[var(--accent)]">Magic Code</p>
+                  <p className="text-xs text-[var(--text-muted)] mt-1 leading-relaxed">
                     Email verification code each login — password-free
                   </p>
-                  <span className="inline-block mt-2 text-xs bg-blue-500/10 text-blue-400 px-2 py-0.5 rounded-full">
+                  <span className="inline-block mt-2 text-xs bg-[var(--accent)]/10 text-[var(--accent)] px-2 py-0.5 rounded-full">
                     Recommended
                   </span>
                 </div>
@@ -288,12 +288,12 @@ export default function SetupPage() {
               <button
                 type="button"
                 onClick={() => handleMethodSelect('PASSWORD')}
-                className="group flex flex-col items-start gap-3 p-5 rounded-xl border border-[#1e2130] bg-[#080a0d] hover:border-blue-500/60 hover:bg-slate-900/50 transition-all duration-200 text-left"
+                className="group flex flex-col items-start gap-3 p-5 rounded-xl border border-[var(--rail)] bg-[var(--surface-2)] hover:border-[var(--accent)]/60 hover:bg-[var(--surface-2)]/50 transition-all duration-200 text-left"
               >
-                <HugeiconsIcon icon={LockPasswordIcon} size={28} className="text-orange-400" />
+                <HugeiconsIcon icon={LockPasswordIcon} size={28} className="text-[var(--warning)]" />
                 <div>
-                  <p className="font-semibold text-white group-hover:text-orange-300">Email + Password</p>
-                  <p className="text-xs text-slate-400 mt-1 leading-relaxed">
+                  <p className="font-semibold text-[var(--text)] group-hover:text-orange-300">Email + Password</p>
+                  <p className="text-xs text-[var(--text-muted)] mt-1 leading-relaxed">
                     Traditional password-based login
                   </p>
                 </div>
@@ -310,14 +310,14 @@ export default function SetupPage() {
               <button
                 type="button"
                 onClick={() => { setStep('method'); setSelectedMethod(null); }}
-                className="text-xs text-slate-500 hover:text-slate-300 flex items-center gap-1"
+                className="text-xs text-[var(--text-muted)] hover:text-[var(--text-muted)] flex items-center gap-1"
               >
                 ← Back
               </button>
               <span className={`inline-flex items-center gap-1.5 text-xs px-2.5 py-1 rounded-full border ${
                 authMethod === 'PASSWORD'
-                  ? 'bg-orange-500/10 border-orange-500/30 text-orange-400'
-                  : 'bg-blue-500/10 border-blue-500/30 text-blue-400'
+                  ? 'bg-[var(--warning)]/10 border-[var(--warning)]/30 text-[var(--warning)]'
+                  : 'bg-[var(--accent)]/10 border-[var(--accent)]/30 text-[var(--accent)]'
               }`}>
                 <HugeiconsIcon
                   icon={authMethod === 'PASSWORD' ? LockPasswordIcon : Mail01Icon}
@@ -327,8 +327,8 @@ export default function SetupPage() {
               </span>
             </div>
 
-            <h2 className="text-lg font-bold text-white mb-1">Platform Details</h2>
-            <p className="text-sm text-slate-400 mb-6">
+            <h2 className="text-lg font-bold text-[var(--text)] mb-1">Platform Details</h2>
+            <p className="text-sm text-[var(--text-muted)] mb-6">
               {authMethod === 'MAGIC_CODE'
                 ? 'You will receive a verification code by email each time you log in.'
                 : 'Your admin password must be at least 12 characters.'}
@@ -340,16 +340,16 @@ export default function SetupPage() {
                 value={platformName}
                 onChange={e => setPlatformName(e.target.value)}
                 placeholder="FIDScript Deploy"
-                className="bg-[#080a0d] border border-[#1e2130] text-slate-200 placeholder:text-slate-600"
+                className="bg-[var(--surface-2)] border border-[var(--rail)] text-[var(--text)] placeholder:text-[var(--text-dim)]"
               />
 
               <div>
-                <label htmlFor="platformDomain" className="block text-xs text-slate-400 mb-1.5">
+                <label htmlFor="platformDomain" className="block text-xs text-[var(--text-muted)] mb-1.5">
                   Platform Domain
                   {validatingDomain ? (
-                    <span className="ml-2 text-yellow-400">checking…</span>
+                    <span className="ml-2 text-[var(--warning)]">checking…</span>
                   ) : platformDomain && !domainError ? (
-                    <span className="ml-1 text-emerald-400">✓</span>
+                    <span className="ml-1 text-[var(--success)]"></span>
                   ) : null}
                 </label>
                 <input
@@ -358,12 +358,12 @@ export default function SetupPage() {
                   value={platformDomain}
                   onChange={e => { setPlatformDomain(e.target.value); setFormError(''); }}
                   placeholder="deploy.mycompany.com"
-                  className="w-full bg-[#080a0d] border border-[#1e2130] text-slate-200 rounded px-3 py-2 text-sm focus:outline-none focus:border-blue-500 placeholder:text-slate-600"
+                  className="w-full bg-[var(--surface-2)] border border-[var(--rail)] text-[var(--text)] rounded px-3 py-2 text-sm focus:outline-none focus:border-[var(--accent)] placeholder:text-[var(--text-dim)]"
                 />
                 {domainError ? (
-                  <p className="text-xs text-red-400 mt-1">{domainError}</p>
+                  <p className="text-xs text-[var(--danger)] mt-1">{domainError}</p>
                 ) : !domainError && platformDomain ? (
-                  <p className="text-xs text-emerald-400 mt-1">Looks good</p>
+                  <p className="text-xs text-[var(--success)] mt-1">Looks good</p>
                 ) : null}
               </div>
 
@@ -374,7 +374,7 @@ export default function SetupPage() {
                 onChange={e => setCloudflareToken(e.target.value)}
                 placeholder="Press Enter to skip if you don't use Cloudflare"
                 hint="Used for automatic DNS configuration. Optional."
-                className="bg-[#080a0d] border border-[#1e2130] text-slate-200 placeholder:text-slate-600"
+                className="bg-[var(--surface-2)] border border-[var(--rail)] text-[var(--text)] placeholder:text-[var(--text-dim)]"
               />
 
               <Input
@@ -384,7 +384,7 @@ export default function SetupPage() {
                 onChange={e => { setAdminEmail(e.target.value); setFormError(''); }}
                 placeholder="admin@example.com"
                 required
-                className="bg-[#080a0d] border border-[#1e2130] text-slate-200 placeholder:text-slate-600"
+                className="bg-[var(--surface-2)] border border-[var(--rail)] text-[var(--text)] placeholder:text-[var(--text-dim)]"
               />
 
               {authMethod === 'PASSWORD' && (
@@ -397,7 +397,7 @@ export default function SetupPage() {
                     placeholder="Minimum 12 characters"
                     required
                     minLength={12}
-                    className="bg-[#080a0d] border border-[#1e2130] text-slate-200 placeholder:text-slate-600"
+                    className="bg-[var(--surface-2)] border border-[var(--rail)] text-[var(--text)] placeholder:text-[var(--text-dim)]"
                   />
                   <Input
                     label="Confirm Password"
@@ -407,13 +407,13 @@ export default function SetupPage() {
                     placeholder="Repeat your password"
                     required
                     minLength={12}
-                    className="bg-[#080a0d] border border-[#1e2130] text-slate-200 placeholder:text-slate-600"
+                    className="bg-[var(--surface-2)] border border-[var(--rail)] text-[var(--text)] placeholder:text-[var(--text-dim)]"
                   />
                 </>
               )}
 
               {formError && (
-                <p className="text-sm text-red-400" role="alert">{formError}</p>
+                <p className="text-sm text-[var(--danger)]" role="alert">{formError}</p>
               )}
 
               <Button
@@ -431,9 +431,9 @@ export default function SetupPage() {
         {/* ── Step 3: Progress ─────────────────────────────────────────── */}
         {step === 'progress' && (
           <Card padding="lg">
-            <h2 className="text-lg font-bold text-white mb-1">Configuring Your Platform</h2>
+            <h2 className="text-lg font-bold text-[var(--text)] mb-1">Configuring Your Platform</h2>
             {!progressError && (
-              <p className="text-sm text-slate-400 mb-8">
+              <p className="text-sm text-[var(--text-muted)] mb-8">
                 This takes a few minutes. Please wait…
               </p>
             )}
@@ -450,16 +450,16 @@ export default function SetupPage() {
                     {status === 'done' ? (
                       <HugeiconsIcon icon={CheckmarkCircle01Icon} size={18} className="text-green-400 shrink-0" />
                     ) : status === 'error' ? (
-                      <span className="text-red-400 text-sm shrink-0">✗</span>
+                      <span className="text-[var(--danger)] text-sm shrink-0"></span>
                     ) : isCurrent ? (
-                      <Spinner size="sm" className="text-blue-400 shrink-0" />
+                      <Spinner size="sm" className="text-[var(--accent)] shrink-0" />
                     ) : (
                       <div className="w-[18px] h-[18px] rounded-full border border-slate-600 shrink-0" />
                     )}
-                    <span className={`text-sm ${status === 'done' ? 'text-green-400' : status === 'error' ? 'text-red-400' : isCurrent ? 'text-blue-400' : 'text-slate-500'}`}>
+                    <span className={`text-sm ${status === 'done' ? 'text-green-400' : status === 'error' ? 'text-[var(--danger)]' : isCurrent ? 'text-[var(--accent)]' : 'text-[var(--text-muted)]'}`}>
                       {label}
                     </span>
-                    {isCurrent && <span className="text-xs text-slate-500 animate-pulse">running…</span>}
+                    {isCurrent && <span className="text-xs text-[var(--text-muted)] animate-pulse">running…</span>}
                   </div>
                 );
               })}
@@ -467,11 +467,11 @@ export default function SetupPage() {
 
             {progressError ? (
               <div className="flex flex-col gap-4">
-                <div className="flex items-start gap-2 p-4 rounded-lg bg-red-900/20 border border-red-800">
-                  <span className="text-red-400 shrink-0 mt-0.5">✗</span>
+                <div className="flex items-start gap-2 p-4 rounded-lg bg-[var(--danger)]/10 border border-[var(--danger)]/30">
+                  <span className="text-[var(--danger)] shrink-0 mt-0.5"></span>
                   <div>
-                    <p className="text-sm text-red-300 font-medium">Configuration failed</p>
-                    <p className="text-xs text-red-400/80 mt-1">{progressError}</p>
+                    <p className="text-sm text-[var(--danger)] font-medium">Configuration failed</p>
+                    <p className="text-xs text-[var(--danger)]/80 mt-1">{progressError}</p>
                   </div>
                 </div>
                 <button
@@ -481,7 +481,7 @@ export default function SetupPage() {
                     setProgressError('');
                     setStep('method');
                   }}
-                  className="w-full py-3 rounded-lg border border-slate-700 text-slate-300 hover:text-white hover:border-slate-500 text-sm transition-colors"
+                  className="w-full py-3 rounded-lg border border-[var(--rail-light)] text-[var(--text-muted)] hover:text-[var(--text)] hover:border-slate-500 text-sm transition-colors"
                 >
                   Run setup again
                 </button>
@@ -499,12 +499,12 @@ export default function SetupPage() {
               </div>
 
               <div>
-                <h2 className="text-xl font-bold text-white mb-1">Setup complete!</h2>
-                <p className="text-sm text-slate-400">
+                <h2 className="text-xl font-bold text-[var(--text)] mb-1">Setup complete!</h2>
+                <p className="text-sm text-[var(--text-muted)]">
                   Your platform is ready at{' '}
                   <a
                     href={`https://${doneDomain}`}
-                    className="text-blue-400 hover:text-blue-300 underline"
+                    className="text-[var(--accent)] hover:text-[var(--accent)] underline"
                     target="_blank"
                     rel="noopener noreferrer"
                   >
@@ -517,13 +517,13 @@ export default function SetupPage() {
                 href={`https://${doneDomain}`}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="inline-flex items-center justify-center gap-2 rounded-lg font-medium bg-red-600 hover:bg-red-500 text-white px-6 py-3 text-base transition-colors duration-200 mt-2"
+                className="inline-flex items-center justify-center gap-2 rounded-lg font-medium bg-[var(--success)] hover:bg-[var(--success)]/90 text-[var(--text)] px-6 py-3 text-base transition-colors duration-200 mt-2"
               >
                 Visit your dashboard
                 <span aria-hidden="true">→</span>
               </a>
 
-              <p className="text-xs text-slate-600 max-w-xs">
+              <p className="text-xs text-[var(--text-dim)] max-w-xs">
                 This link is your permanent access point. The IP-based URL will redirect here from now on.
               </p>
             </div>

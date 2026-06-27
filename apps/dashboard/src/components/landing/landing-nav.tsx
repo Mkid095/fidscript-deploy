@@ -10,25 +10,25 @@ const LINKS = [
 
 export function LandingNav() {
   return (
-    <header className="sticky top-0 z-50 border-b border-slate-900 bg-ink-900/80 backdrop-blur-md">
+    <header className="sticky top-0 z-50 border-b border-[var(--rail)] bg-[var(--surface)]/80 backdrop-blur-md">
       <nav className="mx-auto flex max-w-6xl items-center justify-between px-6 py-4">
         <Link href="/home" className="flex items-center gap-2.5">
-          <span className="flex h-8 w-8 items-center justify-center rounded-lg border border-fire-500/30 bg-fire-500/10 text-fire-500">
+          <span className="flex h-8 w-8 items-center justify-center rounded-lg border border-[var(--accent)]/30 bg-[var(--accent)]/10 text-[var(--accent)]">
             <HugeiconsIcon icon={BoltIcon} size={18} color="currentColor" className="animate-pulse-slow" />
           </span>
-          <span className="font-mono text-lg font-bold tracking-tight text-white">
-            FID<span className="text-fire-500">Script</span>
+          <span className="font-mono text-lg font-bold tracking-tight text-[var(--text)]">
+            FID<span className="text-[var(--accent)]">Script</span>
           </span>
         </Link>
 
         <div className="hidden items-center gap-7 md:flex">
           {LINKS.map((l) =>
             l.href.startsWith('#') ? (
-              <a key={l.href} href={l.href} className="text-sm text-slate-400 transition hover:text-white">
+              <a key={l.href} href={l.href} className="text-sm text-[var(--text-muted)] transition hover:text-[var(--text)]">
                 {l.label}
               </a>
             ) : (
-              <Link key={l.href} href={l.href} className="text-sm text-slate-400 transition hover:text-white">
+              <Link key={l.href} href={l.href} className="text-sm text-[var(--text-muted)] transition hover:text-[var(--text)]">
                 {l.label}
               </Link>
             ),
@@ -39,7 +39,7 @@ export function LandingNav() {
           href="https://github.com/Mkid095/fidscript-deploy"
           target="_blank"
           rel="noreferrer"
-          className="flex items-center gap-1.5 rounded-lg border border-slate-800 px-3 py-2 text-sm text-slate-300 transition hover:border-slate-700 hover:text-white"
+          className="flex items-center gap-1.5 rounded-lg border border-[var(--rail)] px-3 py-2 text-sm text-[var(--text-muted)] transition hover:border-[var(--rail-light)] hover:text-[var(--text)]"
         >
           <HugeiconsIcon icon={SourceCodeIcon} size={16} color="currentColor" /> Source
         </a>

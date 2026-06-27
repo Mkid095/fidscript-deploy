@@ -77,8 +77,8 @@ export default function RegisterPage() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-[#080a0d] p-4">
-      <Card padding="lg" className="w-full max-w-md border border-[#1e2130]">
+    <div className="min-h-screen flex items-center justify-center bg-[var(--surface-2)] p-4">
+      <Card padding="lg" className="w-full max-w-md border border-[var(--rail)]">
         {/* Logo + wordmark */}
         <div className="mb-8 text-center">
           <Image
@@ -88,19 +88,19 @@ export default function RegisterPage() {
             height={72}
             className="mx-auto mb-3 rounded-xl"
           />
-          <h1 className="text-xl font-bold text-slate-200 mb-0.5">Create account</h1>
-          <p className="text-xs text-slate-500">fidscript deploy &middot; by NextMavens</p>
+          <h1 className="text-xl font-bold text-[var(--text)] mb-0.5">Create account</h1>
+          <p className="text-xs text-[var(--text-muted)]">fidscript deploy &middot; by NextMavens</p>
         </div>
 
         {step === 'form' ? (
           <>
             {/* Auth method selector */}
-            <div className="flex rounded-lg bg-slate-900 p-1 mb-6 border border-slate-800">
+            <div className="flex rounded-lg bg-[var(--surface-2)] p-1 mb-6 border border-[var(--rail)]">
               <button
                 type="button"
                 onClick={() => setAuthMethod('PASSWORD')}
                 className={`flex-1 flex items-center justify-center gap-2 py-2 text-sm font-medium rounded-md transition-colors duration-150 ${
-                  authMethod === 'PASSWORD' ? 'bg-slate-800 text-white' : 'text-slate-400 hover:text-slate-200'
+                  authMethod === 'PASSWORD' ? 'bg-[var(--rail)] text-[var(--text)]' : 'text-[var(--text-muted)] hover:text-[var(--text)]'
                 }`}
               >
                 <HugeiconsIcon icon={LockPasswordIcon} size={16} />
@@ -110,7 +110,7 @@ export default function RegisterPage() {
                 type="button"
                 onClick={() => setAuthMethod('MAGIC_CODE')}
                 className={`flex-1 flex items-center justify-center gap-2 py-2 text-sm font-medium rounded-md transition-colors duration-150 ${
-                  authMethod === 'MAGIC_CODE' ? 'bg-slate-800 text-white' : 'text-slate-400 hover:text-slate-200'
+                  authMethod === 'MAGIC_CODE' ? 'bg-[var(--rail)] text-[var(--text)]' : 'text-[var(--text-muted)] hover:text-[var(--text)]'
                 }`}
               >
                 <HugeiconsIcon icon={Mail01Icon} size={16} />
@@ -128,7 +128,7 @@ export default function RegisterPage() {
                     onChange={e => { setName(e.target.value); setValidationError(''); }}
                     placeholder="Your full name"
                     autoComplete="name"
-                    className="bg-[#080a0d] border border-[#1e2130] text-slate-200 placeholder:text-slate-600"
+                    className="bg-[var(--surface-2)] border border-[var(--rail)] text-[var(--text)] placeholder:text-[var(--text-dim)]"
                   />
                   <Input
                     label="Email"
@@ -137,7 +137,7 @@ export default function RegisterPage() {
                     onChange={e => { setEmail(e.target.value); setValidationError(''); }}
                     placeholder="you@example.com"
                     autoComplete="email"
-                    className="bg-[#080a0d] border border-[#1e2130] text-slate-200 placeholder:text-slate-600"
+                    className="bg-[var(--surface-2)] border border-[var(--rail)] text-[var(--text)] placeholder:text-[var(--text-dim)]"
                   />
                   <div className="space-y-1">
                     <Input
@@ -147,7 +147,7 @@ export default function RegisterPage() {
                       onChange={e => { setPassword(e.target.value); setValidationError(''); }}
                       placeholder="At least 12 characters"
                       autoComplete="new-password"
-                      className="bg-[#080a0d] border border-[#1e2130] text-slate-200 placeholder:text-slate-600"
+                      className="bg-[var(--surface-2)] border border-[var(--rail)] text-[var(--text)] placeholder:text-[var(--text-dim)]"
                     />
                     <PasswordStrength password={password} />
                   </div>
@@ -158,10 +158,10 @@ export default function RegisterPage() {
                     onChange={e => { setConfirm(e.target.value); setValidationError(''); }}
                     placeholder="Re-enter password"
                     autoComplete="new-password"
-                    className="bg-[#080a0d] border border-[#1e2130] text-slate-200 placeholder:text-slate-600"
+                    className="bg-[var(--surface-2)] border border-[var(--rail)] text-[var(--text)] placeholder:text-[var(--text-dim)]"
                   />
                   {(validationError || error) && (
-                    <p className="text-sm text-red-400" role="alert">{validationError || error}</p>
+                    <p className="text-sm text-[var(--danger)]" role="alert">{validationError || error}</p>
                   )}
                   <Button type="submit" disabled={loading} variant="primary" className="w-full mt-1">
                     {loading ? 'Creating account…' : 'Create account'}
@@ -183,7 +183,7 @@ export default function RegisterPage() {
                     onChange={e => { setName(e.target.value); setValidationError(''); }}
                     placeholder="Your full name"
                     autoComplete="name"
-                    className="bg-[#080a0d] border border-[#1e2130] text-slate-200 placeholder:text-slate-600"
+                    className="bg-[var(--surface-2)] border border-[var(--rail)] text-[var(--text)] placeholder:text-[var(--text-dim)]"
                   />
                   <Input
                     label="Email"
@@ -192,10 +192,10 @@ export default function RegisterPage() {
                     onChange={e => { setEmail(e.target.value); setValidationError(''); }}
                     placeholder="you@example.com"
                     autoComplete="email"
-                    className="bg-[#080a0d] border border-[#1e2130] text-slate-200 placeholder:text-slate-600"
+                    className="bg-[var(--surface-2)] border border-[var(--rail)] text-[var(--text)] placeholder:text-[var(--text-dim)]"
                   />
                   {(validationError || error) && (
-                    <p className="text-sm text-red-400" role="alert">{validationError || error}</p>
+                    <p className="text-sm text-[var(--danger)]" role="alert">{validationError || error}</p>
                   )}
                   <Button type="submit" disabled={loading} variant="primary" className="w-full mt-1">
                     {loading ? 'Creating account…' : 'Create account'}
@@ -208,8 +208,8 @@ export default function RegisterPage() {
           /* Magic code verification step */
           <div className="flex flex-col gap-4">
             <div className="text-center space-y-1">
-              <p className="text-sm text-slate-400">Check your inbox</p>
-              <p className="text-sm text-slate-300 font-medium">{maskedEmail}</p>
+              <p className="text-sm text-[var(--text-muted)]">Check your inbox</p>
+              <p className="text-sm text-[var(--text-muted)] font-medium">{maskedEmail}</p>
             </div>
             <MagicCodeInput
               onComplete={() => {}}
@@ -217,7 +217,7 @@ export default function RegisterPage() {
               error={!!codeError}
             />
             {codeError && (
-              <p className="text-sm text-red-400 text-center" role="alert">{codeError}</p>
+              <p className="text-sm text-[var(--danger)] text-center" role="alert">{codeError}</p>
             )}
             {code && !codeError && (
               <p className="text-sm text-green-400 text-center">Verified — signing in…</p>
@@ -225,9 +225,9 @@ export default function RegisterPage() {
           </div>
         )}
 
-        <p className="text-center text-sm text-slate-500 mt-6">
+        <p className="text-center text-sm text-[var(--text-muted)] mt-6">
           Already have an account?{' '}
-          <a href="/login" className="text-blue-500 hover:text-blue-400">
+          <a href="/login" className="text-[var(--accent)] hover:text-[var(--accent)]">
             Sign in
           </a>
         </p>

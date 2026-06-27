@@ -31,15 +31,15 @@ const PROJECT_TYPES: ProjectType[] = ['frontend', 'backend', 'worker', 'cron', '
 // Universal status palette per ADR-036 principle 7.
 // Maps every ProjectStatus value to a visible style.
 const STATUS_PALETTE: Record<string, string> = {
-  ACTIVE: 'bg-emerald-900/30 text-emerald-400 border-emerald-800/60',
-  HEALTHY: 'bg-emerald-900/30 text-emerald-400 border-emerald-800/60',
-  RUNNING: 'bg-blue-900/30 text-blue-400 border-blue-800/60',
-  PENDING: 'bg-yellow-900/30 text-yellow-400 border-yellow-800/60',
-  WARNING: 'bg-orange-900/30 text-orange-400 border-orange-800/60',
-  SUSPENDED: 'bg-yellow-900/30 text-yellow-400 border-yellow-800/60',
-  FAILED: 'bg-red-900/30 text-red-400 border-red-800/60',
-  STOPPED: 'bg-slate-800 text-slate-400 border-slate-700',
-  CREATING: 'bg-blue-900/30 text-blue-300 border-blue-800/60',
+  ACTIVE: 'bg-emerald-900/30 text-[var(--success)] border-[var(--success)]/30/60',
+  HEALTHY: 'bg-emerald-900/30 text-[var(--success)] border-[var(--success)]/30/60',
+  RUNNING: 'bg-[var(--accent)]/10 text-[var(--accent)] border-blue-800/60',
+  PENDING: 'bg-yellow-900/30 text-[var(--warning)] border-yellow-800/60',
+  WARNING: 'bg-orange-900/30 text-[var(--warning)] border-orange-800/60',
+  SUSPENDED: 'bg-yellow-900/30 text-[var(--warning)] border-yellow-800/60',
+  FAILED: 'bg-red-900/30 text-[var(--danger)] border-[var(--danger)]/30/60',
+  STOPPED: 'bg-[var(--rail)] text-[var(--text-muted)] border-[var(--rail-light)]',
+  CREATING: 'bg-[var(--accent)]/10 text-[var(--accent)] border-blue-800/60',
   ARCHIVED: 'bg-purple-900/30 text-purple-300 border-purple-800/60',
 };
 
@@ -381,10 +381,10 @@ export default function ProjectsPage() {
       {/* Header — title + search + hero action (ADR-036 principle 5) */}
       <div className="flex items-center justify-between gap-4 mb-6">
         <div>
-          <h1 className="text-xl font-bold text-slate-200 mb-1">
+          <h1 className="text-xl font-bold text-[var(--text)] mb-1">
             {user?.name ? `Welcome back, ${user.name}` : 'Projects'}
           </h1>
-          <p className="text-sm text-slate-500" aria-live="polite">
+          <p className="text-sm text-[var(--text-muted)]" aria-live="polite">
             {loading
               ? 'Loading…'
               : q
@@ -396,13 +396,13 @@ export default function ProjectsPage() {
         <div className="flex items-center gap-2 flex-1 max-w-md justify-end">
           {/* Search input — always visible, never behind a button */}
           <div className="relative flex-1 max-w-xs">
-            <HugeiconsIcon icon={Search01Icon} size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-600 pointer-events-none" />
+            <HugeiconsIcon icon={Search01Icon} size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--text-dim)] pointer-events-none" />
             <Input
               value={search}
               onChange={e => handleSearchChange(e.target.value)}
               placeholder="Search projects…"
               aria-label="Search projects"
-              className="pl-9 bg-[#080a0d] border border-[#1e2130] text-slate-200 placeholder:text-slate-600"
+              className="pl-9 bg-[var(--surface-2)] border border-[var(--rail)] text-[var(--text)] placeholder:text-[var(--text-dim)]"
             />
           </div>
           <Button variant="ghost" size="sm" onClick={load} title="Refresh" aria-label="Refresh" disabled={loading}>
@@ -418,7 +418,7 @@ export default function ProjectsPage() {
             >
               <HugeiconsIcon icon={showDeleted ? EyeOffIcon : EyeIcon} size={14} />
               {deletedProjects.length > 0 && (
-                <span className="ml-1 text-xs text-slate-400">{deletedProjects.length}</span>
+                <span className="ml-1 text-xs text-[var(--text-muted)]">{deletedProjects.length}</span>
               )}
             </Button>
           )}
@@ -432,15 +432,15 @@ export default function ProjectsPage() {
       </div>
 
       {loadError && (
-        <div className="bg-red-950/30 border border-red-800 rounded-lg p-3 mb-4 text-sm text-red-400 flex items-center justify-between">
+        <div className="bg-[var(--danger)]/10 border border-[var(--danger)]/30 rounded-lg p-3 mb-4 text-sm text-[var(--danger)] flex items-center justify-between">
           <span className="flex items-center gap-2">
             {rateLimitCountdown !== null && (
-              <HugeiconsIcon icon={Time01Icon} size={14} className="text-amber-400 flex-shrink-0" />
+              <HugeiconsIcon icon={Time01Icon} size={14} className="text-[var(--warning)] flex-shrink-0" />
             )}
             {loadError}
           </span>
           {!rateLimitCountdown && (
-            <button onClick={load} className="text-xs text-red-300 hover:text-red-200 underline">Retry</button>
+            <button onClick={load} className="text-xs text-[var(--danger)] hover:text-red-200 underline">Retry</button>
           )}
         </div>
       )}
@@ -449,9 +449,9 @@ export default function ProjectsPage() {
       {loading ? (
         <SkeletonGrid />
       ) : projects.length === 0 ? (
-        <Card className="border border-[#1e2130]">
+        <Card className="border border-[var(--rail)]">
           <EmptyState
-            icon={<HugeiconsIcon icon={Folder01Icon} size={48} className="text-slate-600" />}
+            icon={<HugeiconsIcon icon={Folder01Icon} size={48} className="text-[var(--text-dim)]" />}
             title={canEdit() ? 'No projects yet' : 'No projects'}
             description={canEdit()
               ? 'Create your first project to start deploying apps, databases, and more.'
@@ -465,9 +465,9 @@ export default function ProjectsPage() {
           />
         </Card>
       ) : filtered.length === 0 ? (
-        <Card className="border border-[#1e2130]">
+        <Card className="border border-[var(--rail)]">
           <EmptyState
-            icon={<HugeiconsIcon icon={Search01Icon} size={48} className="text-slate-600" />}
+            icon={<HugeiconsIcon icon={Search01Icon} size={48} className="text-[var(--text-dim)]" />}
             title="No matches"
             description={`No projects match "${search}".`}
             action={
@@ -495,8 +495,8 @@ export default function ProjectsPage() {
       {showDeleted && deletedProjects.length > 0 && (
         <div className="mt-10">
           <div className="flex items-center gap-2 mb-4">
-            <h2 className="text-sm font-semibold text-slate-300">Deleted projects</h2>
-            <span className="text-xs text-slate-500">
+            <h2 className="text-sm font-semibold text-[var(--text-muted)]">Deleted projects</h2>
+            <span className="text-xs text-[var(--text-muted)]">
               {deletedProjects.length} item{deletedProjects.length !== 1 ? 's' : ''} · purged after 30 days
             </span>
           </div>
@@ -579,48 +579,48 @@ export default function ProjectsPage() {
       >
         {deleting && (
           <div className="space-y-4">
-            <p className="text-sm text-slate-300">
-              You are about to permanently delete <strong className="text-slate-100">{deleting.name}</strong>.
+            <p className="text-sm text-[var(--text-muted)]">
+              You are about to permanently delete <strong className="text-[var(--text)]">{deleting.name}</strong>.
               This will remove the project and the following data, which cannot be recovered:
             </p>
-            <ul className="space-y-1.5 text-sm text-slate-400 ml-1">
+            <ul className="space-y-1.5 text-sm text-[var(--text-muted)] ml-1">
               <li className="flex items-center gap-2">
-                <HugeiconsIcon icon={AlertCircleIcon} size={14} className="text-red-400 flex-shrink-0" />
+                <HugeiconsIcon icon={AlertCircleIcon} size={14} className="text-[var(--danger)] flex-shrink-0" />
                 Deployments and release history
               </li>
               <li className="flex items-center gap-2">
-                <HugeiconsIcon icon={AlertCircleIcon} size={14} className="text-red-400 flex-shrink-0" />
+                <HugeiconsIcon icon={AlertCircleIcon} size={14} className="text-[var(--danger)] flex-shrink-0" />
                 Environment variables and secrets
               </li>
               <li className="flex items-center gap-2">
-                <HugeiconsIcon icon={AlertCircleIcon} size={14} className="text-red-400 flex-shrink-0" />
+                <HugeiconsIcon icon={AlertCircleIcon} size={14} className="text-[var(--danger)] flex-shrink-0" />
                 Database instances and backups
               </li>
               <li className="flex items-center gap-2">
-                <HugeiconsIcon icon={AlertCircleIcon} size={14} className="text-red-400 flex-shrink-0" />
+                <HugeiconsIcon icon={AlertCircleIcon} size={14} className="text-[var(--danger)] flex-shrink-0" />
                 Storage buckets and uploaded files
               </li>
               <li className="flex items-center gap-2">
-                <HugeiconsIcon icon={AlertCircleIcon} size={14} className="text-red-400 flex-shrink-0" />
+                <HugeiconsIcon icon={AlertCircleIcon} size={14} className="text-[var(--danger)] flex-shrink-0" />
                 Email mailboxes, aliases, and messages
               </li>
               <li className="flex items-center gap-2">
-                <HugeiconsIcon icon={AlertCircleIcon} size={14} className="text-red-400 flex-shrink-0" />
+                <HugeiconsIcon icon={AlertCircleIcon} size={14} className="text-[var(--danger)] flex-shrink-0" />
                 Custom domains and DNS records
               </li>
             </ul>
-            <label className="flex items-start gap-2 pt-3 border-t border-slate-800 cursor-pointer">
+            <label className="flex items-start gap-2 pt-3 border-t border-[var(--rail)] cursor-pointer">
               <input
                 type="checkbox"
                 checked={deleteAck}
                 onChange={e => setDeleteAck(e.target.checked)}
-                className="mt-0.5 w-4 h-4 rounded border-slate-600 bg-slate-800 text-red-500 focus:ring-red-500 focus:ring-offset-0"
+                className="mt-0.5 w-4 h-4 rounded border-slate-600 bg-[var(--rail)] text-[var(--danger)] focus:ring-[var(--danger)] focus:ring-offset-0"
               />
-              <span className="text-sm text-slate-300">
-                I understand this will permanently delete <strong className="text-slate-100">{deleting.name}</strong> and all of its data.
+              <span className="text-sm text-[var(--text-muted)]">
+                I understand this will permanently delete <strong className="text-[var(--text)]">{deleting.name}</strong> and all of its data.
               </span>
             </label>
-            {deleteError && <p className="text-sm text-red-400">{deleteError}</p>}
+            {deleteError && <p className="text-sm text-[var(--danger)]">{deleteError}</p>}
           </div>
         )}
       </RightPanel>
@@ -644,19 +644,19 @@ export default function ProjectsPage() {
           <div className="space-y-4">
             {!purgeRequested ? (
               <>
-                <p className="text-sm text-slate-300">
-                  Permanently deleting <strong className="text-slate-100">{purgeProject.name}</strong> cannot be undone.
+                <p className="text-sm text-[var(--text-muted)]">
+                  Permanently deleting <strong className="text-[var(--text)]">{purgeProject.name}</strong> cannot be undone.
                   A verification code will be sent to your email address.
                 </p>
-                <div className="bg-amber-950/30 border border-amber-800/50 rounded-lg p-3 text-xs text-amber-300">
+                <div className="bg-amber-950/30 border border-[var(--warning)]/30/50 rounded-lg p-3 text-xs text-[var(--warning)]">
                   This project will be permanently removed from the system along with all deployments, databases, and storage.
                 </div>
               </>
             ) : (
               <>
-                <p className="text-sm text-slate-300">
+                <p className="text-sm text-[var(--text-muted)]">
                   A verification code was sent to your email. Enter it below to confirm permanent deletion of{' '}
-                  <strong className="text-slate-100">{purgeProject.name}</strong>.
+                  <strong className="text-[var(--text)]">{purgeProject.name}</strong>.
                 </p>
                 <div>
                   <Input
@@ -665,22 +665,22 @@ export default function ProjectsPage() {
                     onChange={e => setPurgeCode(e.target.value)}
                     placeholder="000000"
                     autoFocus
-                    className="bg-[#080a0d] border border-[#1e2130] text-slate-200 placeholder:text-slate-600 font-mono text-center text-lg tracking-widest"
+                    className="bg-[var(--surface-2)] border border-[var(--rail)] text-[var(--text)] placeholder:text-[var(--text-dim)] font-mono text-center text-lg tracking-widest"
                   />
                 </div>
-                <p className="text-xs text-slate-500">
+                <p className="text-xs text-[var(--text-muted)]">
                   Didn&apos;t receive it?{' '}
                   <button
                     onClick={handleRequestPurge}
                     disabled={purgeVerifying}
-                    className="text-blue-400 hover:text-blue-300 underline disabled:opacity-50"
+                    className="text-[var(--accent)] hover:text-[var(--accent)] underline disabled:opacity-50"
                   >
                     Resend
                   </button>
                 </p>
               </>
             )}
-            {purgeError && <p className="text-sm text-red-400">{purgeError}</p>}
+            {purgeError && <p className="text-sm text-[var(--danger)]">{purgeError}</p>}
           </div>
         )}
       </RightPanel>
@@ -703,32 +703,32 @@ function DeletedProjectCard({ project, onRestore, onPurge }: DeletedProjectCardP
       <div className="p-5">
         <div className="flex items-start justify-between gap-3 mb-2">
           <div className="min-w-0 flex-1">
-            <h3 className="text-sm font-semibold text-slate-300 truncate">
+            <h3 className="text-sm font-semibold text-[var(--text-muted)] truncate">
               {project.name}
             </h3>
-            <p className="text-xs text-slate-500 font-mono truncate mt-0.5">
+            <p className="text-xs text-[var(--text-muted)] font-mono truncate mt-0.5">
               {project.slug}
             </p>
           </div>
         </div>
 
         <div className="flex items-center gap-2 mb-3">
-          <span className="text-xs px-2 py-0.5 rounded-full border bg-red-900/30 text-red-400 border-red-800/50">
+          <span className="text-xs px-2 py-0.5 rounded-full border bg-red-900/30 text-[var(--danger)] border-[var(--danger)]/30/50">
             Deleted {deletedAt}
           </span>
         </div>
 
         {project.description && (
-          <p className="text-xs text-slate-500 line-clamp-2 mb-3 min-h-[2rem]">
+          <p className="text-xs text-[var(--text-muted)] line-clamp-2 mb-3 min-h-[2rem]">
             {project.description}
           </p>
         )}
 
         <div className="flex items-center justify-between pt-2 border-t border-red-900/30">
-          <span className="text-xs px-2 py-0.5 rounded bg-red-950/50 text-slate-400 border border-red-900/30 capitalize">
+          <span className="text-xs px-2 py-0.5 rounded bg-red-950/50 text-[var(--text-muted)] border border-red-900/30 capitalize">
             {project.type}
           </span>
-          <span className="text-xs text-slate-600">Permanently removed</span>
+          <span className="text-xs text-[var(--text-dim)]">Permanently removed</span>
         </div>
       </div>
 
@@ -739,7 +739,7 @@ function DeletedProjectCard({ project, onRestore, onPurge }: DeletedProjectCardP
             <button
               type="button"
               onClick={e => { e.preventDefault(); e.stopPropagation(); onRestore(); }}
-              className="p-1.5 rounded-md text-slate-500 hover:text-emerald-400 hover:bg-[#1e2130] transition-colors"
+              className="p-1.5 rounded-md text-[var(--text-muted)] hover:text-[var(--success)] hover:bg-[var(--rail)] transition-colors"
               aria-label={`Restore ${project.name}`}
               title="Restore"
             >
@@ -750,7 +750,7 @@ function DeletedProjectCard({ project, onRestore, onPurge }: DeletedProjectCardP
             <button
               type="button"
               onClick={e => { e.preventDefault(); e.stopPropagation(); onPurge(); }}
-              className="p-1.5 rounded-md text-slate-500 hover:text-red-400 hover:bg-[#1e2130] transition-colors"
+              className="p-1.5 rounded-md text-[var(--text-muted)] hover:text-[var(--danger)] hover:bg-[var(--rail)] transition-colors"
               aria-label={`Permanently delete ${project.name}`}
               title="Delete permanently"
             >
@@ -775,10 +775,10 @@ function ProjectCard({ project, onOpen, onEdit, onDelete }: ProjectCardProps) {
   // Per ADR-036 principle 1: card answers "what is it, is it healthy, can I open it"
   const lastActive = project.lastActivityAt ?? project.updatedAt;
   const statusKey = (project.status ?? '').toUpperCase();
-  const statusColor = STATUS_PALETTE[statusKey] ?? 'bg-slate-800 text-slate-400 border-slate-700';
+  const statusColor = STATUS_PALETTE[statusKey] ?? 'bg-[var(--rail)] text-[var(--text-muted)] border-[var(--rail-light)]';
 
   return (
-    <div className="group relative rounded-lg border border-[#1e2130] bg-[#0f1117] hover:border-blue-500/50 transition-colors">
+    <div className="group relative rounded-lg border border-[var(--rail)] bg-[var(--surface-2)] hover:border-[var(--accent)]/50 transition-colors">
       {/* Main clickable area — slug-based URL per ADR-036 principle 6 */}
       <Link
         href={`/projects/${project.slug}`}
@@ -786,10 +786,10 @@ function ProjectCard({ project, onOpen, onEdit, onDelete }: ProjectCardProps) {
       >
         <div className="flex items-start justify-between gap-3 mb-2">
           <div className="min-w-0 flex-1">
-            <h3 className="text-sm font-semibold text-slate-200 truncate group-hover:text-blue-300 transition-colors">
+            <h3 className="text-sm font-semibold text-[var(--text)] truncate group-hover:text-[var(--accent)] transition-colors">
               {project.name}
             </h3>
-            <p className="text-xs text-slate-500 font-mono truncate mt-0.5">
+            <p className="text-xs text-[var(--text-muted)] font-mono truncate mt-0.5">
               {project.slug}
             </p>
           </div>
@@ -801,24 +801,24 @@ function ProjectCard({ project, onOpen, onEdit, onDelete }: ProjectCardProps) {
             {project.status?.toLowerCase() ?? 'unknown'}
           </span>
           {lastActive && (
-            <span className="text-xs text-slate-500 flex items-center gap-1">
-              <HugeiconsIcon icon={Time01Icon} size={12} className="text-slate-600" />
+            <span className="text-xs text-[var(--text-muted)] flex items-center gap-1">
+              <HugeiconsIcon icon={Time01Icon} size={12} className="text-[var(--text-dim)]" />
               {relativeTime(lastActive)}
             </span>
           )}
         </div>
 
         {project.description && (
-          <p className="text-xs text-slate-500 line-clamp-2 mb-3 min-h-[2rem]">
+          <p className="text-xs text-[var(--text-muted)] line-clamp-2 mb-3 min-h-[2rem]">
             {project.description}
           </p>
         )}
 
-        <div className="flex items-center justify-between pt-2 border-t border-[#1e2130]">
-          <span className="text-xs px-2 py-0.5 rounded bg-[#1e2130] text-slate-400 border border-[#2a2d3a] capitalize">
+        <div className="flex items-center justify-between pt-2 border-t border-[var(--rail)]">
+          <span className="text-xs px-2 py-0.5 rounded bg-[var(--rail)] text-[var(--text-muted)] border border-[var(--rail-light)] capitalize">
             {project.type}
           </span>
-          <span className="text-xs text-slate-600">Open →</span>
+          <span className="text-xs text-[var(--text-dim)]">Open →</span>
         </div>
       </Link>
 
@@ -829,7 +829,7 @@ function ProjectCard({ project, onOpen, onEdit, onDelete }: ProjectCardProps) {
             <button
               type="button"
               onClick={e => { e.preventDefault(); e.stopPropagation(); onEdit(); }}
-              className="p-1.5 rounded-md text-slate-500 hover:text-blue-300 hover:bg-[#1e2130] transition-colors"
+              className="p-1.5 rounded-md text-[var(--text-muted)] hover:text-[var(--accent)] hover:bg-[var(--rail)] transition-colors"
               aria-label={`Edit ${project.name}`}
               title="Edit"
             >
@@ -840,7 +840,7 @@ function ProjectCard({ project, onOpen, onEdit, onDelete }: ProjectCardProps) {
             <button
               type="button"
               onClick={e => { e.preventDefault(); e.stopPropagation(); onDelete(); }}
-              className="p-1.5 rounded-md text-slate-500 hover:text-red-400 hover:bg-[#1e2130] transition-colors"
+              className="p-1.5 rounded-md text-[var(--text-muted)] hover:text-[var(--danger)] hover:bg-[var(--rail)] transition-colors"
               aria-label={`Delete ${project.name}`}
               title="Delete"
             >
@@ -858,18 +858,18 @@ function SkeletonGrid() {
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
       {[0, 1, 2].map(i => (
-        <div key={i} className="rounded-lg border border-[#1e2130] bg-[#0f1117] p-5 animate-pulse">
-          <div className="h-4 bg-[#1e2130] rounded w-2/3 mb-2" />
-          <div className="h-3 bg-[#1e2130] rounded w-1/2 mb-4" />
+        <div key={i} className="rounded-lg border border-[var(--rail)] bg-[var(--surface-2)] p-5 animate-pulse">
+          <div className="h-4 bg-[var(--rail)] rounded w-2/3 mb-2" />
+          <div className="h-3 bg-[var(--rail)] rounded w-1/2 mb-4" />
           <div className="flex items-center gap-2 mb-3">
-            <div className="h-4 w-16 bg-[#1e2130] rounded-full" />
-            <div className="h-3 w-20 bg-[#1e2130] rounded" />
+            <div className="h-4 w-16 bg-[var(--rail)] rounded-full" />
+            <div className="h-3 w-20 bg-[var(--rail)] rounded" />
           </div>
-          <div className="h-3 bg-[#1e2130] rounded w-full mb-2" />
-          <div className="h-3 bg-[#1e2130] rounded w-4/5 mb-4" />
-          <div className="flex items-center justify-between pt-2 border-t border-[#1e2130]">
-            <div className="h-3 w-14 bg-[#1e2130] rounded" />
-            <div className="h-3 w-10 bg-[#1e2130] rounded" />
+          <div className="h-3 bg-[var(--rail)] rounded w-full mb-2" />
+          <div className="h-3 bg-[var(--rail)] rounded w-4/5 mb-4" />
+          <div className="flex items-center justify-between pt-2 border-t border-[var(--rail)]">
+            <div className="h-3 w-14 bg-[var(--rail)] rounded" />
+            <div className="h-3 w-10 bg-[var(--rail)] rounded" />
           </div>
         </div>
       ))}
@@ -914,29 +914,29 @@ function ProjectForm({
           onChange={e => onNameChange(e.target.value)}
           placeholder="my-app"
           autoFocus
-          className="bg-[#080a0d] border border-[#1e2130] text-slate-200 placeholder:text-slate-600"
+          className="bg-[var(--surface-2)] border border-[var(--rail)] text-[var(--text)] placeholder:text-[var(--text-dim)]"
         />
         {name && slugLabel ? (
           // Edit panel: show the real server-assigned slug, read-only.
-          <p className="text-xs text-slate-500 mt-1.5">
-            Slug: <span className="font-mono text-slate-300">{slugLabel}</span>
+          <p className="text-xs text-[var(--text-muted)] mt-1.5">
+            Slug: <span className="font-mono text-[var(--text-muted)]">{slugLabel}</span>
           </p>
         ) : name && slug ? (
           // Create panel: show a live preview (server appends a random suffix to this).
-          <p className="text-xs text-slate-500 mt-1.5">
-            Slug preview: <span className="font-mono text-slate-300">{slug}</span>
-            <span className="text-slate-600"> (a suffix will be added)</span>
+          <p className="text-xs text-[var(--text-muted)] mt-1.5">
+            Slug preview: <span className="font-mono text-[var(--text-muted)]">{slug}</span>
+            <span className="text-[var(--text-dim)]"> (a suffix will be added)</span>
           </p>
         ) : null}
       </div>
 
       {showType && onTypeChange && (
         <div>
-          <label className="block text-xs text-slate-400 mb-1.5">Type</label>
+          <label className="block text-xs text-[var(--text-muted)] mb-1.5">Type</label>
           <select
             value={type}
             onChange={e => onTypeChange(e.target.value as ProjectType)}
-            className="w-full bg-[#080a0d] border border-[#1e2130] text-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-orange-500"
+            className="w-full bg-[var(--surface-2)] border border-[var(--rail)] text-[var(--text)] rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-[var(--warning)]"
           >
             {PROJECT_TYPES.map(t => (
               <option key={t} value={t}>{t}</option>
@@ -946,17 +946,17 @@ function ProjectForm({
       )}
 
       <div>
-        <label className="block text-xs text-slate-400 mb-1.5">Description</label>
+        <label className="block text-xs text-[var(--text-muted)] mb-1.5">Description</label>
         <textarea
           value={description}
           onChange={e => onDescriptionChange(e.target.value)}
           placeholder={descriptionPlaceholder}
           rows={3}
-          className="w-full bg-[#080a0d] border border-[#1e2130] text-slate-200 placeholder:text-slate-600 rounded-lg px-3 py-2 text-sm resize-none focus:outline-none focus:border-orange-500"
+          className="w-full bg-[var(--surface-2)] border border-[var(--rail)] text-[var(--text)] placeholder:text-[var(--text-dim)] rounded-lg px-3 py-2 text-sm resize-none focus:outline-none focus:border-[var(--warning)]"
         />
       </div>
 
-      {error && <p className="text-sm text-red-400">{error}</p>}
+      {error && <p className="text-sm text-[var(--danger)]">{error}</p>}
     </div>
   );
 }

@@ -24,10 +24,10 @@ export function LandingFeatures() {
   return (
     <section id="features" className="relative mx-auto max-w-6xl px-6 py-20">
       <div className="mb-12 text-center">
-        <h2 className="text-3xl font-bold tracking-tight text-white sm:text-4xl">
-          Eleven services. <span className="text-fire-500">One install.</span>
+        <h2 className="text-3xl font-bold tracking-tight text-[var(--text)] sm:text-4xl">
+          Eleven services. <span className="text-[var(--accent)]">One install.</span>
         </h2>
-        <p className="mx-auto mt-3 max-w-xl text-sm text-slate-400">
+        <p className="mx-auto mt-3 max-w-xl text-sm text-[var(--text-muted)]">
           Everything you&apos;d otherwise stitch together from a dozen SaaS subscriptions — verified
           working, end to end, on a single box.
         </p>
@@ -37,13 +37,13 @@ export function LandingFeatures() {
         {FEATURES.map((f) => (
           <div
             key={f.title}
-            className="glass-panel group rounded-xl p-5 transition hover:border-fire-500/20 hover:bg-ink-850"
+            className="glass-panel group rounded-xl p-5 transition hover:border-[var(--accent)]/20 hover:bg-[var(--surface-2)]"
           >
-            <div className="mb-3 flex h-10 w-10 items-center justify-center rounded-lg border border-fire-500/20 bg-fire-500/10 text-fire-500 transition group-hover:scale-105">
+            <div className="mb-3 flex h-10 w-10 items-center justify-center rounded-lg border border-[var(--accent)]/20 bg-[var(--accent)]/10 text-[var(--accent)] transition group-hover:scale-105">
               <HugeiconsIcon icon={f.icon} size={20} color="currentColor" />
             </div>
-            <h3 className="mb-1 font-semibold text-white">{f.title}</h3>
-            <p className="text-sm leading-relaxed text-slate-400">{f.desc}</p>
+            <h3 className="mb-1 font-semibold text-[var(--text)]">{f.title}</h3>
+            <p className="text-sm leading-relaxed text-[var(--text-muted)]">{f.desc}</p>
           </div>
         ))}
       </div>

@@ -90,6 +90,10 @@ export type EventType =
   | 'database.backup_started'
   | 'database.backup_completed'
   | 'database.restored'
+  | 'database.row.changed'
+  | 'database.migration_applied'
+  | 'database.realtime_enabled'
+  | 'database.realtime_disabled'
   // Domain events
   | 'domain.added'
   | 'domain.verified'

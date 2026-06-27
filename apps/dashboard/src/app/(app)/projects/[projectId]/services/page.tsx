@@ -47,16 +47,16 @@ const TERMINAL_STATUSES = new Set(['SUCCESS', 'FAILED', 'STOPPED', 'ROLLED_BACK'
 
 function statusMeta(status?: string) {
   switch (status?.toUpperCase()) {
-    case 'SUCCESS':     return { label: 'Live',       badge: 'bg-emerald-900/60 text-emerald-400 border-emerald-800', dot: 'bg-emerald-500' };
-    case 'FAILED':      return { label: 'Failed',     badge: 'bg-red-900/60 text-red-400 border-red-800',             dot: 'bg-red-500' };
-    case 'PENDING':     return { label: 'Pending',    badge: 'bg-blue-900/60 text-blue-400 border-blue-800',          dot: 'bg-blue-500 animate-pulse' };
-    case 'QUEUED':      return { label: 'Queued',     badge: 'bg-blue-900/60 text-blue-400 border-blue-800',          dot: 'bg-blue-500 animate-pulse' };
-    case 'BUILDING':    return { label: 'Building',   badge: 'bg-amber-900/60 text-amber-400 border-amber-800',       dot: 'bg-amber-500 animate-pulse' };
-    case 'DEPLOYING':   return { label: 'Deploying',  badge: 'bg-amber-900/60 text-amber-400 border-amber-800',       dot: 'bg-amber-500 animate-pulse' };
-    case 'STOPPED':     return { label: 'Stopped',    badge: 'bg-slate-800 text-slate-400 border-slate-700',          dot: 'bg-slate-500' };
+    case 'SUCCESS':     return { label: 'Live',       badge: 'bg-emerald-900/60 text-[var(--success)] border-[var(--success)]/30', dot: 'bg-[var(--success)]' };
+    case 'FAILED':      return { label: 'Failed',     badge: 'bg-red-900/60 text-[var(--danger)] border-[var(--danger)]/30',             dot: 'bg-[var(--danger)]' };
+    case 'PENDING':     return { label: 'Pending',    badge: 'bg-blue-900/60 text-[var(--accent)] border-blue-800',          dot: 'bg-[var(--accent)] animate-pulse' };
+    case 'QUEUED':      return { label: 'Queued',     badge: 'bg-blue-900/60 text-[var(--accent)] border-blue-800',          dot: 'bg-[var(--accent)] animate-pulse' };
+    case 'BUILDING':    return { label: 'Building',   badge: 'bg-amber-900/60 text-[var(--warning)] border-[var(--warning)]/30',       dot: 'bg-[var(--warning)] animate-pulse' };
+    case 'DEPLOYING':   return { label: 'Deploying',  badge: 'bg-amber-900/60 text-[var(--warning)] border-[var(--warning)]/30',       dot: 'bg-[var(--warning)] animate-pulse' };
+    case 'STOPPED':     return { label: 'Stopped',    badge: 'bg-[var(--rail)] text-[var(--text-muted)] border-[var(--rail-light)]',          dot: 'bg-slate-500' };
     case 'ROLLED_BACK': return { label: 'Rolled back',badge: 'bg-purple-900/60 text-purple-400 border-purple-800',    dot: 'bg-purple-500' };
-    case 'BLOCKED':     return { label: 'Blocked',    badge: 'bg-orange-900/60 text-orange-400 border-orange-800',    dot: 'bg-orange-500' };
-    default:            return { label: status ?? 'Unknown', badge: 'bg-slate-800 text-slate-400 border-slate-700',    dot: 'bg-slate-600' };
+    case 'BLOCKED':     return { label: 'Blocked',    badge: 'bg-orange-900/60 text-[var(--warning)] border-orange-800',    dot: 'bg-[var(--warning)]' };
+    default:            return { label: status ?? 'Unknown', badge: 'bg-[var(--rail)] text-[var(--text-muted)] border-[var(--rail-light)]',    dot: 'bg-slate-600' };
   }
 }
 
@@ -110,19 +110,19 @@ function DeploymentRow({ deployment, projectId, onAction }: {
   const [menuOpen, setMenuOpen] = useState(false);
 
   return (
-    <div className="py-2.5 px-4 hover:bg-[#1e2130]/40 transition-colors border-t border-[#1e2130]/50">
+    <div className="py-2.5 px-4 hover:bg-[var(--rail)]/40 transition-colors border-t border-[var(--rail)]/50">
       {/* Line 1: status + ref (always visible) */}
       <div className="flex items-center gap-2">
         <span className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${meta.dot}`} />
         <span className={`text-[10px] px-1.5 py-0.5 rounded border capitalize font-medium ${meta.badge}`}>{meta.label}</span>
         {deployment.branch && (
-          <span className="flex items-center gap-1 text-xs text-slate-400 min-w-0">
-            <HugeiconsIcon icon={GitBranchIcon} size={10} className="text-slate-600 flex-shrink-0" />
+          <span className="flex items-center gap-1 text-xs text-[var(--text-muted)] min-w-0">
+            <HugeiconsIcon icon={GitBranchIcon} size={10} className="text-[var(--text-dim)] flex-shrink-0" />
             <span className="truncate">{deployment.branch}</span>
           </span>
         )}
         {deployment.commitSha && (
-          <code className="text-[10px] font-mono text-slate-600 bg-[#1e2130] px-1.5 py-0.5 rounded flex-shrink-0">
+          <code className="text-[10px] font-mono text-[var(--text-dim)] bg-[var(--rail)] px-1.5 py-0.5 rounded flex-shrink-0">
             {deployment.commitSha.slice(0, 7)}
           </code>
         )}
@@ -130,14 +130,14 @@ function DeploymentRow({ deployment, projectId, onAction }: {
 
       {/* Line 2: duration + when + actions (desktop: inline; mobile: wraps) */}
       <div className="flex items-center gap-3 mt-1.5 flex-wrap">
-        <span className="text-[10px] text-slate-600">
+        <span className="text-[10px] text-[var(--text-dim)]">
           {deployment.completedAt ? formatDuration(deployment.createdAt, deployment.completedAt) : '—'}
         </span>
-        <span className="text-[10px] text-slate-600">·</span>
-        <span className="text-[10px] text-slate-600">{relativeTime(deployment.createdAt)}</span>
+        <span className="text-[10px] text-[var(--text-dim)]">·</span>
+        <span className="text-[10px] text-[var(--text-dim)]">{relativeTime(deployment.createdAt)}</span>
         {deployment.deploymentUrl && (
           <a href={deployment.deploymentUrl} target="_blank" rel="noopener noreferrer"
-            className="flex items-center gap-1 text-[10px] text-blue-500 hover:text-blue-400 transition-colors ml-auto">
+            className="flex items-center gap-1 text-[10px] text-[var(--accent)] hover:text-[var(--accent)] transition-colors ml-auto">
             <HugeiconsIcon icon={GlobeIcon} size={10} />
             <span className="truncate max-w-[100px]">{deployment.deploymentUrl.replace(/^https?:\/\//, '')}</span>
           </a>
@@ -146,18 +146,18 @@ function DeploymentRow({ deployment, projectId, onAction }: {
         {/* Desktop actions */}
         <div className="hidden sm:flex items-center gap-1 ml-auto">
           <Link href={`/projects/${projectId}/deployments/${deployment.id}`}
-            className="p-1.5 rounded text-slate-600 hover:text-slate-300 hover:bg-[#1e2130] transition-colors">
+            className="p-1.5 rounded text-[var(--text-dim)] hover:text-[var(--text-muted)] hover:bg-[var(--rail)] transition-colors">
             <HugeiconsIcon icon={File01Icon} size={12} />
           </Link>
           {inFlight && (
             <button onClick={() => onAction(deployment.id, 'stop')}
-              className="p-1.5 rounded text-slate-600 hover:text-amber-400 hover:bg-[#1e2130] transition-colors">
+              className="p-1.5 rounded text-[var(--text-dim)] hover:text-[var(--warning)] hover:bg-[var(--rail)] transition-colors">
               <HugeiconsIcon icon={StopCircleIcon} size={12} />
             </button>
           )}
           {(deployment.status === 'STOPPED' || deployment.status === 'FAILED') && (
             <button onClick={() => onAction(deployment.id, 'restart')}
-              className="p-1.5 rounded text-slate-600 hover:text-emerald-400 hover:bg-[#1e2130] transition-colors">
+              className="p-1.5 rounded text-[var(--text-dim)] hover:text-[var(--success)] hover:bg-[var(--rail)] transition-colors">
               <HugeiconsIcon icon={PlayCircleIcon} size={12} />
             </button>
           )}
@@ -167,33 +167,33 @@ function DeploymentRow({ deployment, projectId, onAction }: {
         <div className="sm:relative ml-auto">
           <button
             onClick={() => setMenuOpen(v => !v)}
-            className="sm:hidden p-1.5 rounded text-slate-600 hover:text-slate-300 hover:bg-[#1e2130] transition-colors"
+            className="sm:hidden p-1.5 rounded text-[var(--text-dim)] hover:text-[var(--text-muted)] hover:bg-[var(--rail)] transition-colors"
             aria-label="Deployment actions"
             aria-expanded={menuOpen}
           >
             <HugeiconsIcon icon={MoreHorizontalIcon} size={14} />
           </button>
           {menuOpen && (
-            <div className="sm:hidden absolute right-0 mt-1 w-40 bg-[#0f1117] border border-[#1e2130] rounded-lg shadow-xl py-1 z-10">
+            <div className="sm:hidden absolute right-0 mt-1 w-40 bg-[var(--surface-2)] border border-[var(--rail)] rounded-lg shadow-xl py-1 z-10">
               <Link href={`/projects/${projectId}/deployments/${deployment.id}`}
                 onClick={() => setMenuOpen(false)}
-                className="flex items-center gap-2 px-3 py-2 text-xs text-slate-300 hover:bg-[#1e2130]">
+                className="flex items-center gap-2 px-3 py-2 text-xs text-[var(--text-muted)] hover:bg-[var(--rail)]">
                 <HugeiconsIcon icon={File01Icon} size={12} /> View detail
               </Link>
               {inFlight && (
                 <button onClick={() => { setMenuOpen(false); onAction(deployment.id, 'stop'); }}
-                  className="w-full flex items-center gap-2 px-3 py-2 text-xs text-amber-400 hover:bg-[#1e2130]">
+                  className="w-full flex items-center gap-2 px-3 py-2 text-xs text-[var(--warning)] hover:bg-[var(--rail)]">
                   <HugeiconsIcon icon={StopCircleIcon} size={12} /> Stop
                 </button>
               )}
               {(deployment.status === 'STOPPED' || deployment.status === 'FAILED') && (
                 <button onClick={() => { setMenuOpen(false); onAction(deployment.id, 'restart'); }}
-                  className="w-full flex items-center gap-2 px-3 py-2 text-xs text-emerald-400 hover:bg-[#1e2130]">
+                  className="w-full flex items-center gap-2 px-3 py-2 text-xs text-[var(--success)] hover:bg-[var(--rail)]">
                   <HugeiconsIcon icon={PlayCircleIcon} size={12} /> Restart
                 </button>
               )}
               <button onClick={() => { setMenuOpen(false); onAction(deployment.id, 'delete'); }}
-                className="w-full flex items-center gap-2 px-3 py-2 text-xs text-red-400 hover:bg-[#1e2130]">
+                className="w-full flex items-center gap-2 px-3 py-2 text-xs text-[var(--danger)] hover:bg-[var(--rail)]">
                 <HugeiconsIcon icon={Delete01Icon} size={12} /> Delete
               </button>
             </div>
@@ -221,20 +221,20 @@ function ServiceCard({ service, projectId, onAction, isExpanded, onToggle }: {
   const latestDetail = latest?.id;
 
   return (
-    <Card className="border border-[#1e2130] overflow-hidden flex flex-col">
+    <Card className="border border-[var(--rail)] overflow-hidden flex flex-col">
       {/* Header */}
       <div
-        className="flex items-start gap-3 px-4 py-3 cursor-pointer hover:bg-[#1e2130]/30 transition-colors"
+        className="flex items-start gap-3 px-4 py-3 cursor-pointer hover:bg-[var(--rail)]/30 transition-colors"
         onClick={onToggle}
       >
         <HugeiconsIcon
           icon={ArrowRight01Icon}
           size={14}
-          className={`text-slate-600 flex-shrink-0 mt-0.5 transition-transform ${isExpanded ? 'rotate-90' : ''}`}
+          className={`text-[var(--text-dim)] flex-shrink-0 mt-0.5 transition-transform ${isExpanded ? 'rotate-90' : ''}`}
         />
         <div className="flex-1 min-w-0">
-          <h3 className="text-sm font-semibold text-slate-200 truncate">{service.name}</h3>
-          <p className="text-xs text-slate-500">
+          <h3 className="text-sm font-semibold text-[var(--text)] truncate">{service.name}</h3>
+          <p className="text-xs text-[var(--text-muted)]">
             {activeCount > 0 ? `${activeCount} active · ` : ''}
             {service.deployments.length} deployment{service.deployments.length !== 1 ? 's' : ''}
           </p>
@@ -246,24 +246,24 @@ function ServiceCard({ service, projectId, onAction, isExpanded, onToggle }: {
 
       {/* Latest deploy summary */}
       {latest && (
-        <div className="px-4 py-2.5 border-t border-[#1e2130]/50 bg-[#080a0d]/30">
-          <div className="flex items-center gap-2 text-xs text-slate-400 flex-wrap">
+        <div className="px-4 py-2.5 border-t border-[var(--rail)]/50 bg-[var(--surface-2)]/30">
+          <div className="flex items-center gap-2 text-xs text-[var(--text-muted)] flex-wrap">
             {latest.branch && (
               <span className="flex items-center gap-1">
-                <HugeiconsIcon icon={GitBranchIcon} size={11} className="text-slate-600" />
+                <HugeiconsIcon icon={GitBranchIcon} size={11} className="text-[var(--text-dim)]" />
                 {latest.branch}
               </span>
             )}
             {latest.commitSha && (
-              <code className="text-[10px] font-mono text-slate-600 bg-[#1e2130] px-1.5 py-0.5 rounded">
+              <code className="text-[10px] font-mono text-[var(--text-dim)] bg-[var(--rail)] px-1.5 py-0.5 rounded">
                 {latest.commitSha.slice(0, 7)}
               </code>
             )}
-            <span className="text-[10px] text-slate-600 ml-auto">{relativeTime(latest.createdAt)}</span>
+            <span className="text-[10px] text-[var(--text-dim)] ml-auto">{relativeTime(latest.createdAt)}</span>
           </div>
           {latest.deploymentUrl && !inFlight && (
             <a href={latest.deploymentUrl} target="_blank" rel="noopener noreferrer"
-              className="mt-2 inline-flex items-center gap-1 text-xs text-blue-500 hover:text-blue-400 transition-colors max-w-full">
+              className="mt-2 inline-flex items-center gap-1 text-xs text-[var(--accent)] hover:text-[var(--accent)] transition-colors max-w-full">
               <HugeiconsIcon icon={GlobeIcon} size={11} className="flex-shrink-0" />
               <span className="truncate">{latest.deploymentUrl.replace(/^https?:\/\//, '')}</span>
             </a>
@@ -272,10 +272,10 @@ function ServiceCard({ service, projectId, onAction, isExpanded, onToggle }: {
       )}
 
       {/* Actions row */}
-      <div className="flex items-center gap-2 px-4 py-2.5 border-t border-[#1e2130]/50 mt-auto">
+      <div className="flex items-center gap-2 px-4 py-2.5 border-t border-[var(--rail)]/50 mt-auto">
         {latestDetail && (
           <Link href={`/projects/${projectId}/deployments/${latestDetail}`}
-            className="text-xs text-blue-500 hover:text-blue-400 transition-colors">
+            className="text-xs text-[var(--accent)] hover:text-[var(--accent)] transition-colors">
             View history
           </Link>
         )}
@@ -292,7 +292,7 @@ function ServiceCard({ service, projectId, onAction, isExpanded, onToggle }: {
 
       {/* Expandable history */}
       {isExpanded && (
-        <div className="border-t border-[#1e2130]">
+        <div className="border-t border-[var(--rail)]">
           {service.deployments.map(d => (
             <DeploymentRow
               key={d.id}
@@ -317,11 +317,11 @@ function EmptyProject({ githubConnected, onConnectGithub, onNewDeploy, connectin
 }) {
   return (
     <div className="flex flex-col items-center justify-center py-16 text-center">
-      <div className="w-14 h-14 rounded-2xl bg-[#1e2130] border border-[#2a2d3a] flex items-center justify-center mb-5">
-        <HugeiconsIcon icon={Rocket01Icon} size={28} className="text-slate-500" />
+      <div className="w-14 h-14 rounded-2xl bg-[var(--rail)] border border-[var(--rail-light)] flex items-center justify-center mb-5">
+        <HugeiconsIcon icon={Rocket01Icon} size={28} className="text-[var(--text-muted)]" />
       </div>
-      <h2 className="text-lg font-semibold text-slate-200 mb-2">Deploy your first service</h2>
-      <p className="text-sm text-slate-500 max-w-sm mb-8">
+      <h2 className="text-lg font-semibold text-[var(--text)] mb-2">Deploy your first service</h2>
+      <p className="text-sm text-[var(--text-muted)] max-w-sm mb-8">
         Connect a Git provider or upload an archive to deploy your first service.
         Each service gets its own deployment history and environment.
       </p>
@@ -331,7 +331,7 @@ function EmptyProject({ githubConnected, onConnectGithub, onNewDeploy, connectin
       </Button>
       <div className="flex items-center gap-4 mt-6">
         {!githubConnected && (
-          <button onClick={onConnectGithub} className="text-xs text-slate-500 hover:text-slate-300 transition-colors flex items-center gap-1">
+          <button onClick={onConnectGithub} className="text-xs text-[var(--text-muted)] hover:text-[var(--text-muted)] transition-colors flex items-center gap-1">
             <HugeiconsIcon icon={GithubIcon} size={12} />
             Connect GitHub first
             {connecting && <Spinner size="sm" />}
@@ -401,14 +401,17 @@ function ServicesSectionInner({ project }: { project: Project }) {
         const token = localStorage.getItem('fidscript_access_token') ?? localStorage.getItem('fidscript_token');
         if (!token) return;
 
-        await rt.connect(token, project.id);
+        // Pass a getter so socket.io re-reads the (possibly refreshed) JWT on
+        // every reconnect instead of pinning a token that may expire mid-session.
+        await rt.connect(() => localStorage.getItem('fidscript_access_token') ?? localStorage.getItem('fidscript_token') ?? '', project.id);
         if (cancelled) { rt.disconnect?.(); return; }
 
         // Subscribe to deployment events. On any deployment event, patch the
         // matching deployment's status in local state; on terminal states,
         // also refetch the full list to pick up new deployments.
         const unsub = rt.subscribeDeployments(project.id, (event: any) => {
-          const meta = event?.metadata ?? event;
+          // The realtime bridge sends { type, timestamp, data: metadata }
+          const meta = event?.data ?? event?.metadata ?? event;
           const deploymentId = meta.deploymentId;
           const eventType: string = event?.type ?? '';
           if (!deploymentId) return;
@@ -490,8 +493,8 @@ function ServicesSectionInner({ project }: { project: Project }) {
       {/* Header */}
       <div className="flex items-center justify-between gap-3">
         <div className="min-w-0">
-          <h1 className="text-xl font-bold text-slate-200">Services</h1>
-          <p className="text-sm text-slate-500">
+          <h1 className="text-xl font-bold text-[var(--text)]">Services</h1>
+          <p className="text-sm text-[var(--text-muted)]">
             {loading ? 'Loading…' : `${services.length} service${services.length !== 1 ? 's' : ''}`}
           </p>
         </div>
@@ -510,7 +513,7 @@ function ServicesSectionInner({ project }: { project: Project }) {
       {/* Error */}
       {error && (
         <Card className="border border-red-900/50 py-3 px-4">
-          <p className="text-sm text-red-400">{error}</p>
+          <p className="text-sm text-[var(--danger)]">{error}</p>
         </Card>
       )}
 
@@ -518,14 +521,14 @@ function ServicesSectionInner({ project }: { project: Project }) {
       {loading && services.length === 0 && (
         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
           {[1, 2, 3].map(i => (
-            <Card key={i} className="border border-[#1e2130] p-4 animate-pulse">
+            <Card key={i} className="border border-[var(--rail)] p-4 animate-pulse">
               <div className="flex items-center gap-3">
-                <div className="w-4 h-4 rounded bg-[#1e2130]" />
+                <div className="w-4 h-4 rounded bg-[var(--rail)]" />
                 <div className="flex-1 space-y-2">
-                  <div className="h-4 bg-[#1e2130] rounded w-1/2" />
-                  <div className="h-3 bg-[#1e2130] rounded w-1/3" />
+                  <div className="h-4 bg-[var(--rail)] rounded w-1/2" />
+                  <div className="h-3 bg-[var(--rail)] rounded w-1/3" />
                 </div>
-                <div className="h-6 w-16 bg-[#1e2130] rounded-full" />
+                <div className="h-6 w-16 bg-[var(--rail)] rounded-full" />
               </div>
             </Card>
           ))}
@@ -560,8 +563,8 @@ function ServicesSectionInner({ project }: { project: Project }) {
 
       {/* All healthy indicator */}
       {!loading && services.length > 0 && services.every(s => !isInFlight(s.deployments[0]?.status)) && (
-        <div className="flex items-center gap-2 justify-center py-2 text-xs text-slate-600">
-          <HugeiconsIcon icon={CheckmarkCircle02Icon} size={13} className="text-emerald-500" />
+        <div className="flex items-center gap-2 justify-center py-2 text-xs text-[var(--text-dim)]">
+          <HugeiconsIcon icon={CheckmarkCircle02Icon} size={13} className="text-[var(--success)]" />
           All services are healthy
         </div>
       )}
@@ -571,7 +574,7 @@ function ServicesSectionInner({ project }: { project: Project }) {
 
 export default function ServicesPage() {
   const { project } = useProjectContext();
-  if (!project) return <div className="p-4 text-sm text-slate-500">Loading project…</div>;
+  if (!project) return <div className="p-4 text-sm text-[var(--text-muted)]">Loading project…</div>;
   return (
     <ToastProvider>
       <ServicesSectionInner project={project} />

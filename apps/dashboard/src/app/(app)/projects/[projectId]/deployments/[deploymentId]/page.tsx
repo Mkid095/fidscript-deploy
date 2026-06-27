@@ -5,7 +5,7 @@ import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { Card, Button, Spinner, Modal } from '@fidscript/ui';
 import { HugeiconsIcon } from '@hugeicons/react';
-import { ChevronRightIcon, GitBranchIcon, GitCommitIcon, Image01Icon, ExternalLinkIcon, Copy01Icon, CheckmarkCircle02Icon, AlertCircleIcon, StopCircleIcon, PlayCircleIcon, Delete01Icon, RotateClockwiseIcon, Download01Icon, RefreshIcon, User02Icon, Clock02Icon, CheckmarkCircle03Icon } from '@hugeicons/core-free-icons';
+import { ChevronRightIcon, GitBranchIcon, GitCommitIcon, Image01Icon, ExternalLinkIcon, Copy01Icon, CheckmarkCircle02Icon, AlertCircleIcon, StopCircleIcon, PlayCircleIcon, Delete01Icon, RotateClockwiseIcon, Download01Icon, RefreshIcon, User02Icon, Clock02Icon, CheckmarkCircle03Icon, ArrowUp01Icon, ArrowDown01Icon } from '@hugeicons/core-free-icons';
 
 import { useAuth } from '@/contexts/auth-context';
 import type { Deployment } from '@/types';
@@ -14,11 +14,11 @@ import { ToastProvider, useToast } from '@/components/toast-provider';
 // ── State machine ─────────────────────────────────────────────────────────────
 
 const STEPS = [
-  { key: 'PENDING',      label: 'Pending',    color: 'bg-blue-500' },
-  { key: 'QUEUED',       label: 'Queued',     color: 'bg-blue-500' },
-  { key: 'BUILDING',     label: 'Building',   color: 'bg-amber-500' },
-  { key: 'DEPLOYING',    label: 'Deploying',  color: 'bg-amber-500' },
-  { key: 'SUCCESS',      label: 'Success',    color: 'bg-emerald-500' },
+  { key: 'PENDING',      label: 'Pending',    color: 'bg-[var(--accent)]' },
+  { key: 'QUEUED',       label: 'Queued',     color: 'bg-[var(--accent)]' },
+  { key: 'BUILDING',     label: 'Building',   color: 'bg-[var(--warning)]' },
+  { key: 'DEPLOYING',    label: 'Deploying',  color: 'bg-[var(--warning)]' },
+  { key: 'SUCCESS',      label: 'Success',    color: 'bg-[var(--success)]' },
 ];
 
 const TERMINAL = ['FAILED', 'STOPPED', 'ROLLED_BACK', 'BLOCKED'];
@@ -29,16 +29,16 @@ function stepIndex(status?: string): number {
 
 function statusColor(status?: string) {
   switch (status?.toUpperCase()) {
-    case 'SUCCESS':     return 'bg-emerald-900/60 text-emerald-400 border-emerald-800';
-    case 'FAILED':      return 'bg-red-900/60 text-red-400 border-red-800';
+    case 'SUCCESS':     return 'bg-emerald-900/60 text-[var(--success)] border-[var(--success)]/30';
+    case 'FAILED':      return 'bg-red-900/60 text-[var(--danger)] border-[var(--danger)]/30';
     case 'PENDING':
-    case 'QUEUED':      return 'bg-blue-900/60 text-blue-400 border-blue-800';
+    case 'QUEUED':      return 'bg-blue-900/60 text-[var(--accent)] border-blue-800';
     case 'BUILDING':
-    case 'DEPLOYING':   return 'bg-amber-900/60 text-amber-400 border-amber-800';
-    case 'STOPPED':     return 'bg-slate-800 text-slate-400 border-slate-700';
+    case 'DEPLOYING':   return 'bg-amber-900/60 text-[var(--warning)] border-[var(--warning)]/30';
+    case 'STOPPED':     return 'bg-[var(--rail)] text-[var(--text-muted)] border-[var(--rail-light)]';
     case 'ROLLED_BACK': return 'bg-purple-900/60 text-purple-400 border-purple-800';
-    case 'BLOCKED':     return 'bg-orange-900/60 text-orange-400 border-orange-800';
-    default:            return 'bg-slate-800 text-slate-400 border-slate-700';
+    case 'BLOCKED':     return 'bg-orange-900/60 text-[var(--warning)] border-orange-800';
+    default:            return 'bg-[var(--rail)] text-[var(--text-muted)] border-[var(--rail-light)]';
   }
 }
 
@@ -64,18 +64,18 @@ function MetadataRow({ icon: Icon, label, value, mono, copyable, className }: {
   if (!value) return null;
   return (
     <div className={`flex items-start gap-2.5 ${className ?? ''}`}>
-      <HugeiconsIcon icon={Icon} size={13} className="text-slate-600 mt-0.5 flex-shrink-0" />
+      <HugeiconsIcon icon={Icon} size={13} className="text-[var(--text-dim)] mt-0.5 flex-shrink-0" />
       <div className="flex-1 min-w-0">
-        <p className="text-xs text-slate-600">{label}</p>
+        <p className="text-xs text-[var(--text-dim)]">{label}</p>
         <div className="flex items-center gap-1.5">
-          <p className={`text-xs text-slate-300 truncate ${mono ? 'font-mono' : ''}`}>{value}</p>
+          <p className={`text-xs text-[var(--text-muted)] truncate ${mono ? 'font-mono' : ''}`}>{value}</p>
           {copyable && (
             <button
               onClick={() => { navigator.clipboard.writeText(value); setCopied(true); setTimeout(() => setCopied(false), 1500); }}
-              className="text-slate-600 hover:text-slate-400 transition-colors flex-shrink-0"
+              className="text-[var(--text-dim)] hover:text-[var(--text-muted)] transition-colors flex-shrink-0"
               title="Copy"
             >
-              <HugeiconsIcon icon={copied ? CheckmarkCircle03Icon : Copy01Icon} size={11} className={copied ? 'text-emerald-500' : ''} />
+              <HugeiconsIcon icon={copied ? CheckmarkCircle03Icon : Copy01Icon} size={11} className={copied ? 'text-[var(--success)]' : ''} />
             </button>
           )}
         </div>
@@ -92,11 +92,11 @@ type LogLevel = typeof LOG_LEVELS[number];
 interface LogLine { id: string; ts: string; level: LogLevel; text: string }
 
 const LEVEL_STYLE: Record<LogLevel, string> = {
-  debug: 'text-slate-500',
-  info:  'text-blue-400',
-  warn:  'text-amber-400',
-  error: 'text-red-400',
-  fatal: 'text-red-400 font-bold',
+  debug: 'text-[var(--text-muted)]',
+  info:  'text-[var(--accent)]',
+  warn:  'text-[var(--warning)]',
+  error: 'text-[var(--danger)]',
+  fatal: 'text-[var(--danger)] font-bold',
 };
 
 function parseLogLines(raw: string): LogLine[] {
@@ -134,13 +134,13 @@ function LivePreview({ url }: { url: string }) {
   const [iframeKey, setIframeKey] = useState(0);
 
   return (
-    <Card className="border border-[#1e2130] p-0 overflow-hidden">
+    <Card className="border border-[var(--rail)] p-0 overflow-hidden">
       {/* Header bar */}
-      <div className="flex items-center gap-3 px-4 py-3 border-b border-[#1e2130]">
+      <div className="flex items-center gap-3 px-4 py-3 border-b border-[var(--rail)]">
         <div className="flex items-center gap-2 flex-1 min-w-0">
-          <span className="w-2 h-2 rounded-full bg-emerald-500 flex-shrink-0" />
-          <span className="text-xs font-semibold text-slate-300 uppercase tracking-wider">Live preview</span>
-          <a href={url} target="_blank" rel="noopener noreferrer" className="text-xs text-blue-500 hover:text-blue-400 truncate font-mono">
+          <span className="w-2 h-2 rounded-full bg-[var(--success)] flex-shrink-0" />
+          <span className="text-xs font-semibold text-[var(--text-muted)] uppercase tracking-wider">Live preview</span>
+          <a href={url} target="_blank" rel="noopener noreferrer" className="text-xs text-[var(--accent)] hover:text-[var(--accent)] truncate font-mono">
             {url.replace(/^https?:\/\//, '')}
           </a>
         </div>
@@ -149,7 +149,7 @@ function LivePreview({ url }: { url: string }) {
             <>
               <button
                 onClick={() => setIframeKey(k => k + 1)}
-                className="p-1.5 rounded text-slate-500 hover:text-slate-300 hover:bg-[#1e2130] transition-colors"
+                className="p-1.5 rounded text-[var(--text-muted)] hover:text-[var(--text-muted)] hover:bg-[var(--rail)] transition-colors"
                 title="Reload preview"
                 aria-label="Reload preview"
               >
@@ -159,7 +159,7 @@ function LivePreview({ url }: { url: string }) {
                 href={url}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="p-1.5 rounded text-slate-500 hover:text-slate-300 hover:bg-[#1e2130] transition-colors"
+                className="p-1.5 rounded text-[var(--text-muted)] hover:text-[var(--text-muted)] hover:bg-[var(--rail)] transition-colors"
                 title="Open in new tab"
                 aria-label="Open in new tab"
               >
@@ -190,8 +190,10 @@ function LivePreview({ url }: { url: string }) {
   );
 }
 
-function LogViewer({ logs }: { logs: string }) {
-  const [show, setShow] = useState(false);
+function LogViewer({ logs, inFlight = false }: { logs: string; inFlight?: boolean }) {
+  // Auto-expand while the build is running so the user lands on a live stream
+  // (Vercel-style) instead of an empty page they have to click open.
+  const [show, setShow] = useState(inFlight);
   const [activeLevels, setActiveLevels] = useState<Set<LogLevel>>(new Set(LOG_LEVELS));
   const [search, setSearch] = useState('');
   const lines = parseLogLines(logs);
@@ -231,10 +233,10 @@ function LogViewer({ logs }: { logs: string }) {
   }
 
   return (
-    <div className="rounded-lg border border-[#1e2130] overflow-hidden">
+    <div className="rounded-lg border border-[var(--rail)] overflow-hidden">
       {/* Toolbar */}
-      <div className="flex items-center gap-3 px-4 py-2.5 bg-[#0f1117] border-b border-[#1e2130] flex-wrap">
-        <span className="text-xs font-medium text-slate-400 uppercase tracking-wider">Build logs</span>
+      <div className="flex items-center gap-3 px-4 py-2.5 bg-[var(--surface-2)] border-b border-[var(--rail)] flex-wrap">
+        <span className="text-xs font-medium text-[var(--text-muted)] uppercase tracking-wider">Build logs</span>
         <div className="flex items-center gap-1">
           {LOG_LEVELS.map(lvl => (
             <button
@@ -243,7 +245,7 @@ function LogViewer({ logs }: { logs: string }) {
               className={`text-[10px] font-mono uppercase px-2 py-1 rounded border transition-colors ${
                 activeLevels.has(lvl)
                   ? `${LEVEL_STYLE[lvl]} border-transparent`
-                  : 'text-slate-700 border-slate-700 bg-transparent hover:text-slate-500'
+                  : 'text-[var(--text-dim)] border-[var(--rail-light)] bg-transparent hover:text-[var(--text-muted)]'
               }`}
             >
               {lvl}
@@ -255,12 +257,12 @@ function LogViewer({ logs }: { logs: string }) {
           value={search}
           onChange={e => setSearch(e.target.value)}
           placeholder="Search logs…"
-          className="w-40 text-xs px-2.5 py-1.5 rounded bg-[#080a0d] border border-[#1e2130] text-slate-300 placeholder:text-slate-600 focus:outline-none focus:border-[#2a2d3a]"
+          className="w-40 text-xs px-2.5 py-1.5 rounded bg-[var(--surface-2)] border border-[var(--rail)] text-[var(--text-muted)] placeholder:text-[var(--text-dim)] focus:outline-none focus:border-[var(--rail-light)]"
         />
-        <button onClick={copyAll}   title="Copy all"  className="text-slate-600 hover:text-slate-300 transition-colors"><HugeiconsIcon icon={Copy01Icon}      size={13} /></button>
-        <button onClick={downloadLogs} title="Download" className="text-slate-600 hover:text-slate-300 transition-colors"><HugeiconsIcon icon={Download01Icon} size={13} /></button>
+        <button onClick={copyAll}   title="Copy all"  className="text-[var(--text-dim)] hover:text-[var(--text-muted)] transition-colors"><HugeiconsIcon icon={Copy01Icon}      size={13} /></button>
+        <button onClick={downloadLogs} title="Download" className="text-[var(--text-dim)] hover:text-[var(--text-muted)] transition-colors"><HugeiconsIcon icon={Download01Icon} size={13} /></button>
         <button onClick={() => setAutoScroll(s => !s)} title={autoScroll ? 'Auto-scroll on' : 'Auto-scroll off'}
-          className={`text-xs transition-colors ${autoScroll ? 'text-blue-400' : 'text-slate-600 hover:text-slate-400'}`}>
+          className={`text-xs transition-colors ${autoScroll ? 'text-[var(--accent)]' : 'text-[var(--text-dim)] hover:text-[var(--text-muted)]'}`}>
           <HugeiconsIcon icon={RefreshIcon} size={13} />
         </button>
       </div>
@@ -268,16 +270,18 @@ function LogViewer({ logs }: { logs: string }) {
       {/* Log body */}
       <button
         onClick={() => setShow(s => !s)}
-        className="w-full flex items-center justify-between px-4 py-2.5 bg-[#0f1117] border-b border-[#1e2130] text-xs text-slate-500 hover:text-slate-300 transition-colors text-left"
+        className="w-full flex items-center justify-between px-4 py-2.5 bg-[var(--surface-2)] border-b border-[var(--rail)] text-xs text-[var(--text-muted)] hover:text-[var(--text-muted)] transition-colors text-left"
       >
-        <span>{show ? 'Hide' : 'Show'} {filtered.length} log lines</span>
-        <span className="text-slate-700">{show ? '▲' : '▼'}</span>
+        <span>{inFlight && filtered.length === 0
+          ? <span className="flex items-center gap-2"><Spinner size="sm" /> Streaming build output…</span>
+          : `${show ? 'Hide' : 'Show'} ${filtered.length} log line${filtered.length === 1 ? '' : 's'}`}</span>
+        <HugeiconsIcon icon={show ? ArrowUp01Icon : ArrowDown01Icon} size={12} className="text-[var(--text-dim)]" />
       </button>
 
       {show && (
         <div
           ref={containerRef}
-          className="bg-[#080a0d] overflow-y-auto"
+          className="bg-[var(--surface-2)] overflow-y-auto"
           style={{ maxHeight: '400px' }}
           onScroll={() => {
             const el = containerRef.current;
@@ -286,20 +290,22 @@ function LogViewer({ logs }: { logs: string }) {
           }}
         >
           {filtered.length === 0 ? (
-            <p className="p-6 text-xs text-slate-600">No log entries match your filters.</p>
+            <div className="p-6 flex items-center gap-2 text-xs text-[var(--text-dim)]">
+              {inFlight ? <><Spinner size="sm" /> Waiting for build output…</> : 'No log entries match your filters.'}
+            </div>
           ) : (
-            <div className="divide-y divide-[#1e2130]/40">
+            <div className="divide-y divide-[var(--rail)]/40">
               {filtered.map(line => (
-                <div key={line.id} className="flex items-start gap-3 px-4 py-1.5 hover:bg-[#1e2130]/20">
+                <div key={line.id} className="flex items-start gap-3 px-4 py-1.5 hover:bg-[var(--rail)]/20">
                   {line.ts && (
-                    <span className="text-[10px] font-mono text-slate-600 flex-shrink-0 mt-0.5 w-36">
+                    <span className="text-[10px] font-mono text-[var(--text-dim)] flex-shrink-0 mt-0.5 w-36">
                       {new Date(line.ts).toLocaleTimeString()}
                     </span>
                   )}
                   <span className={`text-[10px] font-mono uppercase px-1.5 py-0.5 rounded flex-shrink-0 mt-0.5 ${LEVEL_STYLE[line.level]}`}>
                     {line.level}
                   </span>
-                  <span className="text-xs font-mono text-slate-300 leading-relaxed whitespace-pre-wrap break-all">
+                  <span className="text-xs font-mono text-[var(--text-muted)] leading-relaxed whitespace-pre-wrap break-all">
                     {line.text}
                   </span>
                 </div>
@@ -357,14 +363,14 @@ function RollbackPicker({
   return (
     <div className="space-y-4">
       <div>
-        <p className="text-sm text-slate-300 mb-1">Select a deployment to roll back to</p>
-        <p className="text-xs text-slate-500">A new deployment will be created using the image from the selected release.</p>
+        <p className="text-sm text-[var(--text-muted)] mb-1">Select a deployment to roll back to</p>
+        <p className="text-xs text-[var(--text-muted)]">A new deployment will be created using the image from the selected release.</p>
       </div>
 
       {loading ? (
         <div className="flex justify-center py-6"><Spinner size="md" /></div>
       ) : deployments.length === 0 ? (
-        <p className="text-xs text-slate-500 py-4 text-center">No prior successful deployments found.</p>
+        <p className="text-xs text-[var(--text-muted)] py-4 text-center">No prior successful deployments found.</p>
       ) : (
         <div className="flex flex-col gap-1.5 max-h-60 overflow-y-auto">
           {deployments.slice(0, 10).map(d => (
@@ -373,17 +379,17 @@ function RollbackPicker({
               onClick={() => setSelected(d.id)}
               className={`flex items-center gap-3 p-3 rounded-lg border text-left transition-all ${
                 selected === d.id
-                  ? 'border-red-500/40 bg-red-500/5'
-                  : 'border-[#1e2130] hover:border-[#2a2d3a] bg-[#080a0d]'
+                  ? 'border-[var(--danger)]/40 bg-[var(--danger)]/5'
+                  : 'border-[var(--rail)] hover:border-[var(--rail-light)] bg-[var(--surface-2)]'
               }`}
             >
-              <div className={`w-3 h-3 rounded-full flex-shrink-0 ${selected === d.id ? 'bg-red-500' : 'bg-slate-700'}`} />
+              <div className={`w-3 h-3 rounded-full flex-shrink-0 ${selected === d.id ? 'bg-[var(--danger)]' : 'bg-[var(--rail)]'}`} />
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2">
-                  <span className="text-xs font-mono text-slate-300">{d.commitSha?.slice(0, 7) ?? d.id.slice(0, 8)}</span>
-                  {d.branch && <span className="text-xs text-slate-600">· {d.branch}</span>}
+                  <span className="text-xs font-mono text-[var(--text-muted)]">{d.commitSha?.slice(0, 7) ?? d.id.slice(0, 8)}</span>
+                  {d.branch && <span className="text-xs text-[var(--text-dim)]">· {d.branch}</span>}
                 </div>
-                <p className="text-[10px] text-slate-600">
+                <p className="text-[10px] text-[var(--text-dim)]">
                   {new Date(d.createdAt).toLocaleString()}
                   {d.imageTag && <span className="ml-2 font-mono">{d.imageTag}</span>}
                 </p>
@@ -393,7 +399,7 @@ function RollbackPicker({
         </div>
       )}
 
-      {error && <p className="text-xs text-red-400">{error}</p>}
+      {error && <p className="text-xs text-[var(--danger)]">{error}</p>}
 
       <div className="flex justify-end gap-2">
         <Button variant="ghost" size="sm" onClick={onClose}>Cancel</Button>
@@ -430,15 +436,15 @@ function ConfirmDialog({
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center">
       <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={onClose} />
-      <div className="relative bg-[#0f1117] border border-[#1e2130] rounded-xl shadow-2xl w-full max-w-md mx-4 p-6 space-y-4">
-        <h2 className="text-sm font-semibold text-slate-200">{title}</h2>
-        <p className="text-sm text-slate-400 leading-relaxed">{message}</p>
+      <div className="relative bg-[var(--surface-2)] border border-[var(--rail)] rounded-xl shadow-2xl w-full max-w-md mx-4 p-6 space-y-4">
+        <h2 className="text-sm font-semibold text-[var(--text)]">{title}</h2>
+        <p className="text-sm text-[var(--text-muted)] leading-relaxed">{message}</p>
         {requiresText && (
           <input
             value={confirmText}
             onChange={e => setConfirmText(e.target.value)}
             placeholder='Type "delete" to confirm'
-            className="w-full px-3 py-2 rounded-lg bg-[#080a0d] border border-[#1e2130] text-sm text-slate-200 placeholder:text-slate-600 focus:outline-none focus:border-red-500"
+            className="w-full px-3 py-2 rounded-lg bg-[var(--surface-2)] border border-[var(--rail)] text-sm text-[var(--text)] placeholder:text-[var(--text-dim)] focus:outline-none focus:border-[var(--danger)]"
             autoFocus
           />
         )}
@@ -558,8 +564,8 @@ function DeploymentDetailInner() {
   if (loading) return <div className="flex items-center justify-center min-h-64"><Spinner size="lg" /></div>;
   if (error || !deployment) return (
     <div className="p-6">
-      <p className="text-red-400 text-sm">{error ?? 'Not found'}</p>
-      <Link href={`/projects/${projectId}?section=deployments`} className="text-xs text-slate-500 hover:text-slate-300 mt-2 inline-block">← Back</Link>
+      <p className="text-[var(--danger)] text-sm">{error ?? 'Not found'}</p>
+      <Link href={`/projects/${projectId}?section=deployments`} className="text-xs text-[var(--text-muted)] hover:text-[var(--text-muted)] mt-2 inline-block">← Back</Link>
     </div>
   );
 
@@ -571,7 +577,7 @@ function DeploymentDetailInner() {
     <div className="p-6 space-y-6 max-w-4xl">
       {/* Back link */}
       <Link href={`/projects/${projectId}?section=deployments`}
-        className="text-xs text-slate-600 hover:text-slate-300 inline-flex items-center gap-1 transition-colors">
+        className="text-xs text-[var(--text-dim)] hover:text-[var(--text-muted)] inline-flex items-center gap-1 transition-colors">
         ← Back to Deployments
       </Link>
 
@@ -583,11 +589,11 @@ function DeploymentDetailInner() {
               {deployment.status?.toLowerCase()}
             </span>
             {acting && <Spinner size="sm" />}
-            {logStream && <span className="text-xs text-blue-400 animate-pulse">● Streaming</span>}
+            {logStream && <span className="text-xs text-[var(--accent)] animate-pulse"> Streaming</span>}
           </div>
-          <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-slate-500">
+          <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-[var(--text-muted)]">
             <span className="flex items-center gap-1.5">
-              <HugeiconsIcon icon={Clock02Icon} size={12} className="text-slate-600" />
+              <HugeiconsIcon icon={Clock02Icon} size={12} className="text-[var(--text-dim)]" />
               {new Date(deployment.createdAt).toLocaleString()}
             </span>
             {deployment.completedAt && (
@@ -597,12 +603,12 @@ function DeploymentDetailInner() {
           {deployment.deploymentUrl && (
             <div className="flex items-center gap-2">
               <a href={deployment.deploymentUrl} target="_blank" rel="noopener noreferrer"
-                className="flex items-center gap-1.5 text-sm text-blue-500 hover:text-blue-400 transition-colors">
+                className="flex items-center gap-1.5 text-sm text-[var(--accent)] hover:text-[var(--accent)] transition-colors">
                 <HugeiconsIcon icon={ExternalLinkIcon} size={12} />
                 {deployment.deploymentUrl.replace(/^https?:\/\//, '')}
               </a>
               <button onClick={() => { navigator.clipboard.writeText(deployment.deploymentUrl!); showToast({ type: 'success', message: 'URL copied.' }); }}
-                className="text-slate-600 hover:text-slate-400 transition-colors" title="Copy URL">
+                className="text-[var(--text-dim)] hover:text-[var(--text-muted)] transition-colors" title="Copy URL">
                 <HugeiconsIcon icon={Copy01Icon} size={12} />
               </button>
             </div>
@@ -639,8 +645,8 @@ function DeploymentDetailInner() {
       </div>
 
       {/* State machine timeline — accessible */}
-      <Card className="border border-[#1e2130] p-5">
-        <h2 className="text-sm font-semibold text-slate-200 mb-5" id="deployment-progress">Deployment Progress</h2>
+      <Card className="border border-[var(--rail)] p-5">
+        <h2 className="text-sm font-semibold text-[var(--text)] mb-5" id="deployment-progress">Deployment Progress</h2>
         <div
           className="flex items-center gap-1 flex-wrap"
           role="region"
@@ -658,25 +664,29 @@ function DeploymentDetailInner() {
               <div key={step.key} className="flex items-center gap-1">
                 <div className="flex flex-col items-center">
                   <div
-                    className={`w-7 h-7 rounded-full flex items-center justify-center text-white text-xs font-bold transition-all ${
-                      reached ? step.color : 'bg-slate-800'
-                    } ${isCurrent ? 'ring-2 ring-offset-1 ring-offset-[#0f1117]' : ''} ${
-                      isCurrent && deployment.status === 'FAILED' ? 'ring-red-500/50' :
+                    className={`w-7 h-7 rounded-full flex items-center justify-center text-[var(--text)] text-xs font-bold transition-all ${
+                      reached ? step.color : 'bg-[var(--rail)]'
+                    } ${isCurrent ? 'ring-2 ring-offset-1 ring-offset-[var(--surface-2)]' : ''} ${
+                      isCurrent && deployment.status === 'FAILED' ? 'ring-[var(--danger)]/50' :
                       isCurrent ? 'ring-amber-500/50' : ''
                     }`}
                   >
                     {isTerminalFailed ? (
                       <HugeiconsIcon icon={AlertCircleIcon} size={14} />
-                    ) : isTerminalSuccess || reached ? (
+                    ) : isTerminalSuccess ? (
+                      <HugeiconsIcon icon={CheckmarkCircle02Icon} size={14} />
+                    ) : isCurrent ? (
+                      <Spinner size="sm" />
+                    ) : reached ? (
                       <HugeiconsIcon icon={CheckmarkCircle02Icon} size={14} />
                     ) : ''}
                   </div>
-                  <span className={`text-[11px] mt-1.5 whitespace-nowrap ${isCurrent ? 'text-slate-200 font-medium' : 'text-slate-600'}`}>
+                  <span className={`text-[11px] mt-1.5 whitespace-nowrap ${isCurrent ? 'text-[var(--text)] font-medium' : 'text-[var(--text-dim)]'}`}>
                     {step.label}
                   </span>
                 </div>
                 {i < STEPS.length - 1 && (
-                  <div className={`h-0.5 mb-5 w-10 ${i < current ? STEPS[i].color : 'bg-slate-800'}`} />
+                  <div className={`h-0.5 mb-5 w-10 ${i < current ? STEPS[i].color : 'bg-[var(--rail)]'}`} />
                 )}
               </div>
             );
@@ -686,10 +696,10 @@ function DeploymentDetailInner() {
         {/* Terminal state indicator */}
         {TERMINAL.includes(deployment.status ?? '') && (
           <div className={`mt-4 flex items-center gap-2 text-xs px-3 py-2 rounded-lg border ${
-            deployment.status === 'FAILED' ? 'border-red-800/50 bg-red-900/20 text-red-400' :
+            deployment.status === 'FAILED' ? 'border-[var(--danger)]/30/50 bg-[var(--danger)]/10 text-[var(--danger)]' :
             deployment.status === 'ROLLED_BACK' ? 'border-purple-800/50 bg-purple-900/20 text-purple-400' :
-            deployment.status === 'BLOCKED' ? 'border-orange-800/50 bg-orange-900/20 text-orange-400' :
-            'border-slate-800/50 bg-slate-900/20 text-slate-400'
+            deployment.status === 'BLOCKED' ? 'border-orange-800/50 bg-orange-900/20 text-[var(--warning)]' :
+            'border-[var(--rail)]/50 bg-[var(--surface-2)]/20 text-[var(--text-muted)]'
           }`}>
             {deployment.status === 'FAILED' ? <HugeiconsIcon icon={AlertCircleIcon} size={14} /> :
              deployment.status === 'STOPPED' ? <HugeiconsIcon icon={StopCircleIcon} size={14} /> :
@@ -701,8 +711,8 @@ function DeploymentDetailInner() {
 
       {/* Metadata panel */}
       {(deployment.branch || deployment.commitSha || deployment.imageTag || deployment.sourceUrl || deployment.createdBy) && (
-        <Card className="border border-[#1e2130] p-5">
-          <h2 className="text-sm font-semibold text-slate-200 mb-4">Deployment details</h2>
+        <Card className="border border-[var(--rail)] p-5">
+          <h2 className="text-sm font-semibold text-[var(--text)] mb-4">Deployment details</h2>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <MetadataRow icon={GitBranchIcon}  label="Branch"     value={deployment.branch}    mono copyable />
             <MetadataRow icon={GitCommitIcon} label="Commit"     value={deployment.commitSha?.slice(0, 7)} mono copyable />
@@ -714,7 +724,7 @@ function DeploymentDetailInner() {
       )}
 
       {/* Build logs */}
-      {logs && <LogViewer logs={logs} />}
+      {logs !== undefined && <LogViewer logs={logs} inFlight={inFlight} />}
 
       {/* Live preview — shown when deployment is live with a URL */}
       {deployment.status === 'SUCCESS' && deployment.deploymentUrl && (

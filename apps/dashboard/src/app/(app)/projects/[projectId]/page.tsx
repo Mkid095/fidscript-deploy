@@ -53,15 +53,15 @@ export default function ProjectPage() {
     <div className="p-6">
       {project && (
         <div className="mb-6">
-          <h1 className="text-xl font-bold text-slate-200 mb-1">{project.name}</h1>
-          <p className="text-sm text-slate-500 capitalize">
+          <h1 className="text-xl font-bold text-[var(--text)] mb-1">{project.name}</h1>
+          <p className="text-sm text-[var(--text-muted)] capitalize">
             {project.type} · {project.status?.toLowerCase()}
           </p>
         </div>
       )}
       {SectionComponent && project
         ? <SectionComponent project={project} />
-        : <p className="text-sm text-slate-500">Select a section from the sidebar.</p>
+        : <p className="text-sm text-[var(--text-muted)]">Select a section from the sidebar.</p>
       }
     </div>
   );

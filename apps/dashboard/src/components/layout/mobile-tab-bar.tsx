@@ -58,7 +58,7 @@ export function MobileTabBar({ project }: MobileTabBarProps) {
         href={href}
         onClick={e => locked && e.preventDefault()}
         className={`flex flex-col items-center justify-center gap-0.5 py-1.5 px-1 rounded-md transition-colors min-w-[56px] ${
-          active ? 'text-blue-300' : locked ? 'text-slate-700' : 'text-slate-500'
+          active ? 'text-[var(--accent)]' : locked ? 'text-[var(--text-dim)]' : 'text-[var(--text-muted)]'
         }`}
         aria-label={item.label}
         aria-current={active ? 'page' : undefined}
@@ -66,7 +66,7 @@ export function MobileTabBar({ project }: MobileTabBarProps) {
         <HugeiconsIcon
           icon={item.icon}
           size={18}
-          className={active ? 'text-blue-400' : 'text-slate-600'}
+          className={active ? 'text-[var(--accent)]' : 'text-[var(--text-dim)]'}
         />
         <span className="text-[9px] font-medium leading-none truncate max-w-[64px]">{item.label}</span>
       </Link>
@@ -78,7 +78,7 @@ export function MobileTabBar({ project }: MobileTabBarProps) {
       {/* Bottom bar */}
       <nav
         aria-label="Mobile navigation"
-        className="md:hidden fixed bottom-0 inset-x-0 z-40 bg-[#0c0e14]/95 backdrop-blur-sm border-t border-[#1e2130] flex items-stretch justify-around px-1"
+        className="md:hidden fixed bottom-0 inset-x-0 z-40 bg-[var(--surface)]/95 backdrop-blur-sm border-t border-[var(--rail)] flex items-stretch justify-around px-1"
         style={{ paddingBottom: 'env(safe-area-inset-bottom, 0px)' }}
       >
         {priorityItems.map(renderItem)}
@@ -87,12 +87,12 @@ export function MobileTabBar({ project }: MobileTabBarProps) {
         <button
           onClick={() => setShowMore(true)}
           className={`flex flex-col items-center justify-center gap-0.5 py-1.5 px-1 rounded-md transition-colors min-w-[56px] ${
-            showMore ? 'text-blue-300' : 'text-slate-500'
+            showMore ? 'text-[var(--accent)]' : 'text-[var(--text-muted)]'
           }`}
           aria-label={MORE_LABEL}
           aria-expanded={showMore}
         >
-          <HugeiconsIcon icon={MoreHorizontalIcon} size={18} className={showMore ? 'text-blue-400' : 'text-slate-600'} />
+          <HugeiconsIcon icon={MoreHorizontalIcon} size={18} className={showMore ? 'text-[var(--accent)]' : 'text-[var(--text-dim)]'} />
           <span className="text-[9px] font-medium leading-none">{MORE_LABEL}</span>
         </button>
       </nav>
@@ -111,18 +111,18 @@ export function MobileTabBar({ project }: MobileTabBarProps) {
             role="dialog"
             aria-modal="true"
             aria-label="All navigation items"
-            className="absolute bottom-0 inset-x-0 bg-[#0c0e14] border-t border-[#1e2130] rounded-t-2xl pb-2 animate-in slide-in-from-bottom"
+            className="absolute bottom-0 inset-x-0 bg-[var(--surface)] border-t border-[var(--rail)] rounded-t-2xl pb-2 animate-in slide-in-from-bottom"
             style={{ paddingBottom: 'calc(env(safe-area-inset-bottom, 0px) + 0.5rem)' }}
           >
             {/* Drag handle */}
             <div className="flex justify-center pt-2 pb-1">
-              <div className="w-10 h-1 rounded-full bg-[#2a2d3a]" />
+              <div className="w-10 h-1 rounded-full bg-[var(--rail-light)]" />
             </div>
             <div className="px-3 pt-1 pb-2 flex items-center justify-between">
-              <h3 className="text-xs font-semibold text-slate-400 uppercase tracking-wider">All sections</h3>
+              <h3 className="text-xs font-semibold text-[var(--text-muted)] uppercase tracking-wider">All sections</h3>
               <button
                 onClick={() => setShowMore(false)}
-                className="text-xs text-slate-500 hover:text-slate-300"
+                className="text-xs text-[var(--text-muted)] hover:text-[var(--text-muted)]"
               >
                 Close
               </button>
@@ -138,10 +138,10 @@ export function MobileTabBar({ project }: MobileTabBarProps) {
                     href={href}
                     onClick={e => { if (locked) e.preventDefault(); else setShowMore(false); }}
                     className={`flex flex-col items-center justify-center gap-1 py-3 px-1 rounded-lg transition-colors ${
-                      active ? 'bg-blue-500/10 text-blue-300' : locked ? 'text-slate-700' : 'text-slate-400 hover:bg-[#1e2130]'
+                      active ? 'bg-[var(--accent)]/10 text-[var(--accent)]' : locked ? 'text-[var(--text-dim)]' : 'text-[var(--text-muted)] hover:bg-[var(--rail)]'
                     }`}
                   >
-                    <HugeiconsIcon icon={item.icon} size={18} className={active ? 'text-blue-400' : 'text-slate-600'} />
+                    <HugeiconsIcon icon={item.icon} size={18} className={active ? 'text-[var(--accent)]' : 'text-[var(--text-dim)]'} />
                     <span className="text-[10px] font-medium leading-none truncate max-w-[72px]">{item.label}</span>
                   </Link>
                 );

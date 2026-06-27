@@ -8,9 +8,9 @@ import { useAuth } from '@/contexts/auth-context';
 import type { AlertRule, NotificationChannel } from '@/types';
 
 const SEVERITY_COLORS: Record<string, string> = {
-  warning: 'bg-amber-500/10 text-amber-400',
-  critical: 'bg-red-500/10 text-red-400',
-  info: 'bg-blue-500/10 text-blue-400',
+  warning: 'bg-[var(--warning)]/10 text-[var(--warning)]',
+  critical: 'bg-[var(--danger)]/10 text-[var(--danger)]',
+  info: 'bg-[var(--accent)]/10 text-[var(--accent)]',
 };
 
 export default function AlertDetailPage() {
@@ -92,7 +92,7 @@ export default function AlertDetailPage() {
   if (error && !rule) {
     return (
       <div className="flex flex-col items-center justify-center min-h-96 gap-4">
-        <p className="text-red-400 text-sm">{error}</p>
+        <p className="text-[var(--danger)] text-sm">{error}</p>
         <Button variant="ghost" size="sm" onClick={() => history.back()}>
           Go back
         </Button>
@@ -112,17 +112,17 @@ export default function AlertDetailPage() {
       <div className="flex items-center justify-between mb-6">
         <div>
           <div className="flex items-center gap-3 mb-1">
-            <h1 className="text-xl font-bold text-slate-200">{rule.name}</h1>
-            <span className={`text-xs px-2 py-0.5 rounded ${SEVERITY_COLORS[rule.severity] ?? 'bg-slate-700 text-slate-400'}`}>
+            <h1 className="text-xl font-bold text-[var(--text)]">{rule.name}</h1>
+            <span className={`text-xs px-2 py-0.5 rounded ${SEVERITY_COLORS[rule.severity] ?? 'bg-[var(--rail)] text-[var(--text-muted)]'}`}>
               {rule.severity}
             </span>
             <span className={`text-xs px-2 py-0.5 rounded ${
-              rule.enabled ? 'bg-emerald-500/10 text-emerald-400' : 'bg-slate-700 text-slate-400'
+              rule.enabled ? 'bg-[var(--success)]/10 text-[var(--success)]' : 'bg-[var(--rail)] text-[var(--text-muted)]'
             }`}>
               {rule.enabled ? 'ACTIVE' : 'PAUSED'}
             </span>
           </div>
-          <p className="text-sm text-slate-500 font-mono">
+          <p className="text-sm text-[var(--text-muted)] font-mono">
             {rule.metric} {rule.condition} {rule.threshold}
           </p>
         </div>
@@ -145,25 +145,25 @@ export default function AlertDetailPage() {
         </div>
       </div>
 
-      {error && <p className="text-red-400 text-sm mb-4">{error}</p>}
+      {error && <p className="text-[var(--danger)] text-sm mb-4">{error}</p>}
 
       {/* Rule config */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
-        <Card className="border border-[#1e2130]" padding="md">
-          <p className="text-xs text-slate-500 mb-1">Metric</p>
-          <p className="text-sm font-mono text-slate-200">{rule.metric}</p>
+        <Card className="border border-[var(--rail)]" padding="md">
+          <p className="text-xs text-[var(--text-muted)] mb-1">Metric</p>
+          <p className="text-sm font-mono text-[var(--text)]">{rule.metric}</p>
         </Card>
-        <Card className="border border-[#1e2130]" padding="md">
-          <p className="text-xs text-slate-500 mb-1">Condition</p>
-          <p className="text-sm text-slate-200">{rule.condition} {rule.threshold}</p>
+        <Card className="border border-[var(--rail)]" padding="md">
+          <p className="text-xs text-[var(--text-muted)] mb-1">Condition</p>
+          <p className="text-sm text-[var(--text)]">{rule.condition} {rule.threshold}</p>
         </Card>
-        <Card className="border border-[#1e2130]" padding="md">
-          <p className="text-xs text-slate-500 mb-1">Interval</p>
-          <p className="text-sm text-slate-200">{intervalLabel(rule.durationSeconds)}</p>
+        <Card className="border border-[var(--rail)]" padding="md">
+          <p className="text-xs text-[var(--text-muted)] mb-1">Interval</p>
+          <p className="text-sm text-[var(--text)]">{intervalLabel(rule.durationSeconds)}</p>
         </Card>
-        <Card className="border border-[#1e2130]" padding="md">
-          <p className="text-xs text-slate-500 mb-1">Severity</p>
-          <span className={`text-xs px-2 py-0.5 rounded ${SEVERITY_COLORS[rule.severity] ?? 'bg-slate-700 text-slate-400'}`}>
+        <Card className="border border-[var(--rail)]" padding="md">
+          <p className="text-xs text-[var(--text-muted)] mb-1">Severity</p>
+          <span className={`text-xs px-2 py-0.5 rounded ${SEVERITY_COLORS[rule.severity] ?? 'bg-[var(--rail)] text-[var(--text-muted)]'}`}>
             {rule.severity}
           </span>
         </Card>
@@ -172,14 +172,14 @@ export default function AlertDetailPage() {
       {/* Notification channels */}
       {rule.channels.length > 0 && (
         <div className="mb-6">
-          <h2 className="text-sm font-semibold text-slate-200 mb-3">Notification Channels</h2>
+          <h2 className="text-sm font-semibold text-[var(--text)] mb-3">Notification Channels</h2>
           <div className="flex flex-wrap gap-2">
             {rule.channels.map(cid => {
               const ch = channels.find(c => c.id === cid);
               return (
                 <span
                   key={cid}
-                  className="text-xs px-2 py-1 rounded bg-[#1e2130] text-slate-300 border border-[#1e2130]"
+                  className="text-xs px-2 py-1 rounded bg-[var(--rail)] text-[var(--text-muted)] border border-[var(--rail)]"
                 >
                   {ch ? `${ch.name} (${ch.type})` : cid}
                 </span>
@@ -191,38 +191,38 @@ export default function AlertDetailPage() {
 
       {/* Evaluation history */}
       <div>
-        <h2 className="text-sm font-semibold text-slate-200 mb-3">Recent Evaluations</h2>
+        <h2 className="text-sm font-semibold text-[var(--text)] mb-3">Recent Evaluations</h2>
         {evaluations.length === 0 ? (
-          <Card className="border border-[#1e2130]">
+          <Card className="border border-[var(--rail)]">
             <EmptyState
               title="No evaluations yet"
               description="Evaluations will appear here once the rule starts running."
             />
           </Card>
         ) : (
-          <Card className="border border-[#1e2130] overflow-hidden">
+          <Card className="border border-[var(--rail)] overflow-hidden">
             <table className="w-full text-sm">
               <thead>
-                <tr className="border-b border-[#1e2130]">
-                  <th className="text-left text-xs text-slate-500 font-medium px-4 py-3">Timestamp</th>
-                  <th className="text-left text-xs text-slate-500 font-medium px-4 py-3">Value</th>
-                  <th className="text-left text-xs text-slate-500 font-medium px-4 py-3">Status</th>
+                <tr className="border-b border-[var(--rail)]">
+                  <th className="text-left text-xs text-[var(--text-muted)] font-medium px-4 py-3">Timestamp</th>
+                  <th className="text-left text-xs text-[var(--text-muted)] font-medium px-4 py-3">Value</th>
+                  <th className="text-left text-xs text-[var(--text-muted)] font-medium px-4 py-3">Status</th>
                 </tr>
               </thead>
               <tbody>
                 {evaluations.map(ev => (
-                  <tr key={ev.id} className="border-b border-[#1e2130] last:border-0 hover:bg-[#1e2130]/30">
-                    <td className="px-4 py-3 text-slate-400 text-xs">
+                  <tr key={ev.id} className="border-b border-[var(--rail)] last:border-0 hover:bg-[var(--rail)]/30">
+                    <td className="px-4 py-3 text-[var(--text-muted)] text-xs">
                       {new Date(ev.timestamp).toLocaleString()}
                     </td>
-                    <td className="px-4 py-3 text-slate-300 font-mono text-xs">
+                    <td className="px-4 py-3 text-[var(--text-muted)] font-mono text-xs">
                       {ev.value.toFixed(4)}
                     </td>
                     <td className="px-4 py-3">
                       <span className={`text-xs px-2 py-0.5 rounded ${
                         ev.fired
-                          ? 'bg-red-500/10 text-red-400'
-                          : 'bg-emerald-500/10 text-emerald-400'
+                          ? 'bg-[var(--danger)]/10 text-[var(--danger)]'
+                          : 'bg-[var(--success)]/10 text-[var(--success)]'
                       }`}>
                         {ev.fired ? 'FIRE' : 'OK'}
                       </span>
@@ -237,8 +237,8 @@ export default function AlertDetailPage() {
 
       <Modal isOpen={showDelete} onClose={() => setShowDelete(false)} title="Delete Alert Rule" size="sm">
         <div className="space-y-4">
-          <p className="text-sm text-slate-400">
-            Are you sure you want to delete <span className="text-slate-200 font-medium">{rule.name}</span>? This cannot be undone.
+          <p className="text-sm text-[var(--text-muted)]">
+            Are you sure you want to delete <span className="text-[var(--text)] font-medium">{rule.name}</span>? This cannot be undone.
           </p>
           <div className="flex justify-end gap-3">
             <Button variant="ghost" size="sm" onClick={() => setShowDelete(false)}>

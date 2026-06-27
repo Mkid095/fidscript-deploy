@@ -24,12 +24,34 @@ export interface DeploymentListResult {
   pagination: { page: number; limit: number; total: number; pages: number };
 }
 
+/**
+ * Build configuration for a project.
+ * Only buildTarget (monorepo app root) and startupTimeoutSeconds are
+ * consumed by the deployment runner — all other fields were dead code
+ * that the build providers ignored (they re-derive everything from
+ * package.json detection).
+ */
 export interface BuildConfig {
-  strategy: string;
-  buildCommand?: string;
-  outputDirectory?: string;
-  healthCheckPath?: string;
-  healthCheckPort: number;
+  buildTarget?: string;
+  startupTimeoutSeconds?: number;
+}
+
+/**
+ * Framework detection result returned by POST /deployments/detect.
+ * This is the "BuildPlan" — what the platform detected and how it
+ * will build the project, shown to the user before they deploy.
+ */
+export interface BuildPlan {
+  framework: string;          // 'next' | 'vite' | 'astro' | 'nuxt' | 'sveltekit' | 'node' | 'static' | 'unknown'
+  frameworkLabel: string;     // 'Next.js', 'Vite', 'Astro', etc.
+  frameworkVersion?: string;  // e.g. '15.2.0' from package.json
+  buildCommand: string;       // 'npm run build'
+  startCommand: string;       // 'npx next start'
+  outputDirectory: string;    // '.next', 'dist', '.'
+  port: number;               // 3000, 4173, 8080, etc.
+  runtime: string;            // 'Node 20'
+  monorepo?: string;          // 'pnpm' | 'turbo' | 'nx' | undefined
+  detectedAt: string;         // ISO timestamp
 }
 
 export interface CreateDeploymentInput {
@@ -49,7 +71,15 @@ export interface CreateDeploymentInput {
   };
   branch?: string;
   commitSha?: string;
-  strategy?: string;
+  commitMessage?: string;
+  /** Environment variables to inject at build and runtime. Overrides project-level env vars. */
+  envVars?: Record<string, string>;
+}
+
+export interface DetectInput {
+  gitUrl: string;
+  branch?: string;
+  credentials?: string;
 }
 
 export class DeploymentsModule {
@@ -75,6 +105,17 @@ export class DeploymentsModule {
   async create(projectId: string, data: CreateDeploymentInput) {
     return this.client.post<Deployment>(
       `/api/v1/projects/${projectId}/deployments`,
+      data,
+    );
+  }
+
+  /**
+   * Detect the framework/build plan for a repository without deploying.
+   * Clones the repo shallowly, runs framework detection, returns the BuildPlan.
+   */
+  async detect(projectId: string, data: DetectInput) {
+    return this.client.post<BuildPlan>(
+      `/api/v1/projects/${projectId}/deployments/detect`,
       data,
     );
   }

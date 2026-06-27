@@ -32,11 +32,11 @@ interface RealtimeModule {
 
 const ALL_LEVELS = ['debug', 'info', 'warn', 'error', 'fatal'] as const;
 const LEVEL_COLORS: Record<string, string> = {
-  debug: 'text-slate-500 bg-slate-800',
-  info:  'text-blue-400 bg-blue-900/40',
-  warn:  'text-yellow-400 bg-yellow-900/40',
-  error: 'text-red-400 bg-red-900/40',
-  fatal: 'text-red-400 font-bold bg-red-900/60',
+  debug: 'text-[var(--text-muted)] bg-[var(--rail)]',
+  info:  'text-[var(--accent)] bg-blue-900/40',
+  warn:  'text-[var(--warning)] bg-yellow-900/40',
+  error: 'text-[var(--danger)] bg-[var(--danger)]/10',
+  fatal: 'text-[var(--danger)] font-bold bg-red-900/60',
 };
 
 function RelativeTime({ iso }: { iso: string }) {
@@ -118,7 +118,7 @@ export default function LogViewer({
                 className={`text-[10px] font-mono uppercase px-2 py-1 rounded border transition-colors cursor-pointer ${
                   activeLevels.includes(lvl)
                     ? `${LEVEL_COLORS[lvl]} border-transparent`
-                    : 'text-slate-600 border-slate-700 bg-transparent hover:text-slate-400'
+                    : 'text-[var(--text-dim)] border-[var(--rail-light)] bg-transparent hover:text-[var(--text-muted)]'
                 }`}
               >
                 {lvl}
@@ -131,7 +131,7 @@ export default function LogViewer({
 
       <div
         ref={containerRef}
-        className="bg-[#080a0d] border border-[#1e2130] rounded-lg overflow-y-auto"
+        className="bg-[var(--surface-2)] border border-[var(--rail)] rounded-lg overflow-y-auto"
         style={{ height: h }}
         onScroll={() => {
           const el = containerRef.current;
@@ -142,20 +142,20 @@ export default function LogViewer({
         {loading ? (
           <div className="flex items-center justify-center h-full"><Spinner size="md" /></div>
         ) : error ? (
-          <div className="flex items-center justify-center h-full text-red-400 text-sm">{error}</div>
+          <div className="flex items-center justify-center h-full text-[var(--danger)] text-sm">{error}</div>
         ) : entries.filter(e => activeLevels.includes(e.level)).length === 0 ? (
-          <div className="flex items-center justify-center h-full text-slate-500 text-sm">No log entries</div>
+          <div className="flex items-center justify-center h-full text-[var(--text-muted)] text-sm">No log entries</div>
         ) : (
-          <div className="divide-y divide-[#1e2130]/50">
+          <div className="divide-y divide-[var(--rail)]/50">
             {entries.filter(e => activeLevels.includes(e.level)).map(entry => (
-              <div key={entry.id} className="flex items-start gap-3 px-4 py-2 hover:bg-[#1e2130]/20">
-                <span className="text-[11px] font-mono text-slate-500 flex-shrink-0 mt-0.5">
+              <div key={entry.id} className="flex items-start gap-3 px-4 py-2 hover:bg-[var(--rail)]/20">
+                <span className="text-[11px] font-mono text-[var(--text-muted)] flex-shrink-0 mt-0.5">
                   <RelativeTime iso={entry.timestamp} />
                 </span>
                 <span className={`text-[10px] font-mono uppercase px-1.5 py-0.5 rounded ${LEVEL_COLORS[entry.level]}`}>
                   {entry.level}
                 </span>
-                <span className="text-xs font-mono text-slate-300 leading-relaxed">{entry.message}</span>
+                <span className="text-xs font-mono text-[var(--text-muted)] leading-relaxed">{entry.message}</span>
               </div>
             ))}
           </div>

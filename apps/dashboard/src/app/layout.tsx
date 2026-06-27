@@ -2,6 +2,7 @@ import type { Metadata } from 'next';
 
 import './globals.css';
 import { Providers } from './providers';
+import { ThemeInitScript } from '@/components/theme/theme-init-script';
 
 export const metadata: Metadata = {
   title: 'FIDScript — Self-Hosted Developer Operating System',
@@ -11,8 +12,11 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en">
-      <body className="min-h-screen bg-ink-950 text-slate-200 antialiased selection:bg-fire-500 selection:text-white">
+    <html lang="en" data-theme="dark" suppressHydrationWarning>
+      <head>
+        <ThemeInitScript />
+      </head>
+      <body className="min-h-screen antialiased">
         <Providers>{children}</Providers>
       </body>
     </html>

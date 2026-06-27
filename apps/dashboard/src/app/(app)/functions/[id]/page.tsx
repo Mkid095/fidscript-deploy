@@ -17,11 +17,11 @@ interface FunctionVersion {
 
 const MonacoEditor = dynamic(() => import('@monaco-editor/react'), {
   ssr: false,
-  loading: () => <div className="flex items-center justify-center h-full bg-[#0f1217]"><Spinner size="md" /></div>,
+  loading: () => <div className="flex items-center justify-center h-full bg-[var(--surface-2)]"><Spinner size="md" /></div>,
 });
 const DiffEditor = dynamic(() => import('@monaco-editor/react').then(m => m.DiffEditor), {
   ssr: false,
-  loading: () => <div className="flex items-center justify-center h-full bg-[#0f1217]"><Spinner size="md" /></div>,
+  loading: () => <div className="flex items-center justify-center h-full bg-[var(--surface-2)]"><Spinner size="md" /></div>,
 });
 
 interface Function_ {
@@ -37,9 +37,9 @@ interface Function_ {
 type Tab = 'code' | 'logs' | 'settings' | 'invoke' | 'versions';
 
 const STATUS_COLORS: Record<string, string> = {
-  PENDING: 'bg-slate-700 text-slate-300', BUILDING: 'bg-blue-900 text-blue-400',
-  ACTIVE: 'bg-emerald-900 text-emerald-400', FAILED: 'bg-red-900 text-red-400',
-  INACTIVE: 'bg-slate-700 text-slate-400',
+  PENDING: 'bg-[var(--rail)] text-[var(--text-muted)]', BUILDING: 'bg-blue-900 text-[var(--accent)]',
+  ACTIVE: 'bg-emerald-900 text-[var(--success)]', FAILED: 'bg-red-900 text-[var(--danger)]',
+  INACTIVE: 'bg-[var(--rail)] text-[var(--text-muted)]',
 };
 
 const RUNTIME_LANG: Record<string, string> = {
@@ -176,12 +176,12 @@ export default function FunctionDetailPage({ params }: { params: Promise<{ id: s
   if (error || !func) {
     return (
       <div>
-        <div className="flex items-center gap-2 text-sm text-slate-500 mb-6">
-          <Link href="/functions" className="hover:text-slate-300">Functions</Link>
+        <div className="flex items-center gap-2 text-sm text-[var(--text-muted)] mb-6">
+          <Link href="/functions" className="hover:text-[var(--text-muted)]">Functions</Link>
           <span>&rsaquo;</span>
-          <span className="text-red-400">{error ?? 'Not found'}</span>
+          <span className="text-[var(--danger)]">{error ?? 'Not found'}</span>
         </div>
-        <p className="text-red-400">{error ?? 'Function not found'}</p>
+        <p className="text-[var(--danger)]">{error ?? 'Function not found'}</p>
       </div>
     );
   }
@@ -198,25 +198,25 @@ export default function FunctionDetailPage({ params }: { params: Promise<{ id: s
     <div>
       {/* Header */}
       <div className="flex items-center gap-3 mb-6">
-        <Link href="/functions" className="text-slate-500 hover:text-slate-300 text-sm no-underline">Functions</Link>
-        <span className="text-slate-600">/</span>
-        <h1 className="text-xl font-bold text-slate-200">{func.name}</h1>
-        <span className={`text-xs px-2 py-0.5 rounded-full capitalize ${STATUS_COLORS[func.status] ?? 'bg-slate-700 text-slate-300'}`}>
+        <Link href="/functions" className="text-[var(--text-muted)] hover:text-[var(--text-muted)] text-sm no-underline">Functions</Link>
+        <span className="text-[var(--text-dim)]">/</span>
+        <h1 className="text-xl font-bold text-[var(--text)]">{func.name}</h1>
+        <span className={`text-xs px-2 py-0.5 rounded-full capitalize ${STATUS_COLORS[func.status] ?? 'bg-[var(--rail)] text-[var(--text-muted)]'}`}>
           {func.status ?? 'UNKNOWN'}
         </span>
-        {func.currentVersion && <span className="text-xs text-slate-500 font-mono">{func.currentVersion}</span>}
+        {func.currentVersion && <span className="text-xs text-[var(--text-muted)] font-mono">{func.currentVersion}</span>}
       </div>
 
       {/* Tabs */}
-      <div className="flex gap-1 border-b border-[#1e2130] mb-6">
+      <div className="flex gap-1 border-b border-[var(--rail)] mb-6">
         {tabs.map(tab => (
           <button
             key={tab.id}
             onClick={() => setActiveTab(tab.id)}
             className={`px-4 py-2 text-sm border-b-2 transition-colors -mb-px ${
               activeTab === tab.id
-                ? 'border-blue-500 text-slate-200'
-                : 'border-transparent text-slate-500 hover:text-slate-300 bg-none border-none cursor-pointer'
+                ? 'border-[var(--accent)] text-[var(--text)]'
+                : 'border-transparent text-[var(--text-muted)] hover:text-[var(--text-muted)] bg-none border-none cursor-pointer'
             }`}
           >
             {tab.label}
@@ -237,7 +237,7 @@ export default function FunctionDetailPage({ params }: { params: Promise<{ id: s
                 value={deployVersion}
                 onChange={e => setDeployVersion(e.target.value)}
                 placeholder="v1 — optional"
-                className="bg-[#080a0d] border border-[#1e2130] text-slate-300 rounded px-2 py-1 text-xs w-32 font-mono"
+                className="bg-[var(--surface-2)] border border-[var(--rail)] text-[var(--text-muted)] rounded px-2 py-1 text-xs w-32 font-mono"
               />
               <Button variant="primary" size="sm" loading={deploying} onClick={handleDeploy}>Deploy</Button>
             </div>
@@ -246,14 +246,14 @@ export default function FunctionDetailPage({ params }: { params: Promise<{ id: s
           {deployMsg && (
             <div className={`text-xs px-3 py-2 rounded border ${
               deployMsg.type === 'success'
-                ? 'text-emerald-400 bg-emerald-900/20 border-emerald-800'
-                : 'text-red-400 bg-red-900/20 border-red-800'
+                ? 'text-[var(--success)] bg-[var(--success)]/10 border-[var(--success)]/30'
+                : 'text-[var(--danger)] bg-[var(--danger)]/10 border-[var(--danger)]/30'
             }`}>
               {deployMsg.text}
             </div>
           )}
 
-          <div className="rounded-xl border border-[#1e2130] overflow-hidden" style={{ height: 480 }}>
+          <div className="rounded-xl border border-[var(--rail)] overflow-hidden" style={{ height: 480 }}>
             <MonacoEditor
               height="100%"
               language={getLang(func.runtime ?? 'node')}
@@ -294,38 +294,38 @@ export default function FunctionDetailPage({ params }: { params: Promise<{ id: s
           {loadingVersions ? (
             <div className="flex items-center justify-center py-16"><Spinner size="md" /></div>
           ) : versions.length === 0 ? (
-            <Card className="border border-[#1e2130]">
-              <p className="text-sm text-slate-500 text-center py-8">
+            <Card className="border border-[var(--rail)]">
+              <p className="text-sm text-[var(--text-muted)] text-center py-8">
                 No versions deployed yet. Use the Code tab to deploy your first version.
               </p>
             </Card>
           ) : (
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
               {/* Version list */}
-              <Card className="border border-[#1e2130]" padding="none">
-                <div className="px-4 py-3 border-b border-[#1e2130]">
-                  <h3 className="text-sm font-semibold text-slate-200">Deployments</h3>
+              <Card className="border border-[var(--rail)]" padding="none">
+                <div className="px-4 py-3 border-b border-[var(--rail)]">
+                  <h3 className="text-sm font-semibold text-[var(--text)]">Deployments</h3>
                 </div>
-                <div className="divide-y divide-[#1e2130]">
+                <div className="divide-y divide-[var(--rail)]">
                   {versions.map((v, i) => (
                     <div key={v.version} className="px-4 py-3">
                       <div className="flex items-center justify-between">
                         <div className="flex items-center gap-2">
                           <button
-                            className="text-xs text-slate-400 hover:text-slate-200 font-mono text-left"
+                            className="text-xs text-[var(--text-muted)] hover:text-[var(--text)] font-mono text-left"
                             onClick={() => handleDiffSelect(i > 0 ? versions[i-1].version : null, v.version)}
                           >
                             {v.version}
                           </button>
                           {func?.currentVersion === v.version && (
-                            <span className="text-xs bg-blue-900/30 text-blue-400 px-1.5 py-0.5 rounded">current</span>
+                            <span className="text-xs bg-[var(--accent)]/10 text-[var(--accent)] px-1.5 py-0.5 rounded">current</span>
                           )}
                         </div>
                         <div className="flex items-center gap-2">
                           <span className={`text-xs px-1.5 py-0.5 rounded ${
-                            v.status === 'success' ? 'bg-emerald-900/30 text-emerald-400' :
-                            v.status === 'error' ? 'bg-red-900/30 text-red-400' :
-                            'bg-slate-800 text-slate-400'
+                            v.status === 'success' ? 'bg-emerald-900/30 text-[var(--success)]' :
+                            v.status === 'error' ? 'bg-red-900/30 text-[var(--danger)]' :
+                            'bg-[var(--rail)] text-[var(--text-muted)]'
                           }`}>{v.status}</span>
                           {func?.currentVersion !== v.version && (
                             <Button
@@ -344,7 +344,7 @@ export default function FunctionDetailPage({ params }: { params: Promise<{ id: s
                           )}
                         </div>
                       </div>
-                      <p className="text-xs text-slate-500 mt-0.5">
+                      <p className="text-xs text-[var(--text-muted)] mt-0.5">
                         {new Date(v.createdAt).toLocaleString()}
                       </p>
                     </div>
@@ -353,11 +353,11 @@ export default function FunctionDetailPage({ params }: { params: Promise<{ id: s
               </Card>
 
               {/* Diff panel */}
-              <Card className="border border-[#1e2130]" padding="none">
-                <div className="px-4 py-3 border-b border-[#1e2130] flex items-center justify-between">
-                  <h3 className="text-sm font-semibold text-slate-200">Diff</h3>
+              <Card className="border border-[var(--rail)]" padding="none">
+                <div className="px-4 py-3 border-b border-[var(--rail)] flex items-center justify-between">
+                  <h3 className="text-sm font-semibold text-[var(--text)]">Diff</h3>
                   {diffVersions[1] && (
-                    <span className="text-xs text-slate-500 font-mono">
+                    <span className="text-xs text-[var(--text-muted)] font-mono">
                       ← {diffVersions[0] ?? 'current'} → {diffVersions[1]}
                     </span>
                   )}
@@ -381,7 +381,7 @@ export default function FunctionDetailPage({ params }: { params: Promise<{ id: s
                     />
                   </div>
                 ) : (
-                  <div className="flex items-center justify-center h-64 text-sm text-slate-500">
+                  <div className="flex items-center justify-center h-64 text-sm text-[var(--text-muted)]">
                     Select a version to compare
                   </div>
                 )}
@@ -393,8 +393,8 @@ export default function FunctionDetailPage({ params }: { params: Promise<{ id: s
 
       {/* Settings Tab */}
       {activeTab === 'settings' && (
-        <Card className="border border-[#1e2130]" padding="lg">
-          <h2 className="text-sm font-semibold text-slate-200 mb-4">Function Settings</h2>
+        <Card className="border border-[var(--rail)]" padding="lg">
+          <h2 className="text-sm font-semibold text-[var(--text)] mb-4">Function Settings</h2>
           <dl className="space-y-3 text-sm">
             {[
               ['Function ID', func.id, 'font-mono text-xs'],
@@ -405,8 +405,8 @@ export default function FunctionDetailPage({ params }: { params: Promise<{ id: s
               ['Current Version', func.currentVersion ?? 'none', 'font-mono text-xs'],
             ].map(([dt, dd, extra]) => (
               <div key={dt as string} className="flex gap-4">
-                <dt className="text-slate-500 w-40 flex-shrink-0">{dt}</dt>
-                <dd className={`text-slate-300 ${extra}`}>{dd}</dd>
+                <dt className="text-[var(--text-muted)] w-40 flex-shrink-0">{dt}</dt>
+                <dd className={`text-[var(--text-muted)] ${extra}`}>{dd}</dd>
               </div>
             ))}
           </dl>
@@ -415,25 +415,25 @@ export default function FunctionDetailPage({ params }: { params: Promise<{ id: s
 
       {/* Invoke Tab */}
       {activeTab === 'invoke' && (
-        <Card className="border border-[#1e2130]" padding="lg">
-          <h2 className="text-sm font-semibold text-slate-200 mb-4">Invoke Function</h2>
-          <p className="text-xs text-slate-500 mb-4">Send a payload to test this function.</p>
+        <Card className="border border-[var(--rail)]" padding="lg">
+          <h2 className="text-sm font-semibold text-[var(--text)] mb-4">Invoke Function</h2>
+          <p className="text-xs text-[var(--text-muted)] mb-4">Send a payload to test this function.</p>
           <form onSubmit={handleInvoke} noValidate>
             <div className="mb-4">
-              <label className="block text-xs text-slate-400 mb-1">Request Body (JSON)</label>
+              <label className="block text-xs text-[var(--text-muted)] mb-1">Request Body (JSON)</label>
               <textarea
                 value={invokeBody}
                 onChange={e => setInvokeBody(e.target.value)}
                 rows={6}
-                className="w-full bg-[#080a0d] border border-[#1e2130] text-slate-200 placeholder:text-slate-600 rounded-lg px-3 py-2 text-sm font-mono resize-none"
+                className="w-full bg-[var(--surface-2)] border border-[var(--rail)] text-[var(--text)] placeholder:text-[var(--text-dim)] rounded-lg px-3 py-2 text-sm font-mono resize-none"
                 placeholder='{}'
               />
             </div>
-            {invokeError && <p className="text-red-400 text-xs mb-4">{invokeError}</p>}
+            {invokeError && <p className="text-[var(--danger)] text-xs mb-4">{invokeError}</p>}
             {invokeResult !== null && (
               <div className="mb-4">
-                <label className="block text-xs text-slate-400 mb-1">Result</label>
-                <pre className="rounded bg-[#080a0d] border border-[#1e2130] p-3 text-xs font-mono text-slate-300 overflow-x-auto">{invokeResult}</pre>
+                <label className="block text-xs text-[var(--text-muted)] mb-1">Result</label>
+                <pre className="rounded bg-[var(--surface-2)] border border-[var(--rail)] p-3 text-xs font-mono text-[var(--text-muted)] overflow-x-auto">{invokeResult}</pre>
               </div>
             )}
             <Button variant="primary" size="sm" type="submit" loading={invoking}>

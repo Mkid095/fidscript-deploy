@@ -1,89 +1,51 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { existsSync, writeFileSync } from 'fs';
 import { join, isAbsolute } from 'path';
+import { execSync } from 'child_process';
 import {
   BuildProvider,
   BuildContext,
   BuildResult,
 } from './build-provider.interface';
-import { DockerBuildWorkspaceService } from './docker-build-workspace.service';
 
 @Injectable()
 export class DockerfileBuildProvider implements BuildProvider {
   name = 'dockerfile';
   private readonly logger = new Logger(DockerfileBuildProvider.name);
 
-  constructor(private workspace: DockerBuildWorkspaceService) {}
+  // The workspace lifecycle (prepare / fetch source / cleanup) is owned by
+  // BuildRunnerService. This provider only reads from `context.workspace`.
 
   async validate(context: BuildContext): Promise<void> {
-    const { source } = context;
-    const ws = this.workspace.prepareWorkspace();
+    const { source, workspace: ws } = context;
 
-    try {
-      if (source.type === 'git') {
-        await this.workspace.fetchGitSource({
-          url: source.url!,
-          branch: source.branch || 'main',
-          credentials: source.credentials,
-          workspace: ws,
-        });
-      } else if (source.type === 'archive') {
-        if (!source.archiveBucketId || !source.archiveObjectKey) {
-          throw new Error('Archive source requires bucketId and objectKey.');
-        }
-        await this.workspace.fetchArchiveSource({
-          bucketId: source.archiveBucketId,
-          objectKey: source.archiveObjectKey,
-          workspace: ws,
-        });
-      } else {
-        throw new Error(`Unsupported source type: ${source.type}`);
-      }
+    const dockerfilePath = source.dockerfilePath
+      || (existsSync(join(ws, 'Dockerfile')) ? 'Dockerfile' : null);
 
-      const dockerfilePath = source.dockerfilePath
-        || (existsSync(join(ws, 'Dockerfile')) ? 'Dockerfile' : null);
-
-      if (!dockerfilePath) {
-        throw new Error(
-          'No Dockerfile found in the source root. ' +
-          'Provide a Dockerfile in your repository root, ' +
-          'or specify source.git.dockerfilePath in the deployment request.',
-        );
-      }
-
-      if (!existsSync(join(ws, dockerfilePath))) {
-        throw new Error(`Dockerfile specified at "${dockerfilePath}" does not exist in the source.`);
-      }
-
-      this.logger.log(`[DockerfileBuildProvider] Validation passed for ${context.projectSlug}`);
-    } finally {
-      this.workspace.cleanupWorkspace(ws);
+    if (!dockerfilePath) {
+      throw new Error(
+        'No Dockerfile found in the source root. ' +
+        'Provide a Dockerfile in your repository root, ' +
+        'or specify source.git.dockerfilePath in the deployment request.',
+      );
     }
+
+    if (!existsSync(join(ws, dockerfilePath))) {
+      throw new Error(`Dockerfile specified at "${dockerfilePath}" does not exist in the source.`);
+    }
+
+    this.logger.log(`[DockerfileBuildProvider] Validation passed for ${context.projectSlug}`);
   }
 
   async build(context: BuildContext): Promise<BuildResult> {
-    const { source, envVars, onLog } = context;
-    const ws = this.workspace.prepareWorkspace();
+    const { source, envVars, onLog, workspace: ws } = context;
     const startTime = Date.now();
     const logs: string[] = [];
 
     const addLog = (l: string) => { logs.push(l); onLog(l); };
 
     try {
-      if (source.type === 'git') {
-        await this.workspace.fetchGitSource({
-          url: source.url!,
-          branch: source.branch || 'main',
-          credentials: source.credentials,
-          workspace: ws,
-        });
-      } else if (source.type === 'archive') {
-        addLog(`[DockerfileBuildProvider] Downloading archive ${source.archiveObjectKey} from bucket ${source.archiveBucketId}…`);
-        await this.workspace.fetchArchiveSource({
-          bucketId: source.archiveBucketId!,
-          objectKey: source.archiveObjectKey!,
-          workspace: ws,
-        });
+      if (source.type === 'archive') {
         addLog(`[DockerfileBuildProvider] Archive extracted to build workspace`);
       }
 
@@ -110,7 +72,7 @@ export class DockerfileBuildProvider implements BuildProvider {
       }
 
       addLog(`[DockerfileBuildProvider] docker build ${imageTag}`);
-      const output = this.workspace.exec(buildCmd, { timeout: 600_000 });
+      const output = DockerfileBuildProvider.exec(buildCmd, { timeout: 600_000 });
       addLog(output);
 
       return {
@@ -129,8 +91,26 @@ export class DockerfileBuildProvider implements BuildProvider {
         success: false,
         error: msg,
       };
-    } finally {
-      this.workspace.cleanupWorkspace(ws);
+    }
+  }
+
+  /**
+   * Run a shell command synchronously, returning stdout. Mirrors the semantics
+   * of DockerBuildWorkspaceService.exec so that build providers stay shell-call
+   * capable without depending on the workspace service (which the runner owns).
+   */
+  private static exec(cmd: string, opts?: { timeout?: number; env?: Record<string, string> }): string {
+    try {
+      return execSync(cmd, {
+        timeout: opts?.timeout ?? 300_000,
+        stdio: 'pipe',
+        env: { ...process.env, DOCKER_BUILDKIT: '1', ...opts?.env },
+      } as any).toString();
+    } catch (err: any) {
+      throw new Error(
+        `Command failed: ${cmd}\n` +
+        `${err?.stderr?.toString() || err?.message || String(err)}`,
+      );
     }
   }
 }

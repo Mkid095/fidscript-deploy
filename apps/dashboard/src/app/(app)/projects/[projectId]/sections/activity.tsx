@@ -104,11 +104,11 @@ function iconTypeFor(type: string): string {
 }
 
 function colorForEvent(type: string): string {
-  if (/\.(succeeded|resolved|accepted)$/.test(type)) return 'text-emerald-400';
-  if (/\.(failed|error|deleted|removed|revoked)$/.test(type)) return 'text-red-400';
-  if (/\.(created|added|provisioned|deployed|building|deploying|queued)$/.test(type)) return 'text-blue-400';
-  if (/\.(updated|restored|verified)$/.test(type)) return 'text-yellow-400';
-  return 'text-slate-400';
+  if (/\.(succeeded|resolved|accepted)$/.test(type)) return 'text-[var(--success)]';
+  if (/\.(failed|error|deleted|removed|revoked)$/.test(type)) return 'text-[var(--danger)]';
+  if (/\.(created|added|provisioned|deployed|building|deploying|queued)$/.test(type)) return 'text-[var(--accent)]';
+  if (/\.(updated|restored|verified)$/.test(type)) return 'text-[var(--warning)]';
+  return 'text-[var(--text-muted)]';
 }
 
 function actorLabel(event: PlatformEvent): string {
@@ -140,7 +140,7 @@ function formatTime(date: Date): string {
 }
 
 function IconForType({ type, className }: { type: string; className?: string }) {
-  const iconClass = className ?? 'text-slate-400';
+  const iconClass = className ?? 'text-[var(--text-muted)]';
   switch (type) {
     case 'rocket':   return <HugeiconsIcon icon={Rocket01Icon} size={16} color="currentColor" className={iconClass} />;
     case 'users':     return <HugeiconsIcon icon={UserGroupIcon} size={16} color="currentColor" className={iconClass} />;
@@ -189,7 +189,9 @@ export function ActivityFeed({ project }: Props) {
           ?? localStorage.getItem('fidscript_token');
         if (!token) return;
 
-        await rt.connect(token, project.id);
+        // Pass a getter so socket.io re-reads the (possibly refreshed) JWT on
+        // every reconnect instead of pinning a token that may expire mid-session.
+        await rt.connect(() => localStorage.getItem('fidscript_access_token') ?? localStorage.getItem('fidscript_token') ?? '', project.id);
         if (cancelled) { rt.disconnect?.(); return; }
 
         setConnected(true);
@@ -214,18 +216,18 @@ export function ActivityFeed({ project }: Props) {
   }, [project.id, getSdk, loadInitial]);
 
   if (loading) return <div className="py-8 text-center"><Spinner size="md" /></div>;
-  if (error) return <p className="text-red-400 text-sm">{error}</p>;
+  if (error) return <p className="text-[var(--danger)] text-sm">{error}</p>;
 
   return (
     <div className="flex flex-col gap-0">
       <div className="flex items-center justify-between mb-4">
         <div className="flex items-center gap-2">
           <span className={`w-2 h-2 rounded-full ${connected ? 'bg-emerald-400' : 'bg-slate-600'}`} />
-          <span className="text-xs text-slate-500">{connected ? 'Live' : 'Polling'}</span>
+          <span className="text-xs text-[var(--text-muted)]">{connected ? 'Live' : 'Polling'}</span>
         </div>
         <button
           onClick={loadInitial}
-          className="flex items-center gap-1 text-xs text-slate-500 hover:text-slate-300 transition-colors"
+          className="flex items-center gap-1 text-xs text-[var(--text-muted)] hover:text-[var(--text-muted)] transition-colors"
         >
           <HugeiconsIcon icon={RefreshDotIcon} size={12} color="currentColor" />
           Refresh
@@ -242,18 +244,18 @@ export function ActivityFeed({ project }: Props) {
           {events.map(event => (
             <div
               key={event.id}
-              className="flex items-start gap-3 py-3 border-b border-[#1e2130]/50 last:border-0"
+              className="flex items-start gap-3 py-3 border-b border-[var(--rail)]/50 last:border-0"
             >
               <div className={`mt-0.5 flex-shrink-0 ${event.iconColor}`}>
                 <IconForType type={event.iconType} />
               </div>
               <div className="flex-1 min-w-0">
-                <p className="text-sm text-slate-300 leading-snug">{event.description}</p>
-                <p className="text-xs text-slate-600 mt-0.5">
+                <p className="text-sm text-[var(--text-muted)] leading-snug">{event.description}</p>
+                <p className="text-xs text-[var(--text-dim)] mt-0.5">
                   {event.actorLabel}
                 </p>
               </div>
-              <span className="text-xs text-slate-600 flex-shrink-0 mt-0.5">
+              <span className="text-xs text-[var(--text-dim)] flex-shrink-0 mt-0.5">
                 {formatTime(event.timestamp)}
               </span>
             </div>

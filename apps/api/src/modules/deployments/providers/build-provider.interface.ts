@@ -44,8 +44,17 @@ export interface BuildContext {
   };
   buildCommand?: string;
   outputDirectory?: string;
+  /** For monorepos: the app/workspace name to build/deploy (e.g. "apps/web", "packages/frontend") */
+  buildTarget?: string;
   envVars: RuntimeEnv[];
   onLog: (line: string) => void;
+  /**
+   * Absolute path to the prepared build workspace. The runner is responsible for
+   * creating it (via DockerBuildWorkspaceService.prepareWorkspace), fetching the
+   * source into it, and cleaning it up. Providers should treat this as a ready-
+   * to-read source tree.
+   */
+  workspace: string;
 }
 
 /**

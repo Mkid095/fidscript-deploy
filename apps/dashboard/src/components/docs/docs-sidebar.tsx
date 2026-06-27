@@ -23,7 +23,7 @@ export function DocsSidebar({ onNavigate }: { onNavigate?: () => void }) {
     <nav className="space-y-6">
       {categories.map((cat) => (
         <div key={cat.name}>
-          <h3 className="mb-2 px-3 text-[11px] font-semibold uppercase tracking-wider text-slate-500">
+          <h3 className="mb-2 px-3 text-[11px] font-semibold uppercase tracking-wider text-[var(--text-muted)]">
             {cat.name}
           </h3>
           <ul className="space-y-0.5">
@@ -36,8 +36,8 @@ export function DocsSidebar({ onNavigate }: { onNavigate?: () => void }) {
                     onClick={onNavigate}
                     className={`flex items-center gap-2 rounded-lg px-3 py-2 text-sm transition ${
                       active
-                        ? 'border border-fire-500/30 bg-fire-500/10 text-fire-500'
-                        : 'border border-transparent text-slate-400 hover:bg-ink-850 hover:text-white'
+                        ? 'border border-[var(--accent)]/30 bg-[var(--accent)]/10 text-[var(--accent)]'
+                        : 'border border-transparent text-[var(--text-muted)] hover:bg-[var(--surface-2)] hover:text-[var(--text)]'
                     }`}
                   >
                     <HugeiconsIcon icon={d.icon} size={16} color="currentColor" />

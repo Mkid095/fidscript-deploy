@@ -36,25 +36,25 @@ export function OverviewSection({ project }: Props) {
 
   return (
     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-      <Card className="border border-[#1e2130]">
-        <p className="text-xs text-slate-500 mb-2">Env Variables</p>
-        <p className="text-3xl font-bold text-slate-200">{envVars.length}</p>
+      <Card className="border border-[var(--rail)]">
+        <p className="text-xs text-[var(--text-muted)] mb-2">Env Variables</p>
+        <p className="text-3xl font-bold text-[var(--text)]">{envVars.length}</p>
       </Card>
-      <Card className="border border-[#1e2130]">
-        <p className="text-xs text-slate-500 mb-2">Members</p>
-        <p className="text-3xl font-bold text-slate-200">{members.length}</p>
+      <Card className="border border-[var(--rail)]">
+        <p className="text-xs text-[var(--text-muted)] mb-2">Members</p>
+        <p className="text-3xl font-bold text-[var(--text)]">{members.length}</p>
       </Card>
-      <Card className="border border-[#1e2130]">
-        <p className="text-xs text-slate-500 mb-2">Last Deploy</p>
-        <p className="text-sm font-medium text-slate-200">
+      <Card className="border border-[var(--rail)]">
+        <p className="text-xs text-[var(--text-muted)] mb-2">Last Deploy</p>
+        <p className="text-sm font-medium text-[var(--text)]">
           {project.lastDeployAt
             ? new Date(project.lastDeployAt).toLocaleDateString()
             : 'Never'}
         </p>
       </Card>
-      <Card className="border border-[#1e2130]">
-        <p className="text-xs text-slate-500 mb-2">Created</p>
-        <p className="text-sm font-medium text-slate-200">
+      <Card className="border border-[var(--rail)]">
+        <p className="text-xs text-[var(--text-muted)] mb-2">Created</p>
+        <p className="text-sm font-medium text-[var(--text)]">
           {new Date(project.createdAt).toLocaleDateString()}
         </p>
       </Card>

@@ -69,18 +69,18 @@ export function ProjectSidebar({ project, collapsed, onCollapse }: ProjectSideba
 
   return (
     <aside
-      className="hidden md:flex flex-col bg-[#0c0e14] border-r border-[#1e2130] flex-shrink-0 transition-all duration-200 overflow-hidden"
+      className="hidden md:flex flex-col bg-[var(--surface)] border-r border-[var(--rail)] flex-shrink-0 transition-all duration-200 overflow-hidden"
       style={{ width: collapsed ? 64 : 232 }}
     >
       {/* Header: project name + All projects breadcrumb */}
       <div
-        className="flex flex-col border-b border-[#1e2130] flex-shrink-0"
+        className="flex flex-col border-b border-[var(--rail)] flex-shrink-0"
         style={{ padding: collapsed ? '0.625rem 0.5rem' : '0.625rem 0.75rem' }}
       >
         {/* Project name — always shown */}
         <div className="flex items-center justify-between gap-2 mb-1.5">
           <span
-            className="text-sm font-semibold text-slate-200 truncate"
+            className="text-sm font-semibold text-[var(--text)] truncate"
             title={project.name}
           >
             {collapsed ? project.name.charAt(0).toUpperCase() : project.name}
@@ -88,7 +88,7 @@ export function ProjectSidebar({ project, collapsed, onCollapse }: ProjectSideba
           {collapsed && (
             <Link
               href="/projects"
-              className="text-slate-600 hover:text-slate-300 transition-colors p-0.5 rounded hover:bg-[#1e2130]"
+              className="text-[var(--text-dim)] hover:text-[var(--text-muted)] transition-colors p-0.5 rounded hover:bg-[var(--hover)]"
               aria-label="All projects"
             >
               <HugeiconsIcon icon={ArrowLeft01Icon} size={12} />
@@ -100,9 +100,9 @@ export function ProjectSidebar({ project, collapsed, onCollapse }: ProjectSideba
         {!collapsed && (
           <Link
             href="/projects"
-            className="group flex items-center gap-1.5 text-xs text-slate-500 hover:text-slate-200 transition-colors py-1 px-1.5 rounded hover:bg-[#1e2130] w-full"
+            className="group flex items-center gap-1.5 text-xs text-[var(--text-dim)] hover:text-[var(--text)] transition-colors py-1 px-1.5 rounded hover:bg-[var(--hover)] w-full"
           >
-            <HugeiconsIcon icon={ArrowLeft01Icon} size={11} className="text-slate-600 group-hover:text-slate-400 flex-shrink-0" />
+            <HugeiconsIcon icon={ArrowLeft01Icon} size={11} className="text-[var(--text-dim)] group-hover:text-[var(--text-dim)] flex-shrink-0" />
             <span>All projects</span>
           </Link>
         )}
@@ -112,7 +112,7 @@ export function ProjectSidebar({ project, collapsed, onCollapse }: ProjectSideba
       <nav className="flex-1 min-h-0 overflow-y-auto px-2 py-2">
         {/* Section label */}
         {!collapsed && (
-          <p className="text-[10px] font-semibold tracking-widest text-slate-700 uppercase mb-2 px-1.5">
+          <p className="text-[10px] font-semibold tracking-widest text-[var(--text-dim)] uppercase mb-2 px-1.5">
             Navigation
           </p>
         )}
@@ -133,10 +133,10 @@ export function ProjectSidebar({ project, collapsed, onCollapse }: ProjectSideba
                 className={`
                   group flex items-center gap-2.5 px-2.5 py-2 rounded-md text-sm transition-all duration-150
                   ${active
-                    ? 'bg-blue-500/10 text-blue-300 font-medium border border-blue-500/20'
+                    ? 'bg-[var(--active)] text-[var(--text)] font-medium'
                     : locked
-                      ? 'text-slate-700 cursor-not-allowed'
-                      : 'text-slate-500 hover:text-slate-200 hover:bg-[#1e2130] border border-transparent'
+                      ? 'text-[var(--text-dim)] cursor-not-allowed'
+                      : 'text-[var(--text-dim)] hover:text-[var(--text)] hover:bg-[var(--hover)] border border-transparent'
                   }
                 `}
                 style={{ justifyContent: collapsed ? 'center' : 'flex-start' }}
@@ -144,7 +144,7 @@ export function ProjectSidebar({ project, collapsed, onCollapse }: ProjectSideba
                 <HugeiconsIcon
                   icon={item.icon}
                   size={15}
-                  className={`flex-shrink-0 transition-colors ${active ? 'text-blue-400' : 'text-slate-600 group-hover:text-slate-400'}`}
+                  className={`flex-shrink-0 transition-colors ${active ? 'text-[var(--text)]' : 'text-[var(--text-dim)] group-hover:text-[var(--text-dim)]'}`}
                 />
                 {!collapsed && <span className="truncate">{item.label}</span>}
               </Link>
@@ -154,23 +154,23 @@ export function ProjectSidebar({ project, collapsed, onCollapse }: ProjectSideba
       </nav>
 
       {/* Footer: status + collapse toggle */}
-      <div className="border-t border-[#1e2130] flex items-center justify-between gap-2 flex-shrink-0"
+      <div className="border-t border-[var(--rail)] flex items-center justify-between gap-2 flex-shrink-0"
         style={{ padding: collapsed ? '0.625rem 0.5rem' : '0.625rem 0.75rem' }}
       >
         {!collapsed && (
           <div className="flex items-center gap-2">
             <span className={`w-2 h-2 rounded-full flex-shrink-0 ${
-              project.status === 'ACTIVE' ? 'bg-emerald-500' :
-              project.status === 'SUSPENDED' ? 'bg-amber-500' :
-              project.status === 'CREATING' ? 'bg-blue-500 animate-pulse' :
-              'bg-slate-600'
+              project.status === 'ACTIVE' ? 'bg-[var(--success)]' :
+              project.status === 'SUSPENDED' ? 'bg-[var(--warning)]' :
+              project.status === 'CREATING' ? 'bg-[var(--accent)] animate-pulse' :
+              'bg-[var(--text-dim)]'
             }`} />
-            <span className="text-xs text-slate-500 capitalize">{project.status?.toLowerCase()}</span>
+            <span className="text-xs text-[var(--text-dim)] capitalize">{project.status?.toLowerCase()}</span>
           </div>
         )}
         <button
           onClick={() => onCollapse(!collapsed)}
-          className="bg-none border-none text-slate-600 cursor-pointer p-1 rounded hover:text-slate-300 hover:bg-[#1e2130] transition-colors ml-auto"
+          className="bg-none border-none text-[var(--text-dim)] cursor-pointer p-1 rounded hover:text-[var(--text-muted)] hover:bg-[var(--hover)] transition-colors ml-auto"
           aria-label={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
           title={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
         >

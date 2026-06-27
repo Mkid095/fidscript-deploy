@@ -87,7 +87,7 @@ export default function ProjectLayout({ children }: { children: React.ReactNode 
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center min-h-screen bg-[#080a0d]">
+      <div className="flex items-center justify-center min-h-screen bg-[var(--surface-2)]">
         <Spinner size="lg" />
       </div>
     );
@@ -95,10 +95,10 @@ export default function ProjectLayout({ children }: { children: React.ReactNode 
 
   if (error || !project) {
     return (
-      <div className="flex items-center justify-center min-h-screen bg-[#080a0d]">
+      <div className="flex items-center justify-center min-h-screen bg-[var(--surface-2)]">
         <div className="text-center">
-          <p className="text-red-400 mb-3">{error ?? 'Project not found'}</p>
-          <Link href="/projects" className="text-sm text-blue-500 hover:text-blue-400">
+          <p className="text-[var(--danger)] mb-3">{error ?? 'Project not found'}</p>
+          <Link href="/projects" className="text-sm text-[var(--accent)] hover:text-[var(--accent)]">
             Back to Projects
           </Link>
         </div>
@@ -118,7 +118,7 @@ export default function ProjectLayout({ children }: { children: React.ReactNode 
 
   return (
     <ProjectProvider projectId={projectId} project={project}>
-    <div className="flex h-screen bg-[#080a0d] overflow-hidden">
+    <div className="flex h-screen bg-[var(--surface-2)] overflow-hidden">
       {/* Project sidebar */}
       <ProjectSidebar
         project={project}
@@ -129,7 +129,7 @@ export default function ProjectLayout({ children }: { children: React.ReactNode 
       {/* Main content */}
       <div className="flex-1 flex flex-col overflow-hidden">
         {/* Header */}
-        <header className="h-14 bg-[#0f1117] border-b border-[#1e2130] flex items-center px-4 gap-3 flex-shrink-0">
+        <header className="h-14 bg-[var(--surface-2)] border-b border-[var(--rail)] flex items-center px-4 gap-3 flex-shrink-0">
           {/* Logo — links back to the project picker */}
           <Link
             href="/projects"
@@ -143,22 +143,22 @@ export default function ProjectLayout({ children }: { children: React.ReactNode 
               height={26}
               className="rounded-md"
             />
-            <span className="text-sm font-bold tracking-widest text-orange-500 uppercase group-hover:text-orange-400 transition-colors">
+            <span className="text-sm font-bold tracking-widest text-[var(--warning)] uppercase group-hover:text-[var(--warning)] transition-colors">
               fidscript
             </span>
           </Link>
 
           {/* Breadcrumb */}
-          <nav className="flex items-center gap-1 text-sm text-slate-500 min-w-0">
-            <HugeiconsIcon icon={ChevronRightIcon} size={12} className="text-slate-700 flex-shrink-0" />
+          <nav className="flex items-center gap-1 text-sm text-[var(--text-muted)] min-w-0">
+            <HugeiconsIcon icon={ChevronRightIcon} size={12} className="text-[var(--text-dim)] flex-shrink-0" />
             <button
               onClick={() => setShowSwitcher(true)}
-              className="hover:text-slate-200 transition-colors truncate max-w-[160px] text-slate-400 font-medium"
+              className="hover:text-[var(--text)] transition-colors truncate max-w-[160px] text-[var(--text-muted)] font-medium"
             >
               {project.name}
             </button>
-            <HugeiconsIcon icon={ChevronRightIcon} size={12} className="text-slate-700 flex-shrink-0" />
-            <span className="text-slate-300 font-medium capitalize">{effectiveSection}</span>
+            <HugeiconsIcon icon={ChevronRightIcon} size={12} className="text-[var(--text-dim)] flex-shrink-0" />
+            <span className="text-[var(--text-muted)] font-medium capitalize">{effectiveSection}</span>
           </nav>
 
           <div className="flex-1" />

@@ -1,4 +1,9 @@
 'use client';
+/* eslint-disable import/order */
+
+import { HugeiconsIcon } from '@hugeicons/react';
+
+import { FloppyDiskIcon, SentIcon, CloudIcon, ViewIcon, ViewOffIcon, CheckmarkCircle01Icon, CancelCircleIcon, InboxIcon, RefreshIcon, LockIcon } from '@hugeicons/core-free-icons';
 
 /**
  * Attachment Storage Settings — platform admin UI.
@@ -24,21 +29,21 @@ function mask(str: string): string {
   return str.slice(0, 4) + '••••' + str.slice(-4);
 }
 
-const BACKEND_INFO: Record<StorageBackend, { label: string; description: string; icon: string }> = {
+const BACKEND_INFO: Record<StorageBackend, { label: string; description: string; icon: React.ReactNode }> = {
   internal: {
     label: 'Internal (VPS)',
     description: 'Store attachments on the platform VPS using MinIO S3-compatible storage. No external service required.',
-    icon: '💾',
+    icon: <HugeiconsIcon icon={FloppyDiskIcon} size={14} strokeWidth={1.5} />,
   },
   telegram: {
     label: 'Telegram',
     description: 'Upload attachments to a private Telegram chat via the Bot API. Free and reliable for moderate traffic.',
-    icon: '✈',
+    icon: <HugeiconsIcon icon={SentIcon} size={14} strokeWidth={1.5} />,
   },
   cloudinary: {
     label: 'Cloudinary',
     description: 'Upload attachments to Cloudinary CDN. Fast global delivery with transformation support.',
-    icon: '☁',
+    icon: <HugeiconsIcon icon={CloudIcon} size={14} strokeWidth={1.5} />,
   },
 };
 
@@ -162,14 +167,14 @@ export default function EmailAttachmentSettingsPage() {
     <div className="max-w-2xl mx-auto space-y-6">
       {/* Page header */}
       <div>
-        <h1 className="text-xl font-bold text-slate-200 mb-1">Attachment Storage</h1>
-        <p className="text-sm text-slate-500">
+        <h1 className="text-xl font-bold text-[var(--text)] mb-1">Attachment Storage</h1>
+        <p className="text-sm text-[var(--text-muted)]">
           Choose where email attachment bytes are stored. Applies to all inbound and outbound mail on the platform.
         </p>
       </div>
 
       {configError && (
-        <div className="bg-red-950/30 border border-red-800 rounded-lg p-3 text-sm text-red-400">
+        <div className="bg-[var(--danger)]/10 border border-[var(--danger)]/30 rounded-lg p-3 text-sm text-[var(--danger)]">
           {configError}{' '}
           <button className="underline ml-2" onClick={loadConfig}>Retry</button>
         </div>
@@ -177,22 +182,22 @@ export default function EmailAttachmentSettingsPage() {
 
       {/* Current status banner */}
       {config && (
-        <div className="flex items-center gap-3 bg-[#0f1117] border border-[#1e2130] rounded-lg px-4 py-3">
+        <div className="flex items-center gap-3 bg-[var(--surface-2)] border border-[var(--rail)] rounded-lg px-4 py-3">
           <span className="text-lg">{BACKEND_INFO[config.provider].icon}</span>
           <div className="flex-1">
-            <span className="text-sm text-slate-300">Currently active: </span>
-            <span className="text-sm font-medium text-slate-100">{BACKEND_INFO[config.provider].label}</span>
+            <span className="text-sm text-[var(--text-muted)]">Currently active: </span>
+            <span className="text-sm font-medium text-[var(--text)]">{BACKEND_INFO[config.provider].label}</span>
           </div>
-          <span className={`text-xs px-2 py-0.5 rounded-full ${config.hasCredentials ? 'bg-emerald-900/40 text-emerald-400' : 'bg-slate-800 text-slate-500'}`}>
+          <span className={`text-xs px-2 py-0.5 rounded-full ${config.hasCredentials ? 'bg-[var(--success)]/10 text-[var(--success)]' : 'bg-[var(--rail)] text-[var(--text-muted)]'}`}>
             {config.hasCredentials ? 'credentials set' : 'no credentials'}
           </span>
         </div>
       )}
 
       {/* Settings form */}
-      <Card className="border border-[#1e2130] p-5">
+      <Card className="border border-[var(--rail)] p-5">
         <form onSubmit={handleSave} noValidate>
-          <h2 className="text-sm font-semibold text-slate-200 mb-4">Storage Backend</h2>
+          <h2 className="text-sm font-semibold text-[var(--text)] mb-4">Storage Backend</h2>
 
           {/* Provider radio cards */}
           <div className="space-y-3 mb-6">
@@ -206,22 +211,22 @@ export default function EmailAttachmentSettingsPage() {
                   onClick={() => setSelectedProvider(key)}
                   className={`w-full text-left rounded-lg border p-4 transition-all ${
                     isSelected
-                      ? 'border-blue-500 bg-blue-900/10'
-                      : 'border-[#1e2130] bg-[#080a0d] hover:border-blue-500/50'
+                      ? 'border-[var(--accent)] bg-[var(--accent)]/10'
+                      : 'border-[var(--rail)] bg-[var(--surface-2)] hover:border-[var(--accent)]/50'
                   }`}
                 >
                   <div className="flex items-start gap-3">
                     <div className={`w-4 h-4 mt-0.5 rounded-full border-2 flex-shrink-0 flex items-center justify-center ${
-                      isSelected ? 'border-blue-500 bg-blue-500' : 'border-slate-500'
+                      isSelected ? 'border-[var(--accent)] bg-[var(--accent)]' : 'border-slate-500'
                     }`}>
                       {isSelected && <div className="w-1.5 h-1.5 rounded-full bg-white" />}
                     </div>
                     <div>
-                      <div className="text-sm font-medium text-slate-200 flex items-center gap-2">
+                      <div className="text-sm font-medium text-[var(--text)] flex items-center gap-2">
                         <span>{info.icon}</span>
                         {info.label}
                       </div>
-                      <p className="text-xs text-slate-500 mt-0.5">{info.description}</p>
+                      <p className="text-xs text-[var(--text-muted)] mt-0.5">{info.description}</p>
                     </div>
                   </div>
                 </button>
@@ -231,32 +236,32 @@ export default function EmailAttachmentSettingsPage() {
 
           {/* Cloudinary credentials */}
           {selectedProvider === 'cloudinary' && (
-            <div className="border border-[#1e2130] rounded-lg p-4 mb-6 bg-[#080a0d] space-y-4">
-              <h3 className="text-xs font-semibold text-slate-300 uppercase tracking-wider mb-3">
+            <div className="border border-[var(--rail)] rounded-lg p-4 mb-6 bg-[var(--surface-2)] space-y-4">
+              <h3 className="text-xs font-semibold text-[var(--text-muted)] uppercase tracking-wider mb-3">
                 Cloudinary Credentials
               </h3>
               <div>
-                <label className="block text-xs text-slate-400 mb-1">Cloud Name</label>
+                <label className="block text-xs text-[var(--text-muted)] mb-1">Cloud Name</label>
                 <Input
                   value={cloudName}
                   onChange={e => setCloudName(e.target.value)}
                   placeholder="my-cloud"
-                  className="bg-[#0f1117] border border-[#1e2130] text-slate-200 placeholder:text-slate-600 w-full"
+                  className="bg-[var(--surface-2)] border border-[var(--rail)] text-[var(--text)] placeholder:text-[var(--text-dim)] w-full"
                 />
               </div>
               <div>
-                <label className="block text-xs text-slate-400 mb-1">API Key</label>
+                <label className="block text-xs text-[var(--text-muted)] mb-1">API Key</label>
                 <Input
                   value={apiKey}
                   onChange={e => setApiKey(e.target.value)}
                   placeholder="123456789012345"
-                  className="bg-[#0f1117] border border-[#1e2130] text-slate-200 placeholder:text-slate-600 w-full"
+                  className="bg-[var(--surface-2)] border border-[var(--rail)] text-[var(--text)] placeholder:text-[var(--text-dim)] w-full"
                 />
               </div>
               <div>
-                <label className="block text-xs text-slate-400 mb-1">
+                <label className="block text-xs text-[var(--text-muted)] mb-1">
                   API Secret
-                  <span className="ml-2 text-slate-600 normal-case font-normal">(shown masked after first save)</span>
+                  <span className="ml-2 text-[var(--text-dim)] normal-case font-normal">(shown masked after first save)</span>
                 </label>
                 <div className="relative">
                   <Input
@@ -264,66 +269,66 @@ export default function EmailAttachmentSettingsPage() {
                     value={apiSecret}
                     onChange={e => setApiSecret(e.target.value)}
                     placeholder="••••••••••••••••"
-                    className="bg-[#0f1117] border border-[#1e2130] text-slate-200 placeholder:text-slate-600 w-full pr-10"
+                    className="bg-[var(--surface-2)] border border-[var(--rail)] text-[var(--text)] placeholder:text-[var(--text-dim)] w-full pr-10"
                   />
                   <button
                     type="button"
                     onClick={() => setShowCloudinarySecret(v => !v)}
-                    className="absolute right-2 top-1/2 -translate-y-1/2 text-xs text-slate-500 hover:text-slate-300"
+                    className="absolute right-2 top-1/2 -translate-y-1/2 text-xs text-[var(--text-muted)] hover:text-[var(--text-muted)]"
                   >
-                    {showCloudinarySecret ? '🙈' : '👁'}
+                    {showCloudinarySecret ? <HugeiconsIcon icon={ViewOffIcon} size={14} strokeWidth={1.5} /> : <HugeiconsIcon icon={ViewIcon} size={14} strokeWidth={1.5} />}
                   </button>
                 </div>
-                <p className="text-[10px] text-slate-500 mt-1">Find these in your Cloudinary Dashboard → Settings → API Keys.</p>
+                <p className="text-[10px] text-[var(--text-muted)] mt-1">Find these in your Cloudinary Dashboard → Settings → API Keys.</p>
               </div>
             </div>
           )}
 
           {/* Telegram credentials */}
           {selectedProvider === 'telegram' && (
-            <div className="border border-[#1e2130] rounded-lg p-4 mb-6 bg-[#080a0d] space-y-4">
-              <h3 className="text-xs font-semibold text-slate-300 uppercase tracking-wider mb-3">
+            <div className="border border-[var(--rail)] rounded-lg p-4 mb-6 bg-[var(--surface-2)] space-y-4">
+              <h3 className="text-xs font-semibold text-[var(--text-muted)] uppercase tracking-wider mb-3">
                 Telegram Bot Credentials
               </h3>
               <div>
-                <label className="block text-xs text-slate-400 mb-1">Bot Token</label>
+                <label className="block text-xs text-[var(--text-muted)] mb-1">Bot Token</label>
                 <div className="relative">
                   <Input
                     type={showBotToken ? 'text' : 'password'}
                     value={botToken}
                     onChange={e => setBotToken(e.target.value)}
                     placeholder="123456789:ABCdefGHIjklMNOpqrsTUVwxyz"
-                    className="bg-[#0f1117] border border-[#1e2130] text-slate-200 placeholder:text-slate-600 w-full pr-10"
+                    className="bg-[var(--surface-2)] border border-[var(--rail)] text-[var(--text)] placeholder:text-[var(--text-dim)] w-full pr-10"
                   />
                   <button
                     type="button"
                     onClick={() => setShowBotToken(v => !v)}
-                    className="absolute right-2 top-1/2 -translate-y-1/2 text-xs text-slate-500 hover:text-slate-300"
+                    className="absolute right-2 top-1/2 -translate-y-1/2 text-xs text-[var(--text-muted)] hover:text-[var(--text-muted)]"
                   >
-                    {showBotToken ? '🙈' : '👁'}
+                    {showBotToken ? <HugeiconsIcon icon={ViewOffIcon} size={14} strokeWidth={1.5} /> : <HugeiconsIcon icon={ViewIcon} size={14} strokeWidth={1.5} />}
                   </button>
                 </div>
-                <p className="text-[10px] text-slate-500 mt-1">
+                <p className="text-[10px] text-[var(--text-muted)] mt-1">
                   Get it from{' '}
-                  <a href="https://t.me/BotFather" target="_blank" rel="noopener noreferrer" className="underline hover:text-blue-400">
+                  <a href="https://t.me/BotFather" target="_blank" rel="noopener noreferrer" className="underline hover:text-[var(--accent)]">
                     @BotFather
                   </a>{' '}
                   — then add your bot to a private channel and forward a message to get the chat ID via{' '}
-                  <a href="https://t.me/getidsbot" target="_blank" rel="noopener noreferrer" className="underline hover:text-blue-400">
+                  <a href="https://t.me/getidsbot" target="_blank" rel="noopener noreferrer" className="underline hover:text-[var(--accent)]">
                     @getidsbot
                   </a>
                   .
                 </p>
               </div>
               <div>
-                <label className="block text-xs text-slate-400 mb-1">Chat / Channel ID</label>
+                <label className="block text-xs text-[var(--text-muted)] mb-1">Chat / Channel ID</label>
                 <Input
                   value={chatId}
                   onChange={e => setChatId(e.target.value)}
                   placeholder="-1001234567890"
-                  className="bg-[#0f1117] border border-[#1e2130] text-slate-200 placeholder:text-slate-600 w-full"
+                  className="bg-[var(--surface-2)] border border-[var(--rail)] text-[var(--text)] placeholder:text-[var(--text-dim)] w-full"
                 />
-                <p className="text-[10px] text-slate-500 mt-1">Numeric ID of the private channel or chat where files will be stored.</p>
+                <p className="text-[10px] text-[var(--text-muted)] mt-1">Numeric ID of the private channel or chat where files will be stored.</p>
               </div>
             </div>
           )}
@@ -341,21 +346,21 @@ export default function EmailAttachmentSettingsPage() {
                 (selectedProvider === 'telegram' && (!botToken.trim() || !chatId.trim()))
               )}
             >
-              {testing ? 'Testing…' : '⚡ Test Connection'}
+              {testing ? 'Testing…' : ' Test Connection'}
             </Button>
             {testResult && (
-              <p className={`text-xs mt-2 ${testResult.ok ? 'text-emerald-400' : 'text-red-400'}`}>
-                {testResult.ok ? '✅' : '❌'} {testResult.message}
+              <p className={`text-xs mt-2 ${testResult.ok ? 'text-[var(--success)]' : 'text-[var(--danger)]'}`}>
+                {testResult.ok ? <HugeiconsIcon icon={CheckmarkCircle01Icon} size={14} strokeWidth={1.5} /> : <HugeiconsIcon icon={CancelCircleIcon} size={14} strokeWidth={1.5} />} {testResult.message}
               </p>
             )}
           </div>
 
           {/* Save */}
           {saveError && (
-            <div className="mb-3 text-red-400 text-xs">{saveError}</div>
+            <div className="mb-3 text-[var(--danger)] text-xs">{saveError}</div>
           )}
           {saveSuccess && (
-            <div className="mb-3 text-emerald-400 text-xs">✓ Settings saved successfully.</div>
+            <div className="mb-3 text-[var(--success)] text-xs"> Settings saved successfully.</div>
           )}
           <div className="flex gap-3">
             <Button variant="primary" size="sm" type="submit" loading={saving}>
@@ -380,13 +385,13 @@ export default function EmailAttachmentSettingsPage() {
       </Card>
 
       {/* Info card */}
-      <Card className="border border-[#1e2130] p-4">
-        <h3 className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">How it works</h3>
-        <ul className="text-xs text-slate-500 space-y-1.5">
-          <li>📥 <strong className="text-slate-400">Inbound</strong> — When an email with attachments arrives, the system automatically downloads each attachment from Stalwart JMAP and uploads it to the configured storage.</li>
-          <li>📤 <strong className="text-slate-400">Outbound</strong> — Files attached when composing a message are uploaded to the chosen storage backend before sending.</li>
-          <li>🔄 <strong className="text-slate-400">Already stored</strong> — Existing stored attachments are not moved when you switch backends.</li>
-          <li>🔒 <strong className="text-slate-400">Credentials</strong> — Stored encrypted (AES-256-GCM) in the database and never exposed via the API.</li>
+      <Card className="border border-[var(--rail)] p-4">
+        <h3 className="text-xs font-semibold text-[var(--text-muted)] uppercase tracking-wider mb-2">How it works</h3>
+        <ul className="text-xs text-[var(--text-muted)] space-y-1.5">
+          <li><HugeiconsIcon icon={InboxIcon} size={14} strokeWidth={1.5} className="inline" /> <strong className="text-[var(--text-muted)]">Inbound</strong> — When an email with attachments arrives, the system automatically downloads each attachment from Stalwart JMAP and uploads it to the configured storage.</li>
+          <li><HugeiconsIcon icon={SentIcon} size={14} strokeWidth={1.5} className="inline" /> <strong className="text-[var(--text-muted)]">Outbound</strong> — Files attached when composing a message are uploaded to the chosen storage backend before sending.</li>
+          <li><HugeiconsIcon icon={RefreshIcon} size={14} strokeWidth={1.5} className="inline" /> <strong className="text-[var(--text-muted)]">Already stored</strong> — Existing stored attachments are not moved when you switch backends.</li>
+          <li><HugeiconsIcon icon={LockIcon} size={14} strokeWidth={1.5} className="inline" /> <strong className="text-[var(--text-muted)]">Credentials</strong> — Stored encrypted (AES-256-GCM) in the database and never exposed via the API.</li>
         </ul>
       </Card>
     </div>

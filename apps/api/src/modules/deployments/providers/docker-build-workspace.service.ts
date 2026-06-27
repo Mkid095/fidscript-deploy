@@ -18,33 +18,37 @@ export class DockerBuildWorkspaceService {
     try { rmSync(ws, { recursive: true, force: true }); } catch { /* ignore */ }
   }
 
-  async fetchGitSource(opts: {
-    url: string;
-    branch: string;
-    credentials?: string;
-    workspace: string;
-  }): Promise<void> {
-    const { url, branch, credentials, workspace } = opts;
+ async fetchGitSource(opts: {
+  url: string;
+  branch: string;
+  credentials?: string;
+  workspace: string;
+}): Promise<void> {
+  const { url, branch, credentials, workspace } = opts;
 
-    try {
-      const cloneCmd = `git clone --depth=1 --branch "${branch}" "${url}" "${workspace}"`;
-      if (credentials) {
-        const credFile = join(workspace, '.gitcred');
-        const [user, token] = credentials.includes(':')
-          ? credentials.split(':')
-          : ['', credentials];
-        const credContent = `username=${user}\npassword=${token}`;
-        writeFileSync(credFile, credContent, { mode: 0o600 });
-        this.exec(`GIT_TERMINAL_PROMPT=0 git clone --depth=1 --branch "${branch}" "${url}" "${workspace}"`, {
-          env: { ...process.env, GIT_ASKPASS: 'echo', GIT_CREDENTIAL_HELPER: `store --file ${credFile}` },
-        });
-      } else {
-        this.exec(`GIT_TERMINAL_PROMPT=0 ${cloneCmd}`);
-      }
-    } catch (err) {
-      throw new Error(`Git clone failed: ${err instanceof Error ? err.message : String(err)}`);
+  try {
+    // Build the clone URL. When credentials are provided, embed them directly
+    // so that git never has to prompt interactively (which would fail in a
+    // non-TTY server environment and cause a 500).
+    let cloneUrl = url;
+    if (credentials) {
+      const [user, token] = credentials.includes(':')
+        ? credentials.split(':')
+        : ['', credentials];
+      const parsed = new URL(url);
+      cloneUrl = `${parsed.protocol}//${user}:${token}@${parsed.host}${parsed.pathname}`;
     }
+
+    // depth=5 ensures we get enough history for config files that may have been
+    // added in recent but not-necessarily-the-latest commit. depth=1 often misses
+    // files added in the tip commit when the tip is a merge commit.
+    const cloneCmd = `git clone --depth=5 --branch "${branch}" "${cloneUrl}" "${workspace}"`;
+    this.exec(cloneCmd);
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
+    throw new Error(`Git clone failed: ${msg}`);
   }
+}
 
   /**
    * Download an archive (zip/tar.gz) from object storage and extract it into
