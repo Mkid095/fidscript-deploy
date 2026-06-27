@@ -107,6 +107,19 @@ Statuses: `Planned` · `In Progress` · `Verified`
   - **Reverted** the compose change — :25 is not a real fix (relay denied), so the platform is back to the documented `"Greeting never received"` state on :465, ready for a proper fix.
   - **Root cause and fix path**: this is a **Stalwart-side** issue, not an application bug. The application-side transport configuration (`stalwart-transport.ts` + `smtp-send.service`) is correct for the assumed contract. Options to unblock real outbound delivery: (a) **investigate the Stalwart `submissions` listener** — it may need an explicit `auth` / `directory` / `relay` config block, or a properly-registered SMTP submission account (the `admin` directory user may not have implicit submission rights on :465); (b) **try an earlier Stalwart v0.16 patch** (the upgrade to :latest = v0.16.11 may have introduced this — v0.16.10 was working at the JMAP level, the SMTP-side regression is possible); (c) **configure Stalwart to use the `queue` for outbound delivery** and submit via the JMAP/api rather than SMTP submission. All three require a Stalwart config change (or a rollback) — NOT an application change. Recorded here so this is not lost.
 
+- [x] **2026-06-27 — Canonical email test accounts (reproducible test strategy).** Documented here so every email feature is verified against the same end-to-end path before being marked done.
+
+  **Outbound recipient** (proves send + relay + SPF/DKIM/DMARC + deliverability):
+  - `revccnt@gmail.com`
+
+  **Inbound sender** (proves the receive pipeline: Gmail → MX → Stalwart → webhook/JMAP Push → DB → dashboard):
+  - `revccnt@gmail.com` (send FROM this to the alias below)
+
+  **Inbound destination** (proves JMAP Push + jmapMessageId + attachment extraction + webhook delivery into the dashboard):
+  - An alias on any existing FIDScript-managed domain (e.g. `test@<yourdomain>`, `inbound@<yourdomain>`, `qa@<yourdomain>`). The alias routes into a project mailbox that has the API/JMAP path active.
+
+  All email features (send, receive, attachments, threading, jmapMessageId, webhooks, aliases, forwarding, spam handling) MUST be verified using these addresses end-to-end before a feature is considered complete.
+
 - [x] **2026-06-20 — Documentation-first phase entered.** Backend end-to-end verified; implementation
   paused. Building the complete blueprint before any new frontend feature is built. The full doc
   set lives in `docs/product/` (the operating-system blueprint) + `docs/phases/frontend/` (the
