@@ -1,4 +1,6 @@
 import { Module, forwardRef } from '@nestjs/common';
+import { AuthModule } from '@/modules/auth/auth.module';
+import { ProjectsModule } from '@/modules/projects/projects.module';
 import { EmailDomainController } from './controllers/email-domain.controller';
 import { EmailMailboxController } from './controllers/email-mailbox.controller';
 import { EmailAliasController } from './controllers/email-alias.controller';
@@ -45,7 +47,18 @@ import { AttachmentStorageService } from './services/attachment-storage.service'
 import { EmailAttachmentListener } from './services/attachment-event-listener.service';
 
 @Module({
-  imports: [DomainsModule, QueuesModule, forwardRef(() => StorageModule)],
+  // AuthModule: provides JwtService + ApiKeyOrJwtGuard (for BaaS email.send
+  // and other BaaS endpoints). forwardRef because AuthModule imports
+  // EmailModule (circular — AuthModule imports JwtAuthGuard etc. into the
+  // platform mail module).
+  // ProjectsModule: provides ProjectApiKeyService used by ApiKeyOrJwtGuard.
+  imports: [
+    DomainsModule,
+    QueuesModule,
+    forwardRef(() => StorageModule),
+    forwardRef(() => AuthModule),
+    ProjectsModule,
+  ],
   controllers: [
     EmailDomainController,
     EmailMailboxController,
