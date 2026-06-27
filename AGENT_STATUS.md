@@ -107,6 +107,21 @@ Statuses: `Planned` · `In Progress` · `Verified`
   - **Reverted** the compose change — :25 is not a real fix (relay denied), so the platform is back to the documented `"Greeting never received"` state on :465, ready for a proper fix.
   - **Root cause and fix path**: this is a **Stalwart-side** issue, not an application bug. The application-side transport configuration (`stalwart-transport.ts` + `smtp-send.service`) is correct for the assumed contract. Options to unblock real outbound delivery: (a) **investigate the Stalwart `submissions` listener** — it may need an explicit `auth` / `directory` / `relay` config block, or a properly-registered SMTP submission account (the `admin` directory user may not have implicit submission rights on :465); (b) **try an earlier Stalwart v0.16 patch** (the upgrade to :latest = v0.16.11 may have introduced this — v0.16.10 was working at the JMAP level, the SMTP-side regression is possible); (c) **configure Stalwart to use the `queue` for outbound delivery** and submit via the JMAP/api rather than SMTP submission. All three require a Stalwart config change (or a rollback) — NOT an application change. Recorded here so this is not lost.
 
+- [x] **2026-06-27 — CORRECTION to the SMTP investigation above: the live `:465` submissions listener is FINE — the "Greeting never received" is an APPLICATION/nodemailer bug, not a Stalwart issue.** Per the user's diagnostic plan (interactive EHLO probe + clean disposable Stalwart on alt host ports), ran a clean Node TLS+SMTP probe against the live `:465` and a disposable `stalwartlabs/stalwart:latest` (v0.16.11) on `:1465`. **Results — the live `:465` is fully working:**
+
+  ```
+  [LIVE:465] TCP OK
+  [LIVE:465] TLS OK  TLSv1.3  TLS_AES_256_GCM_SHA384
+  [LIVE:465] GREETING "220 deploy.fidscript.com Stalwart ESMTP at your service"
+  [LIVE:465] EHLO    250-deploy.fidscript.com you had me at EHLO
+                     250-SMTPUTF8  250-SIZE 104857600  250-REQUIRETLS
+                     250-PIPELINING  250-NO-SOLICITING  250-ENHANCEDSTATUSCODES
+                     250-CHUNKING  250-BINARYMIME
+                     250-AUTH PLAIN LOGIN XOAUTH2 OAUTHBEARER  250 8BITMIME
+  ```
+
+  TLS + 220 greeting + EHLO (250) with `AUTH PLAIN LOGIN` advertised — the SMTP state machine is fully alive on the live `:465`. The earlier "no greeting" finding was a **probe bug** (piped `echo Q` closes the socket before the greeting is read; `openssl -starttls smtp` confuses the already-implicit-TLS port). The disposable `:1465` gave `ECONNRESET` during TLS, but that is because **default v0.16 does NOT auto-bind `:465`** without an explicit `submissions` listener in config — our live `config.json` defines `submissions: bind [::]:465`, so it works. **Therefore: the Stalwart side is correct. The `"Greeting never received"` from `smtp-send.service` is an application/nodemailer bug** (the server is sending the 220; nodemailer is either not reading it, timing out, failing AUTH and misreporting, or interacting badly with the self-signed cert despite `rejectUnauthorized: false`). The previous entry's "Root cause and fix path: this is a Stalwart-side issue" was **wrong** — the real fix path is in the application transport layer (`stalwart-transport.ts` + `smtp-send.service`): investigate the nodemailer version, AUTH handling, self-signed-cert handling, and greeting-read timeout. This correction supersedes the "Stalwart-side" framing above.
+
 - [x] **2026-06-27 — Canonical email test accounts (reproducible test strategy).** Documented here so every email feature is verified against the same end-to-end path before being marked done.
 
   **Outbound recipient** (proves send + relay + SPF/DKIM/DMARC + deliverability):
