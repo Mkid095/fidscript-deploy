@@ -174,8 +174,16 @@ export class EmailModule {
     return res.mailboxes;
   }
 
-  async createMailbox(projectId: string, email: string, name?: string) {
-    return this.client.post<Mailbox>(`/api/v1/projects/${projectId}/email/mailboxes`, { email, name });
+  /**
+   * Create a mailbox. The backend requires `domain` + `localPart` + a `password`
+   * (the platform returns the plaintext password only once). Pass `name` for the
+   * mailbox display name and `quotaMb` for the size cap.
+   */
+  async createMailbox(
+    projectId: string,
+    data: { domain: string; localPart: string; password: string; name?: string; quotaMb?: number },
+  ): Promise<Mailbox> {
+    return this.client.post<Mailbox>(`/api/v1/projects/${projectId}/email/mailboxes`, data);
   }
 
   async deleteMailbox(projectId: string, mailboxId: string) {
@@ -187,8 +195,20 @@ export class EmailModule {
     return res.aliases;
   }
 
-  async createAlias(projectId: string, alias: string, forwardsTo: string[]) {
-    return this.client.post<EmailAlias>(`/api/v1/projects/${projectId}/email/aliases`, { alias, forwardsTo });
+  /**
+   * Create an alias. The backend requires `domain` + `localPart` + a typed `targets`
+   * array (each target is a mailbox, external address, or webhook URL).
+   */
+  async createAlias(
+    projectId: string,
+    data: {
+      domain: string;
+      localPart: string;
+      targets: Array<{ type: 'mailbox' | 'external' | 'webhook'; mailboxId?: string; address?: string; url?: string }>;
+      description?: string;
+    },
+  ): Promise<EmailAlias> {
+    return this.client.post<EmailAlias>(`/api/v1/projects/${projectId}/email/aliases`, data);
   }
 
   async deleteAlias(projectId: string, aliasId: string) {
