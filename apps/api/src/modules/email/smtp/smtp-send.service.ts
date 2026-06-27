@@ -74,7 +74,12 @@ export class SmtpSendService {
 
     // Stalwart v0.15.5: port 465 (implicit TLS), AUTH PLAIN with admin token.
     const smtpHost = this.configService.get<string>('STALWART_SMTP_HOST', 'fidscript_stalwart');
-    const smtpPort = this.configService.get<number>('STALWART_SMTP_PORT', 465);
+    // Coerce to number: the env var is a STRING ("465" in docker-compose), and
+    // "465" === 465 is false — so `secure: port === 465` in the transport
+    // would compare string to number, return false, and nodemailer would connect
+    // plain TCP to the SMTPS port (465) → 30s greeting timeout. Coercing here
+    // + Number(opts.port) in the transport is defense in depth.
+    const smtpPort = Number(this.configService.get<string>('STALWART_SMTP_PORT', '465'));
 
     const transporter = await createStalwartTransport({
       host: smtpHost,
