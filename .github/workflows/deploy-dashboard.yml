@@ -33,6 +33,7 @@ jobs:
           port: ${{ inputs.vps_port }}
           username: root
           key: ${{ secrets.VPS_SSH_PRIVATE_KEY }}
+          debug: true
           script: |
             cd /data/fidscript/docker
             docker pull ghcr.io/mkid095/dashboard:${{ inputs.image_tag }}
