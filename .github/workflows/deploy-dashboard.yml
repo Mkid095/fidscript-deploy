@@ -33,9 +33,18 @@ jobs:
           port: ${{ inputs.vps_port }}
           username: root
           key: ${{ secrets.VPS_SSH_PRIVATE_KEY }}
-          command_timeout: 20m
+          timeout: 5m
+          command_timeout: 30m
           script: |
             cd /data/fidscript/docker
-            docker pull ghcr.io/mkid095/dashboard:${{ inputs.image_tag }}
+            docker pull ghcr.io/mkid095/dashboard:${{ inputs.image_tag }} &
+            DOCKER_PID=$!
+            for i in $(seq 1 60); do
+              sleep 10
+              if ! kill -0 $DOCKER_PID 2>/dev/null; then
+                break
+              fi
+              echo "Still pulling... (${i}0s)"
+            done
             docker tag ghcr.io/mkid095/dashboard:${{ inputs.image_tag }} docker-dashboard:latest
             docker compose up -d dashboard --no-deps
