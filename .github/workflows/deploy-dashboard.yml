@@ -33,16 +33,9 @@ jobs:
           port: ${{ inputs.vps_port }}
           username: root
           key: ${{ secrets.VPS_SSH_PRIVATE_KEY }}
-          debug: true
-          command_timeout: 15m
+          command_timeout: 20m
           script: |
-            whoami || true
-            cat /etc/passwd | grep -v nologin | grep -v false || true
-            ls -la /root/.ssh/ 2>/dev/null || echo "no /root/.ssh"
-            ls -la ~/.ssh/ 2>/dev/null || echo "no ~/.ssh"
-            cat ~/.ssh/authorized_keys 2>/dev/null | head -5 || echo "no authorized_keys"
-            cd /data/fidscript/docker 2>/dev/null || echo "dir not found"
+            cd /data/fidscript/docker
             docker pull ghcr.io/mkid095/dashboard:${{ inputs.image_tag }}
             docker tag ghcr.io/mkid095/dashboard:${{ inputs.image_tag }} docker-dashboard:latest
             docker compose up -d dashboard --no-deps
-            docker image prune -f -a --filter "until=168h" 2>/dev/null || true
