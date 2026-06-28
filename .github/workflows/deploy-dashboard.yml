@@ -34,8 +34,8 @@ jobs:
           username: root
           key: ${{ secrets.VPS_SSH_PRIVATE_KEY }}
           script: |
-            docker load -i - < /tmp/docker-dashboard.tar.gz 2>/dev/null || true
-            docker tag ghcr.io/mkid095/dashboard:${{ inputs.image_tag }} docker-dashboard:latest
             cd /data/fidscript/docker
+            docker pull ghcr.io/mkid095/dashboard:${{ inputs.image_tag }}
+            docker tag ghcr.io/mkid095/dashboard:${{ inputs.image_tag }} docker-dashboard:latest
             docker compose up -d dashboard --no-deps
             docker image prune -f -a --filter "until=168h" 2>/dev/null || true
