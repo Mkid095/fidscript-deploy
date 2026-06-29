@@ -205,6 +205,7 @@ model Project {
   envVars              ProjectEnv[]
   invitations          ProjectInvitation[]
   apiKeys              ProjectApiKey[]
+  storageConfig        ProjectStorageConfig?
 
   @@map("projects")
   @@schema("projects")
@@ -349,6 +350,21 @@ model File {
   bucket Bucket @relation(fields: [bucketId], references: [id], onDelete: Cascade)
 
   @@map("files")
+  @@schema("storage")
+}
+
+model ProjectStorageConfig {
+  id                 String   @id @default(uuid())
+  projectId          String   @unique @map("project_id")
+  defaultProvider    String   @default("internal") @map("default_provider")
+  cloudinaryCredsSet Boolean  @default(false) @map("cloudinary_creds_set")
+  telegramCredsSet   Boolean  @default(false) @map("telegram_creds_set")
+  createdAt          DateTime @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt          DateTime @updatedAt @map("updated_at") @db.Timestamptz
+
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@map("project_storage_configs")
   @@schema("storage")
 }
 
@@ -670,6 +686,8 @@ model EmailDomain {
   dmarcVerified  Boolean           @default(false) @map("dmarc_verified")
   mxVerified     Boolean           @default(false) @map("mx_verified")
   dkimSelector   String?           @map("dkim_selector") @db.VarChar(255)
+  dkimPublicKey  String?           @map("dkim_public_key") @db.Text  // Full DKIM TXT value (v=DKIM1; k=ed25519; p=...)
+  catchAllTarget String?           @map("catch_all_target") @db.VarChar(255) // Mailbox ID for catch-all recipient
   ownershipToken String?           @map("ownership_token") @db.VarChar(255) // TXT record value for ownership verification
   verifiedAt     DateTime?         @map("verified_at") @db.Timestamptz
   createdAt      DateTime          @default(now()) @map("created_at") @db.Timestamptz

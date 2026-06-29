@@ -129,6 +129,38 @@ export class RealtimeModule {
     });
   }
 
+  /**
+   * Subscribe to function events for a project. Joins the project room (same
+   * authorization as subscribeProject) and only dispatches events whose type
+   * starts with `function.`.
+   */
+  subscribeFunctions(projectId: string, handler: RealtimeEventHandler): () => void {
+    if (this.socket && !this.joinedProjects.has(projectId)) {
+      this.socket.emit('subscribe_project', { projectId });
+      this.joinedProjects.add(projectId);
+    }
+    return this.registerHandler('function', handler, () => {
+      this.socket?.emit('unsubscribe_project', { projectId });
+      this.joinedProjects.delete(projectId);
+    });
+  }
+
+  /**
+   * Subscribe to storage events for a project. Joins the project room (same
+   * authorization as subscribeProject) and only dispatches events whose type
+   * starts with `storage.`.
+   */
+  subscribeStorage(projectId: string, handler: RealtimeEventHandler): () => void {
+    if (this.socket && !this.joinedProjects.has(projectId)) {
+      this.socket.emit('subscribe_project', { projectId });
+      this.joinedProjects.add(projectId);
+    }
+    return this.registerHandler('storage', handler, () => {
+      this.socket?.emit('unsubscribe_project', { projectId });
+      this.joinedProjects.delete(projectId);
+    });
+  }
+
   /** Register a handler under a prefix and return an unsubscribe fn. */
   private registerHandler(prefix: string, handler: RealtimeEventHandler, onLastRemove: () => void): () => void {
     if (!this.handlers.has(prefix)) this.handlers.set(prefix, new Set());

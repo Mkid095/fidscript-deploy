@@ -1,36 +1,24 @@
 'use client';
 
+import type { EmailDomain } from '@fidscript/sdk';
 import { useEffect, useState } from 'react';
 import { Button, Card, EmptyState, Input, Modal, Spinner } from '@fidscript/ui';
 import Link from 'next/link';
 
+import type { Project } from '@/types';
 import { useAuth } from '@/contexts/auth-context';
 import { useShellProjectId } from '@/contexts/project-context';
-import type { Project } from '@/types';
-
-// Domain type — not re-exported from SDK, define locally
-interface Domain {
-  id: string;
-  name: string;
-  projectId?: string;
-  dnsStatus: string;
-  sslStatus: string;
-  status?: string;
-  ownerId: string;
-  createdAt: string;
-}
 
 const STATUS_COLORS: Record<string, string> = {
-  PENDING: 'bg-[var(--rail)] text-[var(--text-muted)]',
+  PENDING:  'bg-[var(--rail)] text-[var(--text-muted)]',
   VERIFIED: 'bg-blue-900 text-[var(--accent)]',
-  ACTIVE: 'bg-emerald-900 text-[var(--success)]',
-  FAILED: 'bg-red-900 text-[var(--danger)]',
+  ACTIVE:   'bg-emerald-900 text-[var(--success)]',
+  FAILED:   'bg-red-900 text-[var(--danger)]',
 };
 
-const DNS_COLORS: Record<string, string> = {
-  PENDING: 'bg-yellow-900 text-[var(--warning)]',
-  CONFIGURED: 'bg-emerald-900 text-[var(--success)]',
-  UNKNOWN: 'bg-[var(--rail)] text-[var(--text-muted)]',
+const VERIFY_COLORS: Record<string, string> = {
+  true:  'bg-emerald-900 text-[var(--success)]',
+  false: 'bg-[var(--rail)] text-[var(--text-muted)]',
 };
 
 export default function EmailPage() {
@@ -39,7 +27,7 @@ export default function EmailPage() {
   const [projects, setProjects] = useState<Project[]>([]);
   const [pickedProjectId, setPickedProjectId] = useState('');
   const selectedProjectId = shellProjectId ?? pickedProjectId;
-  const [domains, setDomains] = useState<Domain[]>([]);
+  const [domains, setDomains] = useState<EmailDomain[]>([]);
   const [loadingProjects, setLoadingProjects] = useState(!shellProjectId);
   const [loadingDomains, setLoadingDomains] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -76,10 +64,8 @@ export default function EmailPage() {
       setError(null);
       try {
         const sdk = getSdk();
-        const allDomains = await sdk.domains.list();
-        // Filter to domains belonging to this project
-        const projectDomains = allDomains.filter(d => d.projectId === selectedProjectId);
-        setDomains(projectDomains);
+        const list = await sdk.email.listDomains(selectedProjectId);
+        setDomains(list);
       } catch (err) {
         setError(err instanceof Error ? err.message : 'Failed to load domains');
       } finally {
@@ -96,8 +82,8 @@ export default function EmailPage() {
     setAddError(null);
     try {
       const sdk = getSdk();
-      const created = await sdk.domains.create(selectedProjectId, newDomain.trim());
-      setDomains(prev => [...prev, created]);
+      const created = await sdk.email.createDomain(selectedProjectId, newDomain.trim());
+      setDomains(prev => [...prev, created as EmailDomain]);
       setNewDomain('');
       setShowAdd(false);
     } catch (err) {
@@ -173,17 +159,29 @@ export default function EmailPage() {
               <div className="rounded-lg border border-[var(--rail)] bg-[var(--surface-2)] p-5 cursor-pointer transition-colors duration-150 hover:border-[var(--accent)]">
                 <div className="flex items-start justify-between mb-3">
                   <div>
-                    <h3 className="text-sm font-semibold text-[var(--text)] mb-0.5">{domain.name}</h3>
+                    <h3 className="text-sm font-semibold text-[var(--text)] mb-0.5">{domain.domain}</h3>
                     <p className="text-xs text-[var(--text-muted)] font-mono">{domain.id.slice(0, 12)}…</p>
                   </div>
                   <span className={`text-xs px-2 py-0.5 rounded-full capitalize ${STATUS_COLORS[domain.status ?? 'UNKNOWN'] ?? 'bg-[var(--rail)] text-[var(--text-muted)]'}`}>
                     {domain.status ?? 'UNKNOWN'}
                   </span>
                 </div>
-                <div className="flex items-center gap-2">
-                  <span className="text-xs text-[var(--text-muted)]">DNS:</span>
-                  <span className={`text-xs px-2 py-0.5 rounded-full capitalize ${DNS_COLORS[domain.dnsStatus] ?? 'bg-[var(--rail)] text-[var(--text-muted)]'}`}>
-                    {domain.dnsStatus ?? 'UNKNOWN'}
+                <div className="flex flex-wrap items-center gap-2">
+                  <span className="text-xs text-[var(--text-muted)]">DKIM:</span>
+                  <span className={`text-xs px-2 py-0.5 rounded-full capitalize ${VERIFY_COLORS[String(domain.dkimVerified)]}`}>
+                    {domain.dkimVerified ? '✓' : '✗'}
+                  </span>
+                  <span className="text-xs text-[var(--text-muted)]">SPF:</span>
+                  <span className={`text-xs px-2 py-0.5 rounded-full capitalize ${VERIFY_COLORS[String(domain.spfVerified)]}`}>
+                    {domain.spfVerified ? '✓' : '✗'}
+                  </span>
+                  <span className="text-xs text-[var(--text-muted)]">DMARC:</span>
+                  <span className={`text-xs px-2 py-0.5 rounded-full capitalize ${VERIFY_COLORS[String(domain.dmarcVerified)]}`}>
+                    {domain.dmarcVerified ? '✓' : '✗'}
+                  </span>
+                  <span className="text-xs text-[var(--text-muted)]">MX:</span>
+                  <span className={`text-xs px-2 py-0.5 rounded-full capitalize ${VERIFY_COLORS[String(domain.mxVerified)]}`}>
+                    {domain.mxVerified ? '✓' : '✗'}
                   </span>
                 </div>
               </div>

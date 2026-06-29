@@ -8,16 +8,17 @@ interface CardProps {
 
 const paddingClasses = {
   none: '',
-  sm: 'p-3',
-  md: 'p-5',
-  lg: 'p-6',
+  sm: 'p-3 sm:p-4',
+  md: 'p-4 sm:p-6',
+  lg: 'p-6 sm:p-8',
 };
 
 export function Card({ children, className = '', padding = 'md' }: CardProps) {
   return (
     <div
       className={`
-        bg-[#0f1217] border border-slate-800 rounded-xl
+        rounded-2xl border border-[var(--rail)] bg-[var(--surface)]
+        dark:border-[var(--rail)] dark:bg-[var(--surface)]
         ${paddingClasses[padding]}
         ${className}
       `}
@@ -37,7 +38,7 @@ Card.Header = function CardHeader({ children, className = '' }: { children: Reac
 
 Card.Title = function CardTitle({ children, className = '' }: { children: React.ReactNode; className?: string }) {
   return (
-    <h3 className={`text-lg font-bold text-white ${className}`}>
+    <h3 className={`text-base font-medium text-[var(--text)] ${className}`}>
       {children}
     </h3>
   );
@@ -45,7 +46,7 @@ Card.Title = function CardTitle({ children, className = '' }: { children: React.
 
 Card.Description = function CardDescription({ children, className = '' }: { children: React.ReactNode; className?: string }) {
   return (
-    <p className={`text-sm text-slate-400 ${className}`}>
+    <p className={`text-sm text-[var(--text-muted)] ${className}`}>
       {children}
     </p>
   );

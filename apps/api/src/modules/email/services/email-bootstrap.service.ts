@@ -1,6 +1,7 @@
 import { Inject, Injectable, Logger, type OnApplicationBootstrap } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import * as crypto from 'crypto';
+import { PrismaService } from '@/prisma/prisma.service';
 import { EMAIL_PROVIDER, IEmailProvider } from '@/modules/email/providers/i-email-provider';
 
 /**
@@ -16,6 +17,11 @@ import { EMAIL_PROVIDER, IEmailProvider } from '@/modules/email/providers/i-emai
  *        - alert@<domain>     — monitoring notifications.
  *        - noreply@<domain>   — fallback SMTP_FROM for transactional mail.
  *        - postmaster@<domain>— RFC 5321 requirement for a working MX.
+ *   3. The PLATFORM_DOMAIN is registered in the platform's EmailDomain table.
+ *      This is required so the inbound webhook can look up the domain when
+ *      Stalwart receives mail for it and calls POST /email/inbound/webhook.
+ *      Without this row, the webhook returns "Domain not found" and the
+ *      inbound message is silently dropped.
  *
  * Idempotent and failure-tolerant: a Stalwart outage must not block API boot
  * (every call is guarded; the next boot retries).
@@ -30,12 +36,36 @@ export class EmailBootstrapService implements OnApplicationBootstrap {
   constructor(
     @Inject(EMAIL_PROVIDER) private readonly email: IEmailProvider,
     private readonly config: ConfigService,
+    private readonly prisma: PrismaService,
   ) {}
 
   async onApplicationBootstrap(): Promise<void> {
     const domain = this.config.get<string>('PLATFORM_DOMAIN', 'deploy.fidscript.com');
     try {
+      // Step 1: Ensure domain exists in Stalwart (mail server).
       const d = await this.email.ensureDomain({ name: domain, isEnabled: true });
+
+      // Step 2: Register in the platform DB so the inbound webhook can route
+      // mail for this domain. The webhook's EmailInboundService looks up the
+      // domain by name before creating EmailMessage rows.
+      // Use upsert so this is idempotent — same domain is re-registered on
+      // every boot (safe; preserves existing status/verified flags).
+      const PLATFORM_PROJECT_ID = this.config.get<string>('PLATFORM_PROJECT_ID', '00000000-0000-0000-0000-000000000000');
+      await this.prisma.emailDomain.upsert({
+        where: { projectId_domain: { projectId: PLATFORM_PROJECT_ID, domain } },
+        create: {
+          projectId: PLATFORM_PROJECT_ID,
+          domain,
+          status: 'ACTIVE',
+          dkimVerified: false,
+          spfVerified: false,
+          dmarcVerified: false,
+          mxVerified: false,
+          dkimSelector: null,
+        },
+        update: {}, // keep existing verified flags if already set
+      });
+      this.logger.log(`Platform domain ${domain} registered in platform DB`);
       const password = this.resolvePassword();
       // The order matters: mailboxes require the domain to exist first.
       // We re-issue ensures on every boot so a fresh deployment auto-creates

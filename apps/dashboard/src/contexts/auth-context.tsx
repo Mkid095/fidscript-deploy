@@ -31,6 +31,8 @@ interface AuthContextValue extends AuthState {
   clearError: () => void;
   /** Returns an SDK instance authenticated with the current access token. */
   getSdk: () => FidscriptSDK;
+  /** Returns the current access token, or null if not authenticated. */
+  getToken: () => string | null;
   /** Look up a user's preferred auth method by email (used on login page before credentials). */
   lookupAuthMethod: (email: string) => Promise<'PASSWORD' | 'MAGIC_CODE' | null>;
 }
@@ -247,6 +249,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     throw new Error('Not authenticated — SDK not initialized. Did session restore complete?');
   }, []);
 
+  const getToken = useCallback(function getToken(): string | null {
+    return localStorage.getItem(ACCESS_TOKEN_KEY) ?? localStorage.getItem(LEGACY_TOKEN_KEY);
+  }, []);
+
   return (
     <AuthContext.Provider
       value={{
@@ -259,6 +265,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         changePassword,
         clearError,
         getSdk,
+        getToken,
         lookupAuthMethod,
       }}
     >

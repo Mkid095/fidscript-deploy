@@ -1,8 +1,11 @@
 'use client';
 
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback, useRef } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
+import Link from 'next/link';
 import { Card, Button, Input, Spinner, EmptyState, Toast } from '@fidscript/ui';
+import { HugeiconsIcon } from '@hugeicons/react';
+import { Settings01Icon } from '@hugeicons/core-free-icons';
 
 import { useAuth } from '@/contexts/auth-context';
 import { useShellProjectId } from '@/contexts/project-context';
@@ -17,13 +20,13 @@ interface Bucket {
 }
 
 const PROVIDERS = [
-  { value: 'minio', label: 'MinIO', available: true },
-  { value: 'cloudinary', label: 'Cloudinary', available: false },
-  { value: 'telegram', label: 'Telegram', available: false },
+  { value: 'internal', label: 'MinIO', available: true },
+  { value: 'cloudinary', label: 'Cloudinary', available: true },
+  { value: 'telegram', label: 'Telegram', available: true },
 ];
 
 export default function StoragePage() {
-  const { getSdk } = useAuth();
+  const { getSdk, getToken } = useAuth();
   const router = useRouter();
   const searchParams = useSearchParams();
   const shellProjectId = useShellProjectId();
@@ -39,9 +42,10 @@ export default function StoragePage() {
   const [creating, setCreating] = useState(false);
   const [createError, setCreateError] = useState<string | null>(null);
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
+  const rtRef = useRef<(() => void) | null>(null);
 
   useEffect(() => {
-    if (shellProjectId) return; // shell chose; nothing to load
+    if (shellProjectId) return;
     async function loadProjects() {
       try {
         const sdk = getSdk();
@@ -76,10 +80,39 @@ export default function StoragePage() {
     }
     loadBuckets();
 
+    // Realtime subscription for storage events
+    async function setupRealtime() {
+      try {
+        const sdk = getSdk();
+        const token = getToken();
+        if (!token) return;
+        const rt = sdk.realtime;
+        await rt.connect(token);
+        rtRef.current = rt.subscribeStorage(selectedProject, (event) => {
+          if (event.type === 'storage.bucket.created') {
+            const payload = event.metadata as { bucket: Bucket };
+            setBuckets(prev => {
+              if (prev.find(b => b.id === payload.bucket.id)) return prev;
+              return [...prev, payload.bucket];
+            });
+          } else if (event.type === 'storage.bucket.deleted') {
+            const payload = event.metadata as { bucketId: string };
+            setBuckets(prev => prev.filter(b => b.id !== payload.bucketId));
+          }
+        });
+      } catch {
+        // realtime optional — don't fail page load
+      }
+    }
+    setupRealtime();
+
     const url = new URL(window.location.href);
     url.searchParams.set('project', selectedProject);
     router.replace(url.pathname + url.search);
-  }, [selectedProject, router, getSdk]);
+
+    return () => { rtRef.current?.(); };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedProject, router]);
 
   const handleCreate = useCallback(async (e: React.FormEvent) => {
     e.preventDefault();
@@ -89,7 +122,10 @@ export default function StoragePage() {
     try {
       const sdk = getSdk();
       const created = await sdk.storage.createBucket(selectedProject, newName.trim());
-      setBuckets(prev => [...prev, created]);
+      setBuckets(prev => {
+        if (prev.find(b => b.id === created.id)) return prev;
+        return [...prev, created];
+      });
       setNewName('');
       setShowCreate(false);
       setToast({ message: `Bucket "${created.name}" created`, type: 'success' });
@@ -110,6 +146,14 @@ export default function StoragePage() {
           </p>
         </div>
         <div className="flex items-center gap-3">
+          {selectedProject && (
+            <Link href={`/projects/${selectedProject}/storage/settings`}>
+              <Button variant="ghost" size="sm">
+                <HugeiconsIcon icon={Settings01Icon} size={14} className="mr-1.5" />
+                Settings
+              </Button>
+            </Link>
+          )}
           {!shellProjectId && projects.length > 0 && (
             <select
               value={selectedProject}
@@ -196,11 +240,7 @@ export default function StoragePage() {
                     <p className="text-xs text-[var(--text-muted)] mt-0.5">
                       {(() => {
                         const p = PROVIDERS.find(x => x.value === bucket.provider);
-                        return (
-                          <span style={!p?.available ? { opacity: 0.5 } : undefined}>
-                            {p?.label ?? bucket.provider}{!p?.available ? ' (not yet available)' : ''}
-                          </span>
-                        );
+                        return p?.label ?? bucket.provider;
                       })()}
                       &middot; Created {new Date(bucket.createdAt).toLocaleDateString()}
                     </p>

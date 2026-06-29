@@ -1,4 +1,4 @@
-import { Controller, Post, Delete, Body, Param, UseGuards } from '@nestjs/common';
+import { Controller, Get, Post, Delete, Body, Param, UseGuards } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { JwtAuthGuard } from '@/modules/auth/jwt-auth.guard';
 import { EmailInboundService } from '@/modules/email/services/inbound.service';
@@ -9,6 +9,15 @@ import { EmailInboundService } from '@/modules/email/services/inbound.service';
 @ApiBearerAuth()
 export class EmailCatchAllController {
   constructor(private inboundService: EmailInboundService) {}
+
+  @Get(':domainId/catch-all')
+  @ApiOperation({ summary: 'Get the catch-all rule for a domain' })
+  getCatchAll(
+    @Param('projectId') projectId: string,
+    @Param('domainId') domainId: string,
+  ) {
+    return this.inboundService.getCatchAll(projectId, domainId);
+  }
 
   @Post(':domainId/catch-all')
   @ApiOperation({ summary: 'Set or update the catch-all rule for a domain' })

@@ -2,7 +2,9 @@ import { Module, forwardRef } from '@nestjs/common';
 import { AuthModule } from '@/modules/auth/auth.module';
 import { ProjectsModule } from '@/modules/projects/projects.module';
 import { StorageController } from '@/modules/storage/controllers/storage.controller';
+import { StorageConfigController } from '@/modules/storage/controllers/storage-config.controller';
 import { StorageService } from '@/modules/storage/services/storage.service';
+import { StorageConfigService } from '@/modules/storage/services/storage-config.service';
 import { StorageBucketService } from '@/modules/storage/services/storage-bucket.service';
 import { StorageFileService } from '@/modules/storage/services/storage-file.service';
 import { StorageUrlService } from '@/modules/storage/services/storage-url.service';
@@ -16,9 +18,10 @@ import { StorageProviderFactory } from '@/modules/storage/providers/storage-prov
 
 @Module({
   imports: [forwardRef(() => AuthModule), ProjectsModule],
-  controllers: [StorageController],
+  controllers: [StorageController, StorageConfigController],
   providers: [
     StorageService,
+    StorageConfigService,
     StorageBucketService,
     StorageFileService,
     StorageUrlService,

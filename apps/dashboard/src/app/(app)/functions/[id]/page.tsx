@@ -1,10 +1,10 @@
 'use client';
 
-import { useEffect, useState, useCallback, use } from 'react';
+import { useEffect, useState, useCallback, use, useRef } from 'react';
 import Link from 'next/link';
 import dynamic from 'next/dynamic';
 import { useSearchParams } from 'next/navigation';
-import { Card, Button, Spinner } from '@fidscript/ui';
+import { Card, Button, Spinner, Input } from '@fidscript/ui';
 
 import { useAuth } from '@/contexts/auth-context';
 import LogViewer from '@/components/log-viewer';
@@ -32,6 +32,10 @@ interface Function_ {
   projectId?: string;
   createdAt: string;
   currentVersion?: string;
+  envVars?: Record<string, string>;
+  memoryMb?: number;
+  timeoutSeconds?: number;
+  entryPoint?: string;
 }
 
 type Tab = 'code' | 'logs' | 'settings' | 'invoke' | 'versions';
@@ -79,6 +83,12 @@ export default function FunctionDetailPage({ params }: { params: Promise<{ id: s
   const [diffVersions, setDiffVersions] = useState<[string | null, string | null]>([null, null]);
   const [diffCode, setDiffCode] = useState<{ left: string; right: string } | null>(null);
   const [loadingVersions, setLoadingVersions] = useState(false);
+  const rtRef = useRef<{ disconnect: () => void } | null>(null);
+  const [envVars, setEnvVars] = useState<Record<string, string>>({});
+  const [newEnvKey, setNewEnvKey] = useState('');
+  const [newEnvVal, setNewEnvVal] = useState('');
+  const [savingEnv, setSavingEnv] = useState(false);
+  const [envMsg, setEnvMsg] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
 
   useEffect(() => {
     async function load() {
@@ -86,6 +96,7 @@ export default function FunctionDetailPage({ params }: { params: Promise<{ id: s
         const sdk = getSdk();
         const [f] = await Promise.all([sdk.functions.get(projectId, functionId)]);
         setFunc(f);
+        setEnvVars(f.envVars ?? {});
         const saved = localStorage.getItem(`fn_draft_${functionId}`);
         setCode(saved ?? getStarterCode(f.runtime ?? 'node'));
       } catch (err) {
@@ -111,6 +122,55 @@ export default function FunctionDetailPage({ params }: { params: Promise<{ id: s
     }
     loadVersions();
   }, [activeTab, projectId, functionId, getSdk]);
+
+  // Realtime subscription — update function status on events.
+  useEffect(() => {
+    if (!projectId || !functionId) return;
+    let cancelled = false;
+    async function connectRealtime() {
+      try {
+        const sdk = getSdk();
+        const rt = (sdk as { realtime?: typeof sdk.realtime }).realtime;
+        if (!rt) return;
+        const token = localStorage.getItem('fidscript_access_token') ?? localStorage.getItem('fidscript_token');
+        if (!token) return;
+        await rt.connect(() => localStorage.getItem('fidscript_access_token') ?? localStorage.getItem('fidscript_token') ?? '', projectId);
+        if (cancelled) { rt.disconnect?.(); return; }
+
+        const unsub = rt.subscribeFunctions(projectId, (event: any) => {
+          const meta = event?.data ?? event?.metadata ?? event;
+          const eventType: string = event?.type ?? '';
+
+          // Update our function's status on state-change events.
+          if (meta?.functionId !== functionId) return;
+          const statusMap: Record<string, string> = {
+            'function.created': 'ACTIVE',
+            'function.deployed': 'ACTIVE',
+            'function.error': 'FAILED',
+          };
+          const newStatus = statusMap[eventType];
+          if (newStatus) setFunc(prev => prev ? { ...prev, status: newStatus } : prev);
+
+          // Refetch function data on terminal events.
+          if (eventType === 'function.deployed' || eventType === 'function.error') {
+            setTimeout(async () => {
+              if (cancelled) return;
+              try {
+                const refreshed = await sdk.functions.get(projectId, functionId);
+                setFunc(refreshed);
+              } catch { /* ignore */ }
+            }, 800);
+          }
+        });
+        rtRef.current = { disconnect: () => { unsub(); rt.disconnect?.(); } };
+      } catch { /* best-effort */ }
+    }
+    connectRealtime();
+    return () => {
+      cancelled = true;
+      rtRef.current?.disconnect?.();
+    };
+  }, [projectId, functionId, getSdk]);
 
   function handleDiffSelect(v1: string | null, v2: string) {
     setDiffVersions([v1, v2]);
@@ -152,6 +212,39 @@ export default function FunctionDetailPage({ params }: { params: Promise<{ id: s
       setDeploying(false);
     }
   }, [projectId, functionId, code, deployVersion, getSdk]);
+
+  const handleSaveEnvVars = useCallback(async () => {
+    if (!projectId || !functionId) return;
+    setSavingEnv(true);
+    setEnvMsg(null);
+    try {
+      const sdk = getSdk();
+      const updated = await sdk.functions.update(projectId, functionId, { envVars });
+      setFunc(updated);
+      setEnvMsg({ type: 'success', text: 'Environment variables saved' });
+    } catch (err) {
+      setEnvMsg({ type: 'error', text: err instanceof Error ? err.message : 'Failed to save' });
+    } finally {
+      setSavingEnv(false);
+    }
+  }, [projectId, functionId, envVars, getSdk]);
+
+  function addEnvVar() {
+    const k = newEnvKey.trim();
+    const v = newEnvVal;
+    if (!k) return;
+    setEnvVars(prev => ({ ...prev, [k]: v }));
+    setNewEnvKey('');
+    setNewEnvVal('');
+  }
+
+  function removeEnvVar(key: string) {
+    setEnvVars(prev => {
+      const next = { ...prev };
+      delete next[key];
+      return next;
+    });
+  }
 
   async function handleInvoke(e: React.FormEvent) {
     e.preventDefault();
@@ -393,24 +486,82 @@ export default function FunctionDetailPage({ params }: { params: Promise<{ id: s
 
       {/* Settings Tab */}
       {activeTab === 'settings' && (
-        <Card className="border border-[var(--rail)]" padding="lg">
-          <h2 className="text-sm font-semibold text-[var(--text)] mb-4">Function Settings</h2>
-          <dl className="space-y-3 text-sm">
-            {[
-              ['Function ID', func.id, 'font-mono text-xs'],
-              ['Name', func.name, ''],
-              ['Runtime', func.runtime, 'capitalize'],
-              ['Status', func.status, 'capitalize'],
-              ['Created', new Date(func.createdAt).toLocaleDateString(), ''],
-              ['Current Version', func.currentVersion ?? 'none', 'font-mono text-xs'],
-            ].map(([dt, dd, extra]) => (
-              <div key={dt as string} className="flex gap-4">
-                <dt className="text-[var(--text-muted)] w-40 flex-shrink-0">{dt}</dt>
-                <dd className={`text-[var(--text-muted)] ${extra}`}>{dd}</dd>
+        <div className="space-y-6">
+          {/* Info */}
+          <Card className="border border-[var(--rail)]" padding="lg">
+            <h2 className="text-sm font-semibold text-[var(--text)] mb-4">Function Info</h2>
+            <dl className="space-y-3 text-sm">
+              {[
+                ['Function ID', func.id, 'font-mono text-xs'],
+                ['Name', func.name, ''],
+                ['Runtime', func.runtime, 'capitalize'],
+                ['Status', func.status, 'capitalize'],
+                ['Entry Point', func.entryPoint ?? 'handler', 'font-mono text-xs'],
+                ['Memory', func.memoryMb ? `${func.memoryMb} MB` : '256 MB', ''],
+                ['Timeout', func.timeoutSeconds ? `${func.timeoutSeconds}s` : '30s', ''],
+                ['Created', new Date(func.createdAt).toLocaleDateString(), ''],
+                ['Current Version', func.currentVersion ?? 'none', 'font-mono text-xs'],
+              ].map(([dt, dd, extra]) => (
+                <div key={dt as string} className="flex gap-4">
+                  <dt className="text-[var(--text-muted)] w-40 flex-shrink-0">{dt}</dt>
+                  <dd className={`text-[var(--text-muted)] ${extra}`}>{dd}</dd>
+                </div>
+              ))}
+            </dl>
+          </Card>
+
+          {/* Environment Variables */}
+          <Card className="border border-[var(--rail)]" padding="lg">
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-sm font-semibold text-[var(--text)]">Environment Variables</h2>
+              <Button variant="primary" size="sm" loading={savingEnv} onClick={handleSaveEnvVars}>
+                Save
+              </Button>
+            </div>
+
+            {envMsg && (
+              <div className={`text-xs px-3 py-2 rounded border mb-4 ${
+                envMsg.type === 'success'
+                  ? 'text-[var(--success)] bg-[var(--success)]/10 border-[var(--success)]/30'
+                  : 'text-[var(--danger)] bg-[var(--danger)]/10 border-[var(--danger)]/30'
+              }`}>
+                {envMsg.text}
               </div>
-            ))}
-          </dl>
-        </Card>
+            )}
+
+            {/* Existing vars */}
+            {Object.keys(envVars).length > 0 ? (
+              <div className="space-y-2 mb-4">
+                {Object.entries(envVars).map(([k, v]) => (
+                  <div key={k} className="flex items-center gap-2">
+                    <code className="flex-1 text-xs font-mono bg-[var(--surface-2)] border border-[var(--rail)] rounded px-2 py-1.5 text-[var(--text-muted)]">{k}</code>
+                    <code className="flex-1 text-xs font-mono bg-[var(--surface-2)] border border-[var(--rail)] rounded px-2 py-1.5 text-[var(--text-muted)]">{v}</code>
+                    <Button variant="ghost" size="sm" onClick={() => removeEnvVar(k)} className="text-[var(--danger)]">Remove</Button>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <p className="text-xs text-[var(--text-muted)] mb-4">No environment variables set.</p>
+            )}
+
+            {/* Add new */}
+            <div className="flex items-center gap-2">
+              <Input
+                value={newEnvKey}
+                onChange={e => setNewEnvKey(e.target.value)}
+                placeholder="KEY"
+                className="bg-[var(--surface-2)] border border-[var(--rail)] text-[var(--text)] text-xs font-mono w-40"
+              />
+              <Input
+                value={newEnvVal}
+                onChange={e => setNewEnvVal(e.target.value)}
+                placeholder="value"
+                className="bg-[var(--surface-2)] border border-[var(--rail)] text-[var(--text)] text-xs font-mono flex-1"
+              />
+              <Button variant="ghost" size="sm" onClick={addEnvVar} disabled={!newEnvKey.trim()}>Add</Button>
+            </div>
+          </Card>
+        </div>
       )}
 
       {/* Invoke Tab */}

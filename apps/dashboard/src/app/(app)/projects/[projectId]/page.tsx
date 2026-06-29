@@ -33,7 +33,7 @@ export default function ProjectPage() {
     const match = pathname?.match(/\/projects\/[^/]+\/([^/]+)/);
     const pathSection = match ? match[1] : null;
     if (!searchParams.get('section') && !pathSection) {
-      router.replace(`/projects/${projectId}?section=deployments`);
+      router.replace(`/projects/${projectId}?section=services`);
     }
   }, [projectId, router, searchParams, pathname]);
 
@@ -46,7 +46,7 @@ export default function ProjectPage() {
   // Section from path first (/projects/:id/activity → activity), then from query param.
   const pathMatch = pathname?.match(/\/projects\/[^/]+\/([^/]+)/);
   const pathSection = pathMatch ? pathMatch[1] : null;
-  const section = pathSection ?? searchParams.get('section') ?? 'deployments';
+  const section = pathSection ?? searchParams.get('section') ?? 'services';
   const SectionComponent = SECTIONS[section];
 
   return (

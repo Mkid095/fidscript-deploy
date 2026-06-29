@@ -114,7 +114,7 @@ export default function ProjectLayout({ children }: { children: React.ReactNode 
   const lastSection = (() => {
     try { return localStorage.getItem(SECTION_KEY(projectId)); } catch { return null; }
   })();
-  const effectiveSection = currentSection || lastSection || 'deployments';
+  const effectiveSection = currentSection || lastSection || 'services';
 
   return (
     <ProjectProvider projectId={projectId} project={project}>

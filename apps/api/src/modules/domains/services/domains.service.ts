@@ -4,6 +4,7 @@ import { DomainVerificationService } from '@/modules/domains/services/domain-ver
 import { DomainHealthService } from '@/modules/domains/services/domain-health.service';
 import { DomainCleanupService } from '@/modules/domains/services/domain-cleanup.service';
 import { DomainDnsService } from '@/modules/domains/services/domain-dns.service';
+import { DomainConnectionService } from '@/modules/domains/services/domain-connection.service';
 
 @Injectable()
 export class DomainsService {
@@ -13,6 +14,7 @@ export class DomainsService {
     private health: DomainHealthService,
     private cleanup: DomainCleanupService,
     private dns: DomainDnsService,
+    private connection: DomainConnectionService,
   ) {}
 
   list(userId: string, projectId: string) {
@@ -29,6 +31,10 @@ export class DomainsService {
 
   connectCloudflare(userId: string, projectId: string, apiToken: string) {
     return this.dns.connectCloudflare(userId, projectId, apiToken);
+  }
+
+  getConnection(userId: string, projectId: string) {
+    return this.connection.getConnection(userId, projectId);
   }
 
   delete(userId: string, projectId: string, domainId: string) {

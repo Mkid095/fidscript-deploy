@@ -2,35 +2,96 @@ import { FidscriptClient } from '../client';
 
 export interface Domain {
   id: string;
-  name: string;
-  projectId?: string;
-  dnsStatus: string;
+  projectId: string;
+  deploymentId?: string;
+  domain: string;
+  isCustom: boolean;
+  isPrimary: boolean;
+  apexDomain: boolean;
+  dnsMode: string;
+  redirectMode: string;
+  sslEnabled: boolean;
   sslStatus: string;
-  ownerId: string;
+  dnsStatus: string;
+  dnsVerifiedAt?: string;
+  routingVerifiedAt?: string;
+  sslExpiresAt?: string;
+  createdAt: string;
+}
+
+export interface DnsConnection {
+  id: string;
+  projectId: string;
+  provider: string;
+  email?: string;
+  lastVerifiedAt?: string;
   createdAt: string;
 }
 
 export class DomainsModule {
   constructor(private client: FidscriptClient) {}
 
-  async list() {
-    const res = await this.client.get<{ domains: Domain[] }>('/api/v1/domains');
-    return res.domains;
+  /** List domains for a specific project */
+  async list(projectId: string): Promise<Domain[]> {
+    const res = await this.client.get<{ domains: Domain[] }>(
+      `/api/v1/projects/${projectId}/domains`,
+    );
+    return res.domains ?? [];
   }
 
-  async get(id: string) {
+  async get(id: string): Promise<Domain> {
     return this.client.get<Domain>(`/api/v1/domains/${id}`);
   }
 
-  async create(projectId: string, name: string) {
-    return this.client.post<Domain>('/api/v1/domains', { projectId, name });
+  /**
+   * Add a domain to a project.
+   * @param projectId  Project to add the domain to
+   * @param name       Full domain name (e.g. "example.com")
+   * @param dnsMode    "manual" | "cloudflare_auto" — defaults to "manual"
+   * @param deploymentId Optional deployment to route this domain to
+   */
+  async create(projectId: string, name: string, dnsMode = 'manual', deploymentId?: string) {
+    const payload: Record<string, unknown> = { projectId, name, dnsMode };
+    if (deploymentId) payload.deploymentId = deploymentId;
+    return this.client.post<Domain>(`/api/v1/projects/${projectId}/domains`, payload);
   }
 
-  async verify(id: string) {
+  async verify(id: string): Promise<Domain> {
     return this.client.post<Domain>(`/api/v1/domains/${id}/verify`);
   }
 
-  async delete(id: string) {
+  async delete(id: string): Promise<void> {
     return this.client.delete(`/api/v1/domains/${id}`);
+  }
+
+  /**
+   * Get DNS instructions (nameserver records to set) for a domain — used in manual DNS mode.
+   */
+  async getInstructions(projectId: string, domainId: string): Promise<{ instructions: Array<{ type: string; name: string; value: string; ttl?: number; notes?: string }> }> {
+    return this.client.get(`/api/v1/projects/${projectId}/domains/${domainId}/instructions`);
+  }
+
+  /**
+   * Connect a Cloudflare account to a project for Mode B (auto) DNS management.
+   * Stores the token encrypted server-side.
+   */
+  async connectCloudflare(projectId: string, apiToken: string): Promise<DnsConnection> {
+    return this.client.post<DnsConnection>(
+      `/api/v1/projects/${projectId}/domains/connect-cloudflare`,
+      { apiToken },
+    );
+  }
+
+  /**
+   * Get the active DNS connection for a project (Cloudflare, Route53, etc.)
+   */
+  async getConnection(projectId: string): Promise<DnsConnection | null> {
+    try {
+      return await this.client.get<DnsConnection>(
+        `/api/v1/projects/${projectId}/domains/connection`,
+      );
+    } catch {
+      return null;
+    }
   }
 }

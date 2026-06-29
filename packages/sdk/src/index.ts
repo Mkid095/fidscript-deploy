@@ -29,7 +29,7 @@ import { DatabasesModule, DatabaseProvider } from './modules/databases';
 export { DatabaseProvider };
 export type { Database, TableInfo, ColumnInfo, RealtimeEvent, MigrationRecord, DataResult, Op, LiveQueryResult } from './modules/databases';
 import { DomainsModule } from './modules/domains';
-import { EmailModule, AdminMailboxModule, AdminAttachmentConfigModule, PlatformMailboxMessage, PlatformMailboxSummary, PlatformMailboxesResponse, CreatePlatformMailboxResponse, ListPlatformMessagesResponse, AdminSendMailResponse, AdminAttachmentConfig, StorageBackend, MailboxMessage } from './modules/email';
+import { EmailModule, AdminMailboxModule, AdminAttachmentConfigModule, PlatformMailboxMessage, PlatformMailboxSummary, PlatformMailboxesResponse, CreatePlatformMailboxResponse, ListPlatformMessagesResponse, AdminSendMailResponse, AdminAttachmentConfig, StorageBackend, MailboxMessage, EmailDomain, Mailbox, EmailAlias } from './modules/email';
 import { FunctionsModule } from './modules/functions';
 import { QueuesModule } from './modules/queues';
 import { CronModule } from './modules/cron';
@@ -49,7 +49,8 @@ import {
 export { FidscriptClient, FidscriptClientOptions };
 export { FidscriptError, AuthError, NotFoundError, ValidationError, RateLimitError };
 export { AuthModule, ProjectsModule, DeploymentsModule, StorageModule, DatabasesModule, DomainsModule, EmailModule, FunctionsModule, QueuesModule, CronModule, RealtimeModule, MonitoringModule, LoggingModule, TemplatesModule, GithubModule };
-export { AdminMailboxModule, AdminAttachmentConfigModule, type PlatformMailboxMessage, type PlatformMailboxSummary, type PlatformMailboxesResponse, type CreatePlatformMailboxResponse, type ListPlatformMessagesResponse, type AdminSendMailResponse, type AdminAttachmentConfig, type StorageBackend, type MailboxMessage };
+export { AdminMailboxModule, AdminAttachmentConfigModule, type PlatformMailboxMessage, type PlatformMailboxSummary, type PlatformMailboxesResponse, type CreatePlatformMailboxResponse, type ListPlatformMessagesResponse, type AdminSendMailResponse, type AdminAttachmentConfig, type StorageBackend, type MailboxMessage, type EmailDomain, type Mailbox, type EmailAlias };
+export type { Domain, DnsConnection } from './modules/domains';
 
 export interface FidscriptSDK {
   auth: AuthModule;

@@ -19,6 +19,7 @@ import { Button, Card, EmptyState, Input, Modal, Spinner } from '@fidscript/ui';
 import type { MailboxMessage } from '@fidscript/sdk';
 
 import { useAuth } from '@/contexts/auth-context';
+import { useShellProjectId } from '@/contexts/project-context';
 
 type Folder = 'inbox' | 'sent' | 'trash';
 
@@ -35,10 +36,10 @@ const STATUS_PALETTE: Record<string, string> = {
 
 export default function MailboxPage() {
   const { getSdk } = useAuth();
+  const shellProjectId = useShellProjectId();
   const params = useParams();
-  // The /email/[domain]/... route uses the projectId as `domain`. Naming
-  // tracks the original spec but the value passed to the SDK is the projectId.
-  const projectId = params.domain as string;
+  // projectId comes from the shell context (project-level route), not the email domain UUID
+  const projectId = shellProjectId ?? '';
   const mailboxId = params.mailbox as string;
 
   const [messages, setMessages] = useState<MailboxMessage[]>([]);
@@ -345,9 +346,18 @@ function MessagePreview({
       </div>
 
       <div className="border-t border-[var(--rail)] pt-3">
-        <p className="text-sm text-[var(--text-muted)] whitespace-pre-wrap">
-          {message.error ?? '(message body not loaded — JMAP fetch not yet wired)'}
-        </p>
+        {message.textBody || message.htmlBody ? (
+          message.textBody ? (
+            <p className="text-sm text-[var(--text-muted)] whitespace-pre-wrap">{message.textBody}</p>
+          ) : (
+            <div
+              className="text-sm text-[var(--text-muted)] [&_a]:text-[var(--accent)] [&_a]:underline"
+              dangerouslySetInnerHTML={{ __html: message.htmlBody! }}
+            />
+          )
+        ) : (
+          <p className="text-sm text-[var(--text-dim)] italic">(empty message)</p>
+        )}
       </div>
 
       <div className="flex items-center gap-2 pt-2 border-t border-[var(--rail)]">

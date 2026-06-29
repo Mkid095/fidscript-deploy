@@ -53,6 +53,13 @@ export class DomainsController {
     return this.domainsService.connectCloudflare(user.userId, projectId, body.apiToken);
   }
 
+  @Get('connection')
+  @ApiOperation({ summary: 'Get the active DNS connection for this project' })
+  async getConnection(@Req() req: Request, @Param('projectId') projectId: string) {
+    const user = req.user as { userId: string };
+    return this.domainsService.getConnection(user.userId, projectId);
+  }
+
   @Delete(':id')
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Delete a domain and clean up DNS records' })

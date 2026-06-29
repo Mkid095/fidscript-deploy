@@ -61,10 +61,10 @@ export class EmailDomainService {
           `${domain.ownershipToken}._email.${domain.domain}`,
         );
       }
-      await this.mailDnsService.setupEmailDns(domain.domain);
+      const dnsResult = await this.mailDnsService.setupEmailDns(domain.domain);
       await this.prisma.emailDomain.update({
         where: { id: domainId },
-        data: { status: 'VERIFIED', ownershipToken: null },
+        data: { status: 'VERIFIED', ownershipToken: null, dkimPublicKey: dnsResult.dkimPublicKey },
       });
       await this.eventService.emit('email.domain_verified', {
         domainId, projectId, domain: domain.domain, step: 'ownership',

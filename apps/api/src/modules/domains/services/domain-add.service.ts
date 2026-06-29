@@ -27,9 +27,12 @@ export class DomainAddService {
   async add(userId: string, projectId: string, dto: AddDomainDto) {
     await this.access.ensureAccess(userId, projectId);
 
-    const deployment = await this.prisma.deployment.findUnique({ where: { id: dto.deploymentId } });
-    if (!deployment || deployment.projectId !== projectId) throw new NotFoundException('Deployment not found in this project');
-    if (deployment.status !== 'SUCCESS') throw new ConflictException('Can only add a domain to a successful deployment');
+    let deployment: any = null;
+    if (dto.deploymentId) {
+      deployment = await this.prisma.deployment.findUnique({ where: { id: dto.deploymentId } });
+      if (!deployment || deployment.projectId !== projectId) throw new NotFoundException('Deployment not found in this project');
+      if (deployment.status !== 'SUCCESS') throw new ConflictException('Can only add a domain to a successful deployment');
+    }
     const existing = await this.prisma.domain.findFirst({ where: { projectId, domain: dto.domain } });
     if (existing) throw new ConflictException('Domain already added to this project');
 
@@ -54,8 +57,8 @@ export class DomainAddService {
       metadata: { domainId: domain.id, projectId, domain: dto.domain, isCustom: !isPlatform, emailWarning: mx.hasMx, emailProvider: mx.provider },
     });
 
-    const instructions = this.getDnsInstructions(dto.domain, deployment.deploymentUrl ?? '', isApex);
-    if (dto.dnsMode === 'cloudflare_auto') {
+    const instructions = this.getDnsInstructions(dto.domain, deployment?.deploymentUrl ?? '', isApex);
+    if (dto.dnsMode === 'cloudflare_auto' && deployment) {
       await this.cloudflareAuto.cloudflareAutoSetup(domain.id, dto.domain, deployment.deploymentUrl ?? '', isApex);
     }
 

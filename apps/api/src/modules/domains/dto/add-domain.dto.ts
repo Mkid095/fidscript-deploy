@@ -6,9 +6,10 @@ export class AddDomainDto {
   @IsString()
   domain: string;
 
-  @ApiProperty({ description: 'Which deployment this domain routes to' })
+  @ApiPropertyOptional({ description: 'Which deployment this domain routes to (optional — can be set later)' })
+  @IsOptional()
   @IsUUID()
-  deploymentId: string;
+  deploymentId?: string;
 
   @ApiPropertyOptional({ description: "DNS configuration mode: 'manual' (default) or 'cloudflare_auto'", default: 'manual' })
   @IsIn(['manual', 'cloudflare_auto'])

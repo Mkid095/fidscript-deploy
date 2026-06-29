@@ -7,6 +7,12 @@ export interface Function_ {
   status: string;
   projectId?: string;
   createdAt: string;
+  envVars?: Record<string, string>;
+  memoryMb?: number;
+  timeoutSeconds?: number;
+  currentVersion?: string;
+  entryPoint?: string;
+  settings?: Record<string, unknown>;
 }
 
 export interface FunctionVersion {
@@ -38,7 +44,7 @@ export class FunctionsModule {
     return this.client.post<Function_>(`/api/v1/projects/${projectId}/functions`, data);
   }
 
-  async update(projectId: string, functionId: string, data: { memoryMb?: number; timeoutSeconds?: number; currentVersion?: string }) {
+  async update(projectId: string, functionId: string, data: { memoryMb?: number; timeoutSeconds?: number; currentVersion?: string; envVars?: Record<string, string> }) {
     return this.client.patch<Function_>(`/api/v1/projects/${projectId}/functions/${functionId}`, data);
   }
 

@@ -99,6 +99,13 @@ export class EmailInboundService {
     return this.bounceHandler.handleComplaint(payload);
   }
 
+  async getCatchAll(projectId: string, domainId: string) {
+    const domain = await this.prisma.emailDomain.findFirst({ where: { id: domainId, projectId } });
+    if (!domain) throw new NotFoundException('Domain not found');
+    const rule = await this.prisma.catchAllRule.findUnique({ where: { domainId } });
+    return rule ?? null;
+  }
+
   async setCatchAll(projectId: string, domainId: string, dto: {
     targetType: 'mailbox' | 'external' | 'webhook';
     targetId?: string; targetAddress?: string; webhookUrl?: string;

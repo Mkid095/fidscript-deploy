@@ -18,6 +18,8 @@ export interface MailboxMessage {
   from: string;
   to: string;
   subject: string;
+  textBody: string | null;
+  htmlBody: string | null;
   sizeBytes: string | number; // Prisma BigInt serialized as string
   isRead: boolean;
   isStarred: boolean;
@@ -39,6 +41,23 @@ export interface EmailAlias {
   id: string;
   alias: string;
   forwardsTo: string[];
+  createdAt: string;
+}
+
+/** An email domain registered under a project — distinct from project deployment domains. */
+export interface EmailDomain {
+  id: string;
+  projectId: string;
+  domain: string;
+  status: string;
+  dkimVerified: boolean;
+  spfVerified: boolean;
+  dmarcVerified: boolean;
+  mxVerified: boolean;
+  dkimSelector?: string;
+  dkimPublicKey?: string;
+  catchAllTarget?: string;
+  verifiedAt?: string;
   createdAt: string;
 }
 
@@ -242,5 +261,76 @@ export class EmailModule {
   /** Delete messages in bulk. Maps to MAIL-29. */
   async deleteMessages(projectId: string, messageIds: string[]): Promise<{ deleted: number }> {
     return this.client.delete(`/api/v1/projects/${projectId}/email/messages`, { messageIds });
+  }
+
+  // ── Email domain management ──────────────────────────────────────────────────
+
+  /**
+   * List all email domains for a project.
+   * Route: GET /projects/:projectId/email/domains
+   */
+  async listDomains(projectId: string): Promise<EmailDomain[]> {
+    const res = await this.client.get<{ domains: EmailDomain[] }>(
+      `/api/v1/projects/${projectId}/email/domains`,
+    );
+    return res.domains ?? [];
+  }
+
+  /**
+   * Get a single email domain.
+   * Route: GET /projects/:projectId/email/domains/:domainId
+   */
+  async getDomain(projectId: string, domainId: string): Promise<EmailDomain> {
+    return this.client.get(`/api/v1/projects/${projectId}/email/domains/${domainId}`);
+  }
+
+  /**
+   * Register a new email domain for a project.
+   * Route: POST /projects/:projectId/email/domains
+   */
+  async createDomain(projectId: string, domain: string): Promise<EmailDomain & { ownershipToken: string; steps: string[] }> {
+    return this.client.post(`/api/v1/projects/${projectId}/email/domains`, { domain });
+  }
+
+  /**
+   * Trigger ownership + DNS verification for an email domain.
+   * Route: POST /projects/:projectId/email/domains/:domainId/verify
+   */
+  async verifyDomain(projectId: string, domainId: string): Promise<EmailDomain> {
+    return this.client.post(`/api/v1/projects/${projectId}/email/domains/${domainId}/verify`);
+  }
+
+  /**
+   * Remove an email domain and all its mailboxes / aliases.
+   * Route: DELETE /projects/:projectId/email/domains/:domainId
+   */
+  async deleteDomain(projectId: string, domainId: string): Promise<void> {
+    return this.client.delete(`/api/v1/projects/${projectId}/email/domains/${domainId}`);
+  }
+
+  // ── Catch-all rules ─────────────────────────────────────────────────────────
+
+  /**
+   * Get the catch-all rule for a domain. Returns null if not configured.
+   */
+  async getCatchAll(projectId: string, domainId: string): Promise<{ id: string; target: Record<string, unknown>; isActive: boolean } | null> {
+    return this.client.get(`/api/v1/projects/${projectId}/email/domains/${domainId}/catch-all`);
+  }
+
+  /**
+   * Set the catch-all rule for a domain. All unmatched addresses on the domain
+   * will be delivered to the specified target (mailbox, external address, or webhook).
+   */
+  async setCatchAll(
+    projectId: string,
+    domainId: string,
+    target: { type: 'mailbox' | 'external'; targetId?: string; targetAddress?: string },
+  ): Promise<{ ok: boolean }> {
+    return this.client.post(`/api/v1/projects/${projectId}/email/domains/${domainId}/catch-all`, target);
+  }
+
+  /** Remove the catch-all rule for a domain. */
+  async deleteCatchAll(projectId: string, domainId: string): Promise<{ deleted: boolean }> {
+    return this.client.delete(`/api/v1/projects/${projectId}/email/domains/${domainId}/catch-all`);
   }
 }
