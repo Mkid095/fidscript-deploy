@@ -27,10 +27,11 @@ export class AuditEventConsumer {
           actorType: event.actorType ?? null,
           resourceType: event.resourceType ?? 'unknown',
           resourceId: event.resourceId ?? event.id,
+          projectId: event.projectId ?? null,
           metadata: (event.metadata ?? {}) as any,
           ipAddress: event.ipAddress ?? null,
           userAgent: event.userAgent ?? null,
-        },
+        } as any,
         update: {
           // Idempotent — already exists, no-op on update
         },

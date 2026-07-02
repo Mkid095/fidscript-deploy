@@ -1707,6 +1707,9 @@ model PlatformEvent {
   actorType    String?  @map("actor_type") @db.VarChar(50)
   resourceType String   @map("resource_type") @db.VarChar(100)
   resourceId   String   @map("resource_id") @db.VarChar(255)
+  // Project scope — allows efficient "all events for project X" queries
+  // without the awkward OR across resource IDs.
+  projectId    String?  @map("project_id") @db.VarChar(36)
   metadata     Json     @default("{}")
   ipAddress    String?  @map("ip_address") @db.VarChar(45)
   userAgent    String?  @map("user_agent") @db.Text
@@ -1714,7 +1717,36 @@ model PlatformEvent {
   @@index([type, timestamp])
   @@index([resourceType, resourceId])
   @@index([actorId])
+  @@index([projectId, timestamp])
   @@map("events")
+  @@schema("platform")
+}
+
+// Per-user notification inbox. Each row is one event delivered to one user.
+// Supports read/unread state, priority filtering, and dismissal.
+// Unlike the monitoring Alert→Notification path (alert-delivery only),
+// this is the user-facing inbox for platform-wide events.
+model UserNotification {
+  id              String    @id @default(uuid())
+  userId          String    @map("user_id") @db.VarChar(255)
+  // The event that triggered this notification (null for synthesized alerts)
+  eventId         String?   @map("event_id") @db.VarChar(36)
+  type            String    @db.VarChar(100) // e.g. 'domains.ssl.expiring', 'domains.dns.changed'
+  title           String    @db.VarChar(255)
+  message         String    @db.Text
+  severity        String    @default("info") @db.VarChar(20) // 'info' | 'warning' | 'critical'
+  projectId       String?   @map("project_id") @db.VarChar(36)
+  resourceType    String?   @map("resource_type") @db.VarChar(100)
+  resourceId      String?   @map("resource_id") @db.VarChar(255)
+  readAt          DateTime? @map("read_at") @db.Timestamptz
+  dismissedAt     DateTime? @map("dismissed_at") @db.Timestamptz
+  createdAt       DateTime  @default(now()) @map("created_at") @db.Timestamptz
+
+  @@index([userId, readAt])
+  @@index([userId, severity, createdAt])
+  @@index([projectId, createdAt])
+  @@index([type, createdAt])
+  @@map("user_notifications")
   @@schema("platform")
 }
 

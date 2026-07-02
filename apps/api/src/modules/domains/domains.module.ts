@@ -1,6 +1,7 @@
 import { Module } from '@nestjs/common';
 import { DomainsController } from '@/modules/domains/controllers/domains.controller';
 import { DomainsZoneController } from '@/modules/domains/controllers/domains-zone.controller';
+import { NotificationsController } from '@/modules/domains/controllers/notifications.controller';
 import { DomainsService } from '@/modules/domains/services/domains.service';
 import { DomainCrudService } from '@/modules/domains/services/domain-crud.service';
 import { DomainListService } from '@/modules/domains/services/domain-list.service';
@@ -33,6 +34,8 @@ import { DomainRepairWorker } from '@/modules/domains/services/domain-repair-wor
 import { DomainDnsDetectionService } from '@/modules/domains/services/domain-dns-detection.service';
 import { DomainEmailKeyService } from '@/modules/domains/services/domain-email-key.service';
 import { DomainEmailRecordsService } from '@/modules/domains/services/domain-email-records.service';
+import { DomainActivityService } from '@/modules/domains/services/domain-activity.service';
+import { DomainNotificationService } from '@/modules/domains/services/domain-notification.service';
 import { CloudflareOAuthService } from '@/modules/domains/services/cloudflare-oauth.service';
 import { CloudflareOAuthController } from '@/modules/domains/controllers/cloudflare-oauth.controller';
 import { EventsModule } from '@/modules/events/events.module';
@@ -40,7 +43,7 @@ import { RedisModule } from '@/modules/redis/redis.module';
 
 @Module({
   imports: [EventsModule, RedisModule],
-  controllers: [DomainsController, DomainsZoneController, CloudflareOAuthController],
+  controllers: [DomainsController, DomainsZoneController, NotificationsController, CloudflareOAuthController],
   providers: [
     CloudflareZoneService,
     CloudflareDnsProvider,
@@ -75,6 +78,8 @@ import { RedisModule } from '@/modules/redis/redis.module';
     DomainDnsDetectionService,
     DomainEmailKeyService,
     DomainEmailRecordsService,
+    DomainActivityService,
+    DomainNotificationService,
     CloudflareOAuthService,
   ],
   exports: [
