@@ -6,9 +6,11 @@ import { CronJobSchedulerService } from './services/cron-job-scheduler.service';
 import { SchedulerQueueService } from './services/scheduler-queue.service';
 import { SchedulerWorkerService } from './services/scheduler-worker.service';
 import { FunctionsModule } from '@/modules/functions/functions.module';
+import { AuthModule } from '@/modules/auth/auth.module';
+import { ProjectsModule } from '@/modules/projects/projects.module';
 
 @Module({
-  imports: [FunctionsModule],
+  imports: [FunctionsModule, AuthModule, ProjectsModule],
   controllers: [SchedulerController],
   providers: [
     CronJobService,
