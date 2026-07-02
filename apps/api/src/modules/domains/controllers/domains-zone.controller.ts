@@ -1,5 +1,5 @@
 import {
-  Controller, Get, Post, Param, Query, Body, UseGuards, Req,
+  Controller, Get, Post, Patch, Delete, Param, Query, Body, UseGuards, Req,
   HttpCode, HttpStatus, NotFoundException, BadRequestException, Logger,
 } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
@@ -8,6 +8,7 @@ import { PrismaService } from '@/prisma/prisma.service';
 import { DomainAccessService } from '@/modules/domains/services/domain-access.service';
 import { DnsProviderFactory } from '@/modules/domains/providers/dns-provider-factory';
 import { DomainChangeSetService } from '@/modules/domains/services/domain-changeset.service';
+import { DomainWebhookService } from '@/modules/domains/services/domain-webhook.service';
 import { Request } from 'express';
 
 /**
@@ -38,6 +39,7 @@ export class DomainsZoneController {
     private access: DomainAccessService,
     private factory: DnsProviderFactory,
     private changeSetService: DomainChangeSetService,
+    private webhookService: DomainWebhookService,
   ) {}
 
   /**
@@ -291,5 +293,91 @@ export class DomainsZoneController {
     const userId = (req as any).user?.userId ?? 'system';
     await this.access.ensureAccess(userId, projectId);
     return this.changeSetService.rollbackChangeSet(changeSetId, userId);
+  }
+
+  // ── Domain Webhooks ───────────────────────────────────────────────────────
+
+  /**
+   * List all webhooks for a domain.
+   */
+  @Get(':id/webhooks')
+  @ApiOperation({ summary: 'List domain webhooks' })
+  async listWebhooks(
+    @Param('projectId') projectId: string,
+    @Param('id') domainId: string,
+    @Req() req: Request,
+  ) {
+    const userId = (req as any).user?.userId ?? 'system';
+    await this.access.ensureAccess(userId, projectId);
+    return this.webhookService.listWebhooks(domainId);
+  }
+
+  /**
+   * Create a webhook for a domain.
+   */
+  @Post(':id/webhooks')
+  @HttpCode(HttpStatus.CREATED)
+  @ApiOperation({ summary: 'Create a domain webhook' })
+  async createWebhook(
+    @Param('projectId') projectId: string,
+    @Param('id') domainId: string,
+    @Body() body: { url: string; secret?: string; events?: string[]; enabled?: boolean },
+    @Req() req: Request,
+  ) {
+    const userId = (req as any).user?.userId ?? 'system';
+    await this.access.ensureAccess(userId, projectId);
+    return this.webhookService.createWebhook(domainId, projectId, body);
+  }
+
+  /**
+   * Update a webhook.
+   */
+  @Patch(':id/webhooks/:webhookId')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Update a domain webhook' })
+  async updateWebhook(
+    @Param('projectId') projectId: string,
+    @Param('id') domainId: string,
+    @Param('webhookId') webhookId: string,
+    @Body() body: { url?: string; events?: string[]; enabled?: boolean; secret?: string },
+    @Req() req: Request,
+  ) {
+    const userId = (req as any).user?.userId ?? 'system';
+    await this.access.ensureAccess(userId, projectId);
+    return this.webhookService.updateWebhook(domainId, webhookId, body);
+  }
+
+  /**
+   * Delete a webhook.
+   */
+  @Delete(':id/webhooks/:webhookId')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Delete a domain webhook' })
+  async deleteWebhook(
+    @Param('projectId') projectId: string,
+    @Param('id') domainId: string,
+    @Param('webhookId') webhookId: string,
+    @Req() req: Request,
+  ) {
+    const userId = (req as any).user?.userId ?? 'system';
+    await this.access.ensureAccess(userId, projectId);
+    return this.webhookService.deleteWebhook(domainId, webhookId);
+  }
+
+  /**
+   * Test a webhook by sending a test event.
+   */
+  @Post(':id/webhooks/:webhookId/test')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Test a domain webhook delivery' })
+  async testWebhook(
+    @Param('projectId') projectId: string,
+    @Param('id') domainId: string,
+    @Param('webhookId') webhookId: string,
+    @Req() req: Request,
+  ) {
+    const userId = (req as any).user?.userId ?? 'system';
+    await this.access.ensureAccess(userId, projectId);
+    return this.webhookService.testWebhook(domainId, webhookId);
   }
 }

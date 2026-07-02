@@ -40,6 +40,7 @@ import { DomainNotificationService } from '@/modules/domains/services/domain-not
 import { DomainChangeSetService } from '@/modules/domains/services/domain-changeset.service';
 import { DomainPropagationService } from '@/modules/domains/services/domain-propagation.service';
 import { DomainTemplateService } from '@/modules/domains/services/domain-template.service';
+import { DomainWebhookService } from '@/modules/domains/services/domain-webhook.service';
 import { CloudflareOAuthService } from '@/modules/domains/services/cloudflare-oauth.service';
 import { CloudflareOAuthController } from '@/modules/domains/controllers/cloudflare-oauth.controller';
 import { EventsModule } from '@/modules/events/events.module';
@@ -87,6 +88,7 @@ import { RedisModule } from '@/modules/redis/redis.module';
     DomainChangeSetService,
     DomainPropagationService,
     DomainTemplateService,
+    DomainWebhookService,
     CloudflareOAuthService,
   ],
   exports: [

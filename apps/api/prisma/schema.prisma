@@ -505,9 +505,48 @@ model Domain {
   emailKeys     DomainEmailKey[]
   managedRecords ManagedDnsRecord[]
   changeSets    DomainChangeSet[]
+  webhooks      DomainWebhook[]
 
   @@unique([projectId, domain])
   @@map("domains")
+  @@schema("projects")
+}
+
+// =============================================
+// DOMAIN WEBHOOKS (external event delivery)
+// =============================================
+
+// Outbound webhooks for domain events. When a subscribed event fires
+// (domains.verified, domains.incident.opened, etc.), the platform POSTs
+// the event payload to each enabled webhook URL.
+//
+// HMAC-SHA256 signing: if `secret` is set, the payload is signed and the
+// signature is sent in the `x-fidscript-signature` header.
+// Recipients verify by recomputing HMAC over the raw request body.
+model DomainWebhook {
+  id          String   @id @default(uuid())
+  domainId    String   @map("domain_id")
+  projectId   String   @map("project_id") @db.VarChar(36)
+  url         String   @db.VarChar(2048)
+  secret      String?  @db.Text // HMAC-SHA256 signing secret (nullable = unsigned)
+  // Which events to deliver (JSON array of event type strings)
+  // e.g. ["domains.verified", "domains.incident.opened", "domains.ssl.expiring"]
+  // Empty array or ["*"] = all events
+  events      Json     @default("[\"*\"]")
+  enabled     Boolean  @default(true)
+  // Delivery stats (updated on each attempt)
+  lastDeliveryAt  DateTime? @map("last_delivery_at") @db.Timestamptz
+  lastDeliveryOk  Boolean?  @map("last_delivery_ok")
+  deliveryCount   Int      @default(0) @map("delivery_count")
+  failureCount    Int      @default(0) @map("failure_count")
+  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt   DateTime @updatedAt @map("updated_at") @db.Timestamptz
+
+  domain      Domain   @relation(fields: [domainId], references: [id], onDelete: Cascade)
+
+  @@index([domainId, enabled])
+  @@index([projectId, enabled])
+  @@map("domain_webhooks")
   @@schema("projects")
 }
 

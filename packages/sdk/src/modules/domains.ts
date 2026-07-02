@@ -724,4 +724,68 @@ export class DomainsModule {
   }> {
     return this.client.get(`/api/v1/domain-templates/${id}`);
   }
+
+  // ── Domain Webhooks ───────────────────────────────────────────────────────
+
+  /**
+   * List all webhooks for a domain.
+   */
+  async listWebhooks(projectId: string, domainId: string): Promise<{
+    webhooks: Array<{
+      id: string;
+      url: string;
+      events: string[];
+      enabled: boolean;
+      lastDeliveryAt: string | null;
+      lastDeliveryOk: boolean | null;
+      deliveryCount: number;
+      failureCount: number;
+    }>;
+  }> {
+    return this.client.get(`/api/v1/projects/${projectId}/domains/${domainId}/webhooks`);
+  }
+
+  /**
+   * Create a webhook for a domain.
+   * Events: domains.verified, domains.health_changed, domains.incident.opened, etc.
+   * Use ["*"] to subscribe to all events.
+   */
+  async createWebhook(projectId: string, domainId: string, options: {
+    url: string;
+    secret?: string;
+    events?: string[];
+    enabled?: boolean;
+  }): Promise<{ id: string; url: string; enabled: boolean }> {
+    return this.client.post(`/api/v1/projects/${projectId}/domains/${domainId}/webhooks`, options);
+  }
+
+  /**
+   * Update a webhook.
+   */
+  async updateWebhook(projectId: string, domainId: string, webhookId: string, updates: {
+    url?: string;
+    events?: string[];
+    enabled?: boolean;
+    secret?: string;
+  }): Promise<{ success: boolean }> {
+    return this.client.patch(`/api/v1/projects/${projectId}/domains/${domainId}/webhooks/${webhookId}`, updates);
+  }
+
+  /**
+   * Delete a webhook.
+   */
+  async deleteWebhook(projectId: string, domainId: string, webhookId: string): Promise<{ success: boolean }> {
+    return this.client.delete(`/api/v1/projects/${projectId}/domains/${domainId}/webhooks/${webhookId}`);
+  }
+
+  /**
+   * Test a webhook by sending a test event.
+   */
+  async testWebhook(projectId: string, domainId: string, webhookId: string): Promise<{
+    success: boolean;
+    error?: string;
+    deliveredAt: string;
+  }> {
+    return this.client.post(`/api/v1/projects/${projectId}/domains/${domainId}/webhooks/${webhookId}/test`);
+  }
 }
