@@ -16,7 +16,7 @@ export class AIConversationService {
     const conversation = await this.prisma.aIConversation.create({
       data: { projectId, userId, type: dto.type || 'general', model, metadata: dto.metadata || {} },
     });
-    this.events.emit('ai.conversation.created', { conversationId: conversation.id, projectId });
+    this.events.emit('ai.conversation.created', projectId, { conversationId: conversation.id });
     return conversation;
   }
 
@@ -48,7 +48,7 @@ export class AIConversationService {
     if (!conversation) throw new NotFoundException('Conversation not found');
     await this.prisma.aIMessage.deleteMany({ where: { conversationId } });
     await this.prisma.aIConversation.delete({ where: { id: conversationId } });
-    this.events.emit('ai.conversation.deleted', { conversationId, projectId });
+    this.events.emit('ai.conversation.deleted', projectId, { conversationId });
     return { deleted: true };
   }
 

@@ -24,22 +24,16 @@ export class AuthSessionMgmtService {
 
     await this.prisma.session.update({ where: { id: sessionId }, data: { expiresAt: new Date(0) } });
 
-    await this.eventService.emit('identity.session.revoked', {
-      id: crypto.randomUUID(), type: 'identity.session.revoked',
-      timestamp: new Date(), actorId: userId, actorType: 'user',
-      resourceType: 'session', resourceId: sessionId, metadata: { all: false },
-    });
+    await this.eventService.emit('identity.session.revoked', null, { sessionId });
   }
 
   async revokeAllSessions(userId: string) {
     const sessions = await this.prisma.session.findMany({ where: { userId }, select: { id: true } });
     await this.prisma.session.updateMany({ where: { userId }, data: { expiresAt: new Date(0) } });
 
-    await this.eventService.emit('identity.session.revoked', {
-      id: crypto.randomUUID(), type: 'identity.session.revoked',
-      timestamp: new Date(), actorId: userId, actorType: 'user',
-      resourceType: 'session', resourceId: userId,
-      metadata: { all: true, sessionCount: sessions.length },
+    await this.eventService.emit('identity.session.revoked', null, {
+      all: true,
+      sessionCount: sessions.length,
     });
   }
 }

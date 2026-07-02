@@ -161,6 +161,25 @@ export class RealtimeModule {
     });
   }
 
+  /**
+   * Subscribe to queue events for a project. Joins the project room (same
+   * authorization as subscribeProject) and only dispatches events whose type
+   * starts with `queues.` (e.g. `queues.message.published`, `queues.message.acknowledged`,
+   * `queues.invocation.succeeded`, etc.).
+   *
+   * Returns an unsubscribe function that leaves the room and removes the handler.
+   */
+  subscribeQueues(projectId: string, handler: RealtimeEventHandler): () => void {
+    if (this.socket && !this.joinedProjects.has(projectId)) {
+      this.socket.emit('subscribe_project', { projectId });
+      this.joinedProjects.add(projectId);
+    }
+    return this.registerHandler('queues', handler, () => {
+      this.socket?.emit('unsubscribe_project', { projectId });
+      this.joinedProjects.delete(projectId);
+    });
+  }
+
   /** Register a handler under a prefix and return an unsubscribe fn. */
   private registerHandler(prefix: string, handler: RealtimeEventHandler, onLastRemove: () => void): () => void {
     if (!this.handlers.has(prefix)) this.handlers.set(prefix, new Set());

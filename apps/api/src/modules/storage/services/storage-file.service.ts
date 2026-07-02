@@ -54,15 +54,10 @@ export class StorageFileService {
       },
     });
 
-    await this.eventService.emit('storage.file.uploaded', {
-      id: crypto.randomUUID(),
-      type: 'storage.file.uploaded',
-      timestamp: new Date(),
-      actorId: userId,
-      actorType: 'user',
-      resourceType: 'file',
-      resourceId: file.id,
-      metadata: { projectId, bucketId, key, etag: result.etag },
+    await this.eventService.emit('storage.file.uploaded', projectId, {
+      bucketId,
+      key,
+      etag: result.etag,
     });
 
     return {
@@ -119,15 +114,9 @@ export class StorageFileService {
     await svc.delete(file.key, project.slug, file.bucket.name, creds);
     await this.prisma.file.delete({ where: { id: fileId } });
 
-    await this.eventService.emit('storage.file.deleted', {
-      id: crypto.randomUUID(),
-      type: 'storage.file.deleted',
-      timestamp: new Date(),
-      actorId: userId,
-      actorType: 'user',
-      resourceType: 'file',
-      resourceId: fileId,
-      metadata: { projectId, bucketId: file.bucketId, key: file.key },
+    await this.eventService.emit('storage.file.deleted', projectId, {
+      bucketId: file.bucketId,
+      key: file.key,
     });
 
     return { success: true };

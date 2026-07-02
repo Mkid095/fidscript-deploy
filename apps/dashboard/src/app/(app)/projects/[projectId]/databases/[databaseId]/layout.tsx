@@ -7,20 +7,18 @@ import { HugeiconsIcon } from '@hugeicons/react';
 import {
   Database01Icon,
   SourceCodeIcon,
-  FlashIcon,
   HardDriveIcon,
   Settings01Icon,
-  AiMagicIcon,
+  ComputerTerminal01Icon,
 } from '@hugeicons/core-free-icons';
 import { DatabaseProvider } from '../database-context';
 
 const NAV = [
-  { label: 'Overview',  icon: Database01Icon, path: '' },
-  { label: 'Explorer',  icon: SourceCodeIcon, path: '/explorer' },
-  { label: 'SQL Editor',icon: AiMagicIcon,    path: '/sql' },
-  { label: 'Realtime',  icon: FlashIcon,      path: '/realtime' },
-  { label: 'Backups',   icon: HardDriveIcon,  path: '/backups' },
-  { label: 'Settings',  icon: Settings01Icon, path: '/settings' },
+  { label: 'Overview',   icon: Database01Icon,        path: '' },
+  { label: 'Explorer',   icon: SourceCodeIcon,        path: '/explorer' },
+  { label: 'SQL Editor', icon: ComputerTerminal01Icon, path: '/sql' },
+  { label: 'Backups',    icon: HardDriveIcon,         path: '/backups' },
+  { label: 'Settings',   icon: Settings01Icon,        path: '/settings' },
 ];
 
 export default function DatabaseDetailLayout({ children }: { children: React.ReactNode }) {

@@ -135,8 +135,7 @@ export class AppAuthTokenService {
         where: { id: session.id },
         data: { revokedAt: new Date() },
       });
-      await this.eventService.emit('auth.refresh_rejected', {
-        projectId: session.user.projectId,
+      await this.eventService.emit('auth.refresh_rejected', session.user.projectId, {
         userId: session.userId,
         sessionId: session.id,
       }, { actorId: session.userId, ipAddress, userAgent });
@@ -155,8 +154,7 @@ export class AppAuthTokenService {
       ipAddress,
       userAgent,
     );
-    await this.eventService.emit('auth.token_refreshed', {
-      projectId: session.user.projectId,
+    await this.eventService.emit('auth.token_refreshed', session.user.projectId, {
       userId: session.userId,
       sessionId: tokens.expiresAt,
     }, { actorId: session.userId, ipAddress, userAgent });

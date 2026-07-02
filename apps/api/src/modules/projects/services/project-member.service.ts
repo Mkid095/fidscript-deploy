@@ -42,15 +42,9 @@ export class ProjectMemberService {
       include: { user: { select: { id: true, email: true, name: true } } },
     });
 
-    await this.eventService.emit('projects.member.added', {
-      id: crypto.randomUUID(),
-      type: 'projects.member.added',
-      timestamp: new Date(),
-      actorId: userId,
-      actorType: 'user',
-      resourceType: 'project_member',
-      resourceId: member.id,
-      metadata: { projectId, addedUserId: newUser.id, role: dto.role },
+    await this.eventService.emit('projects.member.added', projectId, {
+      addedUserId: newUser.id,
+      role: dto.role,
     });
 
     return { id: member.id, role: member.role, user: member.user, createdAt: member.createdAt };
@@ -68,15 +62,8 @@ export class ProjectMemberService {
       where: { projectId_userId: { projectId, userId: memberUserId } },
     });
 
-    await this.eventService.emit('projects.member.removed', {
-      id: crypto.randomUUID(),
-      type: 'projects.member.removed',
-      timestamp: new Date(),
-      actorId: userId,
-      actorType: 'user',
-      resourceType: 'project_member',
-      resourceId: member.id,
-      metadata: { projectId, removedUserId: memberUserId },
+    await this.eventService.emit('projects.member.removed', projectId, {
+      removedUserId: memberUserId,
     });
 
     return { success: true };

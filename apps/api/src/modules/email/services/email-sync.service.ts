@@ -354,17 +354,16 @@ export class EmailSyncService implements OnModuleInit, OnModuleDestroy {
     });
 
     // Emit platform event — drives webhooks, audit, NATS consumers
-    this.events.emit('email.received', {
+    this.events.emit('email.received', projectId, {
       messageId: emailMessage.id,
       jmapMessageId,
-      projectId,
       mailboxId: mailboxRecord!.id,
       mailboxLocal: mailboxRecord!.localPart,
       from,
       to,
       subject,
       isNew,
-    });
+    }, {});
 
     // Broadcast to project's realtime room so dashboard updates live
     this.realtime.broadcastToProject(projectId, 'email.received', {

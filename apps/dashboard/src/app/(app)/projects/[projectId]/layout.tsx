@@ -5,13 +5,14 @@ import { useParams, useRouter, usePathname } from 'next/navigation';
 import Link from 'next/link';
 import Image from 'next/image';
 import { HugeiconsIcon } from '@hugeicons/react';
-import { ChevronRightIcon } from '@hugeicons/core-free-icons';
+import { ChevronRightIcon, PanelLeftIcon } from '@hugeicons/core-free-icons';
 import { Spinner } from '@fidscript/ui';
+import { ThemeToggle } from '@/components/theme/theme-toggle';
 
 import type { Project } from '@/types';
 import { useAuth } from '@/contexts/auth-context';
 import { ProjectProvider } from '@/contexts/project-context';
-import { ProjectSidebar } from '@/components/layout/project-sidebar';
+import { ProjectSidebar, SECTION_MAP } from '@/components/layout/project-sidebar';
 import { MobileTabBar } from '@/components/layout/mobile-tab-bar';
 import { ProjectSwitcherModal } from '@/components/layout/project-switcher-modal';
 import { AvatarDropdown } from '@/components/layout/avatar-dropdown';
@@ -148,31 +149,55 @@ export default function ProjectLayout({ children }: { children: React.ReactNode 
             </span>
           </Link>
 
+          {/* Desktop: Collapse sidebar button */}
+          <button
+            onClick={() => setSidebarCollapsed(!sidebarCollapsed)}
+            className="hidden md:flex items-center justify-center w-8 h-8 rounded-lg text-[var(--text-dim)] hover:bg-[var(--hover)] hover:text-[var(--text-muted)] transition-colors"
+            aria-label={sidebarCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+            title={sidebarCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+          >
+            <HugeiconsIcon icon={PanelLeftIcon} size={17} />
+          </button>
+
+          {/* Divider between logo area and breadcrumb */}
+          <div className="hidden md:block w-px h-5 bg-[var(--rail)]" />
+
           {/* Breadcrumb */}
-          <nav className="flex items-center gap-1 text-sm text-[var(--text-muted)] min-w-0">
+          <nav className="flex items-center gap-1.5 text-sm text-[var(--text-muted)] min-w-0">
+            {/* Mobile: just project name with chevron */}
             <HugeiconsIcon icon={ChevronRightIcon} size={12} className="text-[var(--text-dim)] flex-shrink-0" />
             <button
               onClick={() => setShowSwitcher(true)}
-              className="hover:text-[var(--text)] transition-colors truncate max-w-[160px] text-[var(--text-muted)] font-medium"
+              className="hover:text-[var(--text)] transition-colors truncate max-w-[120px] sm:max-w-[160px] text-[var(--text-muted)] font-medium"
             >
               {project.name}
             </button>
-            <HugeiconsIcon icon={ChevronRightIcon} size={12} className="text-[var(--text-dim)] flex-shrink-0" />
-            <span className="text-[var(--text-muted)] font-medium capitalize">{effectiveSection}</span>
+            {/* Desktop: full breadcrumb */}
+            <div className="hidden md:flex items-center gap-1.5">
+              <HugeiconsIcon icon={ChevronRightIcon} size={12} className="text-[var(--text-dim)] flex-shrink-0" />
+              <span className="text-[var(--text-dim)] font-normal">{SECTION_MAP[effectiveSection]?.group ?? '—'}</span>
+              <HugeiconsIcon icon={ChevronRightIcon} size={12} className="text-[var(--text-dim)] flex-shrink-0" />
+              <span className="text-[var(--text)] font-medium">{SECTION_MAP[effectiveSection]?.label ?? effectiveSection}</span>
+            </div>
           </nav>
 
           <div className="flex-1" />
 
           {/* Right controls */}
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 flex-shrink-0 z-10 relative">
+            {/* Theme toggle */}
+            <ThemeToggle />
+
             {/* Account menu */}
             <AvatarDropdown />
           </div>
         </header>
 
-        {/* Content — extra bottom padding on mobile clears the fixed tab bar */}
-        <main className="flex-1 overflow-y-auto pb-16 md:pb-0">
-          {children}
+        {/* Content — padding gives breathing room between content and chrome */}
+        <main className="flex-1 overflow-hidden pb-16 md:pb-0">
+          <div className="h-full overflow-y-auto px-4 py-5 sm:px-6 sm:py-6 lg:px-8">
+            {children}
+          </div>
         </main>
       </div>
 

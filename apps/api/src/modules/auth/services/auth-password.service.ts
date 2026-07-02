@@ -85,8 +85,7 @@ export class AuthPasswordService {
     const sess = await this.session.createSession(userId, ipAddress, userAgent);
 
     await this.eventService.emit(
-      'identity.user.password_changed',
-      {},
+      'identity.user.password_changed', null, {},
       {
         actorId: userId,
         actorType: 'user',

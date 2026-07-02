@@ -30,9 +30,9 @@ export class EmailDomainService {
       data: { projectId, domain: dto.domain, status: 'PENDING', ownershipToken },
     });
 
-    await this.eventService.emit('email.domain_added', {
-      domainId: domain.id, projectId, domain: dto.domain,
-    });
+    await this.eventService.emit('email.domain_added', projectId, {
+      domainId: domain.id, domain: dto.domain,
+    }, {});
 
     return {
       domain,
@@ -66,9 +66,9 @@ export class EmailDomainService {
         where: { id: domainId },
         data: { status: 'VERIFIED', ownershipToken: null, dkimPublicKey: dnsResult.dkimPublicKey },
       });
-      await this.eventService.emit('email.domain_verified', {
-        domainId, projectId, domain: domain.domain, step: 'ownership',
-      });
+      await this.eventService.emit('email.domain_verified', projectId, {
+        domainId, domain: domain.domain, step: 'ownership',
+      }, {});
     }
 
     if (domain.status === 'VERIFIED') {
@@ -87,9 +87,9 @@ export class EmailDomainService {
         },
       });
 
-      await this.eventService.emit('email.domain_verified', {
-        domainId, projectId, domain: domain.domain, ...result,
-      });
+      await this.eventService.emit('email.domain_verified', projectId, {
+        domainId, domain: domain.domain, ...result,
+      }, {});
     }
 
     return this.prisma.emailDomain.findUnique({ where: { id: domainId } });

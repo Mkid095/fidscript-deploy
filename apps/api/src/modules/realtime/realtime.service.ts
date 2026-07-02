@@ -32,9 +32,8 @@ export class RealtimeService {
       },
     });
 
-    await this.eventService.emit('realtime.channel_created', {
+    await this.eventService.emit('realtime.channel_created', projectId, {
       channelId: channel.id,
-      projectId,
       name: dto.name,
     });
 
@@ -64,9 +63,8 @@ export class RealtimeService {
 
     await this.prisma.realtimeChannel.delete({ where: { id: channelId } });
 
-    await this.eventService.emit('realtime.channel_deleted', {
+    await this.eventService.emit('realtime.channel_deleted', projectId, {
       channelId,
-      projectId,
     });
 
     return { deleted: true };

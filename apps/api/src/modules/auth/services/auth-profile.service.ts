@@ -34,11 +34,7 @@ export class AuthProfileService {
       select: { id: true, email: true, name: true, avatarUrl: true, role: true },
     });
 
-    await this.eventService.emit('identity.user.updated', {
-      id: crypto.randomUUID(), type: 'identity.user.updated',
-      timestamp: new Date(), actorId: userId, actorType: 'user',
-      resourceType: 'user', resourceId: user.id, metadata: dto,
-    });
+    await this.eventService.emit('identity.user.updated', null, dto);
 
     return user;
   }

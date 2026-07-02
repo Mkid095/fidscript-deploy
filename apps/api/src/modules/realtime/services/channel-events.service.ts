@@ -22,10 +22,9 @@ export class ChannelEventsService {
       socketId,
     });
 
-    await this.eventService.emit('realtime.client_left', {
+    await this.eventService.emit('realtime.client_left', projectId, {
       channelId,
       userId,
-      projectId,
     });
   }
 
@@ -45,10 +44,9 @@ export class ChannelEventsService {
       socketId: socket.id,
     });
 
-    await this.eventService.emit('realtime.client_joined', {
+    await this.eventService.emit('realtime.client_joined', projectId, {
       channelId,
       userId,
-      projectId,
     });
   }
 
@@ -62,10 +60,9 @@ export class ChannelEventsService {
     projectId: string,
     messageId: string,
   ): Promise<void> {
-    await this.eventService.emit('realtime.message_sent', {
+    await this.eventService.emit('realtime.message_sent', projectId, {
       channelId,
       userId,
-      projectId,
       messageId,
     });
   }
@@ -80,9 +77,8 @@ export class ChannelEventsService {
   ): Promise<void> {
     server.to(channelId).emit('channel_deleted', { channelId });
 
-    await this.eventService.emit('realtime.channel_deleted', {
+    await this.eventService.emit('realtime.channel_deleted', projectId, {
       channelId,
-      projectId,
     });
   }
 }

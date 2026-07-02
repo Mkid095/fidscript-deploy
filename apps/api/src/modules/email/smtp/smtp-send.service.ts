@@ -160,12 +160,11 @@ export class SmtpSendService {
     }
 
     if (!errorMsg) {
-      await this.eventService.emit('email.sent', {
+      await this.eventService.emit('email.sent', projectId, {
         messageId: emailMessage.id,
-        projectId,
         to: dto.to,
         from: dto.from,
-      });
+      }, {});
     }
 
     return {

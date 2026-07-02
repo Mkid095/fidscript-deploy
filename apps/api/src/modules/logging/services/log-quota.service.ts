@@ -41,8 +41,8 @@ export class LogQuotaService {
       // Fan to Phase 14 alert engine
       await this.alertEvaluator.evaluate(projectId, QUOTA_METRIC, count);
       // Also emit a dedicated Realtime-visible event
-      this.eventService.emit('logs.quota_exceeded', {
-        projectId, streamId, count, quota: SOFT_QUOTA,
+      this.eventService.emit('logs.quota_exceeded', projectId, {
+        streamId, count, quota: SOFT_QUOTA,
       });
       return false;
     }

@@ -88,12 +88,12 @@ export class DeploymentCrudService {
       data: { projectId, releaseId: release.id, status: 'PENDING' },
     });
 
-    await this.eventService.emit('deployments.deployment.created', {
-      id: crypto.randomUUID(), type: 'deployments.deployment.created',
-      timestamp: new Date(), actorId: userId, actorType: 'user',
-      resourceType: 'deployment', resourceId: deployment.id,
-      metadata: { deploymentId: deployment.id, releaseId: release.id, projectId, userId, branch: dto.branch, source: dto.source, envVars: dto.envVars },
-    });
+    await this.eventService.emit(
+      'deployments.deployment.created',
+      projectId,
+      { deploymentId: deployment.id, releaseId: release.id, userId, branch: dto.branch, source: dto.source, envVars: dto.envVars },
+      { actorId: userId, actorType: 'user', resourceType: 'deployment', resourceId: deployment.id },
+    );
 
     return this.formatDeployment(deployment);
   }

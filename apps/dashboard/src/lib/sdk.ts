@@ -1,18 +1,33 @@
 /**
- * Single source of truth for the API base URL.
+ * Single source of truth for the API base URL and SDK mode.
  *
  * The Docker build sets NEXT_PUBLIC_API_URL as a build arg (see
  * apps/dashboard/Dockerfile). At runtime, this is the only place the
  * dashboard reads it — every createFidscript call goes through here.
  *
- * If the URL is missing, that's a build configuration error and we throw
- * with a clear message instead of silently using a hardcoded fallback.
+ * Mock mode: Set NEXT_PUBLIC_USE_MOCK_API=true to use mock data without
+ * a backend. This is useful for UI development and testing.
+ *
+ * To switch to real API: set NEXT_PUBLIC_USE_MOCK_API=false or remove it.
  */
 import { createFidscript, type FidscriptSDK } from '@fidscript/sdk';
+import { createMockSdk } from '@/mocks/sdk';
+
+// Check for mock mode flag
+const USE_MOCK = process.env.NEXT_PUBLIC_USE_MOCK_API === 'true';
+
+/**
+ * Indicates whether the SDK is running in mock mode.
+ * In mock mode, all API calls return fake data without HTTP requests.
+ */
+export const IS_MOCK_MODE = USE_MOCK;
 
 const RAW_URL = process.env.NEXT_PUBLIC_API_URL;
 
-if (!RAW_URL) {
+if (USE_MOCK) {
+  // eslint-disable-next-line no-console
+  console.info('[sdk] Mock mode enabled — using fake data. Set NEXT_PUBLIC_USE_MOCK_API=false to use real API.');
+} else if (!RAW_URL) {
   // Surface the error in the browser console early; createFidscript will
   // also throw with the missing baseURL message when actually called.
   // eslint-disable-next-line no-console
@@ -62,7 +77,12 @@ async function refreshAccessToken(): Promise<string | null> {
   }
 }
 
-export function makeSdk(apiKey?: string): FidscriptSDK {
+export function makeSdk(_apiKey?: string): FidscriptSDK {
+  // In mock mode, always return the mock SDK
+  if (USE_MOCK) {
+    return createMockSdk();
+  }
+
   if (!API_BASE_URL) {
     throw new Error(
       'API base URL is not configured. The dashboard was built without NEXT_PUBLIC_API_URL — ' +
@@ -71,5 +91,5 @@ export function makeSdk(apiKey?: string): FidscriptSDK {
   }
   // Wire transparent token refresh so mid-session access-token expiry (15 min)
   // no longer 401s every call until a full page reload.
-  return createFidscript({ baseURL: API_BASE_URL, apiKey, onUnauthorized: refreshAccessToken });
+  return createFidscript({ baseURL: API_BASE_URL, apiKey: _apiKey, onUnauthorized: refreshAccessToken });
 }

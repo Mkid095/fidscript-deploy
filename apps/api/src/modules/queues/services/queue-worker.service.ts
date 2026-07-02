@@ -144,10 +144,14 @@ export class QueueWorkerService implements OnModuleInit {
 
     try {
       await this.dispatch(target, payload);
-      this.eventService.emit('queues.invocation.succeeded' as any, {
+      this.eventService.emit('queues.invocation.succeeded', queue.projectId, {
         queueId: queue.id,
-        projectId: queue.projectId,
         sequence: seq,
+      });
+      // Update Prisma audit trail to reflect JetStream acknowledgment.
+      await this.prisma.queueMessage.updateMany({
+        where: { queueId: queue.id, jetStreamSeq: BigInt(seq) },
+        data: { status: 'acknowledged', acknowledgedAt: new Date() },
       });
       msg.ack();
       poisonTracker.delete(seq);
@@ -160,9 +164,8 @@ export class QueueWorkerService implements OnModuleInit {
       if (attempts >= (queue.retryAttempts ?? 3)) {
         this.logger.warn(`[${queue.name}] seq=${seq} exceeded max attempts (${attempts}), moving to DLQ`);
         await this.moveToDlq(queue, payload, `max attempts exceeded: ${errMsg}`);
-        this.eventService.emit('queues.invocation.failed' as any, {
+        this.eventService.emit('queues.invocation.failed', queue.projectId, {
           queueId: queue.id,
-          projectId: queue.projectId,
           sequence: seq,
           error: errMsg,
         });
@@ -203,9 +206,8 @@ export class QueueWorkerService implements OnModuleInit {
 
       case 'function': {
         if (!target.functionId) throw new Error('Function target missing functionId');
-        this.eventService.emit('queues.function.dispatch' as any, {
+        this.eventService.emit('queues.function.dispatch', payload.projectId, {
           functionId: target.functionId,
-          projectId: payload.projectId,
           payload: JSON.parse(payload.body),
           sourceQueue: payload.queueName,
         });
@@ -254,10 +256,9 @@ export class QueueWorkerService implements OnModuleInit {
       });
     } catch { /* ignore publish failures for poison messages */ }
 
-    this.eventService.emit('queues.message.dead_lettered' as any, {
+    this.eventService.emit('queues.message.dead_lettered', queue.projectId, {
       queueId: queue.id,
       dlqId: dlq.id,
-      projectId: queue.projectId,
       reason,
     });
   }

@@ -126,8 +126,7 @@ export class LogShipperService implements OnModuleInit, OnModuleDestroy {
     for (let attempt = 1; attempt <= maxRetries; attempt++) {
       try {
         await shipper.deliver(batch, config);
-        this.events.emit('logs.shipped', {
-          projectId: batch.projectId,
+        this.events.emit('logs.shipped', batch.projectId, {
           streamId: batch.streamId,
           streamName: batch.streamName,
           count: batch.entries.length,
@@ -142,8 +141,7 @@ export class LogShipperService implements OnModuleInit, OnModuleDestroy {
       }
     }
 
-    this.events.emit('logs.ship_failed', {
-      projectId: batch.projectId,
+    this.events.emit('logs.ship_failed', batch.projectId, {
       streamId: batch.streamId,
       streamName: batch.streamName,
       count: batch.entries.length,

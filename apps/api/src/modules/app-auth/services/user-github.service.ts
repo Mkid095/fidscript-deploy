@@ -187,7 +187,7 @@ export class UserGithubService {
         updated_at = CURRENT_TIMESTAMP
     `;
 
-    this.eventService.emit('users.github_connected' as any, {
+    this.eventService.emit('users.github_connected', null, {
       userId,
       githubUserId: String(githubUser.id),
       username: githubUser.login,
@@ -259,7 +259,7 @@ export class UserGithubService {
     await this.prisma.$executeRaw`
       DELETE FROM "identity"."github_connections" WHERE user_id = ${userId}
     `;
-    this.eventService.emit('users.github_disconnected' as any, { userId });
+    this.eventService.emit('users.github_disconnected', null, { userId });
     this.logger.log(`GitHub disconnected for user=${userId}`);
   }
 

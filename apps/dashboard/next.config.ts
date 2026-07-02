@@ -17,6 +17,9 @@ const nextConfig: NextConfig = {
         hostname: 'res.cloudinary.com',
         pathname: '/dfp7uhzy3/image/upload/**',
       },
+      // Allow storage signed URLs from any configured storage endpoint
+      { protocol: 'https', hostname: '*.fidscript.dev' },
+      { protocol: 'https', hostname: '*.s3.amazonaws.com' },
     ],
   },
   experimental: {

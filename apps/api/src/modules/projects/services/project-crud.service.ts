@@ -70,11 +70,7 @@ export class ProjectCrudService {
         ...(dto.buildSettings && { buildSettings: dto.buildSettings }),
       },
     });
-    await this.eventService.emit('projects.project.updated', {
-      id: crypto.randomUUID(), type: 'projects.project.updated',
-      timestamp: new Date(), actorId: userId, actorType: 'user',
-      resourceType: 'project', resourceId: projectId, metadata: dto,
-    });
+    await this.eventService.emit('projects.project.updated', projectId, dto);
     return this.format.formatProject(project);
   }
 
@@ -86,10 +82,8 @@ export class ProjectCrudService {
 
     // Soft delete: set deletedAt, keep the record for 30-day recovery window
     await this.prisma.project.update({ where: { id: projectId }, data: { deletedAt: new Date() } });
-    await this.eventService.emit('projects.project.deleted', {
-      id: crypto.randomUUID(), type: 'projects.project.deleted',
-      timestamp: new Date(), actorId: userId, actorType: 'user',
-      resourceType: 'project', resourceId: projectId, metadata: { soft: true },
+    await this.eventService.emit('projects.project.deleted', projectId, {
+      soft: true,
     });
     return { success: true, deletedAt: new Date() };
   }
@@ -115,8 +109,8 @@ export class ProjectCrudService {
     });
 
     // TODO: Send email with code via Stalwart/SMTP
-    this.eventService.emit('projects.project.purge_verification_sent' as any, {
-      userId, projectId, expiresAt,
+    this.eventService.emit('projects.project.purge_verification_sent', projectId, {
+      expiresAt,
     });
 
     return { success: true, expiresAt, message: `Verification code sent to your email` };
@@ -153,11 +147,7 @@ export class ProjectCrudService {
 
     // Hard delete — cascade handles members, deployments, etc.
     await this.prisma.project.delete({ where: { id: projectId } });
-    await this.eventService.emit('projects.project.purged' as any, {
-      id: crypto.randomUUID(), type: 'projects.project.purged',
-      timestamp: new Date(), actorId: userId, actorType: 'user',
-      resourceType: 'project', resourceId: projectId, metadata: {},
-    });
+    await this.eventService.emit('projects.project.purged', projectId, {});
 
     return { success: true };
   }
@@ -167,11 +157,7 @@ export class ProjectCrudService {
     const project = await this.prisma.project.update({
       where: { id: projectId }, data: { status: 'SUSPENDED' },
     });
-    await this.eventService.emit('projects.project.suspended', {
-      id: crypto.randomUUID(), type: 'projects.project.suspended',
-      timestamp: new Date(), actorId: userId, actorType: 'user',
-      resourceType: 'project', resourceId: projectId, metadata: {},
-    });
+    await this.eventService.emit('projects.project.suspended', projectId, {});
     return this.format.formatProject(project);
   }
 
@@ -180,11 +166,7 @@ export class ProjectCrudService {
     const project = await this.prisma.project.update({
       where: { id: projectId }, data: { status: 'ARCHIVED' },
     });
-    await this.eventService.emit('projects.project.archived', {
-      id: crypto.randomUUID(), type: 'projects.project.archived',
-      timestamp: new Date(), actorId: userId, actorType: 'user',
-      resourceType: 'project', resourceId: projectId, metadata: {},
-    });
+    await this.eventService.emit('projects.project.archived', projectId, {});
     return this.format.formatProject(project);
   }
 
@@ -194,11 +176,7 @@ export class ProjectCrudService {
       where: { id: projectId },
       data: { status: 'ACTIVE', deletedAt: null },
     });
-    await this.eventService.emit('projects.project.restored', {
-      id: crypto.randomUUID(), type: 'projects.project.restored',
-      timestamp: new Date(), actorId: userId, actorType: 'user',
-      resourceType: 'project', resourceId: projectId, metadata: {},
-    });
+    await this.eventService.emit('projects.project.restored', projectId, {});
     return this.format.formatProject(project);
   }
 

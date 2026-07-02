@@ -44,7 +44,7 @@ export class DbCrudService {
       });
 
       await this.injectDatabaseUrl(projectId, credentials);
-      await this.eventService.emit('database.provisioned', { databaseId: database.id, projectId, name: dto.name });
+      await this.eventService.emit('database.provisioned', projectId, { databaseId: database.id, name: dto.name }, {});
 
       return { id: database.id, projectId, name: dto.name, status: 'ready' };
     } catch (error) {
@@ -72,7 +72,7 @@ export class DbCrudService {
       where: { id: databaseId },
       data: { settings: dto.settings as any, backupRetentionDays: dto.backupRetentionDays },
     });
-    await this.eventService.emit('database.updated', { databaseId, projectId });
+    await this.eventService.emit('database.updated', projectId, { databaseId }, {});
     return updated;
   }
 
@@ -89,7 +89,7 @@ export class DbCrudService {
 
     await this.prisma.managedDatabase.delete({ where: { id: databaseId } });
     await this.prisma.databaseBackup.deleteMany({ where: { databaseId } });
-    await this.eventService.emit('database.deleted', { databaseId, projectId });
+    await this.eventService.emit('database.deleted', projectId, { databaseId }, {});
     return { deleted: true };
   }
 

@@ -12,8 +12,9 @@ import {
 import { useRouter } from 'next/navigation';
 import { type FidscriptSDK } from '@fidscript/sdk';
 
-import { makeSdk } from '@/lib/sdk';
+import { makeSdk, IS_MOCK_MODE } from '@/lib/sdk';
 import type { User } from '@/types';
+import { mockUser } from '@/mocks/data';
 
 interface AuthState {
   user: User | null;
@@ -97,6 +98,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     let cancelled = false;
 
     async function restoreSession() {
+      // In mock mode, auto-login as mock user
+      if (IS_MOCK_MODE) {
+        if (!cancelled) {
+          const mockToken = 'mock_token_' + Date.now();
+          storeTokens(mockToken, mockToken);
+          buildSdk(mockToken);
+          setState({ user: mockUser, loading: false, error: null });
+        }
+        return;
+      }
+
       const { accessToken, refreshToken } = getStoredTokens();
       if (!accessToken) {
         if (!cancelled) setState(s => ({ ...s, loading: false }));

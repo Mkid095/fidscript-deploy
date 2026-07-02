@@ -43,15 +43,9 @@ export class StorageBucketService {
       data: { projectId, name, provider, isPublic },
     });
 
-    await this.eventService.emit('storage.bucket.created', {
-      id: crypto.randomUUID(),
-      type: 'storage.bucket.created',
-      timestamp: new Date(),
-      actorId: userId,
-      actorType: 'user',
-      resourceType: 'bucket',
-      resourceId: bucket.id,
-      metadata: { projectId, name, provider },
+    await this.eventService.emit('storage.bucket.created', projectId, {
+      name,
+      provider,
     });
 
     return bucket;
@@ -82,15 +76,9 @@ export class StorageBucketService {
     const svc = this.providerFactory.get(bucket.provider);
     await svc.removeBucket(bucket.name, project.slug, bucket.name);
 
-    await this.eventService.emit('storage.bucket.deleted', {
-      id: crypto.randomUUID(),
-      type: 'storage.bucket.deleted',
-      timestamp: new Date(),
-      actorId: userId,
-      actorType: 'user',
-      resourceType: 'bucket',
-      resourceId: bucketId,
-      metadata: { projectId, name: bucket.name, provider: bucket.provider },
+    await this.eventService.emit('storage.bucket.deleted', projectId, {
+      name: bucket.name,
+      provider: bucket.provider,
     });
 
     return { success: true };

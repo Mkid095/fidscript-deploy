@@ -20,6 +20,8 @@ export type EventType =
   | 'identity.user.mfa_challenge'
   | 'identity.session.created'
   | 'identity.session.revoked'
+  | 'identity.session.created'
+  | 'identity.token.refreshed'
   | 'identity.api_key.created'
   | 'identity.api_key.revoked'
   | 'identity.token.refreshed'
@@ -58,6 +60,11 @@ export type EventType =
   | 'projects.api_key.created'
   | 'projects.api_key.revoked'
   | 'projects.env_var.updated'
+  | 'projects.env_var.deleted'
+  | 'projects.project.purge_verification_sent'
+  | 'projects.project.purged'
+  | 'users.github_connected'
+  | 'users.github_disconnected'
   | 'projects.env_var.deleted'
   // Legacy aliases (backwards-compat)
   | 'project.created'
@@ -111,6 +118,20 @@ export type EventType =
   | 'queue.message_published'
   | 'queue.message_retried'
   | 'queue.dead_lettered'
+  // Queue events (dot notation — backend emits these)
+  | 'queues.consumer.setup.degraded'
+  | 'queues.created'
+  | 'queues.updated'
+  | 'queues.deleted'
+  | 'queues.message.acknowledged'
+  | 'queues.message.retried'
+  | 'queues.message.dead_lettered'
+  | 'queues.message.purged'
+  | 'queues.message.published'
+  | 'queues.publish.degraded'
+  | 'queues.invocation.succeeded'
+  | 'queues.invocation.failed'
+  | 'queues.function.dispatch'
   // Cron events
   | 'cron.job_created'
   | 'cron.job_updated'
@@ -118,6 +139,8 @@ export type EventType =
   | 'cron.job_run_started'
   | 'cron.job_run_completed'
   | 'cron.job_run_failed'
+  | 'cron.job_run_deduplicated'
+  | 'cron.job_run_leases_expired'
   // Storage events (Phase 05)
   | 'storage.bucket.created'
   | 'storage.bucket.deleted'
@@ -183,6 +206,7 @@ export type EventType =
   | 'installation.lifecycle.validation.completed'
   | 'installation.lifecycle.operation.started'
   | 'installation.lifecycle.operation.completed'
+  // Installation step events (dynamic — step name is runtime)
   | 'installation.step.dns.started'
   | 'installation.step.dns.validation.completed'
   | 'installation.step.dns.completed'
@@ -206,12 +230,18 @@ export type EventType =
 
 export interface PlatformEvent<T = unknown> {
   id: string;
+  /** Semantic version of the event schema, e.g. "1.0". Allows forward-compatible schema evolution. */
+  version: string;
+  /** All project-scoped events MUST include their projectId at this level for routing.
+   *  Identity/system events (no project) can leave this undefined. */
+  projectId?: string;
   type: EventType;
   timestamp: Date;
   actorId?: string;
   actorType?: 'user' | 'system' | 'api_key';
   resourceType?: string;
   resourceId?: string;
+  /** Typed payload for this event. Payload shape is indexed by event type in EventPayloadSchemas. */
   metadata?: T;
   ipAddress?: string;
   userAgent?: string;
@@ -244,6 +274,7 @@ export interface AuthEventMetadata {
 // Event bus message format for NATS
 export interface EventBusMessage {
   subject: string;
+  version: string;
   data: PlatformEvent;
   replyTo?: string;
 }

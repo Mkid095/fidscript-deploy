@@ -29,11 +29,9 @@ export class ProjectCreateService {
 
     await this.prisma.projectSettings.create({ data: { projectId: project.id } });
 
-    await this.eventService.emit('projects.project.created', {
-      id: crypto.randomUUID(), type: 'projects.project.created',
-      timestamp: new Date(), actorId: userId, actorType: 'user',
-      resourceType: 'project', resourceId: project.id,
-      metadata: { name: project.name, slug: project.slug },
+    await this.eventService.emit('projects.project.created', project.id, {
+      name: project.name,
+      slug: project.slug,
     });
 
     return this.format.formatProject(project);
@@ -66,11 +64,8 @@ export class ProjectCreateService {
       });
     }
 
-    await this.eventService.emit('projects.project.cloned', {
-      id: crypto.randomUUID(), type: 'projects.project.cloned',
-      timestamp: new Date(), actorId: userId, actorType: 'user',
-      resourceType: 'project', resourceId: project.id,
-      metadata: { sourceProjectId: projectId },
+    await this.eventService.emit('projects.project.cloned', project.id, {
+      sourceProjectId: projectId,
     });
 
     return this.format.formatProject(project);

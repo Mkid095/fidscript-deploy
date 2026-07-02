@@ -82,8 +82,7 @@ export class AuthProvidersService {
       },
     });
 
-    await this.eventService.emit('auth.provider_configured', {
-      projectId,
+    await this.eventService.emit('auth.provider_configured', projectId, {
       provider: providerEnum,
       scopes: scopes.length,
       hasRedirectUri: !!dto.redirectUri,
@@ -108,8 +107,7 @@ export class AuthProvidersService {
     await this.prisma.authProvider.delete({
       where: { projectId_provider: { projectId, provider: providerEnum } },
     });
-    await this.eventService.emit('auth.provider_removed', {
-      projectId,
+    await this.eventService.emit('auth.provider_removed', projectId, {
       provider: providerEnum,
     }, { actorId, ipAddress, userAgent });
     return { success: true };

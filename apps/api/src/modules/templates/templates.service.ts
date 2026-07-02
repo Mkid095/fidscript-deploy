@@ -37,7 +37,7 @@ export class TemplatesService {
         isPublic: dto.isPublic || false,
       },
     });
-    await this.eventService.emit('template.created', { templateId: template.id, projectId });
+    await this.eventService.emit('template.created', projectId, { templateId: template.id });
     return template;
   }
 
@@ -78,7 +78,7 @@ export class TemplatesService {
     const template = await this.prisma.template.findFirst({ where: { id: templateId, projectId } });
     if (!template) throw new NotFoundException('Template not found');
     await this.prisma.template.delete({ where: { id: templateId } });
-    await this.eventService.emit('template.deleted', { templateId, projectId });
+    await this.eventService.emit('template.deleted', projectId, { templateId });
     return { deleted: true };
   }
 
@@ -121,9 +121,8 @@ export class TemplatesService {
       description: `Generated from template "${template.name}"`,
     });
 
-    await this.eventService.emit('template.project_generated', {
+    await this.eventService.emit('template.project_generated', project.id, {
       templateId: dto.templateId,
-      projectId: project.id,
     });
 
     return { project, files: rendered, templateName: template.name };
@@ -166,9 +165,8 @@ export class TemplatesService {
       branch: 'generated',
     });
 
-    await this.eventService.emit('templates.template.applied', {
+    await this.eventService.emit('templates.template.applied', project.id, {
       templateId: dto.templateId,
-      projectId: project.id,
       deploymentId: deployment.id,
     });
 

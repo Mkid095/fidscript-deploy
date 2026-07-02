@@ -51,11 +51,12 @@ export class DomainAddService {
       },
     });
 
-    await this.eventService.emit('domain.added' as any, {
-      id: `${domain.id}-${Date.now()}`, type: 'domain.added', timestamp: new Date(),
-      actorId: userId, actorType: 'user', resourceType: 'domain', resourceId: domain.id,
-      metadata: { domainId: domain.id, projectId, domain: dto.domain, isCustom: !isPlatform, emailWarning: mx.hasMx, emailProvider: mx.provider },
-    });
+    await this.eventService.emit(
+      'domain.added',
+      projectId,
+      { domainId: domain.id, domain: dto.domain, isCustom: !isPlatform, emailWarning: mx.hasMx, emailProvider: mx.provider },
+      { actorId: userId, actorType: 'user', resourceType: 'domain', resourceId: domain.id },
+    );
 
     const instructions = this.getDnsInstructions(dto.domain, deployment?.deploymentUrl ?? '', isApex);
     if (dto.dnsMode === 'cloudflare_auto' && deployment) {

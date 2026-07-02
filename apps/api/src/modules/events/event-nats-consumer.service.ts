@@ -1,15 +1,20 @@
 import { Injectable, Logger } from '@nestjs/common';
-import { EventEmitter2 } from '@nestjs/event-emitter';
 import { JetStreamClient, NatsConnection } from 'nats';
-import { PlatformEvent } from '@fidscript/events';
 
 const EVENTS_STREAM = 'EVENTS';
 
+/**
+ * Reads platform events from NATS JetStream for audit persistence.
+ *
+ * IMPORTANT: Do NOT re-emit to EventEmitter2 here. EventService.emit() already
+ * fires to the local EventEmitter2 synchronously for in-process fan-out
+ * (RealtimeBridgeService, AuditEventConsumer, etc.). The NATS path is
+ * exclusively for durability — replaying events after a server restart.
+ * Re-emitting here would cause double delivery to RealtimeBridgeService.
+ */
 @Injectable()
 export class EventNatsConsumerService {
   private readonly logger = new Logger(EventNatsConsumerService.name);
-
-  constructor(private eventEmitter: EventEmitter2) {}
 
   async startDurableConsumer(nc: NatsConnection, js: JetStreamClient) {
     const CONSUMER_NAME = 'audit-replay';
@@ -29,8 +34,9 @@ export class EventNatsConsumerService {
     (async () => {
       for await (const msg of messages) {
         try {
-          const event: PlatformEvent = JSON.parse(new TextDecoder().decode(msg.data));
-          this.eventEmitter.emit(event.type, event);
+          // Parse and acknowledge only — fan-out is handled synchronously
+          // by EventService.emit() via the local EventEmitter2.
+          JSON.parse(new TextDecoder().decode(msg.data));
           msg.ack();
         } catch (err) {
           this.logger.error(`Error processing durable consumer message: ${(err as Error).message}`);

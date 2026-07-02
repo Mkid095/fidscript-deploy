@@ -48,20 +48,19 @@ export class EmailInboundService {
       },
     });
 
-    await this.eventService.emit('email.received', {
+    await this.eventService.emit('email.received', domain.projectId, {
       messageId: emailMessage.id,
       // jmapMessageId will be populated by a future Stalwart Sieve script enhancement
       // that echoes the JMAP Message-Id header. Until then, inbound attachment
       // extraction is a no-op (attachmentStorageService guards on jmapMessageId presence).
       jmapMessageId: undefined as string | undefined,
-      projectId: domain.projectId,
       mailboxId: mailbox?.id,
       // Mailbox localPart is needed by the listener to resolve JMAP credentials
       mailboxLocal: mailbox?.localPart ?? localPart,
       from: payload.from,
       to: payload.to,
       subject: payload.subject,
-    });
+    }, {});
 
     if (alias) {
       const webhookTargets = (alias.targets as Array<{ type: string; url?: string }>)
@@ -78,12 +77,11 @@ export class EmailInboundService {
           timestamp: new Date().toISOString(),
         });
         if (result.delivered) {
-          await this.eventService.emit('email.webhook_triggered', {
+          await this.eventService.emit('email.webhook_triggered', domain.projectId, {
             messageId: emailMessage.id,
-            projectId: domain.projectId,
             url: target.url,
             attempts: result.attempts,
-          });
+          }, {});
         }
       }
     }

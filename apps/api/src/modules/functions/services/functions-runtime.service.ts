@@ -48,7 +48,7 @@ export class FunctionsRuntimeService {
       data: { currentVersion: version, status: 'deployed' },
     });
 
-    await this.eventService.emit('function.deployed', { functionId, projectId, version });
+    await this.eventService.emit('function.deployed', projectId, { functionId, version });
     return { deployed: true, version };
   }
 
@@ -85,8 +85,8 @@ export class FunctionsRuntimeService {
       },
     });
 
-    await this.eventService.emit(result.success ? 'function.invoked' : 'function.error', {
-      functionId, projectId, success: result.success,
+    await this.eventService.emit(result.success ? 'function.invoked' : 'function.error', projectId, {
+      functionId, success: result.success,
     });
 
     return result;

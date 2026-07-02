@@ -69,7 +69,7 @@ Format response as JSON with: diagnosis (string), fix (string), prevention (stri
       ],
     });
 
-    this.events.emit('ai.error_diagnosed', { projectId, error: dto.error, deploymentId: dto.deploymentId });
+    this.events.emit('ai.error_diagnosed', projectId, { error: dto.error, deploymentId: dto.deploymentId });
     return this.parseAIJsonResponse(response.content);
   }
 
@@ -95,7 +95,7 @@ Format response as JSON with: recommendations (array), estimatedCost, scalingStr
       ],
     });
 
-    this.events.emit('ai.recommendation.generated', { projectId });
+    this.events.emit('ai.recommendation.generated', projectId, {});
     return this.parseAIJsonResponse(response.content);
   }
 
@@ -126,7 +126,7 @@ Format response as JSON with: status, issues (array), suggestions (array)`;
       ],
     });
 
-    this.events.emit('ai.deployment.assisted', { projectId, deploymentId: dto.deploymentId });
+    this.events.emit('ai.deployment.assisted', projectId, { deploymentId: dto.deploymentId });
     return this.parseAIJsonResponse(response.content);
   }
 
@@ -156,7 +156,7 @@ Format response as JSON with: structure, template, features (array), setupSteps 
       ],
     });
 
-    this.events.emit('ai.project.generation_assisted', { projectId });
+    this.events.emit('ai.project.generation_assisted', projectId, {});
     return this.parseAIJsonResponse(response.content);
   }
 

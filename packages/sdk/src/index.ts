@@ -51,6 +51,7 @@ export { FidscriptError, AuthError, NotFoundError, ValidationError, RateLimitErr
 export { AuthModule, ProjectsModule, DeploymentsModule, StorageModule, DatabasesModule, DomainsModule, EmailModule, FunctionsModule, QueuesModule, CronModule, RealtimeModule, MonitoringModule, LoggingModule, TemplatesModule, GithubModule };
 export { AdminMailboxModule, AdminAttachmentConfigModule, type PlatformMailboxMessage, type PlatformMailboxSummary, type PlatformMailboxesResponse, type CreatePlatformMailboxResponse, type ListPlatformMessagesResponse, type AdminSendMailResponse, type AdminAttachmentConfig, type StorageBackend, type MailboxMessage, type EmailDomain, type Mailbox, type EmailAlias };
 export type { Domain, DnsConnection } from './modules/domains';
+export type { RealtimeEventHandler } from './modules/realtime';
 
 export interface FidscriptSDK {
   auth: AuthModule;

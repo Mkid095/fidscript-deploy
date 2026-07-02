@@ -62,8 +62,7 @@ export class LogRetentionService {
           this.logger.log(
             `[${stream.name}] retention sweep: removed ${batchDeleted} entries older than ${stream.retentionDays} days`,
           );
-          this.eventService.emit('logs.pruned', {
-            projectId: stream.projectId,
+          this.eventService.emit('logs.pruned', stream.projectId, {
             streamId: stream.id,
             streamName: stream.name,
             deletedCount: batchDeleted,

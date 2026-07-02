@@ -73,7 +73,8 @@
   --color-rail: var(--rail);
   --color-rail-light: var(--rail-light);
   --color-rail-dark: var(--rail-dark);
-  --color-content: var(--text);
+  /* Note: --color-content intentionally omitted — using var(--text) directly
+     in arbitrary values would double-wrap as var(--var(--text)) via theme. */
   --color-content-muted: var(--text-muted);
   --color-content-dim: var(--text-dim);
   --color-accent: var(--accent);
@@ -161,3 +162,29 @@
   to { opacity: 1; }
 }
 .animate-fade-in { animation: fade-in 0.15s ease-out both; }
+
+@keyframes connector-load {
+  0% { transform: translateX(-100%); }
+  100% { transform: translateX(200%); }
+}
+.animate-connector-load {
+  animation: connector-load 1.5s ease-in-out infinite;
+}
+
+@keyframes shimmer {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+.animate-shimmer {
+  background: linear-gradient(90deg, transparent 0%, rgba(255,255,255,0.15) 50%, transparent 100%);
+  background-size: 200% 100%;
+  animation: shimmer 2s ease-in-out infinite;
+}
+
+@keyframes connector-load-vertical {
+  0% { transform: translateY(-100%); }
+  100% { transform: translateY(200%); }
+}
+.animate-connector-load-vertical {
+  animation: connector-load-vertical 1.5s ease-in-out infinite;
+}

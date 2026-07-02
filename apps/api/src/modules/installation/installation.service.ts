@@ -169,7 +169,7 @@ export class InstallationOrchestratorService {
       });
 
       operationId = op.id;
-      this.events.emit('installation.lifecycle.operation.started' as EventType, { operationId: op.id, type: 'CONFIGURE' });
+      this.events.emit('installation.lifecycle.operation.started', null, { operationId: op.id, type: 'CONFIGURE' });
 
       // ── Phase 2: External work (outside transaction) ──────────────────
       // These involve network/disk I/O and may take time.
@@ -257,8 +257,8 @@ export class InstallationOrchestratorService {
         });
       });
 
-      this.events.emit('installation.lifecycle.operation.completed' as EventType, { operationId: op.id, success: true });
-      this.events.emit('installation.lifecycle.changed' as EventType, { lifecycle: 'CONFIGURED' });
+      this.events.emit('installation.lifecycle.operation.completed', null, { operationId: op.id, success: true });
+      this.events.emit('installation.lifecycle.changed', null, { lifecycle: 'CONFIGURED' });
 
       return { operationId: op.id };
 
@@ -286,8 +286,8 @@ export class InstallationOrchestratorService {
       ]).catch(() => null);
 
       // Events only after DB is consistent
-      this.events.emit('installation.lifecycle.operation.completed' as EventType, { operationId, success: false, error: msg, failedStep });
-      this.events.emit('installation.lifecycle.changed' as EventType, { lifecycle: 'FAILED' });
+      this.events.emit('installation.lifecycle.operation.completed', null, { operationId, success: false, error: msg, failedStep });
+      this.events.emit('installation.lifecycle.changed', null, { lifecycle: 'FAILED' });
       throw err;
 
     } finally {
@@ -418,22 +418,22 @@ export class InstallationOrchestratorService {
       const { name, validate, execute } = steps[i];
       const input = inputs[i];
 
-      this.events.emit(`installation.step.${name}.started` as EventType, { input });
-      this.events.emit('installation.lifecycle.validation.started' as EventType, { step: name });
+      this.events.emit(`installation.step.${name}.started`, null, { input });
+      this.events.emit('installation.lifecycle.validation.started', null, { step: name });
 
       const validation = await validate(input);
-      this.events.emit(`installation.step.${name}.validation.completed` as EventType, validation);
-      this.events.emit('installation.lifecycle.validation.completed' as EventType, { step: name, valid: validation.valid, issues: validation.issues });
+      this.events.emit(`installation.step.${name}.validation.completed`, null, validation);
+      this.events.emit('installation.lifecycle.validation.completed', null, { step: name, valid: validation.valid, issues: validation.issues });
 
       if (!validation.valid) {
         const error = `Validation failed for step ${name}: ${validation.issues.join(', ')}`;
-        this.events.emit(`installation.step.${name}.failed` as EventType, { reason: error });
+        this.events.emit(`installation.step.${name}.failed`, null, { reason: error });
         throw new InstallationStepError(name, error);
       }
 
       const result = await execute(input);
       const eventName = result.success ? `installation.step.${name}.completed` : `installation.step.${name}.failed`;
-      this.events.emit(eventName as EventType, result);
+      this.events.emit(eventName as EventType, null, result, {});
 
       if (!result.success) {
         throw new InstallationStepError(name, `Step ${name} failed: ${result.error}`);

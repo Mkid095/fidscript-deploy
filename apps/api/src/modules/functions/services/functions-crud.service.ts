@@ -16,7 +16,7 @@ export class FunctionsCrudService {
         envVars: dto.envVars || {}, status: 'created',
       },
     });
-    await this.eventService.emit('function.created', { functionId: func.id, projectId, name: dto.name });
+    await this.eventService.emit('function.created', projectId, { functionId: func.id, name: dto.name });
     return func;
   }
 
@@ -49,7 +49,7 @@ export class FunctionsCrudService {
     const func = await this.prisma.function.findFirst({ where: { id: functionId, projectId } });
     if (!func) throw new NotFoundException('Function not found');
     await this.prisma.function.delete({ where: { id: functionId } });
-    await this.eventService.emit('function.deleted', { functionId, projectId });
+    await this.eventService.emit('function.deleted', projectId, { functionId });
     return { deleted: true };
   }
 }

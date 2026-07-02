@@ -24,11 +24,10 @@ export class EmailApiKeyService {
       data: { projectId, name: dto.name, keyHash, scopes },
     });
 
-    await this.eventService.emit('email.api_key_created', {
+    await this.eventService.emit('email.api_key_created', projectId, {
       apiKeyId: apiKey.id,
-      projectId,
       name: dto.name,
-    });
+    }, {});
 
     return {
       id: apiKey.id,
@@ -57,7 +56,7 @@ export class EmailApiKeyService {
 
     await this.prisma.emailApiKey.delete({ where: { id: apiKeyId } });
 
-    await this.eventService.emit('email.api_key_deleted', { apiKeyId, projectId });
+    await this.eventService.emit('email.api_key_deleted', projectId, { apiKeyId }, {});
 
     return { deleted: true };
   }

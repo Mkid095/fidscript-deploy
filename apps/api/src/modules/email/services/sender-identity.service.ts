@@ -53,12 +53,11 @@ export class EmailSenderIdentityService {
       }
     }
 
-    await this.eventService.emit('email.identity_created', {
+    await this.eventService.emit('email.identity_created', projectId, {
       identityId: identity.id,
-      projectId,
       email: dto.email,
       isVerified: identity.isVerified,
-    });
+    }, {});
 
     return identity;
   }
@@ -86,7 +85,7 @@ export class EmailSenderIdentityService {
 
     await this.prisma.senderIdentity.delete({ where: { id: identityId } });
 
-    await this.eventService.emit('email.identity_deleted', { identityId, projectId });
+    await this.eventService.emit('email.identity_deleted', projectId, { identityId }, {});
 
     return { deleted: true };
   }

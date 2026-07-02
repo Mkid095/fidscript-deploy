@@ -1180,6 +1180,7 @@ model QueueMessage {
   acknowledgedAt DateTime? @map("acknowledged_at") @db.Timestamptz
   failedAt       DateTime? @map("failed_at") @db.Timestamptz
   errorMessage   String?   @map("error_message") @db.Text
+  jetStreamSeq   BigInt?   @map("jetstream_seq") @db.BigInt  // precise JetStream sequence for ack correlation
   createdAt      DateTime  @default(now()) @map("created_at") @db.Timestamptz
 
   queue Queue @relation(fields: [queueId], references: [id], onDelete: Cascade)
@@ -1207,6 +1208,8 @@ model CronJob {
   timeoutSeconds    Int       @default(300)
   lastRunAt         DateTime? @map("last_run_at") @db.Timestamptz
   nextRunAt         DateTime? @map("next_run_at") @db.Timestamptz
+  /// idling | scheduled | running | completed | failed | dead
+  state             String    @default("scheduled") @map("state") @db.VarChar(20)
   createdAt         DateTime  @default(now()) @map("created_at") @db.Timestamptz
   updatedAt         DateTime  @updatedAt @map("updated_at") @db.Timestamptz
 
@@ -1219,16 +1222,35 @@ model CronJob {
 }
 
 model CronJobRun {
-  id           String    @id @default(uuid())
-  cronJobId    String    @map("cron_job_id")
-  status       String    @default("running") @db.VarChar(50)
-  startedAt    DateTime  @default(now()) @map("started_at") @db.Timestamptz
-  completedAt  DateTime? @map("completed_at") @db.Timestamptz
-  errorMessage String?   @map("error_message") @db.Text
-  createdAt    DateTime  @default(now()) @map("created_at") @db.Timestamptz
+  id              String    @id @default(uuid())
+  cronJobId       String    @map("cron_job_id")
+  status          String    @default("running") @db.VarChar(50)
+  attempt         Int       @default(1)
+  scheduledAt     DateTime  @map("scheduled_at") @db.Timestamptz
+  startedAt       DateTime  @default(now()) @map("started_at") @db.Timestamptz
+  completedAt     DateTime? @map("completed_at") @db.Timestamptz
+  durationMs      BigInt?   @map("duration_ms")
+  errorMessage    String?   @map("error_message") @db.Text
+  statusReason    String?   @map("status_reason") @db.VarChar(100)
+  failureType     String?   @map("failure_type") @db.VarChar(50)
+  /// none | timeout | network_error | invalid_payload | dependency_failure | system_error
+  payloadSnapshot Json?     @map("payload_snapshot")
+  replayedFromRunId String? @map("replayed_from_run_id")
+  /// Lease for crash-safety: worker must heartbeat before leaseUntil expires.
+  /// If lease expires without renewal, another worker can recover this run.
+  leaseUntil      DateTime? @map("lease_until") @db.Timestamptz
+  heartbeatAt     DateTime? @map("heartbeat_at") @db.Timestamptz
+  /// Why this run was created: scheduled | retry | manual | deduplicated | lease_recovery
+  executionReason String?   @map("execution_reason") @db.VarChar(50)
+  createdAt       DateTime  @default(now()) @map("created_at") @db.Timestamptz
 
-  cronJob CronJob @relation(fields: [cronJobId], references: [id], onDelete: Cascade)
+  originalRun CronJobRun?  @relation("ReplayedRuns", fields: [replayedFromRunId], references: [id])
+  replays    CronJobRun[]  @relation("ReplayedRuns")
+  cronJob    CronJob       @relation(fields: [cronJobId], references: [id], onDelete: Cascade)
 
+  /// Prevents duplicate runs for the same job + scheduled time + attempt.
+  /// Retries create new runs with incremented attempt, so they are not duplicates.
+  @@unique([cronJobId, scheduledAt, attempt])
   @@map("runs")
   @@schema("scheduler")
 }

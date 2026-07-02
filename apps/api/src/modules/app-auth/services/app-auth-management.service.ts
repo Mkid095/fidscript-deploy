@@ -69,8 +69,7 @@ export class AppAuthManagementService {
       where: { userId: appUserId, revokedAt: null },
       data: { revokedAt: new Date() },
     });
-    await this.eventService.emit('auth.user_disabled', {
-      projectId,
+    await this.eventService.emit('auth.user_disabled', projectId, {
       userId: appUserId,
       disabledBy: actorId,
     }, { actorId, ipAddress, userAgent });
@@ -96,8 +95,8 @@ export class AppAuthManagementService {
     await this.prisma.appUserRole.create({
       data: { userId: appUserId, roleId },
     });
-    await this.eventService.emit('auth.role_assigned', {
-      projectId, userId: appUserId, roleId, assignedBy: actorId,
+    await this.eventService.emit('auth.role_assigned', projectId, {
+      userId: appUserId, roleId, assignedBy: actorId,
     }, { actorId, ipAddress, userAgent });
     return { success: true };
   }

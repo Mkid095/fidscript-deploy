@@ -44,9 +44,8 @@ export class QueueProducerService {
     } catch (err: unknown) {
       // If JetStream is unavailable (e.g. NATS not connected), fall back to
       // Prisma-only mode so queues still work in dev / degraded environments.
-      this.eventService.emit('queues.publish.degraded' as any, {
+      this.eventService.emit('queues.publish.degraded', projectId, {
         queueId,
-        projectId,
         error: (err as Error).message,
       });
     }
@@ -59,15 +58,13 @@ export class QueueProducerService {
         headers: headers,
         status: 'pending',
         scheduledAt,
-        // Store JetStream seq in errorMessage field as a marker (not ideal but works)
-        errorMessage: jsSeq ? `js_seq:${jsSeq}` : 'degraded_js_offline',
+        jetStreamSeq: jsSeq ? BigInt(jsSeq) : null,
       },
     });
 
-    this.eventService.emit('queues.message.published' as any, {
+    this.eventService.emit('queues.message.published', projectId, {
       queueId,
       messageId: message.id,
-      projectId,
       jsSeq,
     });
 
@@ -98,7 +95,7 @@ export class QueueProducerService {
             headers,
             status: 'pending',
             scheduledAt: new Date(),
-            errorMessage: jsSeq ? `js_seq:${jsSeq}` : 'degraded_js_offline',
+            jetStreamSeq: jsSeq ? BigInt(jsSeq) : null,
           },
         });
       }),
@@ -108,10 +105,9 @@ export class QueueProducerService {
       .filter(r => r.status === 'fulfilled')
       .map(r => (r as PromiseFulfilledResult<{ id: string }>).value);
 
-    this.eventService.emit('queues.message.published' as any, {
+    this.eventService.emit('queues.message.published', projectId, {
       queueId,
       messageCount: messages.length,
-      projectId,
     });
 
     return { messageIds: messages.map(m => m.id), count: messages.length };

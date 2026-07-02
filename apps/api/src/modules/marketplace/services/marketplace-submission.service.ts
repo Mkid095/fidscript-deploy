@@ -36,7 +36,7 @@ export class MarketplaceSubmissionService {
       },
     });
 
-    this.events.emit('marketplace.item.submitted', { itemId: item.id, type: item.type });
+    this.events.emit('marketplace.item.submitted', null, { itemId: item.id, type: item.type });
     return item;
   }
 
@@ -71,7 +71,7 @@ export class MarketplaceSubmissionService {
       where: { id: itemId },
       data: { status: 'approved', approvedAt: new Date(), isActive: true },
     });
-    this.events.emit('marketplace.item.approved', { itemId: item.id });
+    this.events.emit('marketplace.item.approved', null, { itemId: item.id });
     return item;
   }
 

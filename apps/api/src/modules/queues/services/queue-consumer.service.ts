@@ -60,10 +60,9 @@ export class QueueConsumerService {
       where: { id: { in: dto.messageIds } },
       data: { status: 'acknowledged', acknowledgedAt: new Date() },
     });
-    await this.eventService.emit('queues.message.acknowledged' as any, {
+    await this.eventService.emit('queues.message.acknowledged', projectId, {
       queueId,
       messageIds: dto.messageIds,
-      projectId,
     });
     return { acknowledged: dto.messageIds.length };
   }
@@ -83,10 +82,9 @@ export class QueueConsumerService {
         errorMessage: null,
       },
     });
-    await this.eventService.emit('queues.message.retried' as any, {
+    await this.eventService.emit('queues.message.retried', projectId, {
       queueId,
       messageIds: dto.messageIds,
-      projectId,
     });
     return { retried: dto.messageIds.length };
   }
@@ -135,11 +133,10 @@ export class QueueConsumerService {
       ),
     );
 
-    await this.eventService.emit('queues.message.dead_lettered' as any, {
+    await this.eventService.emit('queues.message.dead_lettered', projectId, {
       queueId,
       dlqId: dlq.id,
       messageIds: dto.messageIds,
-      projectId,
     });
     return { moved: dto.messageIds.length, dlqId: dlq.id };
   }
@@ -173,9 +170,8 @@ export class QueueConsumerService {
       await this.jsQueue.purgeStream(projectId, queue.deadLetterQueue).catch(() => {/* non-fatal */});
     }
 
-    await this.eventService.emit('queues.message.purged' as any, {
+    await this.eventService.emit('queues.message.purged', projectId, {
       queueId,
-      projectId,
       mainDeleted: mainDeleted.count,
       dlqDeleted,
     });

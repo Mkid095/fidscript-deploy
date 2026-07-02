@@ -44,15 +44,9 @@ export class ProjectInvitationService {
       data: { projectId, email: dto.email, role: dto.role, tokenHash, expiresAt, invitedBy: userId },
     });
 
-    await this.eventService.emit('projects.invitation.created', {
-      id: crypto.randomUUID(),
-      type: 'projects.invitation.created',
-      timestamp: new Date(),
-      actorId: userId,
-      actorType: 'user',
-      resourceType: 'project_invitation',
-      resourceId: invitation.id,
-      metadata: { projectId, email: dto.email, role: dto.role },
+    await this.eventService.emit('projects.invitation.created', projectId, {
+      email: dto.email,
+      role: dto.role,
     });
 
     return { invitationId: invitation.id, token, expiresAt };
@@ -78,15 +72,8 @@ export class ProjectInvitationService {
       data: { acceptedAt: new Date() },
     });
 
-    await this.eventService.emit('projects.invitation.accepted', {
-      id: crypto.randomUUID(),
-      type: 'projects.invitation.accepted',
-      timestamp: new Date(),
-      actorId: user.id,
-      actorType: 'user',
-      resourceType: 'project_invitation',
-      resourceId: invitation.id,
-      metadata: { projectId: invitation.projectId, email: invitation.email },
+    await this.eventService.emit('projects.invitation.accepted', invitation.projectId, {
+      email: invitation.email,
     });
 
     return { success: true, projectId: invitation.projectId };
@@ -113,16 +100,7 @@ export class ProjectInvitationService {
       data: { revokedAt: new Date() },
     });
 
-    await this.eventService.emit('projects.invitation.revoked', {
-      id: crypto.randomUUID(),
-      type: 'projects.invitation.revoked',
-      timestamp: new Date(),
-      actorId: userId,
-      actorType: 'user',
-      resourceType: 'project_invitation',
-      resourceId: invitationId,
-      metadata: { projectId },
-    });
+    await this.eventService.emit('projects.invitation.revoked', projectId, {});
 
     return { success: true };
   }

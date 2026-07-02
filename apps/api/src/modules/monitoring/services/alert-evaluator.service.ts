@@ -70,8 +70,8 @@ export class AlertEvaluatorService {
           const alert = await this.prisma.alert.update({
             where: { id: open.id }, data: { status: 'firing', firedAt: new Date() },
           });
-          await this.eventService.emit('monitoring.alert.firing', {
-            projectId: rule.projectId, ruleId: rule.id, alertId: alert.id,
+          await this.eventService.emit('monitoring.alert.firing', rule.projectId, {
+            ruleId: rule.id, alertId: alert.id,
             metric: rule.metric, value, threshold: rule.threshold,
           });
           await this.notifications.dispatchForAlert(alert, rule);
@@ -79,8 +79,8 @@ export class AlertEvaluatorService {
       }
     } else if (open) {
       await this.prisma.alert.update({ where: { id: open.id }, data: { status: 'resolved', resolvedAt: new Date() } });
-      await this.eventService.emit('monitoring.alert.resolved', {
-        projectId: rule.projectId, ruleId: rule.id, alertId: open.id,
+      await this.eventService.emit('monitoring.alert.resolved', rule.projectId, {
+        ruleId: rule.id, alertId: open.id,
       });
     }
   }

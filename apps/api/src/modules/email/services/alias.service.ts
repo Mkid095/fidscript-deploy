@@ -47,11 +47,10 @@ export class EmailAliasService {
       data: { domainId: domain.id, localPart: dto.localPart, targets: JSON.parse(JSON.stringify(dto.targets)), description: dto.description },
     });
 
-    await this.eventService.emit('email.alias_created', {
+    await this.eventService.emit('email.alias_created', projectId, {
       aliasId: alias.id,
-      projectId,
       email: `${dto.localPart}@${dto.domain}`,
-    });
+    }, {});
 
     const mailboxTarget = dto.targets.find(t => t.type === 'mailbox' && t.mailboxId);
     if (mailboxTarget?.mailboxId) {
@@ -114,7 +113,7 @@ export class EmailAliasService {
 
     await this.prisma.emailAlias.delete({ where: { id: aliasId } });
 
-    await this.eventService.emit('email.alias_deleted', { aliasId, projectId });
+    await this.eventService.emit('email.alias_deleted', projectId, { aliasId }, {});
 
     return { deleted: true };
   }

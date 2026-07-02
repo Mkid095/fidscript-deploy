@@ -86,8 +86,7 @@ export class LogIngestController {
 
     // Sampled ingested event (every 1 % of batches)
     if (dto.logs.length > 0 && Math.random() < 0.01) {
-      this.events.emit('logs.log.ingested', {
-        projectId,
+      this.events.emit('logs.log.ingested', projectId, {
         count: dto.logs.length,
         overQuotaCount,
         sampled: true,

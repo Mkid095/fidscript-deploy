@@ -25,11 +25,7 @@ export class AuthApiKeyService {
       },
     });
 
-    await this.eventService.emit('identity.api_key.created', {
-      id: crypto.randomUUID(), type: 'identity.api_key.created',
-      timestamp: new Date(), actorId: userId, actorType: 'user',
-      resourceType: 'api_key', resourceId: apiKey.id, metadata: { name: dto.name },
-    });
+    await this.eventService.emit('identity.api_key.created', null, { name: dto.name, apiKeyId: apiKey.id });
 
     return { apiKey, key };
   }
@@ -48,11 +44,7 @@ export class AuthApiKeyService {
 
     await this.prisma.apiKey.delete({ where: { id: keyId } });
 
-    await this.eventService.emit('identity.api_key.revoked', {
-      id: crypto.randomUUID(), type: 'identity.api_key.revoked',
-      timestamp: new Date(), actorId: userId, actorType: 'user',
-      resourceType: 'api_key', resourceId: keyId, metadata: { name: apiKey.name },
-    });
+    await this.eventService.emit('identity.api_key.revoked', null, { name: apiKey.name, apiKeyId: keyId });
   }
 
   async validateApiKey(key: string): Promise<{ userId: string; permissions: string[] } | null> {

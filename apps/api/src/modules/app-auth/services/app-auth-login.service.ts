@@ -22,8 +22,8 @@ export class AppAuthLoginService {
     });
 
     if (!user || !user.passwordHash) {
-      await this.eventService.emit('auth.login_failed', {
-        projectId, email: dto.email,
+      await this.eventService.emit('auth.login_failed', projectId, {
+        email: dto.email,
       }, { ipAddress, userAgent });
       throw new UnauthorizedException('Invalid credentials');
     }
@@ -31,8 +31,8 @@ export class AppAuthLoginService {
     const { compare } = await import('bcrypt');
     const valid = await compare(dto.password, user.passwordHash);
     if (!valid) {
-      await this.eventService.emit('auth.login_failed', {
-        projectId, email: dto.email,
+      await this.eventService.emit('auth.login_failed', projectId, {
+        email: dto.email,
       }, { ipAddress, userAgent });
       throw new UnauthorizedException('Invalid credentials');
     }
@@ -40,8 +40,8 @@ export class AppAuthLoginService {
     const tokens = await tokenService.issueTokens(
       user.id, projectId, user.email, ipAddress, userAgent,
     );
-    await this.eventService.emit('auth.login_succeeded', {
-      userId: user.id, projectId, email: user.email,
+    await this.eventService.emit('auth.login_succeeded', projectId, {
+      userId: user.id, email: user.email,
     }, { actorId: user.id, ipAddress, userAgent });
 
     return {
@@ -75,8 +75,8 @@ export class AppAuthLoginService {
     const tokens = await tokenService.issueTokens(
       user.id, projectId, user.email, ipAddress, userAgent,
     );
-    await this.eventService.emit('auth.login_succeeded', {
-      userId: user.id, projectId, email: user.email,
+    await this.eventService.emit('auth.login_succeeded', projectId, {
+      userId: user.id, email: user.email,
     }, { actorId: user.id, ipAddress, userAgent });
 
     return {

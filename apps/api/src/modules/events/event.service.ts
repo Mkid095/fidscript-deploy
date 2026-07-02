@@ -14,15 +14,15 @@ export class EventService implements OnModuleInit, OnModuleDestroy {
   private readonly logger = new Logger(EventService.name);
   private nc: NatsConnection | null = null;
   private js: JetStreamClient | null = null;
-  private eventEmitter: EventEmitter2;
   private connected = false;
 
   constructor(
     private configService: ConfigService,
     private natsConsumer: EventNatsConsumerService,
-  ) {
-    this.eventEmitter = new EventEmitter2({ wildcard: true, verboseMemoryLeak: true });
-  }
+    // Inject the global EventEmitter2 — the same instance that
+    // EventEmitterModule.forRoot() provides and RealtimeBridgeService listens on.
+    private readonly eventEmitter: EventEmitter2,
+  ) {}
 
   async onModuleInit() {
     const natsUrl = this.configService.get<string>('NATS_URL');
@@ -47,14 +47,17 @@ export class EventService implements OnModuleInit, OnModuleDestroy {
 
   /**
    * Emit a platform event.
-   * @param type - Event type from the EventType union
-   * @param payload - Event-specific data (stored in metadata)
-   * @param context - Optional actor/IP/UA/resource context. When omitted the event is
-   *   emitted with just {id, type, timestamp, metadata}; callers that pass context
-   *   must include all identifying fields so audit rows are complete.
+   *
+   * @param type     - Event type from the EventType union
+   * @param projectId - Project this event belongs to (required for all project-scoped
+   *                    events so RealtimeBridgeService can route to the correct Socket.IO room.
+   *                    Pass null for identity/system events that have no project scope.
+   * @param payload  - Event-specific data (stored in metadata)
+   * @param context  - Optional actor/IP/UA/resource context.
    */
   emit<T = unknown>(
     type: EventType,
+    projectId: string | null,
     payload: T,
     context?: {
       actorId?: string;
@@ -68,13 +71,15 @@ export class EventService implements OnModuleInit, OnModuleDestroy {
     const id = randomUUID();
     const platformEvent: PlatformEvent<T> = {
       id,
+      version: '1.0',
       type: type as EventType,
       timestamp: new Date(),
+      projectId: projectId ?? undefined,
       metadata: payload,
       ...(context ?? {}),
     };
     this.eventEmitter.emit(type, platformEvent);
-    this.logger.debug(`[local] Event dispatched: ${type}`, { id });
+    this.logger.debug(`[local] Event dispatched: ${type}`, { id, projectId });
     if (this.connected && this.js) {
       const subject = `${EVENTS_SUBJECT_PREFIX}${type}`;
       this.js.publish(subject, JSON.stringify(platformEvent))

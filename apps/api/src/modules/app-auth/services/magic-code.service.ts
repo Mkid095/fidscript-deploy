@@ -73,7 +73,7 @@ export class MagicCodeService {
     }
 
     await this.eventService.emit(
-      'auth.magic_code_sent', { projectId, email },
+      'auth.magic_code_sent', projectId, { email },
       { actorType: 'user', resourceType: 'app_user', resourceId: email, ipAddress },
     );
     return { sent: true };
@@ -100,7 +100,7 @@ export class MagicCodeService {
 
     if (!(await bcrypt.compare(code, hash))) {
       await this.redis.set(attKey, attempts + 1, OTP_TTL_SEC);
-      await this.eventService.emit('auth.login_failed', { projectId, email, method: 'magic_code' });
+      await this.eventService.emit('auth.login_failed', projectId, { email, method: 'magic_code' });
       throw new UnauthorizedException('Invalid code');
     }
 
@@ -111,7 +111,7 @@ export class MagicCodeService {
     let user = await this.prisma.appUser.findFirst({ where: { projectId, email } });
     if (!user) {
       user = await this.prisma.appUser.create({ data: { projectId, email, emailVerified: true } });
-      await this.eventService.emit('auth.user_created', { userId: user.id, projectId, email });
+      await this.eventService.emit('auth.user_created', projectId, { userId: user.id, email });
     } else if (!user.emailVerified) {
       await this.prisma.appUser.update({ where: { id: user.id }, data: { emailVerified: true } });
       user.emailVerified = true;
@@ -121,10 +121,10 @@ export class MagicCodeService {
     if (tokenService) {
       const tokens = await tokenService.issueTokens(user.id, projectId, user.email, ipAddress);
       await this.eventService.emit(
-        'auth.magic_code_verified', { userId: user.id, projectId, email },
+        'auth.magic_code_verified', projectId, { userId: user.id, email },
         { actorId: user.id, actorType: 'user', resourceType: 'app_user', resourceId: user.id, ipAddress },
       );
-      await this.eventService.emit('auth.login_succeeded', { userId: user.id, projectId, email });
+      await this.eventService.emit('auth.login_succeeded', projectId, { userId: user.id, email });
       return {
         user: {
           id: user.id, projectId: user.projectId, email: user.email,
@@ -143,10 +143,10 @@ export class MagicCodeService {
       data: { userId: user.id, tokenHash: await bcrypt.hash(token, BCRYPT_ROUNDS), expiresAt },
     });
     await this.eventService.emit(
-      'auth.magic_code_verified', { userId: user.id, projectId, email },
+      'auth.magic_code_verified', projectId, { userId: user.id, email },
       { actorId: user.id, actorType: 'user', resourceType: 'app_user', resourceId: user.id, ipAddress },
     );
-    await this.eventService.emit('auth.login_succeeded', { userId: user.id, projectId, email });
+    await this.eventService.emit('auth.login_succeeded', projectId, { userId: user.id, email });
     return {
       user: {
         id: user.id, projectId: user.projectId, email: user.email,

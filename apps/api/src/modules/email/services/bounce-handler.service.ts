@@ -52,13 +52,12 @@ export class BounceHandlerService {
       }
     }
 
-    await this.eventService.emit('email.bounced', {
+    await this.eventService.emit('email.bounced', message.projectId, {
       messageId: message.id,
-      projectId: message.projectId,
       to: payload.to,
       error: payload.error,
       isHardBounce,
-    });
+    }, {});
 
     return { updated: true };
   }
@@ -78,10 +77,9 @@ export class BounceHandlerService {
       update: { reason: 'COMPLAINT' },
     }).catch(() => {/* already suppressed */});
 
-    await this.eventService.emit('email.complained', {
-      projectId: emailDomain.projectId,
+    await this.eventService.emit('email.complained', emailDomain.projectId, {
       email: payload.email,
-    });
+    }, {});
 
     return { added: true };
   }

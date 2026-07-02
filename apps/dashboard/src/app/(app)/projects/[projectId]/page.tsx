@@ -27,13 +27,12 @@ export default function ProjectPage() {
   const { getSdk } = useAuth();
   const projectId = params.projectId as string;
 
-  // Derive section from URL path (/projects/:id/activity → activity) or ?section= query.
-  // Falls back to deployments if neither is set.
+  // Redirect /projects/:id → /projects/:id/services (the default services page).
   useEffect(() => {
     const match = pathname?.match(/\/projects\/[^/]+\/([^/]+)/);
     const pathSection = match ? match[1] : null;
     if (!searchParams.get('section') && !pathSection) {
-      router.replace(`/projects/${projectId}?section=services`);
+      router.replace(`/projects/${projectId}/services`);
     }
   }, [projectId, router, searchParams, pathname]);
 

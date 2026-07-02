@@ -39,17 +39,16 @@ export class QueueCrudService {
       );
     } catch (err: unknown) {
       // Non-fatal: NATS may not be connected yet (degraded mode still works via Prisma)
-      this.eventService.emit('queues.consumer.setup.degraded' as any, {
+      this.eventService.emit('queues.consumer.setup.degraded', projectId, {
         queueId: queue.id,
-        projectId,
         error: (err as Error).message,
       });
     }
 
-    await this.eventService.emit('queues.created' as any, {
+    await this.eventService.emit('queues.created', projectId, {
       queueId: queue.id,
-      projectId,
-      name: dto.name,
+      name: queue.name,
+      type: queue.type,
     });
 
     return queue;
@@ -98,6 +97,18 @@ export class QueueCrudService {
       );
     } catch { /* ignore */ }
 
+    await this.eventService.emit('queues.updated', projectId, {
+      queueId: updated.id,
+      updatedFields: {
+        retentionDays: updated.retentionDays,
+        maxMessages: updated.maxMessages,
+        maxBytes: updated.maxBytes,
+        deadLetterQueue: updated.deadLetterQueue,
+        retryAttempts: updated.retryAttempts,
+        retryDelaySeconds: updated.retryDelaySeconds,
+      },
+    });
+
     return updated;
   }
 
@@ -114,6 +125,11 @@ export class QueueCrudService {
 
     await this.prisma.queueMessage.deleteMany({ where: { queueId } });
     await this.prisma.queue.delete({ where: { id: queueId } });
+
+    await this.eventService.emit('queues.deleted', projectId, {
+      queueId,
+      name: queue.name,
+    });
 
     return { deleted: true };
   }

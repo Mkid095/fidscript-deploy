@@ -32,7 +32,7 @@ export class MailboxCleanupService {
     }
 
     await this.prisma.emailMailbox.delete({ where: { id: mailboxId } });
-    await this.eventService.emit('email.mailbox_deleted', { mailboxId, projectId });
+    await this.eventService.emit('email.mailbox_deleted', projectId, { mailboxId }, {});
 
     return { deleted: true };
   }

@@ -53,8 +53,7 @@ export class MfaService {
       data: { mfaSecret: this.crypto.encrypt(secret) },
     });
     await this.eventService.emit(
-      'identity.user.mfa_setup',
-      {},
+      'identity.user.mfa_setup', null, {},
       { actorId: userId, actorType: 'user', resourceType: 'user', resourceId: userId },
     );
     return { secret, otpauthUrl: generateURI({ issuer: ISSUER, label: user.email, secret }) };
@@ -73,8 +72,7 @@ export class MfaService {
 
     await this.prisma.user.update({ where: { id: userId }, data: { mfaEnabled: true } });
     await this.eventService.emit(
-      'identity.user.mfa_enabled',
-      {},
+      'identity.user.mfa_enabled', null, {},
       { actorId: userId, actorType: 'user', resourceType: 'user', resourceId: userId },
     );
     return { enabled: true };
@@ -117,8 +115,7 @@ export class MfaService {
     if (!result.valid) throw new UnauthorizedException('Invalid MFA code');
 
     await this.eventService.emit(
-      'identity.user.mfa_challenge',
-      {},
+      'identity.user.mfa_challenge', null, {},
       { actorId: user.id, actorType: 'user', resourceType: 'user', resourceId: user.id, ipAddress, userAgent },
     );
     return { id: user.id, email: user.email, name: user.name, role: user.role };

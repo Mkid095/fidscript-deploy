@@ -1,1 +1,7 @@
-export { default } from '@/app/(app)/queues/page';
+'use client';
+
+import { QueuesList } from '@/components/queues/queues-list';
+
+export default function ProjectQueuesPage() {
+  return <QueuesList />;
+}

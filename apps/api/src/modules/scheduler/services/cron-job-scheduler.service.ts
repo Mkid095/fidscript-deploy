@@ -1,8 +1,10 @@
 import { Injectable, Logger, OnApplicationBootstrap } from '@nestjs/common';
 import * as cron from 'cron';
-import { CronJobExecutionService } from './cron-job-execution.service';
+import { SchedulerQueueService } from './scheduler-queue.service';
 import { RedisService } from '@/modules/redis/redis.service';
 import { PrismaService } from '@/prisma/prisma.service';
+import { EventService } from '@/modules/events/event.service';
+import { SchedulerExecutionRequest } from './scheduler-queue.service';
 
 @Injectable()
 export class CronJobSchedulerService implements OnApplicationBootstrap {
@@ -10,9 +12,10 @@ export class CronJobSchedulerService implements OnApplicationBootstrap {
   private readonly runningJobs = new Map<string, cron.CronJob>();
 
   constructor(
-    private execution: CronJobExecutionService,
+    private schedulerQueueService: SchedulerQueueService,
     private redisService: RedisService,
     private prisma: PrismaService,
+    private eventService: EventService,
   ) {}
 
   /**
@@ -45,7 +48,41 @@ export class CronJobSchedulerService implements OnApplicationBootstrap {
             return;
           }
           try {
-            await this.execution.executeJob(job);
+            const scheduledAt = new Date();
+            // Idempotent run creation: skip if a run for this job + scheduledAt + attempt already exists.
+            let run: { id: string };
+            try {
+              run = await this.prisma.cronJobRun.create({
+                data: { cronJobId: job.id, status: 'running', attempt: 1, scheduledAt, executionReason: 'scheduled' },
+              });
+            } catch (err: any) {
+              if (err.code === 'P2002') {
+                // Structured dedup: emit an observable event instead of silent skip
+                this.logger.warn(`[${job.name}] deduplicated run for scheduledAt=${scheduledAt.toISOString()}`);
+                await this.eventService.emit('cron.job_run_deduplicated', job.projectId, {
+                  jobId: job.id, scheduledAt: scheduledAt.toISOString(),
+                  reason: 'scheduled_collision',
+                });
+                return;
+              }
+              throw err;
+            }
+            const request: SchedulerExecutionRequest = {
+              runId: run.id,
+              jobId: job.id,
+              projectId: job.projectId,
+              attempt: 1,
+              scheduledAt: scheduledAt.toISOString(),
+              payloadSnapshot: {
+                type: job.functionId ? 'function' : 'endpoint',
+                url: job.endpoint,
+                method: 'POST',
+                headers: {},
+                body: job.payload ?? {},
+                functionId: job.functionId,
+              },
+            };
+            await this.schedulerQueueService.enqueue(request);
           } finally {
             await this.redisService.releaseLock(lockKey, lockToken);
           }

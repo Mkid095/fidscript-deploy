@@ -43,7 +43,7 @@ export class AuthRegisterService {
     });
 
     await this.eventService.emit(
-      'identity.user.registered',
+      'identity.user.registered', null,
       { email: user.email, name: user.name, authMethod },
       {
         actorId: user.id,

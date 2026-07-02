@@ -42,13 +42,9 @@ export class AuthTokenService {
 
     await this.eventService.emit(
       'identity.token.refreshed',
+      null,
       { rotatedFrom: session.id },
-      {
-        actorId: user.id,
-        actorType: 'user',
-        resourceType: 'session',
-        resourceId: session.id,
-      },
+      { actorId: user.id, actorType: 'user', resourceType: 'session', resourceId: session.id },
     );
 
     return { user, oldSession: session };

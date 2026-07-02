@@ -27,7 +27,7 @@ export class AppAuthRegisterService {
       },
     });
 
-    await this.eventService.emit('auth.user_created', { userId: user.id, projectId, email: user.email });
+    await this.eventService.emit('auth.user_created', projectId, { userId: user.id, email: user.email });
     return this.formatUser(user);
   }
 

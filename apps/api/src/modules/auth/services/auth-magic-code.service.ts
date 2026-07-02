@@ -119,7 +119,7 @@ export class AuthMagicCodeService {
     });
 
     await this.eventService.emit(
-      'identity.user.magic_code_sent',
+      'identity.user.magic_code_sent', null,
       { delivered: result.status === 'sent' },
       { actorType: 'user', resourceType: 'user', resourceId: user.id, ipAddress, userAgent },
     );
@@ -169,8 +169,7 @@ export class AuthMagicCodeService {
     const sess = await this.session.createSession(user.id, ipAddress, userAgent);
 
     await this.eventService.emit(
-      'identity.user.magic_code_verified',
-      {},
+      'identity.user.magic_code_verified', null, {},
       { actorId: user.id, actorType: 'user', resourceType: 'user', resourceId: user.id, ipAddress, userAgent },
     );
 

@@ -214,11 +214,12 @@ export class NotifyRealtimeProvider implements RealtimeProvider, OnModuleInit, O
       const projectId = await this.resolveProjectId(databaseId);
       if (!projectId) return;
       this.eventsPublished++;
-      await this.eventService.emit('database.row.changed', {
-        ...event,
-        databaseId,
+      await this.eventService.emit(
+        'database.row.changed',
         projectId,
-      } as any);
+        { ...event, databaseId },
+        {},
+      );
     } catch (err) {
       this.logger.warn(`Failed to handle realtime payload on "${channel}" (db=${databaseId}): ${err instanceof Error ? err.message : err}`);
     }

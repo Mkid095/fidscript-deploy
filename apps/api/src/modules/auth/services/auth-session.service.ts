@@ -48,15 +48,9 @@ export class AuthSessionService {
 
     await this.eventService.emit(
       'identity.session.created',
-      {},
-      {
-        actorId: userId,
-        actorType: 'user',
-        resourceType: 'session',
-        resourceId: session.id,
-        ipAddress,
-        userAgent,
-      },
+      null,
+      { ipAddress, userAgent },
+      { actorId: userId, actorType: 'user', resourceType: 'session', resourceId: session.id },
     );
 
     return { id: session.id, refreshToken, expiresAt };

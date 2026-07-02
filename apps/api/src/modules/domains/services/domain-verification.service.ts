@@ -123,16 +123,12 @@ export class DomainVerificationService {
     };
   }
 
-  private async emit(domainId: string, projectId: string, userId: string, type: string, metadata: Record<string, unknown>) {
-    await this.eventService.emit(type as any, {
-      id: `${domainId}-${Date.now()}`,
-      type,
-      timestamp: new Date(),
-      actorId: userId || undefined,
-      actorType: 'user',
-      resourceType: 'domain',
-      resourceId: domainId,
-      metadata: { domainId, projectId, ...metadata },
-    });
+  private async emit(domainId: string, projectId: string, userId: string, type: string, payload: Record<string, unknown>) {
+    await this.eventService.emit(
+      type as any,
+      projectId,
+      { domainId, ...payload },
+      { actorId: userId || undefined, actorType: 'user', resourceType: 'domain', resourceId: domainId },
+    );
   }
 }

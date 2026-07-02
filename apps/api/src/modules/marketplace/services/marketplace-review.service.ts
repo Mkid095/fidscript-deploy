@@ -34,7 +34,7 @@ export class MarketplaceReviewService {
 
     await this.updateItemRating(item.id);
 
-    this.events.emit('marketplace.review.created', { itemId: item.id, reviewId: review.id });
+    this.events.emit('marketplace.review.created', null, { itemId: item.id, reviewId: review.id });
     return review;
   }
 

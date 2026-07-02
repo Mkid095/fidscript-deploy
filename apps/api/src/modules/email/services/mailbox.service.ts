@@ -43,7 +43,7 @@ export class EmailMailboxService {
       },
     });
 
-    await this.eventService.emit('email.mailbox_created', { mailboxId: mailbox.id, projectId, email: fullEmail });
+    await this.eventService.emit('email.mailbox_created', projectId, { mailboxId: mailbox.id, email: fullEmail }, {});
 
     const host = this.configService.get('PLATFORM_MAIL_HOST', 'mail.deploy.fidscript.com');
     return {

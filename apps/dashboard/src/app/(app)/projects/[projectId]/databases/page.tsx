@@ -87,15 +87,15 @@ export default function ProjectDatabasesPage() {
               <div className="flex items-center justify-between">
                 <p className="text-sm font-semibold text-[var(--text)]">{db.name}</p>
                 <span className={`text-[10px] px-1.5 py-0.5 rounded font-mono ${
-                  db.status === 'ready' ? 'bg-[var(--success)]/10 text-[var(--success)]'
-                    : db.status === 'failed' ? 'bg-[var(--accent)]/10 text-[var(--danger)]'
-                    : 'bg-[var(--warning)]/10 text-[var(--warning)]'
+                  db.status === 'healthy' ? 'bg-emerald-500/10 text-emerald-400'
+                    : db.status === 'offline' || db.status === 'failed' ? 'bg-rose-500/10 text-rose-400'
+                    : 'bg-yellow-500/10 text-yellow-400'
                 }`}>
                   {db.status}
                 </span>
               </div>
               <p className="text-[10px] text-[var(--text-dim)] font-mono mt-1">
-                {db.type} {db.version} · {db.environment}
+                {db.type} {db.version} · {'region' in db ? String((db as unknown as Record<string, unknown>).region ?? db.environment) : db.environment}
               </p>
               <p className="text-[10px] text-[var(--text-dim)] mt-1 font-mono">{db.id.slice(0, 8)}…</p>
             </Link>

@@ -1,5 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { OnEvent } from '@nestjs/event-emitter';
+import { PlatformEvent } from '@fidscript/events';
 import { RealtimeGateway } from '../gateways/realtime.gateway';
 
 /**
@@ -32,37 +33,33 @@ export class RealtimeBridgeService {
   constructor(private readonly gateway: RealtimeGateway) {}
 
   @OnEvent('**')
-  handlePlatformEvent(event: {
-    type: string;
-    timestamp?: Date | string;
-    metadata?: Record<string, unknown>;
-  }): void {
+  handlePlatformEvent(event: PlatformEvent): void {
     if (!event?.type) return;
     // Realtime's own lifecycle events are already pushed on the channel socket;
     // skip to avoid double delivery + feedback echo.
     if (event.type.startsWith('realtime.')) return;
 
-    const projectId = this.projectIdOf(event.metadata);
+    // Prefer top-level projectId (new contract); fall back to legacy metadata extraction.
+    const projectId = event.projectId ?? this.projectIdFromLegacy(event.metadata as Record<string, unknown> | undefined);
     if (!projectId) return; // not project-scoped (e.g. identity.session.*) — no room to route to
 
     this.gateway.broadcastToProject(projectId, event.type, {
       type: event.type,
-      timestamp: event.timestamp ?? new Date().toISOString(),
+      timestamp: event.timestamp instanceof Date ? event.timestamp.toISOString() : event.timestamp ?? new Date().toISOString(),
       data: event.metadata,
     });
     this.logger.debug(`fanned out "${event.type}" → project:${projectId}`);
   }
 
-  /** Resolve the owning project from either payload convention (or null). */
-  private projectIdOf(payload: unknown): string | null {
-    if (!payload || typeof payload !== 'object') return null;
-    const m = payload as Record<string, unknown>;
-    const direct = (m.projectId as string | undefined) ?? (m.project_id as string | undefined);
+  /** Resolve projectId from legacy metadata convention (for pre-hardening events). */
+  private projectIdFromLegacy(metadata: Record<string, unknown> | undefined): string | null {
+    if (!metadata) return null;
+    const direct = (metadata.projectId as string | undefined) ?? (metadata.project_id as string | undefined);
     if (direct) return direct;
-    if (m.resourceType === 'project' && typeof m.resourceId === 'string') {
-      return m.resourceId;
+    if (metadata.resourceType === 'project' && typeof metadata.resourceId === 'string') {
+      return metadata.resourceId;
     }
-    const nested = (m.metadata as Record<string, unknown> | undefined)?.projectId;
+    const nested = (metadata.metadata as Record<string, unknown> | undefined)?.projectId;
     return typeof nested === 'string' ? nested : null;
   }
 }

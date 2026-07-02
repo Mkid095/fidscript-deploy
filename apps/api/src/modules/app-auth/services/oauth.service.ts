@@ -84,8 +84,8 @@ export class OAuthService {
       await this.redis.set(`oauth:state:${state}`, payload, STATE_TTL_SEC);
       let url = provider.buildAuthorizeUrl({ state, redirectUri: callbackRedirect, scopes });
       url = url.replace('PLACEHOLDER_REPLACED_AT_RUNTIME', encodeURIComponent(clientId));
-      await this.eventService.emit('auth.oauth_authorize_started', {
-        projectId, provider: providerName, state,
+      await this.eventService.emit('auth.oauth_authorize_started', projectId, {
+        provider: providerName, state,
       }, { ipAddress, userAgent });
       return { url };
     }
@@ -100,8 +100,8 @@ export class OAuthService {
     // MOCK provider builds its own URL with placeholder (no real client_id needed).
     let url = provider.buildAuthorizeUrl({ state, redirectUri: callbackRedirect, scopes });
 
-    await this.eventService.emit('auth.oauth_authorize_started', {
-      projectId, provider: providerName, state,
+    await this.eventService.emit('auth.oauth_authorize_started', projectId, {
+      provider: providerName, state,
     }, { ipAddress, userAgent });
 
     return { url };
@@ -156,8 +156,8 @@ export class OAuthService {
       }
     } catch (err) {
       this.logger.error(`OAuth code exchange failed: ${(err as Error).message}`);
-      await this.eventService.emit('auth.oauth_signin_failed', {
-        projectId, provider: providerName, reason: 'exchange_failed',
+      await this.eventService.emit('auth.oauth_signin_failed', projectId, {
+        provider: providerName, reason: 'exchange_failed',
       }, { ipAddress, userAgent });
       throw new BadRequestException('OAuth code exchange failed');
     }
@@ -168,8 +168,8 @@ export class OAuthService {
       profile = await provider.fetchProfile(accessToken);
     } catch (err) {
       this.logger.error(`OAuth profile fetch failed: ${(err as Error).message}`);
-      await this.eventService.emit('auth.oauth_signin_failed', {
-        projectId, provider: providerName, reason: 'profile_fetch_failed',
+      await this.eventService.emit('auth.oauth_signin_failed', projectId, {
+        provider: providerName, reason: 'profile_fetch_failed',
       }, { ipAddress, userAgent });
       throw new BadRequestException('OAuth profile fetch failed');
     }
@@ -218,8 +218,7 @@ export class OAuthService {
             providerEmail: profile.email,
           },
         });
-        await this.eventService.emit('auth.oauth_linked', {
-          projectId,
+        await this.eventService.emit('auth.oauth_linked', projectId, {
           userId: appUser.id,
           provider: providerName,
         }, { actorId: appUser.id, ipAddress, userAgent });
@@ -251,8 +250,7 @@ export class OAuthService {
       userAgent,
     );
 
-    await this.eventService.emit('auth.oauth_signin_succeeded', {
-      projectId,
+    await this.eventService.emit('auth.oauth_signin_succeeded', projectId, {
       userId: appUser.id,
       provider: providerName,
       email: appUser.email,

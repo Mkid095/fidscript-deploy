@@ -2,7 +2,7 @@
   "name": "@fidscript/ui",
   "version": "1.0.0",
   "private": true,
-  "type": "commonjs",
+  "type": "module",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
   "exports": {

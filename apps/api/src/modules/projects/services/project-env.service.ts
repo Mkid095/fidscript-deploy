@@ -46,15 +46,8 @@ export class ProjectEnvService {
       });
     }
 
-    await this.eventService.emit('projects.env_var.updated', {
-      id: crypto.randomUUID(),
-      type: 'projects.env_var.updated',
-      timestamp: new Date(),
-      actorId: userId,
-      actorType: 'user',
-      resourceType: 'project',
-      resourceId: projectId,
-      metadata: { keys: dto.envVars.map(e => e.key) },
+    await this.eventService.emit('projects.env_var.updated', projectId, {
+      keys: dto.envVars.map(e => e.key),
     });
 
     return { success: true };
@@ -65,16 +58,7 @@ export class ProjectEnvService {
 
     await this.prisma.projectEnv.deleteMany({ where: { projectId, key } });
 
-    await this.eventService.emit('projects.env_var.deleted', {
-      id: crypto.randomUUID(),
-      type: 'projects.env_var.deleted',
-      timestamp: new Date(),
-      actorId: userId,
-      actorType: 'user',
-      resourceType: 'project',
-      resourceId: projectId,
-      metadata: { key },
-    });
+    await this.eventService.emit('projects.env_var.deleted', projectId, { key });
 
     return { success: true };
   }

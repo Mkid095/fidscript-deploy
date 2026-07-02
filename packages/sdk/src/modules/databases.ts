@@ -64,6 +64,42 @@ export class DatabasesModule {
   database(databaseId: string): DatabaseProvider {
     return new DatabaseProvider(this.client, databaseId);
   }
+
+  // ── Backup scheduling ───────────────────────────────────────────────────────
+
+  async getBackupSchedule(databaseId: string) {
+    return this.client.get<BackupSchedule | null>(`/api/v1/databases/${databaseId}/backups/schedule`);
+  }
+
+  async updateBackupSchedule(databaseId: string, schedule: Partial<BackupSchedule>) {
+    return this.client.patch<BackupSchedule>(`/api/v1/databases/${databaseId}/backups/schedule`, schedule);
+  }
+
+  async getBackupSettings(databaseId: string) {
+    return this.client.get<BackupSettings>(`/api/v1/databases/${databaseId}/backups/settings`);
+  }
+}
+
+export type BackupScheduleFrequency = 'hourly' | 'daily' | 'weekly' | 'monthly';
+
+export interface BackupSchedule {
+  id: string;
+  enabled: boolean;
+  frequency: BackupScheduleFrequency;
+  timeUtc: string;
+  dayOfWeek?: number;
+  dayOfMonth?: number;
+  retentionCount: number;
+  storageBucket: string;
+  lastRunAt?: string;
+  nextRunAt?: string;
+  createdAt: string;
+}
+
+export interface BackupSettings {
+  defaultBucket: string;
+  maxManualBackups: number;
+  autoBackupRetentionDays: number;
 }
 
 export interface Database {

@@ -107,7 +107,8 @@ export class NotificationService {
     });
     await this.eventService.emit(
       result.success ? 'monitoring.notification.sent' : 'monitoring.notification.failed',
-      { projectId: payload.projectId, alertId, channelId: channel.id, type: channel.type, status: result.success ? 'sent' : 'failed' },
+      payload.projectId,
+      { alertId, channelId: channel.id, type: channel.type, status: result.success ? 'sent' : 'failed' },
     );
   }
 }

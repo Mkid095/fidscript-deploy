@@ -21,7 +21,7 @@ export class DbBackupService {
       data: { databaseId, status: 'in_progress', description: dto.description },
     });
 
-    await this.eventService.emit('database.backup_started', { backupId: backup.id, databaseId, projectId });
+    await this.eventService.emit('database.backup_started', projectId, { backupId: backup.id, databaseId }, {});
     this.runBackup(backup.id, database).catch(console.error);
 
     return backup;
@@ -36,7 +36,7 @@ export class DbBackupService {
         where: { id: backupId },
         data: { status: 'completed', filename: backupInfo.filename, size: backupInfo.size, completedAt: new Date() },
       });
-      await this.eventService.emit('database.backup_completed', { backupId, databaseId: database.id, projectId: database.projectId });
+      await this.eventService.emit('database.backup_completed', database.projectId, { backupId, databaseId: database.id }, {});
     } catch {
       await this.prisma.databaseBackup.update({ where: { id: backupId }, data: { status: 'failed' } });
     }
@@ -64,7 +64,7 @@ export class DbBackupService {
     };
 
     await this.dbProvider.restore(backupInfo, credentials);
-    await this.eventService.emit('database.restored', { backupId: backup.id, databaseId, projectId });
+    await this.eventService.emit('database.restored', projectId, { backupId: backup.id, databaseId }, {});
     return { restored: true };
   }
 

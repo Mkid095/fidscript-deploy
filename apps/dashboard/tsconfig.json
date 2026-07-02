@@ -11,7 +11,7 @@
     "moduleResolution": "bundler",
     "outDir": "./dist",
     "baseUrl": ".",
-    "paths": {
+        "paths": {
       "@/*": [
         "./src/*"
       ]

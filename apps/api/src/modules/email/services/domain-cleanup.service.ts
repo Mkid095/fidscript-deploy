@@ -35,11 +35,10 @@ export class DomainCleanupService {
 
     await this.prisma.emailDomain.delete({ where: { id: domainId } });
 
-    await this.eventService.emit('email.domain_deleted', {
+    await this.eventService.emit('email.domain_deleted', projectId, {
       domainId,
-      projectId,
       domain: domain.domain,
-    });
+    }, {});
 
     return { deleted: true };
   }

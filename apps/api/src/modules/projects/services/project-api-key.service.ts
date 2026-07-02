@@ -38,15 +38,9 @@ export class ProjectApiKeyService {
       },
     });
 
-    await this.eventService.emit('projects.api_key.created', {
-      id: crypto.randomUUID(),
-      type: 'projects.api_key.created',
-      timestamp: new Date(),
-      actorId: userId,
-      actorType: 'user',
-      resourceType: 'project_api_key',
-      resourceId: apiKey.id,
-      metadata: { projectId, name: dto.name },
+    await this.eventService.emit('projects.api_key.created', projectId, {
+      name: dto.name,
+      apiKeyId: apiKey.id,
     });
 
     return { apiKey, key };
@@ -74,15 +68,9 @@ export class ProjectApiKeyService {
 
     await this.prisma.projectApiKey.delete({ where: { id: keyId } });
 
-    await this.eventService.emit('projects.api_key.revoked', {
-      id: crypto.randomUUID(),
-      type: 'projects.api_key.revoked',
-      timestamp: new Date(),
-      actorId: userId,
-      actorType: 'user',
-      resourceType: 'project_api_key',
-      resourceId: keyId,
-      metadata: { projectId, name: apiKey.name },
+    await this.eventService.emit('projects.api_key.revoked', projectId, {
+      name: apiKey.name,
+      apiKeyId: keyId,
     });
 
     return { success: true };

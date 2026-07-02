@@ -1,130 +1,108 @@
 'use client';
-/* eslint-disable import/order */
 
-
-import { useEffect, useState } from 'react';
+import { useCallback, useState } from 'react';
 import { useAuth } from '@/contexts/auth-context';
 import { useDatabase } from '../../database-context';
+import { ConnectionPanel } from '@/components/database/connection-panel';
+import { MigrationsPanel } from '@/components/database/migrations-panel';
+import { BackupSettingsPanel } from '@/components/database/backup-settings-panel';
+import { ConfirmDialog } from '@/components/deployments/confirm-dialog';
+import { HugeiconsIcon } from '@hugeicons/react';
+import {
+  Plug01Icon,
+  GitMergeIcon,
+  HardDriveIcon,
+  AlertCircleIcon,
+} from '@hugeicons/core-free-icons';
+
+type SettingsTab = 'connection' | 'migrations' | 'backups';
 
 export default function SettingsPage() {
   const { getSdk } = useAuth();
-  const { database, databaseId, refreshSchema } = useDatabase();
-  const [connection, setConnection] = useState<any>(null);
-  const [migrations, setMigrations] = useState<any[]>([]);
-  const [migrationSql, setMigrationSql] = useState('');
-  const [showSecret, setShowSecret] = useState(false);
+  const { database, databaseId } = useDatabase();
+  const [activeTab, setActiveTab] = useState<SettingsTab>('connection');
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [deleting, setDeleting] = useState(false);
 
-  useEffect(() => {
+  const handleDelete = useCallback(async () => {
     if (!databaseId) return;
-    getSdk().databases.getConnection(databaseId).then(setConnection).catch(() => {});
-    getSdk().database(databaseId).migrations().then(setMigrations).catch(() => {});
+    setDeleting(true);
+    try {
+      await getSdk().databases.delete(databaseId);
+      window.location.href = `..`;
+    } catch { /* ignore */ } finally { setDeleting(false); }
   }, [databaseId, getSdk]);
 
-  const rotate = async () => {
-    if (!databaseId || !confirm('Rotate password? This will update the DATABASE_URL in the project env vars.')) return;
-    await getSdk().databases.rotatePassword(databaseId);
-    await refreshSchema();
-  };
-
-  const applyMigration = async () => {
-    if (!databaseId || !migrationSql.trim()) return;
-    try {
-      await getSdk().database(databaseId).applyMigration(migrationSql);
-      setMigrationSql('');
-      const m = await getSdk().database(databaseId).migrations();
-      setMigrations(m);
-      await refreshSchema();
-    } catch (err: any) {
-      alert(`Migration failed: ${err.message}`);
-    }
-  };
+  const tabs: { key: SettingsTab; label: string; icon: typeof Plug01Icon }[] = [
+    { key: 'connection', label: 'Connection',  icon: Plug01Icon },
+    { key: 'migrations', label: 'Migrations', icon: GitMergeIcon },
+    { key: 'backups',    label: 'Backups',    icon: HardDriveIcon },
+  ];
 
   return (
-    <div className="p-6 space-y-6">
-      <div>
-        <h1 className="text-lg font-semibold text-[var(--text)]">Settings</h1>
-        <p className="text-xs text-[var(--text-dim)] mt-1">{database?.name} · {database?.type} {database?.version}</p>
+    <div className="h-full flex flex-col min-h-0">
+      {/* Header */}
+      <div className="px-6 pt-6 pb-0 border-b border-[var(--rail)] flex-shrink-0">
+        <h1 className="text-lg font-semibold text-[var(--text)] font-mono">{database?.name ?? 'Database'}</h1>
+        <p className="text-xs text-[var(--text-dim)] mt-0.5 mb-4">
+          {database?.type} {database?.version} · {database?.environment}
+        </p>
+
+        {/* Tab bar */}
+        <div className="flex items-center gap-0">
+          {tabs.map(tab => (
+            <button
+              key={tab.key}
+              onClick={() => setActiveTab(tab.key)}
+              className={`flex items-center gap-1.5 px-4 py-2.5 text-xs font-medium border-b-2 -mb-px transition-colors ${
+                activeTab === tab.key
+                  ? 'border-[var(--accent)] text-[var(--accent)]'
+                  : 'border-transparent text-[var(--text-dim)] hover:text-[var(--text-muted)]'
+              }`}
+            >
+              <HugeiconsIcon icon={tab.icon} size={14} />
+              {tab.label}
+            </button>
+          ))}
+        </div>
       </div>
 
-      {/* Connection info */}
-      <section>
-        <h2 className="text-xs font-semibold text-[var(--text-dim)] uppercase tracking-wider mb-2">Connection</h2>
-        <div className="rounded-lg border border-[var(--rail)] bg-[var(--surface)] p-4 space-y-2 font-mono text-xs">
-          {connection ? (
-            <>
-              <div><span className="text-[var(--text-dim)]">Host: </span><span className="text-[var(--text-muted)]">{connection.host}</span></div>
-              <div><span className="text-[var(--text-dim)]">Port: </span><span className="text-[var(--text-muted)]">{connection.port}</span></div>
-              <div><span className="text-[var(--text-dim)]">Database: </span><span className="text-[var(--text-muted)]">{connection.database}</span></div>
-              <div><span className="text-[var(--text-dim)]">User: </span><span className="text-[var(--text-muted)]">{connection.username}</span></div>
-              <div className="flex items-center gap-2">
-                <span className="text-[var(--text-dim)]">URL: </span>
-                <code className="text-[var(--text-muted)] truncate flex-1 bg-[var(--surface-2)] px-2 py-1 rounded">
-                  {showSecret ? connection.connectionString : connection.connectionString?.replace(/:[^:@]+@/, ':***@')}
-                </code>
-                <button onClick={() => setShowSecret(s => !s)} className="text-[10px] text-[var(--accent)]">
-                  {showSecret ? 'Hide' : 'Reveal'}
-                </button>
-              </div>
-            </>
-          ) : (
-            <p className="text-[var(--text-dim)]">Loading…</p>
-          )}
-        </div>
-        <button onClick={rotate} className="mt-3 text-xs px-3 py-1.5 rounded border border-[var(--warning)]/30 text-[var(--warning)] hover:bg-[var(--warning)]/5">
-          Rotate password
-        </button>
-      </section>
+      {/* Tab content */}
+      <div className="flex-1 min-h-0 overflow-y-auto">
+        {activeTab === 'connection' && <ConnectionPanel />}
+        {activeTab === 'migrations' && <MigrationsPanel />}
+        {activeTab === 'backups' && <BackupSettingsPanel />}
+      </div>
 
-      {/* Migrations */}
-      <section>
-        <h2 className="text-xs font-semibold text-[var(--text-dim)] uppercase tracking-wider mb-2">Migrations ({migrations.length})</h2>
-        <textarea
-          value={migrationSql}
-          onChange={e => setMigrationSql(e.target.value)}
-          placeholder="CREATE TABLE users (id uuid PRIMARY KEY DEFAULT gen_random_uuid(), email text UNIQUE);"
-          className="w-full h-24 bg-[var(--surface-2)] border border-[var(--rail)] rounded p-2 text-xs font-mono text-[var(--text)] focus:outline-none focus:border-[var(--accent)]/30"
-        />
-        <button
-          onClick={applyMigration}
-          disabled={!migrationSql.trim()}
-          className="mt-2 text-xs px-3 py-1.5 rounded bg-[var(--accent)] hover:bg-[var(--accent-dim)] text-[var(--text)] disabled:opacity-50"
-        >
-          Apply migration
-        </button>
-
-        {migrations.length > 0 && (
-          <div className="mt-4 space-y-1 max-h-48 overflow-y-auto">
-            {migrations.map(m => (
-              <div key={m.id} className="text-[10px] font-mono text-[var(--text-dim)] border-b border-[var(--rail)]/40 pb-1">
-                <span className="text-[var(--success)]">{m.name}</span>
-                <span className="text-[var(--text-dim)] ml-2">({m.executionTimeMs}ms)</span>
-                <span className="text-[var(--text-dim)] ml-2">{new Date(m.appliedAt).toLocaleString()}</span>
-              </div>
-            ))}
-          </div>
-        )}
-      </section>
-
-      {/* Danger zone */}
-      <section>
-        <h2 className="text-xs font-semibold text-[var(--danger)] uppercase tracking-wider mb-2">Danger zone</h2>
-        <div className="rounded-lg border border-[var(--danger)]/30 bg-[var(--danger)]/5 p-4 flex items-center justify-between">
+      {/* Danger zone — always visible below */}
+      <div className="px-6 pb-6 pt-4 border-t border-[var(--rail)] flex-shrink-0">
+        <div className="rounded-lg border border-rose-500/30 bg-rose-500/5 p-4 flex items-center justify-between">
           <div>
-            <p className="text-sm text-[var(--text)]">Delete this database</p>
-            <p className="text-xs text-[var(--text-dim)]">Drops the database + role. Cannot be undone.</p>
+            <p className="text-xs font-semibold text-[var(--text)] flex items-center gap-1.5">
+              <HugeiconsIcon icon={AlertCircleIcon} size={14} className="text-rose-400" />
+              Delete this database
+            </p>
+            <p className="text-[10px] text-[var(--text-dim)] mt-0.5">Permanently destroys the database and all data. Cannot be undone.</p>
           </div>
           <button
-            onClick={async () => {
-              if (!databaseId || !confirm('Delete this database? This cannot be undone.')) return;
-              await getSdk().databases.delete(databaseId);
-              window.location.href = '..';
-            }}
-            className="text-xs px-3 py-1.5 rounded bg-[var(--accent)] hover:bg-[var(--accent-dim)] text-[var(--text)]"
+            onClick={() => setShowDeleteConfirm(true)}
+            className="text-xs px-3 py-1.5 rounded bg-rose-500/10 border border-rose-500/30 text-rose-400 hover:bg-rose-500/20 whitespace-nowrap"
           >
-            Delete
+            Delete database
           </button>
         </div>
-      </section>
+      </div>
+
+      {showDeleteConfirm && (
+        <ConfirmDialog
+          title="Delete Database"
+          message={`Are you sure you want to delete "${database?.name}"? All data will be permanently destroyed. This action cannot be undone.`}
+          confirmLabel="Delete permanently"
+          variant="danger"
+          onConfirm={handleDelete}
+          onClose={() => setShowDeleteConfirm(false)}
+        />
+      )}
     </div>
   );
 }

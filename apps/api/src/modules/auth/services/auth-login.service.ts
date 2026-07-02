@@ -47,7 +47,7 @@ export class AuthLoginService {
     if (!user) {
       await this.rateLimiter.consume(acctKey, LOGIN_ACCT_LIMIT, LOGIN_WINDOW_SEC);
       await this.eventService.emit(
-        'identity.user.login_failed',
+        'identity.user.login_failed', null,
         { email: dto.email, reason: 'user_not_found' },
         { actorType: 'user', resourceType: 'user', resourceId: 'unknown', ipAddress, userAgent },
       );
@@ -73,7 +73,7 @@ export class AuthLoginService {
     if (!user.passwordHash) {
       await this.rateLimiter.consume(acctKey, LOGIN_ACCT_LIMIT, LOGIN_WINDOW_SEC);
       await this.eventService.emit(
-        'identity.user.login_failed',
+        'identity.user.login_failed', null,
         { email: dto.email, reason: 'no_password' },
         { actorType: 'user', resourceType: 'user', resourceId: user.id, ipAddress, userAgent },
       );
@@ -84,7 +84,7 @@ export class AuthLoginService {
     if (!valid) {
       await this.rateLimiter.consume(acctKey, LOGIN_ACCT_LIMIT, LOGIN_WINDOW_SEC);
       await this.eventService.emit(
-        'identity.user.login_failed',
+        'identity.user.login_failed', null,
         { email: user.email, reason: 'invalid_password' },
         { actorId: user.id, actorType: 'user', resourceType: 'user', resourceId: user.id, ipAddress, userAgent },
       );
@@ -105,7 +105,7 @@ export class AuthLoginService {
     }
 
     await this.eventService.emit(
-      'identity.user.logged_in',
+      'identity.user.logged_in', null,
       { email: user.email },
       { actorId: user.id, actorType: 'user', resourceType: 'user', resourceId: user.id, ipAddress, userAgent },
     );
@@ -120,8 +120,7 @@ export class AuthLoginService {
     }).catch(() => {});
 
     await this.eventService.emit(
-      'identity.user.logged_out',
-      {},
+      'identity.user.logged_out', null, {},
       { actorId: userId, actorType: 'user', resourceType: 'session', resourceId: sessionId },
     );
   }

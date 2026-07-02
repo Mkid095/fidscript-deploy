@@ -64,11 +64,12 @@ export class DeploymentLifecycleService {
     this.logger.log(`Destroyed deployment ${deploymentId} (container + image ${imageTag})`);
   }
 
-  private async emit(deploymentId: string, projectId: string, userId: string, type: string, metadata: Record<string, any>) {
-    await this.eventService.emit(type as any, {
-      id: `${deploymentId}-${Date.now()}`, type, timestamp: new Date(),
-      actorId: userId || undefined, actorType: 'user', resourceType: 'deployment', resourceId: deploymentId,
-      metadata: { deploymentId, projectId, ...metadata },
-    });
+  private async emit(deploymentId: string, projectId: string, userId: string, type: string, payload: Record<string, any>) {
+    await this.eventService.emit(
+      type as any,
+      projectId,
+      { deploymentId, ...payload },
+      { actorId: userId || undefined, actorType: 'user', resourceType: 'deployment', resourceId: deploymentId },
+    );
   }
 }
