@@ -374,6 +374,34 @@ services:
       timeout: 5s
       retries: 3
 
+  # WhatsApp SaaS Platform API
+  whatsapp-api:
+    image: fidscript-whatsapp-api:latest
+    container_name: fidscript-whatsapp-api
+    restart: unless-stopped
+    environment:
+      NODE_ENV: production
+      PORT: "3099"
+      CORS_ORIGIN: "*"
+      PLATFORM_URL: https://whatsapp.fidscript.com
+      API_URL: https://api.whatsapp.fidscript.com
+      API_INTERNAL_URL: http://fidscript-whatsapp-api:3099
+      EVOLUTION_API_URL: http://nextmavens_evolution:8080
+      EVOLUTION_API_KEY: 94977bc1fcb107c79d0687caea800bdb74edd67b5022771fc85c22ee389ca7e8
+      TUMA_BUSINESS_EMAIL: nextmavensoffice@gmail.com
+      TUMA_API_KEY: tuma_22e5d0fff7b75e46b82bdb1cd6b31ee78dc209b58a7c8e177fed6d0b78890fd3_1781442356
+      RESEND_API_KEY: re_2ZVSvdru_LENCaWda3nsgfTnhqRnHRdWy
+      MAIL_FROM: "FIDScript <noreply@whatsapp.fidscript.com>"
+      DEPLOY_VERSION: "1.0.0"
+    networks:
+      fidscript-app:
+      fidscript:
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:3099/api/v1/health || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+
 networks:
   fidscript:
     name: fidscript
