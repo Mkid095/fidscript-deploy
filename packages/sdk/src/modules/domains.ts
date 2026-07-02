@@ -143,6 +143,37 @@ export interface DomainHealthTimelineEntry {
   } | null;
 }
 
+export type WizardStage = 'domain_entered' | 'purpose_selected' | 'provider_selected' | 'records_configured' | 'verifying' | 'active';
+
+export type WizardRecordStatus = 'ok' | 'missing' | 'pending' | 'unknown';
+
+export interface WizardRecord {
+  id: string;
+  type: string;
+  name: string;
+  value: string;
+  priority?: number;
+  ttl: number;
+  category: 'deployment' | 'email' | 'verification';
+  status: WizardRecordStatus;
+}
+
+export interface DomainWizardStatus {
+  domainId: string;
+  domain: string;
+  stage: WizardStage;
+  types: string[];
+  provider: string | null;
+  records: WizardRecord[];
+  dnsProgress: number;
+  sslProgress: number;
+  routingProgress: number;
+  emailProgress: number;
+  overallProgress: number;
+  sslExpiresInDays: number | null;
+  estimatedTimeRemaining: string | null;
+}
+
 export class DomainsModule {
   constructor(private client: FidscriptClient) {}
 
@@ -311,6 +342,15 @@ export class DomainsModule {
   async getHealthTimeline(projectId: string, domainId: string, days = 30): Promise<DomainHealthTimelineEntry[]> {
     return this.client.get<DomainHealthTimelineEntry[]>(
       `/api/v1/projects/${projectId}/domains/${domainId}/health-timeline`,
+    );
+  }
+
+  /**
+   * Get DNS Wizard status for a domain — required records, live propagation status, and progress per category.
+   */
+  async getWizard(projectId: string, domainId: string): Promise<DomainWizardStatus> {
+    return this.client.get<DomainWizardStatus>(
+      `/api/v1/projects/${projectId}/domains/wizard/${domainId}`,
     );
   }
 }

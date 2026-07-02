@@ -4,7 +4,7 @@
  */
 
 import type { MigrationRecord, BackupRecord, BackupSchedule, StorageBucket, StorageFile, ProjectStorageConfig, StorageFileRecord } from '@/types';
-import type { DomainVerificationRun, DomainIncident, DomainHealthTimelineEntry } from '@fidscript/sdk';
+import type { DomainVerificationRun, DomainIncident, DomainHealthTimelineEntry, DomainWizardStatus } from '@fidscript/sdk';
 
 import type {
   User,
@@ -1110,6 +1110,31 @@ export const mockDomainIncidents: DomainIncident[] = [
     resolvedAt: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000 + 30 * 60 * 1000).toISOString(),
   },
 ];
+
+export const mockDomainWizardStatus: DomainWizardStatus = {
+  domainId: 'dom_01',
+  domain: 'example.com',
+  stage: 'records_configured',
+  types: ['DEPLOYMENT', 'EMAIL'],
+  provider: 'cloudflare',
+  records: [
+    { id: 'a_deploy', type: 'A', name: '@', value: '76.76.21.21', ttl: 300, category: 'deployment', status: 'ok' },
+    { id: 'cname_deploy', type: 'CNAME', name: 'www', value: 'example.com', ttl: 300, category: 'deployment', status: 'ok' },
+    { id: 'txt_verify', type: 'TXT', name: '_fidscript-verification.example.com', value: 'FIDScript verified example.com', ttl: 300, category: 'verification', status: 'ok' },
+    { id: 'mx1', type: 'MX', name: '@', value: 'mx1.example.com', priority: 10, ttl: 300, category: 'email', status: 'ok' },
+    { id: 'mx2', type: 'MX', name: '@', value: 'mx2.example.com', priority: 20, ttl: 300, category: 'email', status: 'pending' },
+    { id: 'spf', type: 'TXT', name: '@', value: 'v=spf1 mx include:example.com ~all', ttl: 300, category: 'email', status: 'ok' },
+    { id: 'dkim', type: 'TXT', name: 'default._domainkey.example.com', value: 'v=DKIM1; k=ed25519; p=...', ttl: 300, category: 'email', status: 'missing' },
+    { id: 'dmarc', type: 'TXT', name: '_dmarc', value: 'v=DMARC1; p=quarantine; rua=mailto:dmarc@example.com', ttl: 300, category: 'email', status: 'ok' },
+  ],
+  dnsProgress: 100,
+  sslProgress: 50,
+  routingProgress: 100,
+  emailProgress: 62,
+  overallProgress: 78,
+  sslExpiresInDays: 58,
+  estimatedTimeRemaining: '2-5 minutes',
+};
 
 export const mockDomainHealthTimeline: DomainHealthTimelineEntry[] = Array.from({ length: 30 }, (_, i) => {
   const score = i < 28 ? 100 : i === 28 ? 60 : 100;

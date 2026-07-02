@@ -7,7 +7,7 @@
  */
 
 import type { FidscriptSDK } from '@fidscript/sdk';
-import type { DomainVerificationRun, DomainIncident, DomainHealthTimelineEntry } from '@fidscript/sdk';
+import type { DomainVerificationRun, DomainIncident, DomainHealthTimelineEntry, DomainWizardStatus } from '@fidscript/sdk';
 import type {
   User,
   Project,
@@ -73,6 +73,7 @@ import {
   mockDomainVerificationRuns,
   mockDomainIncidents,
   mockDomainHealthTimeline,
+  mockDomainWizardStatus,
   type DomainInfo,
   type DomainHealth,
   type DnsRecord,
@@ -1126,6 +1127,11 @@ class MockDomainsModule {
   async getHealthTimeline(_projectId: string, _domainId: string, _days = 30): Promise<DomainHealthTimelineEntry[]> {
     await delay(200);
     return mockDomainHealthTimeline;
+  }
+
+  async getWizard(_projectId: string, _domainId: string): Promise<DomainWizardStatus> {
+    await delay(300);
+    return { ...mockDomainWizardStatus };
   }
 }
 

@@ -22,6 +22,7 @@ import { DomainReconciliationService } from '@/modules/domains/services/domain-r
 import { DomainReconciliationQueueService } from '@/modules/domains/services/domain-reconciliation-queue.service';
 import { DomainReconciliationWorker } from '@/modules/domains/services/domain-reconciliation-worker.service';
 import { DomainReconciliationScheduler } from '@/modules/domains/services/domain-reconciliation-scheduler.service';
+import { DomainWizardService } from '@/modules/domains/services/domain-wizard.service';
 import { EventsModule } from '@/modules/events/events.module';
 import { RedisModule } from '@/modules/redis/redis.module';
 
@@ -52,6 +53,7 @@ import { RedisModule } from '@/modules/redis/redis.module';
     DomainReconciliationQueueService,
     DomainReconciliationWorker,
     DomainReconciliationScheduler,
+    DomainWizardService,
   ],
   exports: [
     DomainsService,
@@ -72,6 +74,7 @@ import { RedisModule } from '@/modules/redis/redis.module';
     DomainReconciliationService,
     DomainReconciliationQueueService,
     DomainReconciliationScheduler,
+    DomainWizardService,
     CloudflareZoneService,
     CloudflareDnsProvider,
     'DNS_PROVIDER',

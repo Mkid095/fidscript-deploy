@@ -1,12 +1,13 @@
 import {
   Controller, Get, Post, Delete, Body, Param, UseGuards,
-  Req, HttpCode, HttpStatus,
+  Req, HttpCode, HttpStatus, NotFoundException,
 } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { JwtAuthGuard } from '@/modules/auth/jwt-auth.guard';
 import { DomainsService } from '@/modules/domains/services/domains.service';
 import { DomainReconciliationService } from '@/modules/domains/services/domain-reconciliation.service';
 import { DomainAccessService } from '@/modules/domains/services/domain-access.service';
+import { DomainWizardService } from '@/modules/domains/services/domain-wizard.service';
 import { AddDomainDto } from '@/modules/domains/dto/add-domain.dto';
 import { Request } from 'express';
 
@@ -18,6 +19,7 @@ export class DomainsController {
   constructor(
     private domainsService: DomainsService,
     private reconciliationService: DomainReconciliationService,
+    private wizardService: DomainWizardService,
     private accessService: DomainAccessService,
   ) {}
 
@@ -153,5 +155,15 @@ export class DomainsController {
     const user = req.user as { userId: string };
     await this.accessService.ensureAccess(user.userId, projectId);
     return this.reconciliationService.getHealthTimeline(domainId);
+  }
+
+  @Get('wizard/:id')
+  @ApiOperation({ summary: 'Get DNS Wizard status for a domain — required records, propagation status, and step progress' })
+  async getWizardStatus(@Req() req: Request, @Param('projectId') projectId: string, @Param('id') domainId: string) {
+    const user = req.user as { userId: string };
+    await this.accessService.ensureAccess(user.userId, projectId);
+    const status = await this.wizardService.getWizardStatus(domainId);
+    if (!status) throw new NotFoundException('Domain not found');
+    return status;
   }
 }
