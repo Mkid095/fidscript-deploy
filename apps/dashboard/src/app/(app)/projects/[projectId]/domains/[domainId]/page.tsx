@@ -1,6 +1,6 @@
 'use client';
 
-import type { Domain, DomainHealth, DnsRecord, DomainSslInfo } from '@fidscript/sdk';
+import type { Domain, DomainHealth, DnsRecord, DomainSslInfo, DomainWizardStatus } from '@fidscript/sdk';
 import { useEffect, useState, useCallback, useRef } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
@@ -8,7 +8,7 @@ import { Button, Card, Badge, Spinner, Toast, Modal } from '@fidscript/ui';
 
 import { useAuth } from '@/contexts/auth-context';
 
-type Tab = 'overview' | 'dns' | 'health' | 'email' | 'ssl';
+type Tab = 'overview' | 'dns' | 'health' | 'email' | 'ssl' | 'wizard';
 
 const STATUS_COLORS: Record<string, string> = {
   ok:       'bg-emerald-900 text-[var(--success)]',
@@ -59,6 +59,7 @@ export default function DomainDetailPage() {
   const [health, setHealth] = useState<DomainHealth | null>(null);
   const [dnsRecords, setDnsRecords] = useState<DnsRecord[]>([]);
   const [ssl, setSsl] = useState<DomainSslInfo | null>(null);
+  const [wizard, setWizard] = useState<DomainWizardStatus | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<Tab>('dns');
@@ -70,15 +71,16 @@ export default function DomainDetailPage() {
   const [reissuingSsl, setReissuingSsl] = useState(false);
   const healthPollingRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  // ── Load domain + health + DNS records + SSL ───────────────────────────────
+  // ── Load domain + health + DNS records + SSL + Wizard ─────────────────────
   const loadAll = useCallback(async () => {
     try {
       const sdk = getSdk();
-      const [domainData, healthData, dnsData, sslData] = await Promise.all([
+      const [domainData, healthData, dnsData, sslData, wizardData] = await Promise.all([
         sdk.domains.get(domainId).catch(() => null),
         sdk.domains.getHealth(projectId, domainId).catch(() => null),
         sdk.domains.getDnsRecords(projectId, domainId).catch(() => null),
         sdk.domains.getSsl(projectId, domainId).catch(() => null),
+        sdk.domains.getWizard(projectId, domainId).catch(() => null),
       ]);
       if (!domainData) {
         setError('Domain not found');
@@ -91,6 +93,7 @@ export default function DomainDetailPage() {
         setDnsRecords(d.records ?? []);
       }
       setSsl(sslData as DomainSslInfo | null);
+      setWizard(wizardData as DomainWizardStatus | null);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to load domain');
     } finally {
@@ -201,6 +204,7 @@ export default function DomainDetailPage() {
   const tabs: { id: Tab; label: string }[] = [
     { id: 'overview', label: 'Overview' },
     { id: 'dns', label: 'DNS Records' },
+    { id: 'wizard', label: '🔮 Setup Wizard' },
     { id: 'health', label: 'Health' },
     { id: 'email', label: 'Email' },
     { id: 'ssl', label: 'SSL' },
@@ -284,75 +288,236 @@ export default function DomainDetailPage() {
 
       {/* ── Overview ────────────────────────────────────────────────────── */}
       {activeTab === 'overview' && (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+          {/* Domain Info */}
           <Card className="border border-[var(--rail)]" padding="lg">
             <h2 className="text-sm font-semibold text-[var(--text)] mb-4">Domain Info</h2>
             <dl className="space-y-2.5 text-sm">
               {[
                 ['Domain ID', domain.id],
-                ['Project ID', domain.projectId],
                 ['DNS Mode', domain.dnsMode],
                 ['SSL Status', domain.sslStatus],
                 ['DNS Status', domain.dnsStatus],
                 ['Apex Domain', domain.apexDomain ? 'Yes' : 'No'],
-                ['Primary', domain.isPrimary ? 'Yes' : 'No'],
-                ['DNS Verified', domain.dnsVerifiedAt ? new Date(domain.dnsVerifiedAt).toLocaleDateString() : 'No'],
                 ['Created', new Date(domain.createdAt).toLocaleDateString()],
               ].map(([label, value]) => (
                 <div key={label} className="flex gap-4">
-                  <dt className="text-[var(--text-muted)] w-36 shrink-0">{label}</dt>
+                  <dt className="text-[var(--text-muted)] w-28 shrink-0">{label}</dt>
                   <dd className="text-[var(--text)] font-mono text-xs">{value}</dd>
                 </div>
               ))}
             </dl>
           </Card>
+
+          {/* Live Stats */}
           <Card className="border border-[var(--rail)]" padding="lg">
-            <h2 className="text-sm font-semibold text-[var(--text)] mb-4">Health Summary</h2>
+            <h2 className="text-sm font-semibold text-[var(--text)] mb-4">Platform Stats</h2>
+            <div className="space-y-4">
+              {/* Health Score */}
+              <div>
+                <div className="flex items-center justify-between mb-1">
+                  <span className="text-xs text-[var(--text-muted)]">Health Score</span>
+                  <span className="text-lg font-bold text-[var(--accent)]">{health?.score ?? 0}<span className="text-xs text-[var(--text-muted)] font-normal">/100</span></span>
+                </div>
+                <div className="h-1.5 bg-[var(--rail)] rounded-full overflow-hidden">
+                  <div className="h-full bg-[var(--accent)] rounded-full" style={{ width: `${health?.score ?? 0}%` }} />
+                </div>
+              </div>
+              {/* SSL Expiry */}
+              {domain.sslExpiresAt && (
+                <div className="flex items-center justify-between text-sm">
+                  <span className="text-[var(--text-muted)]">SSL Expires</span>
+                  <span className={`text-xs ${(() => {
+                    const days = Math.ceil((new Date(domain.sslExpiresAt!).getTime() - Date.now()) / 86400000);
+                    return days < 30 ? 'text-yellow-400' : 'text-[var(--text-muted)]';
+                  })()}`}>
+                    {new Date(domain.sslExpiresAt).toLocaleDateString()}
+                    {' '}
+                    ({Math.ceil((new Date(domain.sslExpiresAt).getTime() - Date.now()) / 86400000)}d)
+                  </span>
+                </div>
+              )}
+              {/* DNS Mode */}
+              <div className="flex items-center justify-between text-sm">
+                <span className="text-[var(--text-muted)]">DNS Provider</span>
+                <Badge variant={domain.dnsMode === 'cloudflare_auto' ? 'info' : 'default'}>
+                  {domain.dnsMode === 'cloudflare_auto' ? 'Cloudflare' : 'Manual'}
+                </Badge>
+              </div>
+              {/* Last verified */}
+              {domain.lastVerifiedAt && (
+                <div className="flex items-center justify-between text-sm">
+                  <span className="text-[var(--text-muted)]">Last Verified</span>
+                  <span className="text-xs text-[var(--text-muted)]">
+                    {new Date(domain.lastVerifiedAt).toLocaleTimeString()}
+                  </span>
+                </div>
+              )}
+            </div>
+          </Card>
+
+          {/* Health Summary */}
+          <Card className="border border-[var(--rail)]" padding="lg">
+            <h2 className="text-sm font-semibold text-[var(--text)] mb-4">Health Checks</h2>
             {health ? (
-              <div className="space-y-3">
+              <div className="space-y-2.5">
                 {[
-                  { label: 'DNS Propagation', ok: health.dnsOk, score: health.breakdown?.dns ?? 0 },
-                  { label: 'HTTP Routing', ok: health.routingOk, score: health.breakdown?.routing ?? 0 },
-                  { label: 'SSL Certificate', ok: health.sslOk, score: health.breakdown?.ssl ?? 0 },
-                  { label: 'Email DNS (MX/SPF)', ok: health.emailOk, score: health.breakdown?.email ?? 0 },
-                ].map(({ label, ok, score }) => (
+                  { label: 'DNS', ok: health.dnsOk, pts: 30 },
+                  { label: 'Routing', ok: health.routingOk, pts: 20 },
+                  { label: 'SSL', ok: health.sslOk, pts: 30 },
+                  { label: 'Email', ok: health.emailOk, pts: 20 },
+                ].map(({ label, ok, pts }) => (
                   <div key={label} className="flex items-center justify-between text-sm">
-                    <div className="flex items-center gap-2">
-                      <span className="text-[var(--text-muted)]">{label}</span>
-                      <span className="text-xs text-[var(--text-dim)]">({score}pt)</span>
-                    </div>
-                    <span className={`text-xs px-2 py-0.5 rounded-full ${ok ? 'bg-emerald-900 text-[var(--success)]' : 'bg-red-900 text-[var(--danger)]'}`}>
-                      {ok ? '✓ OK' : '✗ Failed'}
+                    <span className="text-[var(--text-muted)]">{label} <span className="text-xs">(+{pts})</span></span>
+                    <span className={`text-xs px-2 py-0.5 rounded-full ${ok ? 'bg-emerald-900/60 text-emerald-300' : 'bg-red-900/60 text-red-300'}`}>
+                      {ok ? '✓' : '✗'}
                     </span>
                   </div>
                 ))}
-                {health.sslExpiresInDays !== null && (
-                  <div className="flex items-center justify-between text-sm">
-                    <span className="text-[var(--text-muted)]">SSL Expires In</span>
-                    <span className={`text-xs ${health.sslExpiresInDays < 30 ? 'text-yellow-400' : 'text-[var(--text-muted)]'}`}>
-                      {health.sslExpiresInDays} days
-                    </span>
-                  </div>
-                )}
                 {health.responseTimeMs !== null && (
-                  <div className="flex items-center justify-between text-sm">
-                    <span className="text-[var(--text-muted)]">Response Time</span>
-                    <span className="text-[var(--text-muted)] text-xs">{health.responseTimeMs}ms</span>
+                  <div className="pt-1 text-xs text-[var(--text-dim)] border-t border-[var(--rail)] mt-2">
+                    Response: {health.responseTimeMs}ms
                   </div>
                 )}
-                {health.errorMessage && (
-                  <div className="rounded border border-[var(--danger)]/30 bg-[var(--danger)]/10 p-2.5 text-xs text-[var(--danger)]">
-                    {health.errorMessage}
-                  </div>
-                )}
-                <div className="text-xs text-[var(--text-dim)]">
-                  Last checked: {new Date(health.checkedAt).toLocaleTimeString()}
-                </div>
               </div>
             ) : (
-              <p className="text-sm text-[var(--text-muted)]">No health data yet. Run a health check to see results.</p>
+              <p className="text-sm text-[var(--text-muted)]">No health data yet.</p>
             )}
           </Card>
+        </div>
+      )}
+
+      {/* ── Setup Wizard ────────────────────────────────────────────────── */}
+      {activeTab === 'wizard' && wizard && (
+        <div className="space-y-6">
+          {/* Progress overview */}
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            {[
+              { label: 'DNS', progress: wizard.dnsProgress, color: 'emerald' },
+              { label: 'Routing', progress: wizard.routingProgress, color: 'blue' },
+              { label: 'SSL', progress: wizard.sslProgress, color: 'amber' },
+              { label: 'Email', progress: wizard.emailProgress, color: 'purple' },
+            ].map(({ label, progress, color }) => (
+              <Card key={label} className="border border-[var(--rail)] p-4">
+                <div className="flex items-center justify-between mb-2">
+                  <span className="text-xs text-[var(--text-muted)] font-medium">{label}</span>
+                  <span className={`text-xs font-bold text-${color}-400`}>{progress}%</span>
+                </div>
+                <div className="h-1.5 bg-[var(--rail)] rounded-full overflow-hidden">
+                  <div
+                    className={`h-full rounded-full transition-all duration-500 bg-${color}-500`}
+                    style={{ width: `${progress}%` }}
+                  />
+                </div>
+              </Card>
+            ))}
+          </div>
+
+          {/* Overall progress + ETA */}
+          <Card className="border border-[var(--rail)] p-5">
+            <div className="flex items-center justify-between mb-3">
+              <div>
+                <p className="text-sm font-semibold text-[var(--text)]">Overall Progress</p>
+                <p className="text-xs text-[var(--text-muted)] mt-0.5">
+                  {wizard.estimatedTimeRemaining
+                    ? `Estimated time remaining: ${wizard.estimatedTimeRemaining}`
+                    : 'Domain is fully configured'}
+                </p>
+              </div>
+              <span className="text-3xl font-bold text-[var(--accent)]">{wizard.overallProgress}%</span>
+            </div>
+            <div className="h-2 bg-[var(--rail)] rounded-full overflow-hidden">
+              <div
+                className="h-full bg-[var(--accent)] rounded-full transition-all duration-700"
+                style={{ width: `${wizard.overallProgress}%` }}
+              />
+            </div>
+            {wizard.stage && (
+              <p className="text-xs text-[var(--text-muted)] mt-2 capitalize">
+                Stage: {wizard.stage.replace(/_/g, ' ')}
+              </p>
+            )}
+          </Card>
+
+          {/* DNS Records table */}
+          <Card className="border border-[var(--rail)] p-0">
+            <div className="px-5 py-4 border-b border-[var(--rail)]">
+              <h3 className="text-sm font-semibold text-[var(--text)]">Required DNS Records</h3>
+              <p className="text-xs text-[var(--text-muted)] mt-0.5">
+                Add these records to your DNS provider to complete setup
+              </p>
+            </div>
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b border-[var(--rail)]">
+                  <th className="text-left text-xs text-[var(--text-muted)] font-medium px-5 py-2.5 w-16">Status</th>
+                  <th className="text-left text-xs text-[var(--text-muted)] font-medium px-4 py-2.5 w-16">Type</th>
+                  <th className="text-left text-xs text-[var(--text-muted)] font-medium px-4 py-2.5">Name</th>
+                  <th className="text-left text-xs text-[var(--text-muted)] font-medium px-4 py-2.5">Value</th>
+                  <th className="text-left text-xs text-[var(--text-muted)] font-medium px-4 py-2.5 w-20 hidden lg:table-cell">TTL</th>
+                  <th className="text-left text-xs text-[var(--text-muted)] font-medium px-4 py-2.5 w-24 hidden md:table-cell">Category</th>
+                </tr>
+              </thead>
+              <tbody>
+                {wizard.records.map((rec) => {
+                  const statusIcon: Record<string, string> = {
+                    ok: '✓',
+                    missing: '✗',
+                    pending: '◐',
+                    unknown: '?',
+                  };
+                  const statusColor: Record<string, string> = {
+                    ok: 'text-emerald-400',
+                    missing: 'text-red-400',
+                    pending: 'text-yellow-400',
+                    unknown: 'text-gray-400',
+                  };
+                  const categoryBadge: Record<string, string> = {
+                    deployment: 'bg-blue-900/50 text-blue-300',
+                    email: 'bg-purple-900/50 text-purple-300',
+                    verification: 'bg-amber-900/50 text-amber-300',
+                  };
+                  return (
+                    <tr key={rec.id} className="border-b border-[var(--rail)] last:border-0 hover:bg-[var(--surface-2)]/30">
+                      <td className="px-5 py-3">
+                        <span className={`text-sm font-bold ${statusColor[rec.status] ?? 'text-gray-400'}`}>
+                          {statusIcon[rec.status] ?? '?'}
+                        </span>
+                      </td>
+                      <td className="px-4 py-3 text-xs font-mono text-[var(--text-muted)]">{rec.type}</td>
+                      <td className="px-4 py-3 text-xs font-mono text-[var(--text)]">{rec.name}</td>
+                      <td className="px-4 py-3 text-xs font-mono text-[var(--text-muted)] max-w-xs truncate">{rec.value}</td>
+                      <td className="px-4 py-3 text-xs text-[var(--text-muted)] hidden lg:table-cell">{rec.ttl}</td>
+                      <td className="px-4 py-3 hidden md:table-cell">
+                        <span className={`text-xs px-2 py-0.5 rounded-full ${categoryBadge[rec.category] ?? 'bg-[var(--rail)]'}`}>
+                          {rec.category}
+                        </span>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </Card>
+
+          {/* SSL expiry warning */}
+          {wizard.sslExpiresInDays !== null && wizard.sslExpiresInDays < 30 && (
+            <div className={`rounded-lg border px-4 py-3 text-sm ${
+              wizard.sslExpiresInDays < 7
+                ? 'border-red-500/30 bg-red-500/10 text-red-400'
+                : 'border-amber-500/30 bg-amber-500/10 text-amber-400'
+            }`}>
+              ⚠️ SSL certificate expires in {wizard.sslExpiresInDays} days
+              {wizard.sslExpiresInDays < 7 && ' — renew immediately'}
+            </div>
+          )}
+
+          {/* Re-check button */}
+          <div className="flex justify-end">
+            <Button variant="secondary" size="sm" onClick={loadAll}>
+              🔄 Refresh Status
+            </Button>
+          </div>
         </div>
       )}
 

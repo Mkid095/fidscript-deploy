@@ -30,6 +30,12 @@ export interface Domain {
   dnsVerifiedAt?: string;
   routingVerifiedAt?: string;
   sslExpiresAt?: string;
+  healthStatus?: DomainReconciliationStatus;
+  lastVerifiedAt?: string;
+  nextVerificationAt?: string;
+  verificationFailures?: number;
+  lastHealthScore?: number;
+  priority?: number;
   createdAt: string;
 }
 
