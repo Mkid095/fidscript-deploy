@@ -283,6 +283,21 @@ export class DomainsModule {
   }
 
   /**
+   * Test Cloudflare OAuth credentials before storing them.
+   * Returns { valid: true } if credentials are functional.
+   */
+  async testCloudflareConnection(clientId: string, clientSecret: string): Promise<{ valid: boolean }> {
+    return this.client.post(`/api/v1/installation/test-cloudflare-connection`, { clientId, clientSecret });
+  }
+
+  /**
+   * Check whether Cloudflare OAuth is enabled at the platform level.
+   */
+  async getCloudflareOAuthStatus(): Promise<{ enabled: boolean }> {
+    return this.client.get(`/api/v1/installation/cloudflare-oauth-status`);
+  }
+
+  /**
    * Get the active DNS connection for a project (Cloudflare, Route53, etc.)
    */
   async getConnection(projectId: string): Promise<DnsConnection | null> {

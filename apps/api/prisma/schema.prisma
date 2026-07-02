@@ -1751,9 +1751,12 @@ model InstallationSettings {
   // Cloudflare API token lives in /run/secrets/cf_api_token — never in the database
   branding       Json?
   // Cloudflare OAuth credentials for one-click DNS (encrypted — never stored plaintext)
+  // DB is source of truth; env vars only used when DB values are absent (dev/recovery)
   encryptedCloudflareClientId     String? @map("encrypted_cf_client_id") @db.Text
   encryptedCloudflareClientSecret String? @map("encrypted_cf_client_secret") @db.Text
-  cloudflareOAuthRedirectUri      String? @map("cf_oauth_redirect_uri") @db.VarChar(500)
+  cloudflareOAuthEnabled          Boolean  @default(false) @map("cf_oauth_enabled")
+  cloudflareConnectedAt           DateTime? @map("cf_connected_at") @db.Timestamptz
+  cloudflareLastValidatedAt      DateTime? @map("cf_last_validated_at") @db.Timestamptz
   createdAt      DateTime   @default(now()) @map("created_at") @db.Timestamptz
   updatedAt      DateTime   @updatedAt @map("updated_at") @db.Timestamptz
 

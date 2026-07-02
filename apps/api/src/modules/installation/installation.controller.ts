@@ -2,6 +2,7 @@ import {
   Controller,
   Get,
   Post,
+  Patch,
   Body,
   Query,
   Param,
@@ -63,5 +64,17 @@ export class InstallationController {
     } finally {
       res.end();
     }
+  }
+
+  /**
+   * Update Cloudflare OAuth credentials at the platform level.
+   * Does NOT trigger full reconfiguration — only updates credentials.
+   * Set clientId/clientSecret to null to disable OAuth.
+   */
+  @Patch('cloudflare-oauth')
+  @HttpCode(HttpStatus.OK)
+  async updateCloudflareOAuth(@Body() body: { clientId?: string; clientSecret?: string; enabled?: boolean }) {
+    await this.orchestrator.updateCloudflareOAuth(body);
+    return { success: true };
   }
 }

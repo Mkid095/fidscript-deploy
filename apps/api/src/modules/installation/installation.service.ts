@@ -70,11 +70,16 @@ export class InstallationOrchestratorService {
     // CF token is written to /run/secrets/cf_api_token by the installer — we check the env
     const cfFromEnv = !!process.env.CLOUDFLARE_API_TOKEN_FILE;
 
-    // CF OAuth credentials are stored in InstallationSettings — check the DB
+    // CF OAuth credentials are stored in InstallationSettings — check DB (source of truth)
     let cloudflareOAuthConfigured = false;
     try {
       const settings = await this.prisma.installationSettings.findFirst() as any;
-      cloudflareOAuthConfigured = !!(settings?.encryptedCloudflareClientId && settings?.encryptedCloudflareClientSecret);
+      // Both credentials AND the enabled flag must be set
+      cloudflareOAuthConfigured = !!(
+        settings?.cloudflareOAuthEnabled &&
+        settings?.encryptedCloudflareClientId &&
+        settings?.encryptedCloudflareClientSecret
+      );
     } catch { /* not set yet */ }
 
     return {
@@ -242,7 +247,7 @@ export class InstallationOrchestratorService {
         });
 
         // Store Cloudflare OAuth credentials separately (new fields not in generated types yet)
-        if (dto.cloudflareClientId || dto.cloudflareClientSecret || dto.cloudflareOAuthRedirectUri) {
+        if (dto.cloudflareClientId || dto.cloudflareClientSecret) {
           await tx.installationSettings.update({
             where: { id: 'installation' },
             data: {
@@ -252,8 +257,8 @@ export class InstallationOrchestratorService {
               encryptedCloudflareClientSecret: dto.cloudflareClientSecret
                 ? this.encryptSecret(dto.cloudflareClientSecret)
                 : undefined,
-              cloudflareOAuthRedirectUri: dto.cloudflareOAuthRedirectUri
-                ?? `https://${dto.platformDomain}/api/callback/cloudflare`,
+              cloudflareOAuthEnabled: true,
+              cloudflareConnectedAt: new Date(),
             } as any,
           });
         }
@@ -384,6 +389,45 @@ export class InstallationOrchestratorService {
       try { return require('fs').readFileSync(keyFile, 'utf8').trim().slice(0, 32) as Buffer; } catch { /* fall through */ }
     }
     return Buffer.from('default-dev-key-32-chars-here!!', 'utf8').slice(0, 32);
+  }
+
+  // ─── Cloudflare OAuth credential update (post-install) ──────────────
+
+  async updateCloudflareOAuth(input: {
+    clientId?: string;
+    clientSecret?: string;
+    enabled?: boolean;
+  }): Promise<void> {
+    const data: Record<string, unknown> = {};
+
+    if (input.enabled !== undefined) {
+      data.cloudflareOAuthEnabled = input.enabled;
+    }
+
+    if (input.clientId !== undefined || input.clientSecret !== undefined) {
+      if (input.clientId !== undefined) {
+        data.encryptedCloudflareClientId = input.clientId
+          ? this.encryptSecret(input.clientId)
+          : null;
+      }
+      if (input.clientSecret !== undefined) {
+        data.encryptedCloudflareClientSecret = input.clientSecret
+          ? this.encryptSecret(input.clientSecret)
+          : null;
+      }
+      if (input.enabled === undefined) {
+        // If updating credentials, auto-enable OAuth
+        data.cloudflareOAuthEnabled = true;
+      }
+      data.cloudflareConnectedAt = new Date();
+    }
+
+    if (Object.keys(data).length === 0) return;
+
+    await this.prisma.installationSettings.update({
+      where: { id: 'installation' },
+      data: data as any,
+    });
   }
 
   // ─── SSE stream for progress ─────────────────────────────────────

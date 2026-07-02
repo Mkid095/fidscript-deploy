@@ -37,28 +37,41 @@ export class CloudflareOAuthService {
 
   /**
    * Get OAuth credentials from InstallationSettings (DB), falling back to env vars.
+   * Redirect URI is always derived from platformDomain to avoid drift.
    */
   private async getOAuthCredentials() {
+    let platformDomain: string | undefined;
+    let dbClientId: string | undefined;
+    let dbClientSecret: string | undefined;
+
     try {
       const settings = await this.prisma.installationSettings.findFirst() as any;
       if (settings?.encryptedCloudflareClientId && settings?.encryptedCloudflareClientSecret) {
-        return {
-          clientId: this.decryptSecret(settings.encryptedCloudflareClientId),
-          clientSecret: this.decryptSecret(settings.encryptedCloudflareClientSecret),
-          redirectUri: settings.cloudflareOAuthRedirectUri ?? this.envRedirectUri,
-        };
+        // DB is source of truth — only use if cloudflareOAuthEnabled
+        if (!settings.cloudflareOAuthEnabled) {
+          throw new UnauthorizedException('Cloudflare OAuth is not enabled in platform settings.');
+        }
+        dbClientId = this.decryptSecret(settings.encryptedCloudflareClientId);
+        dbClientSecret = this.decryptSecret(settings.encryptedCloudflareClientSecret);
+        platformDomain = settings.platformDomain;
       }
-    } catch { /* DB not ready */ }
+    } catch { /* DB not ready — fall through to env */ }
 
-    // Fallback to env vars
-    if (this.envClientId && this.envClientSecret) {
-      return { clientId: this.envClientId, clientSecret: this.envClientSecret, redirectUri: this.envRedirectUri };
+    const clientId = dbClientId ?? this.envClientId;
+    const clientSecret = dbClientSecret ?? this.envClientSecret;
+    if (!clientId || !clientSecret) {
+      throw new UnauthorizedException(
+        'Cloudflare OAuth is not configured. Set credentials in platform setup ' +
+        'or via CLOUDFLARE_CLIENT_ID / CLOUDFLARE_CLIENT_SECRET environment variables.',
+      );
     }
 
-    throw new UnauthorizedException(
-      'Cloudflare OAuth is not configured. Set CLOUDFLARE_CLIENT_ID and CLOUDFLARE_CLIENT_SECRET ' +
-      'in the platform setup page or via environment variables.',
-    );
+    // Derive redirect URI from platformDomain (never stored — avoids drift)
+    const redirectUri = platformDomain
+      ? `https://${platformDomain}/api/callback/cloudflare`
+      : this.envRedirectUri;
+
+    return { clientId, clientSecret, redirectUri };
   }
 
   /**
@@ -174,6 +187,51 @@ export class CloudflareOAuthService {
     } catch (err) {
       this.logger.warn(`Failed to list Cloudflare zones: ${err instanceof Error ? err.message : err}`);
       return [];
+    }
+  }
+
+  /**
+   * Test Cloudflare OAuth credentials by exchanging a dummy code.
+   * Does NOT store anything — validates that credentials are functional.
+   * Returns { valid: true } on success, throws UnauthorizedException on failure.
+   */
+  async testConnection(clientId: string, clientSecret: string): Promise<{ valid: true; email?: string }> {
+    // Derive redirect URI for validation (use env fallback — doesn't matter for token exchange)
+    const redirectUri = this.envRedirectUri;
+    try {
+      // Try a token exchange with an invalid code — if we get a 401 with
+      // "invalid_grant" it means the client credentials are valid (just the code is bad).
+      // Any other error means credentials themselves are bad.
+      await axios.post(
+        `${this.baseUrl}/api/v4/oauth2/token`,
+        new URLSearchParams({
+          grant_type: 'authorization_code',
+          client_id: clientId,
+          client_secret: clientSecret,
+          redirect_uri: redirectUri,
+          code: 'test_invalid_code_for_validation_only',
+        }),
+        { headers: { 'Content-Type': 'application/x-www-form-urlencoded' }, timeout: 15_000 },
+      );
+      return { valid: true }; // Should not reach here — Cloudflare will reject the code
+    } catch (err) {
+      if (axios.isAxiosError(err)) {
+        const data = err.response?.data as { error?: string; error_description?: string } | undefined;
+        // invalid_grant means credentials are valid (code was intentionally wrong)
+        if (data?.error === 'invalid_grant') {
+          return { valid: true };
+        }
+        // invalid_client means credentials themselves are wrong
+        if (data?.error === 'invalid_client') {
+          throw new UnauthorizedException(
+            `Invalid Cloudflare OAuth credentials: ${data.error_description ?? data.error}`,
+          );
+        }
+        throw new UnauthorizedException(
+          `Cloudflare OAuth test failed: ${data?.error_description ?? err.message}`,
+        );
+      }
+      throw new UnauthorizedException(`Cloudflare OAuth connection test failed: ${err instanceof Error ? err.message : String(err)}`);
     }
   }
 

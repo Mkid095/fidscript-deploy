@@ -5,13 +5,17 @@ import {
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { JwtAuthGuard } from '@/modules/auth/jwt-auth.guard';
 import { CloudflareOAuthService } from '@/modules/domains/services/cloudflare-oauth.service';
+import { PrismaService } from '@/prisma/prisma.service';
 import { Request } from 'express';
 import * as crypto from 'crypto';
 
 @ApiTags('cloudflare-oauth')
 @Controller()
 export class CloudflareOAuthController {
-  constructor(private oauth: CloudflareOAuthService) {}
+  constructor(
+    private oauth: CloudflareOAuthService,
+    private prisma: PrismaService,
+  ) {}
 
   /**
    * Get the Cloudflare OAuth authorization URL and a state parameter for CSRF protection.
@@ -70,5 +74,35 @@ export class CloudflareOAuthController {
   async listZones(@Param('projectId') projectId: string) {
     const zones = await this.oauth.getAccessibleZones(projectId);
     return { zones };
+  }
+
+  /**
+   * Test Cloudflare OAuth credentials before storing them.
+   * Validates clientId/clientSecret by attempting a token exchange.
+   */
+  @Post('api/v1/installation/test-cloudflare-connection')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Test Cloudflare OAuth credentials before saving' })
+  async testConnection(@Body() body: { clientId: string; clientSecret: string }) {
+    const result = await this.oauth.testConnection(body.clientId, body.clientSecret);
+    return { valid: result.valid };
+  }
+
+  /**
+   * Check whether Cloudflare OAuth is enabled at the platform level.
+   * Used by the frontend to show/hide OAuth-dependent UI.
+   */
+  @Get('api/v1/installation/cloudflare-oauth-status')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Check if Cloudflare OAuth is enabled at platform level' })
+  async getOAuthStatus() {
+    let enabled = false;
+    try {
+      const settings = await this.prisma.installationSettings.findFirst() as any;
+      enabled = !!(settings?.cloudflareOAuthEnabled &&
+        settings?.encryptedCloudflareClientId &&
+        settings?.encryptedCloudflareClientSecret);
+    } catch { /* DB not ready */ }
+    return { enabled };
   }
 }

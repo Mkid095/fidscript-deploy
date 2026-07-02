@@ -41,11 +41,6 @@ export class ConfigureInstallationDto {
   @IsOptional()
   cloudflareClientSecret?: string;
 
-  /** Cloudflare OAuth Redirect URI — defaults to https://{platformDomain}/api/callback/cloudflare */
-  @IsString()
-  @IsOptional()
-  cloudflareOAuthRedirectUri?: string;
-
   @IsString()
   @IsOptional()
   dnsMode?: string;

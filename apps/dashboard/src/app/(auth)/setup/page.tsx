@@ -61,7 +61,8 @@ export default function SetupPage() {
   const [cloudflareToken, setCloudflareToken] = useState('');
   const [cloudflareClientId, setCloudflareClientId] = useState('');
   const [cloudflareClientSecret, setCloudflareClientSecret] = useState('');
-  const [cloudflareOAuthRedirectUri, setCloudflareOAuthRedirectUri] = useState('');
+  const [testingConnection, setTestingConnection] = useState(false);
+  const [connectionTestResult, setConnectionTestResult] = useState<'valid' | 'invalid' | null>(null);
   const [adminEmail, setAdminEmail] = useState('');
   const [adminPassword, setAdminPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
@@ -94,13 +95,10 @@ export default function SetupPage() {
       .catch(() => {/* non-fatal */});
   }, []);
 
-  // Auto-fill the Cloudflare OAuth redirect URI when platform domain is set
-  useEffect(() => {
-    if (platformDomain && !cloudflareOAuthRedirectUri) {
-      const uri = `https://${platformDomain}/api/callback/cloudflare`;
-      setCloudflareOAuthRedirectUri(uri);
-    }
-  }, [platformDomain]);
+  // Derive redirect URI from platformDomain (never stored — derived on every use)
+  const derivedRedirectUri = platformDomain
+    ? `https://${platformDomain}/api/callback/cloudflare`
+    : '';
 
   // Debounced API validation for domain field while typing.
   useEffect(() => {
@@ -174,7 +172,6 @@ export default function SetupPage() {
     if (cloudflareToken.trim()) body.cloudflareApiToken = cloudflareToken.trim();
     if (cloudflareClientId.trim()) body.cloudflareClientId = cloudflareClientId.trim();
     if (cloudflareClientSecret.trim()) body.cloudflareClientSecret = cloudflareClientSecret.trim();
-    if (cloudflareOAuthRedirectUri.trim()) body.cloudflareOAuthRedirectUri = cloudflareOAuthRedirectUri.trim();
 
     setProgressError('');
     setStep('progress');
@@ -402,7 +399,7 @@ export default function SetupPage() {
                   label="Cloudflare Client ID"
                   type="text"
                   value={cloudflareClientId}
-                  onChange={e => setCloudflareClientId(e.target.value)}
+                  onChange={e => { setCloudflareClientId(e.target.value); setConnectionTestResult(null); }}
                   placeholder="e.g. 4bc8f2a9b3c7d6e1..."
                   hint="From dash.cloudflare.com → Overview → Get your API token → OAuth"
                   className="bg-[var(--surface-2)] border border-[var(--rail)] text-[var(--text)] placeholder:text-[var(--text-dim)] mb-3"
@@ -411,19 +408,62 @@ export default function SetupPage() {
                   label="Cloudflare Client Secret"
                   type="password"
                   value={cloudflareClientSecret}
-                  onChange={e => setCloudflareClientSecret(e.target.value)}
+                  onChange={e => { setCloudflareClientSecret(e.target.value); setConnectionTestResult(null); }}
                   placeholder="OAuth client secret"
                   className="bg-[var(--surface-2)] border border-[var(--rail)] text-[var(--text)] placeholder:text-[var(--text-dim)] mb-3"
                 />
-                <Input
-                  label="OAuth Redirect URI"
-                  type="text"
-                  value={cloudflareOAuthRedirectUri}
-                  onChange={e => setCloudflareOAuthRedirectUri(e.target.value)}
-                  placeholder="https://deploy.example.com/api/callback/cloudflare"
-                  hint="Must match the redirect URI set in your Cloudflare OAuth app"
-                  className="bg-[var(--surface-2)] border border-[var(--rail)] text-[var(--text)] placeholder:text-[var(--text-dim)]"
-                />
+                {derivedRedirectUri && (
+                  <div className="mb-3">
+                    <label className="block text-xs text-[var(--text-muted)] mb-1.5">OAuth Redirect URI</label>
+                    <div className="flex items-center gap-2">
+                      <code className="flex-1 text-xs bg-[var(--surface-2)] border border-[var(--rail)] text-[var(--text-muted)] rounded px-2 py-1.5 font-mono break-all">
+                        {derivedRedirectUri}
+                      </code>
+                      <span className="shrink-0 text-xs text-[var(--text-dim)]">auto-derived</span>
+                    </div>
+                    <p className="text-xs text-[var(--text-dim)] mt-1">
+                      Add this URI to your Cloudflare OAuth app's redirect list in the Cloudflare dashboard.
+                    </p>
+                  </div>
+                )}
+                {cloudflareClientId.trim() && cloudflareClientSecret.trim() && (
+                  <div className="flex items-center gap-3 mb-3">
+                    <button
+                      type="button"
+                      onClick={async () => {
+                        setTestingConnection(true);
+                        setConnectionTestResult(null);
+                        try {
+                          const res = await fetchJson<{ valid: boolean }>(
+                            `${getApiBase()}/api/v1/installation/test-cloudflare-connection`,
+                            {
+                              method: 'POST',
+                              body: JSON.stringify({
+                                clientId: cloudflareClientId.trim(),
+                                clientSecret: cloudflareClientSecret.trim(),
+                              }),
+                            },
+                          );
+                          setConnectionTestResult(res.valid ? 'valid' : 'invalid');
+                        } catch {
+                          setConnectionTestResult('invalid');
+                        } finally {
+                          setTestingConnection(false);
+                        }
+                      }}
+                      disabled={testingConnection}
+                      className="text-xs px-3 py-1.5 rounded border border-[var(--rail)] text-[var(--text-muted)] hover:text-[var(--text)] hover:border-slate-500 transition-colors disabled:opacity-50"
+                    >
+                      {testingConnection ? 'Testing…' : connectionTestResult === 'valid' ? '✓ Valid' : connectionTestResult === 'invalid' ? '✗ Invalid' : 'Test Connection'}
+                    </button>
+                    {connectionTestResult === 'valid' && (
+                      <span className="text-xs text-green-400">Credentials are valid</span>
+                    )}
+                    {connectionTestResult === 'invalid' && (
+                      <span className="text-xs text-[var(--danger)]">Invalid credentials</span>
+                    )}
+                  </div>
+                )}
               </div>
 
               <Input

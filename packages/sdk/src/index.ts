@@ -38,6 +38,7 @@ import { MonitoringModule } from './modules/monitoring';
 import { LoggingModule } from './modules/logging';
 import { TemplatesModule } from './modules/templates';
 import { GithubModule } from './modules/github';
+import { InstallationModule } from './modules/installation';
 import {
   FidscriptError,
   AuthError,
@@ -48,7 +49,7 @@ import {
 
 export { FidscriptClient, FidscriptClientOptions };
 export { FidscriptError, AuthError, NotFoundError, ValidationError, RateLimitError };
-export { AuthModule, ProjectsModule, DeploymentsModule, StorageModule, DatabasesModule, DomainsModule, EmailModule, FunctionsModule, QueuesModule, CronModule, RealtimeModule, MonitoringModule, LoggingModule, TemplatesModule, GithubModule };
+export { AuthModule, ProjectsModule, DeploymentsModule, StorageModule, DatabasesModule, DomainsModule, EmailModule, FunctionsModule, QueuesModule, CronModule, RealtimeModule, MonitoringModule, LoggingModule, TemplatesModule, GithubModule, InstallationModule };
 export { AdminMailboxModule, AdminAttachmentConfigModule, type PlatformMailboxMessage, type PlatformMailboxSummary, type PlatformMailboxesResponse, type CreatePlatformMailboxResponse, type ListPlatformMessagesResponse, type AdminSendMailResponse, type AdminAttachmentConfig, type StorageBackend, type MailboxMessage, type EmailDomain, type Mailbox, type EmailAlias };
 export type { Domain, DnsConnection, DomainHealth, DomainHealthStatus, DnsRecord, DnsRecordCategory, DnsRecordStatus, DnsRecordsResponse, DomainSslInfo, DomainType, DomainCapabilities, DomainReconciliationStatus, DomainVerificationRun, DomainIncident, DomainHealthTimelineEntry, DomainWizardStatus, WizardStage, WizardRecord, WizardRecordStatus } from './modules/domains';
 export type { RealtimeEventHandler } from './modules/realtime';
@@ -71,6 +72,7 @@ export interface FidscriptSDK {
   logs: LoggingModule;
   templates: TemplatesModule;
   github: GithubModule;
+  installation: InstallationModule;
 }
 
 export function createFidscript(options: {
@@ -98,5 +100,6 @@ export function createFidscript(options: {
     logs: new LoggingModule(client),
     templates: new TemplatesModule(client),
     github: new GithubModule(client),
+    installation: new InstallationModule(client),
   };
 }
