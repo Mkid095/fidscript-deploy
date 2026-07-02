@@ -1,13 +1,21 @@
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
+
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+
 /** @type {import('next').NextConfig} */
 const nextConfig = {
+  reactStrictMode: true,
   output: 'standalone',
+  outputFileTracingRoot: path.resolve(__dirname, '../..'),
   images: {
-    // Whitelist external image hosts so next/image optimizer can fetch them.
     remotePatterns: [
-      { protocol: 'https', hostname: 'res.cloudinary.com' },
-      { protocol: 'https', hostname: '*.cloudinary.com' },
-      { protocol: 'https', hostname: '*.githubusercontent.com' },
-      { protocol: 'https', hostname: 'avatars.githubusercontent.com' },
+      {
+        protocol: 'https',
+        hostname: 'res.cloudinary.com',
+        pathname: '/dfp7uhzy3/image/upload/**',
+      },
+      { protocol: 'https', hostname: '*.fidscript.dev' },
       { protocol: 'https', hostname: '*.s3.amazonaws.com' },
     ],
   },

@@ -72,7 +72,7 @@ import {
 
 // ─── Delay helper to simulate network latency ─────────────────────────────────
 
-function delay(ms = 150): Promise<void> {
+function delay(ms = 20): Promise<void> {
   return new Promise(resolve => setTimeout(resolve, ms));
 }
 
@@ -1359,14 +1359,14 @@ class MockQueuesModule {
 // ─── Cron Module Mock ─────────────────────────────────────────────────────────
 
 class MockCronModule {
-  async list(): Promise<CronJob[]> {
+  async list(projectId: string): Promise<CronJob[]> {
     await delay();
-    return mockCronJobs;
+    return mockCronJobs.filter(j => j.projectId === projectId);
   }
 
-  async get(cronId: string): Promise<CronJob> {
+  async get(projectId: string, jobId: string): Promise<CronJob> {
     await delay();
-    const job = mockCronJobs.find(j => j.id === cronId);
+    const job = mockCronJobs.find(j => j.id === jobId && j.projectId === projectId);
     if (!job) throw new Error('Cron job not found');
     return job;
   }
@@ -1395,26 +1395,32 @@ class MockCronModule {
     return job;
   }
 
-  async update(cronId: string, data: Partial<CronJob>): Promise<CronJob> {
+  async update(projectId: string, jobId: string, data: Partial<CronJob>): Promise<CronJob> {
     await delay(300);
-    const job = mockCronJobs.find(j => j.id === cronId);
+    const job = mockCronJobs.find(j => j.id === jobId && j.projectId === projectId);
     if (!job) throw new Error('Cron job not found');
-    Object.assign(job, data);
+    Object.assign(job, data, { updatedAt: new Date().toISOString() });
     return job;
   }
 
-  async delete(cronId: string): Promise<void> {
+  async delete(projectId: string, jobId: string): Promise<void> {
     await delay(300);
-    const index = mockCronJobs.findIndex(j => j.id === cronId);
+    const index = mockCronJobs.findIndex(j => j.id === jobId && j.projectId === projectId);
     if (index >= 0) mockCronJobs.splice(index, 1);
   }
 
-  async runNow(cronId: string): Promise<CronJobRun> {
+  async trigger(projectId: string, jobId: string): Promise<void> {
+    await delay(300);
+    const job = mockCronJobs.find(j => j.id === jobId && j.projectId === projectId);
+    if (!job) throw new Error('Cron job not found');
+  }
+
+  async runNow(projectId: string, jobId: string): Promise<CronJobRun> {
     await delay(500);
     const now = new Date().toISOString();
     return {
       id: 'run_' + Date.now(),
-      cronJobId: cronId,
+      cronJobId: jobId,
       status: 'completed',
       attempt: 1,
       scheduledAt: now,
@@ -1424,24 +1430,56 @@ class MockCronModule {
     };
   }
 
-  async getRuns(cronId: string): Promise<CronJobRun[]> {
+  async getRuns(projectId: string, jobId: string, _limit = 50): Promise<CronJobRun[]> {
     await delay();
     return [
-      { id: 'run_01', cronJobId: cronId, status: 'completed', attempt: 1, scheduledAt: '2026-06-29T02:00:00Z', startedAt: '2026-06-29T02:00:00Z', completedAt: '2026-06-29T02:05:00Z', durationMs: 5000, failureType: 'none', createdAt: '2026-06-29T02:00:00Z' },
-      { id: 'run_02', cronJobId: cronId, status: 'failed', attempt: 1, scheduledAt: '2026-06-28T02:00:00Z', startedAt: '2026-06-28T02:00:00Z', completedAt: '2026-06-28T02:03:00Z', durationMs: 180000, errorMessage: 'Connection timeout', failureType: 'network_error', createdAt: '2026-06-28T02:00:00Z' },
-      { id: 'run_03', cronJobId: cronId, status: 'completed', attempt: 1, scheduledAt: '2026-06-27T02:00:00Z', startedAt: '2026-06-27T02:00:00Z', completedAt: '2026-06-27T02:04:30Z', durationMs: 4500, failureType: 'none', createdAt: '2026-06-27T02:00:00Z' },
-      { id: 'run_04', cronJobId: cronId, status: 'completed', attempt: 1, scheduledAt: '2026-06-26T02:00:00Z', startedAt: '2026-06-26T02:00:00Z', completedAt: '2026-06-26T02:03:55Z', durationMs: 4550, failureType: 'none', createdAt: '2026-06-26T02:00:00Z' },
-      { id: 'run_05', cronJobId: cronId, status: 'completed', attempt: 1, scheduledAt: '2026-06-25T02:00:00Z', startedAt: '2026-06-25T02:00:00Z', completedAt: '2026-06-25T02:04:10Z', durationMs: 4700, failureType: 'none', createdAt: '2026-06-25T02:00:00Z' },
+      { id: 'run_01', cronJobId: jobId, status: 'completed', attempt: 1, scheduledAt: '2026-06-29T02:00:00Z', startedAt: '2026-06-29T02:00:00Z', completedAt: '2026-06-29T02:05:00Z', durationMs: 5000, failureType: 'none', createdAt: '2026-06-29T02:00:00Z' },
+      { id: 'run_02', cronJobId: jobId, status: 'failed', attempt: 1, scheduledAt: '2026-06-28T02:00:00Z', startedAt: '2026-06-28T02:00:00Z', completedAt: '2026-06-28T02:03:00Z', durationMs: 180000, errorMessage: 'Connection timeout', failureType: 'network_error', createdAt: '2026-06-28T02:00:00Z' },
+      { id: 'run_03', cronJobId: jobId, status: 'completed', attempt: 1, scheduledAt: '2026-06-27T02:00:00Z', startedAt: '2026-06-27T02:00:00Z', completedAt: '2026-06-27T02:04:30Z', durationMs: 4500, failureType: 'none', createdAt: '2026-06-27T02:00:00Z' },
+      { id: 'run_04', cronJobId: jobId, status: 'completed', attempt: 1, scheduledAt: '2026-06-26T02:00:00Z', startedAt: '2026-06-26T02:00:00Z', completedAt: '2026-06-26T02:03:55Z', durationMs: 4550, failureType: 'none', createdAt: '2026-06-26T02:00:00Z' },
+      { id: 'run_05', cronJobId: jobId, status: 'completed', attempt: 1, scheduledAt: '2026-06-25T02:00:00Z', startedAt: '2026-06-25T02:00:00Z', completedAt: '2026-06-25T02:04:10Z', durationMs: 4700, failureType: 'none', createdAt: '2026-06-25T02:00:00Z' },
     ];
   }
 
-  async stats(_projectId: string, jobId: string): Promise<{
+  async getNextRun(projectId: string, jobId: string): Promise<{ nextRunAt: string | null }> {
+    await delay();
+    const job = mockCronJobs.find(j => j.id === jobId && j.projectId === projectId);
+    return { nextRunAt: job?.nextRunAt ?? null };
+  }
+
+  async simulate(projectId: string, jobId: string, count = 5): Promise<{ scheduledAt: string }[]> {
+    await delay();
+    const job = mockCronJobs.find(j => j.id === jobId && j.projectId === projectId);
+    if (!job) throw new Error('Cron job not found');
+    const now = new Date();
+    const results: { scheduledAt: string }[] = [];
+    for (let i = 0; i < count; i++) {
+      const next = new Date(now.getTime() + (i + 1) * 3600_000);
+      results.push({ scheduledAt: next.toISOString() });
+    }
+    void job;
+    return results;
+  }
+
+  async simulateExpression(projectId: string, cronExpression: string, timezone = 'UTC', count = 5): Promise<{ scheduledAt: string }[]> {
+    await delay();
+    void projectId; void cronExpression; void timezone;
+    const now = new Date();
+    const results: { scheduledAt: string }[] = [];
+    for (let i = 0; i < count; i++) {
+      const next = new Date(now.getTime() + (i + 1) * 3600_000);
+      results.push({ scheduledAt: next.toISOString() });
+    }
+    return results;
+  }
+
+  async stats(projectId: string, jobId: string): Promise<{
     total: number; completed: number; failed: number;
     successRate: number | null; avgDurationMs: number | null;
     sparkline: { status: string; durationMs: number | null }[];
   }> {
     await delay();
-    const runs = await this.getRuns(jobId);
+    const runs = await this.getRuns(projectId, jobId);
     const completed = runs.filter(r => r.status === 'completed').length;
     const durations = runs.filter(r => r.durationMs != null).map(r => r.durationMs!);
     return {
@@ -1457,6 +1495,7 @@ class MockCronModule {
   async replay(projectId: string, jobId: string, runId: string): Promise<{ runId: string; replayedFrom: string; status: string }> {
     await delay();
     const newRunId = `run_replay_${Date.now()}`;
+    void projectId; void jobId; void runId;
     return { runId: newRunId, replayedFrom: runId, status: 'enqueued' };
   }
 }
