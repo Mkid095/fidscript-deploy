@@ -478,6 +478,12 @@ model Domain {
   routingVerifiedAt DateTime?    @map("routing_verified_at") @db.Timestamptz
   emailWarning      Boolean      @default(false) @map("email_warning")
   emailProvider     String?      @map("email_provider") @db.VarChar(100)
+  // Reconciliation engine fields
+  healthStatus      DomainHealthStatus @default(PENDING) @map("health_status")
+  lastVerifiedAt    DateTime?    @map("last_verified_at") @db.Timestamptz
+  nextVerificationAt DateTime?   @map("next_verification_at") @db.Timestamptz
+  verificationFailures Int       @default(0) @map("verification_failures")
+  lastHealthScore   Int?        @map("last_health_score") // 0-100
   createdAt         DateTime     @default(now()) @map("created_at") @db.Timestamptz
 
   project       Project             @relation(fields: [projectId], references: [id], onDelete: Cascade)
@@ -521,6 +527,10 @@ model DomainHealthCheck {
   sslOk     Boolean @default(false) @map("ssl_ok")
   emailOk   Boolean @default(false) @map("email_ok") // MX/SPF/DKIM/DMARC checks
 
+  // Weighted score breakdown (DNS 30 + SSL 30 + Email 20 + Routing 20 = 100)
+  score     Int     @default(0) @map("score")
+  breakdown Json?   @map("breakdown") // { dns: number, ssl: number, email: number, routing: number }
+
   responseTimeMs Int? @map("response_time_ms")
 
   sslExpiresInDays Int?    @map("ssl_expires_in_days")
@@ -542,6 +552,16 @@ enum DomainStatus {
   ACTIVE // All checks passed: DNS + routing + SSL all done, serving traffic
   BROKEN // Was ACTIVE but DNS/routing/cert has failed
   FAILED // Verification failed (permanent)
+
+  @@schema("public")
+}
+
+// Reconciliation-derived health state of a domain.
+enum DomainHealthStatus {
+  PENDING    // Never verified yet
+  HEALTHY   // Score 80-100, all critical checks passing
+  DEGRADED  // Score 50-79, some checks failing
+  FAILED    // Score 0-49 or critical failures
 
   @@schema("public")
 }

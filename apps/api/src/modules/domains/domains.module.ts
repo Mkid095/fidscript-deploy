@@ -18,8 +18,15 @@ import { DomainSslService } from '@/modules/domains/services/domain-ssl.service'
 import { CloudflareDnsProvider } from '@/modules/domains/providers/cloudflare-platform.service';
 import { CloudflareZoneService } from '@/modules/domains/providers/cloudflare-zone.service';
 import { CloudflareDnsMappersService } from '@/modules/domains/providers/cloudflare-dns-mappers.service';
+import { DomainReconciliationService } from '@/modules/domains/services/domain-reconciliation.service';
+import { DomainReconciliationQueueService } from '@/modules/domains/services/domain-reconciliation-queue.service';
+import { DomainReconciliationWorker } from '@/modules/domains/services/domain-reconciliation-worker.service';
+import { DomainReconciliationScheduler } from '@/modules/domains/services/domain-reconciliation-scheduler.service';
+import { EventsModule } from '@/modules/events/events.module';
+import { RedisModule } from '@/modules/redis/redis.module';
 
 @Module({
+  imports: [EventsModule, RedisModule],
   controllers: [DomainsController],
   providers: [
     CloudflareZoneService,
@@ -41,6 +48,10 @@ import { CloudflareDnsMappersService } from '@/modules/domains/providers/cloudfl
     DomainAccessService,
     DomainConnectionService,
     DomainSslService,
+    DomainReconciliationService,
+    DomainReconciliationQueueService,
+    DomainReconciliationWorker,
+    DomainReconciliationScheduler,
   ],
   exports: [
     DomainsService,
@@ -58,6 +69,9 @@ import { CloudflareDnsMappersService } from '@/modules/domains/providers/cloudfl
     DomainAccessService,
     DomainConnectionService,
     DomainSslService,
+    DomainReconciliationService,
+    DomainReconciliationQueueService,
+    DomainReconciliationScheduler,
     CloudflareZoneService,
     CloudflareDnsProvider,
     'DNS_PROVIDER',
