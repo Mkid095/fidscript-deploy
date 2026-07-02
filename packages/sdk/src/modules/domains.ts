@@ -28,6 +28,38 @@ export interface DnsConnection {
   createdAt: string;
 }
 
+export type DomainHealthStatus = 'ok' | 'degraded' | 'broken' | null;
+
+export interface DomainHealth {
+  dnsOk: boolean;
+  routingOk: boolean;
+  sslOk: boolean;
+  responseTimeMs: number | null;
+  sslExpiresInDays: number | null;
+  status: DomainHealthStatus;
+  errorMessage: string | null;
+  checkedAt: string;
+}
+
+export type DnsRecordCategory = 'deployment' | 'email' | 'verification';
+export type DnsRecordStatus = 'ok' | 'missing' | 'pending';
+
+export interface DnsRecord {
+  type: string;
+  name: string;
+  value: string;
+  priority?: number;
+  ttl?: number;
+  status: DnsRecordStatus;
+  category: DnsRecordCategory;
+}
+
+export interface DnsRecordsResponse {
+  domainId: string;
+  domain: string;
+  records: DnsRecord[];
+}
+
 export class DomainsModule {
   constructor(private client: FidscriptClient) {}
 
@@ -93,5 +125,45 @@ export class DomainsModule {
     } catch {
       return null;
     }
+  }
+
+  /**
+   * Get the latest health check result for a domain (DNS, routing, SSL).
+   * Returns null if no health check has been run yet.
+   */
+  async getHealth(projectId: string, domainId: string): Promise<DomainHealth | null> {
+    return this.client.get<DomainHealth | null>(
+      `/api/v1/projects/${projectId}/domains/${domainId}/health`,
+    );
+  }
+
+  /**
+   * Trigger a new health check for a domain. Runs asynchronously —
+   * call getHealth() again after a few seconds to get the result.
+   */
+  async triggerHealthCheck(projectId: string, domainId: string): Promise<{ status: string; message: string }> {
+    return this.client.post(
+      `/api/v1/projects/${projectId}/domains/${domainId}/health`,
+    );
+  }
+
+  /**
+   * Get all required DNS records for a domain (deployment + email verification).
+   * Includes A/CNAME (deployment), MX/SPF/DKIM/DMARC (email), and TXT (ownership).
+   */
+  async getDnsRecords(projectId: string, domainId: string): Promise<DnsRecordsResponse> {
+    return this.client.get<DnsRecordsResponse>(
+      `/api/v1/projects/${projectId}/domains/${domainId}/dns-records`,
+    );
+  }
+
+  /**
+   * Auto-configure DNS records via Cloudflare API (Mode B).
+   * Requires the domain to be in cloudflare_auto mode with an active connection.
+   */
+  async autoConfigureDnsRecords(projectId: string, domainId: string): Promise<{ success: boolean }> {
+    return this.client.post(
+      `/api/v1/projects/${projectId}/domains/${domainId}/dns-records/auto-configure`,
+    );
   }
 }

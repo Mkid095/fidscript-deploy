@@ -978,10 +978,52 @@ export interface DomainInfo {
   addedAt: string;
 }
 
+export interface DomainHealth {
+  dnsOk: boolean;
+  routingOk: boolean;
+  sslOk: boolean;
+  responseTimeMs: number | null;
+  sslExpiresInDays: number | null;
+  status: 'ok' | 'degraded' | 'broken' | null;
+  errorMessage: string | null;
+  checkedAt: string;
+}
+
+export interface DnsRecord {
+  type: string;
+  name: string;
+  value: string;
+  priority?: number;
+  ttl?: number;
+  status: 'ok' | 'missing' | 'pending';
+  category: 'deployment' | 'email' | 'verification';
+}
+
 export const mockDomains: DomainInfo[] = [
   { id: 'dom_01', domain: 'fidscript.dev', status: 'active', sslStatus: 'active', addedAt: '2026-01-15T10:00:00Z' },
   { id: 'dom_02', domain: 'api.fidscript.dev', status: 'active', sslStatus: 'active', addedAt: '2026-01-15T10:00:00Z' },
   { id: 'dom_03', domain: 'staging.fidscript.dev', status: 'active', sslStatus: 'active', addedAt: '2026-02-01T09:00:00Z' },
+];
+
+export const mockDomainHealth: DomainHealth = {
+  dnsOk: true,
+  routingOk: true,
+  sslOk: true,
+  responseTimeMs: 142,
+  sslExpiresInDays: 67,
+  status: 'ok',
+  errorMessage: null,
+  checkedAt: new Date().toISOString(),
+};
+
+export const mockDnsRecords: DnsRecord[] = [
+  { type: 'A', name: '@', value: '76.76.21.21', ttl: 300, status: 'ok', category: 'deployment' },
+  { type: 'TXT', name: '_fidscript-verification.fidscript.dev', value: 'FIDScript verified dom_01', ttl: 300, status: 'ok', category: 'verification' },
+  { type: 'MX', name: '@', value: 'mx1.fidscript.dev', priority: 10, ttl: 300, status: 'ok', category: 'email' },
+  { type: 'MX', name: '@', value: 'mx2.fidscript.dev', priority: 20, ttl: 300, status: 'ok', category: 'email' },
+  { type: 'TXT', name: '@', value: 'v=spf1 mx include:fidscript.dev ~all', ttl: 300, status: 'ok', category: 'email' },
+  { type: 'TXT', name: 'default._domainkey.fidscript.dev', value: 'v=DKIM1; k=ed25519; p=...', ttl: 300, status: 'pending', category: 'email' },
+  { type: 'TXT', name: '_dmarc', value: 'v=DMARC1; p=quarantine; rua=mailto:dmarc@fidscript.dev', ttl: 300, status: 'missing', category: 'email' },
 ];
 
 // ─── Logs ────────────────────────────────────────────────────────────────────

@@ -3,6 +3,7 @@
 import type { Domain, DnsConnection } from '@fidscript/sdk';
 import { useEffect, useState, useCallback } from 'react';
 import { useParams } from 'next/navigation';
+import Link from 'next/link';
 import { Button, Card, Input, Modal, Spinner, EmptyState, Toast, Badge } from '@fidscript/ui';
 
 import { useAuth } from '@/contexts/auth-context';
@@ -267,8 +268,10 @@ export default function DomainsPage() {
               className="border border-[var(--rail)] p-0 overflow-hidden"
               padding="none"
             >
-              {/* Card header */}
-              <div className="p-4">
+              <Link
+                href={`/projects/${projectId}/domains/${domain.id}`}
+                className="block p-4 cursor-pointer no-underline hover:bg-[var(--surface-2)]/30 transition-colors"
+              >
                 <div className="flex items-start justify-between mb-3">
                   <div className="min-w-0">
                     <h3 className="text-sm font-semibold text-[var(--text)] truncate">{domain.domain}</h3>
@@ -316,7 +319,7 @@ export default function DomainsPage() {
                     )}
                   </div>
                 )}
-              </div>
+              </Link>
 
               {/* Card footer actions */}
               <div className="border-t border-[var(--rail)] px-4 py-3 flex items-center gap-2 bg-[var(--surface-2)]">

@@ -67,4 +67,34 @@ export class DomainsController {
     const user = req.user as { userId: string };
     return this.domainsService.delete(user.userId, projectId, domainId);
   }
+
+  @Get(':id/health')
+  @ApiOperation({ summary: 'Get the latest health check result for a domain' })
+  async getHealth(@Req() req: Request, @Param('projectId') projectId: string, @Param('id') domainId: string) {
+    const user = req.user as { userId: string };
+    return this.domainsService.getHealth(user.userId, projectId, domainId);
+  }
+
+  @Post(':id/health')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Trigger a new health check for a domain' })
+  async triggerHealthCheck(@Req() req: Request, @Param('projectId') projectId: string, @Param('id') domainId: string) {
+    const user = req.user as { userId: string };
+    return this.domainsService.triggerHealthCheck(user.userId, projectId, domainId);
+  }
+
+  @Get(':id/dns-records')
+  @ApiOperation({ summary: 'Get all required DNS records for a domain (deployment + email)' })
+  async getDnsRecords(@Req() req: Request, @Param('projectId') projectId: string, @Param('id') domainId: string) {
+    const user = req.user as { userId: string };
+    return this.domainsService.getDnsRecords(user.userId, projectId, domainId);
+  }
+
+  @Post(':id/dns-records/auto-configure')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Auto-configure DNS records via Cloudflare (Mode B)' })
+  async autoConfigureDnsRecords(@Req() req: Request, @Param('projectId') projectId: string, @Param('id') domainId: string) {
+    const user = req.user as { userId: string };
+    return this.domainsService.autoConfigureDnsRecords(user.userId, projectId, domainId);
+  }
 }

@@ -24,4 +24,8 @@ export class DomainsService {
   connectCloudflare(userId: string, projectId: string, apiToken: string) { return this.dns.connectCloudflare(userId, projectId, apiToken); }
   verify(userId: string, projectId: string, domainId: string) { return this.verification.verify(userId, projectId, domainId); }
   checkHealth(domainId: string) { return this.health.checkHealth(domainId); }
+  getHealth(userId: string, projectId: string, domainId: string) { return this.health.getLatestHealth(userId, projectId, domainId); }
+  triggerHealthCheck(userId: string, projectId: string, domainId: string) { return this.health.triggerHealthCheck(userId, projectId, domainId); }
+  getDnsRecords(userId: string, projectId: string, domainId: string) { return this.health.getDnsRecords(userId, projectId, domainId); }
+  autoConfigureDnsRecords(userId: string, projectId: string, domainId: string) { return this.health.autoConfigureDnsRecords(userId, projectId, domainId); }
 }

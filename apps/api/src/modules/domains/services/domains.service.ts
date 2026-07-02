@@ -6,6 +6,8 @@ import { DomainCleanupService } from '@/modules/domains/services/domain-cleanup.
 import { DomainDnsService } from '@/modules/domains/services/domain-dns.service';
 import { DomainConnectionService } from '@/modules/domains/services/domain-connection.service';
 
+export { DomainCrudService } from '@/modules/domains/services/domain-crud.service';
+
 @Injectable()
 export class DomainsService {
   constructor(
@@ -47,5 +49,21 @@ export class DomainsService {
 
   checkHealth(domainId: string) {
     return this.health.checkHealth(domainId);
+  }
+
+  getHealth(userId: string, projectId: string, domainId: string) {
+    return this.health.getLatestHealth(userId, projectId, domainId);
+  }
+
+  triggerHealthCheck(userId: string, projectId: string, domainId: string) {
+    return this.health.triggerHealthCheck(userId, projectId, domainId);
+  }
+
+  getDnsRecords(userId: string, projectId: string, domainId: string) {
+    return this.health.getDnsRecords(userId, projectId, domainId);
+  }
+
+  autoConfigureDnsRecords(userId: string, projectId: string, domainId: string) {
+    return this.health.autoConfigureDnsRecords(userId, projectId, domainId);
   }
 }

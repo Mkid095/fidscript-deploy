@@ -66,7 +66,11 @@ import {
   mockMigrations,
   mockBackups,
   mockBackupSchedules,
+  mockDomainHealth,
+  mockDnsRecords,
   type DomainInfo,
+  type DomainHealth,
+  type DnsRecord,
   type FunctionVersionInfo,
 } from './data';
 
@@ -1061,6 +1065,31 @@ class MockDomainsModule {
     await delay(300);
     const index = mockDomains.findIndex(d => d.id === domainId);
     if (index >= 0) mockDomains.splice(index, 1);
+  }
+
+  async getHealth(_projectId: string, _domainId: string): Promise<DomainHealth | null> {
+    await delay(200);
+    return { ...mockDomainHealth, checkedAt: new Date().toISOString() };
+  }
+
+  async triggerHealthCheck(_projectId: string, _domainId: string): Promise<{ status: string; message: string }> {
+    await delay(100);
+    return { status: 'checking', message: 'Health check triggered' };
+  }
+
+  async getDnsRecords(_projectId: string, domainId: string): Promise<{ domainId: string; domain: string; records: DnsRecord[] }> {
+    await delay(300);
+    const domain = mockDomains.find(d => d.id === domainId);
+    return {
+      domainId,
+      domain: domain?.domain ?? 'unknown.dev',
+      records: mockDnsRecords,
+    };
+  }
+
+  async autoConfigureDnsRecords(_projectId: string, _domainId: string): Promise<{ success: boolean }> {
+    await delay(800);
+    return { success: true };
   }
 }
 
