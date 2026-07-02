@@ -392,6 +392,8 @@ services:
       TUMA_API_KEY: tuma_22e5d0fff7b75e46b82bdb1cd6b31ee78dc209b58a7c8e177fed6d0b78890fd3_1781442356
       RESEND_API_KEY: re_2ZVSvdru_LENCaWda3nsgfTnhqRnHRdWy
       MAIL_FROM: "FIDScript <noreply@whatsapp.fidscript.com>"
+      GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID}
+      GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET}
       DEPLOY_VERSION: "1.0.0"
     networks:
       fidscript-app:
