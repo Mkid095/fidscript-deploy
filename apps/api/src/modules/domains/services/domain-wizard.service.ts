@@ -29,6 +29,7 @@ export interface WizardStatus {
   stage: WizardStage;
   types: string[];
   provider: string | null;
+  detectedProvider: string | null;  // Detected NS provider (cloudflare, route53, etc.)
   records: WizardRecord[];
   // Progress percentages for each verification category
   dnsProgress: number;   // 0-100
@@ -249,6 +250,7 @@ export class DomainWizardService {
       stage,
       types,
       provider: domain.dnsMode === 'cloudflare_auto' ? 'cloudflare' : 'manual',
+      detectedProvider: null, // NS detection runs asynchronously in the Add Domain modal
       records: recordsWithStatus,
       dnsProgress,
       routingProgress,

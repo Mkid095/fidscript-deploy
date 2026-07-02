@@ -170,6 +170,7 @@ export interface DomainWizardStatus {
   stage: WizardStage;
   types: string[];
   provider: string | null;
+  detectedProvider: string | null;
   records: WizardRecord[];
   dnsProgress: number;
   sslProgress: number;
@@ -232,6 +233,19 @@ export class DomainsModule {
   }
 
   /**
+   * Detect the DNS provider for a domain by querying its authoritative nameservers.
+   * Use this before adding a domain to determine whether Cloudflare Auto-DNS is available.
+   */
+  async detectDnsProvider(projectId: string, domain: string): Promise<{
+    provider: 'cloudflare' | 'route53' | 'godaddy' | 'namecheap' | 'unknown';
+    nameservers: string[];
+    autoConfigurationAvailable: boolean;
+    suggestedMode: 'cloudflare_auto' | 'manual';
+  }> {
+    return this.client.get(`/api/v1/projects/${projectId}/domains/detect`, { params: { domain } });
+  }
+
+  /**
    * Connect a Cloudflare account to a project for Mode B (auto) DNS management.
    * Stores the token encrypted server-side.
    */
@@ -240,6 +254,32 @@ export class DomainsModule {
       `/api/v1/projects/${projectId}/domains/connect-cloudflare`,
       { apiToken },
     );
+  }
+
+  /**
+   * Get the Cloudflare OAuth authorization URL and state.
+   * Redirect the user to the returned URL to authorize.
+   */
+  async getCloudflareOAuthUrl(projectId: string): Promise<{ url: string; state: string; projectId: string }> {
+    return this.client.get(`/api/v1/projects/${projectId}/domains/connect-cloudflare/oauth`);
+  }
+
+  /**
+   * Complete the Cloudflare OAuth flow by exchanging the authorization code for a token.
+   */
+  async completeCloudflareOAuth(code: string, state: string, projectId: string): Promise<{
+    success: boolean;
+    connection: DnsConnection;
+    message: string;
+  }> {
+    return this.client.post(`/api/v1/domains/connect-cloudflare/callback`, { code, state, projectId });
+  }
+
+  /**
+   * List Cloudflare zones accessible with the connected OAuth token.
+   */
+  async listCloudflareZones(projectId: string): Promise<{ zones: Array<{ id: string; name: string; status: string }> }> {
+    return this.client.get(`/api/v1/projects/${projectId}/domains/connect-cloudflare/zones`);
   }
 
   /**

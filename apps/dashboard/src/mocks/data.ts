@@ -1200,6 +1200,7 @@ export const mockDomainWizardStatus: DomainWizardStatus = {
   stage: 'records_configured',
   types: ['DEPLOYMENT', 'EMAIL'],
   provider: 'cloudflare',
+  detectedProvider: 'cloudflare',
   records: [
     { id: 'a_deploy', type: 'A', name: '@', value: '76.76.21.21', ttl: 300, category: 'deployment', status: 'ok' },
     { id: 'cname_deploy', type: 'CNAME', name: 'www', value: 'example.com', ttl: 300, category: 'deployment', status: 'ok' },

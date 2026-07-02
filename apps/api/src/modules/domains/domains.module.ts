@@ -28,12 +28,15 @@ import { DomainRepairPlannerService } from '@/modules/domains/services/domain-re
 import { DomainRepairExecutorService } from '@/modules/domains/services/domain-repair-executor.service';
 import { DomainRepairQueueService } from '@/modules/domains/services/domain-repair-queue.service';
 import { DomainRepairWorker } from '@/modules/domains/services/domain-repair-worker.service';
+import { DomainDnsDetectionService } from '@/modules/domains/services/domain-dns-detection.service';
+import { CloudflareOAuthService } from '@/modules/domains/services/cloudflare-oauth.service';
+import { CloudflareOAuthController } from '@/modules/domains/controllers/cloudflare-oauth.controller';
 import { EventsModule } from '@/modules/events/events.module';
 import { RedisModule } from '@/modules/redis/redis.module';
 
 @Module({
   imports: [EventsModule, RedisModule],
-  controllers: [DomainsController],
+  controllers: [DomainsController, CloudflareOAuthController],
   providers: [
     CloudflareZoneService,
     CloudflareDnsProvider,
@@ -64,6 +67,8 @@ import { RedisModule } from '@/modules/redis/redis.module';
     DomainRepairExecutorService,
     DomainRepairQueueService,
     DomainRepairWorker,
+    DomainDnsDetectionService,
+    CloudflareOAuthService,
   ],
   exports: [
     DomainsService,

@@ -1,5 +1,5 @@
 import {
-  Controller, Get, Post, Patch, Delete, Body, Param, UseGuards,
+  Controller, Get, Post, Patch, Delete, Body, Param, Query, UseGuards,
   Req, HttpCode, HttpStatus, NotFoundException,
 } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
@@ -9,6 +9,7 @@ import { DomainReconciliationService } from '@/modules/domains/services/domain-r
 import { DomainAccessService } from '@/modules/domains/services/domain-access.service';
 import { DomainWizardService } from '@/modules/domains/services/domain-wizard.service';
 import { DomainRepairService } from '@/modules/domains/services/domain-repair.service';
+import { DomainDnsDetectionService } from '@/modules/domains/services/domain-dns-detection.service';
 import { UpdateRepairPolicyDto, TriggerRepairDto } from '@/modules/domains/dto/domain-repair.dto';
 import { AddDomainDto } from '@/modules/domains/dto/add-domain.dto';
 import { Request } from 'express';
@@ -24,6 +25,7 @@ export class DomainsController {
     private wizardService: DomainWizardService,
     private repairService: DomainRepairService,
     private accessService: DomainAccessService,
+    private dnsDetection: DomainDnsDetectionService,
   ) {}
 
   @Get()
@@ -31,6 +33,12 @@ export class DomainsController {
   async list(@Req() req: Request, @Param('projectId') projectId: string) {
     const user = req.user as { userId: string };
     return this.domainsService.list(user.userId, projectId);
+  }
+
+  @Get('detect')
+  @ApiOperation({ summary: 'Detect DNS provider for a domain by querying its nameservers' })
+  async detectDnsProvider(@Query('domain') domain: string) {
+    return this.dnsDetection.detect(domain);
   }
 
   @Post()

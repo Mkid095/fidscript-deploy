@@ -1,12 +1,19 @@
 'use client';
 
 import type { Domain, DnsConnection, DomainType } from '@fidscript/sdk';
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback, useRef } from 'react';
 import { useParams } from 'next/navigation';
 import Link from 'next/link';
 import { Button, Card, Input, Modal, Spinner, EmptyState, Toast, Badge } from '@fidscript/ui';
 
 import { useAuth } from '@/contexts/auth-context';
+
+interface DnsDetection {
+  provider: 'cloudflare' | 'route53' | 'godaddy' | 'namecheap' | 'unknown';
+  nameservers: string[];
+  autoConfigurationAvailable: boolean;
+  suggestedMode: 'cloudflare_auto' | 'manual';
+}
 
 // ─── Status badge helpers ─────────────────────────────────────────────────────
 
@@ -56,12 +63,16 @@ export default function DomainsPage() {
   const [newDomainTypes, setNewDomainTypes] = useState<DomainType[]>(['DEPLOYMENT']);
   const [adding, setAdding]           = useState(false);
   const [addError, setAddError]       = useState<string | null>(null);
+  const [dnsDetection, setDnsDetection] = useState<DnsDetection | null>(null);
+  const [detecting, setDetecting]     = useState(false);
+  const detectTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Cloudflare connect modal
   const [showConnect, setShowConnect] = useState(false);
   const [cfToken, setCfToken]         = useState('');
   const [connecting, setConnecting]   = useState(false);
   const [connectError, setConnectError] = useState<string | null>(null);
+  const [connectMode, setConnectMode] = useState<'oauth' | 'token'>('oauth');
 
   // Domain detail panel (instructions)
   const [selectedDomain, setSelectedDomain] = useState<Domain | null>(null);
@@ -120,6 +131,51 @@ export default function DomainsPage() {
     }
   }
 
+  // ── Connect Cloudflare OAuth ───────────────────────────────────────────────
+  async function handleConnectCloudflareOAuth() {
+    setConnecting(true);
+    setConnectError(null);
+    try {
+      const sdk = getSdk();
+      const { url, state } = await sdk.domains.getCloudflareOAuthUrl(projectId) as { url: string; state: string };
+      // Open Cloudflare authorization in a popup
+      const width = 600, height = 700;
+      const left = window.screenX + (window.outerWidth - width) / 2;
+      const top = window.screenY + (window.outerHeight - height) / 2;
+      const popup = window.open(
+        url,
+        'cloudflare-oauth',
+        `width=${width},height=${height},left=${left},top=${top},popup=yes`,
+      );
+      // Listen for the callback via postMessage
+      const messageHandler = async (event: MessageEvent) => {
+        if (!event.data?.type || event.data.type !== 'cloudflare-oauth-callback') return;
+        window.removeEventListener('message', messageHandler);
+        popup?.close();
+        try {
+          const result = await sdk.domains.completeCloudflareOAuth(
+            event.data.code,
+            state,
+            projectId,
+          ) as { success: boolean; connection: DnsConnection };
+          setConnection(result.connection);
+          setShowConnect(false);
+          setToast({ message: 'Cloudflare connected successfully — your domains are ready for auto-configuration.', type: 'success' });
+          // Reload domains list so the connection banner reflects the new connection
+          await load();
+        } catch (err) {
+          setConnectError(err instanceof Error ? err.message : 'OAuth completion failed');
+        } finally {
+          setConnecting(false);
+        }
+      };
+      window.addEventListener('message', messageHandler);
+    } catch (err) {
+      setConnectError(err instanceof Error ? err.message : 'Failed to start Cloudflare OAuth');
+      setConnecting(false);
+    }
+  }
+
   // ── Connect Cloudflare ──────────────────────────────────────────────────────
   async function handleConnectCloudflare(e: React.FormEvent) {
     e.preventDefault();
@@ -155,6 +211,28 @@ export default function DomainsPage() {
     } finally {
       setLoadingInstructions(false);
     }
+  }
+
+  // ── DNS provider detection ──────────────────────────────────────────────────
+  async function handleDetectDns(domainName: string) {
+    if (!domainName.trim() || domainName.length < 4) return;
+    if (detectTimerRef.current) clearTimeout(detectTimerRef.current);
+    detectTimerRef.current = setTimeout(async () => {
+      setDetecting(true);
+      try {
+        const sdk = getSdk();
+        const result = await sdk.domains.detectDnsProvider(projectId, domainName.trim()) as DnsDetection;
+        setDnsDetection(result);
+        // Auto-select cloudflare_auto if Cloudflare is detected
+        if (result.provider === 'cloudflare' && dnsMode === 'manual') {
+          setDnsMode('cloudflare_auto');
+        }
+      } catch {
+        setDnsDetection(null);
+      } finally {
+        setDetecting(false);
+      }
+    }, 600);
   }
 
   // ── Verify domain ───────────────────────────────────────────────────────────
@@ -385,7 +463,7 @@ export default function DomainsPage() {
       {/* ── Add Domain Modal ─────────────────────────────────────────────── */}
       <Modal
         isOpen={showAdd}
-        onClose={() => { setShowAdd(false); setNewDomain(''); setNewDomainTypes(['DEPLOYMENT']); setAddError(null); }}
+        onClose={() => { setShowAdd(false); setNewDomain(''); setNewDomainTypes(['DEPLOYMENT']); setAddError(null); setDnsDetection(null); }}
         title="Add Domain"
         size="md"
       >
@@ -395,9 +473,13 @@ export default function DomainsPage() {
             <Input
               value={newDomain}
               onChange={e => setNewDomain(e.target.value)}
+              onBlur={() => handleDetectDns(newDomain)}
               placeholder="example.com"
               className="bg-[var(--surface-2)] border border-[var(--rail)] text-[var(--text)] placeholder:text-[var(--text-dim)] w-full"
             />
+            {detecting && (
+              <p className="text-xs text-[var(--text-dim)] mt-1">Detecting DNS provider...</p>
+            )}
           </div>
 
           <div className="mb-5">
@@ -485,7 +567,51 @@ export default function DomainsPage() {
             )}
           </div>
 
-          {dnsMode === 'cloudflare_auto' && !connection && (
+          {/* Cloudflare detected banner */}
+          {dnsDetection?.provider === 'cloudflare' && (
+            <div className="mb-4 rounded-lg border border-blue-500/30 bg-blue-500/10 px-4 py-3">
+              <div className="flex items-start gap-2.5">
+                <span className="text-lg">☁️</span>
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-medium text-blue-300">Cloudflare detected</p>
+                  <p className="text-xs text-blue-200/70 mt-0.5">
+                    This domain uses Cloudflare DNS. Connect your Cloudflare account to enable one-click configuration.
+                  </p>
+                  {dnsDetection.nameservers.length > 0 && (
+                    <p className="text-xs text-blue-200/50 mt-1 font-mono">
+                      NS: {dnsDetection.nameservers.slice(0, 2).join(', ')}
+                      {dnsDetection.nameservers.length > 2 ? ` +${dnsDetection.nameservers.length - 2}` : ''}
+                    </p>
+                  )}
+                </div>
+                {!connection && (
+                  <Button
+                    variant="primary"
+                    size="sm"
+                    onClick={() => { setShowAdd(false); setShowConnect(true); }}
+                  >
+                    Connect Cloudflare
+                  </Button>
+                )}
+                {connection && dnsDetection.autoConfigurationAvailable && (
+                  <span className="text-xs text-emerald-400 flex items-center gap-1">
+                    <span>✓</span> Ready to auto-configure
+                  </span>
+                )}
+              </div>
+            </div>
+          )}
+
+          {/* Other provider detected */}
+          {dnsDetection && dnsDetection.provider !== 'cloudflare' && dnsDetection.provider !== 'unknown' && dnsDetection.nameservers.length > 0 && (
+            <div className="mb-4 rounded-lg border border-[var(--rail)] bg-[var(--surface-2)]/50 px-3 py-2.5">
+              <p className="text-xs text-[var(--text-muted)]">
+                DNS provider detected: <span className="capitalize">{dnsDetection.provider}</span>. We recommend Manual DNS mode for this provider.
+              </p>
+            </div>
+          )}
+
+          {dnsMode === 'cloudflare_auto' && !connection && !dnsDetection && (
             <div className="mb-4 rounded-lg border border-[var(--warning)]/30 bg-[var(--warning)]/10 px-3 py-2.5 text-xs text-[var(--warning)]">
               Connect Cloudflare first — you&apos;ll be asked for your API token after clicking Add.
             </div>
@@ -518,53 +644,90 @@ export default function DomainsPage() {
         title="Connect Cloudflare"
         size="md"
       >
-        <p className="text-sm text-[var(--text-muted)] mb-4">
-          Enter a Cloudflare API token with <strong>Zone:Read</strong> and <strong>DNS:Edit</strong> permissions.
-          Your token is encrypted and stored securely — we never store the plaintext.
-        </p>
-
-        <form onSubmit={handleConnectCloudflare} noValidate>
-          <div className="mb-4">
-            <label className="block text-xs text-[var(--text-muted)] mb-1.5">API Token</label>
-            <Input
-              type="password"
-              value={cfToken}
-              onChange={e => setCfToken(e.target.value)}
-              placeholder="cfut_..."
-              className="bg-[var(--surface-2)] border border-[var(--rail)] text-[var(--text)] placeholder:text-[var(--text-dim)] w-full font-mono"
-            />
-          </div>
-
-          <div className="mb-5 rounded-lg border border-[var(--rail)] p-3">
-            <p className="text-xs text-[var(--text-muted)] mb-2">Required permissions:</p>
-            <ul className="text-xs text-[var(--text-muted)] space-y-1">
-              <li className="flex items-center gap-2">
-                <span className="text-[var(--success)]">✓</span> Zone:Read
-              </li>
-              <li className="flex items-center gap-2">
-                <span className="text-[var(--success)]">✓</span> DNS:Edit
-              </li>
-            </ul>
-          </div>
-
-          {connectError && (
-            <p className="text-[var(--danger)] text-xs mb-4">{connectError}</p>
-          )}
-
-          <div className="flex justify-end gap-3">
-            <Button
-              variant="ghost"
-              size="sm"
+        {/* Mode tabs */}
+        <div className="flex gap-1 mb-4 border-b border-[var(--rail)]">
+          {[
+            { id: 'oauth', label: '☁️ OAuth (Recommended)' },
+            { id: 'token', label: '🔑 API Token' },
+          ].map(tab => (
+            <button
+              key={tab.id}
               type="button"
-              onClick={() => { setShowConnect(false); setConnectError(null); }}
+              onClick={() => { setConnectMode(tab.id as 'oauth' | 'token'); setConnectError(null); }}
+              className={`px-4 py-2 text-sm border-b-2 transition-colors -mb-px ${
+                connectMode === tab.id
+                  ? 'border-[var(--accent)] text-[var(--text)]'
+                  : 'border-transparent text-[var(--text-muted)] hover:text-[var(--text)]'
+              } bg-none cursor-pointer`}
             >
-              Cancel
-            </Button>
-            <Button variant="primary" size="sm" type="submit" loading={connecting}>
-              {connecting ? 'Connecting...' : 'Connect Cloudflare'}
-            </Button>
+              {tab.label}
+            </button>
+          ))}
+        </div>
+
+        {/* OAuth tab */}
+        {connectMode === 'oauth' && (
+          <div className="space-y-4">
+            <p className="text-sm text-[var(--text-muted)]">
+              Authorize FIDScript to manage DNS records in your Cloudflare account. You'll be redirected to Cloudflare to approve access.
+            </p>
+            <div className="rounded-lg border border-[var(--rail)] p-3 space-y-1.5">
+              {['Zone:Read', 'DNS:Edit', 'Account:Read'].map(perm => (
+                <p key={perm} className="flex items-center gap-2 text-xs text-[var(--text-muted)]">
+                  <span className="text-[var(--success)]">✓</span> {perm}
+                </p>
+              ))}
+            </div>
+            {connectError && (
+              <p className="text-[var(--danger)] text-xs">{connectError}</p>
+            )}
+            <div className="flex justify-end gap-3">
+              <Button variant="ghost" size="sm" type="button" onClick={() => setShowConnect(false)}>
+                Cancel
+              </Button>
+              <Button variant="primary" size="sm" loading={connecting} onClick={handleConnectCloudflareOAuth}>
+                {connecting ? 'Redirecting...' : 'Connect with Cloudflare'}
+              </Button>
+            </div>
           </div>
-        </form>
+        )}
+
+        {/* API Token tab */}
+        {connectMode === 'token' && (
+          <form onSubmit={handleConnectCloudflare} noValidate>
+            <p className="text-sm text-[var(--text-muted)] mb-4">
+              Enter a Cloudflare API token with <strong>Zone:Read</strong> and <strong>DNS:Edit</strong> permissions.
+            </p>
+            <div className="mb-4">
+              <label className="block text-xs text-[var(--text-muted)] mb-1.5">API Token</label>
+              <Input
+                type="password"
+                value={cfToken}
+                onChange={e => setCfToken(e.target.value)}
+                placeholder="cfut_..."
+                className="bg-[var(--surface-2)] border border-[var(--rail)] text-[var(--text)] placeholder:text-[var(--text-dim)] w-full font-mono"
+              />
+            </div>
+            <div className="mb-5 rounded-lg border border-[var(--rail)] p-3">
+              <p className="text-xs text-[var(--text-muted)] mb-2">Required permissions:</p>
+              <ul className="text-xs text-[var(--text-muted)] space-y-1">
+                <li className="flex items-center gap-2"><span className="text-[var(--success)]">✓</span> Zone:Read</li>
+                <li className="flex items-center gap-2"><span className="text-[var(--success)]">✓</span> DNS:Edit</li>
+              </ul>
+            </div>
+            {connectError && (
+              <p className="text-[var(--danger)] text-xs mb-4">{connectError}</p>
+            )}
+            <div className="flex justify-end gap-3">
+              <Button variant="ghost" size="sm" type="button" onClick={() => setShowConnect(false)}>
+                Cancel
+              </Button>
+              <Button variant="primary" size="sm" type="submit" loading={connecting}>
+                {connecting ? 'Connecting...' : 'Connect Cloudflare'}
+              </Button>
+            </div>
+          </form>
+        )}
       </Modal>
 
       {/* ── DNS Instructions Panel ────────────────────────────────────────── */}
