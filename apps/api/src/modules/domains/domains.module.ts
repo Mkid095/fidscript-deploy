@@ -23,6 +23,11 @@ import { DomainReconciliationQueueService } from '@/modules/domains/services/dom
 import { DomainReconciliationWorker } from '@/modules/domains/services/domain-reconciliation-worker.service';
 import { DomainReconciliationScheduler } from '@/modules/domains/services/domain-reconciliation-scheduler.service';
 import { DomainWizardService } from '@/modules/domains/services/domain-wizard.service';
+import { DomainRepairService } from '@/modules/domains/services/domain-repair.service';
+import { DomainRepairPlannerService } from '@/modules/domains/services/domain-repair-planner.service';
+import { DomainRepairExecutorService } from '@/modules/domains/services/domain-repair-executor.service';
+import { DomainRepairQueueService } from '@/modules/domains/services/domain-repair-queue.service';
+import { DomainRepairWorker } from '@/modules/domains/services/domain-repair-worker.service';
 import { EventsModule } from '@/modules/events/events.module';
 import { RedisModule } from '@/modules/redis/redis.module';
 
@@ -54,6 +59,11 @@ import { RedisModule } from '@/modules/redis/redis.module';
     DomainReconciliationWorker,
     DomainReconciliationScheduler,
     DomainWizardService,
+    DomainRepairService,
+    DomainRepairPlannerService,
+    DomainRepairExecutorService,
+    DomainRepairQueueService,
+    DomainRepairWorker,
   ],
   exports: [
     DomainsService,
@@ -75,6 +85,8 @@ import { RedisModule } from '@/modules/redis/redis.module';
     DomainReconciliationQueueService,
     DomainReconciliationScheduler,
     DomainWizardService,
+    DomainRepairService,
+    DomainRepairPlannerService,
     CloudflareZoneService,
     CloudflareDnsProvider,
     'DNS_PROVIDER',

@@ -1,6 +1,8 @@
 'use client';
 
-import type { Domain, DomainHealth, DnsRecord, DomainSslInfo, DomainWizardStatus } from '@fidscript/sdk';
+import type { Domain, DomainHealth, DnsRecord, DomainSslInfo, DomainWizardStatus, DomainIncident } from '@fidscript/sdk';
+import type { DomainRepairPolicy, DomainRepairRun, RepairType, RepairStatus } from '@/mocks/data';
+import { mockDomainRepairPolicy, mockDomainRepairRuns, mockDomainIncidents } from '@/mocks/data';
 import { useEffect, useState, useCallback, useRef } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
@@ -8,7 +10,7 @@ import { Button, Card, Badge, Spinner, Toast, Modal } from '@fidscript/ui';
 
 import { useAuth } from '@/contexts/auth-context';
 
-type Tab = 'overview' | 'dns' | 'health' | 'email' | 'ssl' | 'wizard';
+type Tab = 'overview' | 'dns' | 'health' | 'email' | 'ssl' | 'wizard' | 'repairs';
 
 const STATUS_COLORS: Record<string, string> = {
   ok:       'bg-emerald-900 text-[var(--success)]',
@@ -208,6 +210,7 @@ export default function DomainDetailPage() {
     { id: 'health', label: 'Health' },
     { id: 'email', label: 'Email' },
     { id: 'ssl', label: 'SSL' },
+    { id: 'repairs', label: '🔧 Repairs' },
   ];
 
   return (
@@ -845,6 +848,159 @@ export default function DomainDetailPage() {
               Deliverability insights are populated after sending emails through this domain.
               Configure email DNS records above to start sending.
             </p>
+          </Card>
+        </div>
+      )}
+
+      {/* ── Repairs ──────────────────────────────────────────────────────── */}
+      {activeTab === 'repairs' && (
+        <div className="space-y-6">
+          {/* Policy Card */}
+          <Card className="border border-[var(--rail)]" padding="lg">
+            <div className="flex items-start justify-between mb-4">
+              <div>
+                <h2 className="text-sm font-semibold text-[var(--text)] mb-1">Auto-Repair Policy</h2>
+                <p className="text-xs text-[var(--text-muted)]">
+                  Controls how repairs are triggered when issues are detected
+                </p>
+              </div>
+              <Badge variant={mockDomainRepairPolicy.level === 2 ? 'success' : mockDomainRepairPolicy.level === 1 ? 'info' : 'default'}>
+                {mockDomainRepairPolicy.level === 0 ? 'Off' : mockDomainRepairPolicy.level === 1 ? 'One-Click' : 'Auto'}
+              </Badge>
+            </div>
+
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-4">
+              {[
+                { label: 'DNS Repair', key: 'autoRepairDns' as const },
+                { label: 'SSL Repair', key: 'autoRepairSsl' as const },
+                { label: 'Email Repair', key: 'autoRepairEmail' as const },
+                { label: 'Routing Repair', key: 'autoRepairRouting' as const },
+              ].map(({ label, key }) => (
+                <div key={key} className="flex items-center justify-between rounded border border-[var(--rail)] px-3 py-2">
+                  <span className="text-xs text-[var(--text-muted)]">{label}</span>
+                  <span className={`text-xs px-1.5 py-0.5 rounded-full ${mockDomainRepairPolicy[key] ? 'bg-emerald-900 text-emerald-300' : 'bg-[var(--rail)] text-[var(--text-dim)]'}`}>
+                    {mockDomainRepairPolicy[key] ? '✓' : '✗'}
+                  </span>
+                </div>
+              ))}
+            </div>
+
+            {mockDomainRepairPolicy.allowedRepairs.length > 0 && (
+              <div className="mb-4">
+                <p className="text-xs text-[var(--text-muted)] mb-2">Allowed repair types:</p>
+                <div className="flex flex-wrap gap-1.5">
+                  {(mockDomainRepairPolicy.allowedRepairs as RepairType[]).map(type => (
+                    <span key={type} className="text-xs px-2 py-0.5 rounded-full bg-blue-900/50 text-blue-300 font-mono">
+                      {type}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            <div className="flex items-center gap-3">
+              <Button variant="secondary" size="sm">
+                Edit Policy
+              </Button>
+              <span className="text-xs text-[var(--text-dim)]">
+                Updated {new Date(mockDomainRepairPolicy.updatedAt).toLocaleDateString()}
+              </span>
+            </div>
+          </Card>
+
+          {/* Open Incidents */}
+          {mockDomainIncidents.filter(i => i.status === 'open').length > 0 && (
+            <Card className="border border-[var(--rail)]" padding="lg">
+              <h2 className="text-sm font-semibold text-[var(--text)] mb-3">Open Incidents</h2>
+              <div className="space-y-2">
+                {mockDomainIncidents.filter(i => i.status === 'open').map(incident => (
+                  <div key={incident.id} className="flex items-start justify-between rounded border border-[var(--danger)]/30 bg-[var(--danger)]/5 px-4 py-3">
+                    <div className="flex items-start gap-3">
+                      <span className="mt-0.5 text-[var(--danger)]">⚠</span>
+                      <div>
+                        <p className="text-sm text-[var(--text)]">{incident.title}</p>
+                        <p className="text-xs text-[var(--text-muted)] mt-0.5">
+                          {incident.type.replace(/_/g, ' ')} · Opened {new Date(incident.openedAt).toLocaleDateString()}
+                        </p>
+                      </div>
+                    </div>
+                    <Button variant="primary" size="sm">
+                      Repair Now
+                    </Button>
+                  </div>
+                ))}
+              </div>
+            </Card>
+          )}
+
+          {/* Recent Repair Runs */}
+          <Card className="border border-[var(--rail)]" padding="lg">
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-sm font-semibold text-[var(--text)]">Repair History</h2>
+              <Button variant="secondary" size="sm">
+                Trigger Repair
+              </Button>
+            </div>
+
+            {mockDomainRepairRuns.length === 0 ? (
+              <p className="text-sm text-[var(--text-muted)] text-center py-6">No repair runs yet.</p>
+            ) : (
+              <div className="space-y-2">
+                {mockDomainRepairRuns.map(run => {
+                  const statusColors: Record<RepairStatus, string> = {
+                    completed: 'bg-emerald-900 text-emerald-300',
+                    failed: 'bg-red-900 text-red-300',
+                    running: 'bg-blue-900 text-blue-300',
+                    planned: 'bg-[var(--rail)] text-[var(--text-muted)]',
+                    approved: 'bg-[var(--rail)] text-[var(--text-muted)]',
+                    requires_approval: 'bg-amber-900 text-amber-300',
+                  };
+                  return (
+                    <div key={run.id} className="flex items-center justify-between rounded border border-[var(--rail)] px-4 py-3 hover:bg-[var(--surface-2)]/30">
+                      <div className="flex items-center gap-3">
+                        <span className={`text-xs px-2 py-0.5 rounded-full capitalize ${statusColors[run.status]}`}>
+                          {run.status}
+                        </span>
+                        <div>
+                          <p className="text-sm text-[var(--text)] font-mono">
+                            {(run.repairType as RepairType).replace(/_/g, ' ')}
+                          </p>
+                          <p className="text-xs text-[var(--text-muted)]">
+                            {run.startedAt ? new Date(run.startedAt).toLocaleDateString() : '—'}
+                            {run.completedAt && ` · ${Math.round((new Date(run.completedAt).getTime() - new Date(run.startedAt).getTime()) / 1000)}s`}
+                          </p>
+                        </div>
+                      </div>
+                      {run.error && (
+                        <span className="text-xs text-[var(--danger)] max-w-[200px] truncate" title={run.error}>
+                          {run.error}
+                        </span>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </Card>
+
+          {/* Repair Level Info */}
+          <Card className="border border-[var(--rail)]" padding="lg">
+            <h2 className="text-sm font-semibold text-[var(--text)] mb-3">How Repair Levels Work</h2>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              {[
+                { level: 0, label: 'Off', description: 'Incidents are detected and reported but no repairs are attempted automatically.', color: 'text-[var(--text-dim)]' },
+                { level: 1, label: 'One-Click', description: 'A repair plan is generated and you approve it with a single click before execution.', color: 'text-blue-400', default: true },
+                { level: 2, label: 'Auto', description: 'Repairs execute automatically based on your policy settings. No approval needed.', color: 'text-emerald-400' },
+              ].map(({ level, label, description, color, default: isDefault }) => (
+                <div key={level} className={`rounded border border-[var(--rail)] px-4 py-3 ${isDefault ? 'border-blue-500/30 bg-blue-500/5' : ''}`}>
+                  <div className="flex items-center gap-2 mb-1">
+                    <span className={`text-sm font-semibold ${color}`}>Level {level}: {label}</span>
+                    {isDefault && <span className="text-xs bg-blue-900/50 text-blue-300 px-1.5 py-0.5 rounded">Default</span>}
+                  </div>
+                  <p className="text-xs text-[var(--text-muted)]">{description}</p>
+                </div>
+              ))}
+            </div>
           </Card>
         </div>
       )}

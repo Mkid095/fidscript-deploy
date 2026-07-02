@@ -1014,6 +1014,89 @@ export interface DnsRecord {
   category: 'deployment' | 'email' | 'verification';
 }
 
+// ─── Domain Repair ────────────────────────────────────────────────────────────
+
+export type RepairType =
+  | 'ssl_renewal'
+  | 'ssl_reissue'
+  | 'dns_txt_recreated'
+  | 'dns_cname_recreated'
+  | 'dns_a_recreated'
+  | 'dns_aaaa_recreated'
+  | 'mx_recreated'
+  | 'spf_recreated'
+  | 'dmarc_recreated'
+  | 'dkim_recreated'
+  | 'routing_reconfigured';
+
+export type RepairStatus = 'planned' | 'approved' | 'running' | 'completed' | 'failed' | 'requires_approval';
+
+export interface DomainRepairPolicy {
+  id: string;
+  domainId: string;
+  level: 0 | 1 | 2; // 0=off, 1=one-click, 2=auto
+  autoRepairDns: boolean;
+  autoRepairSsl: boolean;
+  autoRepairEmail: boolean;
+  autoRepairRouting: boolean;
+  allowedRepairs: string[];
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface DomainRepairRun {
+  id: string;
+  domainId: string;
+  incidentId: string | null;
+  repairType: string; // comma-separated RepairType values
+  status: RepairStatus;
+  beforeState: Record<string, unknown>;
+  afterState: Record<string, unknown>;
+  error: string | null;
+  startedAt: string;
+  completedAt: string | null;
+}
+
+export const mockDomainRepairPolicy: DomainRepairPolicy = {
+  id: 'pol_01',
+  domainId: 'dom_01',
+  level: 1,
+  autoRepairDns: true,
+  autoRepairSsl: true,
+  autoRepairEmail: false,
+  autoRepairRouting: false,
+  allowedRepairs: ['ssl_renewal', 'dns_txt_recreated', 'dns_a_recreated'],
+  createdAt: '2026-01-15T10:00:00Z',
+  updatedAt: '2026-06-01T00:00:00Z',
+};
+
+export const mockDomainRepairRuns: DomainRepairRun[] = [
+  {
+    id: 'rep_01',
+    domainId: 'dom_01',
+    incidentId: 'inc_01',
+    repairType: 'ssl_renewal',
+    status: 'completed',
+    beforeState: { sslStatus: 'expiring' },
+    afterState: { sslStatus: 'active', actionsPerformed: ['ssl_renewal'], success: true },
+    error: null,
+    startedAt: '2026-06-28T10:00:00Z',
+    completedAt: '2026-06-28T10:01:23Z',
+  },
+  {
+    id: 'rep_02',
+    domainId: 'dom_02',
+    incidentId: 'inc_02',
+    repairType: 'dns_txt_recreated',
+    status: 'failed',
+    beforeState: { txtRecord: null },
+    afterState: { actionsPerformed: [], success: false },
+    error: 'Auto-DNS not configured for this domain',
+    startedAt: '2026-06-29T14:00:00Z',
+    completedAt: '2026-06-29T14:00:05Z',
+  },
+];
+
 export const mockDomains: DomainInfo[] = [
   { id: 'dom_01', domain: 'fidscript.dev', status: 'active', sslStatus: 'active', addedAt: '2026-01-15T10:00:00Z' },
   { id: 'dom_02', domain: 'api.fidscript.dev', status: 'active', sslStatus: 'active', addedAt: '2026-01-15T10:00:00Z' },

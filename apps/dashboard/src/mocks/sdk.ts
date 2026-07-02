@@ -74,10 +74,16 @@ import {
   mockDomainIncidents,
   mockDomainHealthTimeline,
   mockDomainWizardStatus,
+  mockDomainRepairPolicy,
+  mockDomainRepairRuns,
   type DomainInfo,
   type DomainHealth,
   type DnsRecord,
   type DomainSslInfo,
+  type DomainRepairPolicy,
+  type DomainRepairRun,
+  type RepairType,
+  type RepairStatus,
   type FunctionVersionInfo,
 } from './data';
 

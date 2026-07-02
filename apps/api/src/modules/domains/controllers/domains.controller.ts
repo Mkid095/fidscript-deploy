@@ -1,5 +1,5 @@
 import {
-  Controller, Get, Post, Delete, Body, Param, UseGuards,
+  Controller, Get, Post, Patch, Delete, Body, Param, UseGuards,
   Req, HttpCode, HttpStatus, NotFoundException,
 } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
@@ -8,6 +8,8 @@ import { DomainsService } from '@/modules/domains/services/domains.service';
 import { DomainReconciliationService } from '@/modules/domains/services/domain-reconciliation.service';
 import { DomainAccessService } from '@/modules/domains/services/domain-access.service';
 import { DomainWizardService } from '@/modules/domains/services/domain-wizard.service';
+import { DomainRepairService } from '@/modules/domains/services/domain-repair.service';
+import { UpdateRepairPolicyDto, TriggerRepairDto } from '@/modules/domains/dto/domain-repair.dto';
 import { AddDomainDto } from '@/modules/domains/dto/add-domain.dto';
 import { Request } from 'express';
 
@@ -20,6 +22,7 @@ export class DomainsController {
     private domainsService: DomainsService,
     private reconciliationService: DomainReconciliationService,
     private wizardService: DomainWizardService,
+    private repairService: DomainRepairService,
     private accessService: DomainAccessService,
   ) {}
 
@@ -165,5 +168,62 @@ export class DomainsController {
     const status = await this.wizardService.getWizardStatus(domainId);
     if (!status) throw new NotFoundException('Domain not found');
     return status;
+  }
+
+  // ── Repair ──────────────────────────────────────────────────────────────────
+
+  @Get(':id/repair-policy')
+  @ApiOperation({ summary: 'Get the repair policy for a domain' })
+  async getRepairPolicy(@Req() req: Request, @Param('projectId') projectId: string, @Param('id') domainId: string) {
+    const user = req.user as { userId: string };
+    await this.accessService.ensureAccess(user.userId, projectId);
+    return this.repairService.getPolicy(domainId);
+  }
+
+  @Patch(':id/repair-policy')
+  @ApiOperation({ summary: 'Update the repair policy for a domain — controls which repairs run automatically' })
+  async updateRepairPolicy(
+    @Req() req: Request,
+    @Param('projectId') projectId: string,
+    @Param('id') domainId: string,
+    @Body() dto: UpdateRepairPolicyDto,
+  ) {
+    const user = req.user as { userId: string };
+    await this.accessService.ensureAccess(user.userId, projectId);
+    return this.repairService.updatePolicy(domainId, dto);
+  }
+
+  @Get(':id/repairs')
+  @ApiOperation({ summary: 'Get recent repair runs for a domain' })
+  async listRepairs(@Req() req: Request, @Param('projectId') projectId: string, @Param('id') domainId: string) {
+    const user = req.user as { userId: string };
+    await this.accessService.ensureAccess(user.userId, projectId);
+    return this.repairService.listRepairs(domainId);
+  }
+
+  @Get(':id/repair-plan')
+  @ApiOperation({ summary: 'Get the repair plan for a domain or incident — shows what would be repaired' })
+  async getRepairPlan(
+    @Req() req: Request,
+    @Param('projectId') projectId: string,
+    @Param('id') domainId: string,
+  ) {
+    const user = req.user as { userId: string };
+    await this.accessService.ensureAccess(user.userId, projectId);
+    return this.repairService.getRepairPlan(domainId);
+  }
+
+  @Post(':id/repair')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Trigger a repair for a domain — queues or executes based on policy' })
+  async triggerRepair(
+    @Req() req: Request,
+    @Param('projectId') projectId: string,
+    @Param('id') domainId: string,
+    @Body() dto: TriggerRepairDto,
+  ) {
+    const user = req.user as { userId: string };
+    await this.accessService.ensureAccess(user.userId, projectId);
+    return this.repairService.triggerRepair(domainId, dto);
   }
 }

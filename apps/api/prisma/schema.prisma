@@ -494,6 +494,8 @@ model Domain {
   healthChecks  DomainHealthCheck[]
   verificationRuns DomainVerificationRun[]
   incidents     DomainIncident[]
+  repairPolicy  DomainRepairPolicy?
+  repairRuns    DomainRepairRun[]
 
   @@unique([projectId, domain])
   @@map("domains")
@@ -591,10 +593,64 @@ model DomainIncident {
   resolvedAt  DateTime? @map("resolved_at") @db.Timestamptz
 
   domain Domain @relation(fields: [domainId], references: [id], onDelete: Cascade)
+  repairRuns DomainRepairRun[]
 
   @@index([domainId, status])
   @@index([domainId, openedAt])
   @@map("domain_incidents")
+  @@schema("projects")
+}
+
+// Per-domain repair policy — controls which repairs run automatically vs require approval.
+model DomainRepairPolicy {
+  id String @id @default(uuid())
+
+  domainId String @unique @map("domain_id")
+
+  // Level 1: auto-create incident, require user approval before repair
+  // Level 2: auto-detect + auto-repair (per category)
+  autoRepairDns    Boolean @default(false) @map("auto_repair_dns")
+  autoRepairSsl    Boolean @default(true)  @map("auto_repair_ssl")
+  autoRepairEmail  Boolean @default(false) @map("auto_repair_email")
+  autoRepairRouting Boolean @default(false) @map("auto_repair_routing")
+
+  // Explicit allow/deny per repair type — supersedes the above booleans
+  allowedRepairs Json @default("[]") @map("allowed_repairs") // string[] of allowed repair types
+
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz
+
+  domain Domain @relation(fields: [domainId], references: [id], onDelete: Cascade)
+
+  @@map("domain_repair_policies")
+  @@schema("projects")
+}
+
+// Repair audit trail — written by DomainRepairExecutorService after each repair attempt.
+model DomainRepairRun {
+  id String @id @default(uuid())
+
+  domainId String @map("domain_id")
+  incidentId String? @map("incident_id")
+
+  repairType String @db.VarChar(50) // 'ssl_renewal' | 'dns_txt_recreated' | 'dns_cname_recreated' | 'mx_recreated' | etc.
+  status String @db.VarChar(20) // 'planned' | 'approved' | 'running' | 'completed' | 'failed' | 'requires_approval'
+
+  // Snapshot of the state before and after repair
+  beforeState Json? @map("before_state")
+  afterState Json?  @map("after_state")
+
+  error String? @db.Text
+
+  startedAt DateTime @default(now()) @map("started_at") @db.Timestamptz
+  completedAt DateTime? @map("completed_at") @db.Timestamptz
+
+  domain Domain @relation(fields: [domainId], references: [id], onDelete: Cascade)
+  incident DomainIncident? @relation(fields: [incidentId], references: [id])
+
+  @@index([domainId, startedAt])
+  @@index([domainId, status])
+  @@map("domain_repair_runs")
   @@schema("projects")
 }
 
