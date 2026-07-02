@@ -110,4 +110,31 @@ export class DomainChecksService {
       { headers: { Accept: 'application/dns-json' }, timeout: 8_000 },
     );
   }
+
+  /**
+   * Returns all relevant DNS record types for fingerprinting a domain.
+   * Used by DomainReconciliationService to detect DNS changes.
+   */
+  async getDnsRecordsForFingerprint(domain: { domain: string }): Promise<Array<{ type: string; name: string; value: string }>> {
+    const recordTypes = ['A', 'AAAA', 'CNAME', 'MX', 'TXT', 'NS'];
+    const records: Array<{ type: string; name: string; value: string }> = [];
+
+    await Promise.allSettled(
+      recordTypes.map(async (type) => {
+        try {
+          const resp = await this.dnsQuery(domain.domain, type);
+          const answers: Array<{ name: string; type: number; data: string; priority?: number }> = resp.data?.Answer ?? [];
+          for (const answer of answers) {
+            records.push({
+              type,
+              name: answer.name,
+              value: type === 'MX' ? `${answer.priority ?? ''} ${answer.data}`.trim() : answer.data,
+            });
+          }
+        } catch { /* ignore — record type may not exist */ }
+      }),
+    );
+
+    return records;
+  }
 }

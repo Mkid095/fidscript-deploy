@@ -6,7 +6,14 @@ const DOMAIN_RECON_STREAM = 'DOMAIN_RECON';
 const DOMAIN_RECON_SUBJECT = 'domain.reconciliation';
 const DOMAIN_RECON_DURABLE = 'domain-recon-worker';
 
-export type VerificationReason = 'scheduled' | 'manual' | 'health_change' | 'ssl_expiry' | 'dns_change';
+export type VerificationReason =
+  | 'scheduled'
+  | 'manual'
+  | 'dns_change'
+  | 'ssl_expiry'
+  | 'domain_created'
+  | 'cloudflare_configured'
+  | 'recovery';
 
 export interface DomainVerificationJob {
   domainId: string;

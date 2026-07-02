@@ -5,6 +5,8 @@ import {
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { JwtAuthGuard } from '@/modules/auth/jwt-auth.guard';
 import { DomainsService } from '@/modules/domains/services/domains.service';
+import { DomainReconciliationService } from '@/modules/domains/services/domain-reconciliation.service';
+import { DomainAccessService } from '@/modules/domains/services/domain-access.service';
 import { AddDomainDto } from '@/modules/domains/dto/add-domain.dto';
 import { Request } from 'express';
 
@@ -13,7 +15,11 @@ import { Request } from 'express';
 @UseGuards(JwtAuthGuard)
 @ApiBearerAuth()
 export class DomainsController {
-  constructor(private domainsService: DomainsService) {}
+  constructor(
+    private domainsService: DomainsService,
+    private reconciliationService: DomainReconciliationService,
+    private accessService: DomainAccessService,
+  ) {}
 
   @Get()
   @ApiOperation({ summary: 'List project domains' })
@@ -119,5 +125,33 @@ export class DomainsController {
   async reissueSsl(@Req() req: Request, @Param('projectId') projectId: string, @Param('id') domainId: string) {
     const user = req.user as { userId: string };
     return this.domainsService.reissueSsl(user.userId, projectId, domainId);
+  }
+
+  @Get(':id/history')
+  @ApiOperation({ summary: 'Get verification run history for a domain' })
+  async getHistory(@Req() req: Request, @Param('projectId') projectId: string, @Param('id') domainId: string) {
+    const user = req.user as { userId: string };
+    await this.accessService.ensureAccess(user.userId, projectId);
+    return this.reconciliationService.getVerificationHistory(domainId);
+  }
+
+  @Get(':id/incidents')
+  @ApiOperation({ summary: 'Get incidents for a domain' })
+  async getIncidents(@Req() req: Request, @Param('projectId') projectId: string, @Param('id') domainId: string) {
+    const user = req.user as { userId: string };
+    await this.accessService.ensureAccess(user.userId, projectId);
+    return this.reconciliationService.getIncidents(domainId);
+  }
+
+  @Get(':id/health-timeline')
+  @ApiOperation({ summary: 'Get health score timeline for a domain' })
+  async getHealthTimeline(
+    @Req() req: Request,
+    @Param('projectId') projectId: string,
+    @Param('id') domainId: string,
+  ) {
+    const user = req.user as { userId: string };
+    await this.accessService.ensureAccess(user.userId, projectId);
+    return this.reconciliationService.getHealthTimeline(domainId);
   }
 }

@@ -93,6 +93,56 @@ export interface DnsRecordsResponse {
   records: DnsRecord[];
 }
 
+/** Reconciliation engine health state — matches DomainHealthStatus enum */
+export type DomainReconciliationStatus = 'PENDING' | 'HEALTHY' | 'DEGRADED' | 'FAILED';
+
+/** A single verification run in the audit trail */
+export interface DomainVerificationRun {
+  id: string;
+  domainId: string;
+  reason: 'scheduled' | 'manual' | 'dns_change' | 'ssl_expiry' | 'domain_created' | 'cloudflare_configured' | 'recovery';
+  previousStatus: DomainReconciliationStatus | null;
+  newStatus: DomainReconciliationStatus | null;
+  previousScore: number | null;
+  newScore: number | null;
+  durationMs: number | null;
+  checks: {
+    dnsOk: boolean;
+    sslOk: boolean;
+    emailOk: boolean;
+    routingOk: boolean;
+    responseTimeMs: number;
+  } | null;
+  error: string | null;
+  createdAt: string;
+}
+
+/** A domain incident — opened on failure, resolved on recovery */
+export interface DomainIncident {
+  id: string;
+  domainId: string;
+  type: 'ssl_expired' | 'dns_missing' | 'mx_invalid' | 'routing_failure' | 'certificate_issuance_failed';
+  severity: 'critical' | 'warning' | 'info';
+  title: string;
+  description: string | null;
+  status: 'open' | 'resolved';
+  openedAt: string;
+  resolvedAt: string | null;
+}
+
+/** A single point on the health score timeline */
+export interface DomainHealthTimelineEntry {
+  checkedAt: string;
+  score: number;
+  status: 'ok' | 'degraded' | 'broken';
+  breakdown: {
+    dns: number;
+    routing: number;
+    ssl: number;
+    email: number;
+  } | null;
+}
+
 export class DomainsModule {
   constructor(private client: FidscriptClient) {}
 
@@ -233,6 +283,34 @@ export class DomainsModule {
   async reissueSsl(projectId: string, domainId: string): Promise<{ status: string; message: string }> {
     return this.client.post(
       `/api/v1/projects/${projectId}/domains/${domainId}/ssl/reissue`,
+    );
+  }
+
+  /**
+   * Get the verification run history (audit trail) for a domain.
+   */
+  async getHistory(projectId: string, domainId: string): Promise<DomainVerificationRun[]> {
+    return this.client.get<DomainVerificationRun[]>(
+      `/api/v1/projects/${projectId}/domains/${domainId}/history`,
+    );
+  }
+
+  /**
+   * Get all incidents (open and resolved) for a domain.
+   */
+  async getIncidents(projectId: string, domainId: string): Promise<DomainIncident[]> {
+    return this.client.get<DomainIncident[]>(
+      `/api/v1/projects/${projectId}/domains/${domainId}/incidents`,
+    );
+  }
+
+  /**
+   * Get the health score timeline for a domain — for charts and analytics.
+   * @param days Number of days of history to return (default 30)
+   */
+  async getHealthTimeline(projectId: string, domainId: string, days = 30): Promise<DomainHealthTimelineEntry[]> {
+    return this.client.get<DomainHealthTimelineEntry[]>(
+      `/api/v1/projects/${projectId}/domains/${domainId}/health-timeline`,
     );
   }
 }

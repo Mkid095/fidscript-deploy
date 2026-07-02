@@ -4,6 +4,7 @@
  */
 
 import type { MigrationRecord, BackupRecord, BackupSchedule, StorageBucket, StorageFile, ProjectStorageConfig, StorageFileRecord } from '@/types';
+import type { DomainVerificationRun, DomainIncident, DomainHealthTimelineEntry } from '@fidscript/sdk';
 
 import type {
   User,
@@ -1053,6 +1054,77 @@ export const mockDnsRecords: DnsRecord[] = [
   { type: 'TXT', name: 'default._domainkey.fidscript.dev', value: 'v=DKIM1; k=ed25519; p=...', ttl: 300, status: 'pending', category: 'email' },
   { type: 'TXT', name: '_dmarc', value: 'v=DMARC1; p=quarantine; rua=mailto:dmarc@fidscript.dev', ttl: 300, status: 'missing', category: 'email' },
 ];
+
+export const mockDomainVerificationRuns: DomainVerificationRun[] = [
+  {
+    id: 'run_001',
+    domainId: 'dom_01',
+    reason: 'scheduled',
+    previousStatus: 'HEALTHY',
+    newStatus: 'HEALTHY',
+    previousScore: 100,
+    newScore: 100,
+    durationMs: 892,
+    checks: { dnsOk: true, sslOk: true, emailOk: true, routingOk: true, responseTimeMs: 892 },
+    error: null,
+    createdAt: new Date(Date.now() - 15 * 60 * 1000).toISOString(),
+  },
+  {
+    id: 'run_002',
+    domainId: 'dom_01',
+    reason: 'dns_change',
+    previousStatus: 'HEALTHY',
+    newStatus: 'HEALTHY',
+    previousScore: 100,
+    newScore: 100,
+    durationMs: 1023,
+    checks: { dnsOk: true, sslOk: true, emailOk: true, routingOk: true, responseTimeMs: 1023 },
+    error: null,
+    createdAt: new Date(Date.now() - 60 * 60 * 1000).toISOString(),
+  },
+  {
+    id: 'run_003',
+    domainId: 'dom_01',
+    reason: 'domain_created',
+    previousStatus: 'PENDING',
+    newStatus: 'HEALTHY',
+    previousScore: null,
+    newScore: 80,
+    durationMs: 3401,
+    checks: { dnsOk: true, sslOk: false, emailOk: true, routingOk: true, responseTimeMs: 3401 },
+    error: 'SSL check timed out on first attempt',
+    createdAt: new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString(),
+  },
+];
+
+export const mockDomainIncidents: DomainIncident[] = [
+  {
+    id: 'inc_001',
+    domainId: 'dom_01',
+    type: 'ssl_expired',
+    severity: 'critical',
+    title: 'example.com: ssl expired',
+    description: null,
+    status: 'resolved',
+    openedAt: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString(),
+    resolvedAt: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000 + 30 * 60 * 1000).toISOString(),
+  },
+];
+
+export const mockDomainHealthTimeline: DomainHealthTimelineEntry[] = Array.from({ length: 30 }, (_, i) => {
+  const score = i < 28 ? 100 : i === 28 ? 60 : 100;
+  return {
+    checkedAt: new Date(Date.now() - (29 - i) * 24 * 60 * 60 * 1000).toISOString(),
+    score,
+    status: score === 100 ? 'ok' : score >= 50 ? 'degraded' : 'broken',
+    breakdown: {
+      dns: score === 100 ? 30 : 0,
+      routing: score === 100 ? 20 : 0,
+      ssl: score === 100 ? 30 : score >= 50 ? 10 : 0,
+      email: score === 100 ? 20 : 0,
+    },
+  };
+});
 
 // ─── Logs ────────────────────────────────────────────────────────────────────
 

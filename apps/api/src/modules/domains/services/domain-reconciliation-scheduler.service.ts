@@ -2,7 +2,7 @@ import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
 import { PrismaService } from '@/prisma/prisma.service';
 import { RedisService } from '@/modules/redis/redis.service';
 import { EventService } from '@/modules/events/event.service';
-import { DomainReconciliationQueueService } from './domain-reconciliation-queue.service';
+import { DomainReconciliationQueueService, VerificationReason } from './domain-reconciliation-queue.service';
 import { DomainReconciliationService } from './domain-reconciliation.service';
 import { DomainHealthStatus } from '@prisma/client';
 
@@ -121,7 +121,7 @@ export class DomainReconciliationScheduler implements OnModuleInit {
    * Enqueue a domain immediately for reconciliation (used by manual triggers or
    * event-driven calls from other services, e.g. DNS change webhook).
    */
-  async enqueueImmediate(domainId: string, reason: 'manual' | 'dns_change' | 'ssl_expiry') {
+  async enqueueImmediate(domainId: string, reason: VerificationReason) {
     await this.queueService.enqueue(domainId, reason);
     this.logger.debug(`[domain-recon-scheduler] immediate enqueue domainId=${domainId} reason=${reason}`);
   }

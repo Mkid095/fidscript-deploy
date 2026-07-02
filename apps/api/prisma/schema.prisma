@@ -484,12 +484,16 @@ model Domain {
   nextVerificationAt DateTime?   @map("next_verification_at") @db.Timestamptz
   verificationFailures Int       @default(0) @map("verification_failures")
   lastHealthScore   Int?        @map("last_health_score") // 0-100
+  priority         Int          @default(0) @map("priority") // 0=normal, 1=important, 2=production, 3=critical
+  lastDnsFingerprint String?    @map("last_dns_fingerprint") @db.VarChar(64) // SHA-256 of current DNS config
   createdAt         DateTime     @default(now()) @map("created_at") @db.Timestamptz
 
   project       Project             @relation(fields: [projectId], references: [id], onDelete: Cascade)
   deployment    Deployment?         @relation(fields: [deploymentId], references: [id])
   dnsConnection DomainConnection?   @relation(fields: [dnsConnectionId], references: [id])
   healthChecks  DomainHealthCheck[]
+  verificationRuns DomainVerificationRun[]
+  incidents     DomainIncident[]
 
   @@unique([projectId, domain])
   @@map("domains")
@@ -541,6 +545,56 @@ model DomainHealthCheck {
 
   @@index([domainId, checkedAt])
   @@map("domain_health_checks")
+  @@schema("projects")
+}
+
+// Every reconciliation run — the full audit trail for domain verification.
+// Written by DomainReconciliationService after each verification completes.
+model DomainVerificationRun {
+  id String @id @default(uuid())
+
+  domainId String @map("domain_id")
+
+  reason String @db.VarChar(50) // 'scheduled' | 'manual' | 'dns_change' | 'ssl_expiry' | 'domain_created' | 'cloudflare_configured' | 'recovery'
+
+  previousStatus DomainHealthStatus? @map("previous_status")
+  newStatus     DomainHealthStatus? @map("new_status")
+
+  previousScore Int? @map("previous_score")
+  newScore      Int? @map("new_score")
+
+  durationMs Int? @map("duration_ms")
+
+  checks Json? @map("checks") // { dnsOk, sslOk, emailOk, routingOk, responseTimeMs }
+
+  error String? @db.Text
+
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz
+
+  domain Domain @relation(fields: [domainId], references: [id], onDelete: Cascade)
+
+  @@index([domainId, createdAt])
+  @@map("domain_verification_runs")
+  @@schema("projects")
+}
+
+// Domain incidents — opened when a domain enters FAILED/DEGRADED and closed when it recovers.
+model DomainIncident {
+  id          String  @id @default(uuid())
+  domainId    String  @map("domain_id")
+  type        String  @db.VarChar(50) // 'ssl_expired' | 'dns_missing' | 'mx_invalid' | 'routing_failure' | 'certificate_issuance_failed'
+  severity    String  @db.VarChar(20) // 'critical' | 'warning' | 'info'
+  title       String  @db.VarChar(255)
+  description String? @db.Text
+  status      String  @default("open") @db.VarChar(20) // 'open' | 'resolved'
+  openedAt    DateTime @default(now()) @map("opened_at") @db.Timestamptz
+  resolvedAt  DateTime? @map("resolved_at") @db.Timestamptz
+
+  domain Domain @relation(fields: [domainId], references: [id], onDelete: Cascade)
+
+  @@index([domainId, status])
+  @@index([domainId, openedAt])
+  @@map("domain_incidents")
   @@schema("projects")
 }
 

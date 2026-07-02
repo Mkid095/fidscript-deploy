@@ -7,6 +7,7 @@
  */
 
 import type { FidscriptSDK } from '@fidscript/sdk';
+import type { DomainVerificationRun, DomainIncident, DomainHealthTimelineEntry } from '@fidscript/sdk';
 import type {
   User,
   Project,
@@ -69,6 +70,9 @@ import {
   mockDomainHealth,
   mockDomainSsl,
   mockDnsRecords,
+  mockDomainVerificationRuns,
+  mockDomainIncidents,
+  mockDomainHealthTimeline,
   type DomainInfo,
   type DomainHealth,
   type DnsRecord,
@@ -1107,6 +1111,21 @@ class MockDomainsModule {
   async reissueSsl(_projectId: string, _domainId: string): Promise<{ status: string; message: string }> {
     await delay(500);
     return { status: 'reissuing', message: 'SSL reissue initiated' };
+  }
+
+  async getHistory(_projectId: string, _domainId: string): Promise<DomainVerificationRun[]> {
+    await delay(200);
+    return mockDomainVerificationRuns;
+  }
+
+  async getIncidents(_projectId: string, _domainId: string): Promise<DomainIncident[]> {
+    await delay(200);
+    return mockDomainIncidents;
+  }
+
+  async getHealthTimeline(_projectId: string, _domainId: string, _days = 30): Promise<DomainHealthTimelineEntry[]> {
+    await delay(200);
+    return mockDomainHealthTimeline;
   }
 }
 
