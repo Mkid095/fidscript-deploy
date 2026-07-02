@@ -1,5 +1,7 @@
-import { IsString, IsBoolean, IsOptional, IsUUID, IsIn } from 'class-validator';
+import { IsString, IsBoolean, IsOptional, IsUUID, IsIn, IsArray } from 'class-validator';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+
+const DOMAIN_TYPES = ['DEPLOYMENT', 'EMAIL', 'INBOUND_EMAIL', 'TRACKING', 'API', 'REDIRECT', 'SANDBOX'] as const;
 
 export class AddDomainDto {
   @ApiProperty({ example: 'example.com', description: 'Full domain name to add' })
@@ -11,6 +13,16 @@ export class AddDomainDto {
   @IsUUID()
   deploymentId?: string;
 
+  @ApiPropertyOptional({
+    description: `Domain purposes: ${DOMAIN_TYPES.join(' | ')}`,
+    default: ['DEPLOYMENT'],
+    type: [String],
+  })
+  @IsOptional()
+  @IsArray()
+  @IsIn(DOMAIN_TYPES, { each: true })
+  type?: string[];
+
   @ApiPropertyOptional({ description: "DNS configuration mode: 'manual' (default) or 'cloudflare_auto'", default: 'manual' })
   @IsIn(['manual', 'cloudflare_auto'])
   @IsOptional()
@@ -21,7 +33,7 @@ export class AddDomainDto {
   @IsOptional()
   redirectMode?: 'none' | 'www_to_root' | 'root_to_www';
 
-  @ApiPropertyOptional({ description: 'Enable automatic TLS via Let\'s Encrypt', default: true })
+  @ApiPropertyOptional({ description: "Enable automatic TLS via Let's Encrypt", default: true })
   @IsBoolean()
   @IsOptional()
   sslEnabled?: boolean;

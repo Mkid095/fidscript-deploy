@@ -41,10 +41,25 @@ export class DomainAddService {
     const mx = await this.domainMxService.checkMxRecords(dto.domain);
     const isPrimary = (await this.prisma.domain.count({ where: { projectId } })) === 0;
 
+    // Derive capabilities from domain type array, defaulting to DEPLOYMENT
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const domainTypes: any[] = dto.type?.length ? dto.type : ['DEPLOYMENT'];
+    const capabilities: Record<string, boolean> = {
+      deployment: domainTypes.includes('DEPLOYMENT') || domainTypes.includes('API'),
+      email: domainTypes.includes('EMAIL'),
+      inboundEmail: domainTypes.includes('INBOUND_EMAIL'),
+      tracking: domainTypes.includes('TRACKING'),
+      api: domainTypes.includes('API'),
+      redirect: domainTypes.includes('REDIRECT'),
+      sandbox: domainTypes.includes('SANDBOX'),
+    };
+
     const domain = await this.prisma.domain.create({
       data: {
         projectId, deploymentId: dto.deploymentId, domain: dto.domain,
         isCustom: !isPlatform, isPrimary, apexDomain: isApex,
+        type: domainTypes,
+        capabilities,
         dnsMode: dto.dnsMode ?? 'manual', redirectMode: dto.redirectMode ?? 'none',
         sslEnabled: dto.sslEnabled ?? true, sslStatus: 'PENDING', dnsStatus: 'PENDING',
         emailWarning: mx.hasMx, emailProvider: mx.provider || null,
@@ -54,7 +69,7 @@ export class DomainAddService {
     await this.eventService.emit(
       'domain.added',
       projectId,
-      { domainId: domain.id, domain: dto.domain, isCustom: !isPlatform, emailWarning: mx.hasMx, emailProvider: mx.provider },
+      { domainId: domain.id, domain: dto.domain, type: domainTypes, capabilities, isCustom: !isPlatform, emailWarning: mx.hasMx, emailProvider: mx.provider },
       { actorId: userId, actorType: 'user', resourceType: 'domain', resourceId: domain.id },
     );
 

@@ -114,10 +114,18 @@ export class DomainsModule {
    * @param name       Full domain name (e.g. "example.com")
    * @param dnsMode    "manual" | "cloudflare_auto" — defaults to "manual"
    * @param deploymentId Optional deployment to route this domain to
+   * @param type       Domain purpose(s): DEPLOYMENT | EMAIL | INBOUND_EMAIL | TRACKING | API | REDIRECT | SANDBOX
    */
-  async create(projectId: string, name: string, dnsMode = 'manual', deploymentId?: string) {
+  async create(
+    projectId: string,
+    name: string,
+    dnsMode = 'manual',
+    deploymentId?: string,
+    type?: DomainType[],
+  ) {
     const payload: Record<string, unknown> = { projectId, name, dnsMode };
     if (deploymentId) payload.deploymentId = deploymentId;
+    if (type?.length) payload.type = type;
     return this.client.post<Domain>(`/api/v1/projects/${projectId}/domains`, payload);
   }
 

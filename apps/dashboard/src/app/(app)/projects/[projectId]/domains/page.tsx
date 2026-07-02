@@ -1,6 +1,6 @@
 'use client';
 
-import type { Domain, DnsConnection } from '@fidscript/sdk';
+import type { Domain, DnsConnection, DomainType } from '@fidscript/sdk';
 import { useEffect, useState, useCallback } from 'react';
 import { useParams } from 'next/navigation';
 import Link from 'next/link';
@@ -53,6 +53,7 @@ export default function DomainsPage() {
   const [showAdd, setShowAdd]         = useState(false);
   const [newDomain, setNewDomain]     = useState('');
   const [dnsMode, setDnsMode]         = useState<'manual' | 'cloudflare_auto'>('manual');
+  const [newDomainTypes, setNewDomainTypes] = useState<DomainType[]>(['DEPLOYMENT']);
   const [adding, setAdding]           = useState(false);
   const [addError, setAddError]       = useState<string | null>(null);
 
@@ -106,9 +107,10 @@ export default function DomainsPage() {
         setShowConnect(true);
         return;
       }
-      const created = await sdk.domains.create(projectId, newDomain.trim(), dnsMode);
+      const created = await sdk.domains.create(projectId, newDomain.trim(), dnsMode, undefined, newDomainTypes);
       setDomains(prev => [...prev, created as Domain]);
       setNewDomain('');
+      setNewDomainTypes(['DEPLOYMENT']);
       setShowAdd(false);
       setToast({ message: `Domain "${newDomain.trim()}" added`, type: 'success' });
     } catch (err) {
@@ -308,6 +310,29 @@ export default function DomainsPage() {
                   )}
                 </div>
 
+                {/* Capabilities */}
+                {(domain.type?.length ?? 0) > 0 && (
+                  <div className="flex flex-wrap gap-1.5 mt-2">
+                    {(domain.type ?? []).map((t: string) => {
+                      const CAPABILITY_LABELS: Record<string, { label: string; color: string }> = {
+                        DEPLOYMENT: { label: 'Deployment', color: 'bg-blue-900 text-blue-300' },
+                        EMAIL: { label: 'Email', color: 'bg-purple-900 text-purple-300' },
+                        INBOUND_EMAIL: { label: 'Inbound', color: 'bg-purple-800 text-purple-200' },
+                        TRACKING: { label: 'Tracking', color: 'bg-yellow-900 text-yellow-300' },
+                        API: { label: 'API', color: 'bg-green-900 text-green-300' },
+                        REDIRECT: { label: 'Redirect', color: 'bg-orange-900 text-orange-300' },
+                        SANDBOX: { label: 'Sandbox', color: 'bg-gray-800 text-gray-300' },
+                      };
+                      const { label, color } = CAPABILITY_LABELS[t] ?? { label: t, color: 'bg-[var(--rail)] text-[var(--text-muted)]' };
+                      return (
+                        <span key={t} className={`text-xs px-1.5 py-0.5 rounded-full ${color}`}>
+                          {label}
+                        </span>
+                      );
+                    })}
+                  </div>
+                )}
+
                 {/* Timestamps */}
                 {(domain.dnsVerifiedAt || domain.routingVerifiedAt) && (
                   <div className="text-xs text-[var(--text-muted)] mb-4 space-y-0.5">
@@ -360,7 +385,7 @@ export default function DomainsPage() {
       {/* ── Add Domain Modal ─────────────────────────────────────────────── */}
       <Modal
         isOpen={showAdd}
-        onClose={() => { setShowAdd(false); setNewDomain(''); setAddError(null); }}
+        onClose={() => { setShowAdd(false); setNewDomain(''); setNewDomainTypes(['DEPLOYMENT']); setAddError(null); }}
         title="Add Domain"
         size="md"
       >
@@ -415,6 +440,49 @@ export default function DomainsPage() {
                 <span className="text-xs text-[var(--text-muted)]">Automatic DNS via API</span>
               </label>
             </div>
+          </div>
+
+          {/* Domain type selector */}
+          <div className="mb-5">
+            <label className="block text-xs text-[var(--text-muted)] mb-1.5">Domain purpose</label>
+            <div className="flex flex-wrap gap-2">
+              {([
+                { value: 'DEPLOYMENT', label: 'Deployment', icon: '🚀' },
+                { value: 'EMAIL', label: 'Email', icon: '📧' },
+                { value: 'INBOUND_EMAIL', label: 'Inbound', icon: '📥' },
+                { value: 'TRACKING', label: 'Tracking', icon: '📊' },
+                { value: 'API', label: 'API', icon: '⚡' },
+                { value: 'REDIRECT', label: 'Redirect', icon: '↗️' },
+                { value: 'SANDBOX', label: 'Sandbox', icon: '🧪' },
+              ] as const).map(({ value, label, icon }) => (
+                <label
+                  key={value}
+                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full border cursor-pointer transition-colors text-xs ${
+                    newDomainTypes.includes(value)
+                      ? 'border-[var(--accent)] bg-[var(--accent)]/10 text-[var(--text)]'
+                      : 'border-[var(--rail)] hover:border-[var(--text-dim)] text-[var(--text-muted)]'
+                  }`}
+                >
+                  <input
+                    type="checkbox"
+                    className="sr-only"
+                    checked={newDomainTypes.includes(value)}
+                    onChange={() => {
+                      setNewDomainTypes(prev =>
+                        prev.includes(value)
+                          ? prev.filter(t => t !== value)
+                          : [...prev, value],
+                      );
+                    }}
+                  />
+                  <span>{icon}</span>
+                  <span>{label}</span>
+                </label>
+              ))}
+            </div>
+            {newDomainTypes.length === 0 && (
+              <p className="text-xs text-[var(--danger)] mt-1">Select at least one purpose.</p>
+            )}
           </div>
 
           {dnsMode === 'cloudflare_auto' && !connection && (

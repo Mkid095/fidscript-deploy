@@ -39,6 +39,11 @@ export class DomainListService {
       isCustom: domain.isCustom,
       isPrimary: domain.isPrimary,
       apexDomain: domain.apexDomain,
+      type: domain.type ?? [],
+      capabilities: domain.capabilities ?? {
+        deployment: false, email: false, inboundEmail: false,
+        tracking: false, api: false, redirect: false, sandbox: false,
+      },
       dnsMode: domain.dnsMode,
       redirectMode: domain.redirectMode,
       sslEnabled: domain.sslEnabled,
