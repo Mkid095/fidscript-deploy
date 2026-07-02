@@ -31,6 +31,21 @@ export class ConfigureInstallationDto {
   @IsOptional()
   cloudflareApiToken?: string;
 
+  /** Cloudflare OAuth Client ID — enables OAuth-based Cloudflare connection for users */
+  @IsString()
+  @IsOptional()
+  cloudflareClientId?: string;
+
+  /** Cloudflare OAuth Client Secret */
+  @IsString()
+  @IsOptional()
+  cloudflareClientSecret?: string;
+
+  /** Cloudflare OAuth Redirect URI — defaults to https://{platformDomain}/api/callback/cloudflare */
+  @IsString()
+  @IsOptional()
+  cloudflareOAuthRedirectUri?: string;
+
   @IsString()
   @IsOptional()
   dnsMode?: string;
@@ -67,5 +82,6 @@ export interface DiscoveryResult {
   dockerAvailable: boolean;
   traefikConfigured: boolean;
   cloudflareTokenFound: boolean;
+  cloudflareOAuthConfigured: boolean;
   existingCertificateFound: boolean;
 }

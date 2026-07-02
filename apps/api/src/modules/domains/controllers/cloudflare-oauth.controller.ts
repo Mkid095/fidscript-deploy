@@ -23,7 +23,7 @@ export class CloudflareOAuthController {
   @ApiOperation({ summary: 'Get Cloudflare OAuth authorization URL' })
   async getOAuthUrl(@Param('projectId') projectId: string, @Req() req: Request) {
     const state = crypto.randomBytes(16).toString('hex');
-    const { url } = this.oauth.buildAuthorizationUrl(state);
+    const { url } = await this.oauth.buildAuthorizationUrl(state);
     return { url, state, projectId };
   }
 

@@ -11,38 +11,66 @@ const SCOPES = ['zone:read', 'dns:edit', 'account:read'].join(' ');
 @Injectable()
 export class CloudflareOAuthService {
   private readonly logger = new Logger(CloudflareOAuthService.name);
-
-  private readonly clientId: string;
-  private readonly clientSecret: string;
-  private readonly redirectUri: string;
   private readonly baseUrl = 'https://dash.cloudflare.com';
+
+  // Env-var fallback (for dev/self-hosted without DB settings)
+  private readonly envClientId: string;
+  private readonly envClientSecret: string;
+  private readonly envRedirectUri: string;
 
   constructor(
     private configService: ConfigService,
     private prisma: PrismaService,
     private access: DomainAccessService,
   ) {
-    this.clientId = this.configService.get<string>('CLOUDFLARE_CLIENT_ID', '');
-    this.clientSecret = this.configService.get<string>('CLOUDFLARE_CLIENT_SECRET', '');
-    this.redirectUri = this.configService.get<string>('CLOUDFLARE_OAUTH_REDIRECT_URI', 'http://localhost:3000/api/callback/cloudflare');
+    this.envClientId = this.configService.get<string>('CLOUDFLARE_CLIENT_ID', '');
+    this.envClientSecret = this.configService.get<string>('CLOUDFLARE_CLIENT_SECRET', '');
+    this.envRedirectUri = this.configService.get<string>('CLOUDFLARE_OAUTH_REDIRECT_URI', 'http://localhost:3000/api/callback/cloudflare');
 
-    if (!this.clientId || !this.clientSecret) {
+    if (!this.envClientId || !this.envClientSecret) {
       this.logger.warn(
         'CLOUDFLARE_CLIENT_ID / CLOUDFLARE_CLIENT_SECRET not set — OAuth flow will not be available. ' +
-        'Set these env vars to enable OAuth-based Cloudflare connection.',
+        'Set them in the platform setup page or via env vars to enable OAuth-based Cloudflare connection.',
       );
     }
+  }
+
+  /**
+   * Get OAuth credentials from InstallationSettings (DB), falling back to env vars.
+   */
+  private async getOAuthCredentials() {
+    try {
+      const settings = await this.prisma.installationSettings.findFirst() as any;
+      if (settings?.encryptedCloudflareClientId && settings?.encryptedCloudflareClientSecret) {
+        return {
+          clientId: this.decryptSecret(settings.encryptedCloudflareClientId),
+          clientSecret: this.decryptSecret(settings.encryptedCloudflareClientSecret),
+          redirectUri: settings.cloudflareOAuthRedirectUri ?? this.envRedirectUri,
+        };
+      }
+    } catch { /* DB not ready */ }
+
+    // Fallback to env vars
+    if (this.envClientId && this.envClientSecret) {
+      return { clientId: this.envClientId, clientSecret: this.envClientSecret, redirectUri: this.envRedirectUri };
+    }
+
+    throw new UnauthorizedException(
+      'Cloudflare OAuth is not configured. Set CLOUDFLARE_CLIENT_ID and CLOUDFLARE_CLIENT_SECRET ' +
+      'in the platform setup page or via environment variables.',
+    );
   }
 
   /**
    * Build the Cloudflare OAuth authorization URL.
    * The caller should redirect the user to the returned URL.
    */
-  buildAuthorizationUrl(state: string): { url: string } {
+  async buildAuthorizationUrl(state: string): Promise<{ url: string }> {
+    const { clientId, redirectUri } = await this.getOAuthCredentials();
     const params = new URLSearchParams({
-      client_id: this.clientId,
+      client_id: clientId,
       response_type: 'code',
-      redirect_uri: this.redirectUri,
+      redirect_uri: redirectUri,
       scope: SCOPES,
       state,
     });
@@ -61,9 +89,7 @@ export class CloudflareOAuthService {
     expectedState: string,
     actualState: string,
   ): Promise<{ id: string; projectId: string; provider: string; email: string | null; createdAt: Date }> {
-    if (!this.clientId || !this.clientSecret) {
-      throw new UnauthorizedException('Cloudflare OAuth is not configured on this server');
-    }
+    const { clientId, clientSecret, redirectUri } = await this.getOAuthCredentials();
 
     if (actualState !== expectedState) {
       throw new UnauthorizedException('Invalid OAuth state — possible CSRF attack');
@@ -74,9 +100,9 @@ export class CloudflareOAuthService {
       `${this.baseUrl}/api/v4/oauth2/token`,
       new URLSearchParams({
         grant_type: 'authorization_code',
-        client_id: this.clientId,
-        client_secret: this.clientSecret,
-        redirect_uri: this.redirectUri,
+        client_id: clientId,
+        client_secret: clientSecret,
+        redirect_uri: redirectUri,
         code,
       }),
       { headers: { 'Content-Type': 'application/x-www-form-urlencoded' }, timeout: 15_000 },
@@ -138,7 +164,7 @@ export class CloudflareOAuthService {
     const connection = connections[0];
     if (!connection || connection.provider !== 'cloudflare') return [];
 
-    const token = this.decryptToken(connection.encryptedToken);
+    const token = this.decryptSecret(connection.encryptedToken);
     try {
       const response = await axios.get('https://api.cloudflare.com/client/v4/zones', {
         headers: { Authorization: `Bearer ${token}` },
@@ -160,7 +186,7 @@ export class CloudflareOAuthService {
     return `${iv.toString('base64')}:${authTag.toString('base64')}:${encrypted.toString('base64')}`;
   }
 
-  private decryptToken(encryptedToken: string): string {
+  private decryptSecret(encryptedToken: string): string {
     const key = this.getEncryptionKey();
     const [ivB64, authTagB64, encryptedB64] = encryptedToken.split(':');
     if (!ivB64 || !authTagB64 || !encryptedB64) return encryptedToken;

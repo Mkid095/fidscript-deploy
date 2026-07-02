@@ -12,7 +12,7 @@ import {
   StepResult,
   DiscoveryResult,
 } from './dto';
-import { randomUUID } from 'crypto';
+import { randomUUID, createCipheriv, randomBytes } from 'crypto';
 import { Prisma, Role, AuthMethod } from '@prisma/client';
 import { writeFileSync, mkdirSync } from 'fs';
 import { join } from 'path';
@@ -70,6 +70,13 @@ export class InstallationOrchestratorService {
     // CF token is written to /run/secrets/cf_api_token by the installer — we check the env
     const cfFromEnv = !!process.env.CLOUDFLARE_API_TOKEN_FILE;
 
+    // CF OAuth credentials are stored in InstallationSettings — check the DB
+    let cloudflareOAuthConfigured = false;
+    try {
+      const settings = await this.prisma.installationSettings.findFirst() as any;
+      cloudflareOAuthConfigured = !!(settings?.encryptedCloudflareClientId && settings?.encryptedCloudflareClientSecret);
+    } catch { /* not set yet */ }
+
     return {
       serverIp,
       adminEmail,
@@ -78,6 +85,7 @@ export class InstallationOrchestratorService {
       dockerAvailable: true,
       traefikConfigured: true,
       cloudflareTokenFound: cfFromEnv,
+      cloudflareOAuthConfigured,
       existingCertificateFound: lifecycle === 'CONFIGURED',
     };
   }
@@ -222,7 +230,7 @@ export class InstallationOrchestratorService {
             adminEmail: dto.adminEmail,
             authMethod: dto.authMethod as AuthMethod,
             dnsMode: dto.dnsMode ?? 'cloudflare_auto',
-          },
+          } as any,
           update: {
             platformName: dto.platformName,
             platformDomain: dto.platformDomain,
@@ -230,8 +238,25 @@ export class InstallationOrchestratorService {
             adminEmail: dto.adminEmail,
             authMethod: dto.authMethod as AuthMethod,
             dnsMode: dto.dnsMode ?? 'cloudflare_auto',
-          },
+          } as any,
         });
+
+        // Store Cloudflare OAuth credentials separately (new fields not in generated types yet)
+        if (dto.cloudflareClientId || dto.cloudflareClientSecret || dto.cloudflareOAuthRedirectUri) {
+          await tx.installationSettings.update({
+            where: { id: 'installation' },
+            data: {
+              encryptedCloudflareClientId: dto.cloudflareClientId
+                ? this.encryptSecret(dto.cloudflareClientId)
+                : undefined,
+              encryptedCloudflareClientSecret: dto.cloudflareClientSecret
+                ? this.encryptSecret(dto.cloudflareClientSecret)
+                : undefined,
+              cloudflareOAuthRedirectUri: dto.cloudflareOAuthRedirectUri
+                ?? `https://${dto.platformDomain}/api/callback/cloudflare`,
+            } as any,
+          });
+        }
 
         await this.createAdminUser(dto, tx);
 
@@ -338,6 +363,27 @@ export class InstallationOrchestratorService {
       }
       throw err;
     }
+  }
+
+  // ─── Encryption helpers ─────────────────────────────────────────
+
+  private encryptSecret(plaintext: string): string {
+    const key = this.getEncryptionKey();
+    const iv = randomBytes(16);
+    const cipher = createCipheriv('aes-256-gcm', key, iv);
+    const encrypted = Buffer.concat([cipher.update(plaintext, 'utf8'), cipher.final()]);
+    const authTag = cipher.getAuthTag();
+    return `${iv.toString('base64')}:${authTag.toString('base64')}:${encrypted.toString('base64')}`;
+  }
+
+  private getEncryptionKey(): Buffer {
+    const envKey = process.env.ENCRYPTION_KEY;
+    if (envKey) return Buffer.from(envKey, 'utf8').slice(0, 32);
+    const keyFile = process.env.ENCRYPTION_KEY_FILE;
+    if (keyFile) {
+      try { return require('fs').readFileSync(keyFile, 'utf8').trim().slice(0, 32) as Buffer; } catch { /* fall through */ }
+    }
+    return Buffer.from('default-dev-key-32-chars-here!!', 'utf8').slice(0, 32);
   }
 
   // ─── SSE stream for progress ─────────────────────────────────────

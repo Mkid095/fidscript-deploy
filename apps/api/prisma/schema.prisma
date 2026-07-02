@@ -1750,6 +1750,10 @@ model InstallationSettings {
   dnsMode        String     @default("cloudflare_auto") @map("dns_mode") @db.VarChar(50)
   // Cloudflare API token lives in /run/secrets/cf_api_token — never in the database
   branding       Json?
+  // Cloudflare OAuth credentials for one-click DNS (encrypted — never stored plaintext)
+  encryptedCloudflareClientId     String? @map("encrypted_cf_client_id") @db.Text
+  encryptedCloudflareClientSecret String? @map("encrypted_cf_client_secret") @db.Text
+  cloudflareOAuthRedirectUri      String? @map("cf_oauth_redirect_uri") @db.VarChar(500)
   createdAt      DateTime   @default(now()) @map("created_at") @db.Timestamptz
   updatedAt      DateTime   @updatedAt @map("updated_at") @db.Timestamptz
 

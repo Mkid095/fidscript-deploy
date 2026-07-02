@@ -23,6 +23,7 @@ interface ProgressEvent {
 interface DiscoveryInfo {
   serverIp: string;
   lifecycle: string;
+  cloudflareOAuthConfigured?: boolean;
 }
 
 /** Human-readable labels for the step names emitted by the SSE stream. */
@@ -58,6 +59,9 @@ export default function SetupPage() {
   const [platformName, setPlatformName] = useState('FIDScript Deploy');
   const [platformDomain, setPlatformDomain] = useState('');
   const [cloudflareToken, setCloudflareToken] = useState('');
+  const [cloudflareClientId, setCloudflareClientId] = useState('');
+  const [cloudflareClientSecret, setCloudflareClientSecret] = useState('');
+  const [cloudflareOAuthRedirectUri, setCloudflareOAuthRedirectUri] = useState('');
   const [adminEmail, setAdminEmail] = useState('');
   const [adminPassword, setAdminPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
@@ -89,6 +93,14 @@ export default function SetupPage() {
       })
       .catch(() => {/* non-fatal */});
   }, []);
+
+  // Auto-fill the Cloudflare OAuth redirect URI when platform domain is set
+  useEffect(() => {
+    if (platformDomain && !cloudflareOAuthRedirectUri) {
+      const uri = `https://${platformDomain}/api/callback/cloudflare`;
+      setCloudflareOAuthRedirectUri(uri);
+    }
+  }, [platformDomain]);
 
   // Debounced API validation for domain field while typing.
   useEffect(() => {
@@ -160,6 +172,9 @@ export default function SetupPage() {
     };
     if (authMethod === 'PASSWORD') body.adminPassword = adminPassword;
     if (cloudflareToken.trim()) body.cloudflareApiToken = cloudflareToken.trim();
+    if (cloudflareClientId.trim()) body.cloudflareClientId = cloudflareClientId.trim();
+    if (cloudflareClientSecret.trim()) body.cloudflareClientSecret = cloudflareClientSecret.trim();
+    if (cloudflareOAuthRedirectUri.trim()) body.cloudflareOAuthRedirectUri = cloudflareOAuthRedirectUri.trim();
 
     setProgressError('');
     setStep('progress');
@@ -376,6 +391,40 @@ export default function SetupPage() {
                 hint="Used for automatic DNS configuration. Optional."
                 className="bg-[var(--surface-2)] border border-[var(--rail)] text-[var(--text)] placeholder:text-[var(--text-dim)]"
               />
+
+              {/* Cloudflare OAuth section — for platform-wide OAuth enabling */}
+              <div className="border-t border-[var(--rail)] pt-4 mt-2">
+                <p className="text-xs font-semibold text-[var(--text)] mb-3">☁️ Cloudflare OAuth (Optional)</p>
+                <p className="text-xs text-[var(--text-muted)] mb-3">
+                  Enable OAuth-based Cloudflare connection. Users will see a "Connect with Cloudflare" button in the domain wizard — no token needed per user.
+                </p>
+                <Input
+                  label="Cloudflare Client ID"
+                  type="text"
+                  value={cloudflareClientId}
+                  onChange={e => setCloudflareClientId(e.target.value)}
+                  placeholder="e.g. 4bc8f2a9b3c7d6e1..."
+                  hint="From dash.cloudflare.com → Overview → Get your API token → OAuth"
+                  className="bg-[var(--surface-2)] border border-[var(--rail)] text-[var(--text)] placeholder:text-[var(--text-dim)] mb-3"
+                />
+                <Input
+                  label="Cloudflare Client Secret"
+                  type="password"
+                  value={cloudflareClientSecret}
+                  onChange={e => setCloudflareClientSecret(e.target.value)}
+                  placeholder="OAuth client secret"
+                  className="bg-[var(--surface-2)] border border-[var(--rail)] text-[var(--text)] placeholder:text-[var(--text-dim)] mb-3"
+                />
+                <Input
+                  label="OAuth Redirect URI"
+                  type="text"
+                  value={cloudflareOAuthRedirectUri}
+                  onChange={e => setCloudflareOAuthRedirectUri(e.target.value)}
+                  placeholder="https://deploy.example.com/api/callback/cloudflare"
+                  hint="Must match the redirect URI set in your Cloudflare OAuth app"
+                  className="bg-[var(--surface-2)] border border-[var(--rail)] text-[var(--text)] placeholder:text-[var(--text-dim)]"
+                />
+              </div>
 
               <Input
                 label="Admin Email"
