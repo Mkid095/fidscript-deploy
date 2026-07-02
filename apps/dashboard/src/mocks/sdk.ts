@@ -920,9 +920,9 @@ class MockDatabaseProvider {
 // ─── Databases Module Mock ────────────────────────────────────────────────────
 
 class MockDatabasesModule {
-  async list(): Promise<Database[]> {
+  async list(projectId: string): Promise<Database[]> {
     await delay();
-    return mockDatabases;
+    return mockDatabases.filter(d => d.projectId === projectId);
   }
 
   async get(databaseId: string): Promise<Database> {
@@ -932,7 +932,7 @@ class MockDatabasesModule {
     return db;
   }
 
-  async create(data: { name: string; type: string; mode?: string; region?: string }): Promise<Database> {
+  async create(projectId: string, data: { name: string; type: string; mode?: string; region?: string }): Promise<Database> {
     await delay(600);
     const db: Database = {
       id: 'db_' + Date.now(),
@@ -942,7 +942,7 @@ class MockDatabasesModule {
       status: 'creating',
       mode: (data.mode as Database['mode']) ?? 'single',
       region: data.region ?? 'us-east-1',
-      projectId: 'prj_01',
+      projectId,
       diskSizeMb: 10_240,
       maxConnections: 50,
       currentConnections: 0,
@@ -1011,6 +1011,24 @@ class MockDatabasesModule {
   async getBackupSettings(databaseId: string): Promise<{ defaultBucket: string; maxManualBackups: number; autoBackupRetentionDays: number }> {
     await delay(100);
     return { defaultBucket: 'db-backups', maxManualBackups: 50, autoBackupRetentionDays: 7 };
+  }
+
+  async getConnection(databaseId: string, poolOnly = false): Promise<{ host: string; port: number; database: string; username: string; connectionString: string; pgbouncerHost?: string; pgbouncerPort?: number }> {
+    await delay(80);
+    const db = mockDatabases.find(d => d.id === databaseId);
+    return {
+      host: `db.${databaseId}.internal`,
+      port: 5432,
+      database: db?.name ?? 'postgres',
+      username: 'postgres',
+      connectionString: `postgres://postgres:••••••@db.${databaseId}.internal:5432/${db?.name ?? 'postgres'}`,
+      ...(poolOnly ? { pgbouncerHost: 'pgbouncer.internal', pgbouncerPort: 6432 } : {}),
+    };
+  }
+
+  async updateSsl(databaseId: string, ssl: boolean): Promise<void> {
+    await delay(200);
+    void databaseId; void ssl;
   }
 
   database(id: string): MockDatabaseProvider {
