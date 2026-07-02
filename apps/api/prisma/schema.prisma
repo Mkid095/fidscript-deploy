@@ -503,6 +503,8 @@ model Domain {
   repairPolicy  DomainRepairPolicy?
   repairRuns    DomainRepairRun[]
   emailKeys     DomainEmailKey[]
+  managedRecords ManagedDnsRecord[]
+  changeSets    DomainChangeSet[]
 
   @@unique([projectId, domain])
   @@map("domains")
@@ -555,6 +557,84 @@ model DomainEmailKey {
   @@unique([domainId, selector])
   @@index([domainId, active])
   @@map("domain_email_keys")
+  @@schema("projects")
+}
+
+// =============================================
+// MANAGED DNS RECORDS (ownership tracking)
+// =============================================
+
+// Tracks which DNS records belong to FIDScript (vs customer/imported).
+// This is the source of truth for reconciliation — without it, we can't
+// safely know which records to update or delete during sync.
+//
+// `managedBy` determines ownership:
+//   platform  → created by FIDScript auto-config (safe to modify/delete)
+//   user      → created by the user via the dashboard (ask before modifying)
+//   imported  → existed before we took over (never delete without explicit consent)
+model ManagedDnsRecord {
+  id               String    @id @default(uuid())
+  domainId         String    @map("domain_id")
+  // Provider-assigned record ID (null if not yet synced to provider)
+  providerRecordId String?   @map("provider_record_id") @db.VarChar(255)
+  type             String    @db.VarChar(10) // A | AAAA | CNAME | TXT | MX | NS | SRV | CAA
+  name             String    @db.VarChar(255)
+  value            String    @db.Text
+  ttl              Int       @default(300)
+  priority         Int?      // MX priority
+  proxied          Boolean   @default(false)
+  // Ownership classification
+  managedBy        String    @default("platform") @db.VarChar(20) // platform | user | imported
+  source           String    @default("deployment") @db.VarChar(20) // deployment | email | verification | wildcard | manual
+  // Content checksum for drift detection (SHA-256 of type:name:value)
+  checksum         String    @db.VarChar(64)
+  lastSyncedAt     DateTime? @map("last_synced_at") @db.Timestamptz
+  createdAt        DateTime  @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt        DateTime  @updatedAt @map("updated_at") @db.Timestamptz
+
+  domain           Domain    @relation(fields: [domainId], references: [id], onDelete: Cascade)
+
+  @@unique([domainId, type, name])
+  @@index([domainId, managedBy])
+  @@index([domainId, source])
+  @@map("managed_dns_records")
+  @@schema("projects")
+}
+
+// =============================================
+// DOMAIN CHANGE SETS (audit trail + rollback)
+// =============================================
+
+// A change set is a batch of DNS operations (create/update/delete) applied atomically.
+// Every DNS modification goes through a change set, giving us:
+//   - Audit trail (who changed what, when, why)
+//   - Rollback capability (reverse the operations)
+//   - Approval workflow (Level 1 policies require approval before applying)
+//
+// `operations` is a JSON array of:
+//   { action: 'create'|'update'|'delete', recordId?, type, name, value, oldValue? }
+model DomainChangeSet {
+  id           String    @id @default(uuid())
+  domainId     String    @map("domain_id")
+  projectId    String    @map("project_id") @db.VarChar(36)
+  status       String    @default("pending") @db.VarChar(20) // pending | applied | failed | rolled_back
+  // The planned operations
+  operations   Json      @default("[]")
+  // Result after applying (success count, errors)
+  result       Json?
+  // Who created and applied this change set
+  createdBy    String?   @map("created_by") @db.VarChar(255)
+  appliedAt    DateTime? @map("applied_at") @db.Timestamptz
+  rolledBackAt DateTime? @map("rolled_back_at") @db.Timestamptz
+  rolledBackBy String?   @map("rolled_back_by") @db.VarChar(255)
+  createdAt    DateTime  @default(now()) @map("created_at") @db.Timestamptz
+
+  domain       Domain    @relation(fields: [domainId], references: [id], onDelete: Cascade)
+
+  @@index([domainId, createdAt])
+  @@index([projectId, createdAt])
+  @@index([status, createdAt])
+  @@map("domain_change_sets")
   @@schema("projects")
 }
 

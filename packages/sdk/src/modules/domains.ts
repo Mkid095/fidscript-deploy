@@ -462,6 +462,115 @@ export class DomainsModule {
     );
   }
 
+  // ── Change Sets + Rollback ────────────────────────────────────────────────
+
+  /**
+   * List change sets for a domain (audit trail of all DNS changes).
+   */
+  async listChangeSets(projectId: string, domainId: string, options?: { limit?: number }): Promise<{
+    changeSets: Array<{
+      id: string;
+      status: 'pending' | 'applied' | 'failed' | 'rolled_back';
+      operations: Array<Record<string, unknown>>;
+      appliedAt?: string;
+      result?: { created: number; updated: number; deleted: number; errors: string[] };
+    }>;
+    total: number;
+  }> {
+    const params: Record<string, number> = {};
+    if (options?.limit) params.limit = options.limit;
+    return this.client.get(
+      `/api/v1/projects/${projectId}/domains/${domainId}/change-sets`,
+      params,
+    );
+  }
+
+  /**
+   * Get managed DNS records for a domain (ownership inventory).
+   * Shows which records are platform-managed vs imported vs user-created.
+   */
+  async getManagedRecords(projectId: string, domainId: string): Promise<{
+    records: Array<{
+      id: string;
+      type: string;
+      name: string;
+      value: string;
+      ttl: number;
+      priority?: number;
+      managedBy: 'platform' | 'user' | 'imported';
+      source: string;
+      lastSyncedAt?: string;
+    }>;
+  }> {
+    return this.client.get(
+      `/api/v1/projects/${projectId}/domains/${domainId}/managed-records`,
+    );
+  }
+
+  /**
+   * Import existing provider records into the managed records table.
+   * Records not already tracked are marked as 'imported' (safe — never auto-deleted).
+   */
+  async importManagedRecords(projectId: string, domainId: string): Promise<{
+    imported: number;
+    total: number;
+  }> {
+    return this.client.post(
+      `/api/v1/projects/${projectId}/domains/${domainId}/import-managed-records`,
+    );
+  }
+
+  /**
+   * Create a DNS change set from a list of operations.
+   * Does NOT apply — use applyChangeSet() to execute.
+   */
+  async createChangeSet(
+    projectId: string,
+    domainId: string,
+    operations: Array<{
+      action: 'create' | 'update' | 'delete';
+      recordId?: string;
+      type?: string;
+      name?: string;
+      value?: string;
+      ttl?: number;
+      priority?: number;
+      source?: string;
+    }>,
+  ): Promise<{ id: string; status: 'pending' }> {
+    return this.client.post(
+      `/api/v1/projects/${projectId}/domains/${domainId}/change-sets`,
+      { operations },
+    );
+  }
+
+  /**
+   * Apply a change set — executes all planned DNS operations.
+   */
+  async applyChangeSet(projectId: string, changeSetId: string): Promise<{
+    id: string;
+    status: 'applied' | 'failed';
+    result: { created: number; updated: number; deleted: number; errors: string[] };
+  }> {
+    return this.client.post(
+      `/api/v1/projects/${projectId}/domains/change-sets/${changeSetId}/apply`,
+    );
+  }
+
+  /**
+   * Rollback a change set — reverses all applied operations.
+   * Creates become deletes, deletes become creates, updates revert to old values.
+   */
+  async rollbackChangeSet(projectId: string, changeSetId: string): Promise<{
+    id: string;
+    status: 'rolled_back';
+    result: { created: number; updated: number; deleted: number; errors: string[] };
+  }> {
+    return this.client.post(
+      `/api/v1/projects/${projectId}/domains/change-sets/${changeSetId}/rollback`,
+    );
+  }
+
   /**
    * Get SSL certificate info for a domain (status, expiry, method, auto-renew).
    */

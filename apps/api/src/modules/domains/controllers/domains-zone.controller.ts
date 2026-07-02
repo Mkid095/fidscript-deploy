@@ -1,5 +1,5 @@
 import {
-  Controller, Get, Post, Param, UseGuards, Req,
+  Controller, Get, Post, Param, Query, Body, UseGuards, Req,
   HttpCode, HttpStatus, NotFoundException, BadRequestException, Logger,
 } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
@@ -7,6 +7,7 @@ import { JwtAuthGuard } from '@/modules/auth/jwt-auth.guard';
 import { PrismaService } from '@/prisma/prisma.service';
 import { DomainAccessService } from '@/modules/domains/services/domain-access.service';
 import { DnsProviderFactory } from '@/modules/domains/providers/dns-provider-factory';
+import { DomainChangeSetService } from '@/modules/domains/services/domain-changeset.service';
 import { Request } from 'express';
 
 /**
@@ -36,6 +37,7 @@ export class DomainsZoneController {
     private prisma: PrismaService,
     private access: DomainAccessService,
     private factory: DnsProviderFactory,
+    private changeSetService: DomainChangeSetService,
   ) {}
 
   /**
@@ -186,5 +188,108 @@ export class DomainsZoneController {
       domain: domain.domain,
       ...plan,
     };
+  }
+
+  // ── Change Sets + Rollback ────────────────────────────────────────────────
+
+  /**
+   * List change sets for a domain (audit trail).
+   */
+  @Get(':id/change-sets')
+  @ApiOperation({ summary: 'List DNS change sets for a domain' })
+  async listChangeSets(
+    @Param('projectId') projectId: string,
+    @Param('id') domainId: string,
+    @Req() req: Request,
+    @Query('limit') limit?: string,
+  ) {
+    const userId = (req as any).user?.userId ?? 'system';
+    await this.access.ensureAccess(userId, projectId);
+    return this.changeSetService.listChangeSets(domainId, {
+      limit: limit ? parseInt(limit, 10) : undefined,
+    });
+  }
+
+  /**
+   * Get managed DNS records for a domain (ownership inventory).
+   */
+  @Get(':id/managed-records')
+  @ApiOperation({ summary: 'Get managed DNS records for a domain' })
+  async getManagedRecords(
+    @Param('projectId') projectId: string,
+    @Param('id') domainId: string,
+    @Req() req: Request,
+  ) {
+    const userId = (req as any).user?.userId ?? 'system';
+    await this.access.ensureAccess(userId, projectId);
+    const records = await this.changeSetService.getManagedRecords(domainId);
+    return { records };
+  }
+
+  /**
+   * Import existing provider records into the managed records table.
+   * Records not already tracked are marked as 'imported' (never auto-deleted).
+   */
+  @Post(':id/import-managed-records')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Import provider records into managed records table' })
+  async importManagedRecords(
+    @Param('projectId') projectId: string,
+    @Param('id') domainId: string,
+    @Req() req: Request,
+  ) {
+    const userId = (req as any).user?.userId ?? 'system';
+    await this.access.ensureAccess(userId, projectId);
+    return this.changeSetService.importProviderRecords(domainId);
+  }
+
+  /**
+   * Create a change set from a list of operations.
+   * Does NOT apply — use POST /change-sets/:id/apply to execute.
+   */
+  @Post(':id/change-sets')
+  @HttpCode(HttpStatus.CREATED)
+  @ApiOperation({ summary: 'Create a DNS change set (pending — not yet applied)' })
+  async createChangeSet(
+    @Param('projectId') projectId: string,
+    @Param('id') domainId: string,
+    @Body() body: { operations: Array<Record<string, unknown>> },
+    @Req() req: Request,
+  ) {
+    const userId = (req as any).user?.userId ?? 'system';
+    await this.access.ensureAccess(userId, projectId);
+    return this.changeSetService.createChangeSet(domainId, projectId, body.operations as any, userId);
+  }
+
+  /**
+   * Apply a change set — executes all planned operations atomically.
+   */
+  @Post('change-sets/:changeSetId/apply')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Apply a DNS change set' })
+  async applyChangeSet(
+    @Param('projectId') projectId: string,
+    @Param('changeSetId') changeSetId: string,
+    @Req() req: Request,
+  ) {
+    const userId = (req as any).user?.userId ?? 'system';
+    await this.access.ensureAccess(userId, projectId);
+    return this.changeSetService.applyChangeSet(changeSetId);
+  }
+
+  /**
+   * Rollback a change set — reverses all applied operations.
+   */
+  @Post('change-sets/:changeSetId/rollback')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Rollback a DNS change set' })
+  async rollbackChangeSet(
+    @Param('projectId') projectId: string,
+    @Param('changeSetId') changeSetId: string,
+    @Req() req: Request,
+  ) {
+    const userId = (req as any).user?.userId ?? 'system';
+    await this.access.ensureAccess(userId, projectId);
+    return this.changeSetService.rollbackChangeSet(changeSetId, userId);
   }
 }

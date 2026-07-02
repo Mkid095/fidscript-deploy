@@ -36,6 +36,7 @@ import { DomainEmailKeyService } from '@/modules/domains/services/domain-email-k
 import { DomainEmailRecordsService } from '@/modules/domains/services/domain-email-records.service';
 import { DomainActivityService } from '@/modules/domains/services/domain-activity.service';
 import { DomainNotificationService } from '@/modules/domains/services/domain-notification.service';
+import { DomainChangeSetService } from '@/modules/domains/services/domain-changeset.service';
 import { CloudflareOAuthService } from '@/modules/domains/services/cloudflare-oauth.service';
 import { CloudflareOAuthController } from '@/modules/domains/controllers/cloudflare-oauth.controller';
 import { EventsModule } from '@/modules/events/events.module';
@@ -80,6 +81,7 @@ import { RedisModule } from '@/modules/redis/redis.module';
     DomainEmailRecordsService,
     DomainActivityService,
     DomainNotificationService,
+    DomainChangeSetService,
     CloudflareOAuthService,
   ],
   exports: [
