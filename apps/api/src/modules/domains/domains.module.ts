@@ -2,6 +2,7 @@ import { Module } from '@nestjs/common';
 import { DomainsController } from '@/modules/domains/controllers/domains.controller';
 import { DomainsZoneController } from '@/modules/domains/controllers/domains-zone.controller';
 import { NotificationsController } from '@/modules/domains/controllers/notifications.controller';
+import { DomainTemplatesController } from '@/modules/domains/controllers/domain-templates.controller';
 import { DomainsService } from '@/modules/domains/services/domains.service';
 import { DomainCrudService } from '@/modules/domains/services/domain-crud.service';
 import { DomainListService } from '@/modules/domains/services/domain-list.service';
@@ -37,6 +38,8 @@ import { DomainEmailRecordsService } from '@/modules/domains/services/domain-ema
 import { DomainActivityService } from '@/modules/domains/services/domain-activity.service';
 import { DomainNotificationService } from '@/modules/domains/services/domain-notification.service';
 import { DomainChangeSetService } from '@/modules/domains/services/domain-changeset.service';
+import { DomainPropagationService } from '@/modules/domains/services/domain-propagation.service';
+import { DomainTemplateService } from '@/modules/domains/services/domain-template.service';
 import { CloudflareOAuthService } from '@/modules/domains/services/cloudflare-oauth.service';
 import { CloudflareOAuthController } from '@/modules/domains/controllers/cloudflare-oauth.controller';
 import { EventsModule } from '@/modules/events/events.module';
@@ -44,7 +47,7 @@ import { RedisModule } from '@/modules/redis/redis.module';
 
 @Module({
   imports: [EventsModule, RedisModule],
-  controllers: [DomainsController, DomainsZoneController, NotificationsController, CloudflareOAuthController],
+  controllers: [DomainsController, DomainsZoneController, NotificationsController, DomainTemplatesController, CloudflareOAuthController],
   providers: [
     CloudflareZoneService,
     CloudflareDnsProvider,
@@ -82,6 +85,8 @@ import { RedisModule } from '@/modules/redis/redis.module';
     DomainActivityService,
     DomainNotificationService,
     DomainChangeSetService,
+    DomainPropagationService,
+    DomainTemplateService,
     CloudflareOAuthService,
   ],
   exports: [

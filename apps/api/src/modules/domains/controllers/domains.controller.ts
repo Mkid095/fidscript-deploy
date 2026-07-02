@@ -13,6 +13,7 @@ import { DomainRepairService } from '@/modules/domains/services/domain-repair.se
 import { DomainDnsDetectionService } from '@/modules/domains/services/domain-dns-detection.service';
 import { DomainEmailKeyService } from '@/modules/domains/services/domain-email-key.service';
 import { DomainEmailRecordsService } from '@/modules/domains/services/domain-email-records.service';
+import { DomainPropagationService } from '@/modules/domains/services/domain-propagation.service';
 import { UpdateRepairPolicyDto, TriggerRepairDto } from '@/modules/domains/dto/domain-repair.dto';
 import { AddDomainDto } from '@/modules/domains/dto/add-domain.dto';
 import { Request } from 'express';
@@ -31,6 +32,7 @@ export class DomainsController {
     private dnsDetection: DomainDnsDetectionService,
     private emailKeyService: DomainEmailKeyService,
     private emailRecordsService: DomainEmailRecordsService,
+    private propagationService: DomainPropagationService,
     private prisma: PrismaService,
   ) {}
 
@@ -271,5 +273,27 @@ export class DomainsController {
     const user = req.user as { userId: string };
     await this.accessService.ensureAccess(user.userId, projectId);
     return this.repairService.triggerRepair(domainId, dto);
+  }
+
+  @Get(':id/propagation')
+  @ApiOperation({ summary: 'Check DNS propagation across major resolvers' })
+  async checkPropagation(
+    @Req() req: Request,
+    @Param('projectId') projectId: string,
+    @Param('id') domainId: string,
+    @Query('type') recordType?: string,
+    @Query('name') recordName?: string,
+    @Query('expected') expectedValue?: string,
+  ) {
+    const user = req.user as { userId: string };
+    await this.accessService.ensureAccess(user.userId, projectId);
+
+    // If specific record provided, check just that one
+    if (recordType && recordName && expectedValue) {
+      return this.propagationService.checkPropagation(recordName, recordType, expectedValue);
+    }
+
+    // Otherwise check all managed records for the domain
+    return this.propagationService.checkDomainPropagation(domainId);
   }
 }

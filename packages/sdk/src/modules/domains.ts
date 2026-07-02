@@ -571,6 +571,48 @@ export class DomainsModule {
     );
   }
 
+  // ── Propagation Tracking ──────────────────────────────────────────────────
+
+  /**
+   * Check DNS propagation across major public resolvers (Cloudflare, Google, Quad9, etc.).
+   * If recordType/name/expected are provided, checks a single record.
+   * Otherwise checks all managed records for the domain.
+   */
+  async checkPropagation(projectId: string, domainId: string, options?: {
+    type?: string;
+    name?: string;
+    expected?: string;
+  }): Promise<{
+    domain: string;
+    records?: Array<{
+      domain: string;
+      recordType: string;
+      expectedValue: string;
+      checks: Array<{
+        resolver: string;
+        location: string;
+        server: string;
+        status: 'propagated' | 'pending' | 'failed';
+        value: string | null;
+        responseTimeMs: number;
+      }>;
+      propagated: number;
+      total: number;
+      percentage: number;
+      fullyPropagated: boolean;
+    }>;
+    overallPercentage?: number;
+  }> {
+    const params: Record<string, string> = {};
+    if (options?.type) params.type = options.type;
+    if (options?.name) params.name = options.name;
+    if (options?.expected) params.expected = options.expected;
+    return this.client.get(
+      `/api/v1/projects/${projectId}/domains/${domainId}/propagation`,
+      params,
+    );
+  }
+
   /**
    * Get SSL certificate info for a domain (status, expiry, method, auto-renew).
    */
@@ -634,5 +676,52 @@ export class DomainsModule {
     return this.client.get<DomainWizardStatus>(
       `/api/v1/projects/${projectId}/domains/wizard/${domainId}`,
     );
+  }
+
+  // ── Domain Templates ──────────────────────────────────────────────────────
+
+  /**
+   * List all available domain configuration templates.
+   */
+  async listTemplates(options?: {
+    category?: string;
+    popularOnly?: boolean;
+  }): Promise<{
+    templates: Array<{
+      id: string;
+      name: string;
+      description: string;
+      icon: string;
+      category: string;
+      capabilities: Record<string, boolean>;
+      types: string[];
+      records: Array<{ type: string; name: string; valueTemplate: string; ttl: number; priority?: number }>;
+      sslEnabled: boolean;
+      wildcardEnabled: boolean;
+      popular: boolean;
+    }>;
+  }> {
+    const params: Record<string, string> = {};
+    if (options?.category) params.category = options.category;
+    if (options?.popularOnly) params.popular = 'true';
+    return this.client.get(`/api/v1/domain-templates`, params);
+  }
+
+  /**
+   * Get a single domain template by ID.
+   */
+  async getTemplate(id: string): Promise<{
+    id: string;
+    name: string;
+    description: string;
+    icon: string;
+    category: string;
+    capabilities: Record<string, boolean>;
+    types: string[];
+    records: Array<{ type: string; name: string; valueTemplate: string; ttl: number; priority?: number }>;
+    sslEnabled: boolean;
+    wildcardEnabled: boolean;
+  }> {
+    return this.client.get(`/api/v1/domain-templates/${id}`);
   }
 }
