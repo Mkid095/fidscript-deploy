@@ -459,6 +459,12 @@ model Domain {
   isCustom          Boolean      @default(false) @map("is_custom")
   isPrimary         Boolean      @default(false) @map("is_primary") // primary domain for this deployment
   apexDomain        Boolean      @default(false) @map("apex_domain") // true for root domains (example.com)
+  // The apex zone this domain belongs to (e.g. example.com for api.example.com).
+  // Derived at creation time — no recursive lookups needed later.
+  zoneDomain        String?      @map("zone_domain") @db.VarChar(255)
+  // Opt-in wildcard routing: *.zoneDomain → this deployment. Off by default (safety).
+  wildcardEnabled   Boolean      @default(false) @map("wildcard_enabled")
+  wildcardTarget    String?      @map("wildcard_target") @db.VarChar(255) // CNAME target for the wildcard
   type              DomainType[] @default([]) @map("type") // primary purpose(s) of this domain
   // Capabilities: fine-grained flags for what this domain can do.
   // Populated automatically based on type, but can be overridden per-domain.
@@ -496,6 +502,7 @@ model Domain {
   incidents     DomainIncident[]
   repairPolicy  DomainRepairPolicy?
   repairRuns    DomainRepairRun[]
+  emailKeys     DomainEmailKey[]
 
   @@unique([projectId, domain])
   @@map("domains")
@@ -507,9 +514,13 @@ model Domain {
 model DomainConnection {
   id             String   @id @default(uuid())
   projectId      String   @map("project_id")
-  provider       String   @db.VarChar(50) // 'CLOUDLARE' | 'ROUTE53' | 'DIGITALOCEAN'
-  encryptedToken String   @map("encrypted_token") @db.Text // AES-256-GCM ciphertext
+  provider       String   @db.VarChar(50) // 'CLOUDFLARE' | 'ROUTE53' | 'GODADDY' | 'NAMECHEAP'
+  encryptedToken String   @map("encrypted_token") @db.Text // AES-256-GCM ciphertext (OAuth token / API key)
   tokenId        String?  @map("token_id") @db.VarChar(255) // provider's token ID (for audit/invalidation)
+  // Provider's zone ID for the connected zone — avoids repeated zone lookups
+  externalZoneId String?  @map("external_zone_id") @db.VarChar(255)
+  // Provider-specific credentials (AWS access key, GoDaddy API key, etc.) — encrypted
+  credentials    Json?    @map("credentials")
   permissions    Json     @default("{}") // granted permissions (Zone:Read, DNS:Edit, etc.)
   email          String?  @db.VarChar(255) // provider account email (cloudflare)
   lastVerifiedAt DateTime @map("last_verified_at") @db.Timestamptz
@@ -518,6 +529,32 @@ model DomainConnection {
   domains Domain[]
 
   @@map("dns_connections")
+  @@schema("projects")
+}
+
+// =============================================
+// DOMAIN EMAIL KEYS (DKIM)
+// =============================================
+
+// DKIM key pairs used for email signing. Private key is encrypted at rest.
+// Supports multiple selectors (default, selector1, selector2) for rotation.
+// Key rotation is explicit — repair never regenerates keys to preserve
+// DKIM continuity for existing mail receivers (Outlook, Gmail, etc.).
+model DomainEmailKey {
+  id                   String   @id @default(uuid())
+  domainId             String   @map("domain_id")
+  selector             String   @db.VarChar(100) // e.g. "default", "selector1"
+  publicKey            String   @db.Text // base64-encoded public key
+  privateKeyEncrypted  String   @map("private_key_encrypted") @db.Text // AES-256-GCM ciphertext
+  algorithm            String   @default("ed25519") @db.VarChar(20) // 'ed25519' | 'rsa'
+  active               Boolean  @default(true) // only one active key per selector
+  createdAt            DateTime @default(now()) @map("created_at") @db.Timestamptz
+
+  domain               Domain   @relation(fields: [domainId], references: [id], onDelete: Cascade)
+
+  @@unique([domainId, selector])
+  @@index([domainId, active])
+  @@map("domain_email_keys")
   @@schema("projects")
 }
 
@@ -1761,6 +1798,29 @@ model InstallationSettings {
   updatedAt      DateTime   @updatedAt @map("updated_at") @db.Timestamptz
 
   @@map("installation_settings")
+  @@schema("platform")
+}
+
+// =============================================
+// INTEGRATION PROVIDERS (platform-wide third-party credentials)
+// =============================================
+
+// Stores credentials for third-party services: AWS (Route53/SES/S3),
+// GoDaddy, Namecheap, GitHub, Google, etc. One row per provider.
+// Credentials are encrypted in the `config` JSON — never stored plaintext.
+// This scales better than adding columns to InstallationSettings forever.
+model IntegrationProvider {
+  id          String    @id @default(uuid())
+  provider    String    @db.VarChar(50) // 'cloudflare' | 'aws' | 'godaddy' | 'namecheap' | 'github' | 'google' | 'resend'
+  enabled     Boolean   @default(false)
+  // Encrypted credentials JSON: { accessKeyId, secretAccessKey, region } for AWS, etc.
+  config      Json      @default("{}") @db.Text
+  lastSyncAt  DateTime? @map("last_sync_at") @db.Timestamptz
+  createdAt   DateTime  @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt   DateTime  @updatedAt @map("updated_at") @db.Timestamptz
+
+  @@unique([provider])
+  @@map("integration_providers")
   @@schema("platform")
 }
 

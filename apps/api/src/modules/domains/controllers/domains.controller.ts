@@ -4,12 +4,15 @@ import {
 } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { JwtAuthGuard } from '@/modules/auth/jwt-auth.guard';
+import { PrismaService } from '@/prisma/prisma.service';
 import { DomainsService } from '@/modules/domains/services/domains.service';
 import { DomainReconciliationService } from '@/modules/domains/services/domain-reconciliation.service';
 import { DomainAccessService } from '@/modules/domains/services/domain-access.service';
 import { DomainWizardService } from '@/modules/domains/services/domain-wizard.service';
 import { DomainRepairService } from '@/modules/domains/services/domain-repair.service';
 import { DomainDnsDetectionService } from '@/modules/domains/services/domain-dns-detection.service';
+import { DomainEmailKeyService } from '@/modules/domains/services/domain-email-key.service';
+import { DomainEmailRecordsService } from '@/modules/domains/services/domain-email-records.service';
 import { UpdateRepairPolicyDto, TriggerRepairDto } from '@/modules/domains/dto/domain-repair.dto';
 import { AddDomainDto } from '@/modules/domains/dto/add-domain.dto';
 import { Request } from 'express';
@@ -26,6 +29,9 @@ export class DomainsController {
     private repairService: DomainRepairService,
     private accessService: DomainAccessService,
     private dnsDetection: DomainDnsDetectionService,
+    private emailKeyService: DomainEmailKeyService,
+    private emailRecordsService: DomainEmailRecordsService,
+    private prisma: PrismaService,
   ) {}
 
   @Get()
@@ -115,6 +121,38 @@ export class DomainsController {
   async autoConfigureDnsRecords(@Req() req: Request, @Param('projectId') projectId: string, @Param('id') domainId: string) {
     const user = req.user as { userId: string };
     return this.domainsService.autoConfigureDnsRecords(user.userId, projectId, domainId);
+  }
+
+  @Post(':id/email-records/auto-configure')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Auto-configure email DNS records (MX, SPF, DKIM, DMARC)' })
+  async autoConfigureEmailRecords(@Req() req: Request, @Param('projectId') projectId: string, @Param('id') domainId: string) {
+    const user = req.user as { userId: string };
+    await this.accessService.ensureAccess(user.userId, projectId);
+    const domain = await this.prisma.domain.findFirst({ where: { id: domainId, projectId } });
+    if (!domain) throw new NotFoundException('Domain not found');
+    return this.emailRecordsService.autoConfigureEmailRecords(domainId);
+  }
+
+  @Get(':id/email-records/status')
+  @ApiOperation({ summary: 'Check status of email DNS records (MX, SPF, DKIM, DMARC)' })
+  async getEmailRecordsStatus(@Req() req: Request, @Param('projectId') projectId: string, @Param('id') domainId: string) {
+    const user = req.user as { userId: string };
+    await this.accessService.ensureAccess(user.userId, projectId);
+    const domain = await this.prisma.domain.findFirst({ where: { id: domainId, projectId } });
+    if (!domain) throw new NotFoundException('Domain not found');
+    return this.emailRecordsService.checkEmailRecords(domainId);
+  }
+
+  @Post(':id/dkim/rotate')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Rotate DKIM key for a domain (generates new key + selector)' })
+  async rotateDkim(@Req() req: Request, @Param('projectId') projectId: string, @Param('id') domainId: string) {
+    const user = req.user as { userId: string };
+    await this.accessService.ensureAccess(user.userId, projectId);
+    const domain = await this.prisma.domain.findFirst({ where: { id: domainId, projectId } });
+    if (!domain) throw new NotFoundException('Domain not found');
+    return this.emailKeyService.rotateKey(domainId, domain.domain);
   }
 
   @Get(':id/ssl')

@@ -3,6 +3,7 @@ import { PrismaService } from '@/prisma/prisma.service';
 import { EventService } from '@/modules/events/event.service';
 import { DnsProvider } from '@/modules/domains/providers/dns-provider.interface';
 import { DomainSslService } from './domain-ssl.service';
+import { DomainEmailKeyService } from './domain-email-key.service';
 import { DomainRepairPlannerService, RepairType } from './domain-repair-planner.service';
 
 export type RepairStatus = 'planned' | 'approved' | 'running' | 'completed' | 'failed' | 'requires_approval';
@@ -37,6 +38,7 @@ export class DomainRepairExecutorService {
     private prisma: PrismaService,
     private eventService: EventService,
     private ssl: DomainSslService,
+    private emailKeyService: DomainEmailKeyService,
     @Inject('DNS_PROVIDER') private dnsProvider: DnsProvider,
   ) {}
 
@@ -167,8 +169,13 @@ export class DomainRepairExecutorService {
         break;
 
       case 'dkim_recreated':
-        // DKIM requires a new key pair — skip auto-repair for now
-        throw new Error('DKIM repair requires manual key rotation — not yet auto-repairable');
+        // Recreate the DKIM DNS TXT record using the EXISTING key.
+        // NEVER regenerate the key during repair — that would break DKIM
+        // continuity for existing mail receivers (Outlook, Gmail, etc.)
+        // that cache the selector→public key mapping.
+        // Key rotation must be explicitly triggered via the DKIM rotate endpoint.
+        await this.repairDkimRecord(domain);
+        break;
 
       default:
         throw new Error(`Unknown repair action: ${actionType}`);
@@ -276,6 +283,44 @@ export class DomainRepairExecutorService {
       content: `v=DMARC1; p=quarantine; rua=mailto:dmarc@${domain.domain}`, ttl: 300,
     });
     this.logger.log(`[repair] DMARC record recreated for ${domain.domain}`);
+  }
+
+  /**
+   * Recreate the DKIM DNS TXT record using the EXISTING key.
+   * This does NOT regenerate the key — it only recreates the DNS record
+   * if it's missing or corrupted. Key regeneration requires explicit
+   * rotation via the DKIM rotate endpoint (preserves receiver continuity).
+   */
+  private async repairDkimRecord(domain: { id: string; domain: string; dnsMode: string; dnsConnection: { provider: string } | null }) {
+    if (domain.dnsMode !== 'cloudflare_auto' || !domain.dnsConnection) {
+      throw new Error('Auto-DNS not configured — cannot auto-repair DKIM');
+    }
+
+    // Get the DNS record info from the existing key (NO regeneration)
+    const dkimDns = await this.emailKeyService.getDnsRecord(domain.id, 'default', domain.domain);
+    if (!dkimDns) {
+      throw new Error(
+        'No DKIM key found for this domain. Use the DKIM rotate endpoint to generate a new key — ' +
+        'auto-repair cannot create keys (would break DKIM continuity for existing mail receivers).',
+      );
+    }
+
+    const zoneId = await this.dnsProvider.getZoneId(domain.domain);
+    if (!zoneId) throw new Error(`No zone for ${domain.domain}`);
+
+    // Delete any stale DKIM TXT records
+    const existing = await this.dnsProvider.listRecords({ zoneId, name: dkimDns.name, type: 'TXT' });
+    await Promise.all(existing.map(r => this.dnsProvider.deleteRecord({ zoneId, recordId: r.id })));
+
+    // Recreate using the existing public key
+    await this.dnsProvider.createRecord({
+      zoneId,
+      type: 'TXT',
+      name: dkimDns.name,
+      content: dkimDns.content,
+      ttl: 3600,
+    });
+    this.logger.log(`[repair] DKIM record recreated for ${domain.domain} (using existing key)`);
   }
 
   // ── Event helper ──────────────────────────────────────────────────────────

@@ -351,6 +351,118 @@ export class DomainsModule {
   }
 
   /**
+   * Auto-configure email DNS records (MX, SPF, DKIM, DMARC) for a domain.
+   * Requires the domain to be verified (dnsStatus = ACTIVE).
+   * Generates a DKIM key pair if none exists, then creates all email records.
+   */
+  async autoConfigureEmailRecords(projectId: string, domainId: string): Promise<{
+    mx: number;
+    spf: boolean;
+    dkim: boolean;
+    dmarc: boolean;
+    records: Array<{ type: string; name: string; content: string }>;
+  }> {
+    return this.client.post(
+      `/api/v1/projects/${projectId}/domains/${domainId}/email-records/auto-configure`,
+    );
+  }
+
+  /**
+   * Check the status of email DNS records for a domain.
+   * Returns which records exist (MX, SPF, DKIM, DMARC).
+   */
+  async getEmailRecordsStatus(projectId: string, domainId: string): Promise<{
+    mx: boolean;
+    spf: boolean;
+    dkim: boolean;
+    dmarc: boolean;
+    details: Array<{ type: string; name: string; status: 'ok' | 'missing' }>;
+  }> {
+    return this.client.get(
+      `/api/v1/projects/${projectId}/domains/${domainId}/email-records/status`,
+    );
+  }
+
+  /**
+   * Rotate the DKIM key for a domain.
+   * Generates a new key with a new selector, keeping old keys for continuity.
+   * Returns the new DNS record info to publish.
+   */
+  async rotateDkim(projectId: string, domainId: string): Promise<{
+    selector: string;
+    publicKey: string;
+    dnsName: string;
+    dnsContent: string;
+  }> {
+    return this.client.post(
+      `/api/v1/projects/${projectId}/domains/${domainId}/dkim/rotate`,
+    );
+  }
+
+  /**
+   * Import existing DNS records from the provider's zone.
+   * Read-only — fetches all records without modifying anything.
+   * Call this before auto-configuration to see what already exists.
+   */
+  async importZone(projectId: string, domainId: string): Promise<{
+    domain: string;
+    zoneImported: number;
+    warnings: string[];
+    records: Array<{ id: string; type: string; name: string; content: string; ttl?: number }>;
+  }> {
+    return this.client.post(
+      `/api/v1/projects/${projectId}/domains/${domainId}/import-zone`,
+    );
+  }
+
+  /**
+   * Sync platform-managed DNS records with the provider's actual state.
+   * Never deletes records the platform didn't create.
+   */
+  async syncZone(projectId: string, domainId: string): Promise<{
+    created: number;
+    updated: number;
+    deleted: number;
+    warnings: string[];
+  }> {
+    return this.client.post(
+      `/api/v1/projects/${projectId}/domains/${domainId}/sync-zone`,
+    );
+  }
+
+  /**
+   * Export all DNS records for a domain's zone as JSON.
+   */
+  async exportZone(projectId: string, domainId: string): Promise<{
+    domain: string;
+    zoneId: string;
+    zoneName: string;
+    provider: string;
+    exportedAt: string;
+    recordCount: number;
+    records: Array<{ id: string; type: string; name: string; content: string; ttl?: number }>;
+  }> {
+    return this.client.get(
+      `/api/v1/projects/${projectId}/domains/${domainId}/export-zone`,
+    );
+  }
+
+  /**
+   * Preview DNS changes that sync would make (dry run).
+   * Returns create/update/delete arrays + warnings before applying.
+   */
+  async getDnsPlan(projectId: string, domainId: string): Promise<{
+    create: Array<{ type: string; name: string; content: string }>;
+    update: Array<{ type: string; name: string; content: string }>;
+    delete: Array<{ type: string; name: string; content: string }>;
+    warnings: string[];
+  }> {
+    return this.client.post(
+      `/api/v1/projects/${projectId}/domains/${domainId}/dns-plan`,
+    );
+  }
+
+  /**
    * Get SSL certificate info for a domain (status, expiry, method, auto-renew).
    */
   async getSsl(projectId: string, domainId: string): Promise<DomainSslInfo> {

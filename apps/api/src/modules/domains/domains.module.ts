@@ -1,5 +1,6 @@
 import { Module } from '@nestjs/common';
 import { DomainsController } from '@/modules/domains/controllers/domains.controller';
+import { DomainsZoneController } from '@/modules/domains/controllers/domains-zone.controller';
 import { DomainsService } from '@/modules/domains/services/domains.service';
 import { DomainCrudService } from '@/modules/domains/services/domain-crud.service';
 import { DomainListService } from '@/modules/domains/services/domain-list.service';
@@ -18,6 +19,7 @@ import { DomainSslService } from '@/modules/domains/services/domain-ssl.service'
 import { CloudflareDnsProvider } from '@/modules/domains/providers/cloudflare-platform.service';
 import { CloudflareZoneService } from '@/modules/domains/providers/cloudflare-zone.service';
 import { CloudflareDnsMappersService } from '@/modules/domains/providers/cloudflare-dns-mappers.service';
+import { DnsProviderFactory } from '@/modules/domains/providers/dns-provider-factory';
 import { DomainReconciliationService } from '@/modules/domains/services/domain-reconciliation.service';
 import { DomainReconciliationQueueService } from '@/modules/domains/services/domain-reconciliation-queue.service';
 import { DomainReconciliationWorker } from '@/modules/domains/services/domain-reconciliation-worker.service';
@@ -29,6 +31,8 @@ import { DomainRepairExecutorService } from '@/modules/domains/services/domain-r
 import { DomainRepairQueueService } from '@/modules/domains/services/domain-repair-queue.service';
 import { DomainRepairWorker } from '@/modules/domains/services/domain-repair-worker.service';
 import { DomainDnsDetectionService } from '@/modules/domains/services/domain-dns-detection.service';
+import { DomainEmailKeyService } from '@/modules/domains/services/domain-email-key.service';
+import { DomainEmailRecordsService } from '@/modules/domains/services/domain-email-records.service';
 import { CloudflareOAuthService } from '@/modules/domains/services/cloudflare-oauth.service';
 import { CloudflareOAuthController } from '@/modules/domains/controllers/cloudflare-oauth.controller';
 import { EventsModule } from '@/modules/events/events.module';
@@ -36,11 +40,12 @@ import { RedisModule } from '@/modules/redis/redis.module';
 
 @Module({
   imports: [EventsModule, RedisModule],
-  controllers: [DomainsController, CloudflareOAuthController],
+  controllers: [DomainsController, DomainsZoneController, CloudflareOAuthController],
   providers: [
     CloudflareZoneService,
     CloudflareDnsProvider,
     CloudflareDnsMappersService,
+    DnsProviderFactory,
     { provide: 'DNS_PROVIDER', useExisting: CloudflareDnsProvider },
     DomainsService,
     DomainCrudService,
@@ -68,6 +73,8 @@ import { RedisModule } from '@/modules/redis/redis.module';
     DomainRepairQueueService,
     DomainRepairWorker,
     DomainDnsDetectionService,
+    DomainEmailKeyService,
+    DomainEmailRecordsService,
     CloudflareOAuthService,
   ],
   exports: [
@@ -94,6 +101,7 @@ import { RedisModule } from '@/modules/redis/redis.module';
     DomainRepairPlannerService,
     CloudflareZoneService,
     CloudflareDnsProvider,
+    DnsProviderFactory,
     'DNS_PROVIDER',
   ],
 })

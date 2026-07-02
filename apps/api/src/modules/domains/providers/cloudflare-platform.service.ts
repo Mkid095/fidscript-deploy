@@ -1,5 +1,8 @@
 import { Injectable, Logger } from '@nestjs/common';
-import { DnsProvider, DnsRecord } from '@/modules/domains/providers/dns-provider.interface';
+import {
+  DnsProvider, DnsRecord, CreateRecordOpts, UpdateRecordOpts, VerifyRecordOpts,
+  ZoneInfo, ImportResult, SyncResult, DnsPlan,
+} from '@/modules/domains/providers/dns-provider.interface';
 import { CloudflareZoneService } from '@/modules/domains/providers/cloudflare-zone.service';
 import { CloudflareDnsMappersService } from './cloudflare-dns-mappers.service';
 
@@ -14,10 +17,7 @@ export class CloudflareDnsProvider implements DnsProvider {
     private mappers: CloudflareDnsMappersService,
   ) {}
 
-  async createRecord(opts: {
-    zoneId: string; type: DnsRecord['type']; name: string;
-    content: string; ttl?: number; proxied?: boolean; priority?: number;
-  }): Promise<DnsRecord> {
+  async createRecord(opts: CreateRecordOpts): Promise<DnsRecord> {
     const { zoneId, type, name, content, ttl = 300, proxied = false, priority } = opts;
     const normalizedName = this.mappers.stripTrailingDot(name);
     this.logger.log(`[cloudflare] Creating ${type} record: ${normalizedName} -> ${content} (zone=${zoneId})`);
@@ -49,9 +49,10 @@ export class CloudflareDnsProvider implements DnsProvider {
     }
   }
 
-  async listRecords(opts: { zoneId: string; name: string; type?: DnsRecord['type'] }): Promise<DnsRecord[]> {
+  async listRecords(opts: { zoneId: string; name?: string; type?: DnsRecord['type'] }): Promise<DnsRecord[]> {
     const { zoneId, name, type } = opts;
-    const params: Record<string, string> = { name: this.mappers.stripTrailingDot(name) };
+    const params: Record<string, string> = {};
+    if (name) params['name'] = this.mappers.stripTrailingDot(name);
     if (type) params['type'] = type;
     const response = await this.zoneService.clientRef.get(`/zones/${zoneId}/dns_records`, { params });
     if (!response.data.success) {
@@ -61,10 +62,21 @@ export class CloudflareDnsProvider implements DnsProvider {
     return response.data.result.map((r: any) => this.mappers.mapRecord(r));
   }
 
-  async verifyRecord(opts: {
-    zoneId: string; name: string; type: DnsRecord['type'];
-    expectedContent: string; allowProxy?: boolean;
-  }): Promise<boolean> {
+  async updateRecord(opts: UpdateRecordOpts): Promise<void> {
+    const { zoneId, recordId, type, name, content, ttl = 300, proxied = false, priority } = opts;
+    const payload: Record<string, unknown> = {
+      type, name: this.mappers.stripTrailingDot(name), content, ttl, proxied,
+    };
+    if (type === 'MX' && priority !== undefined) payload['priority'] = priority;
+    const response = await this.zoneService.clientRef.put(`/zones/${zoneId}/dns_records/${recordId}`, payload);
+    if (!response.data.success) {
+      const errors = response.data.errors?.map((e: any) => e.message).join(', ') || 'unknown';
+      throw new Error(`Cloudflare API error updating DNS record ${recordId}: ${errors}`);
+    }
+    this.logger.log(`[cloudflare] Updated DNS record id=${recordId}`);
+  }
+
+  async verifyRecord(opts: VerifyRecordOpts): Promise<boolean> {
     const { zoneId, name, type, expectedContent, allowProxy = false } = opts;
     const records = await this.listRecords({ zoneId, name, type });
     if (records.length === 0) return false;
@@ -73,6 +85,46 @@ export class CloudflareDnsProvider implements DnsProvider {
 
   async getZoneId(domain: string): Promise<string | null> {
     return this.zoneService.getZoneId(domain);
+  }
+
+  async detectZone(domain: string): Promise<ZoneInfo | null> {
+    const zoneId = await this.zoneService.getZoneId(domain);
+    if (!zoneId) return null;
+    // Derive zone name by walking up domain labels
+    const labels = domain.split('.');
+    let zoneName = domain;
+    for (let i = 1; i < labels.length - 1; i++) {
+      zoneName = labels.slice(i).join('.');
+      const id = await this.zoneService.getZoneId(zoneName);
+      if (id === zoneId) break;
+    }
+    return { zoneId, zoneName };
+  }
+
+  async importZone(domain: string): Promise<ImportResult> {
+    const zoneInfo = await this.detectZone(domain);
+    if (!zoneInfo) {
+      return { imported: 0, warnings: [`No Cloudflare zone found for ${domain}`], records: [] };
+    }
+    const records = await this.listRecords({ zoneId: zoneInfo.zoneId });
+    this.logger.log(`[cloudflare] Imported ${records.length} records from zone ${zoneInfo.zoneName}`);
+    return {
+      imported: records.length,
+      warnings: [],
+      records,
+    };
+  }
+
+  async syncZone(_domainId: string): Promise<SyncResult> {
+    // Zone sync requires comparing platform-managed records vs actual records.
+    // For now, this is a no-op stub — full reconciliation is Phase 4.
+    this.logger.warn(`[cloudflare] syncZone not yet implemented for domain ${_domainId}`);
+    return { created: 0, updated: 0, deleted: 0, warnings: ['Sync not yet implemented'] };
+  }
+
+  async planZone(_domainId: string): Promise<DnsPlan> {
+    // DNS plan preview — full implementation in Phase 4.
+    return { create: [], update: [], delete: [], warnings: ['Plan not yet implemented'] };
   }
 
   async createPlatformSubdomain(subdomain: string): Promise<DnsRecord> {

@@ -1,6 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { PrismaService } from '@/prisma/prisma.service';
 import { DomainChecksService } from './domain-checks.service';
+import { DomainEmailKeyService } from './domain-email-key.service';
 
 export type WizardStage =
   | 'domain_entered'    // Domain added, no purpose selected
@@ -59,18 +60,21 @@ export class DomainWizardService {
   constructor(
     private prisma: PrismaService,
     private checks: DomainChecksService,
+    private emailKeyService: DomainEmailKeyService,
   ) {}
 
   // ── Required records by type ────────────────────────────────────────────────
 
   /**
    * Returns the list of required DNS records for a domain based on its purpose types.
+   * If domainId is provided, fetches the actual DKIM public key from the stored key pair.
    */
-  getRequiredRecords(
+  async getRequiredRecords(
     domainName: string,
     types: string[],
     provider: string,
-  ): Omit<WizardRecord, 'status'>[] {
+    domainId?: string,
+  ): Promise<Omit<WizardRecord, 'status'>[]> {
     const records: Omit<WizardRecord, 'status'>[] = [];
     const isApex = !domainName.startsWith('www.');
 
@@ -108,6 +112,13 @@ export class DomainWizardService {
 
     // Email records
     if (types.includes('EMAIL') || types.includes('INBOUND_EMAIL')) {
+      // Fetch the actual DKIM key if a domainId is provided
+      let dkimValue = 'v=DKIM1; k=ed25519; p=YOUR_DKIM_PUBLIC_KEY';
+      if (domainId) {
+        const dkimDns = await this.emailKeyService.getDnsRecord(domainId, 'default', domainName);
+        if (dkimDns) dkimValue = dkimDns.content;
+      }
+
       records.push(
         { id: 'mx1', type: 'MX', name: '@', value: `mx1.${domainName}`, priority: 10, ttl: 300, category: 'email' },
         { id: 'mx2', type: 'MX', name: '@', value: `mx2.${domainName}`, priority: 20, ttl: 300, category: 'email' },
@@ -123,14 +134,14 @@ export class DomainWizardService {
           id: 'dkim',
           type: 'TXT',
           name: `default._domainkey.${domainName}`,
-          value: 'v=DKIM1; k=ed25519; p=YOUR_DKIM_PUBLIC_KEY',
+          value: dkimValue,
           ttl: 300,
           category: 'email',
         },
         {
           id: 'dmarc',
           type: 'TXT',
-          name: '_dmarc',
+          name: `_dmarc.${domainName}`,
           value: `v=DMARC1; p=quarantine; rua=mailto:dmarc@${domainName}`,
           ttl: 300,
           category: 'email',
@@ -238,7 +249,7 @@ export class DomainWizardService {
     if (!domain) return null;
 
     const types: string[] = (domain.type as string[]) ?? [];
-    const requiredRecords = this.getRequiredRecords(domain.domain, types, domain.dnsMode);
+    const requiredRecords = await this.getRequiredRecords(domain.domain, types, domain.dnsMode, domain.id);
     const recordsWithStatus = await this.checkRecordPropagation(domain.domain, requiredRecords);
 
     const stage = this.deriveStage(domain, recordsWithStatus);
