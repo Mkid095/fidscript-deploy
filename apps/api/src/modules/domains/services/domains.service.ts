@@ -5,6 +5,7 @@ import { DomainHealthService } from '@/modules/domains/services/domain-health.se
 import { DomainCleanupService } from '@/modules/domains/services/domain-cleanup.service';
 import { DomainDnsService } from '@/modules/domains/services/domain-dns.service';
 import { DomainConnectionService } from '@/modules/domains/services/domain-connection.service';
+import { DomainSslService } from '@/modules/domains/services/domain-ssl.service';
 
 export { DomainCrudService } from '@/modules/domains/services/domain-crud.service';
 
@@ -17,6 +18,7 @@ export class DomainsService {
     private cleanup: DomainCleanupService,
     private dns: DomainDnsService,
     private connection: DomainConnectionService,
+    private ssl: DomainSslService,
   ) {}
 
   list(userId: string, projectId: string) {
@@ -65,5 +67,17 @@ export class DomainsService {
 
   autoConfigureDnsRecords(userId: string, projectId: string, domainId: string) {
     return this.health.autoConfigureDnsRecords(userId, projectId, domainId);
+  }
+
+  getSsl(userId: string, projectId: string, domainId: string) {
+    return this.ssl.getSsl(userId, projectId, domainId);
+  }
+
+  renewSsl(userId: string, projectId: string, domainId: string) {
+    return this.ssl.renewSsl(userId, projectId, domainId);
+  }
+
+  reissueSsl(userId: string, projectId: string, domainId: string) {
+    return this.ssl.reissueSsl(userId, projectId, domainId);
   }
 }

@@ -29,21 +29,37 @@ export class DomainHealthService {
     let dnsOk = false;
     let routingOk = false;
     let sslOk = false;
+    let emailOk = false;
     let sslExpiresInDays: number | null = null;
     let errorMessage = '';
 
     try {
-      [dnsOk, routingOk, sslOk, sslExpiresInDays] = await Promise.all([
+      const [dns, routing, ssl, sslExp, email] = await Promise.all([
         this.checks.checkDnsPropagation(domain),
         this.checks.checkHttpRouting(domain),
         this.checks.checkSsl(domain),
         this.checks.getSslExpiresInDays(domain),
+        this.checks.checkEmailRecords(domain),
       ]);
+      dnsOk = dns;
+      routingOk = routing;
+      sslOk = ssl;
+      sslExpiresInDays = sslExp;
+      emailOk = email;
     } catch (err) {
       errorMessage = err instanceof Error ? err.message : String(err);
     }
 
     const responseTimeMs = Date.now() - start;
+
+    // Health score: DNS 30 + SSL 30 + Email 20 + Routing 20 = 100
+    const checks = { dnsOk, routingOk, sslOk, emailOk };
+    const weights = { dnsOk: 30, routingOk: 20, sslOk: 30, emailOk: 20 };
+    const healthScore = Object.entries(checks).reduce(
+      (score, [key, ok]) => score + (ok ? weights[key as keyof typeof weights] : 0),
+      0,
+    );
+
     let healthStatus: 'ok' | 'degraded' | 'broken' = 'ok';
     if (!dnsOk || !routingOk) healthStatus = 'broken';
     else if (!sslOk) healthStatus = 'degraded';
@@ -54,6 +70,7 @@ export class DomainHealthService {
         dnsOk,
         routingOk,
         sslOk,
+        emailOk,
         responseTimeMs,
         sslExpiresInDays,
         status: healthStatus,
@@ -79,7 +96,7 @@ export class DomainHealthService {
         where: { id: domainId },
         data: { dnsStatus: 'ACTIVE', sslStatus: 'ACTIVE', sslIssuedAt: new Date() },
       });
-      await this.emit(domainId, domain.projectId, '', 'domain.verified', { domain: domain.domain });
+      await this.emit(domainId, domain.projectId, '', 'domains.verified', { domain: domain.domain, score: healthScore });
       this.logger.log(`[domains] Domain ${domain.domain} reached ACTIVE (SSL confirmed)`);
       return;
     }
@@ -89,7 +106,7 @@ export class DomainHealthService {
         where: { id: domainId },
         data: { dnsStatus: 'BROKEN' },
       });
-      await this.emit(domainId, domain.projectId, '', 'domain.broken', { domain: domain.domain, error: errorMessage });
+      await this.emit(domainId, domain.projectId, '', 'domains.health_changed', { domain: domain.domain, status: 'broken', score: healthScore });
       this.logger.warn(`[domains] Domain ${domain.domain} went BROKEN: ${errorMessage}`);
       return;
     }
@@ -99,8 +116,11 @@ export class DomainHealthService {
         where: { id: domainId },
         data: { dnsStatus: 'ACTIVE' },
       });
-      await this.emit(domainId, domain.projectId, '', 'domain.recovered', { domain: domain.domain });
+      await this.emit(domainId, domain.projectId, '', 'domains.recovered', { domain: domain.domain, score: healthScore });
       this.logger.log(`[domains] Domain ${domain.domain} recovered to ACTIVE`);
+    } else {
+      // Emit health_changed for any status change
+      await this.emit(domainId, domain.projectId, '', 'domains.health_changed', { domain: domain.domain, status: healthStatus, score: healthScore });
     }
   }
 
@@ -120,15 +140,32 @@ export class DomainHealthService {
       orderBy: { checkedAt: 'desc' },
     });
     if (!latest) return null;
+
+    // Compute weighted health score: DNS 30 + SSL 30 + Email 20 + Routing 20
+    const score = [
+      latest.dnsOk ? 30 : 0,
+      latest.routingOk ? 20 : 0,
+      latest.sslOk ? 30 : 0,
+      latest.emailOk ? 20 : 0,
+    ].reduce((a, b) => a + b, 0);
+
     return {
       dnsOk: latest.dnsOk,
       routingOk: latest.routingOk,
       sslOk: latest.sslOk,
+      emailOk: latest.emailOk,
       responseTimeMs: latest.responseTimeMs,
       sslExpiresInDays: latest.sslExpiresInDays,
-      status: latest.status,
+      status: latest.status as 'ok' | 'degraded' | 'broken',
       errorMessage: latest.errorMessage,
-      checkedAt: latest.checkedAt,
+      checkedAt: latest.checkedAt.toISOString(),
+      score,
+      breakdown: {
+        dns: latest.dnsOk ? 30 : 0,
+        routing: latest.routingOk ? 20 : 0,
+        ssl: latest.sslOk ? 30 : 0,
+        email: latest.emailOk ? 20 : 0,
+      },
     };
   }
 

@@ -459,6 +459,10 @@ model Domain {
   isCustom          Boolean      @default(false) @map("is_custom")
   isPrimary         Boolean      @default(false) @map("is_primary") // primary domain for this deployment
   apexDomain        Boolean      @default(false) @map("apex_domain") // true for root domains (example.com)
+  type              DomainType[] @default([]) @map("type") // primary purpose(s) of this domain
+  // Capabilities: fine-grained flags for what this domain can do.
+  // Populated automatically based on type, but can be overridden per-domain.
+  capabilities      Json         @default("{\"deployment\":false,\"email\":false,\"inboundEmail\":false,\"tracking\":false,\"api\":false,\"redirect\":false,\"sandbox\":false}") @map("capabilities")
   dnsMode           String       @default("manual") @map("dns_mode") // 'manual' | 'cloudflare_auto'
   redirectMode      String       @default("none") @map("redirect_mode") // 'none' | 'www_to_root' | 'root_to_www'
   sslEnabled        Boolean      @default(true) @map("ssl_enabled")
@@ -515,6 +519,7 @@ model DomainHealthCheck {
   dnsOk     Boolean @default(false) @map("dns_ok")
   routingOk Boolean @default(false) @map("routing_ok")
   sslOk     Boolean @default(false) @map("ssl_ok")
+  emailOk   Boolean @default(false) @map("email_ok") // MX/SPF/DKIM/DMARC checks
 
   responseTimeMs Int? @map("response_time_ms")
 
@@ -547,6 +552,19 @@ enum SslStatus {
   ACTIVE // Certificate issued and serving
   FAILED // Cert issuance or renewal failed
   EXPIRED // Cert was valid but has expired
+
+  @@schema("public")
+}
+
+// What this domain is primarily used for (each domain can have multiple capabilities).
+enum DomainType {
+  DEPLOYMENT   // Serves web application traffic
+  EMAIL        // Sending domain for outbound email
+  INBOUND_EMAIL // Receives and processes inbound mail
+  TRACKING     // Open/click tracking domain
+  API          // API subdomain (api.example.com)
+  REDIRECT     // Vanity redirect domain
+  SANDBOX      // Testing/development only
 
   @@schema("public")
 }

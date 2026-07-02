@@ -1,6 +1,6 @@
 'use client';
 
-import type { Domain, DomainHealth, DnsRecord } from '@fidscript/sdk';
+import type { Domain, DomainHealth, DnsRecord, DomainSslInfo } from '@fidscript/sdk';
 import { useEffect, useState, useCallback, useRef } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
@@ -8,7 +8,7 @@ import { Button, Card, Badge, Spinner, Toast, Modal } from '@fidscript/ui';
 
 import { useAuth } from '@/contexts/auth-context';
 
-type Tab = 'overview' | 'dns' | 'health' | 'email';
+type Tab = 'overview' | 'dns' | 'health' | 'email' | 'ssl';
 
 const STATUS_COLORS: Record<string, string> = {
   ok:       'bg-emerald-900 text-[var(--success)]',
@@ -20,12 +20,14 @@ const STATUS_COLORS: Record<string, string> = {
   PENDING:  'bg-[var(--rail)] text-[var(--text-muted)]',
   BROKEN:   'bg-red-900 text-[var(--danger)]',
   VALIDATING: 'bg-blue-900 text-[var(--accent)]',
+  ISSUING:  'bg-blue-900 text-[var(--accent)]',
+  FAILED:   'bg-red-900 text-[var(--danger)]',
+  EXPIRED:  'bg-red-900 text-[var(--danger)]',
 };
 
 function healthScore(health: DomainHealth | null): number {
   if (!health) return 0;
-  const checks = [health.dnsOk, health.routingOk, health.sslOk];
-  return Math.round((checks.filter(Boolean).length / checks.length) * 100);
+  return health.score ?? 0;
 }
 
 function CopyButton({ text }: { text: string }) {
@@ -56,6 +58,7 @@ export default function DomainDetailPage() {
   const [domain, setDomain] = useState<Domain | null>(null);
   const [health, setHealth] = useState<DomainHealth | null>(null);
   const [dnsRecords, setDnsRecords] = useState<DnsRecord[]>([]);
+  const [ssl, setSsl] = useState<DomainSslInfo | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<Tab>('dns');
@@ -63,16 +66,19 @@ export default function DomainDetailPage() {
   const [checkingHealth, setCheckingHealth] = useState(false);
   const [autoConfiguring, setAutoConfiguring] = useState(false);
   const [showAutoConfigModal, setShowAutoConfigModal] = useState(false);
+  const [renewingSsl, setRenewingSsl] = useState(false);
+  const [reissuingSsl, setReissuingSsl] = useState(false);
   const healthPollingRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  // ── Load domain + health + DNS records ─────────────────────────────────────
+  // ── Load domain + health + DNS records + SSL ───────────────────────────────
   const loadAll = useCallback(async () => {
     try {
       const sdk = getSdk();
-      const [domainData, healthData, dnsData] = await Promise.all([
+      const [domainData, healthData, dnsData, sslData] = await Promise.all([
         sdk.domains.get(domainId).catch(() => null),
         sdk.domains.getHealth(projectId, domainId).catch(() => null),
         sdk.domains.getDnsRecords(projectId, domainId).catch(() => null),
+        sdk.domains.getSsl(projectId, domainId).catch(() => null),
       ]);
       if (!domainData) {
         setError('Domain not found');
@@ -84,6 +90,7 @@ export default function DomainDetailPage() {
         const d = dnsData as { records?: DnsRecord[] };
         setDnsRecords(d.records ?? []);
       }
+      setSsl(sslData as DomainSslInfo | null);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to load domain');
     } finally {
@@ -144,6 +151,33 @@ export default function DomainDetailPage() {
     }
   }
 
+  // ── SSL actions ───────────────────────────────────────────────────────────
+  async function handleRenewSsl() {
+    setRenewingSsl(true);
+    try {
+      await getSdk().domains.renewSsl(projectId, domainId);
+      setToast({ message: 'SSL renewal initiated — certificate will be updated shortly', type: 'success' });
+      await loadAll();
+    } catch (err) {
+      setToast({ message: err instanceof Error ? err.message : 'SSL renewal failed', type: 'error' });
+    } finally {
+      setRenewingSsl(false);
+    }
+  }
+
+  async function handleReissueSsl() {
+    setReissuingSsl(true);
+    try {
+      await getSdk().domains.reissueSsl(projectId, domainId);
+      setToast({ message: 'SSL reissue initiated — new certificate will be issued shortly', type: 'success' });
+      await loadAll();
+    } catch (err) {
+      setToast({ message: err instanceof Error ? err.message : 'SSL reissue failed', type: 'error' });
+    } finally {
+      setReissuingSsl(false);
+    }
+  }
+
   const score = healthScore(health);
   const scoreColor = score >= 90 ? 'text-[var(--success)]' : score >= 60 ? 'text-yellow-400' : 'text-[var(--danger)]';
 
@@ -169,6 +203,7 @@ export default function DomainDetailPage() {
     { id: 'dns', label: 'DNS Records' },
     { id: 'health', label: 'Health' },
     { id: 'email', label: 'Email' },
+    { id: 'ssl', label: 'SSL' },
   ];
 
   return (
@@ -276,12 +311,16 @@ export default function DomainDetailPage() {
             {health ? (
               <div className="space-y-3">
                 {[
-                  { label: 'DNS Propagation', ok: health.dnsOk },
-                  { label: 'HTTP Routing', ok: health.routingOk },
-                  { label: 'SSL Certificate', ok: health.sslOk },
-                ].map(({ label, ok }) => (
+                  { label: 'DNS Propagation', ok: health.dnsOk, score: health.breakdown?.dns ?? 0 },
+                  { label: 'HTTP Routing', ok: health.routingOk, score: health.breakdown?.routing ?? 0 },
+                  { label: 'SSL Certificate', ok: health.sslOk, score: health.breakdown?.ssl ?? 0 },
+                  { label: 'Email DNS (MX/SPF)', ok: health.emailOk, score: health.breakdown?.email ?? 0 },
+                ].map(({ label, ok, score }) => (
                   <div key={label} className="flex items-center justify-between text-sm">
-                    <span className="text-[var(--text-muted)]">{label}</span>
+                    <div className="flex items-center gap-2">
+                      <span className="text-[var(--text-muted)]">{label}</span>
+                      <span className="text-xs text-[var(--text-dim)]">({score}pt)</span>
+                    </div>
                     <span className={`text-xs px-2 py-0.5 rounded-full ${ok ? 'bg-emerald-900 text-[var(--success)]' : 'bg-red-900 text-[var(--danger)]'}`}>
                       {ok ? '✓ OK' : '✗ Failed'}
                     </span>
@@ -396,11 +435,41 @@ export default function DomainDetailPage() {
       {/* ── Health ───────────────────────────────────────────────────────── */}
       {activeTab === 'health' && (
         <div className="space-y-6">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          {/* Score breakdown */}
+          <Card className="border border-[var(--rail)]" padding="lg">
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-sm font-semibold text-[var(--text)]">Health Score Breakdown</h2>
+              <span className={`text-3xl font-bold ${health && health.score >= 90 ? 'text-[var(--success)]' : health && health.score >= 60 ? 'text-yellow-400' : 'text-[var(--danger)]'}`}>
+                {health?.score ?? 0}<span className="text-lg text-[var(--text-muted)]">/100</span>
+              </span>
+            </div>
+            <div className="space-y-2">
+              {[
+                { label: 'DNS Propagation', score: health?.breakdown?.dns ?? 0, max: 30 },
+                { label: 'HTTP Routing', score: health?.breakdown?.routing ?? 0, max: 20 },
+                { label: 'SSL Certificate', score: health?.breakdown?.ssl ?? 0, max: 30 },
+                { label: 'Email DNS (MX/SPF)', score: health?.breakdown?.email ?? 0, max: 20 },
+              ].map(({ label, score, max }) => (
+                <div key={label} className="flex items-center gap-3 text-sm">
+                  <span className="w-40 text-[var(--text-muted)] shrink-0">{label}</span>
+                  <div className="flex-1 h-2 rounded-full bg-[var(--rail)] overflow-hidden">
+                    <div
+                      className={`h-full rounded-full transition-all ${score === max ? 'bg-[var(--success)]' : score > 0 ? 'bg-yellow-400' : 'bg-[var(--danger)]'}`}
+                      style={{ width: `${(score / max) * 100}%` }}
+                    />
+                  </div>
+                  <span className="text-xs text-[var(--text-muted)] w-10 text-right">{score}/{max}</span>
+                </div>
+              ))}
+            </div>
+          </Card>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
             {[
-              { label: 'DNS Propagation', ok: health?.dnsOk, description: 'Domain resolves correctly via public DNS' },
-              { label: 'HTTP Routing', ok: health?.routingOk, description: 'HTTP/HTTPS requests reach the server' },
-              { label: 'SSL Certificate', ok: health?.sslOk, description: 'Valid TLS certificate is present' },
+              { label: 'DNS Propagation', ok: health?.dnsOk, description: 'Domain resolves via public DNS' },
+              { label: 'HTTP Routing', ok: health?.routingOk, description: 'HTTP/HTTPS reaches the server' },
+              { label: 'SSL Certificate', ok: health?.sslOk, description: 'Valid TLS certificate present' },
+              { label: 'Email DNS (MX/SPF)', ok: health?.emailOk, description: 'MX + SPF records found' },
             ].map(({ label, ok, description }) => (
               <Card key={label} className={`border ${ok === true ? 'border-[var(--success)]/30' : ok === false ? 'border-[var(--danger)]/30' : 'border-[var(--rail)]'}`} padding="lg">
                 <div className="flex items-start justify-between mb-2">
@@ -446,6 +515,113 @@ export default function DomainDetailPage() {
               <span>Checking DNS propagation and SSL certificate…</span>
             </div>
           )}
+        </div>
+      )}
+
+      {/* ── SSL ─────────────────────────────────────────────────────────── */}
+      {activeTab === 'ssl' && (
+        <div className="space-y-6">
+          <Card className="border border-[var(--rail)]" padding="lg">
+            <div className="flex items-start justify-between mb-5">
+              <div>
+                <h2 className="text-sm font-semibold text-[var(--text)] mb-1">SSL Certificate</h2>
+                <p className="text-xs text-[var(--text-muted)]">
+                  {ssl?.method === 'letsencrypt' ? "Let's Encrypt" : ssl?.method ?? 'Unknown'} certificate
+                  {ssl?.autoRenew ? ' · Auto-renew enabled' : ''}
+                </p>
+              </div>
+              <Badge variant={ssl?.status === 'ACTIVE' ? 'success' : ssl?.status === 'ISSUING' ? 'info' : 'danger'}>
+                {ssl?.status ?? 'UNKNOWN'}
+              </Badge>
+            </div>
+
+            {ssl ? (
+              <dl className="space-y-3 text-sm mb-5">
+                {[
+                  ['Issuer', ssl.method === 'letsencrypt' ? "Let's Encrypt" : ssl.method],
+                  ['Issued', ssl.issuedAt ? new Date(ssl.issuedAt).toLocaleDateString() : 'N/A'],
+                  ['Expires', ssl.expiresAt ? new Date(ssl.expiresAt).toLocaleDateString() : 'N/A'],
+                  ['Auto-Renew', ssl.autoRenew ? 'Enabled' : 'Disabled'],
+                  ['Last Checked', ssl.lastCheckedAt ? new Date(ssl.lastCheckedAt).toLocaleDateString() : 'N/A'],
+                ].map(([label, value]) => (
+                  <div key={label} className="flex gap-4">
+                    <dt className="text-[var(--text-muted)] w-36 shrink-0">{label}</dt>
+                    <dd className="text-[var(--text)]">{value}</dd>
+                  </div>
+                ))}
+                {ssl.lastError && (
+                  <div className="rounded border border-[var(--danger)]/30 bg-[var(--danger)]/10 p-2.5 text-xs text-[var(--danger)]">
+                    Error: {ssl.lastError}
+                  </div>
+                )}
+                {!ssl.enabled && (
+                  <div className="rounded border border-yellow-500/30 bg-yellow-500/10 p-2.5 text-xs text-yellow-400">
+                    SSL is disabled for this domain.
+                  </div>
+                )}
+              </dl>
+            ) : (
+              <p className="text-sm text-[var(--text-muted)] mb-5">No SSL data available.</p>
+            )}
+
+            <div className="flex items-center gap-3">
+              <Button
+                variant="secondary"
+                size="sm"
+                loading={renewingSsl}
+                onClick={handleRenewSsl}
+                disabled={!ssl?.enabled || ssl?.status === 'ISSUING'}
+              >
+                Renew Certificate
+              </Button>
+              <Button
+                variant="ghost"
+                size="sm"
+                loading={reissuingSsl}
+                onClick={handleReissueSsl}
+                disabled={!ssl?.enabled || ssl?.status === 'ISSUING'}
+              >
+                Reissue Certificate
+              </Button>
+            </div>
+          </Card>
+
+          <Card className="border border-[var(--rail)]" padding="lg">
+            <h2 className="text-sm font-semibold text-[var(--text)] mb-3">SSL Health</h2>
+            <div className="space-y-2.5 text-sm">
+              {[
+                {
+                  label: 'Certificate Status',
+                  ok: ssl?.status === 'ACTIVE',
+                  detail: ssl?.status ?? 'Unknown',
+                },
+                {
+                  label: 'Renewal Status',
+                  ok: ssl?.autoRenew,
+                  detail: ssl?.autoRenew ? 'Auto-renew enabled' : 'Auto-renew disabled',
+                },
+                {
+                  label: 'Expiry Warning',
+                  ok: ssl?.expiresAt && new Date(ssl.expiresAt) > new Date(Date.now() + 30 * 86400000),
+                  detail: ssl?.expiresAt
+                    ? new Date(ssl.expiresAt) <= new Date(Date.now() + 30 * 86400000)
+                      ? `Expires in ${Math.ceil((new Date(ssl.expiresAt).getTime() - Date.now()) / 86400000)} days`
+                      : 'OK (>30 days)'
+                    : 'N/A',
+                },
+              ].map(({ label, ok, detail }) => (
+                <div key={label} className="flex items-center justify-between rounded border border-[var(--rail)] px-3 py-2">
+                  <span className="text-[var(--text-muted)]">{label}</span>
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs text-[var(--text-muted)]">{detail}</span>
+                    <span className={`text-xs px-1.5 py-0.5 rounded-full ${ok ? 'bg-emerald-900 text-[var(--success)]' : 'bg-yellow-900 text-yellow-400'}`}>
+                      {ok ? '✓' : '⚠'}
+                    </span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </Card>
         </div>
       )}
 

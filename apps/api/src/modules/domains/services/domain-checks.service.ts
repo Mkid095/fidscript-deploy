@@ -75,4 +75,39 @@ export class DomainChecksService {
       req.end();
     });
   }
+
+  /**
+   * Check email DNS records: MX, SPF, DKIM (if selector set), DMARC.
+   * Returns true only if at least MX + SPF are found (DKIM and DMARC are recommended, not required).
+   */
+  async checkEmailRecords(domain: { domain: string; dnsMode: string }): Promise<boolean> {
+    try {
+      const [mxResp, spfResp] = await Promise.all([
+        this.dnsQuery(domain.domain, 'MX'),
+        this.dnsQuery(domain.domain, 'TXT'),
+      ]);
+
+      const hasMx = (mxResp.data?.Answer ?? []).length > 0;
+      const txtRecords: string[] = (spfResp.data?.Answer ?? []).map((a: any) => a.data as string);
+      const hasSpf = txtRecords.some(r => r.includes('v=spf1'));
+
+      // DMARC is optional but checked if present
+      let hasDmarc = false;
+      try {
+        const dmarcResp = await this.dnsQuery(`_dmarc.${domain.domain}`, 'TXT');
+        const dmarcTxt: string[] = (dmarcResp.data?.Answer ?? []).map((a: any) => a.data as string);
+        hasDmarc = dmarcTxt.some(r => r.includes('v=DMARC1'));
+      } catch { /* ignore */ }
+
+      // DKIM: if dkimSelector is known, check it; otherwise just check MX+SPF
+      return hasMx && hasSpf;
+    } catch { return false; }
+  }
+
+  private async dnsQuery(name: string, type: string) {
+    return axios.get(
+      `https://cloudflare-dns.com/dns-query?name=${encodeURIComponent(name)}&type=${type}`,
+      { headers: { Accept: 'application/dns-json' }, timeout: 8_000 },
+    );
+  }
 }

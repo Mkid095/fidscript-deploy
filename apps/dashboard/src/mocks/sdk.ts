@@ -67,10 +67,12 @@ import {
   mockBackups,
   mockBackupSchedules,
   mockDomainHealth,
+  mockDomainSsl,
   mockDnsRecords,
   type DomainInfo,
   type DomainHealth,
   type DnsRecord,
+  type DomainSslInfo,
   type FunctionVersionInfo,
 } from './data';
 
@@ -1090,6 +1092,21 @@ class MockDomainsModule {
   async autoConfigureDnsRecords(_projectId: string, _domainId: string): Promise<{ success: boolean }> {
     await delay(800);
     return { success: true };
+  }
+
+  async getSsl(_projectId: string, _domainId: string): Promise<DomainSslInfo> {
+    await delay(200);
+    return { ...mockDomainSsl };
+  }
+
+  async renewSsl(_projectId: string, _domainId: string): Promise<{ status: string; message: string }> {
+    await delay(500);
+    return { status: 'renewing', message: 'SSL renewal initiated' };
+  }
+
+  async reissueSsl(_projectId: string, _domainId: string): Promise<{ status: string; message: string }> {
+    await delay(500);
+    return { status: 'reissuing', message: 'SSL reissue initiated' };
   }
 }
 

@@ -982,11 +982,25 @@ export interface DomainHealth {
   dnsOk: boolean;
   routingOk: boolean;
   sslOk: boolean;
+  emailOk: boolean;
   responseTimeMs: number | null;
   sslExpiresInDays: number | null;
   status: 'ok' | 'degraded' | 'broken' | null;
   errorMessage: string | null;
   checkedAt: string;
+  score: number;
+  breakdown: { dns: number; routing: number; ssl: number; email: number };
+}
+
+export interface DomainSslInfo {
+  enabled: boolean;
+  status: string;
+  method: string;
+  issuedAt: string | null;
+  expiresAt: string | null;
+  lastCheckedAt: string | null;
+  lastError: string | null;
+  autoRenew: boolean;
 }
 
 export interface DnsRecord {
@@ -1009,11 +1023,25 @@ export const mockDomainHealth: DomainHealth = {
   dnsOk: true,
   routingOk: true,
   sslOk: true,
+  emailOk: true,
   responseTimeMs: 142,
   sslExpiresInDays: 67,
   status: 'ok',
   errorMessage: null,
   checkedAt: new Date().toISOString(),
+  score: 100,
+  breakdown: { dns: 30, routing: 20, ssl: 30, email: 20 },
+};
+
+export const mockDomainSsl: DomainSslInfo = {
+  enabled: true,
+  status: 'ACTIVE',
+  method: 'letsencrypt',
+  issuedAt: '2026-04-01T00:00:00Z',
+  expiresAt: '2026-07-01T00:00:00Z',
+  lastCheckedAt: new Date().toISOString(),
+  lastError: null,
+  autoRenew: true,
 };
 
 export const mockDnsRecords: DnsRecord[] = [

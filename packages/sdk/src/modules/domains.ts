@@ -1,5 +1,17 @@
 import { FidscriptClient } from '../client';
 
+export type DomainType = 'DEPLOYMENT' | 'EMAIL' | 'INBOUND_EMAIL' | 'TRACKING' | 'API' | 'REDIRECT' | 'SANDBOX';
+
+export interface DomainCapabilities {
+  deployment: boolean;
+  email: boolean;
+  inboundEmail: boolean;
+  tracking: boolean;
+  api: boolean;
+  redirect: boolean;
+  sandbox: boolean;
+}
+
 export interface Domain {
   id: string;
   projectId: string;
@@ -8,6 +20,8 @@ export interface Domain {
   isCustom: boolean;
   isPrimary: boolean;
   apexDomain: boolean;
+  type: DomainType[];
+  capabilities: DomainCapabilities;
   dnsMode: string;
   redirectMode: string;
   sslEnabled: boolean;
@@ -34,11 +48,30 @@ export interface DomainHealth {
   dnsOk: boolean;
   routingOk: boolean;
   sslOk: boolean;
+  emailOk: boolean;
   responseTimeMs: number | null;
   sslExpiresInDays: number | null;
   status: DomainHealthStatus;
   errorMessage: string | null;
   checkedAt: string;
+  score: number; // 0–100 weighted score
+  breakdown: {
+    dns: number;     // 0 or 30
+    routing: number; // 0 or 20
+    ssl: number;     // 0 or 30
+    email: number;   // 0 or 20
+  };
+}
+
+export interface DomainSslInfo {
+  enabled: boolean;
+  status: string;
+  method: string;
+  issuedAt: string | null;
+  expiresAt: string | null;
+  lastCheckedAt: string | null;
+  lastError: string | null;
+  autoRenew: boolean;
 }
 
 export type DnsRecordCategory = 'deployment' | 'email' | 'verification';
@@ -164,6 +197,34 @@ export class DomainsModule {
   async autoConfigureDnsRecords(projectId: string, domainId: string): Promise<{ success: boolean }> {
     return this.client.post(
       `/api/v1/projects/${projectId}/domains/${domainId}/dns-records/auto-configure`,
+    );
+  }
+
+  /**
+   * Get SSL certificate info for a domain (status, expiry, method, auto-renew).
+   */
+  async getSsl(projectId: string, domainId: string): Promise<DomainSslInfo> {
+    return this.client.get<DomainSslInfo>(
+      `/api/v1/projects/${projectId}/domains/${domainId}/ssl`,
+    );
+  }
+
+  /**
+   * Renew the SSL certificate for a domain. Runs asynchronously —
+   * poll getSsl() until status returns to ACTIVE.
+   */
+  async renewSsl(projectId: string, domainId: string): Promise<{ status: string; message: string }> {
+    return this.client.post(
+      `/api/v1/projects/${projectId}/domains/${domainId}/ssl/renew`,
+    );
+  }
+
+  /**
+   * Reissue the SSL certificate for a domain (force new cert even if current is valid).
+   */
+  async reissueSsl(projectId: string, domainId: string): Promise<{ status: string; message: string }> {
+    return this.client.post(
+      `/api/v1/projects/${projectId}/domains/${domainId}/ssl/reissue`,
     );
   }
 }

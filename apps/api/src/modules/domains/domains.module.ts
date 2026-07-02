@@ -14,6 +14,7 @@ import { DomainChecksService } from '@/modules/domains/services/domain-checks.se
 import { DomainCloudflareAutoService } from '@/modules/domains/services/domain-cloudflare-auto.service';
 import { DomainAccessService } from '@/modules/domains/services/domain-access.service';
 import { DomainConnectionService } from '@/modules/domains/services/domain-connection.service';
+import { DomainSslService } from '@/modules/domains/services/domain-ssl.service';
 import { CloudflareDnsProvider } from '@/modules/domains/providers/cloudflare-platform.service';
 import { CloudflareZoneService } from '@/modules/domains/providers/cloudflare-zone.service';
 import { CloudflareDnsMappersService } from '@/modules/domains/providers/cloudflare-dns-mappers.service';
@@ -39,6 +40,7 @@ import { CloudflareDnsMappersService } from '@/modules/domains/providers/cloudfl
     DomainCloudflareAutoService,
     DomainAccessService,
     DomainConnectionService,
+    DomainSslService,
   ],
   exports: [
     DomainsService,
@@ -55,6 +57,7 @@ import { CloudflareDnsMappersService } from '@/modules/domains/providers/cloudfl
     DomainCloudflareAutoService,
     DomainAccessService,
     DomainConnectionService,
+    DomainSslService,
     CloudflareZoneService,
     CloudflareDnsProvider,
     'DNS_PROVIDER',

@@ -97,4 +97,27 @@ export class DomainsController {
     const user = req.user as { userId: string };
     return this.domainsService.autoConfigureDnsRecords(user.userId, projectId, domainId);
   }
+
+  @Get(':id/ssl')
+  @ApiOperation({ summary: 'Get SSL certificate info for a domain' })
+  async getSsl(@Req() req: Request, @Param('projectId') projectId: string, @Param('id') domainId: string) {
+    const user = req.user as { userId: string };
+    return this.domainsService.getSsl(user.userId, projectId, domainId);
+  }
+
+  @Post(':id/ssl/renew')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Renew SSL certificate for a domain' })
+  async renewSsl(@Req() req: Request, @Param('projectId') projectId: string, @Param('id') domainId: string) {
+    const user = req.user as { userId: string };
+    return this.domainsService.renewSsl(user.userId, projectId, domainId);
+  }
+
+  @Post(':id/ssl/reissue')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Reissue SSL certificate for a domain (force new cert)' })
+  async reissueSsl(@Req() req: Request, @Param('projectId') projectId: string, @Param('id') domainId: string) {
+    const user = req.user as { userId: string };
+    return this.domainsService.reissueSsl(user.userId, projectId, domainId);
+  }
 }
