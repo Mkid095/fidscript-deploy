@@ -15,6 +15,9 @@ import { EmailEventsController } from './controllers/email-events.controller';
 import { PlatformMailboxController } from './controllers/platform-mailbox-message.controller';
 import { PlatformAdminMailController } from './controllers/platform-admin-mail.controller';
 import { AttachmentConfigController } from './controllers/attachment-config.controller';
+import { EmailTrackingController } from './controllers/email-tracking.controller';
+import { EmailWebhookSubscriptionController } from './controllers/email-webhook-subscription.controller';
+import { EmailAnalyticsController } from './controllers/email-analytics.controller';
 import { EmailDomainService } from './services/domain.service';
 import { EmailMailboxService } from './services/mailbox.service';
 import { EmailAliasService } from './services/alias.service';
@@ -22,6 +25,10 @@ import { EmailSenderIdentityService } from './services/sender-identity.service';
 import { EmailApiKeyService } from './services/api-key.service';
 import { EmailMessageService } from './services/message.service';
 import { EmailTemplateService } from './services/email-template.service';
+import { EmailTrackingService } from './services/email-tracking.service';
+import { EmailMetricsService } from './services/email-metrics.service';
+import { BounceParserService } from './services/bounce-parser.service';
+import { EmailWebhookSubscriptionService } from './services/email-webhook-subscription.service';
 import { EmailInboundService } from './services/inbound.service';
 import { SmtpSendService } from './smtp/smtp-send.service';
 import { PlatformMailService } from './platform-mail.service';
@@ -73,6 +80,9 @@ import { EmailSendWorkerService } from './services/queue/email-send-worker.servi
     PlatformMailboxController,
     PlatformAdminMailController,
     AttachmentConfigController,
+    EmailTrackingController,
+    EmailWebhookSubscriptionController,
+    EmailAnalyticsController,
   ],
   providers: [
     EmailDomainService,
@@ -82,6 +92,10 @@ import { EmailSendWorkerService } from './services/queue/email-send-worker.servi
     EmailApiKeyService,
     EmailMessageService,
     EmailTemplateService,
+    EmailTrackingService,
+    EmailMetricsService,
+    BounceParserService,
+    EmailWebhookSubscriptionService,
     EmailInboundService,
     SmtpSendService,
     BounceHandlerService,
@@ -119,6 +133,10 @@ import { EmailSendWorkerService } from './services/queue/email-send-worker.servi
     EmailApiKeyService,
     EmailMessageService,
     EmailTemplateService,
+    EmailTrackingService,
+    EmailMetricsService,
+    BounceParserService,
+    EmailWebhookSubscriptionService,
     EmailInboundService,
     SmtpSendService,
     BounceHandlerService,
@@ -140,7 +158,6 @@ import { EmailSendWorkerService } from './services/queue/email-send-worker.servi
     EmailSyncService,
     EmailSendQueueService,
     EmailSendWorkerService,
-    EmailTemplateService,
   ],
 })
 export class EmailModule {}

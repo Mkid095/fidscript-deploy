@@ -1146,6 +1146,46 @@ model EmailSyncCursor {
   @@schema("email")
 }
 
+// Open + click tracking events — written by the tracking pixel + redirect endpoints.
+model EmailTrackingEvent {
+  id          String   @id @default(uuid())
+  messageId   String   @map("message_id")
+  projectId   String   @map("project_id")
+  type        String   @db.VarChar(20) // "open" | "click"
+  url         String?  @db.Text        // clicked URL (null for opens)
+  userAgent   String?  @db.Text @map("user_agent")
+  ipAddress   String?  @db.VarChar(45) @map("ip_address")
+  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz
+
+  @@index([messageId])
+  @@index([projectId, createdAt])
+  @@map("email_tracking_events")
+  @@schema("email")
+}
+
+// Per-project email webhook subscriptions — customers register URLs to receive
+// email lifecycle events (delivered, opened, clicked, bounced, complained).
+model EmailWebhookSubscription {
+  id          String   @id @default(uuid())
+  projectId   String   @map("project_id")
+  url         String   @db.Text
+  secret      String   @db.Text          // HMAC-SHA256 signing secret (encrypted)
+  // Array of event types this webhook subscribes to
+  events      Json     @default("[]")    // ["delivered", "opened", "clicked", "bounced"]
+  isActive    Boolean  @default(true) @map("is_active")
+  // Delivery stats
+  lastStatus  String?  @db.VarChar(20) @map("last_status") // "ok" | "failed"
+  lastSentAt  DateTime? @map("last_sent_at") @db.Timestamptz
+  successCount Int     @default(0) @map("success_count")
+  failureCount Int     @default(0) @map("failure_count")
+  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt   DateTime @updatedAt @map("updated_at") @db.Timestamptz
+
+  @@index([projectId])
+  @@map("email_webhook_subscriptions")
+  @@schema("email")
+}
+
 // Individual delivery attempt log for EmailMessage — written by the NATS worker
 // on every SMTP submission attempt. Enables retry analytics and failure diagnosis.
 model EmailDeliveryAttempt {
