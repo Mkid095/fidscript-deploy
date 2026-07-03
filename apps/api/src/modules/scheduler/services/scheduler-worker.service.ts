@@ -55,7 +55,7 @@ export class SchedulerWorkerService implements OnModuleInit, OnModuleDestroy {
 
       try {
         const batch = await consumer.fetch({ max_messages: 5, expires: 5000 });
-        for (const msg of batch) {
+        for await (const msg of batch) {
           try {
             const req: SchedulerExecutionRequest = JSON.parse(
               msg.data instanceof Uint8Array
