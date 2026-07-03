@@ -47,6 +47,8 @@ import { AttachmentConfigService } from './services/attachment-config.service';
 import { AttachmentStorageService } from './services/attachment-storage.service';
 import { EmailAttachmentListener } from './services/attachment-event-listener.service';
 import { EmailSyncService } from './services/email-sync.service';
+import { EmailSendQueueService } from './services/queue/email-send-queue.service';
+import { EmailSendWorkerService } from './services/queue/email-send-worker.service';
 
 @Module({
   // AuthModule: provides JwtService + ApiKeyOrJwtGuard (for BaaS email.send
@@ -114,6 +116,8 @@ import { EmailSyncService } from './services/email-sync.service';
     AttachmentStorageService,
     EmailAttachmentListener,
     EmailSyncService,
+    EmailSendQueueService,
+    EmailSendWorkerService,
   ],
   exports: [
     EmailDomainService,
@@ -144,6 +148,8 @@ import { EmailSyncService } from './services/email-sync.service';
     AttachmentConfigService,
     AttachmentStorageService,
     EmailSyncService,
+    EmailSendQueueService,
+    EmailSendWorkerService,
   ],
 })
 export class EmailModule {}

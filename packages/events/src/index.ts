@@ -153,9 +153,13 @@ export type EventType =
   | 'realtime.client_left'
   | 'realtime.message_sent'
   // Email events
+  | 'email.queued'
+  | 'email.status_changed'
   | 'email.sent'
   | 'email.delivered'
   | 'email.bounced'
+  | 'email.failed'
+  | 'email.soft_bounce'
   | 'email.received'
   | 'email.opened'
   | 'email.clicked'

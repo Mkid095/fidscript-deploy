@@ -3,38 +3,28 @@ import { ConfigService } from '@nestjs/config';
 import { PrismaService } from '@/prisma/prisma.service';
 import { EventService } from '@/modules/events/event.service';
 import { RateLimitService } from '@/modules/email/services/rate-limit.service';
+import { EmailSendQueueService } from '@/modules/email/services/queue/email-send-queue.service';
 import { SendEmailDto } from '@/modules/email/dto/send-email.dto';
-import { createStalwartTransport } from '@/modules/email/common/stalwart-transport';
-import * as crypto from 'crypto';
-import * as fs from 'fs';
 
 /**
- * SMTP sending — connects to Stalwart, submits mail, records metadata.
+ * SMTP send enqueueing — validates, creates EmailMessage record, and enqueues
+ * to NATS JetStream for async delivery by the EmailSendWorkerService.
  *
- * Stalwart v0.15.5: SMTP submission on port 465 (implicit TLS) with AUTH PLAIN.
- * Credentials: user=admin, password=STALWART_ADMIN_TOKEN (platform admin token).
- * This is the only credential that works — the SMTP_SUBMISSION_USER/PASS
- * generated at setup time are NOT registered in Stalwart's internal directory.
+ * Direct SMTP delivery is NO LONGER done here. The worker handles:
+ *   - SMTP connection + AUTH
+ *   - Delivery attempt recording
+ *   - Retry scheduling with exponential backoff
+ *   - Status updates
  */
 @Injectable()
 export class SmtpSendService {
-  private adminToken: string;
-
   constructor(
     private prisma: PrismaService,
     private configService: ConfigService,
     private eventService: EventService,
     private rateLimit: RateLimitService,
-  ) {
-    // Load the admin token once at construction. The file is mounted by compose.
-    const tokenFile = this.configService.get<string>('STALWART_ADMIN_TOKEN_FILE', '/run/secrets/stalwart_admin_token');
-    try {
-      this.adminToken = fs.readFileSync(tokenFile, 'utf8').trim();
-    } catch {
-      // Fallback for environments where the file isn't mounted
-      this.adminToken = this.configService.get<string>('STALWART_ADMIN_TOKEN', '');
-    }
-  }
+    private sendQueue: EmailSendQueueService,
+  ) {}
 
   async send(projectId: string, dto: SendEmailDto) {
     const project = await this.prisma.project.findUnique({ where: { id: projectId } });
@@ -72,72 +62,38 @@ export class SmtpSendService {
       }
     }
 
-    // Stalwart v0.15.5: port 465 (implicit TLS), AUTH PLAIN with admin token.
-    const smtpHost = this.configService.get<string>('STALWART_SMTP_HOST', 'fidscript_stalwart');
-    // Coerce to number: the env var is a STRING ("465" in docker-compose), and
-    // "465" === 465 is false — so `secure: port === 465` in the transport
-    // would compare string to number, return false, and nodemailer would connect
-    // plain TCP to the SMTPS port (465) → 30s greeting timeout. Coercing here
-    // + Number(opts.port) in the transport is defense in depth.
-    const smtpPort = Number(this.configService.get<string>('STALWART_SMTP_PORT', '465'));
+    const from = dto.from ?? this.configService.get<string>('SMTP_FROM', 'noreply@localhost') ?? 'noreply@localhost';
 
-    // AUTH must use the FULL principal name (the full email), not the local
-    // part alone. Stalwart v0.16 keys the directory on the full email
-    // (e.g. "admin@deploy.fidscript.com"), so user="admin" returns 535 5.7.8
-    // even with the correct password. The compose env SMTP_SUBMISSION_USER
-    // (set to the full email) + SMTP_SUBMISSION_PASS (the matching token;
-    // default = the file token) is the right credential. Confirmed end-to-end
-    // by openssl AUTH PLAIN to the live :465 -> 235 2.7.0 Authentication
-    // succeeded (with this exact full-email + file-token combination), while
-    // the hardcoded "admin" principal is a separate fallback-admin account
-    // whose bcrypt does NOT match the file token.
-    const smtpUser = this.configService.get<string>('SMTP_SUBMISSION_USER', 'admin');
-    const smtpPass = this.configService.get<string>('SMTP_SUBMISSION_PASS', this.adminToken);
-
-    const transporter = await createStalwartTransport({
-      host: smtpHost,
-      port: smtpPort,
-      user: smtpUser,
-      pass: smtpPass,
-    });
-
-    let messageId = `<${Date.now()}-${crypto.randomBytes(6).toString('hex')}@${
-      this.configService.get('PLATFORM_MAIL_HOST', 'mail.deploy.fidscript.com')
-    }>`;
-    let accepted: string[] = [];
-    let errorMsg: string | undefined;
-    let result: 'sent' | 'failed' | 'bounced' = 'sent';
-
-    try {
-      const res = await transporter.sendMail({
-        from: dto.from ?? this.configService.get('SMTP_FROM', 'noreply@localhost'),
-        to: dto.to,
-        subject: dto.subject,
-        text: dto.text,
-        html: dto.html,
-        replyTo: dto.replyTo,
-      });
-      messageId = res.messageId ?? messageId;
-      accepted = (res.accepted ?? [dto.to]).filter((a: unknown): a is string => typeof a === 'string');
-    } catch (err) {
-      errorMsg = err instanceof Error ? err.message : String(err);
-      result = errorMsg.includes('bounce') || errorMsg.includes('550') ? 'bounced' : 'failed';
-    }
-
+    // Create the message record in QUEUED state
     const emailMessage = await this.prisma.emailMessage.create({
       data: {
         projectId,
         senderIdentityId,
-        from: dto.from ?? this.configService.get('SMTP_FROM', 'noreply@localhost'),
+        from,
         to: dto.to,
         subject: dto.subject,
-        status: errorMsg ? (result === 'bounced' ? 'BOUNCED' : 'FAILED') : 'SUBMITTED',
-        error: errorMsg,
-      },
+        textBody: dto.text,
+        htmlBody: dto.html,
+        status: 'QUEUED' as any,
+        retryCount: 0 as any,
+      } as any,
     });
 
-    // Only track API-key-backed usage when an apiKeyId is provided.
-    // Platform-initiated sends (notifications, no API key) skip usage tracking.
+    // Enqueue to NATS for async delivery
+    await this.sendQueue.enqueue({
+      messageId: emailMessage.id,
+      projectId,
+      from,
+      to: dto.to,
+      subject: dto.subject,
+      text: dto.text,
+      html: dto.html,
+      replyTo: dto.replyTo,
+      apiKeyId: dto.apiKeyId,
+      attempt: 1,
+    });
+
+    // Track API-key-backed usage
     if (dto.apiKeyId) {
       await this.prisma.emailApiUsage.upsert({
         where: {
@@ -147,31 +103,27 @@ export class SmtpSendService {
           projectId,
           apiKeyId: dto.apiKeyId,
           date: new Date(),
-          sends: result === 'sent' ? 1 : 0,
-          failures: result === 'failed' ? 1 : 0,
-          bounces: result === 'bounced' ? 1 : 0,
+          sends: 1,
+          failures: 0,
+          bounces: 0,
         },
         update: {
-          sends: result === 'sent' ? { increment: 1 } : undefined,
-          failures: result === 'failed' ? { increment: 1 } : undefined,
-          bounces: result === 'bounced' ? { increment: 1 } : undefined,
+          sends: { increment: 1 },
         },
       });
     }
 
-    if (!errorMsg) {
-      await this.eventService.emit('email.sent', projectId, {
-        messageId: emailMessage.id,
-        to: dto.to,
-        from: dto.from,
-      }, {});
-    }
+    await this.eventService.emit('email.queued', projectId, {
+      messageId: emailMessage.id,
+      to: dto.to,
+      from,
+    }, {});
 
     return {
       messageId: emailMessage.id,
-      accepted,
-      status: errorMsg ? (result === 'bounced' ? 'BOUNCED' : 'FAILED') : 'SUBMITTED',
-      error: errorMsg,
+      accepted: [dto.to],
+      status: 'QUEUED',
+      error: undefined,
     };
   }
 }

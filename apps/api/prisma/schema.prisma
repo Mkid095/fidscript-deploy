@@ -1115,13 +1115,18 @@ model EmailMessage {
   spamScore        Float?      @map("spam_score")
   status           EmailStatus @default(QUEUED)
   error            String?     @db.Text
+  failureType      EmailFailureType? @map("failure_type")
   jmapMessageId    String?     @map("jmap_message_id") // Stalwart JMAP Message-Id header
   receivedAt       DateTime?   @map("received_at")    // when Stalwart received the mail
+  lastAttemptAt    DateTime?   @map("last_attempt_at")
+  nextRetryAt      DateTime?   @map("next_retry_at")
+  retryCount       Int         @default(0) @map("retry_count")
   createdAt        DateTime    @default(now()) @map("created_at") @db.Timestamptz
 
   mailbox        EmailMailbox?   @relation(fields: [mailboxId], references: [id], onDelete: SetNull)
   senderIdentity SenderIdentity? @relation(fields: [senderIdentityId], references: [id], onDelete: SetNull)
   project        Project         @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  deliveryAttempts EmailDeliveryAttempt[]
 
   @@index([mailboxId, createdAt])
   @@index([projectId, createdAt])
@@ -1137,6 +1142,26 @@ model EmailSyncCursor {
   lastPolledAt DateTime @default(now()) @map("last_polled_at") @db.Timestamptz
 
   @@map("email_sync_cursors")
+  @@schema("email")
+}
+
+// Individual delivery attempt log for EmailMessage — written by the NATS worker
+// on every SMTP submission attempt. Enables retry analytics and failure diagnosis.
+model EmailDeliveryAttempt {
+  id            String    @id @default(uuid())
+  messageId     String    @map("message_id")
+  attempt       Int       @default(1)
+  provider      String    @default("stalwart") // "stalwart" | future SMTP relay
+  status        String    // "sent" | "bounced" | "soft_bounce" | "failed"
+  response      String?   @db.Text  // SMTP response text or error message
+  durationMs    Int?      @map("duration_ms")
+  failureType   EmailFailureType?
+  createdAt     DateTime @default(now()) @map("created_at") @db.Timestamptz
+
+  message EmailMessage @relation(fields: [messageId], references: [id], onDelete: Cascade)
+
+  @@index([messageId, attempt])
+  @@map("email_delivery_attempts")
   @@schema("email")
 }
 
@@ -1210,19 +1235,41 @@ model EmailApiUsage {
   @@schema("email")
 }
 
+// Failure taxonomy for email delivery — drives retry logic and analytics.
+enum EmailFailureType {
+  NONE        // No failure
+  SMTP_TIMEOUT    // Remote MTA did not respond in time
+  SMTP_AUTH_FAILURE // Credentials rejected by relay
+  RECIPIENT_REJECTED // Mailbox unknown, no inbox
+  SPAM_REJECTED  // Message flagged as spam by receiver
+  NETWORK_ERROR  // Could not reach remote MTA
+  PROVIDER_ERROR // Remote MTA responded with 4xx/5xx
+  SYSTEM_ERROR   // Local error (validation, code bug)
+}
+
 enum EmailStatus {
-  // Message submitted to SMTP but not yet accepted by remote server
+  // Queued for async delivery via NATS
   QUEUED
-  // Message accepted by remote MTA (Stalwart outbound relay)
-  SUBMITTED
-  // Remote MTA acknowledged the message
-  ACCEPTED
+  // Worker has picked up the message and is delivering
+  PROCESSING
+  // Message accepted by first MTA (Stalwart outbound relay)
+  SENT
+  // Remote MTA acknowledged the final delivery
+  DELIVERED
+  // Recipient opened the message (read receipt)
+  OPENED
+  // Recipient clicked a link in the message
+  CLICKED
   // Remote MTA rejected the message permanently
   BOUNCED
-  // Local failure (validation, auth, network)
-  FAILED
+  // Transient failure — will retry
+  SOFT_BOUNCE
+  // All retries exhausted
+  DEAD
   // Inbound email received via JMAP poll
   RECEIVED
+  // Local failure (validation, auth, network)
+  FAILED
 
   @@schema("public")
 }
