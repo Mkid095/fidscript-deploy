@@ -1,7 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { OnEvent } from '@nestjs/event-emitter';
 import { PrismaService } from '@/prisma/prisma.service';
-import { ProjectMemberService } from '@/modules/projects/services/project-member.service';
 
 export interface NotificationPreference {
   userId: string;
@@ -52,7 +51,6 @@ export class DomainNotificationService {
 
   constructor(
     private prisma: PrismaService,
-    private memberService: ProjectMemberService,
   ) {}
 
   /**
