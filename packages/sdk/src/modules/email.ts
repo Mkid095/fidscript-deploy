@@ -333,4 +333,85 @@ export class EmailModule {
   async deleteCatchAll(projectId: string, domainId: string): Promise<{ deleted: boolean }> {
     return this.client.delete(`/api/v1/projects/${projectId}/email/domains/${domainId}/catch-all`);
   }
+
+  // ── Email Templates ───────────────────────────────────────────────────────
+
+  async createTemplate(
+    projectId: string,
+    data: {
+      name: string;
+      description?: string;
+      fromAddress?: string;
+      fromName?: string;
+      subject: string;
+      htmlBody?: string;
+      textBody?: string;
+      variables?: Array<{ name: string; required?: boolean; default?: string }>;
+    },
+  ) {
+    return this.client.post(`/api/v1/projects/${projectId}/email/templates`, data);
+  }
+
+  async listTemplates(projectId: string) {
+    return this.client.get<any[]>(`/api/v1/projects/${projectId}/email/templates`);
+  }
+
+  async getTemplate(projectId: string, templateId: string) {
+    return this.client.get<any>(`/api/v1/projects/${projectId}/email/templates/${templateId}`);
+  }
+
+  async updateTemplate(projectId: string, templateId: string, data: Partial<{
+    description: string;
+    fromAddress: string;
+    fromName: string;
+    subject: string;
+    htmlBody: string;
+    textBody: string;
+    variables: Array<{ name: string; required?: boolean; default?: string }>;
+    isActive: boolean;
+  }>) {
+    return this.client.patch(`/api/v1/projects/${projectId}/email/templates/${templateId}`, data);
+  }
+
+  async deleteTemplate(projectId: string, templateId: string) {
+    return this.client.delete(`/api/v1/projects/${projectId}/email/templates/${templateId}`);
+  }
+
+  async previewTemplate(projectId: string, templateId: string) {
+    return this.client.get<any>(`/api/v1/projects/${projectId}/email/templates/${templateId}/preview`);
+  }
+
+  /** Render and send a templated email. */
+  async sendTemplated(
+    projectId: string,
+    templateId: string,
+    data: { to: string; from?: string; replyTo?: string; variables: Record<string, string>; apiKeyId?: string },
+  ) {
+    return this.client.post<{ messageId: string; status: string }>(
+      `/api/v1/projects/${projectId}/email/templates/${templateId}/send`,
+      data,
+    );
+  }
+
+  /** Batch send a template to up to 1000 recipients with individual variables. */
+  async sendTemplateBatch(
+    projectId: string,
+    data: {
+      templateId: string;
+      from?: string;
+      replyTo?: string;
+      recipients: Array<{ to: string; variables: Record<string, string> }>;
+      apiKeyId?: string;
+    },
+  ) {
+    return this.client.post<{ total: number; sent: number; failed: number; results: any[] }>(
+      `/api/v1/projects/${projectId}/email/templates/send-batch`,
+      data,
+    );
+  }
+
+  /** Get message delivery status including all delivery attempt history. */
+  async getMessageStatus(projectId: string, messageId: string) {
+    return this.client.get<any>(`/api/v1/projects/${projectId}/email/messages/${messageId}/status`);
+  }
 }
