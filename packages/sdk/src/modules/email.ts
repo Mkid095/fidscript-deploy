@@ -414,4 +414,58 @@ export class EmailModule {
   async getMessageStatus(projectId: string, messageId: string) {
     return this.client.get<any>(`/api/v1/projects/${projectId}/email/messages/${messageId}/status`);
   }
+
+  // ── Analytics ──────────────────────────────────────────────────────────────
+
+  async getDeliveryOverview(projectId: string, days?: number) {
+    return this.client.get<any>(`/api/v1/projects/${projectId}/email/analytics/overview`, days ? { days } : {});
+  }
+
+  async getFailureBreakdown(projectId: string, days?: number) {
+    return this.client.get<any[]>(`/api/v1/projects/${projectId}/email/analytics/failures`, days ? { days } : {});
+  }
+
+  async getLatency(projectId: string, days?: number) {
+    return this.client.get<any>(`/api/v1/projects/${projectId}/email/analytics/latency`, days ? { days } : {});
+  }
+
+  async getSendTimeline(projectId: string, days?: number) {
+    return this.client.get<any[]>(`/api/v1/projects/${projectId}/email/analytics/timeline`, days ? { days } : {});
+  }
+
+  // ── Suppression List ───────────────────────────────────────────────────────
+
+  async listSuppressions(projectId: string) {
+    return this.client.get<any[]>(`/api/v1/projects/${projectId}/email/suppressions`);
+  }
+
+  async addSuppression(projectId: string, email: string) {
+    return this.client.post(`/api/v1/projects/${projectId}/email/suppressions`, { email });
+  }
+
+  async removeSuppression(projectId: string, email: string) {
+    return this.client.delete(`/api/v1/projects/${projectId}/email/suppressions/${encodeURIComponent(email)}`);
+  }
+
+  // ── Email Webhooks ─────────────────────────────────────────────────────────
+
+  async listWebhooks(projectId: string) {
+    return this.client.get<any[]>(`/api/v1/projects/${projectId}/email/webhooks`);
+  }
+
+  async createWebhook(projectId: string, data: { url: string; events: string[] }) {
+    return this.client.post<any>(`/api/v1/projects/${projectId}/email/webhooks`, data);
+  }
+
+  async updateWebhook(projectId: string, id: string, data: Partial<{ url: string; events: string[]; isActive: boolean }>) {
+    return this.client.patch(`/api/v1/projects/${projectId}/email/webhooks/${id}`, data);
+  }
+
+  async deleteWebhook(projectId: string, id: string) {
+    return this.client.delete(`/api/v1/projects/${projectId}/email/webhooks/${id}`);
+  }
+
+  async testWebhook(projectId: string, id: string) {
+    return this.client.post(`/api/v1/projects/${projectId}/email/webhooks/${id}/test`, {});
+  }
 }
