@@ -205,11 +205,13 @@ async function run(argv: string[]): Promise<void> {
       try {
         const result = await sdk.email.send(projectId, {
           to: opts.to,
+          from: opts.from,
           subject: opts.subject,
           text: opts.text,
           html: opts.html,
-        } as any);
-        console.log(`✓ Email queued: ${result.id || '(no id)'} → ${opts.to}`);
+          replyTo: opts.replyTo,
+        });
+        console.log(`✓ Email queued: ${result.messageId} → ${opts.to} (status: ${result.status})`);
       } catch (e) {
         die(`Send failed: ${(e as Error).message}`);
       }

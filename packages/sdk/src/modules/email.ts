@@ -184,8 +184,8 @@ export class EmailModule {
     this.attachmentConfig = new AdminAttachmentConfigModule(client);
   }
 
-  async send(projectId: string, data: { to: string; subject: string; text?: string; html?: string }) {
-    return this.client.post<{ id: string }>(`/api/v1/projects/${projectId}/email/send`, data);
+  async send(projectId: string, data: { to: string; from?: string; subject: string; text?: string; html?: string; replyTo?: string; apiKeyId?: string }) {
+    return this.client.post<{ messageId: string; accepted: string[]; status: string; error?: string }>(`/api/v1/projects/${projectId}/email/send`, data);
   }
 
   async listMailboxes(projectId: string) {
