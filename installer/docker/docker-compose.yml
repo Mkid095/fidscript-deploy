@@ -36,6 +36,7 @@ services:
       - fidscript
       - fidscript-app
       - soostori-prod-net
+      - nextmavens-net
 
   postgres:
     image: postgres:16-alpine
@@ -369,7 +370,7 @@ services:
       nextmavens-net:
         ipv4_address: 172.18.0.10
     healthcheck:
-      test: ["CMD-SHELL", "wget -qO- http://127.0.0.1/ || exit 1"]
+      test: ["CMD-SHELL", "wget -qO- http://localhost/ || exit 1"]
       interval: 10s
       timeout: 5s
       retries: 3
@@ -394,15 +395,39 @@ services:
       MAIL_FROM: "FIDScript <noreply@whatsapp.fidscript.com>"
       GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID}
       GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET}
-      GOOGLE_REDIRECT_URI: https://whatsapp.fidscript.com/api/contacts/google/callback
+      GOOGLE_REDIRECT_URI: https://whatsapp.fidsapp.com/api/contacts/google/callback
       FRONTEND_URL: https://whatsapp.fidscript.com
       DEPLOY_VERSION: "1.0.0"
     networks:
       fidscript-app:
       fidscript:
+      nextmavens-net:
     healthcheck:
-      test: ["CMD-SHELL", "wget -qO- http://localhost:3099/api/versions/latest || exit 1"]
+      test: ["CMD-SHELL", "wget -qO- http://localhost:3099/api/v1/health || exit 1"]
       interval: 10s
+      timeout: 5s
+      retries: 3
+
+  # Chatbot Worker — NATS subscriber for async AI chatbot processing.
+  # Shares the whatsapp-api image; overrides CMD to run the worker entrypoint.
+  chatbot-worker:
+    image: fidscript-whatsapp-api:latest
+    container_name: fidscript-chatbot-worker
+    restart: unless-stopped
+    command: ["node", "dist/chatbot-worker/index.js"]
+    environment:
+      NODE_ENV: production
+      NATS_URL: nats://fidscript_nats:4222
+      EVOLUTION_API_URL: http://nextmavens_evolution:8080
+      EVOLUTION_API_KEY: 94977bc1fcb107c79d0687caea800bdb74edd67b5022771fc85c22ee389ca7e8
+      JWT_SECRET: fidscript-jwt-secret-change-in-production
+    networks:
+      - fidscript
+    depends_on:
+      - whatsapp-api
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:8080/health || exit 1"]
+      interval: 15s
       timeout: 5s
       retries: 3
 
