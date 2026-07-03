@@ -18,7 +18,18 @@ import { ProjectApiKeyService } from '@/modules/projects/services/project-api-ke
 
 const NAMESPACE = '/realtime';
 
-@WebSocketGateway({ cors: { origin: '*' }, namespace: NAMESPACE })
+// Socket.IO server options tuned to reduce spurious reconnections that cause
+// MaxListenersExceededWarning (each reconnect adds listeners; clients behind
+// proxies with short idle timeouts are especially noisy).
+// - pingInterval: how often server pings client (default 25s — too long if proxy
+//   kills idle after ~60s; 20s is safe for most corporate proxies)
+// - pingTimeout: client must respond within this window (default 20s; 15s is fine)
+@WebSocketGateway({
+  cors: { origin: '*' },
+  namespace: NAMESPACE,
+  pingInterval: 20_000,   // server→client ping every 20s
+  pingTimeout: 15_000,     // client→server pong must arrive within 15s
+})
 export class RealtimeGateway implements OnGatewayConnection, OnGatewayDisconnect {
   @WebSocketServer()
   server: Server;
@@ -33,7 +44,12 @@ export class RealtimeGateway implements OnGatewayConnection, OnGatewayDisconnect
   ) {}
 
   onModuleInit() {
+    // Suppress MaxListenersExceededWarning from reconnecting clients — each
+    // reconnect adds close/end listeners; 30 is well above the default 10.
     this.channelService.setServer(this.server);
+    // Cast to Node.js EventEmitter to call setMaxListeners (socket.io Server is
+    // built on EventEmitter but doesn't expose this method in its types)
+    (this.server as unknown as import('events').EventEmitter).setMaxListeners(30);
   }
 
   /**

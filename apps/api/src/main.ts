@@ -5,6 +5,12 @@ import type { Request, Response } from 'express';
 import { AppModule } from './app.module';
 import { RedisIoAdapter } from './adapters/redis-io.adapter';
 
+// Fix MaxListenersExceededWarning: the Node.js default is 10. Socket.IO clients
+// that reconnect (e.g. behind a proxy with short timeouts) add new listeners each
+// time. Set a reasonable global ceiling before any modules load.
+import { EventEmitter } from 'events';
+EventEmitter.defaultMaxListeners = 30;
+
 process.on('unhandledRejection', (reason, promise) => {
   console.error('[FATAL] unhandledRejection:', reason);
 });

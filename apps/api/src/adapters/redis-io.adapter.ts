@@ -9,13 +9,10 @@ import { ServerOptions } from 'socket.io';
  * sockets connected to ANY API instance (multi-node correct from day one) and
  * keeps broadcast/presence state coherent across restarts. Built as a NestJS
  * IoAdapter and set via app.useWebSocketAdapter() in main.ts — the supported
- * path (attaching an adapter onto the @WebSocketServer object inside afterInit
- * is not reliable in NestJS: `server.adapter` is not a function there).
+ * path.
  *
  * Graceful degradation: if REDIS_URL is unset or Redis is unreachable, no
- * adapter is attached and the gateway runs single-instance. Connect is bounded
- * (redis@4 rejects on ECONNREFUSED and has its own socket timeout) and wrapped
- * so a Redis problem can never block API bootstrap (cf. ADR-023).
+ * adapter is attached and the gateway runs single-instance.
  */
 export class RedisIoAdapter extends IoAdapter {
   private readonly logger = new Logger(RedisIoAdapter.name);
@@ -38,8 +35,23 @@ export class RedisIoAdapter extends IoAdapter {
     try {
       const { createClient } = await import('redis');
       const { createAdapter } = await import('@socket.io/redis-adapter');
+
+      // Reconnection strategy: clean up multiplex channels before reconnecting to
+      // avoid "orphaned data for stream" errors when Redis reconnects after a
+      // temporary network blip. Removing listeners on 'reconnecting' ensures
+      // stale multiplex state is discarded before the new connection is established.
+      const setupReconnectCleanup = (client: Awaited<ReturnType<typeof createClient>>) => {
+        client.on('reconnecting', () => {
+          this.logger.debug('Redis client reconnecting — clearing multiplex state');
+          client.removeAllListeners();
+        });
+      };
+
       const pubClient = createClient({ url: this.redisUrl });
       const subClient = pubClient.duplicate();
+      setupReconnectCleanup(pubClient);
+      setupReconnectCleanup(subClient);
+
       await Promise.all([pubClient.connect(), subClient.connect()]);
       this.adapterConstructor = createAdapter(pubClient, subClient) as (
         namespace: unknown,
@@ -54,11 +66,20 @@ export class RedisIoAdapter extends IoAdapter {
   }
 
   createIOServer(port: number, options?: ServerOptions): unknown {
-    const server = super.createIOServer(port, options) as {
+    const server = super.createIOServer(port, {
+      // Increase max payload size to prevent "malformed chunk" errors when
+      // large audit/event payloads flow through multiplexed streams.
+      maxHttpBufferSize: 5 * 1024 * 1024, // 5 MB (default is 1 MB)
+      ...options,
+    }) as {
       adapter?: (adapter: unknown) => unknown;
+      setMaxListeners?: (n: number) => void;
     };
     if (this.adapterConstructor && typeof server.adapter === 'function') {
       server.adapter(this.adapterConstructor);
+    }
+    if (server.setMaxListeners) {
+      server.setMaxListeners(30);
     }
     return server;
   }
