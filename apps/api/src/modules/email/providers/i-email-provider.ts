@@ -116,7 +116,7 @@ export interface IEmailProvider {
   createAlias(input: CreateAliasInput): Promise<ProviderAlias>;
   getAlias(id: string): Promise<ProviderAlias | null>;
   listAliases(domainId?: string): Promise<ProviderAlias[]>;
-  // ponytail: setAliasTargets dropped — SieveRebuildService owns alias routing.
+  // Alias targets are managed via the platform DB; routing is handled by the event bus.
   setAliasEnabled(id: string, enabled: boolean): Promise<void>;
   deleteAlias(id: string): Promise<void>;
 

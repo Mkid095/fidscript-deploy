@@ -252,8 +252,7 @@ export class StalwartEmailProvider implements IEmailProvider {
     // whose name resolves to a forwarded address. We model the most
     // common case: a group with the alias name and `accounts` field listing
     // the destination accounts (mailbox targets) or external addresses.
-    // Webhook targets are still represented as a custom Sieve rule installed
-    // on the alias account (see `stalwart-sieve.service.ts`).
+    // Webhook targets are handled by the platform event bus — no Sieve script needed.
     const value: Record<string, unknown> = {
       '@type': 'Group',
       name: input.name,

@@ -5,7 +5,7 @@ import { WebhookService } from '@/modules/email/services/webhook.service';
 import { BounceHandlerService } from '@/modules/email/services/bounce-handler.service';
 
 /**
- * Inbound email ingestion: receives mail from Stalwart sieve notify,
+ * Inbound email ingestion: receives mail from Stalwart webhook,
  * creates metadata rows, fires webhooks, manages catch-all rules.
  * Bounce/complaint handling is delegated to BounceHandlerService.
  */
@@ -50,9 +50,9 @@ export class EmailInboundService {
 
     await this.eventService.emit('email.received', domain.projectId, {
       messageId: emailMessage.id,
-      // jmapMessageId will be populated by a future Stalwart Sieve script enhancement
-      // that echoes the JMAP Message-Id header. Until then, inbound attachment
-      // extraction is a no-op (attachmentStorageService guards on jmapMessageId presence).
+      // jmapMessageId may be populated by the Stalwart Sieve notify payload
+      // when the JMAP Message-Id is available. Inbound attachment extraction
+      // guards on its presence (attachmentStorageService).
       jmapMessageId: undefined as string | undefined,
       mailboxId: mailbox?.id,
       // Mailbox localPart is needed by the listener to resolve JMAP credentials

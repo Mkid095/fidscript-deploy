@@ -1,14 +1,13 @@
 /**
  * Event listener for email attachment extraction.
  *
- * Subscribes to the `email.received` event emitted by EmailInboundService.
- * When Stalwart's Sieve script is enriched to include the JMAP message ID in
- * the sieve notify payload (future), this listener will trigger automatic
- * extraction of inbound attachments to the configured storage backend.
+ * Subscribes to the `email.received` event emitted by EmailInboundService
+ * via the JMAP Poller. When a JMAP message ID is present, triggers
+ * automatic extraction of inbound attachments to the configured storage backend.
  *
- * Until then, `jmapMessageId` is undefined and extraction is skipped silently.
- * The per-message attachment download endpoint (`GET :local/messages/:id/attachments/:blobId`)
- * remains the primary way to retrieve attachment bytes for existing messages.
+ * If `jmapMessageId` is absent, extraction is skipped silently (Stalwart
+ * Sieve notify path). The per-message attachment download endpoint
+ * (`GET :local/messages/:id/attachments/:blobId`) remains the fallback.
  */
 import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
 import { EventService } from '@/modules/events/event.service';
@@ -28,14 +27,11 @@ export class EmailAttachmentListener implements OnModuleInit {
     // in PlatformEvent.metadata, so the actual fields are at event.metadata.
     // Following the same pattern as DeploymentStateService.handleDeploymentCreated.
     this.eventService.on('email.received', async (event: any) => {
-      // Guard: only extract if we have a JMAP message ID. The Sieve script
-      // enrichment (not yet implemented) must be done in Stalwart to include
-      // the JMAP Message-Id in the sieve notify payload.
+      // Guard: only extract if we have a JMAP message ID.
       const payload = event?.metadata ?? {};
       if (!payload.jmapMessageId) {
         this.logger.debug(
-          `email.received received without jmapMessageId — skipping attachment extraction for ${payload.messageId}. ` +
-          `This is expected until Stalwart's Sieve script is updated.`,
+          `email.received received without jmapMessageId — skipping attachment extraction for ${payload.messageId}`,
         );
         return;
       }

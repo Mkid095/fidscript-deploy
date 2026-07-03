@@ -1,7 +1,6 @@
 import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
 import { PrismaService } from '@/prisma/prisma.service';
 import { EventService } from '@/modules/events/event.service';
-import { SieveRebuildService } from '@/modules/email/services/sieve-rebuild.service';
 import { CreateAliasDto } from '@/modules/email/dto/create-alias.dto';
 import { UpdateAliasDto } from '@/modules/email/dto/update-alias.dto';
 
@@ -10,7 +9,6 @@ export class EmailAliasService {
   constructor(
     private prisma: PrismaService,
     private eventService: EventService,
-    private sieveRebuild: SieveRebuildService,
   ) {}
 
   async createAlias(projectId: string, dto: CreateAliasDto) {
@@ -52,14 +50,6 @@ export class EmailAliasService {
       email: `${dto.localPart}@${dto.domain}`,
     }, {});
 
-    const mailboxTarget = dto.targets.find(t => t.type === 'mailbox' && t.mailboxId);
-    if (mailboxTarget?.mailboxId) {
-      const mb = await this.prisma.emailMailbox.findUnique({ where: { id: mailboxTarget.mailboxId } });
-      if (mb?.stalwartAccountId) {
-        await this.sieveRebuild.rebuild(mb.stalwartAccountId, mb.id);
-      }
-    }
-
     return alias;
   }
 
@@ -99,16 +89,6 @@ export class EmailAliasService {
     });
     if (!alias || alias.domain.projectId !== projectId) {
       throw new NotFoundException('Alias not found');
-    }
-
-    // Rebuild Sieve script for affected mailbox (removes this alias from routing)
-    const deletedTargets = alias.targets as Array<{ type: string; mailboxId?: string }>;
-    const mailboxTarget = deletedTargets.find(t => t.type === 'mailbox' && t.mailboxId);
-    if (mailboxTarget?.mailboxId) {
-      const mb = await this.prisma.emailMailbox.findUnique({ where: { id: mailboxTarget.mailboxId } });
-      if (mb?.stalwartAccountId) {
-        await this.sieveRebuild.rebuild(mb.stalwartAccountId, mb.id);
-      }
     }
 
     await this.prisma.emailAlias.delete({ where: { id: aliasId } });

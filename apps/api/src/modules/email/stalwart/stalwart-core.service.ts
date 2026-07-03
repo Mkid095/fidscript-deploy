@@ -1,25 +1,18 @@
 /**
  * Stalwart JMAP core: HTTP client + raw method call executor.
  *
- * Compatible with Stalwart v0.15.5.
+ * Compatible with Stalwart v0.16.
  *
  * Auth: HTTP Basic using the platform admin token (STALWART_ADMIN_TOKEN).
- * The token is the same bcrypt-hashed secret in Stalwart's config.toml;
- * the plaintext is in secrets/stalwart_admin_token.txt.
+ * The plaintext is in secrets/stalwart_admin_token.txt.
  *
  * JMAP endpoint: POST http://fidscript_stalwart:8080/jmap/
- * (the trailing slash is required by Stalwart v0.15)
  *
- * v0.15.5 capabilities confirmed working:
+ * v0.16 capabilities used:
  *   - urn:ietf:params:jmap:core      (Core/echo, Core/get)
  *   - urn:ietf:params:jmap:mail     (Mailbox/get, Email/query, Identity/*)
- *   - urn:ietf:params:jmap:sieve     (SieveScript/get/set)
  *   - urn:ietf:params:jmap:principals (Principal/get, Principal/query)
- *
- * NOT available in v0.15.5 (added in v0.16):
- *   - urn:stalwart:jmap  (Stalwart extensions)
- *   - x:Domain/set, x:Domain/get  (domain management)
- *   - x:Account/set, x:Account/get  (account/mailbox management)
+ *   - urn:stalwart:jmap  (Stalwart extensions — x:Domain/set, x:Account/set)
  *
  * Stalwart docs: https://stalw.art/docs/management/
  * JMAP spec:     https://jmap.io/
@@ -68,10 +61,9 @@ export class StalwartJmapService {
   /**
    * Execute one or more JMAP method calls in a single request.
    *
-   * Uses only standard JMAP capabilities confirmed available in v0.15.5:
+   * Uses standard JMAP capabilities available in v0.16:
    *   - urn:ietf:params:jmap:core
    *   - urn:ietf:params:jmap:mail
-   *   - urn:ietf:params:jmap:sieve
    *   - urn:ietf:params:jmap:principals
    */
   async jmapCall(
@@ -81,7 +73,6 @@ export class StalwartJmapService {
     const capabilities = using ?? [
       'urn:ietf:params:jmap:core',
       'urn:ietf:params:jmap:mail',
-      'urn:ietf:params:jmap:sieve',
       'urn:ietf:params:jmap:principals',
     ];
 

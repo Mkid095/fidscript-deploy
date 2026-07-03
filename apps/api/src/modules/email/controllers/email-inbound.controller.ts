@@ -23,7 +23,7 @@ export class EmailInboundController {
 
   @Post('webhook')
   @HttpCode(HttpStatus.OK)
-  @ApiOperation({ summary: 'Stalwart inbound email webhook (Sieve notify)' })
+  @ApiOperation({ summary: 'Stalwart inbound email webhook' })
   inboundWebhook(
     @Headers('x-stalwart-signature') signature: string,
     @Body() payload: { from: string; to: string; subject?: string; sizeBytes?: number; spamScore?: number },

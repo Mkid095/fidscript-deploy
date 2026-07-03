@@ -24,7 +24,6 @@ import { EmailInboundService } from './services/inbound.service';
 import { SmtpSendService } from './smtp/smtp-send.service';
 import { PlatformMailService } from './platform-mail.service';
 import { BounceHandlerService } from './services/bounce-handler.service';
-import { SieveRebuildService } from './services/sieve-rebuild.service';
 import { RateLimitService } from './services/rate-limit.service';
 import { MailboxCleanupService } from './services/mailbox-cleanup.service';
 import { DomainCleanupService } from './services/domain-cleanup.service';
@@ -33,7 +32,6 @@ import { DkimService } from './dns/dkim.service';
 import { StalwartJmapService } from './stalwart/stalwart-core.service';
 import { StalwartAccountService } from './stalwart/stalwart-account.service';
 import { StalwartIdentityService } from './stalwart/stalwart-identity.service';
-import { StalwartSieveService } from './stalwart/stalwart-sieve.service';
 import { WebhookService } from './services/webhook.service';
 import { EmailMailboxListService } from './services/email-mailbox-crud.service';
 import { EmailBootstrapService } from './services/email-bootstrap.service';
@@ -88,7 +86,6 @@ import { EmailSendWorkerService } from './services/queue/email-send-worker.servi
     EmailInboundService,
     SmtpSendService,
     BounceHandlerService,
-    SieveRebuildService,
     RateLimitService,
     MailboxCleanupService,
     DomainCleanupService,
@@ -97,7 +94,6 @@ import { EmailSendWorkerService } from './services/queue/email-send-worker.servi
     StalwartJmapService,
     StalwartAccountService,
     StalwartIdentityService,
-    StalwartSieveService,
     StalwartEmailProvider,
     {
       // The platform talks to the mail server only through the IEmailProvider
@@ -130,7 +126,6 @@ import { EmailSendWorkerService } from './services/queue/email-send-worker.servi
     EmailInboundService,
     SmtpSendService,
     BounceHandlerService,
-    SieveRebuildService,
     RateLimitService,
     MailboxCleanupService,
     DomainCleanupService,
@@ -139,7 +134,6 @@ import { EmailSendWorkerService } from './services/queue/email-send-worker.servi
     StalwartJmapService,
     StalwartAccountService,
     StalwartIdentityService,
-    StalwartSieveService,
     StalwartEmailProvider,
     EMAIL_PROVIDER,
     WebhookService,
