@@ -1127,6 +1127,7 @@ model EmailMessage {
   senderIdentity SenderIdentity? @relation(fields: [senderIdentityId], references: [id], onDelete: SetNull)
   project        Project         @relation(fields: [projectId], references: [id], onDelete: Cascade)
   deliveryAttempts EmailDeliveryAttempt[]
+  templateUsage   EmailMessageTemplate?
 
   @@index([mailboxId, createdAt])
   @@index([projectId, createdAt])
@@ -1180,6 +1181,51 @@ model CatchAllRule {
 
   @@unique([domainId])
   @@map("catch_all_rules")
+  @@schema("email")
+}
+
+// Transactional email template — stored, versioned, rendered at send time.
+// Variables use Handlebars-style syntax: {{name}}, {{companyName}}, etc.
+model EmailTemplate {
+  id          String   @id @default(uuid())
+  projectId   String   @map("project_id")
+  name        String   @db.VarChar(255) // unique per project: "welcome", "password-reset"
+  description String?  @db.Text
+  // Default sender — can be overridden at send time
+  fromAddress String?  @map("from_address") @db.VarChar(255)
+  fromName    String?  @map("from_name") @db.VarChar(255)
+  subject     String   @db.VarChar(500) // subject line, may contain {{variables}}
+  htmlBody    String?  @db.Text @map("html_body") // HTML body with {{variable}} interpolation
+  textBody    String?  @db.Text @map("text_body") // plain-text body
+  // JSON array of {name, required, default?} — documents what variables the template expects
+  variables   Json     @default("[]")
+  isActive    Boolean  @default(true) @map("is_active")
+  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt   DateTime @updatedAt @map("updated_at") @db.Timestamptz
+
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  sends  EmailMessageTemplate[]
+
+  @@unique([projectId, name])
+  @@index([projectId])
+  @@map("email_templates")
+  @@schema("email")
+}
+
+// Records which template was used when sending a message (for analytics + replay).
+model EmailMessageTemplate {
+  id          String   @id @default(uuid())
+  messageId   String   @map("message_id")
+  templateId  String   @map("template_id")
+  // The actual variables passed at send-time (snapshot, not live reference)
+  variables   Json     @default("{}")
+  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz
+
+  message  EmailMessage  @relation(fields: [messageId], references: [id], onDelete: Cascade)
+  template EmailTemplate @relation(fields: [templateId], references: [id], onDelete: SetNull)
+
+  @@unique([messageId])
+  @@map("email_message_templates")
   @@schema("email")
 }
 

@@ -176,6 +176,9 @@ export type EventType =
   | 'email.api_key_created'
   | 'email.api_key_deleted'
   | 'email.webhook_triggered'
+  | 'email.template_created'
+  | 'email.template_updated'
+  | 'email.template_deleted'
   // AI events
   | 'ai.conversation.created'
   | 'ai.conversation.deleted'

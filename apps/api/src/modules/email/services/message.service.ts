@@ -46,6 +46,34 @@ export class EmailMessageService {
     return message;
   }
 
+  /**
+   * Full delivery status including attempt history.
+   * Uses (prisma as any) for new schema fields not yet in generated types.
+   */
+  async getMessageStatus(projectId: string, messageId: string) {
+    const message = await this.prisma.emailMessage.findFirst({
+      where: { id: messageId, projectId },
+    });
+    if (!message) throw new NotFoundException('Message not found');
+
+    const attempts = await (this.prisma as any).emailDeliveryAttempt.findMany({
+      where: { messageId },
+      orderBy: { attempt: 'asc' },
+    }).catch(() => []);
+
+    return {
+      id: message.id,
+      status: message.status,
+      failureType: (message as any).failureType ?? null,
+      error: message.error ?? null,
+      retryCount: (message as any).retryCount ?? 0,
+      lastAttemptAt: (message as any).lastAttemptAt ?? null,
+      nextRetryAt: (message as any).nextRetryAt ?? null,
+      createdAt: message.createdAt,
+      attempts,
+    };
+  }
+
   async markMessagesRead(projectId: string, dto: MarkMessagesReadDto) {
     await this.prisma.emailMessage.updateMany({
       where: { id: { in: dto.messageIds }, projectId },

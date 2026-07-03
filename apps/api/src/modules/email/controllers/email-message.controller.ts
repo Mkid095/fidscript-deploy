@@ -61,6 +61,17 @@ export class EmailMessageController {
     return this.messageService.getMessage(projectId, messageId);
   }
 
+  @Get('messages/:messageId/status')
+  @ApiOperation({ summary: 'Get message delivery status with attempt history' })
+  getMessageStatus(
+    @Req() req: Request,
+    @Param('projectId') projectId: string,
+    @Param('messageId') messageId: string,
+  ) {
+    this.assertCanAccessProject(req, projectId);
+    return this.messageService.getMessageStatus(projectId, messageId);
+  }
+
   @Patch('messages/read')
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Mark messages as read/unread. BaaS: API-key authenticated.' })

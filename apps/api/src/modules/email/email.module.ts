@@ -8,6 +8,7 @@ import { EmailAliasController } from './controllers/email-alias.controller';
 import { EmailSenderIdentityController } from './controllers/email-sender-identity.controller';
 import { EmailApiKeyController } from './controllers/email-api-key.controller';
 import { EmailMessageController } from './controllers/email-message.controller';
+import { EmailTemplateController } from './controllers/email-template.controller';
 import { EmailCatchAllController } from './controllers/email-catch-all.controller';
 import { EmailInboundController } from './controllers/email-inbound.controller';
 import { EmailEventsController } from './controllers/email-events.controller';
@@ -20,6 +21,7 @@ import { EmailAliasService } from './services/alias.service';
 import { EmailSenderIdentityService } from './services/sender-identity.service';
 import { EmailApiKeyService } from './services/api-key.service';
 import { EmailMessageService } from './services/message.service';
+import { EmailTemplateService } from './services/email-template.service';
 import { EmailInboundService } from './services/inbound.service';
 import { SmtpSendService } from './smtp/smtp-send.service';
 import { PlatformMailService } from './platform-mail.service';
@@ -49,11 +51,6 @@ import { EmailSendQueueService } from './services/queue/email-send-queue.service
 import { EmailSendWorkerService } from './services/queue/email-send-worker.service';
 
 @Module({
-  // AuthModule: provides JwtService + ApiKeyOrJwtGuard (for BaaS email.send
-  // and other BaaS endpoints). forwardRef because AuthModule imports
-  // EmailModule (circular — AuthModule imports JwtAuthGuard etc. into the
-  // platform mail module).
-  // ProjectsModule: provides ProjectApiKeyService used by ApiKeyOrJwtGuard.
   imports: [
     DomainsModule,
     QueuesModule,
@@ -69,6 +66,7 @@ import { EmailSendWorkerService } from './services/queue/email-send-worker.servi
     EmailSenderIdentityController,
     EmailApiKeyController,
     EmailMessageController,
+    EmailTemplateController,
     EmailCatchAllController,
     EmailInboundController,
     EmailEventsController,
@@ -83,6 +81,7 @@ import { EmailSendWorkerService } from './services/queue/email-send-worker.servi
     EmailSenderIdentityService,
     EmailApiKeyService,
     EmailMessageService,
+    EmailTemplateService,
     EmailInboundService,
     SmtpSendService,
     BounceHandlerService,
@@ -96,10 +95,6 @@ import { EmailSendWorkerService } from './services/queue/email-send-worker.servi
     StalwartIdentityService,
     StalwartEmailProvider,
     {
-      // The platform talks to the mail server only through the IEmailProvider
-      // interface; the concrete StalwartEmailProvider is the only impl today.
-      // Add new providers (M365, Google Workspace) by adding an alternate
-      // binding here and switching based on tenant config.
       provide: EMAIL_PROVIDER,
       useExisting: StalwartEmailProvider,
     },
@@ -123,6 +118,7 @@ import { EmailSendWorkerService } from './services/queue/email-send-worker.servi
     EmailSenderIdentityService,
     EmailApiKeyService,
     EmailMessageService,
+    EmailTemplateService,
     EmailInboundService,
     SmtpSendService,
     BounceHandlerService,
@@ -144,6 +140,7 @@ import { EmailSendWorkerService } from './services/queue/email-send-worker.servi
     EmailSyncService,
     EmailSendQueueService,
     EmailSendWorkerService,
+    EmailTemplateService,
   ],
 })
 export class EmailModule {}
