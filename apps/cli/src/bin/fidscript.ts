@@ -86,8 +86,8 @@ async function run(argv: string[]): Promise<void> {
     const apiKey = getApiKey() ?? die('Not logged in — run: fidscript login <key>');
     const { createFidscript } = await import('@fidscript/sdk');
     const sdk = createFidscript({ apiKey, baseURL: cfg.apiUrl });
-    try {
-      const { user } = await sdk.auth.getSession();
+      try {
+        const { user } = await (sdk.auth as any).getSession();
       console.log(`Logged in as ${user.email} (role: ${user.role})`);
     } catch (e) {
       die(`Authentication failed: ${(e as Error).message}`);
@@ -181,6 +181,214 @@ async function run(argv: string[]): Promise<void> {
       const items = await sdk.deployments.list(projectId);
       printTable(items as unknown as Record<string, unknown>[], program.opts().output ?? 'table');
     });
+
+  // ── EMAIL COMMANDS ──────────────────────────────────────────────────
+  const emailCmd = new Command('email');
+
+  // email send
+  emailCmd
+    .command('send')
+    .description('Send a transactional email')
+    .requiredOption('-t, --to <email>', 'Recipient address')
+    .requiredOption('-s, --subject <subject>', 'Subject line')
+    .option('--from <email>', 'Sender address')
+    .option('--text <body>', 'Plain text body')
+    .option('--html <body>', 'HTML body')
+    .option('--reply-to <email>', 'Reply-To address')
+    .option('-p, --project <id>', 'Project ID', cfg.currentProject ?? '')
+    .action(async (opts: any) => {
+      if (!cfg.apiUrl) die('No API URL configured');
+      const apiKey = getApiKey() ?? die('Not logged in');
+      const projectId = opts.project ?? die('No project ID (--project)');
+      const { createFidscript } = await import('@fidscript/sdk');
+      const sdk = createFidscript({ apiKey, baseURL: cfg.apiUrl });
+      try {
+        const result = await sdk.email.send(projectId, {
+          to: opts.to,
+          subject: opts.subject,
+          text: opts.text,
+          html: opts.html,
+        } as any);
+        console.log(`✓ Email queued: ${result.id || '(no id)'} → ${opts.to}`);
+      } catch (e) {
+        die(`Send failed: ${(e as Error).message}`);
+      }
+    });
+
+  // email send-template
+  emailCmd
+    .command('send-template <templateId>')
+    .description('Send a templated email')
+    .requiredOption('-t, --to <email>', 'Recipient address')
+    .option('-v, --vars <json>', 'Template variables as JSON', '{}')
+    .option('--from <email>', 'Override sender address')
+    .option('-p, --project <id>', 'Project ID', cfg.currentProject ?? '')
+    .action(async (templateId: string, opts: any) => {
+      if (!cfg.apiUrl) die('No API URL configured');
+      const apiKey = getApiKey() ?? die('Not logged in');
+      const projectId = opts.project ?? die('No project ID (--project)');
+      const { createFidscript } = await import('@fidscript/sdk');
+      const sdk = createFidscript({ apiKey, baseURL: cfg.apiUrl });
+      let variables: Record<string, string>;
+      try {
+        variables = JSON.parse(opts.vars);
+      } catch {
+        die('--vars must be valid JSON, e.g. \'{"name":"John"}\'');
+      }
+      try {
+        const result = await sdk.email.sendTemplated(projectId, templateId, {
+          to: opts.to,
+          from: opts.from,
+          variables,
+        });
+        console.log(`✓ Templated email sent: ${result.messageId} → ${opts.to}`);
+      } catch (e) {
+        die(`Send failed: ${(e as Error).message}`);
+      }
+    });
+
+  // email inbox
+  emailCmd
+    .command('inbox')
+    .description('List recent messages')
+    .option('-l, --limit <n>', 'Number of messages', '20')
+    .option('--unread', 'Show only unread')
+    .option('-p, --project <id>', 'Project ID', cfg.currentProject ?? '')
+    .action(async (opts: any) => {
+      if (!cfg.apiUrl) die('No API URL configured');
+      const apiKey = getApiKey() ?? die('Not logged in');
+      const projectId = opts.project ?? die('No project ID (--project)');
+      const { createFidscript } = await import('@fidscript/sdk');
+      const sdk = createFidscript({ apiKey, baseURL: cfg.apiUrl });
+      try {
+        const messages = await sdk.email.listMessages(projectId, {
+          limit: parseInt(opts.limit, 10),
+          unread: opts.unread,
+        });
+        const rows = messages.map(m => ({
+          id: (m as any).id?.slice(0, 12),
+          from: (m as any).from,
+          subject: (m as any).subject?.slice(0, 40),
+          status: (m as any).status,
+          date: new Date((m as any).createdAt).toLocaleDateString(),
+        }));
+        printTable(rows, program.opts().output ?? 'table');
+      } catch (e) {
+        die(`Failed: ${(e as Error).message}`);
+      }
+    });
+
+  // email status <messageId>
+  emailCmd
+    .command('status <messageId>')
+    .description('Get delivery status for a message')
+    .option('-p, --project <id>', 'Project ID', cfg.currentProject ?? '')
+    .action(async (messageId: string, opts: any) => {
+      if (!cfg.apiUrl) die('No API URL configured');
+      const apiKey = getApiKey() ?? die('Not logged in');
+      const projectId = opts.project ?? die('No project ID (--project)');
+      const { createFidscript } = await import('@fidscript/sdk');
+      const sdk = createFidscript({ apiKey, baseURL: cfg.apiUrl });
+      try {
+        const status = await sdk.email.getMessageStatus(projectId, messageId);
+        console.log(`Status: ${status.status}`);
+        if (status.error) console.log(`Error: ${status.error}`);
+        if (status.failureType) console.log(`Failure: ${status.failureType}`);
+        console.log(`Attempts: ${status.retryCount}`);
+        if (status.attempts?.length) {
+          console.log('\nDelivery attempts:');
+          for (const a of status.attempts) {
+            console.log(`  #${a.attempt}: ${a.status} (${a.durationMs}ms)${a.failureType !== 'NONE' && a.failureType ? ` [${a.failureType}]` : ''}`);
+          }
+        }
+      } catch (e) {
+        die(`Failed: ${(e as Error).message}`);
+      }
+    });
+
+  // email templates list
+  emailCmd
+    .command('templates')
+    .description('List email templates')
+    .option('-p, --project <id>', 'Project ID', cfg.currentProject ?? '')
+    .action(async (opts: any) => {
+      if (!cfg.apiUrl) die('No API URL configured');
+      const apiKey = getApiKey() ?? die('Not logged in');
+      const projectId = opts.project ?? die('No project ID (--project)');
+      const { createFidscript } = await import('@fidscript/sdk');
+      const sdk = createFidscript({ apiKey, baseURL: cfg.apiUrl });
+      try {
+        const templates = await sdk.email.listTemplates(projectId);
+        const rows = templates.map((t: any) => ({
+          name: t.name,
+          subject: t.subject?.slice(0, 40),
+          from: t.fromAddress ?? '—',
+          vars: t.variables?.length ?? 0,
+          active: t.isActive ? '✓' : '✗',
+        }));
+        printTable(rows, program.opts().output ?? 'table');
+      } catch (e) {
+        die(`Failed: ${(e as Error).message}`);
+      }
+    });
+
+  // email domains list
+  emailCmd
+    .command('domains')
+    .description('List email domains')
+    .option('-p, --project <id>', 'Project ID', cfg.currentProject ?? '')
+    .action(async (opts: any) => {
+      if (!cfg.apiUrl) die('No API URL configured');
+      const apiKey = getApiKey() ?? die('Not logged in');
+      const projectId = opts.project ?? die('No project ID (--project)');
+      const { createFidscript } = await import('@fidscript/sdk');
+      const sdk = createFidscript({ apiKey, baseURL: cfg.apiUrl });
+      try {
+        const domains = await sdk.email.listDomains(projectId);
+        const rows = domains.map((d: any) => ({
+          domain: d.domain,
+          status: d.status,
+          dkim: d.dkimVerified ? '✓' : '✗',
+          spf: d.spfVerified ? '✓' : '✗',
+          dmarc: d.dmarcVerified ? '✓' : '✗',
+          mx: d.mxVerified ? '✓' : '✗',
+        }));
+        printTable(rows, program.opts().output ?? 'table');
+      } catch (e) {
+        die(`Failed: ${(e as Error).message}`);
+      }
+    });
+
+  // email analytics
+  emailCmd
+    .command('analytics')
+    .description('Show email delivery analytics')
+    .option('-d, --days <n>', 'Number of days', '30')
+    .option('-p, --project <id>', 'Project ID', cfg.currentProject ?? '')
+    .action(async (opts: any) => {
+      if (!cfg.apiUrl) die('No API URL configured');
+      const apiKey = getApiKey() ?? die('Not logged in');
+      const projectId = opts.project ?? die('No project ID (--project)');
+      const { createFidscript } = await import('@fidscript/sdk');
+      const sdk = createFidscript({ apiKey, baseURL: cfg.apiUrl });
+      try {
+        const overview = await sdk.email.getDeliveryOverview(projectId, parseInt(opts.days, 10));
+        console.log(`\n📊 Email Analytics (last ${overview.rangeDays} days)\n`);
+        console.log(`Total messages: ${overview.total}`);
+        console.log(`Delivery rate:  ${(overview.deliveryRate * 100).toFixed(1)}%`);
+        console.log(`Bounce rate:    ${(overview.bounceRate * 100).toFixed(1)}%`);
+        console.log(`Open rate:      ${(overview.openRate * 100).toFixed(1)}%`);
+        console.log(`Click rate:     ${(overview.clickRate * 100).toFixed(1)}%`);
+        console.log(`\nStatus breakdown:`);
+        for (const [status, count] of Object.entries(overview.byStatus)) {
+          if (count as number > 0) console.log(`  ${status}: ${count}`);
+        }
+      } catch (e) {
+        die(`Failed: ${(e as Error).message}`);
+      }
+    });
+
+  program.addCommand(emailCmd);
 
   await program.parseAsync(argv);
 }
