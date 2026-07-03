@@ -80,8 +80,9 @@ export class EmailSendWorkerService implements OnModuleInit, OnModuleDestroy {
         const msg = await consumer.next({ max_wait: 10000 });
         if (!msg) continue;
 
+        const traceparent = msg.headers?.['traceparent']?.toString() ?? 'unknown';
         const job: EmailSendJob = JSON.parse(msg.data.toString());
-        await this.processJob(job);
+        await this.processJob(job, traceparent);
         await msg.ack();
       } catch (err) {
         const errMsg = err instanceof Error ? err.message : String(err);
@@ -100,9 +101,11 @@ export class EmailSendWorkerService implements OnModuleInit, OnModuleDestroy {
    *   5. Record delivery attempt
    *   6. Update message status + schedule retry or suppress
    *   7. Emit granular event for webhook dispatch
+   *
+   * @param traceparent  W3C traceparent from NATS headers — included in all log lines
    */
-  private async processJob(job: EmailSendJob): Promise<void> {
-    this.logger.log(`Processing email job messageId=${job.messageId} attempt=${job.attempt}`);
+  private async processJob(job: EmailSendJob, traceparent: string): Promise<void> {
+    this.logger.log(`[trace:${traceparent}] Processing email job messageId=${job.messageId} attempt=${job.attempt}`);
     const startTime = Date.now();
 
     try {

@@ -19,6 +19,7 @@
   },
   "dependencies": {
     "@fidscript/events": "workspace:*",
+    "@fidscript/types": "workspace:*",
     "axios": "^1.6.0",
     "socket.io-client": "^4.8.3"
   },

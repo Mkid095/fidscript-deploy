@@ -85,6 +85,10 @@ model ApiKey {
   lastUsedAt  DateTime? @map("last_used_at") @db.Timestamptz
   expiresAt   DateTime? @map("expires_at") @db.Timestamptz
   createdAt   DateTime  @default(now()) @map("created_at") @db.Timestamptz
+  /** Scoped permissions for MCP server tool access. Empty = full access. */
+  mcpScopes   String[]  @default([]) @map("mcp_scopes") @schema("identity")
+  /** Whether this key can be used with the MCP server. Default false. */
+  mcpEnabled  Boolean   @default(false) @map("mcp_enabled") @schema("identity")
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 

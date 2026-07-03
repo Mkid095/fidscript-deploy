@@ -4,7 +4,10 @@
     "module": "commonjs",
     "moduleResolution": "node",
     "outDir": "./dist",
-    "noEmit": false
+    "noEmit": false,
+    "paths": {
+      "@fidscript/types": ["../types/src"]
+    }
   },
   "include": ["src/**/*"],
   "exclude": ["node_modules", "dist"]

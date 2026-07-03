@@ -19,6 +19,7 @@
  */
 import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
 import { NatsConnection, JetStreamClient, JetStreamManager, AckPolicy } from 'nats';
+import { randomUUID } from 'crypto';
 import { EventService } from '@/modules/events/event.service';
 
 const EMAIL_SEND_STREAM = 'EMAIL_SEND';
@@ -113,14 +114,19 @@ export class EmailSendQueueService implements OnModuleInit {
   async enqueue(job: EmailSendJob, delaySeconds?: number): Promise<{ seq: number }> {
     if (!this.js) throw new Error('JetStream not connected');
     const body = JSON.stringify(job);
+    // W3C traceparent: 00-<traceId(32 hex)>-<spanId(16 hex)>-<flags>
+    const traceId = randomUUID().replace(/-/g, '').slice(0, 32);
+    const spanId = randomUUID().replace(/-/g, '').slice(0, 16);
+    const traceparent = `00-${traceId}-${spanId}-01`;
     const headers: Record<string, string> = {
       'x-message-id': job.messageId,
       'x-project-id': job.projectId,
       'x-attempt': String(job.attempt),
+      'traceparent': traceparent,
     };
     const opts: Record<string, unknown> = { headers };
     if (delaySeconds && delaySeconds > 0) {
-      // JetStream delay: NesDelay header in nanoseconds
+      // JetStream delay: Nats-Delay header in nanoseconds
       headers['Nats-Delay'] = String(Math.floor(delaySeconds * 1_000_000_000));
     }
     const pa = await this.js.publish(EMAIL_SEND_SUBJECT, body, opts);

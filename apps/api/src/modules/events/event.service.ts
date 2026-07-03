@@ -66,9 +66,12 @@ export class EventService implements OnModuleInit, OnModuleDestroy {
       resourceId?: string;
       ipAddress?: string;
       userAgent?: string;
+      /** W3C trace ID propagated from API → NATS → Worker delivery pipeline. */
+      traceId?: string;
     },
   ): void {
     const id = randomUUID();
+    const { traceId, ...ctx } = context ?? {};
     const platformEvent: PlatformEvent<T> = {
       id,
       version: '1.0',
@@ -76,7 +79,8 @@ export class EventService implements OnModuleInit, OnModuleDestroy {
       timestamp: new Date(),
       projectId: projectId ?? undefined,
       metadata: payload,
-      ...(context ?? {}),
+      ...ctx,
+      ...(traceId ? { traceId } : {}),
     };
     this.eventEmitter.emit(type, platformEvent);
     this.logger.debug(`[local] Event dispatched: ${type}`, { id, projectId });

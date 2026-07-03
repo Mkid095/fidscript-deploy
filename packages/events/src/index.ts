@@ -154,7 +154,6 @@ export type EventType =
   | 'realtime.message_sent'
   // Email events
   | 'email.queued'
-  | 'email.status_changed'
   | 'email.sent'
   | 'email.delivered'
   | 'email.bounced'
@@ -252,6 +251,9 @@ export interface PlatformEvent<T = unknown> {
   metadata?: T;
   ipAddress?: string;
   userAgent?: string;
+  /** W3C traceparent trace ID propagated across API → NATS → Worker boundaries.
+   *  Enables distributed trace correlation for email delivery pipeline. */
+  traceId?: string;
 }
 
 // Event schemas for specific resources
@@ -294,3 +296,6 @@ export interface EventFilter {
   fromTimestamp?: Date;
   toTimestamp?: Date;
 }
+
+// ── Event emitter utilities ──────────────────────────────────────────────────
+export { resolveEventType, isKnownEventType, validatePayload, buildPlatformEvent } from './event-emitter.js';

@@ -183,10 +183,10 @@ export default function EmailAttachmentSettingsPage() {
       {/* Current status banner */}
       {config && (
         <div className="flex items-center gap-3 bg-[var(--surface-2)] border border-[var(--rail)] rounded-lg px-4 py-3">
-          <span className="text-lg">{BACKEND_INFO[config.provider].icon}</span>
+          <span className="text-lg">{BACKEND_INFO[config.provider as StorageBackend].icon}</span>
           <div className="flex-1">
             <span className="text-sm text-[var(--text-muted)]">Currently active: </span>
-            <span className="text-sm font-medium text-[var(--text)]">{BACKEND_INFO[config.provider].label}</span>
+            <span className="text-sm font-medium text-[var(--text)]">{BACKEND_INFO[config.provider as StorageBackend].label}</span>
           </div>
           <span className={`text-xs px-2 py-0.5 rounded-full ${config.hasCredentials ? 'bg-[var(--success)]/10 text-[var(--success)]' : 'bg-[var(--rail)] text-[var(--text-muted)]'}`}>
             {config.hasCredentials ? 'credentials set' : 'no credentials'}

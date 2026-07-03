@@ -13,7 +13,8 @@ export const emailTools: Tool[] = [
       properties: {
         projectId: { type: 'string', description: 'Project ID' },
         to: { type: 'string', description: 'Recipient email address' },
-        from: { type: 'string', description: 'Sender email address (optional, uses default if omitted)' },
+        from: { type: 'string', description: 'Sender email address (optional, uses project default if omitted)' },
+        replyTo: { type: 'string', description: 'Reply-To address (optional)' },
         subject: { type: 'string', description: 'Email subject line' },
         text: { type: 'string', description: 'Plain text body' },
         html: { type: 'string', description: 'HTML body' },
@@ -30,6 +31,8 @@ export const emailTools: Tool[] = [
         projectId: { type: 'string', description: 'Project ID' },
         templateId: { type: 'string', description: 'Template ID' },
         to: { type: 'string', description: 'Recipient email address' },
+        from: { type: 'string', description: 'Override sender address (optional)' },
+        replyTo: { type: 'string', description: 'Reply-To address (optional)' },
         variables: { type: 'object', description: 'Template variables as key-value pairs' },
       },
       required: ['projectId', 'templateId', 'to'],
@@ -116,10 +119,12 @@ export async function handleEmailTool(
     case 'email_send':
       return sdk.email.send(args.projectId as string, {
         to: args.to as string,
+        from: args.from as string | undefined,
+        replyTo: args.replyTo as string | undefined,
         subject: args.subject as string,
         text: args.text as string | undefined,
         html: args.html as string | undefined,
-      } as any);
+      });
 
     case 'email_send_template':
       return sdk.email.sendTemplated(
@@ -127,6 +132,8 @@ export async function handleEmailTool(
         args.templateId as string,
         {
           to: args.to as string,
+          from: args.from as string | undefined,
+          replyTo: args.replyTo as string | undefined,
           variables: (args.variables as Record<string, string>) ?? {},
         },
       );

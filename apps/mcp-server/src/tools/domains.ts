@@ -34,10 +34,9 @@ export const domainTools: Tool[] = [
     inputSchema: {
       type: 'object',
       properties: {
-        projectId: { type: 'string', description: 'Project ID' },
-        domainId: { type: 'string', description: 'Domain ID' },
+        domainId: { type: 'string', description: 'Domain ID to verify' },
       },
-      required: ['projectId', 'domainId'],
+      required: ['domainId'],
     },
   },
 ];

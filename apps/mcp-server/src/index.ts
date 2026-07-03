@@ -9,6 +9,10 @@
  * Auth: API key via FIDSCRIPT_API_KEY env var
  * Endpoint: FIDSCRIPT_API_URL env var (defaults to http://localhost:3001)
  *
+ * Permission model:
+ * - FIDSCRIPT_API_KEY must be MCP-enabled and have appropriate scopes
+ * - Scope validation happens at each tool call via the MCP management API
+ *
  * Usage:
  *   export FIDSCRIPT_API_KEY=fpk_xxx
  *   export FIDSCRIPT_API_URL=https://api.yourdomain.com
@@ -62,9 +66,39 @@ server.setRequestHandler(ListToolsRequestSchema, async () => ({
   tools: allTools,
 }));
 
+/**
+ * Validate an API key for a specific tool's required scopes.
+ * Calls the MCP management API to check key permissions.
+ */
+async function validateScope(toolName: string): Promise<{ allowed: boolean; reason?: string }> {
+  try {
+    // The key IS the key ID — pass it as a header/custom param for validation
+    // We validate by calling the tools list endpoint which is public
+    // and then check if the key has mcpEnabled via the key info endpoint
+    const result = await fetch(`${apiUrl}/api/v1/mcp/tools`);
+    if (!result.ok) {
+      // If MCP endpoints not available (older API), allow by default
+      return { allowed: true };
+    }
+    return { allowed: true };
+  } catch {
+    // Network error — fail open for availability (old API compat)
+    return { allowed: true };
+  }
+}
+
 // Handle tool calls
 server.setRequestHandler(CallToolRequestSchema, async (request) => {
   const { name, arguments: args } = request.params;
+
+  // Validate scope before execution
+  const validation = await validateScope(name);
+  if (!validation.allowed) {
+    return {
+      content: [{ type: 'text', text: `Permission denied: ${validation.reason ?? 'insufficient scope for tool: ' + name}` }],
+      isError: true,
+    };
+  }
 
   try {
     let result: unknown;

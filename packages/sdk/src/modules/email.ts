@@ -1,127 +1,55 @@
 import { FidscriptClient } from '../client';
+import type {
+  EmailMessage,
+  MailboxMessage,
+  Mailbox,
+  EmailAlias,
+  EmailDomain,
+  EmailTemplate,
+  TemplatePreview,
+  BatchSendResult,
+  EmailMessageStatus,
+  DeliveryOverview,
+  FailureBreakdown,
+  LatencyStats,
+  SendTimelineEntry,
+  EmailSuppression,
+  EmailWebhookSubscription,
+  PlatformMailboxMessage,
+  PlatformMailboxesResponse,
+  CreatePlatformMailboxResponse,
+  ListPlatformMessagesResponse,
+  AdminSendMailResponse,
+  AdminAttachmentConfig,
+  StorageBackend,
+  PlatformMailboxSummary,
+} from '@fidscript/types';
 
-export interface EmailMessage {
-  id: string;
-  to: string;
-  from?: string;
-  subject: string;
-  status: string;
-  createdAt: string;
-}
-
-/** A message row inside a project mailbox — shape returned by MAIL-25/26/27/28/29. */
-export interface MailboxMessage {
-  id: string;
-  mailboxId: string | null;
-  senderIdentityId: string | null;
-  projectId: string;
-  from: string;
-  to: string;
-  subject: string;
-  textBody: string | null;
-  htmlBody: string | null;
-  sizeBytes: string | number; // Prisma BigInt serialized as string
-  isRead: boolean;
-  isStarred: boolean;
-  isDraft: boolean;
-  spamScore: number | null;
-  status: string;
-  error: string | null;
-  createdAt: string;
-}
-
-export interface Mailbox {
-  id: string;
-  email: string;
-  name?: string;
-  createdAt: string;
-}
-
-export interface EmailAlias {
-  id: string;
-  alias: string;
-  forwardsTo: string[];
-  createdAt: string;
-}
-
-/** An email domain registered under a project — distinct from project deployment domains. */
-export interface EmailDomain {
-  id: string;
-  projectId: string;
-  domain: string;
-  status: string;
-  dkimVerified: boolean;
-  spfVerified: boolean;
-  dmarcVerified: boolean;
-  mxVerified: boolean;
-  dkimSelector?: string;
-  dkimPublicKey?: string;
-  catchAllTarget?: string;
-  verifiedAt?: string;
-  createdAt: string;
-}
-
-export interface PlatformMailboxMessage {
-  id: string;
-  mailbox: string;
-  from: string;
-  fromName?: string;
-  to: string[];
-  cc?: string[];
-  subject: string;
-  preview: string;
-  receivedAt: string;
-  sentAt?: string;
-  isRead: boolean;
-  isStarred: boolean;
-  folder: 'inbox' | 'sent' | 'drafts' | 'trash' | 'junk' | 'archive';
-  hasAttachments: boolean;
-  attachmentCount: number;
-  sizeBytes: number;
-  bodyHtml?: string;
-  bodyText?: string;
-}
-
-export type StorageBackend = 'internal' | 'telegram' | 'cloudinary';
-
-export interface PlatformMailboxSummary {
-  id: string;
-  name: string;
-  email: string;
-  domainId: string;
-  quotaBytes: number | null;
-}
-
-export interface PlatformMailboxesResponse {
-  domain: string;
-  domainId: string;
-  mailboxes: PlatformMailboxSummary[];
-}
-
-export interface CreatePlatformMailboxResponse {
-  mailbox: PlatformMailboxSummary;
-  password: string;
-  message: string;
-}
-
-export interface ListPlatformMessagesResponse {
-  messages: PlatformMailboxMessage[];
-  total: number;
-}
-
-export interface AdminSendMailResponse {
-  status: string;
-  messageId: string;
-  from: string;
-  to: string;
-  attachmentsStored: number;
-}
-
-export interface AdminAttachmentConfig {
-  provider: StorageBackend;
-  isActive: boolean;
-  hasCredentials: boolean;
-}
+export type {
+  EmailMessage,
+  MailboxMessage,
+  Mailbox,
+  EmailAlias,
+  EmailDomain,
+  EmailTemplate,
+  TemplatePreview,
+  BatchSendResult,
+  EmailMessageStatus,
+  DeliveryOverview,
+  FailureBreakdown,
+  LatencyStats,
+  SendTimelineEntry,
+  EmailSuppression,
+  EmailWebhookSubscription,
+  PlatformMailboxMessage,
+  PlatformMailboxesResponse,
+  CreatePlatformMailboxResponse,
+  ListPlatformMessagesResponse,
+  AdminSendMailResponse,
+  AdminAttachmentConfig,
+  StorageBackend,
+  PlatformMailboxSummary,
+};
 
 /** Platform-admin mailbox operations (alert@, noreply@, postmaster@, custom platform mailboxes). */
 export class AdminMailboxModule {
@@ -193,11 +121,6 @@ export class EmailModule {
     return res.mailboxes;
   }
 
-  /**
-   * Create a mailbox. The backend requires `domain` + `localPart` + a `password`
-   * (the platform returns the plaintext password only once). Pass `name` for the
-   * mailbox display name and `quotaMb` for the size cap.
-   */
   async createMailbox(
     projectId: string,
     data: { domain: string; localPart: string; password: string; name?: string; quotaMb?: number },
@@ -214,10 +137,6 @@ export class EmailModule {
     return res.aliases;
   }
 
-  /**
-   * Create an alias. The backend requires `domain` + `localPart` + a typed `targets`
-   * array (each target is a mailbox, external address, or webhook URL).
-   */
   async createAlias(
     projectId: string,
     data: {
@@ -234,8 +153,6 @@ export class EmailModule {
     return this.client.delete(`/api/v1/projects/${projectId}/email/aliases/${aliasId}`);
   }
 
-  /** List messages for a project (optionally filtered by mailboxId + folder).
-   *  Maps to MAIL-25. */
   async listMessages(
     projectId: string,
     params: { mailboxId?: string; folder?: 'inbox' | 'sent' | 'drafts' | 'trash' | 'spam'; limit?: number; offset?: number; unread?: boolean } = {},
@@ -243,84 +160,51 @@ export class EmailModule {
     return this.client.get(`/api/v1/projects/${projectId}/email/messages`, params);
   }
 
-  /** Get a single message with body. Maps to MAIL-26. */
   async getMessage(projectId: string, messageId: string): Promise<MailboxMessage> {
     return this.client.get(`/api/v1/projects/${projectId}/email/messages/${messageId}`);
   }
 
-  /** Mark messages read/unread in bulk. Maps to MAIL-27. */
   async markMessagesRead(projectId: string, messageIds: string[], isRead: boolean): Promise<{ updated: number }> {
     return this.client.patch(`/api/v1/projects/${projectId}/email/messages/read`, { messageIds, isRead });
   }
 
-  /** Star or unstar a single message. Maps to MAIL-28. */
   async starMessage(projectId: string, messageId: string, starred: boolean): Promise<MailboxMessage> {
     return this.client.patch(`/api/v1/projects/${projectId}/email/messages/${messageId}/star?starred=${starred}`);
   }
 
-  /** Delete messages in bulk. Maps to MAIL-29. */
   async deleteMessages(projectId: string, messageIds: string[]): Promise<{ deleted: number }> {
     return this.client.delete(`/api/v1/projects/${projectId}/email/messages`, { messageIds });
   }
 
   // ── Email domain management ──────────────────────────────────────────────────
 
-  /**
-   * List all email domains for a project.
-   * Route: GET /projects/:projectId/email/domains
-   */
   async listDomains(projectId: string): Promise<EmailDomain[]> {
-    const res = await this.client.get<{ domains: EmailDomain[] }>(
-      `/api/v1/projects/${projectId}/email/domains`,
-    );
+    const res = await this.client.get<{ domains: EmailDomain[] }>(`/api/v1/projects/${projectId}/email/domains`);
     return res.domains ?? [];
   }
 
-  /**
-   * Get a single email domain.
-   * Route: GET /projects/:projectId/email/domains/:domainId
-   */
   async getDomain(projectId: string, domainId: string): Promise<EmailDomain> {
     return this.client.get(`/api/v1/projects/${projectId}/email/domains/${domainId}`);
   }
 
-  /**
-   * Register a new email domain for a project.
-   * Route: POST /projects/:projectId/email/domains
-   */
   async createDomain(projectId: string, domain: string): Promise<EmailDomain & { ownershipToken: string; steps: string[] }> {
     return this.client.post(`/api/v1/projects/${projectId}/email/domains`, { domain });
   }
 
-  /**
-   * Trigger ownership + DNS verification for an email domain.
-   * Route: POST /projects/:projectId/email/domains/:domainId/verify
-   */
   async verifyDomain(projectId: string, domainId: string): Promise<EmailDomain> {
     return this.client.post(`/api/v1/projects/${projectId}/email/domains/${domainId}/verify`);
   }
 
-  /**
-   * Remove an email domain and all its mailboxes / aliases.
-   * Route: DELETE /projects/:projectId/email/domains/:domainId
-   */
   async deleteDomain(projectId: string, domainId: string): Promise<void> {
     return this.client.delete(`/api/v1/projects/${projectId}/email/domains/${domainId}`);
   }
 
   // ── Catch-all rules ─────────────────────────────────────────────────────────
 
-  /**
-   * Get the catch-all rule for a domain. Returns null if not configured.
-   */
   async getCatchAll(projectId: string, domainId: string): Promise<{ id: string; target: Record<string, unknown>; isActive: boolean } | null> {
     return this.client.get(`/api/v1/projects/${projectId}/email/domains/${domainId}/catch-all`);
   }
 
-  /**
-   * Set the catch-all rule for a domain. All unmatched addresses on the domain
-   * will be delivered to the specified target (mailbox, external address, or webhook).
-   */
   async setCatchAll(
     projectId: string,
     domainId: string,
@@ -329,7 +213,6 @@ export class EmailModule {
     return this.client.post(`/api/v1/projects/${projectId}/email/domains/${domainId}/catch-all`, target);
   }
 
-  /** Remove the catch-all rule for a domain. */
   async deleteCatchAll(projectId: string, domainId: string): Promise<{ deleted: boolean }> {
     return this.client.delete(`/api/v1/projects/${projectId}/email/domains/${domainId}/catch-all`);
   }
@@ -348,52 +231,51 @@ export class EmailModule {
       textBody?: string;
       variables?: Array<{ name: string; required?: boolean; default?: string }>;
     },
-  ) {
+  ): Promise<EmailTemplate> {
     return this.client.post(`/api/v1/projects/${projectId}/email/templates`, data);
   }
 
-  async listTemplates(projectId: string) {
-    return this.client.get<any[]>(`/api/v1/projects/${projectId}/email/templates`);
+  async listTemplates(projectId: string): Promise<EmailTemplate[]> {
+    return this.client.get<EmailTemplate[]>(`/api/v1/projects/${projectId}/email/templates`);
   }
 
-  async getTemplate(projectId: string, templateId: string) {
-    return this.client.get<any>(`/api/v1/projects/${projectId}/email/templates/${templateId}`);
+  async getTemplate(projectId: string, templateId: string): Promise<EmailTemplate> {
+    return this.client.get<EmailTemplate>(`/api/v1/projects/${projectId}/email/templates/${templateId}`);
   }
 
-  async updateTemplate(projectId: string, templateId: string, data: Partial<{
-    description: string;
-    fromAddress: string;
-    fromName: string;
-    subject: string;
-    htmlBody: string;
-    textBody: string;
-    variables: Array<{ name: string; required?: boolean; default?: string }>;
-    isActive: boolean;
-  }>) {
+  async updateTemplate(
+    projectId: string,
+    templateId: string,
+    data: Partial<{
+      description: string;
+      fromAddress: string;
+      fromName: string;
+      subject: string;
+      htmlBody: string;
+      textBody: string;
+      variables: Array<{ name: string; required?: boolean; default?: string }>;
+      isActive: boolean;
+    }>,
+  ): Promise<EmailTemplate> {
     return this.client.patch(`/api/v1/projects/${projectId}/email/templates/${templateId}`, data);
   }
 
-  async deleteTemplate(projectId: string, templateId: string) {
+  async deleteTemplate(projectId: string, templateId: string): Promise<void> {
     return this.client.delete(`/api/v1/projects/${projectId}/email/templates/${templateId}`);
   }
 
-  async previewTemplate(projectId: string, templateId: string) {
-    return this.client.get<any>(`/api/v1/projects/${projectId}/email/templates/${templateId}/preview`);
+  async previewTemplate(projectId: string, templateId: string): Promise<TemplatePreview> {
+    return this.client.get<TemplatePreview>(`/api/v1/projects/${projectId}/email/templates/${templateId}/preview`);
   }
 
-  /** Render and send a templated email. */
   async sendTemplated(
     projectId: string,
     templateId: string,
     data: { to: string; from?: string; replyTo?: string; variables: Record<string, string>; apiKeyId?: string },
-  ) {
-    return this.client.post<{ messageId: string; status: string }>(
-      `/api/v1/projects/${projectId}/email/templates/${templateId}/send`,
-      data,
-    );
+  ): Promise<{ messageId: string; status: string }> {
+    return this.client.post(`/api/v1/projects/${projectId}/email/templates/${templateId}/send`, data);
   }
 
-  /** Batch send a template to up to 1000 recipients with individual variables. */
   async sendTemplateBatch(
     projectId: string,
     data: {
@@ -403,69 +285,65 @@ export class EmailModule {
       recipients: Array<{ to: string; variables: Record<string, string> }>;
       apiKeyId?: string;
     },
-  ) {
-    return this.client.post<{ total: number; sent: number; failed: number; results: any[] }>(
-      `/api/v1/projects/${projectId}/email/templates/send-batch`,
-      data,
-    );
+  ): Promise<BatchSendResult> {
+    return this.client.post<BatchSendResult>(`/api/v1/projects/${projectId}/email/templates/send-batch`, data);
   }
 
-  /** Get message delivery status including all delivery attempt history. */
-  async getMessageStatus(projectId: string, messageId: string) {
-    return this.client.get<any>(`/api/v1/projects/${projectId}/email/messages/${messageId}/status`);
+  async getMessageStatus(projectId: string, messageId: string): Promise<EmailMessageStatus> {
+    return this.client.get<EmailMessageStatus>(`/api/v1/projects/${projectId}/email/messages/${messageId}/status`);
   }
 
   // ── Analytics ──────────────────────────────────────────────────────────────
 
-  async getDeliveryOverview(projectId: string, days?: number) {
-    return this.client.get<any>(`/api/v1/projects/${projectId}/email/analytics/overview`, days ? { days } : {});
+  async getDeliveryOverview(projectId: string, days?: number): Promise<DeliveryOverview> {
+    return this.client.get<DeliveryOverview>(`/api/v1/projects/${projectId}/email/analytics/overview`, days ? { days } : {});
   }
 
-  async getFailureBreakdown(projectId: string, days?: number) {
-    return this.client.get<any[]>(`/api/v1/projects/${projectId}/email/analytics/failures`, days ? { days } : {});
+  async getFailureBreakdown(projectId: string, days?: number): Promise<FailureBreakdown[]> {
+    return this.client.get<FailureBreakdown[]>(`/api/v1/projects/${projectId}/email/analytics/failures`, days ? { days } : {});
   }
 
-  async getLatency(projectId: string, days?: number) {
-    return this.client.get<any>(`/api/v1/projects/${projectId}/email/analytics/latency`, days ? { days } : {});
+  async getLatency(projectId: string, days?: number): Promise<LatencyStats> {
+    return this.client.get<LatencyStats>(`/api/v1/projects/${projectId}/email/analytics/latency`, days ? { days } : {});
   }
 
-  async getSendTimeline(projectId: string, days?: number) {
-    return this.client.get<any[]>(`/api/v1/projects/${projectId}/email/analytics/timeline`, days ? { days } : {});
+  async getSendTimeline(projectId: string, days?: number): Promise<SendTimelineEntry[]> {
+    return this.client.get<SendTimelineEntry[]>(`/api/v1/projects/${projectId}/email/analytics/timeline`, days ? { days } : {});
   }
 
   // ── Suppression List ───────────────────────────────────────────────────────
 
-  async listSuppressions(projectId: string) {
-    return this.client.get<any[]>(`/api/v1/projects/${projectId}/email/suppressions`);
+  async listSuppressions(projectId: string): Promise<EmailSuppression[]> {
+    return this.client.get<EmailSuppression[]>(`/api/v1/projects/${projectId}/email/suppressions`);
   }
 
-  async addSuppression(projectId: string, email: string) {
+  async addSuppression(projectId: string, email: string): Promise<void> {
     return this.client.post(`/api/v1/projects/${projectId}/email/suppressions`, { email });
   }
 
-  async removeSuppression(projectId: string, email: string) {
+  async removeSuppression(projectId: string, email: string): Promise<void> {
     return this.client.delete(`/api/v1/projects/${projectId}/email/suppressions/${encodeURIComponent(email)}`);
   }
 
   // ── Email Webhooks ─────────────────────────────────────────────────────────
 
-  async listWebhooks(projectId: string) {
-    return this.client.get<any[]>(`/api/v1/projects/${projectId}/email/webhooks`);
+  async listWebhooks(projectId: string): Promise<EmailWebhookSubscription[]> {
+    return this.client.get<EmailWebhookSubscription[]>(`/api/v1/projects/${projectId}/email/webhooks`);
   }
 
-  async createWebhook(projectId: string, data: { url: string; events: string[] }) {
-    return this.client.post<any>(`/api/v1/projects/${projectId}/email/webhooks`, data);
+  async createWebhook(projectId: string, data: { url: string; events: string[] }): Promise<EmailWebhookSubscription> {
+    return this.client.post<EmailWebhookSubscription>(`/api/v1/projects/${projectId}/email/webhooks`, data);
   }
 
-  async updateWebhook(projectId: string, id: string, data: Partial<{ url: string; events: string[]; isActive: boolean }>) {
+  async updateWebhook(projectId: string, id: string, data: Partial<{ url: string; events: string[]; isActive: boolean }>): Promise<void> {
     return this.client.patch(`/api/v1/projects/${projectId}/email/webhooks/${id}`, data);
   }
 
-  async deleteWebhook(projectId: string, id: string) {
+  async deleteWebhook(projectId: string, id: string): Promise<void> {
     return this.client.delete(`/api/v1/projects/${projectId}/email/webhooks/${id}`);
   }
 
-  async testWebhook(projectId: string, id: string) {
+  async testWebhook(projectId: string, id: string): Promise<void> {
     return this.client.post(`/api/v1/projects/${projectId}/email/webhooks/${id}/test`, {});
   }
 }
