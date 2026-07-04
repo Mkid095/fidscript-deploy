@@ -8,3 +8,4 @@ export * from './refresh-token.dto';
 export * from './mfa.dto';
 export * from './change-password.dto';
 export * from './verification.dto';
+export * from './organization.dto';

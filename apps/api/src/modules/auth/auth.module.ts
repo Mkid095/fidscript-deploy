@@ -4,6 +4,7 @@ import { PassportModule } from '@nestjs/passport';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { resolveJwtSecret } from '@/common/secrets';
 import { AuthController } from '@/modules/auth/controllers/auth.controller';
+import { OrganizationController, InvitationAcceptController } from '@/modules/auth/controllers/organization.controller';
 import { AuthService } from '@/modules/auth/services/auth.service';
 import { AuthSessionService } from '@/modules/auth/services/auth-session.service';
 import { AuthRegisterService } from '@/modules/auth/services/auth-register.service';
@@ -15,6 +16,8 @@ import { AuthApiKeyService } from '@/modules/auth/services/auth-api-key.service'
 import { AuthPasswordService } from '@/modules/auth/services/auth-password.service';
 import { AuthMagicCodeService } from '@/modules/auth/services/auth-magic-code.service';
 import { AuthVerificationService } from '@/modules/auth/services/auth-verification.service';
+import { OrganizationService } from '@/modules/auth/services/organization.service';
+import { TeamService } from '@/modules/auth/services/team.service';
 import { EmailModule } from '@/modules/email/email.module';
 import { JwtStrategy } from '@/modules/auth/jwt.strategy';
 import { MfaService } from '@/modules/auth/mfa/mfa.service';
@@ -40,7 +43,7 @@ import { ProjectsModule } from '@/modules/projects/projects.module';
       inject: [ConfigService],
     }),
   ],
-  controllers: [AuthController],
+  controllers: [AuthController, OrganizationController, InvitationAcceptController],
   providers: [
     AuthService,
     AuthSessionService,
@@ -53,6 +56,8 @@ import { ProjectsModule } from '@/modules/projects/projects.module';
     AuthPasswordService,
     AuthMagicCodeService,
     AuthVerificationService,
+    OrganizationService,
+    TeamService,
     JwtStrategy,
     MfaService,
     JwtAuthGuard,
@@ -60,6 +65,6 @@ import { ProjectsModule } from '@/modules/projects/projects.module';
     PlatformAdminGuard,
     InstallationGuard,
   ],
-  exports: [AuthService, JwtAuthGuard, ApiKeyOrJwtGuard, PlatformAdminGuard, InstallationGuard, JwtModule],
+  exports: [AuthService, OrganizationService, TeamService, JwtAuthGuard, ApiKeyOrJwtGuard, PlatformAdminGuard, InstallationGuard, JwtModule],
 })
 export class AuthModule {}

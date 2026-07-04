@@ -44,6 +44,8 @@ model User {
   githubConnection GithubConnection?
   mailboxMemberships EmailMailboxMember[]
   verificationTokens VerificationToken[]
+  orgMemberships    OrganizationMember[]
+  teamMemberships   TeamMember[]
 
   @@map("users")
   @@schema("identity")
@@ -62,6 +64,147 @@ enum AuthMethod {
   MAGIC_CODE
 
   @@schema("public")
+}
+
+// ─── Phase 5.3: Organizations, Teams, Roles, Permissions ─────────────────────
+
+enum OrganizationRole {
+  OWNER
+  ADMIN
+  DEVELOPER
+  BILLING
+  VIEWER
+
+  @@map("OrganizationRole")
+  @@schema("identity")
+}
+
+enum TeamRole {
+  LEAD
+  MEMBER
+  VIEWER
+
+  @@map("TeamRole")
+  @@schema("identity")
+}
+
+// Platform-wide permissions usable across orgs/teams.
+model Permission {
+  id          String   @id @default(uuid())
+  name        String   @unique @db.VarChar(100) // e.g. "domains.read", "email.send", "org.manage"
+  description String?  @db.VarChar(255)
+  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz
+
+  @@map("permissions")
+  @@schema("identity")
+}
+
+model Organization {
+  id        String   @id @default(uuid())
+  name      String   @db.VarChar(255)
+  slug      String   @unique @db.VarChar(100)
+  logoUrl   String?  @map("logo_url") @db.Text
+  plan      String   @default("starter") @db.VarChar(50)
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz
+
+  members     OrganizationMember[]
+  teams       Team[]
+  invitations Invitation[]
+  roles      OrgRole[]
+
+  @@map("organizations")
+  @@schema("identity")
+}
+
+// Roles define what permissions a member has within an org.
+// Permissions are stored as a JSON array on the role for simplicity
+// (avoiding a many-to-many join for the common case).
+model OrgRole {
+  id             String   @id @default(uuid())
+  organizationId String   @map("organization_id")
+  name           String   @db.VarChar(100) // OWNER | ADMIN | DEVELOPER | BILLING | VIEWER
+  permissions    Json     @default("[]")   // string[] of permission names
+  createdAt      DateTime @default(now()) @map("created_at") @db.Timestamptz
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  members      OrganizationMember[]
+  invitations  Invitation[]
+
+  @@unique([organizationId, name])
+  @@map("org_roles")
+  @@schema("identity")
+}
+
+model OrganizationMember {
+  id             String   @id @default(uuid())
+  organizationId String   @map("organization_id")
+  userId         String   @map("user_id")
+  roleId         String   @map("role_id")
+  invitedBy      String?  @map("invited_by")
+  createdAt      DateTime @default(now()) @map("created_at") @db.Timestamptz
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  role         OrgRole     @relation(fields: [roleId], references: [id], onDelete: Cascade)
+  user         User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([organizationId, userId])
+  @@map("organization_members")
+  @@schema("identity")
+}
+
+model Team {
+  id             String   @id @default(uuid())
+  organizationId String   @map("organization_id")
+  name           String   @db.VarChar(255)
+  description    String?  @db.Text
+  createdAt      DateTime @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt      DateTime @updatedAt @map("updated_at") @db.Timestamptz
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  members     TeamMember[]
+
+  @@unique([organizationId, name])
+  @@map("teams")
+  @@schema("identity")
+}
+
+model TeamMember {
+  id         String   @id @default(uuid())
+  teamId     String   @map("team_id")
+  userId     String   @map("user_id")
+  role       TeamRole @default(MEMBER)
+  createdAt  DateTime @default(now()) @map("created_at") @db.Timestamptz
+
+  team Team @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([teamId, userId])
+  @@map("team_members")
+  @@schema("identity")
+}
+
+// Organization invitations — sent to an email address; accepted via token.
+model Invitation {
+  id             String   @id @default(uuid())
+  organizationId String   @map("organization_id")
+  email          String   @db.VarChar(255)
+  roleId         String   @map("role_id")
+  token          String   @unique @db.VarChar(255)
+  invitedBy      String   @map("invited_by")
+  expiresAt      DateTime @map("expires_at") @db.Timestamptz
+  acceptedAt     DateTime? @map("accepted_at")
+  acceptedBy     String?  @map("accepted_by")
+  revokedAt      DateTime? @map("revoked_at")
+  createdAt      DateTime @default(now()) @map("created_at") @db.Timestamptz
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  role         OrgRole     @relation(fields: [roleId], references: [id], onDelete: Cascade)
+
+  @@index([organizationId, email])
+  @@index([token])
+  @@map("invitations")
+  @@schema("identity")
 }
 
 model Session {
