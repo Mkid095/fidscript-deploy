@@ -14,6 +14,7 @@ import { AuthSessionMgmtService } from '@/modules/auth/services/auth-session-mgm
 import { AuthApiKeyService } from '@/modules/auth/services/auth-api-key.service';
 import { AuthPasswordService } from '@/modules/auth/services/auth-password.service';
 import { AuthMagicCodeService } from '@/modules/auth/services/auth-magic-code.service';
+import { AuthVerificationService } from '@/modules/auth/services/auth-verification.service';
 import { EmailModule } from '@/modules/email/email.module';
 import { JwtStrategy } from '@/modules/auth/jwt.strategy';
 import { MfaService } from '@/modules/auth/mfa/mfa.service';
@@ -51,6 +52,7 @@ import { ProjectsModule } from '@/modules/projects/projects.module';
     AuthApiKeyService,
     AuthPasswordService,
     AuthMagicCodeService,
+    AuthVerificationService,
     JwtStrategy,
     MfaService,
     JwtAuthGuard,

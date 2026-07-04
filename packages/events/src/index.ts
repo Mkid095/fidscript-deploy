@@ -23,6 +23,12 @@ export type EventType =
   | 'identity.token.refreshed'
   | 'identity.api_key.created'
   | 'identity.api_key.revoked'
+  | 'identity.user.email_verification_sent'
+  | 'identity.user.email_verified'
+  | 'identity.user.password_reset_requested'
+  | 'identity.user.password_reset_completed'
+  | 'identity.user.magic_link_sent'
+  | 'identity.user.magic_link_verified'
   // Legacy aliases (backwards-compat)
   | 'user.created'
   | 'user.login'

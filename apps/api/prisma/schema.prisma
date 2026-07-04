@@ -27,6 +27,7 @@ model User {
   mfaEnabled          Boolean    @default(false) @map("mfa_enabled")
   mfaSecret           String?    @map("mfa_secret") @db.VarChar(255)
   mustChangePassword  Boolean    @default(false) @map("must_change_password")
+  emailVerifiedAt     DateTime?  @map("email_verified_at") @db.Timestamptz
   preferredAuthMethod AuthMethod @default(PASSWORD) @map("preferred_auth_method")
   lastLoginAt                  DateTime?  @map("last_login_at") @db.Timestamptz
   verificationCode             String?    @map("verification_code") @db.VarChar(64)
@@ -42,6 +43,7 @@ model User {
   credentials UserCredential[]
   githubConnection GithubConnection?
   mailboxMemberships EmailMailboxMember[]
+  verificationTokens VerificationToken[]
 
   @@map("users")
   @@schema("identity")
@@ -127,6 +129,33 @@ model MagicCode {
 
   @@index([email, consumed, createdAt])
   @@map("magic_codes")
+  @@schema("identity")
+}
+
+// ─── Verification Tokens (email verify, password reset, magic link) ────────
+enum VerificationTokenType {
+  EMAIL_VERIFY
+  PASSWORD_RESET
+  MAGIC_LINK
+
+  @@map("VerificationTokenType")
+  @@schema("identity")
+}
+
+model VerificationToken {
+  id        String   @id @default(uuid())
+  userId    String   @map("user_id")
+  token     String   @unique @db.VarChar(255)  // the raw token (also used as lookup key)
+  type      VerificationTokenType
+  expiresAt DateTime @map("expires_at") @db.Timestamptz
+  consumed  Boolean  @default(false)
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, type])
+  @@index([token])
+  @@map("verification_tokens")
   @@schema("identity")
 }
 
@@ -1042,6 +1071,7 @@ model EmailMailbox {
   messages EmailMessage[]
   members  EmailMailboxMember[]
   conversations EmailConversation[]
+  legalHolds EmailLegalHold[]
 
   @@unique([domainId, localPart])
   @@map("mailboxes")

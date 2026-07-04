@@ -13,6 +13,7 @@ import {
   RegisterDto, LoginDto, MagicCodeDto, VerifyMagicCodeDto,
   CreateApiKeyDto, UpdateProfileDto, RefreshTokenDto, MfaCodeDto, MfaChallengeDto,
   ChangePasswordDto,
+  SendVerificationDto, VerifyEmailDto, ConfirmPasswordResetDto, ConfirmMagicLinkDto,
 } from '@/modules/auth/dto/index';
 
 @ApiTags('auth')
@@ -94,6 +95,43 @@ export class AuthController {
   async verifyMagicCode(@Body() dto: VerifyMagicCodeDto, @Req() req: Request) {
     const { ipAddress, userAgent } = extractRequestContext(req);
     return this.authService.verifyMagicCode(dto, ipAddress, userAgent);
+  }
+
+  // Phase 5.1 — Verification flows (email verify, password reset, magic link)
+  @Post('send-verification')
+  @UseGuards(InstallationGuard)
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Send a verification token (EMAIL_VERIFY, PASSWORD_RESET, or MAGIC_LINK)' })
+  async sendVerification(@Body() dto: SendVerificationDto, @Req() req: Request) {
+    const { ipAddress, userAgent } = extractRequestContext(req);
+    return this.authService.sendVerification(dto, ipAddress, userAgent);
+  }
+
+  @Post('verify-email')
+  @UseGuards(InstallationGuard)
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Verify email address from token in verification link' })
+  async verifyEmail(@Body() dto: VerifyEmailDto, @Req() req: Request) {
+    const { ipAddress, userAgent } = extractRequestContext(req);
+    return this.authService.verifyEmail(dto, ipAddress, userAgent);
+  }
+
+  @Post('password-reset')
+  @UseGuards(InstallationGuard)
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Reset password using token from email link (consumes token, revokes sessions)' })
+  async passwordReset(@Body() dto: ConfirmPasswordResetDto, @Req() req: Request) {
+    const { ipAddress, userAgent } = extractRequestContext(req);
+    return this.authService.confirmPasswordReset(dto, ipAddress, userAgent);
+  }
+
+  @Post('magic-link/verify')
+  @UseGuards(InstallationGuard)
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Confirm magic link token and receive session tokens' })
+  async confirmMagicLink(@Body() dto: ConfirmMagicLinkDto, @Req() req: Request) {
+    const { ipAddress, userAgent } = extractRequestContext(req);
+    return this.authService.confirmMagicLink(dto, ipAddress, userAgent);
   }
 
   @Post('mfa/setup')

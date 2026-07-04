@@ -9,6 +9,7 @@ import { AuthSessionMgmtService } from '@/modules/auth/services/auth-session-mgm
 import { AuthApiKeyService } from '@/modules/auth/services/auth-api-key.service';
 import { AuthPasswordService } from '@/modules/auth/services/auth-password.service';
 import { AuthMagicCodeService } from '@/modules/auth/services/auth-magic-code.service';
+import { AuthVerificationService } from '@/modules/auth/services/auth-verification.service';
 import { MfaService } from '@/modules/auth/mfa/mfa.service';
 
 export { AuthSessionService, AuthResponse } from '@/modules/auth/services/auth-session.service';
@@ -26,6 +27,7 @@ export class AuthService {
     private apiKeys: AuthApiKeyService,
     private password: AuthPasswordService,
     private magicCodeService: AuthMagicCodeService,
+    private verification: AuthVerificationService,
     private mfa: MfaService,
   ) {}
 
@@ -93,5 +95,22 @@ export class AuthService {
     });
     if (!user) throw new NotFoundException('User not found');
     return { authMethod: user.preferredAuthMethod ?? 'PASSWORD' };
+  }
+
+  // Phase 5.1 — Verification flows
+  sendVerification(dto: { email: string; type: 'EMAIL_VERIFY' | 'PASSWORD_RESET' | 'MAGIC_LINK' }, ip?: string, ua?: string) {
+    return this.verification.sendVerification(dto, ip, ua);
+  }
+
+  verifyEmail(dto: { token: string }, ip?: string, ua?: string) {
+    return this.verification.verifyEmail(dto, ip, ua);
+  }
+
+  confirmPasswordReset(dto: { token: string; newPassword: string }, ip?: string, ua?: string) {
+    return this.verification.confirmPasswordReset(dto, ip, ua);
+  }
+
+  confirmMagicLink(dto: { token: string }, ip?: string, ua?: string) {
+    return this.verification.confirmMagicLink(dto, ip, ua);
   }
 }
