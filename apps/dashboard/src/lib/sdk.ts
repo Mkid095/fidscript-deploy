@@ -25,12 +25,10 @@ export const IS_MOCK_MODE = USE_MOCK;
 const RAW_URL = process.env.NEXT_PUBLIC_API_URL;
 
 if (USE_MOCK) {
-  // eslint-disable-next-line no-console
   console.info('[sdk] Mock mode enabled — using fake data. Set NEXT_PUBLIC_USE_MOCK_API=false to use real API.');
 } else if (!RAW_URL) {
   // Surface the error in the browser console early; createFidscript will
   // also throw with the missing baseURL message when actually called.
-  // eslint-disable-next-line no-console
   console.error('[sdk] NEXT_PUBLIC_API_URL is not set — check the dashboard Docker build args.');
 }
 

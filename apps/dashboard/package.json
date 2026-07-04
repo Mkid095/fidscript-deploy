@@ -14,7 +14,7 @@
   },
   "dependencies": {
      "@fidscript-deploy/sdk": "workspace:*",
-    "@fidscript/ui": "workspace:*",
+    "@fidscript-deploy/ui": "workspace:*",
     "@hugeicons/core-free-icons": "^4.2.1",
     "@hugeicons/react": "^1.1.7",
     "@iconify/react": "^6.0.2",
@@ -26,6 +26,7 @@
     "tailwindcss": "^4"
   },
   "devDependencies": {
+    "@eslint/eslintrc": "^3.0.0",
     "@types/node": "^20.0.0",
     "@types/react": "^19.0.0",
     "@types/react-dom": "^19.0.0",

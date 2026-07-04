@@ -1,5 +1,5 @@
 {
-  "name": "@fidscript/ui",
+  "name": "@fidscript-deploy/ui",
   "version": "1.0.0",
   "private": true,
   "type": "module",
@@ -24,6 +24,8 @@
     "@types/node": "^20.0.0",
     "@types/react": "^19.0.0",
     "@types/react-dom": "^19.0.0",
+    "@typescript-eslint/eslint-plugin": "^8.62.1",
+    "@typescript-eslint/parser": "^8.62.1",
     "typescript": "^5.4.0"
   }
 }

@@ -294,7 +294,6 @@ async function run(argv: string[]): Promise<void> {
       try {
         const status = await sdk.email.getMessageStatus(projectId, messageId);
         console.log(`Status: ${status.status}`);
-        if (status.error) console.log(`Error: ${status.error}`);
         if (status.failureType) console.log(`Failure: ${status.failureType}`);
         console.log(`Attempts: ${status.retryCount}`);
         if (status.attempts?.length) {

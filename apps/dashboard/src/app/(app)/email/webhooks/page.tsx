@@ -10,8 +10,8 @@ interface WebhookSub {
   url: string;
   events: string[];
   isActive: boolean;
-  lastStatus: string | null;
-  lastSentAt: string | null;
+  lastStatus?: string | null;
+  lastSentAt?: string | null;
   successCount: number;
   failureCount: number;
   createdAt: string;

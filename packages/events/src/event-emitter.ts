@@ -9,8 +9,9 @@
  * Migration: if an event schema changes, add a `migrate()` function to the
  * eventSchemas entry in @fidscript-deploy/types to transform old payloads automatically.
  */
-import type { PlatformEvent } from './index.js';
 import { LEGACY_EVENT_ALIASES } from '@fidscript-deploy/types';
+
+import type { PlatformEvent } from './index.js';
 
 // -------------------------------------------------------------------------- //
 // Schema registry — imports from @fidscript-deploy/types (single source of truth)  //
@@ -27,7 +28,7 @@ interface EventSchema {
 
 // Lazy import to avoid circular dependency
 function getSchemas(): Record<string, EventSchema> {
-  // eslint-disable-next-line @typescript-eslint/no-var-requires
+   
   return require('@fidscript-deploy/types').eventSchemas;
 }
 
