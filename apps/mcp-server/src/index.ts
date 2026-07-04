@@ -43,6 +43,7 @@ import { createFidscript } from '@fidscript-deploy/sdk';
 import { emailTools, handleEmailTool } from './tools/email.js';
 import { domainTools, handleDomainTool } from './tools/domains.js';
 import { projectTools, handleProjectTool } from './tools/projects.js';
+import { authTools, handleAuthTool } from './tools/auth.js';
 
 const apiKey = process.env.FIDSCRIPT_API_KEY;
 const apiUrl = process.env.FIDSCRIPT_API_URL || 'http://localhost:3001';
@@ -54,7 +55,7 @@ if (!apiKey) {
 
 const sdk = createFidscript({ apiKey, baseURL: apiUrl });
 
-const allTools = [...emailTools, ...domainTools, ...projectTools];
+const allTools = [...emailTools, ...domainTools, ...projectTools, ...authTools];
 
 const server = new Server(
   { name: 'fidscript-mcp', version: '1.0.0' },
@@ -109,6 +110,8 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
       result = await handleDomainTool(name, args ?? {}, sdk);
     } else if (name.startsWith('project_')) {
       result = await handleProjectTool(name, args ?? {}, sdk);
+    } else if (name.startsWith('auth_')) {
+      result = await handleAuthTool(name, args ?? {}, sdk);
     } else {
       return {
         content: [{ type: 'text', text: `Unknown tool: ${name}` }],
