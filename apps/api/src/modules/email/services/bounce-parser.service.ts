@@ -11,6 +11,8 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { PrismaService } from '@/prisma/prisma.service';
 import { EventService } from '@/modules/events/event.service';
+import { AbuseDetectionService } from '@/modules/email/services/abuse-detection.service';
+import { EmailReputationService } from '@/modules/email/services/email-reputation.service';
 
 export type BounceType = 'hard' | 'soft' | 'complaint';
 
@@ -61,6 +63,8 @@ export class BounceParserService {
   constructor(
     private prisma: PrismaService,
     private events: EventService,
+    private abuse: AbuseDetectionService,
+    private reputation: EmailReputationService,
   ) {}
 
   /**
@@ -107,12 +111,21 @@ export class BounceParserService {
   }
 
   /**
-   * Process a parsed bounce: update message status, suppress if hard/complaint.
+   * Process a parsed bounce: update message status, suppress if hard/complaint,
+   * record abuse events, update reputation.
    */
   async process(parsed: ParsedBounce): Promise<void> {
     const { recipient, type, code, reason, messageId } = parsed;
 
     this.logger.log(`Processing bounce: type=${type} recipient=${recipient} code=${code}`);
+
+    // Look up domain for abuse/reputation tracking
+    const [, domainName] = recipient.split('@');
+    const emailDomain = domainName
+      ? await this.prisma.emailDomain.findFirst({ where: { domain: domainName } })
+      : null;
+    const domainId = emailDomain?.id;
+    const projectId = emailDomain?.projectId;
 
     // Update message status
     if (messageId) {
@@ -148,6 +161,12 @@ export class BounceParserService {
     // Suppress recipient if hard bounce or complaint
     if (type === 'hard' || type === 'complaint') {
       await this.suppressRecipient(recipient, type === 'complaint' ? 'COMPLAINT' : 'BOUNCE');
+    }
+
+    // Record abuse + update reputation
+    if (domainId && projectId) {
+      await this.abuse.onBounce(domainId, projectId);
+      await this.reputation.recordBounce(domainId, projectId);
     }
   }
 

@@ -1,11 +1,12 @@
 import {
   Controller, Get, Post, Patch, Delete, Body, Param, Query, Req,
-  UseGuards, HttpCode, HttpStatus, ForbiddenException,
+  UseGuards, HttpCode, HttpStatus, ForbiddenException, Headers,
 } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { Request } from 'express';
 import { ApiKeyOrJwtGuard } from '@/modules/auth/guards/api-key-or-jwt.guard';
 import { EmailMessageService } from '@/modules/email/services/message.service';
+import { EmailIdempotencyService } from '@/modules/email/services/idempotency.service';
 import { SendEmailDto } from '@/modules/email/dto/send-email.dto';
 import { ListMessagesDto } from '@/modules/email/dto/list-messages.dto';
 import { MarkMessagesReadDto } from '@/modules/email/dto/mark-messages-read.dto';
@@ -25,17 +26,50 @@ import { DeleteMessagesDto } from '@/modules/email/dto/delete-messages.dto';
 @UseGuards(ApiKeyOrJwtGuard)
 @ApiBearerAuth()
 export class EmailMessageController {
-  constructor(private messageService: EmailMessageService) {}
+  constructor(
+    private messageService: EmailMessageService,
+    private idempotency: EmailIdempotencyService,
+  ) {}
 
   @Post('send')
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Send an email (via Stalwart SMTP submission). BaaS: API-key authenticated.' })
-  sendEmail(
+  async sendEmail(
     @Req() req: Request,
     @Param('projectId') projectId: string,
     @Body() dto: SendEmailDto,
+    @Headers('idempotency-key') idempotencyKey?: string,
   ) {
     this.assertCanAccessProject(req, projectId);
+
+    // Idempotency: extract non-idempotent fields for payload hash
+    const payload = { to: dto.to, from: dto.from, subject: dto.subject, text: dto.text, html: dto.html };
+
+    if (idempotencyKey) {
+      const { action, token, cachedResponse } = await this.idempotency.checkOrWait(
+        projectId,
+        idempotencyKey,
+        payload,
+      );
+      if (action === 'cached' && cachedResponse) {
+        return cachedResponse.body;
+      }
+      try {
+        const result = await this.messageService.sendEmail(projectId, dto);
+        await this.idempotency.complete(projectId, idempotencyKey, token, 200, result);
+        return result;
+      } catch (err) {
+        await this.idempotency.fail(
+          projectId,
+          idempotencyKey,
+          token,
+          (err as { status?: number }).status ?? 500,
+          (err as Error).message,
+        );
+        throw err;
+      }
+    }
+
     return this.messageService.sendEmail(projectId, dto);
   }
 

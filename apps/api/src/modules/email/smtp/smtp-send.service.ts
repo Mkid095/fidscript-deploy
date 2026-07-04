@@ -1,8 +1,10 @@
-import { Injectable, NotFoundException, BadRequestException, ForbiddenException } from '@nestjs/common';
+import { Injectable, NotFoundException, BadRequestException, ForbiddenException, HttpException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { PrismaService } from '@/prisma/prisma.service';
 import { EventService } from '@/modules/events/event.service';
-import { RateLimitService } from '@/modules/email/services/rate-limit.service';
+import { EmailRateLimitService } from '@/modules/email/services/email-rate-limit.service';
+import { EmailReputationService } from '@/modules/email/services/email-reputation.service';
+import { AbuseDetectionService } from '@/modules/email/services/abuse-detection.service';
 import { EmailSendQueueService } from '@/modules/email/services/queue/email-send-queue.service';
 import { SendEmailDto } from '@/modules/email/dto/send-email.dto';
 
@@ -10,11 +12,8 @@ import { SendEmailDto } from '@/modules/email/dto/send-email.dto';
  * SMTP send enqueueing — validates, creates EmailMessage record, and enqueues
  * to NATS JetStream for async delivery by the EmailSendWorkerService.
  *
- * Direct SMTP delivery is NO LONGER done here. The worker handles:
- *   - SMTP connection + AUTH
- *   - Delivery attempt recording
- *   - Retry scheduling with exponential backoff
- *   - Status updates
+ * All rate limiting, reputation checks, and abuse detection run BEFORE enqueue.
+ * Actual SMTP delivery is handled by the worker.
  */
 @Injectable()
 export class SmtpSendService {
@@ -22,28 +21,57 @@ export class SmtpSendService {
     private prisma: PrismaService,
     private configService: ConfigService,
     private eventService: EventService,
-    private rateLimit: RateLimitService,
+    private rateLimit: EmailRateLimitService,
+    private reputation: EmailReputationService,
+    private abuse: AbuseDetectionService,
     private sendQueue: EmailSendQueueService,
   ) {}
 
-  async send(projectId: string, dto: SendEmailDto) {
+  async send(
+    projectId: string,
+    dto: SendEmailDto,
+    ipAddress?: string,
+  ) {
     const project = await this.prisma.project.findUnique({ where: { id: projectId } });
     if (!project) throw new NotFoundException('Project not found');
 
+    // ── 1. Rate limit check (all levels: IP → project → API key → domain) ──
     if (dto.apiKeyId) {
-      const check = await this.rateLimit.checkCanSend(dto.apiKeyId, projectId);
-      if (!check.allowed) throw new ForbiddenException(check.reason);
+      const domain = this.extractDomain(dto.from);
+      const limitResult = await this.rateLimit.checkAll(
+        dto.apiKeyId,
+        projectId,
+        domain,
+        ipAddress ?? 'unknown',
+      );
+      if (!limitResult.allowed) {
+        const err = new HttpException(
+          limitResult.reason ?? 'Rate limit exceeded',
+          429,
+        );
+        (err as HttpException & { headers: Record<string, string> }).headers = {
+          'Retry-After': String(limitResult.retryAfterSeconds ?? 60),
+          'X-RateLimit-Limit': String(limitResult.limit ?? 0),
+          'X-RateLimit-Remaining': String(limitResult.remaining ?? 0),
+        };
+        throw err;
+      }
     }
 
+    // ── 2. Sender identity + domain status ──
     let senderIdentityId: string | undefined;
+    let domainId: string | undefined;
     let senderDomainStatus: string | undefined;
+    let senderDomainId: string | undefined;
+
     if (dto.from) {
       const identity = await this.prisma.senderIdentity.findFirst({
         where: { email: dto.from },
-        include: { domain: { select: { status: true } } },
+        include: { domain: { select: { id: true, status: true } } },
       });
       if (identity) {
         senderIdentityId = identity.id;
+        senderDomainId = identity.domain.id;
         senderDomainStatus = identity.domain.status;
       }
       if (senderDomainStatus && senderDomainStatus !== 'ACTIVE') {
@@ -52,6 +80,19 @@ export class SmtpSendService {
         );
       }
 
+      // ── 3. Reputation check (before enqueue) ──
+      if (senderDomainId) {
+        const repResult = await this.reputation.checkDomain(senderDomainId, projectId);
+        if (!repResult.allowed) {
+          throw new ForbiddenException(repResult.reason);
+        }
+        if (repResult.delayMs) {
+          // Exponential delay for restricted tier — sleep then proceed
+          await new Promise(resolve => setTimeout(resolve, repResult.delayMs));
+        }
+      }
+
+      // Check suppression list
       const suppressed = await this.prisma.emailSuppression.findFirst({
         where: { domain: { domain: dto.from.split('@')[1] }, email: dto.to.toLowerCase() },
       });
@@ -64,7 +105,7 @@ export class SmtpSendService {
 
     const from = dto.from ?? this.configService.get<string>('SMTP_FROM', 'noreply@localhost') ?? 'noreply@localhost';
 
-    // Create the message record in QUEUED state
+    // ── 4. Create the message record in QUEUED state ──
     const emailMessage = await this.prisma.emailMessage.create({
       data: {
         projectId,
@@ -79,7 +120,7 @@ export class SmtpSendService {
       } as any,
     });
 
-    // Enqueue to NATS for async delivery
+    // ── 5. Enqueue to NATS ──
     await this.sendQueue.enqueue({
       messageId: emailMessage.id,
       projectId,
@@ -93,26 +134,18 @@ export class SmtpSendService {
       attempt: 1,
     });
 
-    // Track API-key-backed usage
+    // ── 6. Record usage (daily/monthly DB quota) ──
     if (dto.apiKeyId) {
-      await this.prisma.emailApiUsage.upsert({
-        where: {
-          projectId_apiKeyId_date: { projectId, apiKeyId: dto.apiKeyId, date: new Date() },
-        },
-        create: {
-          projectId,
-          apiKeyId: dto.apiKeyId,
-          date: new Date(),
-          sends: 1,
-          failures: 0,
-          bounces: 0,
-        },
-        update: {
-          sends: { increment: 1 },
-        },
-      });
+      const domain = this.extractDomain(dto.from);
+      await this.rateLimit.recordUsage(dto.apiKeyId, projectId, domain);
     }
 
+    // ── 7. Abuse detection: track send for growth spike ──
+    if (senderDomainId) {
+      await this.abuse.onSend(senderDomainId, projectId);
+    }
+
+    // ── 8. Emit queued event ──
     await this.eventService.emit('email.queued', projectId, {
       messageId: emailMessage.id,
       to: dto.to,
@@ -125,5 +158,9 @@ export class SmtpSendService {
       status: 'QUEUED',
       error: undefined,
     };
+  }
+
+  private extractDomain(from?: string): string {
+    return from?.split('@')[1] ?? 'unknown';
   }
 }

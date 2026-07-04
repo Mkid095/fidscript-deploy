@@ -44,7 +44,7 @@ export class EmailInboundService {
         subject: payload.subject,
         sizeBytes: BigInt(payload.sizeBytes),
         spamScore: payload.spamScore ?? null,
-        status: 'ACCEPTED',
+        status: 'RECEIVED',
       },
     });
 

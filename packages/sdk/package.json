@@ -2,10 +2,9 @@
   "name": "@fidscript-deploy/sdk",
   "version": "1.0.0",
   "description": "Official FIDScript Deploy TypeScript SDK — all platform modules, typed errors, async iterators, realtime",
-  "private": true,
   "type": "module",
   "main": "./dist/index.js",
-  "types": "./dist/index.js",
+  "types": "./dist/index.d.ts",
   "exports": {
     ".": "./dist/index.js",
     "./client": "./dist/client.js",

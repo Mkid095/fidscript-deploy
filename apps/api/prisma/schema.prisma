@@ -41,6 +41,7 @@ model User {
   memberships ProjectMember[]
   credentials UserCredential[]
   githubConnection GithubConnection?
+  mailboxMemberships EmailMailboxMember[]
 
   @@map("users")
   @@schema("identity")
@@ -85,10 +86,10 @@ model ApiKey {
   lastUsedAt  DateTime? @map("last_used_at") @db.Timestamptz
   expiresAt   DateTime? @map("expires_at") @db.Timestamptz
   createdAt   DateTime  @default(now()) @map("created_at") @db.Timestamptz
-  /** Scoped permissions for MCP server tool access. Empty = full access. */
-  mcpScopes   String[]  @default([]) @map("mcp_scopes") @schema("identity")
-  /** Whether this key can be used with the MCP server. Default false. */
-  mcpEnabled  Boolean   @default(false) @map("mcp_enabled") @schema("identity")
+  // Scoped permissions for MCP server tool access. Empty = full access.
+  mcpScopes   String[]  @default([])
+  // Whether this key can be used with the MCP server. Default false.
+  mcpEnabled  Boolean   @default(false)
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
@@ -205,6 +206,7 @@ model Project {
   notificationChannels NotificationChannel[]
   logStreams           LogStream[]
   templates            Template[]
+  emailTemplates       EmailTemplate[]
   aiConversations      AIConversation[]
   envVars              ProjectEnv[]
   invitations          ProjectInvitation[]
@@ -1006,6 +1008,8 @@ model EmailDomain {
   senderIdentities SenderIdentity[]
   catchAllRules    CatchAllRule[]
   suppressions     EmailSuppression[]
+  reputation       EmailDomainReputation?
+  warmup           EmailWarmup?
 
   @@unique([projectId, domain])
   @@map("domains")
@@ -1036,6 +1040,8 @@ model EmailMailbox {
 
   domain   EmailDomain    @relation(fields: [domainId], references: [id], onDelete: Cascade)
   messages EmailMessage[]
+  members  EmailMailboxMember[]
+  conversations EmailConversation[]
 
   @@unique([domainId, localPart])
   @@map("mailboxes")
@@ -1091,11 +1097,29 @@ model EmailApiKey {
   scopes     String[]  @default(["email.send"])
   lastUsedAt DateTime? @map("last_used_at") @db.Timestamptz
   createdAt  DateTime  @default(now()) @map("created_at") @db.Timestamptz
+  rateLimitPlanId String? @map("rate_limit_plan_id")
 
-  project Project         @relation(fields: [projectId], references: [id], onDelete: Cascade)
-  usages  EmailApiUsage[]
+  project        Project             @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  usages         EmailApiUsage[]
+  rateLimitPlan  EmailRateLimitPlan? @relation(fields: [rateLimitPlanId], references: [id])
+  mailboxMembers EmailMailboxMember[]
 
   @@map("api_keys")
+  @@schema("email")
+}
+
+model EmailRateLimitPlan {
+  id            String  @id @default(uuid())
+  name          String  @db.VarChar(100)
+  dailyLimit    Int     @default(1000)
+  monthlyLimit  Int     @default(30000)
+  hourlyBurst   Int     @default(50)
+  domainLimits  Json    @default("{}")
+  createdAt     DateTime @default(now()) @map("created_at") @db.Timestamptz
+
+  apiKeys EmailApiKey[]
+
+  @@map("rate_limit_plans")
   @@schema("email")
 }
 
@@ -1105,6 +1129,7 @@ model EmailApiKey {
 model EmailMessage {
   id               String      @id @default(uuid())
   mailboxId        String?     @map("mailbox_id")
+  conversationId  String?     @map("conversation_id")
   senderIdentityId String?     @map("sender_identity_id")
   projectId        String      @map("project_id")
   from             String      @db.VarChar(255)
@@ -1126,15 +1151,19 @@ model EmailMessage {
   nextRetryAt      DateTime?   @map("next_retry_at")
   retryCount       Int         @default(0) @map("retry_count")
   createdAt        DateTime    @default(now()) @map("created_at") @db.Timestamptz
+  archivedAt        DateTime?   @map("archived_at") @db.Timestamptz
+  retentionAppliedAt DateTime? @map("retention_applied_at") @db.Timestamptz
 
   mailbox        EmailMailbox?   @relation(fields: [mailboxId], references: [id], onDelete: SetNull)
   senderIdentity SenderIdentity? @relation(fields: [senderIdentityId], references: [id], onDelete: SetNull)
   project        Project         @relation(fields: [projectId], references: [id], onDelete: Cascade)
   deliveryAttempts EmailDeliveryAttempt[]
   templateUsage   EmailMessageTemplate?
+  conversation   EmailConversation? @relation(fields: [conversationId], references: [id], onDelete: SetNull)
 
   @@index([mailboxId, createdAt])
   @@index([projectId, createdAt])
+  @@index([conversationId])
   @@map("messages")
   @@schema("email")
 }
@@ -1325,6 +1354,190 @@ model EmailApiUsage {
   @@schema("email")
 }
 
+// ─── Sprint 1: Reputation + Abuse ─────────────────────────────────────────────
+
+model EmailDomainReputation {
+  domainId        String   @id @map("domain_id")
+  bounceRate      Float    @default(0.0)
+  complaintRate   Float    @default(0.0)
+  deliveryRate    Float    @default(100.0)
+  engagementRate  Float    @default(0.0)
+  reputationScore Float    @default(100.0)
+  tier            String   @default("trusted")
+  sendingPaused   Boolean  @default(false)
+  emergencyStop   Boolean  @default(false)
+  updatedAt       DateTime @updatedAt @map("updated_at") @db.Timestamptz
+
+  domain EmailDomain @relation(fields: [domainId], references: [id], onDelete: Cascade)
+
+  @@map("domain_reputations")
+  @@schema("email")
+}
+
+model EmailWarmup {
+  id                String    @id @default(uuid())
+  domainId          String    @unique @map("domain_id")
+  ipPoolId          String?   @map("ip_pool_id")
+  currentDailyLimit Int       @default(0)
+  targetDailyLimit  Int       @default(1000)
+  stage             Int       @default(1)
+  startedAt         DateTime  @default(now()) @map("started_at")
+  completedAt       DateTime? @map("completed_at")
+  isActive          Boolean   @default(true)
+
+  domain EmailDomain @relation(fields: [domainId], references: [id], onDelete: Cascade)
+
+  @@map("email_warmup")
+  @@schema("email")
+}
+
+model EmailAbuseEvent {
+  id        String   @id @default(uuid())
+  domainId  String?  @map("domain_id")
+  projectId String?  @map("project_id")
+  type      String   @db.VarChar(50)
+  severity  String   @db.VarChar(20)
+  details   Json
+  createdAt DateTime @default(now()) @db.Timestamptz
+
+  @@map("abuse_events")
+  @@schema("email")
+}
+
+model EmailIpPool {
+  id        String   @id @default(uuid())
+  name      String   @db.VarChar(100)
+  isDefault Boolean  @default(false)
+  createdAt DateTime @default(now()) @db.Timestamptz
+
+  @@map("ip_pools")
+  @@schema("email")
+}
+
+// ─── Sprint 2: Shared Mailboxes ──────────────────────────────────────────────
+
+enum MailboxRole {
+  OWNER
+  MEMBER
+  ASSIGNEE
+
+  @@schema("public")
+}
+
+model EmailMailboxMember {
+  id          String       @id @default(uuid())
+  mailboxId   String       @map("mailbox_id")
+  userId      String?      @map("user_id")
+  apiKeyId    String?      @map("api_key_id")
+  role        MailboxRole  @default(MEMBER)
+  permissions Json         @default("[]")
+  addedAt     DateTime     @default(now()) @map("added_at")
+
+  mailbox EmailMailbox @relation(fields: [mailboxId], references: [id], onDelete: Cascade)
+  user    User?        @relation(fields: [userId], references: [id], onDelete: SetNull)
+  apiKey  EmailApiKey? @relation(fields: [apiKeyId], references: [id], onDelete: SetNull)
+  conversationAssignments EmailConversationAssignment[]
+
+  @@unique([mailboxId, userId])
+  @@unique([mailboxId, apiKeyId])
+  @@map("mailbox_members")
+  @@schema("email")
+}
+
+// ─── Sprint 2: Conversations ───────────────────────────────────────────────────
+
+enum ConversationStatus {
+  OPEN
+  ASSIGNED
+  CLOSED
+
+  @@schema("public")
+}
+
+model EmailConversation {
+  id        String             @id @default(uuid())
+  mailboxId String             @map("mailbox_id")
+  threadKey String             @unique @db.VarChar(64)
+  subject   String?            @db.VarChar(500)
+  status    ConversationStatus @default(OPEN)
+  createdAt DateTime           @default(now()) @map("created_at") @db.Timestamptz
+
+  mailbox      EmailMailbox                  @relation(fields: [mailboxId], references: [id], onDelete: Cascade)
+  messages     EmailMessage[]
+  assignments  EmailConversationAssignment[]
+
+  @@index([mailboxId, status])
+  @@map("conversations")
+  @@schema("email")
+}
+
+model EmailConversationAssignment {
+  id             String    @id @default(uuid())
+  conversationId String    @map("conversation_id")
+  memberId       String    @map("member_id")
+  assignedAt     DateTime  @default(now()) @map("assigned_at")
+  assignedBy     String    @map("assigned_by")
+  unassignedAt   DateTime? @map("unassigned_at")
+  unassignedBy   String?   @map("unassigned_by")
+
+  conversation EmailConversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  member       EmailMailboxMember @relation(fields: [memberId], references: [id], onDelete: Cascade)
+
+  @@map("conversation_assignments")
+  @@schema("email")
+}
+
+// ─── Sprint 3: Retention + Legal Hold ────────────────────────────────────────
+
+model EmailRetentionPolicy {
+  id        String   @id @default(uuid())
+  projectId String   @map("project_id")
+  scope     String   @db.VarChar(20)
+  scopeId   String?  @map("scope_id")
+  name      String   @db.VarChar(255)
+  priority  Int      @default(0)
+  rules     Json
+  isDefault Boolean  @default(false) @map("is_default")
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz
+
+  @@index([projectId, scope, scopeId])
+  @@map("retention_policies")
+  @@schema("email")
+}
+
+model EmailLegalHold {
+  id         String    @id @default(uuid())
+  mailboxId  String    @map("mailbox_id")
+  reason     String    @db.VarChar(255)
+  createdBy  String    @map("created_by")
+  createdAt  DateTime  @default(now()) @map("created_at") @db.Timestamptz
+  releasedAt DateTime? @map("released_at")
+  releasedBy String?   @map("released_by")
+
+  mailbox EmailMailbox @relation(fields: [mailboxId], references: [id], onDelete: Cascade)
+
+  @@map("legal_holds")
+  @@schema("email")
+}
+
+// ─── Sprint 1: Idempotency ───────────────────────────────────────────────────
+
+model EmailIdempotencyRecord {
+  idempotencyKey String   @id @map("idempotency_key")
+  projectId      String   @map("project_id")
+  requestHash    String   @map("request_hash") @db.VarChar(64)
+  status         String   @default("PROCESSING")
+  responseCode   Int?
+  responseBody   Json?
+  createdAt      DateTime @default(now()) @map("created_at") @db.Timestamptz
+  expiresAt      DateTime @map("expires_at") @db.Timestamptz
+
+  @@index([projectId])
+  @@index([expiresAt])
+  @@map("idempotency_records")
+  @@schema("email")
+}
+
 // Failure taxonomy for email delivery — drives retry logic and analytics.
 enum EmailFailureType {
   NONE        // No failure
@@ -1335,6 +1548,8 @@ enum EmailFailureType {
   NETWORK_ERROR  // Could not reach remote MTA
   PROVIDER_ERROR // Remote MTA responded with 4xx/5xx
   SYSTEM_ERROR   // Local error (validation, code bug)
+
+  @@schema("public")
 }
 
 enum EmailStatus {
@@ -2102,7 +2317,7 @@ model IntegrationProvider {
   provider    String    @db.VarChar(50) // 'cloudflare' | 'aws' | 'godaddy' | 'namecheap' | 'github' | 'google' | 'resend'
   enabled     Boolean   @default(false)
   // Encrypted credentials JSON: { accessKeyId, secretAccessKey, region } for AWS, etc.
-  config      Json      @default("{}") @db.Text
+  config      Json      @default("{}")
   lastSyncAt  DateTime? @map("last_sync_at") @db.Timestamptz
   createdAt   DateTime  @default(now()) @map("created_at") @db.Timestamptz
   updatedAt   DateTime  @updatedAt @map("updated_at") @db.Timestamptz

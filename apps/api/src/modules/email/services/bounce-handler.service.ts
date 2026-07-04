@@ -1,6 +1,8 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { PrismaService } from '@/prisma/prisma.service';
 import { EventService } from '@/modules/events/event.service';
+import { AbuseDetectionService } from '@/modules/email/services/abuse-detection.service';
+import { EmailReputationService } from '@/modules/email/services/email-reputation.service';
 
 /**
  * Handles bounce and complaint (FBL) webhook ingestion from Stalwart.
@@ -13,6 +15,8 @@ export class BounceHandlerService {
   constructor(
     private prisma: PrismaService,
     private eventService: EventService,
+    private abuse: AbuseDetectionService,
+    private reputation: EmailReputationService,
   ) {}
 
   async handleBounce(payload: { messageId: string; to: string; error: string; code?: string }) {
@@ -36,20 +40,19 @@ export class BounceHandlerService {
       data: { status: 'BOUNCED', error: payload.error },
     });
 
-    if (isHardBounce) {
-      const [, domainName] = payload.to.split('@');
-      const emailDomain = domainName
-        ? await this.prisma.emailDomain.findFirst({ where: { domain: domainName } })
-        : null;
-      if (emailDomain) {
-        await this.prisma.emailSuppression.upsert({
-          where: {
-            domainId_email: { domainId: emailDomain.id, email: payload.to.toLowerCase() },
-          },
-          create: { domainId: emailDomain.id, email: payload.to.toLowerCase(), reason: 'BOUNCE' },
-          update: { reason: 'BOUNCE' },
-        }).catch(() => {/* already suppressed */});
-      }
+    const [, domainName] = payload.to.split('@');
+    const emailDomain = domainName
+      ? await this.prisma.emailDomain.findFirst({ where: { domain: domainName } })
+      : null;
+
+    if (isHardBounce && emailDomain) {
+      await this.prisma.emailSuppression.upsert({
+        where: {
+          domainId_email: { domainId: emailDomain.id, email: payload.to.toLowerCase() },
+        },
+        create: { domainId: emailDomain.id, email: payload.to.toLowerCase(), reason: 'BOUNCE' },
+        update: { reason: 'BOUNCE' },
+      }).catch(() => {/* already suppressed */});
     }
 
     await this.eventService.emit('email.bounced', message.projectId, {
@@ -58,6 +61,12 @@ export class BounceHandlerService {
       error: payload.error,
       isHardBounce,
     }, {});
+
+    // Record abuse + reputation
+    if (emailDomain) {
+      await this.abuse.onBounce(emailDomain.id, emailDomain.projectId);
+      await this.reputation.recordBounce(emailDomain.id, emailDomain.projectId);
+    }
 
     return { updated: true };
   }
@@ -80,6 +89,10 @@ export class BounceHandlerService {
     await this.eventService.emit('email.complained', emailDomain.projectId, {
       email: payload.email,
     }, {});
+
+    // Record abuse + reputation
+    await this.abuse.onComplaint(emailDomain.id, emailDomain.projectId);
+    await this.reputation.recordComplaint(emailDomain.id, emailDomain.projectId);
 
     return { added: true };
   }

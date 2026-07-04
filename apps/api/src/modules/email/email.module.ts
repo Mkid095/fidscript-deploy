@@ -2,6 +2,7 @@ import { Module, forwardRef } from '@nestjs/common';
 import { AuthModule } from '@/modules/auth/auth.module';
 import { ProjectsModule } from '@/modules/projects/projects.module';
 import { RealtimeModule } from '@/modules/realtime/realtime.module';
+import { RedisModule } from '@/modules/redis/redis.module';
 import { EmailDomainController } from './controllers/email-domain.controller';
 import { EmailMailboxController } from './controllers/email-mailbox.controller';
 import { EmailAliasController } from './controllers/email-alias.controller';
@@ -34,6 +35,7 @@ import { SmtpSendService } from './smtp/smtp-send.service';
 import { PlatformMailService } from './platform-mail.service';
 import { BounceHandlerService } from './services/bounce-handler.service';
 import { RateLimitService } from './services/rate-limit.service';
+import { EmailRateLimitService } from './services/email-rate-limit.service';
 import { MailboxCleanupService } from './services/mailbox-cleanup.service';
 import { DomainCleanupService } from './services/domain-cleanup.service';
 import { MailDnsService } from './dns/mail-dns.service';
@@ -56,6 +58,13 @@ import { EmailAttachmentListener } from './services/attachment-event-listener.se
 import { EmailSyncService } from './services/email-sync.service';
 import { EmailSendQueueService } from './services/queue/email-send-queue.service';
 import { EmailSendWorkerService } from './services/queue/email-send-worker.service';
+import { EmailIdempotencyService } from './services/idempotency.service';
+import { EmailReputationService } from './services/email-reputation.service';
+import { AbuseDetectionService } from './services/abuse-detection.service';
+import { EmailAuditService } from './services/email-audit.service';
+import { ConversationService } from './services/conversation.service';
+import { RetentionPolicyService } from './services/retention-policy.service';
+import { LegalHoldService } from './services/legal-hold.service';
 
 @Module({
   imports: [
@@ -65,6 +74,7 @@ import { EmailSendWorkerService } from './services/queue/email-send-worker.servi
     forwardRef(() => AuthModule),
     ProjectsModule,
     RealtimeModule,
+    RedisModule,
   ],
   controllers: [
     EmailDomainController,
@@ -123,6 +133,14 @@ import { EmailSendWorkerService } from './services/queue/email-send-worker.servi
     EmailSyncService,
     EmailSendQueueService,
     EmailSendWorkerService,
+    EmailIdempotencyService,
+    EmailRateLimitService,
+    EmailReputationService,
+    AbuseDetectionService,
+    EmailAuditService,
+    ConversationService,
+    RetentionPolicyService,
+    LegalHoldService,
   ],
   exports: [
     EmailDomainService,
@@ -158,6 +176,14 @@ import { EmailSendWorkerService } from './services/queue/email-send-worker.servi
     EmailSyncService,
     EmailSendQueueService,
     EmailSendWorkerService,
+    EmailIdempotencyService,
+    EmailRateLimitService,
+    EmailReputationService,
+    AbuseDetectionService,
+    EmailAuditService,
+    ConversationService,
+    RetentionPolicyService,
+    LegalHoldService,
   ],
 })
 export class EmailModule {}
