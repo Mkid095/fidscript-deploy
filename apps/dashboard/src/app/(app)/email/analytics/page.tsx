@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState, useCallback } from 'react';
-import { Card, Spinner } from '@fidscript/ui';
+import { Card, Spinner } from '@fidscript-deploy/ui';
 import { useAuth } from '@/contexts/auth-context';
 import { useShellProjectId } from '@/contexts/project-context';
 

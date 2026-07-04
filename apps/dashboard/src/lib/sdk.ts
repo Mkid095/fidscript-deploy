@@ -10,7 +10,7 @@
  *
  * To switch to real API: set NEXT_PUBLIC_USE_MOCK_API=false or remove it.
  */
-import { createFidscript, type FidscriptSDK } from '@fidscript/sdk';
+import { createFidscript, type FidscriptSDK } from '@fidscript-deploy/sdk';
 import { createMockSdk } from '@/mocks/sdk';
 
 // Check for mock mode flag

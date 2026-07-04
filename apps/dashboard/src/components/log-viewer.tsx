@@ -1,8 +1,8 @@
 'use client';
 
 import { useEffect, useRef, useState, useCallback } from 'react';
-import { type FidscriptSDK } from '@fidscript/sdk';
-import { Button, Spinner } from '@fidscript/ui';
+import { type FidscriptSDK } from '@fidscript-deploy/sdk';
+import { Button, Spinner } from '@fidscript-deploy/ui';
 
 import { useAuth } from '@/contexts/auth-context';
 

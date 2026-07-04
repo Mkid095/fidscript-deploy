@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { Button, Card, Input, Spinner } from '@fidscript/ui';
+import { Button, Card, Input, Spinner } from '@fidscript-deploy/ui';
 
 import { useAuth } from '@/contexts/auth-context';
 import type { NotificationChannel } from '@/types';

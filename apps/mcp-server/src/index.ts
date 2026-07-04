@@ -38,7 +38,7 @@ import {
   CallToolRequestSchema,
   ListToolsRequestSchema,
 } from '@modelcontextprotocol/sdk/types.js';
-import { createFidscript } from '@fidscript/sdk';
+import { createFidscript } from '@fidscript-deploy/sdk';
 
 import { emailTools, handleEmailTool } from './tools/email.js';
 import { domainTools, handleDomainTool } from './tools/domains.js';

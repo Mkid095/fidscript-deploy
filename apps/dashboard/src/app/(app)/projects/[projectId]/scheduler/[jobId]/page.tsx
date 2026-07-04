@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useCallback } from 'react';
 import { useParams, useRouter } from 'next/navigation';
-import { Button, Card, EmptyState, Input, Modal, Spinner } from '@fidscript/ui';
+import { Button, Card, EmptyState, Input, Modal, Spinner } from '@fidscript-deploy/ui';
 import { HugeiconsIcon } from '@hugeicons/react';
 import { AlarmClockIcon, CheckmarkCircle02Icon, Cancel01Icon, AlertCircleIcon, Refresh01Icon } from '@hugeicons/core-free-icons';
 import { useAuth } from '@/contexts/auth-context';

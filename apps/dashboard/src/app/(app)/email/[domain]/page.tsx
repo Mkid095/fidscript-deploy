@@ -1,8 +1,8 @@
 'use client';
 // eslint-disable-next-line import/order
-import type { EmailDomain, Mailbox, EmailAlias } from '@fidscript/sdk';
+import type { EmailDomain, Mailbox, EmailAlias } from '@fidscript-deploy/sdk';
 
-import { Button, Card, EmptyState, Input, Modal, Spinner } from '@fidscript/ui';
+import { Button, Card, EmptyState, Input, Modal, Spinner } from '@fidscript-deploy/ui';
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useParams } from 'next/navigation';

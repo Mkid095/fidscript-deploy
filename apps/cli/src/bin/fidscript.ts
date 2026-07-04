@@ -84,7 +84,7 @@ async function run(argv: string[]): Promise<void> {
     const cfg = loadConfig();
     if (!cfg.apiUrl) die('No API URL configured — set FIDScript_API_URL env var or run: fidscript configure');
     const apiKey = getApiKey() ?? die('Not logged in — run: fidscript login <key>');
-    const { createFidscript } = await import('@fidscript/sdk');
+    const { createFidscript } = await import('@fidscript-deploy/sdk');
     const sdk = createFidscript({ apiKey, baseURL: cfg.apiUrl });
       try {
         const { user } = await (sdk.auth as any).getSession();
@@ -103,7 +103,7 @@ async function run(argv: string[]): Promise<void> {
     .action(async (name: string, opts: { type?: string }) => {
       if (!cfg.apiUrl) die('No API URL configured — set FIDScript_API_URL env var or run: fidscript configure');
       const apiKey = getApiKey() ?? die('Not logged in');
-      const { createFidscript } = await import('@fidscript/sdk');
+      const { createFidscript } = await import('@fidscript-deploy/sdk');
       const sdk = createFidscript({ apiKey, baseURL: cfg.apiUrl });
       const p = await sdk.projects.create({ name, type: opts.type ?? 'frontend' });
       console.log(`Created project ${p.id}: ${p.name}`);
@@ -114,7 +114,7 @@ async function run(argv: string[]): Promise<void> {
     .action(async () => {
       if (!cfg.apiUrl) die('No API URL configured — set FIDScript_API_URL env var or run: fidscript configure');
       const apiKey = getApiKey() ?? die('Not logged in');
-      const { createFidscript } = await import('@fidscript/sdk');
+      const { createFidscript } = await import('@fidscript-deploy/sdk');
       const sdk = createFidscript({ apiKey, baseURL: cfg.apiUrl });
       const items = await sdk.projects.list();
       printTable(items as unknown as Record<string, unknown>[], program.opts().output ?? 'table');
@@ -132,7 +132,7 @@ async function run(argv: string[]): Promise<void> {
       if (!cfg.apiUrl) die('No API URL configured — set FIDScript_API_URL env var or run: fidscript configure');
       const apiKey = getApiKey() ?? die('Not logged in');
       const projectId = opts.project ?? die('No project ID (--project or set currentProject in config)');
-      const { createFidscript } = await import('@fidscript/sdk');
+      const { createFidscript } = await import('@fidscript-deploy/sdk');
       const sdk = createFidscript({ apiKey, baseURL: cfg.apiUrl });
       console.log(`Tailing logs for project ${projectId}...`);
       try {
@@ -155,7 +155,7 @@ async function run(argv: string[]): Promise<void> {
       if (!cfg.apiUrl) die('No API URL configured — set FIDScript_API_URL env var or run: fidscript configure');
       const apiKey = getApiKey() ?? die('Not logged in');
       const parentProjectId = opts.project ?? die('No project ID (--project or set currentProject in config)');
-      const { createFidscript } = await import('@fidscript/sdk');
+      const { createFidscript } = await import('@fidscript-deploy/sdk');
       const sdk = createFidscript({ apiKey, baseURL: cfg.apiUrl });
       console.log(`Scaffolding project "${name}" from template "${template}"...`);
       try {
@@ -176,7 +176,7 @@ async function run(argv: string[]): Promise<void> {
       if (!cfg.apiUrl) die('No API URL configured — set FIDScript_API_URL env var or run: fidscript configure');
       const apiKey = getApiKey() ?? die('Not logged in');
       const projectId = opts.project ?? die('No project ID (--project or set currentProject in config)');
-      const { createFidscript } = await import('@fidscript/sdk');
+      const { createFidscript } = await import('@fidscript-deploy/sdk');
       const sdk = createFidscript({ apiKey, baseURL: cfg.apiUrl });
       const items = await sdk.deployments.list(projectId);
       printTable(items as unknown as Record<string, unknown>[], program.opts().output ?? 'table');
@@ -200,7 +200,7 @@ async function run(argv: string[]): Promise<void> {
       if (!cfg.apiUrl) die('No API URL configured');
       const apiKey = getApiKey() ?? die('Not logged in');
       const projectId = opts.project ?? die('No project ID (--project)');
-      const { createFidscript } = await import('@fidscript/sdk');
+      const { createFidscript } = await import('@fidscript-deploy/sdk');
       const sdk = createFidscript({ apiKey, baseURL: cfg.apiUrl });
       try {
         const result = await sdk.email.send(projectId, {
@@ -229,7 +229,7 @@ async function run(argv: string[]): Promise<void> {
       if (!cfg.apiUrl) die('No API URL configured');
       const apiKey = getApiKey() ?? die('Not logged in');
       const projectId = opts.project ?? die('No project ID (--project)');
-      const { createFidscript } = await import('@fidscript/sdk');
+      const { createFidscript } = await import('@fidscript-deploy/sdk');
       const sdk = createFidscript({ apiKey, baseURL: cfg.apiUrl });
       let variables: Record<string, string>;
       try {
@@ -260,7 +260,7 @@ async function run(argv: string[]): Promise<void> {
       if (!cfg.apiUrl) die('No API URL configured');
       const apiKey = getApiKey() ?? die('Not logged in');
       const projectId = opts.project ?? die('No project ID (--project)');
-      const { createFidscript } = await import('@fidscript/sdk');
+      const { createFidscript } = await import('@fidscript-deploy/sdk');
       const sdk = createFidscript({ apiKey, baseURL: cfg.apiUrl });
       try {
         const messages = await sdk.email.listMessages(projectId, {
@@ -289,7 +289,7 @@ async function run(argv: string[]): Promise<void> {
       if (!cfg.apiUrl) die('No API URL configured');
       const apiKey = getApiKey() ?? die('Not logged in');
       const projectId = opts.project ?? die('No project ID (--project)');
-      const { createFidscript } = await import('@fidscript/sdk');
+      const { createFidscript } = await import('@fidscript-deploy/sdk');
       const sdk = createFidscript({ apiKey, baseURL: cfg.apiUrl });
       try {
         const status = await sdk.email.getMessageStatus(projectId, messageId);
@@ -317,7 +317,7 @@ async function run(argv: string[]): Promise<void> {
       if (!cfg.apiUrl) die('No API URL configured');
       const apiKey = getApiKey() ?? die('Not logged in');
       const projectId = opts.project ?? die('No project ID (--project)');
-      const { createFidscript } = await import('@fidscript/sdk');
+      const { createFidscript } = await import('@fidscript-deploy/sdk');
       const sdk = createFidscript({ apiKey, baseURL: cfg.apiUrl });
       try {
         const templates = await sdk.email.listTemplates(projectId);
@@ -343,7 +343,7 @@ async function run(argv: string[]): Promise<void> {
       if (!cfg.apiUrl) die('No API URL configured');
       const apiKey = getApiKey() ?? die('Not logged in');
       const projectId = opts.project ?? die('No project ID (--project)');
-      const { createFidscript } = await import('@fidscript/sdk');
+      const { createFidscript } = await import('@fidscript-deploy/sdk');
       const sdk = createFidscript({ apiKey, baseURL: cfg.apiUrl });
       try {
         const domains = await sdk.email.listDomains(projectId);
@@ -371,7 +371,7 @@ async function run(argv: string[]): Promise<void> {
       if (!cfg.apiUrl) die('No API URL configured');
       const apiKey = getApiKey() ?? die('Not logged in');
       const projectId = opts.project ?? die('No project ID (--project)');
-      const { createFidscript } = await import('@fidscript/sdk');
+      const { createFidscript } = await import('@fidscript-deploy/sdk');
       const sdk = createFidscript({ apiKey, baseURL: cfg.apiUrl });
       try {
         const overview = await sdk.email.getDeliveryOverview(projectId, parseInt(opts.days, 10));

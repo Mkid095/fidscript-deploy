@@ -1,5 +1,5 @@
 {
-  "name": "@fidscript/events",
+  "name": "@fidscript-deploy/events",
   "version": "1.0.0",
   "private": true,
   "type": "commonjs",
@@ -16,7 +16,7 @@
     "clean": "rm -rf dist"
   },
   "dependencies": {
-    "@fidscript/types": "workspace:*"
+    "@fidscript-deploy/types": "workspace:*"
   },
   "devDependencies": {
     "@types/node": "^20.0.0",

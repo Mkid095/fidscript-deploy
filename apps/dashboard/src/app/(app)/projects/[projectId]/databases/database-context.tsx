@@ -61,7 +61,7 @@ export interface RealtimeTableInfo {
 }
 
 // Extended DatabasesModule interface — includes backup scheduling methods that may not
-// exist in all versions of the @fidscript/sdk package. Cast sdk.databases to this
+// exist in all versions of the @fidscript-deploy/sdk package. Cast sdk.databases to this
 // type when calling these methods so TypeScript doesn't complain.
 interface DatabasesModuleExt {
   getBackupSchedule(databaseId: string): Promise<BackupSchedule | null>;

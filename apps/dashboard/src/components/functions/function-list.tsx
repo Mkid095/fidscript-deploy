@@ -2,7 +2,7 @@
 
 import { useCallback } from 'react';
 import Link from 'next/link';
-import { Card, EmptyState, Button, Spinner } from '@fidscript/ui';
+import { Card, EmptyState, Button, Spinner } from '@fidscript-deploy/ui';
 import { HugeiconsIcon } from '@hugeicons/react';
 import { Add01Icon } from '@hugeicons/core-free-icons';
 

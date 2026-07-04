@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { Icon } from '@iconify/react';
-import { Button } from '@fidscript/ui';
+import { Button } from '@fidscript-deploy/ui';
 
 interface PurgeQueueModalProps {
   queueId: string;
@@ -10,7 +10,7 @@ interface PurgeQueueModalProps {
   projectId: string;
   onClose: () => void;
   onPurged: () => void;
-  getSdk: () => import('@fidscript/sdk').FidscriptSDK;
+  getSdk: () => import('@fidscript-deploy/sdk').FidscriptSDK;
 }
 
 export function PurgeQueueModal({ queueId, queueName, projectId, onClose, onPurged, getSdk }: PurgeQueueModalProps) {

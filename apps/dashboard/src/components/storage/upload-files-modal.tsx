@@ -2,7 +2,7 @@
 
 import { useCallback, useRef, useState } from 'react';
 import { Icon } from '@iconify/react';
-import { Modal, Button } from '@fidscript/ui';
+import { Modal, Button } from '@fidscript-deploy/ui';
 import type { StorageFile } from '@/types';
 
 interface UploadFilesModalProps {

@@ -4,9 +4,9 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import dynamic from 'next/dynamic';
 import { HugeiconsIcon } from '@hugeicons/react';
 import { RefreshIcon, SaveIcon, Upload03Icon } from '@hugeicons/core-free-icons';
-import { Button, Spinner } from '@fidscript/ui';
+import { Button, Spinner } from '@fidscript-deploy/ui';
 
-import type { FidscriptSDK } from '@fidscript/sdk';
+import type { FidscriptSDK } from '@fidscript-deploy/sdk';
 
 const MonacoEditor = dynamic(() => import('@monaco-editor/react'), { ssr: false });
 

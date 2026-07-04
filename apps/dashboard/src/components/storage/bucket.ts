@@ -1,4 +1,4 @@
-// Shared bucket type — mirrors @fidscript/sdk/modules/storage.ts Bucket
+// Shared bucket type — mirrors @fidscript-deploy/sdk/modules/storage.ts Bucket
 export interface Bucket {
   id: string;
   name: string;

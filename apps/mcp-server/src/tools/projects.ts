@@ -2,7 +2,7 @@
  * Project MCP tools — exposes project operations to AI agents.
  */
 import type { Tool } from '@modelcontextprotocol/sdk/types.js';
-import type { FidscriptSDK } from '@fidscript/sdk';
+import type { FidscriptSDK } from '@fidscript-deploy/sdk';
 
 export const projectTools: Tool[] = [
   {

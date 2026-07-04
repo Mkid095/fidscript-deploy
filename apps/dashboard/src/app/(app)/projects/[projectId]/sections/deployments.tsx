@@ -3,13 +3,13 @@
 // eslint-disable-next-line import/order
 import { useEffect, useState, useCallback, useRef } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
-import { Card, Button, Spinner } from '@fidscript/ui';
+import { Card, Button, Spinner } from '@fidscript-deploy/ui';
 import { HugeiconsIcon } from '@hugeicons/react';
 // eslint-disable-next-line import/order
 import { Rocket01Icon, GitBranchIcon, CheckmarkCircle02Icon, StopCircleIcon, PlayCircleIcon, MoreHorizontalIcon, RefreshIcon, Copy01Icon, Search01Icon, Delete01Icon, RotateClockwiseIcon, File01Icon, ExternalLinkIcon, GithubIcon } from '@hugeicons/core-free-icons';
 
 // eslint-disable-next-line import/order
-import type { FidscriptSDK } from '@fidscript/sdk';
+import type { FidscriptSDK } from '@fidscript-deploy/sdk';
 import { useAuth } from '@/contexts/auth-context';
 import type { Project, Deployment } from '@/types';
 import { NewDeploymentModal } from '@/components/deployments/new-deployment-modal';

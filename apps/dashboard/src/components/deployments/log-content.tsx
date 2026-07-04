@@ -1,6 +1,6 @@
 'use client';
 
-import { Spinner } from '@fidscript/ui';
+import { Spinner } from '@fidscript-deploy/ui';
 import { LEVEL_STYLE, LogLine } from './log-types';
 
 interface LogContentProps {

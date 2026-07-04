@@ -6,8 +6,8 @@
  * To disable: set NEXT_PUBLIC_USE_MOCK_API=false or remove the variable
  */
 
-import type { FidscriptSDK } from '@fidscript/sdk';
-import type { DomainVerificationRun, DomainIncident, DomainHealthTimelineEntry, DomainWizardStatus } from '@fidscript/sdk';
+import type { FidscriptSDK } from '@fidscript-deploy/sdk';
+import type { DomainVerificationRun, DomainIncident, DomainHealthTimelineEntry, DomainWizardStatus } from '@fidscript-deploy/sdk';
 import type {
   User,
   Project,

@@ -7,15 +7,15 @@
  * 3. Legacy event names are resolved to canonical names
  *
  * Migration: if an event schema changes, add a `migrate()` function to the
- * eventSchemas entry in @fidscript/types to transform old payloads automatically.
+ * eventSchemas entry in @fidscript-deploy/types to transform old payloads automatically.
  */
 import type { PlatformEvent } from './index.js';
-import { LEGACY_EVENT_ALIASES } from '@fidscript/types';
+import { LEGACY_EVENT_ALIASES } from '@fidscript-deploy/types';
 
 // -------------------------------------------------------------------------- //
-// Schema registry — imports from @fidscript/types (single source of truth)  //
+// Schema registry — imports from @fidscript-deploy/types (single source of truth)  //
 // We duplicate the type key here to avoid circular deps; actual schemas live //
-// in @fidscript/types/src/events/event-registry.ts                           //
+// in @fidscript-deploy/types/src/events/event-registry.ts                           //
 // -------------------------------------------------------------------------- //
 
 interface EventSchema {
@@ -28,7 +28,7 @@ interface EventSchema {
 // Lazy import to avoid circular dependency
 function getSchemas(): Record<string, EventSchema> {
   // eslint-disable-next-line @typescript-eslint/no-var-requires
-  return require('@fidscript/types').eventSchemas;
+  return require('@fidscript-deploy/types').eventSchemas;
 }
 
 /**
@@ -51,7 +51,7 @@ export function isKnownEventType(type: string): boolean {
 /**
  * Validate a payload against the registered schema for a given event type.
  * Logs a warning for unknown events (new events without schemas should be added
- * to @fidscript/types/src/events/event-registry.ts before emission).
+ * to @fidscript-deploy/types/src/events/event-registry.ts before emission).
  *
  * Returns the validated payload unchanged (or migrated if a migrate fn exists).
  */
@@ -65,7 +65,7 @@ export function validatePayload<T = unknown>(
 
   if (!(canonical in schemas)) {
     // New event type — warn but don't block. Developers should add a schema.
-    console.warn(`[events] Unknown event type "${type}" — consider adding schema to @fidscript/types`);
+    console.warn(`[events] Unknown event type "${type}" — consider adding schema to @fidscript-deploy/types`);
     return payload;
   }
 

@@ -26,7 +26,7 @@ importers:
 
   apps/api:
     dependencies:
-      '@fidscript/events':
+      '@fidscript-deploy/events':
         specifier: workspace:*
         version: link:../../packages/events
       '@nestjs/common':
@@ -189,7 +189,7 @@ importers:
 
   apps/cli:
     dependencies:
-      '@fidscript/sdk':
+      '@fidscript-deploy/sdk':
         specifier: workspace:*
         version: link:../../packages/sdk
       commander:
@@ -205,7 +205,7 @@ importers:
 
   apps/dashboard:
     dependencies:
-      '@fidscript/sdk':
+      '@fidscript-deploy/sdk':
         specifier: workspace:*
         version: link:../../packages/sdk
       '@fidscript/ui':
@@ -254,7 +254,7 @@ importers:
 
   apps/mcp-server:
     dependencies:
-      '@fidscript/sdk':
+      '@fidscript-deploy/sdk':
         specifier: workspace:*
         version: link:../../packages/sdk
       '@modelcontextprotocol/sdk':
@@ -282,7 +282,7 @@ importers:
 
   packages/events:
     dependencies:
-      '@fidscript/types':
+      '@fidscript-deploy/types':
         specifier: workspace:*
         version: link:../types
     devDependencies:
@@ -295,10 +295,10 @@ importers:
 
   packages/sdk:
     dependencies:
-      '@fidscript/events':
+      '@fidscript-deploy/events':
         specifier: workspace:*
         version: link:../events
-      '@fidscript/types':
+      '@fidscript-deploy/types':
         specifier: workspace:*
         version: link:../types
       axios:

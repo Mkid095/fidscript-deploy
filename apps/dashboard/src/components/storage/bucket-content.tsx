@@ -1,6 +1,6 @@
 'use client';
 
-import { Spinner } from '@fidscript/ui';
+import { Spinner } from '@fidscript-deploy/ui';
 import { FileGrid } from './file-grid';
 import { FileTable } from './file-table';
 import { BucketEmptyState } from './bucket-empty-state';

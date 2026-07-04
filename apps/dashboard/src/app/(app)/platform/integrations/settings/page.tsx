@@ -5,7 +5,7 @@ import { HugeiconsIcon } from '@hugeicons/react';
 import { CloudIcon, CheckmarkCircle01Icon, CancelCircleIcon, LockIcon, RefreshIcon, ViewIcon, ViewOffIcon } from '@hugeicons/core-free-icons';
 
 import { useCallback, useEffect, useState } from 'react';
-import { Button, Card, Input, Spinner } from '@fidscript/ui';
+import { Button, Card, Input, Spinner } from '@fidscript-deploy/ui';
 
 import { useAuth } from '@/contexts/auth-context';
 

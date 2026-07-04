@@ -2,7 +2,7 @@
  * Email MCP tools — exposes email operations to AI agents.
  */
 import type { Tool } from '@modelcontextprotocol/sdk/types.js';
-import type { FidscriptSDK } from '@fidscript/sdk';
+import type { FidscriptSDK } from '@fidscript-deploy/sdk';
 
 export const emailTools: Tool[] = [
   {

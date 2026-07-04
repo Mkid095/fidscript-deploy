@@ -1,6 +1,6 @@
 'use client';
 
-import { Card } from '@fidscript/ui';
+import { Card } from '@fidscript-deploy/ui';
 
 import { STEPS, stepIndex, statusMeta, TERMINAL_STEP_KEYS } from './status-utils';
 import { VerticalTimeline } from './vertical-timeline';

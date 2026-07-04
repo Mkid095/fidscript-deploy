@@ -1,9 +1,9 @@
 'use client';
 
-import type { EmailDomain } from '@fidscript/sdk';
+import type { EmailDomain } from '@fidscript-deploy/sdk';
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
-import { Button, Card, EmptyState, Input, Modal, Spinner } from '@fidscript/ui';
+import { Button, Card, EmptyState, Input, Modal, Spinner } from '@fidscript-deploy/ui';
 
 import { useAuth } from '@/contexts/auth-context';
 import { useShellProjectId } from '@/contexts/project-context';

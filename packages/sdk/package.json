@@ -1,11 +1,11 @@
 {
-  "name": "@fidscript/sdk",
+  "name": "@fidscript-deploy/sdk",
   "version": "1.0.0",
   "description": "Official FIDScript Deploy TypeScript SDK — all platform modules, typed errors, async iterators, realtime",
   "private": true,
   "type": "module",
   "main": "./dist/index.js",
-  "types": "./dist/index.d.ts",
+  "types": "./dist/index.js",
   "exports": {
     ".": "./dist/index.js",
     "./client": "./dist/client.js",
@@ -18,8 +18,8 @@
     "clean": "rm -rf dist"
   },
   "dependencies": {
-    "@fidscript/events": "workspace:*",
-    "@fidscript/types": "workspace:*",
+    "@fidscript-deploy/events": "workspace:*",
+    "@fidscript-deploy/types": "workspace:*",
     "axios": "^1.6.0",
     "socket.io-client": "^4.8.3"
   },

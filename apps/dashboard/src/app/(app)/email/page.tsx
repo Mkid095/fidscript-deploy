@@ -1,8 +1,8 @@
 'use client';
 
-import type { EmailDomain } from '@fidscript/sdk';
+import type { EmailDomain } from '@fidscript-deploy/sdk';
 import { useEffect, useState } from 'react';
-import { Button, Card, EmptyState, Input, Modal, Spinner } from '@fidscript/ui';
+import { Button, Card, EmptyState, Input, Modal, Spinner } from '@fidscript-deploy/ui';
 import Link from 'next/link';
 
 import type { Project } from '@/types';

@@ -4,10 +4,10 @@ import { useState, useEffect, useRef } from 'react';
 import Image from 'next/image';
 import { HugeiconsIcon } from '@hugeicons/react';
 import { Mail01Icon, LockPasswordIcon, CheckmarkCircle01Icon, Alert01Icon, AlertCircleIcon } from '@hugeicons/core-free-icons';
-import { Button } from '@fidscript/ui';
-import { Input } from '@fidscript/ui';
-import { Card } from '@fidscript/ui';
-import { Spinner } from '@fidscript/ui';
+import { Button } from '@fidscript-deploy/ui';
+import { Input } from '@fidscript-deploy/ui';
+import { Card } from '@fidscript-deploy/ui';
+import { Spinner } from '@fidscript-deploy/ui';
 
 type SetupStep = 'method' | 'domain' | 'progress' | 'done';
 type AuthMethod = 'MAGIC_CODE' | 'PASSWORD';

@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { Button, Card, EmptyState, Modal, Spinner } from '@fidscript/ui';
+import { Button, Card, EmptyState, Modal, Spinner } from '@fidscript-deploy/ui';
 import { useParams, useSearchParams, useRouter } from 'next/navigation';
 
 import { useAuth } from '@/contexts/auth-context';

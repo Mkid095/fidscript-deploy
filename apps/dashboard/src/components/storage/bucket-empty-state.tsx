@@ -1,7 +1,7 @@
 'use client';
 
 import { Icon } from '@iconify/react';
-import { Card, Button } from '@fidscript/ui';
+import { Card, Button } from '@fidscript-deploy/ui';
 
 interface BucketEmptyStateProps {
   prefix: string;

@@ -4,9 +4,9 @@ import { useState, useEffect } from 'react';
 import Image from 'next/image';
 import { HugeiconsIcon } from '@hugeicons/react';
 import { LockPasswordIcon, Mail01Icon } from '@hugeicons/core-free-icons';
-import { Button } from '@fidscript/ui';
-import { Input } from '@fidscript/ui';
-import { Card } from '@fidscript/ui';
+import { Button } from '@fidscript-deploy/ui';
+import { Input } from '@fidscript-deploy/ui';
+import { Card } from '@fidscript-deploy/ui';
 
 import { useAuth } from '@/contexts/auth-context';
 import { PasswordStrength } from '@/components/auth/password-strength';

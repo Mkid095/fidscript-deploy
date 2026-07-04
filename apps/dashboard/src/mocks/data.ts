@@ -4,7 +4,7 @@
  */
 
 import type { MigrationRecord, BackupRecord, BackupSchedule, StorageBucket, StorageFile, ProjectStorageConfig, StorageFileRecord } from '@/types';
-import type { DomainVerificationRun, DomainIncident, DomainHealthTimelineEntry, DomainWizardStatus } from '@fidscript/sdk';
+import type { DomainVerificationRun, DomainIncident, DomainHealthTimelineEntry, DomainWizardStatus } from '@fidscript-deploy/sdk';
 
 import type {
   User,

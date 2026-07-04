@@ -6,7 +6,7 @@
     "outDir": "./dist",
     "noEmit": false,
     "paths": {
-      "@fidscript/types": ["../types/src"]
+      "@fidscript-deploy/types": ["../types/src"]
     }
   },
   "include": ["src/**/*"],

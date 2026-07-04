@@ -1,7 +1,7 @@
 import { Injectable, Logger, BadRequestException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { EventService } from '@/modules/events/event.service';
-import type { EventType } from '@fidscript/events';
+import type { EventType } from '@fidscript-deploy/events';
 import { RedisService } from '@/modules/redis/redis.service';
 import { PrismaService } from '@/prisma/prisma.service';
 import { DnsStep, ProxyStep, CertificateStep, EmailStep, HealthStep } from './steps/installation-steps';

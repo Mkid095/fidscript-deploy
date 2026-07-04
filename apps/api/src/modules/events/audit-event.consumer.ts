@@ -1,6 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { OnEvent } from '@nestjs/event-emitter';
-import { PlatformEvent } from '@fidscript/events';
+import { PlatformEvent } from '@fidscript-deploy/events';
 import { PrismaService } from '../../prisma/prisma.service';
 
 /**

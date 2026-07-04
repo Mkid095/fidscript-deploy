@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import { useParams } from 'next/navigation';
-import { Spinner } from '@fidscript/ui';
+import { Spinner } from '@fidscript-deploy/ui';
 
 import { useAuth } from '@/contexts/auth-context';
 import {

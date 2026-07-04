@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState, useRef, useCallback } from 'react';
-import { Card, Spinner } from '@fidscript/ui';
+import { Card, Spinner } from '@fidscript-deploy/ui';
 import { HugeiconsIcon } from '@hugeicons/react';
 import { CheckmarkCircle03Icon } from '@hugeicons/core-free-icons';
 

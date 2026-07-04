@@ -6,8 +6,8 @@ import { useEffect, useState, useCallback } from 'react';
 import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
 import { useAuth } from '@/contexts/auth-context';
-import { Card, Button, Input, Spinner, EmptyState, Toast } from '@fidscript/ui';
-import type { Database } from '@fidscript/sdk';
+import { Card, Button, Input, Spinner, EmptyState, Toast } from '@fidscript-deploy/ui';
+import type { Database } from '@fidscript-deploy/sdk';
 
 export default function ProjectDatabasesPage() {
   const { getSdk } = useAuth();

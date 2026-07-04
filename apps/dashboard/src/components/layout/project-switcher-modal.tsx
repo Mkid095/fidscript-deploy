@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
-import { Modal } from '@fidscript/ui';
+import { Modal } from '@fidscript-deploy/ui';
 
 import type { Project } from '@/types';
 

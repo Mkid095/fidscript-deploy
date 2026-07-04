@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { Card, Button } from '@fidscript/ui';
+import { Card, Button } from '@fidscript-deploy/ui';
 import { HugeiconsIcon } from '@hugeicons/react';
 import { ExternalLinkIcon, RefreshIcon } from '@hugeicons/core-free-icons';
 

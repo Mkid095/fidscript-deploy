@@ -1,6 +1,6 @@
 'use client';
 
-import { Card } from '@fidscript/ui';
+import { Card } from '@fidscript-deploy/ui';
 import { HugeiconsIcon } from '@hugeicons/react';
 import { Clock02Icon } from '@hugeicons/core-free-icons';
 

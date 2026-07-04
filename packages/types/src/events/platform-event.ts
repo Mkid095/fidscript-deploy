@@ -2,7 +2,7 @@
  * Platform event types — shared across API, SDK, and MCP contracts.
  */
 
-export type EventType = string; // Full EventType union defined in @fidscript/events
+export type EventType = string; // Full EventType union defined in @fidscript-deploy/events
 
 export interface EventMetadata {
   messageId?: string;

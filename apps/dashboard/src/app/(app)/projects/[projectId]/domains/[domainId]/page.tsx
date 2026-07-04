@@ -1,12 +1,12 @@
 'use client';
 
-import type { Domain, DomainHealth, DnsRecord, DomainSslInfo, DomainWizardStatus, DomainIncident } from '@fidscript/sdk';
+import type { Domain, DomainHealth, DnsRecord, DomainSslInfo, DomainWizardStatus, DomainIncident } from '@fidscript-deploy/sdk';
 import type { DomainRepairPolicy, DomainRepairRun, RepairType, RepairStatus } from '@/mocks/data';
 import { mockDomainRepairPolicy, mockDomainRepairRuns, mockDomainIncidents } from '@/mocks/data';
 import { useEffect, useState, useCallback, useRef } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { Button, Card, Badge, Spinner, Toast, Modal } from '@fidscript/ui';
+import { Button, Card, Badge, Spinner, Toast, Modal } from '@fidscript-deploy/ui';
 
 import { useAuth } from '@/contexts/auth-context';
 

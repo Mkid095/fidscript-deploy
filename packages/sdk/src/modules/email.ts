@@ -23,7 +23,7 @@ import type {
   AdminAttachmentConfig,
   StorageBackend,
   PlatformMailboxSummary,
-} from '@fidscript/types';
+} from '@fidscript-deploy/types';
 
 export type {
   EmailMessage,

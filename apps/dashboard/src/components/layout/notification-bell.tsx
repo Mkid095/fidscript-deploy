@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { HugeiconsIcon } from '@hugeicons/react';
 import { Notification01Icon, Cancel01Icon, CheckmarkCircle01Icon } from '@hugeicons/core-free-icons';
-import type { FidscriptSDK, UserNotification } from '@fidscript/sdk';
+import type { FidscriptSDK, UserNotification } from '@fidscript-deploy/sdk';
 
 function formatTime(dateStr: string): string {
   const d = new Date(dateStr);

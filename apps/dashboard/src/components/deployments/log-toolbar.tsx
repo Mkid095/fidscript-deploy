@@ -1,6 +1,6 @@
 'use client';
 
-import { Spinner } from '@fidscript/ui';
+import { Spinner } from '@fidscript-deploy/ui';
 import { HugeiconsIcon } from '@hugeicons/react';
 import { Copy01Icon, Download01Icon, RefreshIcon, CheckmarkCircle03Icon } from '@hugeicons/core-free-icons';
 

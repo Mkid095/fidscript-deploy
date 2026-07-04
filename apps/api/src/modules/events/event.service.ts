@@ -3,7 +3,7 @@ import { ConfigService } from '@nestjs/config';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { connect, JetStreamClient, NatsConnection } from 'nats';
 import { randomUUID } from 'crypto';
-import { PlatformEvent, EventType } from '@fidscript/events';
+import { PlatformEvent, EventType } from '@fidscript-deploy/events';
 import { EventNatsConsumerService } from './event-nats-consumer.service';
 
 const EVENTS_STREAM = 'EVENTS';

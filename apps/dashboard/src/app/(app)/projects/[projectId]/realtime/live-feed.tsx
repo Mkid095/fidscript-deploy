@@ -18,7 +18,7 @@ import {
   Clock01Icon, Mail01Icon, HardDriveIcon, Cancel01Icon, PauseIcon,
   PlayCircleIcon, Delete01Icon, ArrowDown01Icon, ChevronDownIcon,
 } from '@hugeicons/core-free-icons';
-import { Spinner } from '@fidscript/ui';
+import { Spinner } from '@fidscript-deploy/ui';
 
 import { useAuth } from '@/contexts/auth-context';
 

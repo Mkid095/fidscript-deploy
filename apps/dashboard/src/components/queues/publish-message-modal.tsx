@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { Icon } from '@iconify/react';
-import { Button } from '@fidscript/ui';
+import { Button } from '@fidscript-deploy/ui';
 
 interface PublishMessageModalProps {
   queueId: string;
@@ -10,7 +10,7 @@ interface PublishMessageModalProps {
   projectId: string;
   onClose: () => void;
   onPublished: () => void;
-  getSdk: () => import('@fidscript/sdk').FidscriptSDK;
+  getSdk: () => import('@fidscript-deploy/sdk').FidscriptSDK;
 }
 
 export function PublishMessageModal({ queueId, queueName, projectId, onClose, onPublished, getSdk }: PublishMessageModalProps) {

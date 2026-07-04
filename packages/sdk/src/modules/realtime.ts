@@ -1,6 +1,6 @@
 import { io, Socket } from 'socket.io-client';
 import { FidscriptClient } from '../client';
-import type { PlatformEvent } from '@fidscript/events';
+import type { PlatformEvent } from '@fidscript-deploy/events';
 
 export type RealtimeEventHandler = (event: PlatformEvent) => void;
 

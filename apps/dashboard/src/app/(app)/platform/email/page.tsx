@@ -29,8 +29,8 @@ import { Delete01Icon, Attachment01Icon } from '@hugeicons/core-free-icons';
  *   "make it work" milestone. (See docs/IMPLEMENTATION_ROADMAP.md F08.)
  */
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { Button, Card, EmptyState, Input, Modal, Spinner } from '@fidscript/ui';
-import type { PlatformMailboxMessage, PlatformMailboxSummary, StorageBackend } from '@fidscript/sdk';
+import { Button, Card, EmptyState, Input, Modal, Spinner } from '@fidscript-deploy/ui';
+import type { PlatformMailboxMessage, PlatformMailboxSummary, StorageBackend } from '@fidscript-deploy/sdk';
 
 import { useAuth } from '@/contexts/auth-context';
 

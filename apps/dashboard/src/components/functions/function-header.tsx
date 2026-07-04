@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import { HugeiconsIcon } from '@hugeicons/react';
 import { Delete01Icon, PlayCircleIcon, Upload03Icon } from '@hugeicons/core-free-icons';
-import { Button, Spinner } from '@fidscript/ui';
+import { Button, Spinner } from '@fidscript-deploy/ui';
 
 import { FunctionStatusBadge } from './function-status-badge';
 import { ConfirmDialog } from '@/components/deployments/confirm-dialog';

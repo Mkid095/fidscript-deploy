@@ -6,7 +6,7 @@
  *
  * Usage:
  * ```ts
- * import { createFidscript } from '@fidscript/sdk';
+ * import { createFidscript } from '@fidscript-deploy/sdk';
  *
  * const fs = createFidscript({
  *   baseURL: 'https://api.your-deployment.example.com',

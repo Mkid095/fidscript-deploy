@@ -3,7 +3,7 @@
 import { useEffect, useState, useCallback } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { Modal } from '@fidscript/ui';
+import { Modal } from '@fidscript-deploy/ui';
 import { HugeiconsIcon } from '@hugeicons/react';
 import { ArrowLeftIcon } from '@hugeicons/core-free-icons';
 
@@ -23,7 +23,7 @@ import {
   ConfirmDialog,
   DeploymentHeader,
 } from '@/components/deployments';
-import type { FidscriptSDK } from '@fidscript/sdk';
+import type { FidscriptSDK } from '@fidscript-deploy/sdk';
 
 function DeploymentDetailInner() {
   const params = useParams();

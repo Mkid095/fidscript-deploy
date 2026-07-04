@@ -3,8 +3,8 @@
 
 import { useEffect, useState, useCallback, use } from 'react';
 import Link from 'next/link';
-import { Card, Button, Spinner, Toast } from '@fidscript/ui';
-import type { Database } from '@fidscript/sdk';
+import { Card, Button, Spinner, Toast } from '@fidscript-deploy/ui';
+import type { Database } from '@fidscript-deploy/sdk';
 import { useAuth } from '@/contexts/auth-context';
 
 interface DatabaseBackup {

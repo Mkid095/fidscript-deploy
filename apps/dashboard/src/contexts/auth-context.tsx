@@ -10,7 +10,7 @@ import {
   type ReactNode,
 } from 'react';
 import { useRouter } from 'next/navigation';
-import { type FidscriptSDK } from '@fidscript/sdk';
+import { type FidscriptSDK } from '@fidscript-deploy/sdk';
 
 import { makeSdk, IS_MOCK_MODE } from '@/lib/sdk';
 import type { User } from '@/types';

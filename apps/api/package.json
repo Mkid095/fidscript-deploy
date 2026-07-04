@@ -19,7 +19,7 @@
     "db:studio": "prisma studio"
   },
   "dependencies": {
-    "@fidscript/events": "workspace:*",
+     "@fidscript-deploy/events": "workspace:*",
     "@nestjs/common": "^10.0.0",
     "@nestjs/config": "^3.0.0",
     "@nestjs/core": "^10.0.0",

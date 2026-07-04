@@ -3,7 +3,7 @@
 import { useEffect, useState, useCallback, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { Card, Button, Badge, EmptyState, Spinner } from '@fidscript/ui';
+import { Card, Button, Badge, EmptyState, Spinner } from '@fidscript-deploy/ui';
 import { HugeiconsIcon } from '@hugeicons/react';
 import {
   Rocket01Icon,

@@ -3,9 +3,9 @@
 import { useState } from 'react';
 import { HugeiconsIcon } from '@hugeicons/react';
 import { PlayCircleIcon, CheckmarkCircle03Icon, AlertCircleIcon } from '@hugeicons/core-free-icons';
-import { Button, Card, Spinner } from '@fidscript/ui';
+import { Button, Card, Spinner } from '@fidscript-deploy/ui';
 
-import type { FidscriptSDK } from '@fidscript/sdk';
+import type { FidscriptSDK } from '@fidscript-deploy/sdk';
 
 interface FunctionInvokeProps {
   projectId: string;

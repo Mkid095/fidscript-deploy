@@ -5,7 +5,7 @@ import { HugeiconsIcon } from '@hugeicons/react';
 
 import { Suspense, useEffect, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { Button, Card, Spinner } from '@fidscript/ui';
+import { Button, Card, Spinner } from '@fidscript-deploy/ui';
 
 import { useAuth } from '@/contexts/auth-context';
 

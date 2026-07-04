@@ -1,9 +1,9 @@
 'use client';
 
 import { useEffect, useRef } from 'react';
-import type { FidscriptSDK } from '@fidscript/sdk';
+import type { FidscriptSDK } from '@fidscript-deploy/sdk';
 
-// Local alias — mirrors @fidscript/events PlatformEvent
+// Local alias — mirrors @fidscript-deploy/events PlatformEvent
 type PlatformEvent = { type: string; metadata: Record<string, unknown> };
 import type { StorageFile } from '@/types';
 import type { Bucket } from './bucket';

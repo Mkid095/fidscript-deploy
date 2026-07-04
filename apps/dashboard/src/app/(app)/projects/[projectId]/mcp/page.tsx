@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import { HugeiconsIcon } from '@hugeicons/react';
 import { SourceCodeIcon, ArrowRight01Icon, AlertCircleIcon } from '@hugeicons/core-free-icons';
-import { Card, Button } from '@fidscript/ui';
+import { Card, Button } from '@fidscript-deploy/ui';
 
 /**
  * MCP — coming soon.
