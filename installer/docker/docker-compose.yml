@@ -475,7 +475,7 @@ services:
       CORS_ORIGIN: "*"
       PLATFORM_URL: https://whatsapp.fidscript.com
       API_URL: https://api.whatsapp.fidsapp.com
-      API_INTERNAL_URL: http://fidscript-whatsapp-api:3099
+      API_INTERNAL_URL: http://fidscript_whatsapp_api:8080
       EVOLUTION_API_URL: http://localhost:8080
       EVOLUTION_API_KEY: 94977bc1fcb107c79d0687caea800bdb74edd67b5022771fc85c22ee389ca7e8
       TUMA_BUSINESS_EMAIL: nextmavensoffice@gmail.com
