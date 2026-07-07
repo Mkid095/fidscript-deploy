@@ -12,7 +12,12 @@ services:
       - /var/run/docker.sock:/var/run/docker.sock:ro
       - ./docker-version-proxy.js:/proxy.js:ro
     networks:
-      - fidscript
+      - fidscript-deployment
+    logging:
+      driver: json-file
+      options:
+        max-size: '10m'
+        max-file: '3'
 
   traefik:
     # v3.2+ fixes the Docker provider API version negotiation bug
@@ -20,6 +25,11 @@ services:
     image: traefik:v3.3
     container_name: fidscript_traefik
     restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          cpus: '0.2'
+          memory: 256M
     ports:
       - "80:80"
       - "443:443"
@@ -33,15 +43,24 @@ services:
     environment:
       CLOUDFLARE_DNS_API_TOKEN_FILE: /run/secrets/cf_api_token
     networks:
-      - fidscript
+      - fidscript-deployment
+      - fidscript-whatsapp
       - fidscript-app
       - soostori-prod-net
-      - nextmavens-net
-
+    logging:
+      driver: json-file
+      options:
+        max-size: '10m'
+        max-file: '3'
   postgres:
     image: postgres:16-alpine
     container_name: fidscript_postgres
     restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          cpus: '1.0'
+          memory: 1G
     environment:
       POSTGRES_DB: fidscript
       POSTGRES_USER: fidscript
@@ -51,12 +70,17 @@ services:
     volumes:
       - fidscript_postgres:/var/lib/postgresql/data
     networks:
-      - fidscript
+      - fidscript-deployment
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U fidscript -d fidscript"]
       interval: 10s
       timeout: 5s
       retries: 5
+    logging:
+      driver: json-file
+      options:
+        max-size: '10m'
+        max-file: '3'
 
   pgbouncer:
     image: pgbouncer/pgbouncer:1.15.0
@@ -86,7 +110,7 @@ services:
       - ./pgbouncer.ini:/etc/pgbouncer/pgbouncer.ini:ro
       - ./userlist.txt:/etc/pgbouncer/userlist.txt:ro
     networks:
-      - fidscript
+      - fidscript-deployment
     depends_on:
       postgres:
         condition: service_healthy
@@ -95,34 +119,54 @@ services:
       interval: 10s
       timeout: 5s
       retries: 5
+    logging:
+      driver: json-file
+      options:
+        max-size: '10m'
+        max-file: '3'
 
   redis:
     image: redis:7-alpine
     container_name: fidscript_redis
     restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          cpus: '0.25'
+          memory: 256M
     command: ["sh", "-c", "exec redis-server --requirepass \"$(cat /run/secrets/redis_password)\" --appendonly yes"]
     secrets:
       - redis_password
     volumes:
       - fidscript_redis:/data
     networks:
-      - fidscript
+      - fidscript-deployment
     healthcheck:
       test: ["CMD-SHELL", "redis-cli -a \"$(cat /run/secrets/redis_password)\" --no-auth-warning ping"]
       interval: 10s
       timeout: 5s
       retries: 5
+    logging:
+      driver: json-file
+      options:
+        max-size: '10m'
+        max-file: '3'
 
   nats:
     image: nats:2.10-alpine
     container_name: fidscript_nats
     restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          cpus: '0.1'
+          memory: 128M
     command: ["-c", "/etc/nats/nats-server.conf"]
     volumes:
       - ../config/nats-server.conf:/etc/nats/nats-server.conf:ro
       - fidscript_nats:/data
     networks:
-      - fidscript
+      - fidscript-deployment
     # The nats CLI isn't in PATH in this alpine image, so "nats server ping"
     # fails. The proper healthcheck is the nats HTTP monitoring endpoint.
     healthcheck:
@@ -130,6 +174,11 @@ services:
       interval: 10s
       timeout: 5s
       retries: 5
+    logging:
+      driver: json-file
+      options:
+        max-size: '10m'
+        max-file: '3'
 
   minio:
     # Pinned: RELEASE.2025-09-07T16-13-09Z (Sept 2025 stable). Avoid
@@ -137,6 +186,11 @@ services:
     image: minio/minio:RELEASE.2025-09-07T16-13-09Z
     container_name: fidscript_minio
     restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          cpus: '0.25'
+          memory: 512M
     command: server /data --console-address ":9001"
     environment:
       MINIO_ROOT_USER_FILE: /run/secrets/minio_access_key
@@ -147,12 +201,17 @@ services:
     volumes:
       - fidscript_minio:/data
     networks:
-      - fidscript
+      - fidscript-deployment
     healthcheck:
       test: ["CMD", "mc", "ready", "local"]
       interval: 10s
       timeout: 5s
       retries: 5
+    logging:
+      driver: json-file
+      options:
+        max-size: '10m'
+        max-file: '3'
 
   stalwart:
     # Pinned to a specific version via STALWART_VERSION in .env.
@@ -192,7 +251,7 @@ services:
       - ./secrets/stalwart_credentials.txt:/run/secrets/stalwart_credentials:ro
     command: --config /etc/stalwart/config.json
     networks:
-      - fidscript
+      - fidscript-deployment
     # NOTE: no depends_on — Stalwart uses RocksDB on its own volume
     # and doesn't need postgres. Keeping it in the depends_on chain
     # would block Stalwart start if postgres is slow to come up, even
@@ -214,6 +273,11 @@ services:
     secrets:
       - stalwart_admin_token
       - stalwart_credentials
+    logging:
+      driver: json-file
+      options:
+        max-size: '10m'
+        max-file: '3'
 
   api:
     build:
@@ -289,7 +353,8 @@ services:
     group_add:
       - "${DOCKER_GID}"
     networks:
-      - fidscript
+      - fidscript-deployment
+      - fidscript-whatsapp
       - fidscript-app
     depends_on:
       postgres:
@@ -310,6 +375,11 @@ services:
       timeout: 5s
       retries: 5
       start_period: 30s
+    logging:
+      driver: json-file
+      options:
+        max-size: '10m'
+        max-file: '3'
 
   dashboard:
     build:
@@ -328,9 +398,14 @@ services:
       NEXT_PUBLIC_PLATFORM_DOMAIN: ${DOMAIN}
       NEXT_PUBLIC_API_URL: https://api.${DOMAIN}
     networks:
-      - fidscript
+      - fidscript-deployment
     depends_on:
       - api
+    logging:
+      driver: json-file
+      options:
+        max-size: '10m'
+        max-file: '3'
 
   bootstrap:
     image: alpine:3.19
@@ -341,7 +416,7 @@ services:
       - fidscript_secrets:/secrets
       - fidscript_config:/config
     networks:
-      - fidscript
+      - fidscript-deployment
     depends_on:
       postgres:
         condition: service_healthy
@@ -363,31 +438,45 @@ services:
     image: nginx:alpine
     container_name: fidscript_whatsapp_frontend
     restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          cpus: '0.1'
+          memory: 128M
     volumes:
       - ./whatsapp-frontend.dist:/usr/share/nginx/html:ro
       - ./whatsapp-frontend.conf:/etc/nginx/conf.d/default.conf:ro
     networks:
-      nextmavens-net:
-        ipv4_address: 172.18.0.10
+      - fidscript-whatsapp
     healthcheck:
-      test: ["CMD-SHELL", "wget -qO- http://localhost/ || exit 1"]
+      test: ["CMD-SHELL", "wget -qO- http://127.0.0.1/ || exit 1"]
       interval: 10s
       timeout: 5s
       retries: 3
+    logging:
+      driver: json-file
+      options:
+        max-size: '10m'
+        max-file: '3'
 
   # WhatsApp SaaS Platform API
   whatsapp-api:
     image: fidscript-whatsapp-api:latest
     container_name: fidscript-whatsapp-api
     restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 1G
     environment:
       NODE_ENV: production
       PORT: "3099"
       CORS_ORIGIN: "*"
       PLATFORM_URL: https://whatsapp.fidscript.com
-      API_URL: https://api.whatsapp.fidscript.com
+      API_URL: https://api.whatsapp.fidsapp.com
       API_INTERNAL_URL: http://fidscript-whatsapp-api:3099
-      EVOLUTION_API_URL: http://nextmavens_evolution:8080
+      EVOLUTION_API_URL: http://localhost:8080
       EVOLUTION_API_KEY: 94977bc1fcb107c79d0687caea800bdb74edd67b5022771fc85c22ee389ca7e8
       TUMA_BUSINESS_EMAIL: nextmavensoffice@gmail.com
       TUMA_API_KEY: tuma_22e5d0fff7b75e46b82bdb1cd6b31ee78dc209b58a7c8e177fed6d0b78890fd3_1781442356
@@ -395,18 +484,22 @@ services:
       MAIL_FROM: "FIDScript <noreply@whatsapp.fidscript.com>"
       GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID}
       GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET}
-      GOOGLE_REDIRECT_URI: https://whatsapp.fidsapp.com/api/contacts/google/callback
+      GOOGLE_REDIRECT_URI: https://whatsapp.fidscript.com/api/contacts/google/callback
       FRONTEND_URL: https://whatsapp.fidscript.com
       DEPLOY_VERSION: "1.0.0"
     networks:
-      fidscript-app:
-      fidscript:
-      nextmavens-net:
+      - fidscript-whatsapp
+      - fidscript-deployment
     healthcheck:
-      test: ["CMD-SHELL", "wget -qO- http://localhost:3099/api/v1/health || exit 1"]
+      test: ["CMD-SHELL", "wget -qO- http://localhost:8080/health || exit 1"]
       interval: 10s
       timeout: 5s
       retries: 3
+    logging:
+      driver: json-file
+      options:
+        max-size: '10m'
+        max-file: '3'
 
   # Chatbot Worker — NATS subscriber for async AI chatbot processing.
   # Shares the whatsapp-api image; overrides CMD to run the worker entrypoint.
@@ -414,15 +507,21 @@ services:
     image: fidscript-whatsapp-api:latest
     container_name: fidscript-chatbot-worker
     restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          cpus: '0.3'
+          memory: 512M
     command: ["node", "dist/chatbot-worker/index.js"]
     environment:
       NODE_ENV: production
       NATS_URL: nats://fidscript_nats:4222
-      EVOLUTION_API_URL: http://nextmavens_evolution:8080
+      EVOLUTION_API_URL: http://localhost:8080
       EVOLUTION_API_KEY: 94977bc1fcb107c79d0687caea800bdb74edd67b5022771fc85c22ee389ca7e8
       JWT_SECRET: fidscript-jwt-secret-change-in-production
     networks:
-      - fidscript
+      - fidscript-whatsapp
+      - fidscript-deployment
     depends_on:
       - whatsapp-api
     healthcheck:
@@ -430,17 +529,117 @@ services:
       interval: 15s
       timeout: 5s
       retries: 3
+    logging:
+      driver: json-file
+      options:
+        max-size: '10m'
+        max-file: '3'
+
+  # cAdvisor — container metric exporter for Prometheus
+  cadvisor:
+    image: gcr.io/cadvisor/cadvisor:v0.49.0
+    container_name: fidscript_cadvisor
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          cpus: '0.2'
+          memory: 256M
+    ports:
+      - "8081:8080"
+    volumes:
+      - /:/rootfs:ro
+      - /var/run:/var/run:ro
+      - /sys:/sys:ro
+      - /var/lib/docker/:/var/lib/docker:ro
+      - /dev/disk/:/dev/disk:ro
+    networks:
+      - fidscript-deployment
+    command:
+      - --housekeeping_interval=15s
+      - --docker_only=true
+      - --store_container_labels=false
+      - --allow_dynamic_housekeeping=true
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:8080/healthz"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+    logging:
+      driver: json-file
+      options:
+        max-size: '10m'
+        max-file: '3'
+
+  prometheus:
+    image: prom/prometheus:v2.53.0
+    container_name: fidscript_prometheus
+    restart: unless-stopped
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--storage.tsdb.retention.time=30d'
+      - '--web.enable-lifecycle'
+    volumes:
+      - ./prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - fidscript_prometheus_data:/prometheus
+    networks:
+      - fidscript-deployment
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:9090/-/healthy"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+    logging:
+      driver: json-file
+      options:
+        max-size: '10m'
+        max-file: '3'
+
+  grafana:
+    image: grafana/grafana:11.4.0
+    container_name: fidscript_grafana
+    restart: unless-stopped
+    environment:
+      GF_SECURITY_ADMIN_USER: admin
+      GF_SECURITY_ADMIN_PASSWORD_FILE: /run/secrets/grafana_password
+      GF_USERS_ALLOW_SIGN_UP: "false"
+      GF_FEATURE_TOGGLES_ENABLE: publicDashboards
+    volumes:
+      - ./grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./grafana/dashboards:/var/lib/grafana/dashboards:ro
+      - fidscript_grafana_data:/var/lib/grafana
+    networks:
+      - fidscript-deployment
+    depends_on:
+      - prometheus
+    secrets:
+      - grafana_password
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:3000/api/health || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+    logging:
+      driver: json-file
+      options:
+        max-size: '10m'
+        max-file: '3'
 
 networks:
-  fidscript:
-    name: fidscript
+  # Deployment system infrastructure
+  fidscript-deployment:
+    name: fidscript-deployment
     driver: bridge
+  # WhatsApp platform — frontend, API, and backend share this network
+  fidscript-whatsapp:
+    name: fidscript-whatsapp
+    driver: bridge
+  # Legacy app network (used by traefik Docker provider)
   fidscript-app:
     name: fidscript-app
     driver: bridge
   soostori-prod-net:
-    external: true
-  nextmavens-net:
     external: true
 
 volumes:
@@ -462,8 +661,14 @@ volumes:
     name: fidscript_secrets
   fidscript_config:
     name: fidscript_config
+  fidscript_prometheus_data:
+    name: fidscript_prometheus_data
+  fidscript_grafana_data:
+    name: fidscript_grafana_data
 
 secrets:
+  grafana_password:
+    file: ./secrets/grafana_password.txt
   postgres_password:
     file: ./secrets/postgres_password.txt
   redis_password:

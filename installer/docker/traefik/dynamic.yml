@@ -112,7 +112,7 @@ http:
     # API routes under whatsapp.fidscript.com — must be higher priority than catch-all
     whatsapp-frontend-api:
       rule: "Host(`whatsapp.fidscript.com`) && PathPrefix(`/api/`)"
-      service: whatsapp-api-svc
+      service: fidscript-api
       middlewares:
         - security-headers
         - compress
@@ -130,7 +130,7 @@ http:
         certResolver: letsencrypt-dns
 
     whatsapp-api:
-      rule: "Host(`api.whatsapp.fidscript.com`)"
+      rule: "Host(`apiwhatsapp.fidscript.com`)"
       service: whatsapp-api-svc
       middlewares:
         - security-headers
@@ -178,4 +178,4 @@ http:
     whatsapp-api-svc:
       loadBalancer:
         servers:
-          - url: "http://fidscript-whatsapp-api:3099"
+          - url: "http://fidscript_whatsapp_api:8080"
