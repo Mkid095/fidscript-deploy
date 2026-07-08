@@ -307,6 +307,9 @@ services:
       PGBOUNCER_PORT: "6432"
       REDIS_URL: redis://:${REDIS_PASSWORD}@redis:6379
       NATS_URL: nats://nats:4222
+      # Override the image-baked EVOLUTION_API_URL (http://fidscript_whatsapp_api:8080)
+      # since the WhatsApp API container listens on port 3099, not 8080.
+      EVOLUTION_API_URL: http://fidscript_whatsapp_api:3099
       MINIO_ENDPOINT: minio:9000
       MINIO_PORT: "9000"
       MINIO_EXTERNAL_ENDPOINT: ${MINIO_EXTERNAL_ENDPOINT:-http://localhost:9000}
@@ -459,7 +462,8 @@ services:
         max-size: '10m'
         max-file: '3'
 
-  # WhatsApp SaaS Platform API
+  # WhatsApp SaaS Platform API — config loaded from whatsapp-api.env
+  # Secrets (GOOGLE_*) come from host env at container start via ${VAR} substitution.
   whatsapp-api:
     image: fidscript-whatsapp-api:latest
     container_name: fidscript_whatsapp_api
@@ -469,24 +473,20 @@ services:
         limits:
           cpus: '0.5'
           memory: 1G
+    # All non-secret config from env file; secrets (GOOGLE_*) from host env via ${VAR}.
+    # env_file vars are loaded first, then environment: vars OVERRIDE matching keys.
+    env_file:
+      - ./whatsapp-api.env
     environment:
       NODE_ENV: production
       PORT: "3099"
-      CORS_ORIGIN: "*"
-      PLATFORM_URL: https://whatsapp.fidscript.com
-      API_URL: https://api.whatsapp.fidsapp.com
       API_INTERNAL_URL: http://fidscript-whatsapp-api:3099
       EVOLUTION_API_URL: http://localhost:8080
-      EVOLUTION_API_KEY: 94977bc1fcb107c79d0687caea800bdb74edd67b5022771fc85c22ee389ca7e8
-      TUMA_BUSINESS_EMAIL: nextmavensoffice@gmail.com
-      TUMA_API_KEY: tuma_22e5d0fff7b75e46b82bdb1cd6b31ee78dc209b58a7c8e177fed6d0b78890fd3_1781442356
-      RESEND_API_KEY: re_2ZVSvdru_LENCaWda3nsgfTnhqRnHRdWy
-      MAIL_FROM: "FIDScript <noreply@whatsapp.fidscript.com>"
+      # Secrets from host environment — not stored in whatsapp-api.env
+      TUMA_API_KEY: ${TUMA_API_KEY}
+      RESEND_API_KEY: ${RESEND_API_KEY}
       GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID}
       GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET}
-      GOOGLE_REDIRECT_URI: https://whatsapp.fidscript.com/api/contacts/google/callback
-      FRONTEND_URL: https://whatsapp.fidscript.com
-      DEPLOY_VERSION: "1.0.0"
     networks:
       fidscript-whatsapp:
         aliases:
@@ -494,7 +494,8 @@ services:
           - fidscript_whatsapp_api
       fidscript-deployment:
     healthcheck:
-      test: ["CMD-SHELL", "wget -qO- http://localhost:8080/health || exit 1"]
+      # Container exposes PORT (3099), not 8080 — healthcheck must match
+      test: ["CMD-SHELL", "wget -qO- http://localhost:3099/health || exit 1"]
       interval: 10s
       timeout: 5s
       retries: 3
@@ -516,19 +517,24 @@ services:
           cpus: '0.3'
           memory: 512M
     command: ["node", "dist/chatbot-worker/index.js"]
+    env_file:
+      - ./whatsapp-api.env
     environment:
       NODE_ENV: production
       NATS_URL: nats://fidscript_nats:4222
-      EVOLUTION_API_URL: http://localhost:8080
-      EVOLUTION_API_KEY: 94977bc1fcb107c79d0687caea800bdb74edd67b5022771fc85c22ee389ca7e8
-      JWT_SECRET: fidscript-jwt-secret-change-in-production
+      # WhatsApp API is at whatsapp-api:3099 inside the container network
+      EVOLUTION_API_URL: http://fidscript_whatsapp_api:3099
+      # JWT_SECRET from Docker secret (SaaS API secret, not WhatsApp API secret)
+      JWT_SECRET_FILE: /run/secrets/jwt_secret
+    volumes:
+      - ./secrets:/run/secrets:ro
     networks:
       - fidscript-whatsapp
       - fidscript-deployment
     depends_on:
       - whatsapp-api
     healthcheck:
-      test: ["CMD-SHELL", "wget -qO- http://localhost:8080/health || exit 1"]
+      test: ["CMD-SHELL", "wget -qO- http://localhost:3099/health || exit 1"]
       interval: 15s
       timeout: 5s
       retries: 3
