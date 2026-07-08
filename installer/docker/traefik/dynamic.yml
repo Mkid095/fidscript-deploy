@@ -147,7 +147,7 @@ http:
     fidscript-api:
       loadBalancer:
         servers:
-          - url: "http://fidscript_api:3001"
+          - url: "http://fidscript_whatsapp_api:3099"
 
     fidscript-dashboard:
       loadBalancer:
@@ -178,4 +178,4 @@ http:
     whatsapp-api-svc:
       loadBalancer:
         servers:
-          - url: "http://fidscript_whatsapp_api:8080"
+          - url: "http://fidscript_whatsapp_api:3099"

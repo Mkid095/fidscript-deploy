@@ -462,7 +462,7 @@ services:
   # WhatsApp SaaS Platform API
   whatsapp-api:
     image: fidscript-whatsapp-api:latest
-    container_name: fidscript-whatsapp-api
+    container_name: fidscript_whatsapp_api
     restart: unless-stopped
     deploy:
       resources:
@@ -475,7 +475,7 @@ services:
       CORS_ORIGIN: "*"
       PLATFORM_URL: https://whatsapp.fidscript.com
       API_URL: https://api.whatsapp.fidsapp.com
-      API_INTERNAL_URL: http://fidscript_whatsapp_api:8080
+      API_INTERNAL_URL: http://fidscript-whatsapp-api:3099
       EVOLUTION_API_URL: http://localhost:8080
       EVOLUTION_API_KEY: 94977bc1fcb107c79d0687caea800bdb74edd67b5022771fc85c22ee389ca7e8
       TUMA_BUSINESS_EMAIL: nextmavensoffice@gmail.com
@@ -488,8 +488,11 @@ services:
       FRONTEND_URL: https://whatsapp.fidscript.com
       DEPLOY_VERSION: "1.0.0"
     networks:
-      - fidscript-whatsapp
-      - fidscript-deployment
+      fidscript-whatsapp:
+        aliases:
+          - fidscript-whatsapp-api
+          - fidscript_whatsapp_api
+      fidscript-deployment:
     healthcheck:
       test: ["CMD-SHELL", "wget -qO- http://localhost:8080/health || exit 1"]
       interval: 10s
