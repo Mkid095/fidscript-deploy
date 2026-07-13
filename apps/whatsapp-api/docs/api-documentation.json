@@ -1,0 +1,1328 @@
+{
+  "openapi": "3.0.0",
+  "info": {
+    "title": "Next Mavens Fidscript WhatsApp API",
+    "description": "Production-ready WhatsApp Business API with anti-ban protection, rate limiting, and latest WhatsApp features. Multi-tenant SaaS platform for sending and receiving WhatsApp messages programmatically.",
+    "version": "1.0.0",
+    "contact": {
+      "name": "Next Mavens Support",
+      "email": "support@nextmavens.com"
+    },
+    "license": {
+      "name": "Commercial",
+      "url": "https://nextmavens.com"
+    }
+  },
+  "servers": [
+    {
+      "url": "http://localhost:8080",
+      "description": "Local Development"
+    }
+  ],
+  "tags": [
+    {
+      "name": "Instance",
+      "description": "WhatsApp instance management"
+    },
+    {
+      "name": "Message",
+      "description": "Send messages of all types"
+    },
+    {
+      "name": "Campaign",
+      "description": "Bulk campaign management"
+    },
+    {
+      "name": "Anti-Ban",
+      "description": "Rate limiting and account protection"
+    },
+    {
+      "name": "Analytics",
+      "description": "Message analytics and insights"
+    },
+    {
+      "name": "Webhook",
+      "description": "Webhook configuration"
+    }
+  ],
+  "paths": {
+    "/": {
+      "get": {
+        "tags": ["Info"],
+        "summary": "API Information",
+        "responses": {
+          "200": {
+            "description": "API is running",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "status": {"type": "integer"},
+                    "message": {"type": "string"},
+                    "version": {"type": "string"},
+                    "clientName": {"type": "string"},
+                    "documentation": {"type": "string"},
+                    "antiBan": {
+                      "type": "object",
+                      "properties": {
+                        "enabled": {"type": "boolean"},
+                        "healthEndpoint": {"type": "string"},
+                        "statusEndpoint": {"type": "string"}
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/instance/create": {
+      "post": {
+        "tags": ["Instance"],
+        "summary": "Create a new WhatsApp instance",
+        "security": [{"ApiKeyAuth": []}],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["instanceName"],
+                "properties": {
+                  "instanceName": {"type": "string", "description": "Unique name for the instance"},
+                  "integration": {"type": "string", "enum": ["WHATSAPP-BAILEY", "WHATSAPP-BUSINESS", "EVOLUTION"], "default": "WHATSAPP-BAILEY"},
+                  "qrcode": {"type": "object", "properties": {"limit": {"type": "integer"}, "quality": {"type": "string"}}}
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {"description": "Instance created successfully"},
+          "400": {"description": "Invalid request"},
+          "401": {"description": "Unauthorized"}
+        }
+      }
+    },
+    "/instance/connect/{instanceName}": {
+      "get": {
+        "tags": ["Instance"],
+        "summary": "Generate QR code for connecting WhatsApp",
+        "security": [{"ApiKeyAuth": []}],
+        "parameters": [
+          {"name": "instanceName", "in": "path", "required": true, "schema": {"type": "string"}}
+        ],
+        "responses": {
+          "200": {"description": "QR code generated"},
+          "404": {"description": "Instance not found"}
+        }
+      }
+    },
+    "/instance/connectionState/{instanceName}": {
+      "get": {
+        "tags": ["Instance"],
+        "summary": "Get instance connection status",
+        "security": [{"ApiKeyAuth": []}],
+        "parameters": [
+          {"name": "instanceName", "in": "path", "required": true, "schema": {"type": "string"}}
+        ],
+        "responses": {
+          "200": {"description": "Connection state retrieved"}
+        }
+      }
+    },
+    "/instance/logout/{instanceName}": {
+      "delete": {
+        "tags": ["Instance"],
+        "summary": "Disconnect instance from WhatsApp",
+        "security": [{"ApiKeyAuth": []}],
+        "parameters": [
+          {"name": "instanceName", "in": "path", "required": true, "schema": {"type": "string"}}
+        ],
+        "responses": {
+          "200": {"description": "Instance disconnected"}
+        }
+      }
+    },
+    "/instance/delete/{instanceName}": {
+      "delete": {
+        "tags": ["Instance"],
+        "summary": "Delete instance permanently",
+        "security": [{"ApiKeyAuth": []}],
+        "parameters": [
+          {"name": "instanceName", "in": "path", "required": true, "schema": {"type": "string"}}
+        ],
+        "responses": {
+          "200": {"description": "Instance deleted"}
+        }
+      }
+    },
+    "/message/sendText/{instanceName}": {
+      "post": {
+        "tags": ["Message"],
+        "summary": "Send text message with anti-ban protection",
+        "security": [{"ApiKeyAuth": []}],
+        "parameters": [
+          {"name": "instanceName", "in": "path", "required": true, "schema": {"type": "string"}}
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["number", "text"],
+                "properties": {
+                  "number": {"type": "string", "description": "Recipient phone number (with country code)"},
+                  "text": {"type": "string", "description": "Message text"},
+                  "delay": {"type": "integer", "description": "Delay in milliseconds before sending"},
+                  "linkPreview": {"type": "boolean", "description": "Enable link preview"},
+                  "mentioned": {"type": "array", "items": {"type": "string"}, "description": "Mentioned phone numbers"}
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {"description": "Message sent successfully"},
+          "400": {"description": "Rate limited or invalid request"},
+          "401": {"description": "Unauthorized"}
+        }
+      }
+    },
+    "/message/sendMedia/{instanceName}": {
+      "post": {
+        "tags": ["Message"],
+        "summary": "Send media message (image, video, document, audio) with anti-ban protection",
+        "security": [{"ApiKeyAuth": []}],
+        "parameters": [
+          {"name": "instanceName", "in": "path", "required": true, "schema": {"type": "string"}}
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "type": "object",
+                "required": ["number", "mediatype"],
+                "properties": {
+                  "number": {"type": "string"},
+                  "mediatype": {"type": "string", "enum": ["image", "video", "document", "audio"]},
+                  "media": {"type": "string", "description": "URL or base64 encoded media"},
+                  "caption": {"type": "string", "description": "Media caption"},
+                  "fileName": {"type": "string", "description": "File name for documents"},
+                  "mimetype": {"type": "string", "description": "MIME type of the media"}
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {"description": "Media sent successfully"},
+          "400": {"description": "Rate limited or invalid request"}
+        }
+      }
+    },
+    "/message/sendButtons/{instanceName}": {
+      "post": {
+        "tags": ["Message"],
+        "summary": "Send button message with anti-ban protection",
+        "security": [{"ApiKeyAuth": []}],
+        "parameters": [
+          {"name": "instanceName", "in": "path", "required": true, "schema": {"type": "string"}}
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["number", "buttons"],
+                "properties": {
+                  "number": {"type": "string"},
+                  "thumbnailUrl": {"type": "string"},
+                  "title": {"type": "string"},
+                  "description": {"type": "string"},
+                  "footer": {"type": "string"},
+                  "buttons": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "type": {"type": "string", "enum": ["reply", "copy", "url", "call", "pix"]},
+                        "displayText": {"type": "string"},
+                        "id": {"type": "string"},
+                        "url": {"type": "string"},
+                        "phoneNumber": {"type": "string"}
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {"description": "Button message sent successfully"}
+        }
+      }
+    },
+    "/message/sendList/{instanceName}": {
+      "post": {
+        "tags": ["Message"],
+        "summary": "Send list message with anti-ban protection",
+        "security": [{"ApiKeyAuth": []}],
+        "parameters": [
+          {"name": "instanceName", "in": "path", "required": true, "schema": {"type": "string"}}
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["number", "title", "buttonText", "sections"],
+                "properties": {
+                  "number": {"type": "string"},
+                  "title": {"type": "string"},
+                  "description": {"type": "string"},
+                  "footerText": {"type": "string"},
+                  "buttonText": {"type": "string"},
+                  "sections": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "title": {"type": "string"},
+                        "rows": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "title": {"type": "string"},
+                              "description": {"type": "string"},
+                              "rowId": {"type": "string"}
+                            }
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {"description": "List message sent successfully"}
+        }
+      }
+    },
+    "/message/sendInteractiveButtons/{instanceName}": {
+      "post": {
+        "tags": ["Message"],
+        "summary": "Send interactive buttons (latest WhatsApp API) with anti-ban protection",
+        "security": [{"ApiKeyAuth": []}],
+        "parameters": [
+          {"name": "instanceName", "in": "path", "required": true, "schema": {"type": "string"}}
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["number", "body", "action"],
+                "properties": {
+                  "number": {"type": "string"},
+                  "header": {
+                    "type": "object",
+                    "properties": {
+                      "type": {"type": "string", "enum": ["text", "image", "video", "document"]},
+                      "text": {"type": "string"},
+                      "media": {"type": "string"},
+                      "mimeType": {"type": "string"},
+                      "filename": {"type": "string"}
+                    }
+                  },
+                  "body": {
+                    "type": "object",
+                    "properties": {
+                      "text": {"type": "string"}
+                    }
+                  },
+                  "footer": {
+                    "type": "object",
+                    "properties": {
+                      "text": {"type": "string"}
+                    }
+                  },
+                  "action": {
+                    "type": "object",
+                    "properties": {
+                      "buttons": {
+                        "type": "array",
+                        "maxItems": 3,
+                        "items": {
+                          "type": "object",
+                          "properties": {
+                            "type": {"type": "string", "enum": ["reply", "url", "copy"]},
+                            "reply": {"type": "object", "properties": {"title": {"type": "string"}, "id": {"type": "string"}}},
+                            "url": {"type": "object", "properties": {"title": {"type": "string"}, "url": {"type": "string"}}},
+                            "copy": {"type": "object", "properties": {"title": {"type": "string"}, "copyCode": {"type": "string"}}}
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {"description": "Interactive buttons sent successfully"}
+        }
+      }
+    },
+    "/message/sendProduct/{instanceName}": {
+      "post": {
+        "tags": ["Message"],
+        "summary": "Send product from catalog with anti-ban protection",
+        "security": [{"ApiKeyAuth": []}],
+        "parameters": [
+          {"name": "instanceName", "in": "path", "required": true, "schema": {"type": "string"}}
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["number", "catalogId", "productId"],
+                "properties": {
+                  "number": {"type": "string"},
+                  "catalogId": {"type": "string", "description": "WhatsApp Business catalog ID"},
+                  "productId": {"type": "string", "description": "Product ID in the catalog"},
+                  "storefrontName": {"type": "string"},
+                  "sections": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "title": {"type": "string"},
+                        "productIds": {"type": "array", "items": {"type": "string"}}
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {"description": "Product message sent successfully"}
+        }
+      }
+    },
+    "/message/sendProductCarousel/{instanceName}": {
+      "post": {
+        "tags": ["Message"],
+        "summary": "Send product carousel with anti-ban protection",
+        "security": [{"ApiKeyAuth": []}],
+        "parameters": [
+          {"name": "instanceName", "in": "path", "required": true, "schema": {"type": "string"}}
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["number", "header", "body", "catalogId", "productItems"],
+                "properties": {
+                  "number": {"type": "string"},
+                  "header": {
+                    "type": "object",
+                    "properties": {
+                      "text": {"type": "string"},
+                      "media": {"type": "string"},
+                      "mimeType": {"type": "string"}
+                    }
+                  },
+                  "body": {"type": "object", "properties": {"text": {"type": "string"}}},
+                  "footer": {"type": "object", "properties": {"text": {"type": "string"}}},
+                  "catalogId": {"type": "string"},
+                  "productItems": {
+                    "type": "array",
+                    "maxItems": 10,
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "productId": {"type": "string"},
+                        "thumbnailUrl": {"type": "string"},
+                        "title": {"type": "string", "maxLength": 80},
+                        "description": {"type": "string", "maxLength": 80},
+                        "price": {"type": "string"},
+                        "currency": {"type": "string"}
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {"description": "Product carousel sent successfully"}
+        }
+      }
+    },
+    "/message/sendFlow/{instanceName}": {
+      "post": {
+        "tags": ["Message"],
+        "summary": "Send WhatsApp Flow message with anti-ban protection",
+        "security": [{"ApiKeyAuth": []}],
+        "parameters": [
+          {"name": "instanceName", "in": "path", "required": true, "schema": {"type": "string"}}
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["number", "flowId", "flowToken"],
+                "properties": {
+                  "number": {"type": "string"},
+                  "flowId": {"type": "string", "description": "WhatsApp Flow ID"},
+                  "flowToken": {"type": "string"},
+                  "screen": {
+                    "type": "object",
+                    "properties": {
+                      "id": {"type": "string"},
+                      "title": {"type": "string"},
+                      "helpText": {"type": "string"},
+                      "data": {"type": "object"}
+                    }
+                  },
+                  "action": {
+                    "type": "object",
+                    "properties": {
+                      "name": {"type": "string"},
+                      "jsonPath": {"type": "string"}
+                    }
+                  },
+                  "final": {"type": "boolean"},
+                  "data": {"type": "object"}
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {"description": "Flow message sent successfully"}
+        }
+      }
+    },
+    "/message/sendContact/{instanceName}": {
+      "post": {
+        "tags": ["Message"],
+        "summary": "Send contact message with anti-ban protection",
+        "security": [{"ApiKeyAuth": []}],
+        "parameters": [
+          {"name": "instanceName", "in": "path", "required": true, "schema": {"type": "string"}}
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["number", "contact"],
+                "properties": {
+                  "number": {"type": "string"},
+                  "contact": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "fullName": {"type": "string"},
+                        "wuid": {"type": "string"},
+                        "phoneNumber": {"type": "string"},
+                        "organization": {"type": "string"},
+                        "email": {"type": "string"},
+                        "url": {"type": "string"}
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {"description": "Contact message sent successfully"}
+        }
+      }
+    },
+    "/message/sendLocation/{instanceName}": {
+      "post": {
+        "tags": ["Message"],
+        "summary": "Send location message with anti-ban protection",
+        "security": [{"ApiKeyAuth": []}],
+        "parameters": [
+          {"name": "instanceName", "in": "path", "required": true, "schema": {"type": "string"}}
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["number", "latitude", "longitude", "name", "address"],
+                "properties": {
+                  "number": {"type": "string"},
+                  "latitude": {"type": "number"},
+                  "longitude": {"type": "number"},
+                  "name": {"type": "string"},
+                  "address": {"type": "string"}
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {"description": "Location message sent successfully"}
+        }
+      }
+    },
+    "/message/sendPoll/{instanceName}": {
+      "post": {
+        "tags": ["Message"],
+        "summary": "Send poll message with anti-ban protection",
+        "security": [{"ApiKeyAuth": []}],
+        "parameters": [
+          {"name": "instanceName", "in": "path", "required": true, "schema": {"type": "string"}}
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["number", "name", "selectableCount", "values"],
+                "properties": {
+                  "number": {"type": "string"},
+                  "name": {"type": "string"},
+                  "selectableCount": {"type": "integer", "minimum": 0, "maximum": 10},
+                  "values": {"type": "array", "items": {"type": "string"}, "minItems": 2, "maxItems": 10}
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {"description": "Poll message sent successfully"}
+        }
+      }
+    },
+    "/message/sendReaction/{instanceName}": {
+      "post": {
+        "tags": ["Message"],
+        "summary": "Send reaction to a message",
+        "security": [{"ApiKeyAuth": []}],
+        "parameters": [
+          {"name": "instanceName", "in": "path", "required": true, "schema": {"type": "string"}}
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["key", "reaction"],
+                "properties": {
+                  "key": {
+                    "type": "object",
+                    "properties": {
+                      "id": {"type": "string"},
+                      "remoteJid": {"type": "string"},
+                      "fromMe": {"type": "boolean"}
+                    }
+                  },
+                  "reaction": {"type": "string", "description": "Single emoji or empty string"}
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {"description": "Reaction sent successfully"}
+        }
+      }
+    },
+    "/message/sendTemplate/{instanceName}": {
+      "post": {
+        "tags": ["Message"],
+        "summary": "Send WhatsApp Business template message with anti-ban protection",
+        "security": [{"ApiKeyAuth": []}],
+        "parameters": [
+          {"name": "instanceName", "in": "path", "required": true, "schema": {"type": "string"}}
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["number", "name", "language"],
+                "properties": {
+                  "number": {"type": "string"},
+                  "name": {"type": "string", "description": "Template name"},
+                  "language": {"type": "string", "description": "Template language code (e.g., 'en')"},
+                  "components": {"type": "array", "description": "Template components"},
+                  "webhookUrl": {"type": "string"}
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {"description": "Template message sent successfully"}
+        }
+      }
+    },
+    "/campaign/create": {
+      "post": {
+        "tags": ["Campaign"],
+        "summary": "Create a new campaign (metadata only)",
+        "security": [{"ApiKeyAuth": []}],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["name", "instanceName"],
+                "properties": {
+                  "name": {"type": "string"},
+                  "instanceName": {"type": "string"},
+                  "description": {"type": "string"}
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {"description": "Campaign created successfully"}
+        }
+      }
+    },
+    "/campaign/schedule": {
+      "post": {
+        "tags": ["Campaign"],
+        "summary": "Schedule a campaign for future sending with anti-ban protection",
+        "security": [{"ApiKeyAuth": []}],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["name", "instanceName", "message", "recipients"],
+                "properties": {
+                  "name": {"type": "string"},
+                  "instanceName": {"type": "string"},
+                  "description": {"type": "string"},
+                  "message": {
+                    "type": "object",
+                    "properties": {
+                      "type": {"type": "string", "enum": ["text", "media", "template", "interactive"]},
+                      "text": {"type": "string"},
+                      "mediaUrl": {"type": "string"},
+                      "mediaType": {"type": "string"},
+                      "mediaCaption": {"type": "string"},
+                      "templateName": {"type": "string"},
+                      "templateLanguage": {"type": "string"},
+                      "templateComponents": {"type": "array"},
+                      "interactiveButtons": {"type": "array"}
+                    }
+                  },
+                  "recipients": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "phone": {"type": "string"},
+                        "variables": {"type": "object"}
+                      }
+                    }
+                  },
+                  "scheduledAt": {"type": "string", "format": "date-time"},
+                  "maxPerMinute": {"type": "integer", "minimum": 1, "maximum": 100}
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {"description": "Campaign scheduled successfully"}
+        }
+      }
+    },
+    "/campaign/send": {
+      "post": {
+        "tags": ["Campaign"],
+        "summary": "Send a campaign immediately with anti-ban protection",
+        "security": [{"ApiKeyAuth": []}],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["name", "instanceName", "message", "recipients"],
+                "properties": {
+                  "name": {"type": "string"},
+                  "instanceName": {"type": "string"},
+                  "description": {"type": "string"},
+                  "message": {"$ref": "#/components/schemas/CampaignMessage"},
+                  "recipients": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "phone": {"type": "string"},
+                        "variables": {"type": "object"}
+                      }
+                    }
+                  },
+                  "maxPerMinute": {"type": "integer", "minimum": 1, "maximum": 100}
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Campaign sent successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "campaignId": {"type": "string"},
+                    "status": {"type": "string"},
+                    "sent": {"type": "integer"},
+                    "failed": {"type": "integer"},
+                    "pending": {"type": "integer"},
+                    "blocked": {"type": "integer"},
+                    "rateLimited": {"type": "integer"}
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/campaign/status/{campaignId}": {
+      "get": {
+        "tags": ["Campaign"],
+        "summary": "Get campaign status",
+        "security": [{"ApiKeyAuth": []}],
+        "parameters": [
+          {"name": "campaignId", "in": "path", "required": true, "schema": {"type": "string"}}
+        ],
+        "responses": {
+          "200": {
+            "description": "Campaign status retrieved",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "campaignId": {"type": "string"},
+                    "status": {"type": "string", "enum": ["pending", "scheduled", "running", "completed", "cancelled", "paused"]},
+                    "totalRecipients": {"type": "integer"},
+                    "sent": {"type": "integer"},
+                    "failed": {"type": "integer"},
+                    "pending": {"type": "integer"},
+                    "startTime": {"type": "string"},
+                    "endTime": {"type": "string"},
+                    "nextSendTime": {"type": "string"}
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/campaign/list": {
+      "get": {
+        "tags": ["Campaign"],
+        "summary": "List all campaigns",
+        "security": [{"ApiKeyAuth": []}],
+        "parameters": [
+          {"name": "instanceName", "in": "query", "schema": {"type": "string"}}
+        ],
+        "responses": {
+          "200": {"description": "Campaigns retrieved"}
+        }
+      }
+    },
+    "/campaign/pause/{campaignId}": {
+      "post": {
+        "tags": ["Campaign"],
+        "summary": "Pause a running campaign",
+        "security": [{"ApiKeyAuth": []}],
+        "parameters": [
+          {"name": "campaignId", "in": "path", "required": true, "schema": {"type": "string"}}
+        ],
+        "responses": {
+          "200": {"description": "Campaign paused"}
+        }
+      }
+    },
+    "/campaign/resume/{campaignId}": {
+      "post": {
+        "tags": ["Campaign"],
+        "summary": "Resume a paused campaign",
+        "security": [{"ApiKeyAuth": []}],
+        "parameters": [
+          {"name": "campaignId", "in": "path", "required": true, "schema": {"type": "string"}}
+        ],
+        "responses": {
+          "200": {"description": "Campaign resumed"}
+        }
+      }
+    },
+    "/campaign/cancel/{campaignId}": {
+      "post": {
+        "tags": ["Campaign"],
+        "summary": "Cancel a campaign",
+        "security": [{"ApiKeyAuth": []}],
+        "parameters": [
+          {"name": "campaignId", "in": "path", "required": true, "schema": {"type": "string"}}
+        ],
+        "responses": {
+          "200": {"description": "Campaign cancelled"}
+        }
+      }
+    },
+    "/campaign/delete/{campaignId}": {
+      "delete": {
+        "tags": ["Campaign"],
+        "summary": "Delete a campaign",
+        "security": [{"ApiKeyAuth": []}],
+        "parameters": [
+          {"name": "campaignId", "in": "path", "required": true, "schema": {"type": "string"}}
+        ],
+        "responses": {
+          "204": {"description": "Campaign deleted"}
+        }
+      }
+    },
+    "/anti-ban/health": {
+      "get": {
+        "tags": ["Anti-Ban"],
+        "summary": "Health check for anti-ban system",
+        "security": [{"ApiKeyAuth": []}],
+        "responses": {
+          "200": {
+            "description": "Anti-ban system healthy",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "status": {"type": "string"},
+                    "enabled": {"type": "boolean"},
+                    "services": {
+                      "type": "object",
+                      "properties": {
+                        "rateLimiter": {"type": "string"},
+                        "qualityMonitor": {"type": "string"},
+                        "blockTracker": {"type": "string"}
+                      }
+                    },
+                    "cache": {"type": "string"}
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/anti-ban/status/{instanceName}": {
+      "get": {
+        "tags": ["Anti-Ban"],
+        "summary": "Get anti-ban status for an instance",
+        "security": [{"ApiKeyAuth": []}],
+        "parameters": [
+          {"name": "instanceName", "in": "path", "required": true, "schema": {"type": "string"}}
+        ],
+        "responses": {
+          "200": {
+            "description": "Anti-ban status retrieved",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "instanceName": {"type": "string"},
+                    "enabled": {"type": "boolean"},
+                    "config": {
+                      "type": "object",
+                      "properties": {
+                        "contactLimitMs": {"type": "integer"},
+                        "contactHourlyLimit": {"type": "integer"},
+                        "burstLimit": {"type": "integer"},
+                        "globalThroughput": {"type": "integer"},
+                        "blockThreshold": {"type": "integer"}
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/anti-ban/rate-limit/{instanceName}/{phone}": {
+      "get": {
+        "tags": ["Anti-Ban"],
+        "summary": "Check rate limit status for a contact",
+        "security": [{"ApiKeyAuth": []}],
+        "parameters": [
+          {"name": "instanceName", "in": "path", "required": true, "schema": {"type": "string"}},
+          {"name": "phone", "in": "path", "required": true, "schema": {"type": "string"}}
+        ],
+        "responses": {
+          "200": {
+            "description": "Rate limit status retrieved",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "allowed": {"type": "boolean"},
+                    "reason": {"type": "string"},
+                    "retryAfterMs": {"type": "integer"},
+                    "currentCount": {"type": "integer"},
+                    "limit": {"type": "integer"}
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/anti-ban/template/{instanceName}/{templateName}": {
+      "get": {
+        "tags": ["Anti-Ban"],
+        "summary": "Get template quality status",
+        "security": [{"ApiKeyAuth": []}],
+        "parameters": [
+          {"name": "instanceName", "in": "path", "required": true, "schema": {"type": "string"}},
+          {"name": "templateName", "in": "path", "required": true, "schema": {"type": "string"}}
+        ],
+        "responses": {
+          "200": {
+            "description": "Template status retrieved",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "templateName": {"type": "string"},
+                    "qualityScore": {"type": "string", "enum": ["GREEN", "YELLOW", "RED", "UNKNOWN"]},
+                    "status": {"type": "string"},
+                    "isUsable": {"type": "boolean"}
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/anti-ban/contact/{instanceName}/{phone}": {
+      "get": {
+        "tags": ["Anti-Ban"],
+        "summary": "Get contact status (blocked/suppressed)",
+        "security": [{"ApiKeyAuth": []}],
+        "parameters": [
+          {"name": "instanceName", "in": "path", "required": true, "schema": {"type": "string"}},
+          {"name": "phone", "in": "path", "required": true, "schema": {"type": "string"}}
+        ],
+        "responses": {
+          "200": {
+            "description": "Contact status retrieved",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "phoneNumber": {"type": "string"},
+                    "isSuppressed": {"type": "boolean"},
+                    "totalBlocks": {"type": "integer"},
+                    "suppressionReason": {"type": "string"},
+                    "ttlRemaining": {"type": "integer"}
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/anti-ban/pause-template/{instanceName}/{templateName}": {
+      "post": {
+        "tags": ["Anti-Ban"],
+        "summary": "Manually pause a template",
+        "security": [{"ApiKeyAuth": []}],
+        "parameters": [
+          {"name": "instanceName", "in": "path", "required": true, "schema": {"type": "string"}},
+          {"name": "templateName", "in": "path", "required": true, "schema": {"type": "string"}}
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "days": {"type": "integer", "description": "Number of days to pause (default: 7)"}
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {"description": "Template paused"}
+        }
+      }
+    },
+    "/anti-ban/resume-template/{instanceName}/{templateName}": {
+      "post": {
+        "tags": ["Anti-Ban"],
+        "summary": "Resume a paused template",
+        "security": [{"ApiKeyAuth": []}],
+        "parameters": [
+          {"name": "instanceName", "in": "path", "required": true, "schema": {"type": "string"}},
+          {"name": "templateName", "in": "path", "required": true, "schema": {"type": "string"}}
+        ],
+        "responses": {
+          "200": {"description": "Template resumed"}
+        }
+      }
+    },
+    "/anti-ban/unsubscribe/{instanceName}/{phone}": {
+      "post": {
+        "tags": ["Anti-Ban"],
+        "summary": "Unsubscribe a contact (mark as opted-out)",
+        "security": [{"ApiKeyAuth": []}],
+        "parameters": [
+          {"name": "instanceName", "in": "path", "required": true, "schema": {"type": "string"}},
+          {"name": "phone", "in": "path", "required": true, "schema": {"type": "string"}}
+        ],
+        "responses": {
+          "200": {"description": "Contact unsubscribed"}
+        }
+      }
+    },
+    "/anti-ban/resubscribe/{instanceName}/{phone}": {
+      "post": {
+        "tags": ["Anti-Ban"],
+        "summary": "Resubscribe a previously unsubscribed contact",
+        "security": [{"ApiKeyAuth": []}],
+        "parameters": [
+          {"name": "instanceName", "in": "path", "required": true, "schema": {"type": "string"}},
+          {"name": "phone", "in": "path", "required": true, "schema": {"type": "string"}}
+        ],
+        "responses": {
+          "200": {"description": "Contact resubscribed"}
+        }
+      }
+    },
+    "/analytics/instance/{instanceName}": {
+      "get": {
+        "tags": ["Analytics"],
+        "summary": "Get analytics for a specific instance",
+        "security": [{"ApiKeyAuth": []}],
+        "parameters": [
+          {"name": "instanceName", "in": "path", "required": true, "schema": {"type": "string"}},
+          {"name": "startDate", "in": "query", "schema": {"type": "string", "format": "date-time"}},
+          {"name": "endDate", "in": "query", "schema": {"type": "string", "format": "date-time"}},
+          {"name": "limit", "in": "query", "schema": {"type": "integer", "minimum": 1, "maximum": 1000}}
+        ],
+        "responses": {
+          "200": {
+            "description": "Instance analytics retrieved",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "instanceName": {"type": "string"},
+                    "status": {"type": "string"},
+                    "uptime": {"type": "integer"},
+                    "messageStats": {
+                      "type": "object",
+                      "properties": {
+                        "total": {"type": "integer"},
+                        "sent": {"type": "integer"},
+                        "delivered": {"type": "integer"},
+                        "read": {"type": "integer"},
+                        "failed": {"type": "integer"},
+                        "pending": {"type": "integer"}
+                      }
+                    },
+                    "deliveryRate": {
+                      "type": "object",
+                      "properties": {
+                        "deliveryRate": {"type": "number"},
+                        "readRate": {"type": "number"},
+                        "failedRate": {"type": "number"}
+                      }
+                    },
+                    "topContacts": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "phone": {"type": "string"},
+                          "messageCount": {"type": "integer"}
+                        }
+                      }
+                    },
+                    "hourlyStats": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "hour": {"type": "integer"},
+                          "total": {"type": "integer"},
+                          "sent": {"type": "integer"},
+                          "delivered": {"type": "integer"},
+                          "read": {"type": "integer"}
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/analytics/platform": {
+      "get": {
+        "tags": ["Analytics"],
+        "summary": "Get platform-wide analytics",
+        "security": [{"ApiKeyAuth": []}],
+        "parameters": [
+          {"name": "startDate", "in": "query", "schema": {"type": "string", "format": "date-time"}},
+          {"name": "endDate", "in": "query", "schema": {"type": "string", "format": "date-time"}},
+          {"name": "limit", "in": "query", "schema": {"type": "integer", "minimum": 1, "maximum": 1000}}
+        ],
+        "responses": {
+          "200": {
+            "description": "Platform analytics retrieved",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "totalInstances": {"type": "integer"},
+                    "connectedInstances": {"type": "integer"},
+                    "disconnectedInstances": {"type": "integer"},
+                    "totalMessages": {"type": "integer"},
+                    "totalDelivered": {"type": "integer"},
+                    "totalRead": {"type": "integer"},
+                    "totalFailed": {"type": "integer"},
+                    "overallDeliveryRate": {"type": "number"},
+                    "overallReadRate": {"type": "number"},
+                    "topInstances": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "instanceName": {"type": "string"},
+                          "messageCount": {"type": "integer"}
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/analytics/realtime/{instanceName}": {
+      "get": {
+        "tags": ["Analytics"],
+        "summary": "Get real-time metrics for an instance",
+        "security": [{"ApiKeyAuth": []}],
+        "parameters": [
+          {"name": "instanceName", "in": "path", "required": true, "schema": {"type": "string"}}
+        ],
+        "responses": {
+          "200": {
+            "description": "Real-time metrics retrieved",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "messagesLastHour": {"type": "integer"},
+                    "deliveryRateLastHour": {"type": "number"},
+                    "activeContacts": {"type": "integer"}
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "securitySchemes": {
+      "ApiKeyAuth": {
+        "type": "apiKey",
+        "in": "header",
+        "name": "apikey",
+        "description": "API key authentication"
+      }
+    },
+    "schemas": {
+      "CampaignMessage": {
+        "type": "object",
+        "required": ["type"],
+        "properties": {
+          "type": {"type": "string", "enum": ["text", "media", "template", "interactive"]},
+          "text": {"type": "string"},
+          "mediaUrl": {"type": "string"},
+          "mediaType": {"type": "string", "enum": ["image", "video", "document"]},
+          "mediaCaption": {"type": "string"},
+          "templateName": {"type": "string"},
+          "templateLanguage": {"type": "string"},
+          "templateComponents": {"type": "array"},
+          "interactiveButtons": {"type": "array"}
+        }
+      }
+    }
+  }
+}

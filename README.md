@@ -30,6 +30,12 @@ FIDScript Deploy transforms any VPS into a complete, private application cloud w
 - **MCP Integration** — AI-native platform management via Model Context Protocol
 - **Skills Marketplace** — Reusable business modules (CRM, ERP, LMS, etc.)
 - **Template Platform** — One-click project generation
+- **WhatsApp Business API** — Multi-instance WhatsApp messaging with anti-ban protection
+  - Baileys (WhatsApp Web) and WhatsApp Business API support
+  - Built-in rate limiting and quality monitoring
+  - Campaign management with bulk messaging
+  - Real-time webhook integration
+  - Chatwoot inbox integration
 
 ## 🏗️ Architecture
 
@@ -157,12 +163,22 @@ fidscript-deploy/
 │   │   ├── components/
 │   │   └── package.json
 │   │
-│   └── api/                # NestJS backend
-│       ├── src/
-│       │   ├── modules/    # Auth, Projects, Deployments, etc.
-│       │   ├── services/
-│       │   └── dto/
-│       └── package.json
+│   ├── api/                # NestJS backend
+│   │   ├── src/
+│   │   │   ├── modules/    # Auth, Projects, Deployments, etc.
+│   │   │   ├── services/
+│   │   │   └── dto/
+│   │   └── package.json
+│   │
+│   ├── whatsapp-api/       # WhatsApp Business API (Baileys + Anti-Ban)
+│   │   ├── src/
+│   │   │   ├── api/       # Controllers, Services, Routes
+│   │   │   ├── config/    # Environment configuration
+│   │   │   └── prisma/   # Database schemas
+│   │   ├── docs/          # Service documentation
+│   │   └── package.json
+│   │
+│   └── cli/                # Fidscript CLI tool
 │
 ├── packages/
 │   ├── sdk/                 # JavaScript/TypeScript SDK
@@ -173,6 +189,11 @@ fidscript-deploy/
 ├── installer/               # VPS installer scripts
 ├── docs/                   # Documentation
 │   ├── api/
+│   ├── whatsapp/           # WhatsApp Service docs
+│   │   ├── WHATSAPP_INTEGRATION.md
+│   │   ├── WHATSAPP_DEPLOYMENT.md
+│   │   ├── WHATSAPP_API_REFERENCE.md
+│   │   └── WHATSAPP_WEBHOOK_GUIDE.md
 │   ├── sdk/
 │   └── mcp/
 │
