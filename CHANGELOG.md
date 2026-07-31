@@ -8,6 +8,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
 ### Changed
 - refactor(dashboard): split oversized scheduler and domains pages to meet 150-line limit
+- refactor(dashboard): split oversized email/mailbox, templates, monitoring detail, and email root pages:
+  - `email/[domain]/mailboxes/[mailbox]/` (379L) → page (148L) + message-list (58L) + message-detail (84L) + compose-modal (84L) + mailbox-toolbar (60L) + mailbox-empty-state (44L) + message-panel (31L)
+  - `email/templates/` (262L) → page (129L) + template-editor-modal (103L) + template-preview-modal (44L)
+  - `monitoring/[id]/` (264L) → page (108L) + alert-history (65L) + alert-actions (74L) + alert-rule-config (41L) + alert-channels (30L)
+  - `email/page.tsx` (223L) → page (118L) + create-domain-modal (57L) + domain-card (44L) + email-project-selector (28L)
+  - All files under 150 lines per ANPAS rule
 - refactor(dashboard): split `apps/dashboard/src/contexts/auth-context.tsx` (281L) into auth-provider.tsx/auth-session.ts/auth-methods.ts/auth-token-utils.ts/auth-types.ts/use-auth.ts (all <150L)
 - refactor(dashboard): split `apps/dashboard/src/types/index.ts` (454L) into domain-specific files under `types/` (all <150L)
 - refactor(dashboard): split `apps/dashboard/src/app/(app)/projects/page.tsx` (961L) into sub-components + use-projects-page hook (all <150L)

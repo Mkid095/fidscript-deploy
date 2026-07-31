@@ -5,13 +5,13 @@ import Link from 'next/link';
 import { useParams } from 'next/navigation';
 import { HugeiconsIcon } from '@hugeicons/react';
 import { ArrowLeft01Icon } from '@hugeicons/core-free-icons';
-import { Button, Card, Spinner } from '@fidscript/ui';
+import { Spinner } from '@fidscript/ui';
 import type { MailboxMessage } from '@fidscript-deploy/sdk';
 
 import { useAuth } from '@/contexts/auth-context';
 import { useShellProjectId } from '@/contexts/project-context';
 import { MessageList } from './message-list';
-import { MessagePreview } from './message-detail';
+import { MessagePanel } from './message-panel';
 import { ComposeModal } from './compose-modal';
 import { MailboxToolbar } from './mailbox-toolbar';
 import { MailboxEmptyState } from './mailbox-empty-state';
@@ -58,14 +58,14 @@ export default function MailboxPage() {
     try {
       await getSdk().email.markMessagesRead(projectId, [msg.id], !msg.isRead);
       setMessages(prev => prev.map(m => m.id === msg.id ? { ...m, isRead: !msg.isRead } : m));
-    } catch { /* surfaced on next list */ }
+    } catch { /* */ }
   }
 
   async function toggleStar(msg: MailboxMessage) {
     try {
       await getSdk().email.starMessage(projectId, msg.id, !msg.isStarred);
       setMessages(prev => prev.map(m => m.id === msg.id ? { ...m, isStarred: !msg.isStarred } : m));
-    } catch { /* surfaced on next list */ }
+    } catch { /* */ }
   }
 
   async function deleteMsg(msg: MailboxMessage) {
@@ -89,7 +89,6 @@ export default function MailboxPage() {
 
   return (
     <div>
-      {/* Breadcrumb */}
       <div className="flex items-center gap-2 mb-6 text-sm">
         <Link href="/email" className="text-[var(--text-muted)] hover:text-[var(--text-muted)] flex items-center gap-1 no-underline">
           <HugeiconsIcon icon={ArrowLeft01Icon} size={12} />
@@ -115,9 +114,7 @@ export default function MailboxPage() {
       )}
 
       {loading ? (
-        <div className="flex items-center justify-center min-h-64">
-          <Spinner size="lg" />
-        </div>
+        <div className="flex items-center justify-center min-h-64"><Spinner size="lg" /></div>
       ) : filtered.length === 0 ? (
         <MailboxEmptyState folder={folder} search={search} onCompose={() => setShowCompose(true)} />
       ) : (
@@ -128,20 +125,12 @@ export default function MailboxPage() {
             selectedId={selectedId}
             onSelect={msg => { setSelectedId(msg.id); if (!msg.isRead) toggleRead(msg); }}
           />
-          <Card className="border border-[var(--rail)] p-5">
-            {selected ? (
-              <MessagePreview
-                message={selected}
-                onToggleRead={() => toggleRead(selected)}
-                onToggleStar={() => toggleStar(selected)}
-                onDelete={() => deleteMsg(selected)}
-              />
-            ) : (
-              <div className="text-center text-sm text-[var(--text-muted)] py-12">
-                Select a message to preview
-              </div>
-            )}
-          </Card>
+          <MessagePanel
+            message={selected}
+            onToggleRead={() => selected && toggleRead(selected)}
+            onToggleStar={() => selected && toggleStar(selected)}
+            onDelete={() => selected && deleteMsg(selected)}
+          />
         </div>
       )}
 
