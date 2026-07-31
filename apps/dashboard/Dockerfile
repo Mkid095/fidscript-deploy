@@ -8,10 +8,10 @@
 # This Dockerfile is SINGLE-STAGE — it only copies the pre-built output.
 # No pnpm install, no next build inside Docker.
 #
-# Required env at build time (for reference — values are baked into the JS bundle
-# at local build time, so these don't functionally change the output):
+# Required env at build time — NEXT_PUBLIC_* vars are BAKED into the client bundle.
+# MUST be set when running 'pnpm --filter @fidscript/dashboard build' locally:
 #   NEXT_PUBLIC_PLATFORM_DOMAIN  — e.g. deploy.fidscript.com
-#   NEXT_PUBLIC_API_URL         — e.g. https://deploy.fidscript.com/api
+#   NEXT_PUBLIC_API_URL         — e.g. https://api.deploy.fidscript.com
 #
 # Runtime env (passed by compose, control how the Node server starts):
 #   PORT=3001, HOSTNAME=0.0.0.0 — baked into standalone server.js
