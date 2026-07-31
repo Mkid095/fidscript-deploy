@@ -75,7 +75,7 @@ export default function SetupPage() {
     if (cloudflareToken.trim()) body.cloudflareApiToken = cloudflareToken.trim();
     if (cloudflareClientId.trim()) body.cloudflareClientId = cloudflareClientId.trim();
     if (cloudflareClientSecret.trim()) body.cloudflareClientSecret = cloudflareClientSecret.trim();
-    doSubmit(body as Parameters<typeof doSubmit>[0]);
+    doSubmit(body as unknown as Parameters<typeof doSubmit>[0]);
   }
 
   async function handleTestConnection() {

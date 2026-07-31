@@ -1,10 +1,10 @@
 'use client';
 
 import { useCallback, useEffect, useState } from 'react';
-import type { StorageBackend, AdminAttachmentConfig } from '@fidscript-deploy/sdk';
+import type { StorageBackend, AdminAttachmentConfig, FidscriptSDK } from '@fidscript-deploy/sdk';
 
 interface UseEmailSettingsOptions {
-  sdk: ReturnType<ReturnType<typeof import('@/contexts/auth-context').useAuth>['getSdk']>;
+  sdk: FidscriptSDK;
 }
 
 export function useEmailSettings({ sdk }: UseEmailSettingsOptions) {

@@ -1,18 +1,18 @@
 'use client';
 
 import { useState } from 'react';
-import type { EmailAlias, Mailbox } from '@fidscript-deploy/sdk';
+import type { EmailAlias, FidscriptSDK, Mailbox } from '@fidscript-deploy/sdk';
 import { Button, Card, EmptyState, Input, Modal } from '@fidscript/ui';
 
 interface Props {
   domainId: string;
   domainName: string;
-  projectId: string;
+  projectId: string | undefined;
   aliases: EmailAlias[];
   mailboxes: Mailbox[];
   onCreate: (alias: EmailAlias) => void;
   onDelete: (id: string) => void;
-  getSdk: () => ReturnType<typeof import('@/contexts/auth-context').useAuth>['getSdk'];
+  getSdk: () => FidscriptSDK;
 }
 
 export function DomainAliasesTab({ domainId, domainName, projectId, aliases, mailboxes, onCreate, onDelete, getSdk }: Props) {
@@ -25,22 +25,27 @@ export function DomainAliasesTab({ domainId, domainName, projectId, aliases, mai
   async function handleCreate(e: React.FormEvent) {
     e.preventDefault();
     if (!newAliasLocal.trim() || !newAliasForward.trim()) return;
+    if (!projectId) {
+      setCreateError('Missing project context — cannot create alias');
+      return;
+    }
     setCreating(true);
     setCreateError(null);
     try {
       const sdk = getSdk();
+      const pid = projectId;
       const forwards = newAliasForward.split(',').map(s => s.trim()).filter(Boolean);
       const targets = forwards.map(forward => {
         const mb = mailboxes.find(m => m.email.toLowerCase() === forward.toLowerCase());
         if (mb) return { type: 'mailbox' as const, mailboxId: mb.id };
         return { type: 'external' as const, address: forward };
       });
-      const created = await sdk.email.createAlias(projectId, {
+      const created = await sdk.email.createAlias(pid, {
         domain: domainName,
         localPart: newAliasLocal.trim(),
         targets,
-      } as Parameters<typeof sdk.email.createAlias>[2]);
-      onCreate(created as EmailAlias);
+      });
+      onCreate(created);
       setNewAliasLocal('');
       setNewAliasForward('');
       setShowCreate(false);

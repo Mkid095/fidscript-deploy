@@ -1,3 +1,4 @@
+import type { FidscriptSDK } from '@fidscript-deploy/sdk';
 'use client';
 
 import { useEffect, useState, useCallback } from 'react';
@@ -5,7 +6,7 @@ import type { ProjectStorageConfig } from '@/types';
 
 interface UseStorageSettingsOptions {
   projectId: string;
-  getSdk: () => ReturnType<ReturnType<typeof import('@/contexts/auth-context').useAuth>['getSdk']>;
+  getSdk: () => FidscriptSDK;
 }
 
 export function useStorageSettings({ projectId, getSdk }: UseStorageSettingsOptions) {

@@ -2,7 +2,7 @@
 
 import type { GithubRepo, GithubBranch, GithubStatus } from './new-deploy-types';
 
-export { type GithubRepo, GithubBranch, GithubStatus } from './new-deploy-types';
+export { type GithubRepo, type GithubBranch, type GithubStatus, type BuildPlan } from './new-deploy-types';
 
 export type SourceType = 'git' | 'archive';
 

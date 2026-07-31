@@ -4,18 +4,22 @@ import { Card } from '@fidscript/ui';
 import { Spinner } from '@fidscript/ui';
 import { useConfigureSSE } from '../hooks/use-configure-sse';
 
-interface ProgressStepProps {
+interface ConfigureData {
+  platformName: string;
+  platformDomain: string;
   serverIp: string;
   adminEmail: string;
+  authMethod: 'PASSWORD' | 'MAGIC_CODE';
+  adminPassword: string;
+}
+
+interface ProgressStepProps {
+  configureData: ConfigureData;
   onComplete: () => void;
 }
 
-export function ProgressStep({ serverIp, adminEmail, onComplete }: ProgressStepProps) {
-  const { configLogs, configComplete } = useConfigureSSE({
-    serverIp,
-    adminEmail,
-    onComplete,
-  });
+export function ProgressStep({ configureData, onComplete }: ProgressStepProps) {
+  const { configLogs, configComplete } = useConfigureSSE({ configureData, onComplete });
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-[var(--surface-2)] p-4">

@@ -1,3 +1,4 @@
+import type { FidscriptSDK } from '@fidscript-deploy/sdk';
 'use client';
 
 import { useEffect, useState, useCallback } from 'react';
@@ -6,7 +7,7 @@ import type { CronJob, CronJobRun } from '@/types';
 interface UseJobDetailOptions {
   projectId: string;
   jobId: string;
-  getSdk: () => ReturnType<ReturnType<typeof import('@/contexts/auth-context').useAuth>['getSdk']>;
+  getSdk: () => FidscriptSDK;
 }
 
 export function useJobDetail({ projectId, jobId, getSdk }: UseJobDetailOptions) {

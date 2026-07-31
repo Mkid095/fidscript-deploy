@@ -18,7 +18,7 @@ type Tab = 'overview' | 'mailboxes' | 'aliases' | 'catchall';
 
 type CatchAllRule = {
   id: string;
-  target: { type: 'mailbox'; mailboxId: string } | { type: 'external'; address: string };
+  target: { type: 'mailbox'; mailboxId: string } | { type: 'external'; address: string } | { type: 'webhook'; url: string };
   isActive: boolean;
 };
 
@@ -140,7 +140,6 @@ export default function DomainPage() {
           catchAllRule={catchAllRule}
           mailboxes={mailboxes}
           onSave={setCatchAllRule}
-          onDelete={() => setCatchAllRule(null)}
           getSdk={getSdk}
         />
       )}

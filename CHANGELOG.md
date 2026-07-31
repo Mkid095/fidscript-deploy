@@ -7,6 +7,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/).
 ## [Unreleased]
 
 ### Changed
+- fix(dashboard): login page auto-detects platform auth method from /api/v1/installation/status — shows only PASSWORD or MAGIC_CODE form, never both tabs when platform is configured
+- fix(dashboard): onboarding configure step now captures and persists auth method + admin password to PostgreSQL via installation API
+- fix(dashboard): welcome step checks lifecycle on mount — shows "Go to login" when platform is already CONFIGURED
+- fix(installer): traefik dynamic.yml — fixed malformed YAML (backtick-in-template syntax), corrected service names (dashboard, api), corrected cert resolver name (letsencrypt-dns), corrected service URLs to match actual container ports
+- fix(dashboard): rebuild and deploy dashboard container — also fixed stale API container (entrypoint override removed from compose)
 - refactor(dashboard): split oversized scheduler-job-detail (600L), databases/[id] (464L), monitoring (383L), platform/email/settings (399L), storage/settings (390L), databases/page (211L), email/analytics (182L) pages:
   - `projects/[projectId]/scheduler/[jobId]/` → page (130L) + use-job-detail hook + job-detail-header + job-runs-list + job-edit-form-body + job-edit-modal + run-detail-modal + run-timeline + stat-card
   - `databases/[id]/` → page (132L) + use-database-detail hook + db-overview-card + db-backups-list + db-connection-card + db-versions-list + db-settings + db-toast + db-detail-header

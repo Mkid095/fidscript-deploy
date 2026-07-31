@@ -18,20 +18,23 @@ const CRON_PRESETS = [
   { label: 'Monthly', value: '0 0 1 * *' },
 ];
 
+type JobForm = {
+  name: string; expression: string; timezone: string;
+  targetType: 'endpoint' | 'function'; endpoint: string; functionId: string;
+  payload: string; retryAttempts: number; retryDelay: number; timeout: number;
+};
+
 interface JobFormBodyProps {
-  form: {
-    name: string; expression: string; timezone: string;
-    targetType: 'endpoint' | 'function'; endpoint: string; functionId: string;
-    payload: string; retryAttempts: number; retryDelay: number; timeout: number;
-  };
-  onFieldChange: (fields: Partial<typeof form>) => void;
+  form: JobForm;
+  onFieldChange: (fields: Partial<JobForm>) => void;
   error: string | null;
   onCancel: () => void;
+  onSubmit: () => void;
   loading: boolean;
 }
 
-export function JobFormBody({ form, onFieldChange, error, onSubmit, loading }: JobFormBodyProps) {
-  const set = (fields: Partial<typeof form>) => onFieldChange(fields);
+export function JobFormBody({ form, onFieldChange, error, onCancel, onSubmit, loading }: JobFormBodyProps) {
+  const set = (fields: Partial<JobForm>) => onFieldChange(fields);
 
   return (
     <div className="space-y-5">

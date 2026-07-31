@@ -13,6 +13,9 @@ export class TraefikProxyProvider implements IReverseProxyProvider {
   private readonly traefikDynamicYml = '/etc/traefik/dynamic.yml';
 
   async configurePlatformRouting(domain: string): Promise<void> {
+    // Use TRAEFIK_DYNAMIC_DIR as the host path (must be set to the directory containing
+    // dynamic.yml on the HOST, e.g. /home/ken/fidscript-deploy/installer/docker/traefik).
+    // Falls back to /etc/traefik for dev/CI where that path is writable.
     const traefikDir = process.env.TRAEFIK_DYNAMIC_DIR ?? '/etc/traefik';
     const dynamicYmlPath = join(traefikDir, 'dynamic.yml');
 
@@ -42,6 +45,11 @@ export class TraefikProxyProvider implements IReverseProxyProvider {
   }
 
   async isWritable(): Promise<boolean> {
+    // TRAEFIK_DYNAMIC_DIR must be the host path (e.g. /home/ken/fidscript-deploy/installer/docker/traefik)
+    // NOT the in-container path (/etc/traefik). The host path is passed via the env var so the
+    // API (running in its own network namespace) can reach the host filesystem via the
+    // /var/run/docker.sock mount — or when TRAEFIK_DYNAMIC_DIR is unset, fall back to the
+    // container path for dev/CI environments where that path is writable.
     const traefikDir = process.env.TRAEFIK_DYNAMIC_DIR ?? '/etc/traefik';
     const dynamicYmlPath = join(traefikDir, 'dynamic.yml');
     try {

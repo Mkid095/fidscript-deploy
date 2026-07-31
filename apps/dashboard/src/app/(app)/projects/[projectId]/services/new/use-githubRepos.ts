@@ -85,7 +85,7 @@ export function useGithubRepos({ getSdk, sourceType, onShowToast }: UseGithubRep
 
   return {
     status, repos, repoPage, repoHasMore, repoLoading, repoSearch,
-    selectedRepo, branches, selectedBranch, connecting,
+    selectedRepo, branches, selectedBranch, branchLoading, connecting,
     loadRepos, selectRepo, clearRepo,
     setRepoPage, setRepoSearch, setSelectedBranch,
     connect,

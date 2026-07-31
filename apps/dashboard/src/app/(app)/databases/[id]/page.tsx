@@ -13,6 +13,7 @@ import { DbVersionsList } from './db-versions-list';
 import { DbSettings } from './db-settings';
 import { DbToast } from './db-toast';
 import { DbDetailHeader } from './db-detail-header';
+import { DbBreadcrumb } from './db-breadcrumb';
 
 type Tab = 'overview' | 'backups' | 'connection' | 'versions' | 'settings';
 

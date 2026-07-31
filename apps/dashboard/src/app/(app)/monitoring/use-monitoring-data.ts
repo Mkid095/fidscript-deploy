@@ -1,3 +1,4 @@
+import type { FidscriptSDK } from '@fidscript-deploy/sdk';
 'use client';
 
 import { useEffect, useState, useCallback } from 'react';
@@ -9,7 +10,7 @@ const INTERVALS = ['30s', '1m', '5m', '15m'];
 interface UseMonitoringDataOptions {
   selectedProjectId: string | null;
   shellProjectId: string | null;
-  getSdk: () => ReturnType<ReturnType<typeof import('@/contexts/auth-context').useAuth>['getSdk']>;
+  getSdk: () => FidscriptSDK;
 }
 
 export function useMonitoringData({ selectedProjectId, shellProjectId, getSdk }: UseMonitoringDataOptions) {

@@ -87,7 +87,7 @@ export async function changePasswordMethod(
   currentPassword: string,
   newPassword: string,
   sdkRef: React.MutableRefObject<FidscriptSDK | null>,
-  hydrateUser: (accessToken: string) => Promise<ReturnType<FidscriptSDK['auth']['me']>>,
+  hydrateUser: (accessToken: string) => Promise<Awaited<ReturnType<FidscriptSDK['auth']['me']>>>,
 ): Promise<void> {
   if (!sdkRef.current) throw new Error('Not authenticated');
   const res = await sdkRef.current.auth.changePassword(currentPassword, newPassword);

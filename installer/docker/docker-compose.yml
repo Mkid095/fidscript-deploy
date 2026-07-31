@@ -285,7 +285,6 @@ services:
       dockerfile: apps/api/Dockerfile
     container_name: fidscript_api
     restart: unless-stopped
-    entrypoint: ["node", "dist/index.js"]
     # Read *_FILE env vars and materialize them before starting node
     env_file:
       - ./secrets/api.env
@@ -297,7 +296,8 @@ services:
       # flow will replace this with a proper install wizard.
       ADMIN_EMAIL: ${ADMIN_EMAIL}
       ADMIN_PASSWORD: ${ADMIN_PASSWORD}
-      DATABASE_URL: postgresql://fidscript:${POSTGRES_PASSWORD}@pgbouncer:6432/fidscript?pgbouncer=true
+      # Use direct postgres (not pgbouncer) to avoid transaction-mode conflicts with Prisma.
+      DATABASE_URL: postgresql://fidscript:${POSTGRES_PASSWORD}@postgres:5432/fidscript
       DIRECT_URL: postgresql://fidscript:${POSTGRES_PASSWORD}@postgres:5432/fidscript
       DB_ADMIN_USER: fidscript
       DB_ADMIN_PASSWORD_FILE: /run/secrets/postgres_password
@@ -339,6 +339,9 @@ services:
       SMTP_SUBMISSION_USER: ${SMTP_SUBMISSION_USER}
       SMTP_SUBMISSION_PASS: ${SMTP_SUBMISSION_PASS}
       STALWART_WEBHOOK_SECRET_FILE: /run/secrets/stalwart_webhook_secret
+      # Path to the directory containing Traefik dynamic.yml on the HOST.
+      # The API needs this to write updated routing config during installation.
+      TRAEFIK_DYNAMIC_DIR: /etc/traefik
     # NOTE: no Docker-secrets block for the api. The Docker-secrets mechanism
     # mounts the secret files with root-0400 perms, which the api (running as
     # `node`, uid 1000) cannot read ("Permission denied"). Instead, we bind-
@@ -349,7 +352,7 @@ services:
       - ./secrets:/run/secrets:ro
       - /var/run/docker.sock:/var/run/docker.sock
       - ../scripts:/usr/local/share/fidscript:ro
-      - ./traefik/dynamic.yml:/etc/traefik/dynamic.yml:rw
+      - ./traefik:/etc/traefik:rw
       - /home/ken/fidscript-whatsapp/apps/api/fidscript.db:/app/fidscript.db
     # The deployment worker runs `docker build`/`docker run` against the host
     # daemon via the mounted socket. The socket is root:docker on the host

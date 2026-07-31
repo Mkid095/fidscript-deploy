@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState, useCallback } from 'react';
-import type { Database } from '@fidscript-deploy/sdk';
+import type { Database, FidscriptSDK } from '@fidscript-deploy/sdk';
 
 interface DatabaseBackup {
   id: string;
@@ -12,7 +12,7 @@ interface DatabaseBackup {
 
 interface UseDatabaseDetailOptions {
   id: string;
-  getSdk: () => ReturnType<ReturnType<typeof import('@/contexts/auth-context').useAuth>['getSdk']>;
+  getSdk: () => FidscriptSDK;
 }
 
 export function useDatabaseDetail({ id, getSdk }: UseDatabaseDetailOptions) {
@@ -55,7 +55,7 @@ export function useDatabaseDetail({ id, getSdk }: UseDatabaseDetailOptions) {
     setToast(null);
     try {
       const sdk = getSdk();
-      const updated = await sdk.databases.rotatePassword(id);
+      const updated = await sdk.databases.rotatePassword<Database>(id);
       setDb(updated);
       setToast({ message: 'Credentials rotated successfully', type: 'success' });
     } catch (err) {

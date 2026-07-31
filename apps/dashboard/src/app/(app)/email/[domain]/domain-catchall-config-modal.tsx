@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import type { Mailbox } from '@fidscript-deploy/sdk';
+import type { FidscriptSDK, Mailbox } from '@fidscript-deploy/sdk';
 import { Button, Input, Modal } from '@fidscript/ui';
 
 interface Props {
@@ -12,7 +12,7 @@ interface Props {
   initialRule?: { target: { type: string; mailboxId?: string; address?: string } } | null;
   mailboxes: Mailbox[];
   onSave: () => void;
-  getSdk: () => ReturnType<typeof import('@/contexts/auth-context').useAuth>['getSdk'];
+  getSdk: () => FidscriptSDK;
 }
 
 export function CatchAllConfigModal({ isOpen, onClose, domainId, projectId, initialRule, mailboxes, onSave, getSdk }: Props) {

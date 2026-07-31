@@ -1,10 +1,10 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect } from 'react';
 import Image from 'next/image';
 import { HugeiconsIcon } from '@hugeicons/react';
-import { Key01Icon, Mail01Icon, LockPasswordIcon } from '@hugeicons/core-free-icons';
-import { Button, Card } from '@fidscript/ui';
+import { LockPasswordIcon, Mail01Icon } from '@hugeicons/core-free-icons';
+import { Card } from '@fidscript/ui';
 
 import { useAuth } from '@/contexts/auth-context';
 import { LoginForm } from './login-form';
@@ -13,26 +13,41 @@ type AuthMethod = 'PASSWORD' | 'MAGIC_CODE';
 
 export default function LoginPage() {
   const { lookupAuthMethod, loading, error } = useAuth();
-  const [authMethod, setAuthMethod] = useState<AuthMethod>('MAGIC_CODE');
+  const [authMethod, setAuthMethod] = useState<AuthMethod>('PASSWORD');
+  const [platformAuthMethod, setPlatformAuthMethod] = useState<AuthMethod | null>(null);
   const [email, setEmail] = useState('');
   const [detecting, setDetecting] = useState(false);
 
-  const detectMethod = useCallback(async (emailAddress: string) => {
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(emailAddress)) return;
+  // Detect platform's configured auth method on mount
+  useEffect(() => {
+    async function detect() {
+      try {
+        const res = await fetch('/api/v1/installation/status');
+        if (res.ok) {
+          const data = await res.json() as { authMethod?: AuthMethod };
+          if (data.authMethod) setPlatformAuthMethod(data.authMethod);
+        }
+      } catch { /* detection failed — use default */ }
+    }
+    detect();
+  }, []);
+
+  // Auto-detect per-email auth method when email changes
+  async function handleEmailChange(addr: string) {
+    setEmail(addr);
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(addr)) return;
     setDetecting(true);
     try {
-      const method = await lookupAuthMethod(emailAddress);
-      setAuthMethod(method ?? 'MAGIC_CODE');
+      const method = await lookupAuthMethod(addr);
+      setAuthMethod(method ?? platformAuthMethod ?? 'PASSWORD');
     } catch {
-      setAuthMethod('MAGIC_CODE');
+      setAuthMethod(platformAuthMethod ?? 'PASSWORD');
     } finally {
       setDetecting(false);
     }
-  }, [lookupAuthMethod]);
-
-  async function handleEmailBlur() {
-    if (email.trim()) await detectMethod(email.trim());
   }
+
+  const effectiveMethod = platformAuthMethod ?? authMethod;
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-[var(--surface-2)] p-4">
@@ -48,36 +63,36 @@ export default function LoginPage() {
         </div>
 
         <LoginForm
-          authMethod={authMethod}
-          onMethodChange={(m) => { setAuthMethod(m); setEmail(''); }}
+          authMethod={effectiveMethod}
+          onMethodChange={setAuthMethod}
           error={error}
           loading={loading}
           detecting={detecting}
+          email={email}
+          onEmailChange={handleEmailChange}
         />
 
-        <div className="flex flex-col gap-3 mt-4">
-          <div className="flex border-b border-[var(--rail)]">
-            <button type="button"
-              onClick={() => { setAuthMethod('PASSWORD'); }}
-              className={`flex-1 py-2 text-xs uppercase tracking-wider transition-colors border-b-2 ${
-                authMethod === 'PASSWORD' ? 'border-[var(--accent)] text-[var(--text)]' : 'border-transparent text-[var(--text-muted)] hover:text-[var(--text-muted)]'
-              }`}>
-              <HugeiconsIcon icon={LockPasswordIcon} size={14} className="inline mr-1" />Password
-            </button>
-            <button type="button"
-              onClick={() => { setAuthMethod('MAGIC_CODE'); }}
-              className={`flex-1 py-2 text-xs uppercase tracking-wider transition-colors border-b-2 ${
-                authMethod === 'MAGIC_CODE' ? 'border-[var(--warning)] text-[var(--text)]' : 'border-transparent text-[var(--text-muted)] hover:text-[var(--text-muted)]'
-              }`}>
-              <HugeiconsIcon icon={Mail01Icon} size={14} className="inline mr-1" />Magic code
-            </button>
+        {/* Tab strip only shown when platform auth method hasn't been detected yet */}
+        {platformAuthMethod === null && (
+          <div className="flex flex-col gap-3 mt-4">
+            <div className="flex border-b border-[var(--rail)]">
+              <button type="button"
+                onClick={() => setAuthMethod('PASSWORD')}
+                className={`flex-1 py-2 text-xs uppercase tracking-wider transition-colors border-b-2 ${
+                  effectiveMethod === 'PASSWORD' ? 'border-[var(--accent)] text-[var(--text)]' : 'border-transparent text-[var(--text-muted)]'
+                }`}>
+                <HugeiconsIcon icon={LockPasswordIcon} size={14} className="inline mr-1" />Password
+              </button>
+              <button type="button"
+                onClick={() => setAuthMethod('MAGIC_CODE')}
+                className={`flex-1 py-2 text-xs uppercase tracking-wider transition-colors border-b-2 ${
+                  effectiveMethod === 'MAGIC_CODE' ? 'border-[var(--warning)] text-[var(--text)]' : 'border-transparent text-[var(--text-muted)]'
+                }`}>
+                <HugeiconsIcon icon={Mail01Icon} size={14} className="inline mr-1" />Magic code
+              </button>
+            </div>
           </div>
-          <div>
-            <input type="email" value={email} onChange={e => setEmail(e.target.value)}
-              onBlur={handleEmailBlur} placeholder="you@example.com" autoComplete="email"
-              className="w-full bg-[var(--surface-2)] border border-[var(--rail)] text-[var(--text)] placeholder:text-[var(--text-dim)] rounded-lg px-3 py-2 text-sm" />
-          </div>
-        </div>
+        )}
 
         <p className="text-center text-xs text-[var(--text-muted)] mt-6">
           No account?{' '}

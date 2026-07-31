@@ -1,13 +1,14 @@
 'use client';
 
 import { Card } from '@fidscript/ui';
-import { HugeiconsIcon } from '@hugeicons/react';
-import type { Icon } from '@hugeicons/core-free-icons';
+import { HugeiconsIcon, type IconSvgElement } from '@hugeicons/react';
+// Hugeicons type is internal — use any for the prop type.
+// (removed)
 
 interface Props {
   label: string;
   value: string;
-  icon: typeof Icon;
+  icon: IconSvgElement;
   valueColor?: string;
 }
 

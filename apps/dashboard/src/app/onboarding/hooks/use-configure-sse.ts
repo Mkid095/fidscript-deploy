@@ -2,31 +2,24 @@
 
 import { useEffect, useRef, useState } from 'react';
 
-interface ConfigLog {
-  text: string;
-  ok: boolean;
-}
+interface ConfigLog { text: string; ok: boolean; }
+interface ProgressEvent { type?: string; status?: string; failureReason?: string; currentStep?: string; }
 
-interface ProgressEvent {
-  type?: string;
-  status?: string;
-  failureReason?: string;
-  currentStep?: string;
-}
-
-interface UseConfigureSSEOptions {
+interface ConfigureData {
   platformName: string;
   platformDomain: string;
   serverIp: string;
   adminEmail: string;
+  authMethod: 'PASSWORD' | 'MAGIC_CODE';
+  adminPassword: string;
+}
+
+interface UseConfigureSSEOptions {
+  configureData: ConfigureData;
   onComplete: () => void;
 }
 
-export function useConfigureSSE({
-  serverIp,
-  adminEmail,
-  onComplete,
-}: UseConfigureSSEOptions) {
+export function useConfigureSSE({ configureData, onComplete }: UseConfigureSSEOptions) {
   const [configLogs, setConfigLogs] = useState<ConfigLog[]>([]);
   const [configComplete, setConfigComplete] = useState(false);
   const eventSourceRef = useRef<EventSource | null>(null);
@@ -42,10 +35,12 @@ export function useConfigureSSE({
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
-            platformName: 'FIDScript Deploy',
-            platformDomain: window.location.host,
-            serverIp: serverIp || '127.0.0.1',
-            adminEmail: adminEmail || 'admin@localhost',
+            platformName: configureData.platformName,
+            platformDomain: configureData.platformDomain,
+            serverIp: configureData.serverIp,
+            adminEmail: configureData.adminEmail,
+            authMethod: configureData.authMethod,
+            adminPassword: configureData.authMethod === 'PASSWORD' ? configureData.adminPassword : undefined,
           }),
         });
 
@@ -58,12 +53,7 @@ export function useConfigureSSE({
         const { operationId } = await res.json() as { operationId: string };
         openSSE(operationId);
       } catch (err) {
-        if (!cancelled) {
-          setConfigLogs(prev => [...prev, {
-            text: err instanceof Error ? err.message : 'Configuration failed',
-            ok: false,
-          }]);
-        }
+        if (!cancelled) setConfigLogs(prev => [...prev, { text: err instanceof Error ? err.message : 'Configuration failed', ok: false }]);
       }
     }
 
@@ -92,10 +82,7 @@ export function useConfigureSSE({
           }
 
           if (data.status === 'FAILED') {
-            setConfigLogs(prev => [...prev, {
-              text: `Failed: ${data.failureReason ?? 'Unknown error'}`,
-              ok: false,
-            }]);
+            setConfigLogs(prev => [...prev, { text: `Failed: ${data.failureReason ?? 'Unknown error'}`, ok: false }]);
             es.close();
             return;
           }
@@ -104,36 +91,25 @@ export function useConfigureSSE({
             setConfigLogs(prev => {
               const last = prev[prev.length - 1];
               if (last && last.text.startsWith('Starting')) {
-                return [...prev.slice(0, -1),
-                  { text: ` ${last.text.slice(2)}`, ok: true },
-                  { text: ` ${data.currentStep}`, ok: true }];
+                return [...prev.slice(0, -1), { text: ` ${last.text.slice(2)}`, ok: true }, { text: ` ${data.currentStep}`, ok: true }];
               }
               return [...prev, { text: ` ${data.currentStep}`, ok: true }];
             });
           }
-        } catch {
-          // Ignore parse errors
-        }
+        } catch { /* ignore parse errors */ }
       };
 
       es.onerror = () => {
         if (!cancelled) {
-          setConfigLogs(prev => [...prev, {
-            text: 'Lost connection to the server. Please refresh and try again.',
-            ok: false,
-          }]);
+          setConfigLogs(prev => [...prev, { text: 'Lost connection to the server. Please refresh and try again.', ok: false }]);
           es.close();
         }
       };
     }
 
     runConfigure();
-
-    return () => {
-      cancelled = true;
-      eventSourceRef.current?.close();
-    };
-  }, [serverIp, adminEmail, onComplete]);
+    return () => { cancelled = true; eventSourceRef.current?.close(); };
+  }, [configureData, onComplete]);
 
   return { configLogs, configComplete };
 }

@@ -28,7 +28,7 @@ function timeAgo(iso: string): string {
 interface Props {
   messages: PlatformMailboxMessage[];
   total: number;
-  activeFolder: Folder;
+  activeFolder: string;
   selectedMessageId?: string;
   loading: boolean;
   onSelect: (msg: PlatformMailboxMessage) => void;
@@ -49,7 +49,7 @@ export function PlatformEmailMessageList({ messages, total, activeFolder, select
         {loading && !messages.length ? (
           <div className="flex items-center justify-center min-h-48"><Spinner /></div>
         ) : messages.length === 0 ? (
-          <EmptyState title={`No ${FOLDER_LABELS[activeFolder].toLowerCase()}`} description="No messages here yet." />
+          <EmptyState title={`No ${(FOLDER_LABELS[activeFolder as Folder] ?? activeFolder).toLowerCase()}`} description="No messages here yet." />
         ) : (
           <div className="divide-y divide-[var(--rail)]">
             {messages.map(m => (

@@ -7,16 +7,25 @@ import { ConfigureStep } from './steps/configure-step';
 import { ProgressStep } from './steps/progress-step';
 import { CompleteStep } from './steps/complete-step';
 
+type AuthMethod = 'PASSWORD' | 'MAGIC_CODE';
+
 type WizardStep = 'welcome' | 'discovery' | 'configure' | 'progress' | 'complete';
+
+interface ConfigureData {
+  platformName: string;
+  platformDomain: string;
+  serverIp: string;
+  adminEmail: string;
+  authMethod: AuthMethod;
+  adminPassword: string;
+}
 
 export default function OnboardingPage() {
   const [step, setStep] = useState<WizardStep>('welcome');
-
-  // Cross-step state: discovery data flows into configure and progress
   const [discoveredServerIp, setDiscoveredServerIp] = useState('');
   const [discoveredAdminEmail, setDiscoveredAdminEmail] = useState('');
+  const [configureData, setConfigureData] = useState<ConfigureData | null>(null);
 
-  // ── Step transitions ─────────────────────────────────────────────
   function handleStart() {
     setStep('discovery');
   }
@@ -27,7 +36,8 @@ export default function OnboardingPage() {
     setStep('configure');
   }
 
-  function handleConfigure() {
+  function handleConfigure(data: ConfigureData) {
+    setConfigureData(data);
     setStep('progress');
   }
 
@@ -40,38 +50,9 @@ export default function OnboardingPage() {
     window.location.href = '/login';
   }
 
-  // ── Render step ──────────────────────────────────────────────────
-  if (step === 'welcome') {
-    return <WelcomeStep onStart={handleStart} />;
-  }
-
-  if (step === 'discovery') {
-    return (
-      <DiscoveryStep
-        onComplete={handleDiscoveryComplete}
-      />
-    );
-  }
-
-  if (step === 'configure') {
-    return (
-      <ConfigureStep
-        prefillServerIp={discoveredServerIp}
-        prefillAdminEmail={discoveredAdminEmail}
-        onConfigure={handleConfigure}
-      />
-    );
-  }
-
-  if (step === 'progress') {
-    return (
-      <ProgressStep
-        serverIp={discoveredServerIp}
-        adminEmail={discoveredAdminEmail}
-        onComplete={handleProgressComplete}
-      />
-    );
-  }
-
+  if (step === 'welcome') return <WelcomeStep onStart={handleStart} />;
+  if (step === 'discovery') return <DiscoveryStep onComplete={handleDiscoveryComplete} />;
+  if (step === 'configure') return <ConfigureStep prefillServerIp={discoveredServerIp} prefillAdminEmail={discoveredAdminEmail} onConfigure={handleConfigure} />;
+  if (step === 'progress') return <ProgressStep configureData={configureData!} onComplete={handleProgressComplete} />;
   return <CompleteStep onContinue={handleContinue} />;
 }

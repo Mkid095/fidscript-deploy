@@ -45,8 +45,8 @@ export class DatabasesModule {
     return this.client.post(`/api/v1/databases/${databaseId}/backups/${backupId}/restore`, {});
   }
 
-  async rotatePassword(databaseId: string) {
-    return this.client.post(`/api/v1/databases/${databaseId}/credentials/rotate`, {});
+  async rotatePassword<T = unknown>(databaseId: string): Promise<T> {
+    return this.client.post<T>(`/api/v1/databases/${databaseId}/credentials/rotate`, {});
   }
 
   async getConnection(databaseId: string, poolOnly = false): Promise<{

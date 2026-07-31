@@ -2,7 +2,7 @@
 
 import type { Project } from '@/types';
 import type { FidscriptSDK } from '@fidscript-deploy/sdk';
-import type { AuthError, RateLimitError } from '@fidscript-deploy/sdk';
+import { AuthError, RateLimitError } from '@fidscript-deploy/sdk';
 
 type ProjectType = 'frontend' | 'backend' | 'worker' | 'cron' | 'docker' | 'static';
 
@@ -53,7 +53,7 @@ export function createProjectsHandlers(opts: {
   setName: (v: string) => void;
   setDescription: (v: string) => void;
 }): ProjectsHandlers {
-  const { getSdk, router, load, create, edit, delete: d, purge: p, setActivePanel, setCreating, setCreateError, setSavingEdit, setEditError, setDeletingNow, setDeleteError, setPurgeVerifying, setPurgeError, setPurgeRequested, setEditing, setEditName, setEditType, setEditDescription, setDeleting, setDeleteAck, setPurgeProject, setPurgeCode } = opts;
+  const { getSdk, router, load, create, edit, delete: d, purge: p, setActivePanel, setCreating, setCreateError, setSavingEdit, setEditError, setDeletingNow, setDeleteError, setPurgeVerifying, setPurgeError, setPurgeRequested, setEditing, setEditName, setEditType, setEditDescription, setDeleting, setDeleteAck, setPurgeProject, setPurgeCode, setName, setDescription } = opts;
 
   async function handleCreate() {
     if (!create.name.trim()) return;

@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
-import type { Mailbox } from '@fidscript-deploy/sdk';
+import type { FidscriptSDK, Mailbox } from '@fidscript-deploy/sdk';
 import { Button, Card, EmptyState, Input, Modal } from '@fidscript/ui';
 
 function randomPassword() {
@@ -12,11 +12,11 @@ function randomPassword() {
 interface Props {
   domainId: string;
   domainName: string;
-  projectId: string;
+  projectId: string | undefined;
   mailboxes: Mailbox[];
   onCreate: (mailbox: Mailbox) => void;
   onDelete: (id: string) => void;
-  getSdk: () => ReturnType<typeof import('@/contexts/auth-context').useAuth>['getSdk'];
+  getSdk: () => FidscriptSDK;
 }
 
 export function DomainMailboxesTab({ domainId, domainName, projectId, mailboxes, onCreate, onDelete, getSdk }: Props) {
@@ -29,17 +29,22 @@ export function DomainMailboxesTab({ domainId, domainName, projectId, mailboxes,
   async function handleCreate(e: React.FormEvent) {
     e.preventDefault();
     if (!newMailboxLocal.trim()) return;
+    if (!projectId) {
+      setCreateError('Missing project context — cannot create mailbox');
+      return;
+    }
     setCreating(true);
     setCreateError(null);
     try {
       const sdk = getSdk();
-      const created = await sdk.email.createMailbox(projectId, {
+      const pid = projectId;
+      const created = await sdk.email.createMailbox(pid, {
         domain: domainName,
         localPart: newMailboxLocal.trim(),
         password: randomPassword(),
         name: newMailboxName.trim() || undefined,
-      } as Parameters<typeof sdk.email.createMailbox>[2]);
-      onCreate(created as Mailbox);
+      });
+      onCreate(created);
       setNewMailboxLocal('');
       setNewMailboxName('');
       setShowCreate(false);

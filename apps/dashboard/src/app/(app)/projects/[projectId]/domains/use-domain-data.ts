@@ -106,6 +106,7 @@ export function useDomainData(projectId: string, getSdk: () => any) {
     handleConnectCloudflareToken,
     handleVerify,
     handleDelete,
+    getDnsDetection,
     clearToast,
   };
 }
