@@ -7,7 +7,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/).
 ## [Unreleased]
 
 ### Changed
-- refactor(dashboard): split oversized scheduler and domains pages to meet 150-line limit
+- refactor(dashboard): split oversized scheduler, domains, settings, logs, platform/integrations/settings, login, register, databases, and email/analytics pages to meet 150-line limit
 - refactor(dashboard): split settings, logs, integrations/settings, login, register pages to meet 150-line limit
 - refactor(dashboard): split oversized email/mailbox, templates, monitoring detail, and email root pages:
   - `email/[domain]/mailboxes/[mailbox]/` (379L) → page (148L) + message-list (58L) + message-detail (84L) + compose-modal (84L) + mailbox-toolbar (60L) + mailbox-empty-state (44L) + message-panel (31L)

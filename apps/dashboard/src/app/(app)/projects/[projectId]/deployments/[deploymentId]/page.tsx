@@ -3,28 +3,11 @@
 import { useEffect, useState, useCallback } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { Modal } from '@fidscript/ui';
-import { HugeiconsIcon } from '@hugeicons/react';
-import { ArrowLeftIcon } from '@hugeicons/core-free-icons';
-
-import { useAuth } from '@/contexts/auth-context';
-import type { Deployment } from '@/types';
 import { ToastProvider, useToast } from '@/components/toast-provider';
 import { LoadingScreen } from '@/components/ui/loading-screen';
-import {
-  statusMeta,
-  isInFlight,
-  formatDuration,
-  ProgressTimeline,
-  MetadataPanel,
-  LogViewer,
-  LivePreview,
-  ProgressTimeline,
-  MetadataPanel,
-  LogViewer,
-  LivePreview,
-} from '@/components/deployments';
-import { DeploymentActions, RollbackModal, DeleteConfirmModal } from './deployment-actions';
+import type { Deployment } from '@/types';
+import { isInFlight, statusMeta } from '@/components/deployments';
+import { DeploymentDetailBody } from './deployment-detail-body';
 import { useDeploymentRealtime } from './use-deployment-realtime';
 
 function DeploymentDetailInner() {
@@ -32,7 +15,6 @@ function DeploymentDetailInner() {
   const router = useRouter();
   const { getSdk } = useAuth();
   const { showToast } = useToast();
-
   const projectId = params.projectId as string;
   const deploymentId = params.deploymentId as string;
 
@@ -90,6 +72,17 @@ function DeploymentDetailInner() {
     }
   }
 
+  async function handleRollbackPicked() {
+    setShowRollbackPicker(false);
+    showToast({ type: 'success', message: 'Rollback initiated.' });
+    await load();
+  }
+
+  async function handleDeleteConfirm() {
+    setShowDeleteConfirm(false);
+    await handleAction('delete');
+  }
+
   if (loading) return (
     <LoadingScreen message="Loading deployment" submessage="Fetching deployment details and logs..." fullScreen={false} />
   );
@@ -101,57 +94,28 @@ function DeploymentDetailInner() {
     </div>
   );
 
-  const meta = statusMeta(deployment.status);
   const inFlight = isInFlight(deployment.status);
-  const canRollback = deployment.status === 'SUCCESS';
-  const canDelete = ['SUCCESS', 'STOPPED', 'FAILED'].includes(deployment.status);
 
   return (
-    <div className="px-3 sm:px-4 md:px-6 py-4 sm:py-6 space-y-4 sm:space-y-6 max-w-5xl">
-      <Link href={`/projects/${projectId}`} className="inline-flex items-center gap-1.5 text-xs text-[var(--text-dim)] hover:text-[var(--text-muted)] transition-colors">
-        <HugeiconsIcon icon={ArrowLeftIcon} size={12} />
-        Back to Services
-      </Link>
-
-      <DeploymentActions
-        deployment={deployment}
-        acting={acting}
-        logStream={logStream}
-        deploymentId={deploymentId}
-        projectId={projectId}
-        onAction={handleAction}
-        onRollbackOpen={() => setShowRollbackPicker(true)}
-        onDeleteOpen={() => setShowDeleteConfirm(true)}
-      />
-
-      <ProgressTimeline status={deployment.status} />
-      <MetadataPanel deployment={deployment} />
-
-      {logs !== undefined && (
-        <LogViewer logs={logs} inFlight={inFlight} realtimeEnabled={inFlight}
-          deploymentId={deploymentId} projectId={projectId} getSdk={getSdk} />
-      )}
-
-      {deployment.status === 'SUCCESS' && deployment.deploymentUrl && (
-        <LivePreview url={deployment.deploymentUrl} />
-      )}
-
-      {showRollbackPicker && (
-        <RollbackModal
-          projectId={projectId}
-          deploymentId={deploymentId}
-          onClose={() => { setShowRollbackPicker(false); showToast({ type: 'success', message: 'Rollback initiated.' }); load(); }}
-          onPicked={() => { setShowRollbackPicker(false); load(); }}
-        />
-      )}
-
-      {showDeleteConfirm && (
-        <DeleteConfirmModal
-          onConfirm={() => { setShowDeleteConfirm(false); handleAction('delete'); }}
-          onClose={() => setShowDeleteConfirm(false)}
-        />
-      )}
-    </div>
+    <DeploymentDetailBody
+      deployment={deployment}
+      acting={acting}
+      logStream={logStream}
+      logs={logs}
+      deploymentId={deploymentId}
+      projectId={projectId}
+      inFlight={inFlight}
+      getSdk={getSdk}
+      showRollbackPicker={showRollbackPicker}
+      showDeleteConfirm={showDeleteConfirm}
+      onAction={handleAction}
+      onRollbackOpen={() => setShowRollbackPicker(true)}
+      onDeleteOpen={() => setShowDeleteConfirm(true)}
+      onRollbackClose={() => setShowRollbackPicker(false)}
+      onRollbackPicked={handleRollbackPicked}
+      onDeleteClose={() => setShowDeleteConfirm(false)}
+      onDeleteConfirm={handleDeleteConfirm}
+    />
   );
 }
 

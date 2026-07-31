@@ -40,6 +40,7 @@ export function DeploymentDetailBody({
   deploymentId,
   projectId,
   inFlight,
+  getSdk,
   showRollbackPicker,
   showDeleteConfirm,
   onAction,
@@ -81,7 +82,7 @@ export function DeploymentDetailBody({
           realtimeEnabled={inFlight}
           deploymentId={deploymentId}
           projectId={projectId}
-          getSdk={() => {}}
+          getSdk={getSdk}
         />
       )}
 
