@@ -1,13 +1,14 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import Link from 'next/link';
 import { useParams } from 'next/navigation';
 import type { EmailDomain, Mailbox, EmailAlias } from '@fidscript-deploy/sdk';
 import { Spinner } from '@fidscript/ui';
 
 import { useAuth } from '@/contexts/auth-context';
 import { useShellProjectId } from '@/contexts/project-context';
+import { DomainHeader } from './domain-header';
+import { DomainTabs } from './domain-tabs';
 import { DomainOverviewTab } from './domain-overview-tab';
 import { DomainMailboxesTab } from './domain-mailboxes-tab';
 import { DomainAliasesTab } from './domain-aliases-tab';
@@ -89,45 +90,17 @@ export default function DomainPage() {
   }
 
   const domainName = domain.domain ?? domain.name ?? '';
-  const tabs: { id: Tab; label: string }[] = [
-    { id: 'overview', label: 'Overview' },
-    { id: 'mailboxes', label: `Mailboxes (${mailboxes.length})` },
-    { id: 'aliases', label: `Aliases (${aliases.length})` },
-    { id: 'catchall', label: 'Catch-all' },
-  ];
 
   return (
     <div>
-      {/* Header */}
-      <div className="flex items-center gap-3 mb-6">
-        <Link href="/email" className="text-[var(--text-muted)] hover:text-[var(--text-muted)] text-sm no-underline">
-          Email
-        </Link>
-        <span className="text-[var(--text-dim)]">/</span>
-        <h1 className="text-xl font-bold text-[var(--text)]">{domainName || domainId}</h1>
-        <span className={`text-xs px-2 py-0.5 rounded-full capitalize ${
-          { PENDING: 'bg-[var(--rail)]', VERIFIED: 'bg-blue-900 text-[var(--accent)]', ACTIVE: 'bg-emerald-900 text-[var(--success)]', FAILED: 'bg-red-900 text-[var(--danger)]' }[domain.status ?? 'UNKNOWN'] ?? 'bg-[var(--rail)] text-[var(--text-muted)]'
-        }`}>
-          {domain.status ?? 'UNKNOWN'}
-        </span>
-      </div>
+      <DomainHeader domain={domain} domainId={domainId} />
 
-      {/* Tabs */}
-      <div className="flex gap-1 border-b border-[var(--rail)] mb-6">
-        {tabs.map(tab => (
-          <button
-            key={tab.id}
-            onClick={() => setActiveTab(tab.id)}
-            className={`px-4 py-2 text-sm border-b-2 transition-colors duration-150 -mb-px ${
-              activeTab === tab.id
-                ? 'border-[var(--accent)] text-[var(--text)]'
-                : 'border-transparent text-[var(--text-muted)] hover:text-[var(--text-muted)]'
-            } bg-none border-none cursor-pointer`}
-          >
-            {tab.label}
-          </button>
-        ))}
-      </div>
+      <DomainTabs
+        activeTab={activeTab}
+        onTabChange={setActiveTab}
+        mailboxCount={mailboxes.length}
+        aliasCount={aliases.length}
+      />
 
       {activeTab === 'overview' && (
         <DomainOverviewTab domain={domain} />

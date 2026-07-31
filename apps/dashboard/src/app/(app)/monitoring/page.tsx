@@ -1,155 +1,33 @@
 'use client';
 
-import { useEffect, useState } from 'react';
-import { Button, Card, EmptyState, Input, Modal, Spinner } from '@fidscript/ui';
-import { useRouter } from 'next/navigation';
-
+import { Button, Spinner } from '@fidscript/ui';
 import { useAuth } from '@/contexts/auth-context';
 import { useShellProjectId } from '@/contexts/project-context';
-import type { Project, AlertRule, Alert, NotificationChannel } from '@/types';
-
-const SEVERITY_COLORS: Record<string, string> = {
-  warning: 'bg-[var(--warning)]/10 text-[var(--warning)]',
-  critical: 'bg-[var(--danger)]/10 text-[var(--danger)]',
-  info: 'bg-[var(--accent)]/10 text-[var(--accent)]',
-};
+import { useMonitoringData } from './use-monitoring-data';
+import { AlertList } from './alert-list';
+import { AlertCreateModal } from './alert-create-modal';
 
 export default function MonitoringPage() {
   const { getSdk } = useAuth();
-  const router = useRouter();
   const shellProjectId = useShellProjectId();
-  const [projects, setProjects] = useState<Project[]>([]);
-  const [pickedProjectId, setPickedProjectId] = useState('');
-  const selectedProjectId = shellProjectId ?? pickedProjectId;
-  const [rules, setRules] = useState<AlertRule[]>([]);
-  const [alerts, setAlerts] = useState<Record<string, Alert>>({});
-  const [loadingProjects, setLoadingProjects] = useState(!shellProjectId);
-  const [loadingRules, setLoadingRules] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [showCreate, setShowCreate] = useState(false);
-  const [creating, setCreating] = useState(false);
-  const [createError, setCreateError] = useState<string | null>(null);
-  const [channels, setChannels] = useState<NotificationChannel[]>([]);
 
-  // Form state
-  const [formName, setFormName] = useState('');
-  const [formMetric, setFormMetric] = useState('');
-  const [formCondition, setFormCondition] = useState('above');
-  const [formThreshold, setFormThreshold] = useState('');
-  const [formSeverity, setFormSeverity] = useState('warning');
-  const [formDuration, setFormDuration] = useState('60');
-  const [formChannel, setFormChannel] = useState('');
-
-  const METRICS = [
-    'cpu',
-    'memory',
-    'disk',
-    'deployment_failed',
-    'function_error_rate',
-  ];
-
-  const INTERVALS = ['30s', '1m', '5m', '15m'];
-
-  useEffect(() => {
-    if (shellProjectId) return;
-    async function loadProjects() {
-      try {
-        const sdk = getSdk();
-        const data = await sdk.projects.list();
-        setProjects(data.projects ?? []);
-        if ((data.projects ?? []).length > 0) setPickedProjectId((data.projects ?? [])[0].id);
-      } catch {
-        // ignore
-      } finally {
-        setLoadingProjects(false);
-      }
-    }
-    loadProjects();
-  }, [getSdk, shellProjectId]);
-
-  useEffect(() => {
-    if (!selectedProjectId) return;
-    async function loadChannels() {
-      try {
-        const sdk = getSdk();
-        const ch = await sdk.monitoring.listNotificationChannels(selectedProjectId);
-        setChannels(ch);
-      } catch {
-        // channels may not exist yet
-      }
-    }
-    loadChannels();
-  }, [selectedProjectId, getSdk]);
-
-  useEffect(() => {
-    if (!selectedProjectId) return;
-    async function loadRules() {
-      setLoadingRules(true);
-      setError(null);
-      try {
-        const sdk = getSdk();
-        const [rulesData, alertsData] = await Promise.all([
-          sdk.monitoring.listAlertRules(selectedProjectId),
-          sdk.monitoring.getAlerts(selectedProjectId),
-        ]);
-        setRules(rulesData);
-        // Build a map of ruleId -> latest firing alert
-        const alertMap: Record<string, Alert> = {};
-        for (const alert of alertsData) {
-          if (alert.status === 'firing') {
-            // match by metric + severity as a proxy for ruleId
-            const key = `${alert.severity}`;
-            if (!alertMap[key] || alert.firedAt! > alertMap[key].firedAt!) {
-              alertMap[key] = alert;
-            }
-          }
-        }
-        setAlerts(alertMap);
-      } catch (err) {
-        setError(err instanceof Error ? err.message : 'Failed to load alert rules');
-      } finally {
-        setLoadingRules(false);
-      }
-    }
-    loadRules();
-  }, [selectedProjectId, getSdk]);
-
-  async function handleCreate(e: React.FormEvent) {
-    e.preventDefault();
-    if (!formName.trim() || !formMetric || !formThreshold || !selectedProjectId) return;
-    setCreating(true);
-    setCreateError(null);
-    try {
-      const sdk = getSdk();
-      await sdk.monitoring.createAlertRule(selectedProjectId, {
-        name: formName.trim(),
-        metric: formMetric,
-        condition: formCondition,
-        threshold: parseFloat(formThreshold),
-        severity: formSeverity,
-        durationSeconds: parseInt(formDuration.replace(/[^\d]/g, ''), 10),
-        channels: formChannel ? [formChannel] : [],
-      });
-      const data = await sdk.monitoring.listAlertRules(selectedProjectId);
-      setRules(data);
-      resetForm();
-      setShowCreate(false);
-    } catch (err) {
-      setCreateError(err instanceof Error ? err.message : 'Failed to create alert rule');
-    } finally {
-      setCreating(false);
-    }
-  }
-
-  function resetForm() {
-    setFormName('');
-    setFormMetric('');
-    setFormCondition('above');
-    setFormThreshold('');
-    setFormSeverity('warning');
-    setFormDuration('1m');
-    setFormChannel('');
-  }
+  const {
+    projects, pickedProjectId, setPickedProjectId,
+    effectiveProjectId,
+    rules, alerts, loadingProjects, loadingRules, error,
+    showCreate, setShowCreate,
+    creating, createError,
+    channels,
+    formName, setFormName,
+    formMetric, setFormMetric,
+    formCondition, setFormCondition,
+    formThreshold, setFormThreshold,
+    formSeverity, setFormSeverity,
+    formDuration, setFormDuration,
+    formChannel, setFormChannel,
+    handleCreate, resetForm,
+    METRICS, INTERVALS,
+  } = useMonitoringData({ selectedProjectId: null, shellProjectId, getSdk });
 
   if (loadingProjects) {
     return (
@@ -190,194 +68,39 @@ export default function MonitoringPage() {
         )}
       </div>
 
-      {error && (
-        <p className="text-[var(--danger)] mb-4 text-sm">{error}</p>
-      )}
+      {error && <p className="text-[var(--danger)] mb-4 text-sm">{error}</p>}
 
       {loadingRules ? (
         <div className="flex items-center justify-center min-h-48">
           <Spinner size="lg" />
         </div>
-      ) : rules.length === 0 ? (
-        <Card className="border border-[var(--rail)]">
-          <EmptyState
-            title="No alert rules"
-            description="Create an alert rule to get notified when metrics cross thresholds."
-            action={
-              <Button variant="primary" size="sm" onClick={() => setShowCreate(true)}>
-                Create Alert
-              </Button>
-            }
-          />
-        </Card>
       ) : (
-        <Card className="border border-[var(--rail)] overflow-hidden">
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="border-b border-[var(--rail)]">
-                <th className="text-left text-xs text-[var(--text-muted)] font-medium px-4 py-3">Name</th>
-                <th className="text-left text-xs text-[var(--text-muted)] font-medium px-4 py-3">Metric</th>
-                <th className="text-left text-xs text-[var(--text-muted)] font-medium px-4 py-3">Condition</th>
-                <th className="text-left text-xs text-[var(--text-muted)] font-medium px-4 py-3">Severity</th>
-                <th className="text-left text-xs text-[var(--text-muted)] font-medium px-4 py-3">Status</th>
-                <th className="text-left text-xs text-[var(--text-muted)] font-medium px-4 py-3">Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              {rules.map(rule => (
-                <tr
-                  key={rule.id}
-                  className="border-b border-[var(--rail)] last:border-0 hover:bg-[var(--rail)]/30 cursor-pointer"
-                  onClick={() => router.push(`/monitoring/${rule.id}?project=${selectedProjectId}`)}
-                >
-                  <td className="px-4 py-3">
-                    <span className="font-medium text-[var(--text)]">{rule.name}</span>
-                  </td>
-                  <td className="px-4 py-3">
-                    <span className="font-mono text-xs text-[var(--text-muted)] bg-[var(--surface-2)] px-2 py-0.5 rounded">
-                      {rule.metric}
-                    </span>
-                  </td>
-                  <td className="px-4 py-3 text-[var(--text-muted)] text-xs">
-                    {rule.condition} {rule.threshold}
-                  </td>
-                  <td className="px-4 py-3">
-                    <span className={`text-xs px-2 py-0.5 rounded ${SEVERITY_COLORS[rule.severity] ?? 'bg-[var(--rail)] text-[var(--text-muted)]'}`}>
-                      {rule.severity}
-                    </span>
-                  </td>
-                  <td className="px-4 py-3">
-                    {(() => {
-                      const isFiring = alerts[rule.severity]?.status === 'firing';
-                      if (isFiring) {
-                        return <span className="text-xs px-2 py-0.5 rounded bg-[var(--danger)]/10 text-[var(--danger)]">FIRING</span>;
-                      }
-                      if (!rule.enabled) {
-                        return <span className="text-xs px-2 py-0.5 rounded bg-[var(--rail)] text-[var(--text-muted)]">PAUSED</span>;
-                      }
-                      return <span className="text-xs px-2 py-0.5 rounded bg-[var(--success)]/10 text-[var(--success)]">ACTIVE</span>;
-                    })()}
-                  </td>
-                  <td className="px-4 py-3" onClick={e => e.stopPropagation()}>
-                    <div className="flex items-center gap-2">
-                      <button
-                        onClick={() => router.push(`/monitoring/${rule.id}?project=${selectedProjectId}`)}
-                        className="text-xs text-[var(--text-muted)] hover:text-[var(--text)] bg-none border-none cursor-pointer p-0"
-                      >
-                        View
-                      </button>
-                    </div>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </Card>
+        <AlertList
+          rules={rules}
+          alerts={alerts}
+          selectedProjectId={effectiveProjectId}
+          onCreateClick={() => setShowCreate(true)}
+        />
       )}
 
-      <Modal isOpen={showCreate} onClose={() => { setShowCreate(false); resetForm(); }} title="Create Alert Rule" size="md">
-        <form onSubmit={handleCreate} noValidate>
-          <div className="space-y-4">
-            <div>
-              <label className="block text-xs text-[var(--text-muted)] mb-1">Rule name</label>
-              <Input
-                value={formName}
-                onChange={e => setFormName(e.target.value)}
-                placeholder="High CPU usage"
-                className="bg-[var(--surface-2)] border border-[var(--rail)] text-[var(--text)] placeholder:text-[var(--text-dim)] w-full"
-              />
-            </div>
-            <div>
-              <label className="block text-xs text-[var(--text-muted)] mb-1">Metric</label>
-              <select
-                value={formMetric}
-                onChange={e => setFormMetric(e.target.value)}
-                className="bg-[var(--surface-2)] border border-[var(--rail)] text-[var(--text)] rounded-lg px-3 py-2 text-sm w-full"
-              >
-                <option value="">Select a metric...</option>
-                {METRICS.map(m => (
-                  <option key={m} value={m}>{m}</option>
-                ))}
-              </select>
-            </div>
-            <div className="grid grid-cols-2 gap-3">
-              <div>
-                <label className="block text-xs text-[var(--text-muted)] mb-1">Condition</label>
-                <select
-                  value={formCondition}
-                  onChange={e => setFormCondition(e.target.value)}
-                  className="bg-[var(--surface-2)] border border-[var(--rail)] text-[var(--text)] rounded-lg px-3 py-2 text-sm w-full"
-                >
-                  <option value="above">Above</option>
-                  <option value="below">Below</option>
-                  <option value="equals">Equals</option>
-                </select>
-              </div>
-              <div>
-                <label className="block text-xs text-[var(--text-muted)] mb-1">Threshold</label>
-                <Input
-                  value={formThreshold}
-                  onChange={e => setFormThreshold(e.target.value)}
-                  placeholder="80"
-                  type="number"
-                  step="any"
-                  className="bg-[var(--surface-2)] border border-[var(--rail)] text-[var(--text)] placeholder:text-[var(--text-dim)] w-full"
-                />
-              </div>
-            </div>
-            <div className="grid grid-cols-2 gap-3">
-              <div>
-                <label className="block text-xs text-[var(--text-muted)] mb-1">Severity</label>
-                <select
-                  value={formSeverity}
-                  onChange={e => setFormSeverity(e.target.value)}
-                  className="bg-[var(--surface-2)] border border-[var(--rail)] text-[var(--text)] rounded-lg px-3 py-2 text-sm w-full"
-                >
-                  <option value="info">Info</option>
-                  <option value="warning">Warning</option>
-                  <option value="critical">Critical</option>
-                </select>
-              </div>
-              <div>
-                <label className="block text-xs text-[var(--text-muted)] mb-1">Interval</label>
-                <select
-                  value={formDuration}
-                  onChange={e => setFormDuration(e.target.value)}
-                  className="bg-[var(--surface-2)] border border-[var(--rail)] text-[var(--text)] rounded-lg px-3 py-2 text-sm w-full"
-                >
-                  {INTERVALS.map(i => (
-                    <option key={i} value={i}>{i}</option>
-                  ))}
-                </select>
-              </div>
-            </div>
-            {createError && (
-              <p className="text-[var(--danger)] text-xs">{createError}</p>
-            )}
-            <div>
-              <label className="block text-xs text-[var(--text-muted)] mb-1">Notification Channel</label>
-              <select
-                value={formChannel}
-                onChange={e => setFormChannel(e.target.value)}
-                className="bg-[var(--surface-2)] border border-[var(--rail)] text-[var(--text)] rounded-lg px-3 py-2 text-sm w-full"
-              >
-                <option value="">No channel (alerts logged only)</option>
-                {channels.map(ch => (
-                  <option key={ch.id} value={ch.id}>{ch.name} ({ch.type})</option>
-                ))}
-              </select>
-            </div>
-            <div className="flex justify-end gap-3 pt-2">
-              <Button variant="ghost" size="sm" type="button" onClick={() => { setShowCreate(false); resetForm(); }}>
-                Cancel
-              </Button>
-              <Button variant="primary" size="sm" type="submit" loading={creating}>
-                {creating ? 'Creating...' : 'Create'}
-              </Button>
-            </div>
-          </div>
-        </form>
-      </Modal>
+      <AlertCreateModal
+        isOpen={showCreate}
+        creating={creating}
+        createError={createError}
+        channels={channels}
+        formName={formName} setFormName={setFormName}
+        formMetric={formMetric} setFormMetric={setFormMetric}
+        formCondition={formCondition} setFormCondition={setFormCondition}
+        formThreshold={formThreshold} setFormThreshold={setFormThreshold}
+        formSeverity={formSeverity} setFormSeverity={setFormSeverity}
+        formDuration={formDuration} setFormDuration={setFormDuration}
+        formChannel={formChannel} setFormChannel={setFormChannel}
+        onSubmit={handleCreate}
+        onClose={() => setShowCreate(false)}
+        onReset={resetForm}
+        METRICS={METRICS}
+        INTERVALS={INTERVALS}
+      />
     </div>
   );
 }
