@@ -14,6 +14,7 @@ export function useDomainData(projectId: string, getSdk: () => any) {
   const [selectedDomain, setSelectedDomain] = useState<Domain | null>(null);
   const [verifyingId, setVerifyingId] = useState<string | null>(null);
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
+  const clearToast = useCallback(() => setToast(null), []);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -100,5 +101,6 @@ export function useDomainData(projectId: string, getSdk: () => any) {
     handleConnectCloudflareToken,
     handleVerify,
     handleDelete,
+    clearToast,
   };
 }

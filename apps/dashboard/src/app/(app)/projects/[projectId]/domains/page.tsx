@@ -62,7 +62,7 @@ export default function DomainsPage() {
       />
 
       {d.toast && (
-        <Toast type={d.toast.type} message={d.toast.message} onClose={() => d.toast} />
+        <Toast type={d.toast.type} message={d.toast.message} onClose={d.clearToast} />
       )}
     </div>
   );

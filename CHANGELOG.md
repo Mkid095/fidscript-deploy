@@ -8,6 +8,21 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
 ### Changed
 
+- `apps/dashboard/src/components/storage/status-badge.tsx` (20L) — added Hugeicons icons (`CheckmarkCircle01Icon` / `MinusCircleIcon`) to status badge, matching UX spec requirement that "a status badge always has label + icon"
+- Split `app/(app)/projects/[projectId]/layout.tsx` (218L) into ANPAS-compliant sub-components:
+  - `layout.tsx` (135L) — thin shell with data fetching and composition
+  - `project-header.tsx` (105L) — header with logo, breadcrumb, theme toggle, avatar, project switcher
+  - `use-local-storage.ts` (18L) — extracted `useLocalStorage` hook
+  - `sections/settings/` folder — split 549-line `settings.tsx` into tab components:
+    - `index.tsx` (63L) — tab shell
+    - `general-tab.tsx` (72L) — name, description, subdomain
+    - `environment-tab.tsx` (125L) — encrypted env vars with reveal/hide
+    - `apikeys-tab.tsx` (97L) — project API keys CRUD
+    - `build-tab.tsx` (94L) — build configuration
+    - `danger-tab.tsx` (54L) — delete project
+    - `add-env-modal.tsx` (60L) — add env var modal
+    - `create-api-key-modal.tsx` (89L) — create API key modal
+    - All files under 150 lines per ANPAS rule
 - Split `contexts/auth-context.tsx` (281 lines) into ANPAS-compliant files:
   - `contexts/auth-provider.tsx` (126 lines) — AuthProvider component
   - `contexts/auth-session.ts` (70 lines) — session restoration hook

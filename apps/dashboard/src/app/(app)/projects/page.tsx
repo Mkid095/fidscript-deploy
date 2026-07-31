@@ -3,17 +3,16 @@
 import { useEffect, useState, useCallback, useRef } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { HugeiconsIcon } from '@hugeicons/react';
-import { Add01Icon, Search01Icon, Refresh01Icon, Time01Icon, EyeIcon, EyeOffIcon } from '@hugeicons/core-free-icons';
-import { Button, Card, EmptyState, Input, RightPanel } from '@fidscript/ui';
+import { Time01Icon } from '@hugeicons/core-free-icons';
+import { Button, RightPanel } from '@fidscript/ui';
 import { AuthError, RateLimitError } from '@fidscript-deploy/sdk';
 
 import { useAuth } from '@/contexts/auth-context';
 import type { Project } from '@/types';
-import { canEdit, canDelete, normalize, slugify } from './projects-utils';
-import { ProjectCard } from './project-card';
-import { DeletedProjectCard } from './deleted-project-card';
+import { canEdit, slugify } from './projects-utils';
 import { DeletePanel, PurgePanel } from './delete-panel';
-import { SkeletonGrid } from './projects-skeleton';
+import { ProjectsListHeader } from './projects-list-header';
+import { ProjectsListBody } from './projects-list-body';
 import { ProjectForm } from './project-form';
 
 export default function ProjectsPage() {
@@ -54,6 +53,7 @@ export default function ProjectsPage() {
   const [purgeError, setPurgeError] = useState<string | null>(null);
 
   const slug = slugify(name);
+  const u = user?.role;
 
   const load = useCallback(async () => {
     abortRef.current?.abort();
@@ -80,13 +80,21 @@ export default function ProjectsPage() {
         setLoadError(`Rate limited. Retrying in ${remaining}s…`); return;
       }
       if (!isRateLimit) setLoadError(err instanceof Error ? err.message : 'Failed to load projects');
-    } finally {
-      setLoading(false);
-    }
+    } finally { setLoading(false); }
   }, [getSdk, router]);
 
   useEffect(() => () => { abortRef.current?.abort(); if (rateLimitTimerRef.current) clearInterval(rateLimitTimerRef.current); }, []);
   useEffect(() => { load(); }, [load]);
+
+  function handleSearchChange(value: string) {
+    setSearch(value);
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+    debounceRef.current = setTimeout(() => {
+      const params = new URLSearchParams(searchParams.toString());
+      if (value.trim()) params.set('q', value.trim()); else params.delete('q');
+      router.replace(`${location.pathname}?${params.toString()}`, { scroll: false });
+    }, 300);
+  }
 
   async function handleCreate() {
     if (!name.trim()) return;
@@ -94,8 +102,7 @@ export default function ProjectsPage() {
     try {
       const sdk = getSdk();
       const created = await sdk.projects.create({ name: name.trim(), description: description.trim() || undefined, type: 'frontend' });
-      setActivePanel(null);
-      router.push(`/projects/${created.id}`);
+      setActivePanel(null); router.push(`/projects/${created.id}`);
     } catch (err) {
       if (err instanceof AuthError) { router.replace('/login'); return; }
       if (err instanceof RateLimitError) { setCreateError('Rate limited. Please wait a moment and try again.'); return; }
@@ -108,8 +115,7 @@ export default function ProjectsPage() {
     setSavingEdit(true); setEditError(null);
     try {
       const sdk = getSdk();
-      const trimmedDesc = editDescription.trim();
-      await sdk.projects.update(editing.id, { name: editName.trim(), type: editType, ...(trimmedDesc ? { description: trimmedDesc } : {}) });
+      await sdk.projects.update(editing.id, { name: editName.trim(), type: editType, ...(editDescription.trim() ? { description: editDescription.trim() } : {}) });
       setActivePanel(null); await load();
     } catch (err) {
       if (err instanceof AuthError) { router.replace('/login'); return; }
@@ -147,50 +153,8 @@ export default function ProjectsPage() {
 
   async function handleRestore(p: Project) { try { const sdk = getSdk(); await sdk.projects.restore(p.id); await load(); } catch {} }
 
-  function handleSearchChange(value: string) {
-    setSearch(value);
-    if (debounceRef.current) clearTimeout(debounceRef.current);
-    debounceRef.current = setTimeout(() => {
-      const params = new URLSearchParams(searchParams.toString());
-      if (value.trim()) params.set('q', value.trim()); else params.delete('q');
-      router.replace(`${location.pathname}?${params.toString()}`, { scroll: false });
-    }, 300);
-  }
-
-  const q = normalize(search);
-  const filtered = q ? projects.filter(p => normalize(p.name).includes(q) || normalize(p.slug).includes(q) || normalize(p.description ?? '').includes(q)) : projects;
-  const u = user?.role;
-
   return (
     <div className="max-w-6xl mx-auto">
-      <div className="flex items-center justify-between gap-4 mb-6">
-        <div>
-          <h1 className="text-xl font-bold text-[var(--text)] mb-1">{u ? `Welcome back, ${u}` : 'Projects'}</h1>
-          <p className="text-sm text-[var(--text-muted)]" aria-live="polite">
-            {loading ? 'Loading…' : q ? `${filtered.length} of ${projects.length} projects` : `${projects.length} project${projects.length !== 1 ? 's' : ''}`}
-          </p>
-        </div>
-        <div className="flex items-center gap-2 flex-1 max-w-md justify-end">
-          <div className="relative flex-1 max-w-xs">
-            <HugeiconsIcon icon={Search01Icon} size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--text-dim)] pointer-events-none" />
-            <Input value={search} onChange={e => handleSearchChange(e.target.value)} placeholder="Search projects…" aria-label="Search projects"
-              className="pl-9 bg-[var(--surface-2)] border border-[var(--rail)] text-[var(--text)] placeholder:text-[var(--text-dim)]" />
-          </div>
-          <Button variant="ghost" size="sm" onClick={load} title="Refresh" aria-label="Refresh" disabled={loading}><HugeiconsIcon icon={Refresh01Icon} size={14} /></Button>
-          {deletedProjects.length > 0 && (
-            <Button variant={showDeleted ? 'secondary' : 'ghost'} size="sm" onClick={() => setShowDeleted(v => !v)} aria-label="Toggle deleted projects">
-              <HugeiconsIcon icon={showDeleted ? EyeOffIcon : EyeIcon} size={14} />
-              {deletedProjects.length > 0 && <span className="ml-1 text-xs text-[var(--text-muted)]">{deletedProjects.length}</span>}
-            </Button>
-          )}
-          {canEdit(u) && (
-            <Button variant="primary" size="sm" onClick={() => { setName(''); setDescription(''); setCreateError(null); setActivePanel('create'); }} className="flex items-center gap-1.5">
-              <HugeiconsIcon icon={Add01Icon} size={14} /> New project
-            </Button>
-          )}
-        </div>
-      </div>
-
       {loadError && (
         <div className="bg-[var(--danger)]/10 border border-[var(--danger)]/30 rounded-lg p-3 mb-4 text-sm text-[var(--danger)] flex items-center justify-between">
           <span className="flex items-center gap-2">
@@ -201,44 +165,24 @@ export default function ProjectsPage() {
         </div>
       )}
 
-      {loading ? <SkeletonGrid /> :
-       projects.length === 0 ? (
-        <Card className="border border-[var(--rail)]">
-          <EmptyState icon={<HugeiconsIcon icon={Search01Icon} size={48} className="text-[var(--text-dim)]" />}
-            title={canEdit(u) ? 'No projects yet' : 'No projects'}
-            description={canEdit(u) ? 'Create your first project to start deploying apps, databases, and more.' : 'No projects have been created yet.'}
-            action={canEdit(u) ? <Button variant="primary" size="sm" onClick={() => { setName(''); setDescription(''); setCreateError(null); setActivePanel('create'); }} className="flex items-center gap-1.5"><HugeiconsIcon icon={Add01Icon} size={14} /> Create your first project</Button> : undefined} />
-        </Card>
-      ) : filtered.length === 0 ? (
-        <Card className="border border-[var(--rail)]">
-          <EmptyState icon={<HugeiconsIcon icon={Search01Icon} size={48} className="text-[var(--text-dim)]" />} title="No matches" description={`No projects match "${search}".`}
-            action={<Button variant="ghost" size="sm" onClick={() => { setSearch(''); router.replace('/projects', { scroll: false }); }}>Clear search</Button>} />
-        </Card>
-      ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4" aria-live="polite" aria-label="Projects list">
-          {filtered.map(p => (
-            <ProjectCard key={p.id} project={p} onOpen={() => router.push(`/projects/${p.slug}`)}
-              onEdit={canEdit(u, p.role) ? () => { setEditing(p); setEditName(p.name); setEditType(p.type as typeof editType); setEditDescription(p.description ?? ''); setEditError(null); setActivePanel('edit'); } : undefined}
-              onDelete={canDelete(u, p.role) ? () => { setDeleting(p); setDeleteAck(false); setDeleteError(null); setActivePanel('delete'); } : undefined} />
-          ))}
-        </div>
-      )}
+      <ProjectsListHeader
+        userName={user?.name} search={search} loading={loading} deletedCount={deletedProjects.length}
+        showDeleted={showDeleted} filteredCount={search ? projects.filter(p => p.name.toLowerCase().includes(search.toLowerCase())).length : projects.length}
+        totalCount={projects.length} canCreate={canEdit(u)}
+        onSearchChange={handleSearchChange} onRefresh={load}
+        onToggleDeleted={() => setShowDeleted(v => !v)}
+        onCreate={() => { setName(''); setDescription(''); setCreateError(null); setActivePanel('create'); }}
+      />
 
-      {showDeleted && deletedProjects.length > 0 && (
-        <div className="mt-10">
-          <div className="flex items-center gap-2 mb-4">
-            <h2 className="text-sm font-semibold text-[var(--text-muted)]">Deleted projects</h2>
-            <span className="text-xs text-[var(--text-muted)]">{deletedProjects.length} item{deletedProjects.length !== 1 ? 's' : ''} · purged after 30 days</span>
-          </div>
-          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
-            {deletedProjects.map(p => (
-              <DeletedProjectCard key={p.id} project={p}
-                onRestore={canDelete(u, p.role) ? () => handleRestore(p) : undefined}
-                onPurge={canDelete(u, p.role) ? () => { setPurgeProject(p); setPurgeCode(''); setPurgeRequested(false); setPurgeError(null); setActivePanel('purge'); } : undefined} />
-            ))}
-          </div>
-        </div>
-      )}
+      <ProjectsListBody
+        userRole={u} projects={projects} deletedProjects={deletedProjects}
+        loading={loading} showDeleted={showDeleted} search={search}
+        onEdit={(p) => { setEditing(p); setEditName(p.name); setEditType(p.type as typeof editType); setEditDescription(p.description ?? ''); setEditError(null); setActivePanel('edit'); }}
+        onDelete={(p) => { setDeleting(p); setDeleteAck(false); setDeleteError(null); setActivePanel('delete'); }}
+        onRestore={handleRestore}
+        onPurge={(p) => { setPurgeProject(p); setPurgeCode(''); setPurgeRequested(false); setPurgeError(null); setActivePanel('purge'); }}
+        onClearSearch={() => { setSearch(''); router.replace('/projects', { scroll: false }); }}
+      />
 
       <RightPanel isOpen={activePanel === 'create'} onClose={() => setActivePanel(null)} title="New project"
         subtitle="Pick a name. Configure everything else from the dashboard."
@@ -256,12 +200,13 @@ export default function ProjectsPage() {
         )}
       </RightPanel>
 
-      <DeletePanel deleting={activePanel === 'delete' && !!deleting ? deleting : null} deleteAck={deleteAck} deletingNow={deletingNow}
-        deleteError={deleteError} onAckChange={setDeleteAck} onConfirm={handleConfirmDelete} onCancel={() => setActivePanel(null)} />
+      <DeletePanel deleting={activePanel === 'delete' && !!deleting ? deleting : null}
+        deleteAck={deleteAck} deletingNow={deletingNow} deleteError={deleteError}
+        onAckChange={setDeleteAck} onConfirm={handleConfirmDelete} onCancel={() => setActivePanel(null)} />
 
-      <PurgePanel purgeProject={activePanel === 'purge' && !!purgeProject ? purgeProject : null} purgeCode={purgeCode} purgeRequested={purgeRequested}
-        purgeVerifying={purgeVerifying} purgeError={purgeError} onCodeChange={setPurgeCode}
-        onRequest={handleRequestPurge} onConfirm={handleConfirmPurge} onCancel={() => setActivePanel(null)} />
+      <PurgePanel purgeProject={activePanel === 'purge' && !!purgeProject ? purgeProject : null}
+        purgeCode={purgeCode} purgeRequested={purgeRequested} purgeVerifying={purgeVerifying} purgeError={purgeError}
+        onCodeChange={setPurgeCode} onRequest={handleRequestPurge} onConfirm={handleConfirmPurge} onCancel={() => setActivePanel(null)} />
     </div>
   );
 }
