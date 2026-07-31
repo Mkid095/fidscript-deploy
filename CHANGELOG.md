@@ -7,6 +7,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/).
 ## [Unreleased]
 
 ### Changed
+- fix(dashboard): rebuild and deploy dashboard container — also fixed stale API container (entrypoint override removed from compose)
 - refactor(dashboard): split oversized scheduler-job-detail (600L), databases/[id] (464L), monitoring (383L), platform/email/settings (399L), storage/settings (390L), databases/page (211L), email/analytics (182L) pages:
   - `projects/[projectId]/scheduler/[jobId]/` → page (130L) + use-job-detail hook + job-detail-header + job-runs-list + job-edit-form-body + job-edit-modal + run-detail-modal + run-timeline + stat-card
   - `databases/[id]/` → page (132L) + use-database-detail hook + db-overview-card + db-backups-list + db-connection-card + db-versions-list + db-settings + db-toast + db-detail-header

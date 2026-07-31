@@ -285,7 +285,6 @@ services:
       dockerfile: apps/api/Dockerfile
     container_name: fidscript_api
     restart: unless-stopped
-    entrypoint: ["node", "dist/index.js"]
     # Read *_FILE env vars and materialize them before starting node
     env_file:
       - ./secrets/api.env
