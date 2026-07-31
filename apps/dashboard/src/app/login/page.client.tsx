@@ -36,11 +36,11 @@ export function LoginClient({ platformAuthMethod }: LoginClientProps) {
     >
       <div className="flex flex-col items-center mb-6">
         <img
-          src="/logo.svg"
+          src="/logo.png"
           alt="FIDScript"
-          width={140}
-          height={32}
-          className="h-8 w-auto"
+          width={80}
+          height={80}
+          className="h-20 w-auto"
         />
       </div>
       <LoginThemeToggle />
