@@ -1,200 +1,40 @@
+# Managed by FIDScript Platform — do not edit manually
 http:
-  middlewares:
-    security-headers:
-      headers:
-        frameDeny: true
-        browserXssFilter: true
-        contentTypeNosniff: true
-        sslRedirect: true
-        stsSeconds: 31536000
-        stsIncludeSubdomains: true
-        stsPreload: true
-    compress:
-      compress: {}
-    strip-api-prefix:
-      replacePath:
-        path: /
-
   routers:
-    # ── Public API ───────────────────────────────────────────────────────────
-    api:
-      rule: "Host(`api.deploy.fidscript.com`)"
+    fidscript-api:
+      rule: Host(`api.deploy.fidscript.com`)
       service: fidscript-api
-      middlewares:
-        - security-headers
-        - compress
+      entryPoints:
+        - websecure
       tls:
         certResolver: letsencrypt-dns
 
-    # ── API on root domain path ────────────────────────────────────────────────
-    api-root:
-      rule: "Host(`deploy.fidscript.com`) && PathPrefix(`/api`)"
-      service: fidscript-api
-      middlewares:
-        - security-headers
-        - compress
-      tls:
-        certResolver: letsencrypt-dns
-      priority: 30
-
-    # ── Dashboard (app subdomain) — must come BEFORE wildcard ─────────────────
-    dashboard-app:
-      rule: "Host(`app.deploy.fidscript.com`)"
+    fidscript-dashboard:
+      rule: Host(`deploy.fidscript.com`)
       service: fidscript-dashboard
-      middlewares:
-        - security-headers
-        - compress
-      tls:
-        certResolver: letsencrypt-dns
-      priority: 20
-
-    # ── Landing / marketing (root domain) ────────────────────────────────────
-    dashboard-root:
-      rule: "Host(`deploy.fidscript.com`)"
-      service: fidscript-dashboard
-      middlewares:
-        - security-headers
-        - compress
-      tls:
-        certResolver: letsencrypt-dns
-      priority: 10
-
-    # ── Wildcard: 2+ label subdomain → API ─────────────────────────────────
-    deployments-wildcard:
-      rule: "HostRegexp(`^[^.]+\\.[^.]+\\.deploy\\.fidscript\\.com$`)"
-      service: fidscript-api
-      middlewares:
-        - security-headers
-        - compress
-      tls:
-        certResolver: letsencrypt-dns
-      priority: 5
-
-    # ── Per-service subdomains ───────────────────────────────────────────────
-    minio-console:
-      rule: "Host(`storage.deploy.fidscript.com`)"
-      service: fidscript-minio-console
-      middlewares:
-        - security-headers
-        - compress
-      tls:
-        certResolver: letsencrypt-dns
-
-    jmap:
-      rule: "Host(`jmap.deploy.fidscript.com`)"
-      service: fidscript-stalwart-jmap
-      middlewares:
-        - security-headers
-      tls:
-        certResolver: letsencrypt-dns
-
-    metrics:
-      rule: "Host(`deploy.fidscript.com`) && PathPrefix(`/metrics`)"
-      service: fidscript-api
-      middlewares:
-        - security-headers
-      tls:
-        certResolver: letsencrypt-dns
-
-    acme-challenge:
-      rule: "PathPrefix(`/.well-known/acme-challenge/`)"
-      service: fidscript-stalwart-acme
-      middlewares:
-        - security-headers
-
-    # ── Stalwart admin (setup wizard on high port) ──────────────────────────
-    stalwart-admin:
-      rule: "Host(`stalwart-admin.deploy.fidscript.com`)"
-      service: fidscript-stalwart-admin-svc
-      middlewares:
-        - security-headers
-      tls:
-        certResolver: letsencrypt-dns
-
-    # ── WhatsApp SaaS Platform ───────────────────────────────────────────────
-    # Auth routes → SaaS backend (fidscript_api:3001) — highest priority
-    whatsapp-saas-api:
-      rule: "Host(`whatsapp.fidscript.com`) && PathPrefix(`/api/auth/`)"
-      service: fidscript-saas-api
-      middlewares:
-        - security-headers
-        - compress
-      tls:
-        certResolver: letsencrypt-dns
-      priority: 250
-
-    # All API routes → WhatsApp Frontend (nginx) which proxies with prefix stripping
-    whatsapp-frontend-api:
-      rule: "Host(`whatsapp.fidscript.com`) && PathPrefix(`/api/`)"
-      service: whatsapp-frontend-svc
-      middlewares:
-        - security-headers
-        - compress
-      tls:
-        certResolver: letsencrypt-dns
-      priority: 200
-
-    whatsapp-frontend:
-      rule: "Host(`whatsapp.fidscript.com`)"
-      service: whatsapp-frontend-svc
-      middlewares:
-        - security-headers
-        - compress
-      tls:
-        certResolver: letsencrypt-dns
-
-    whatsapp-api:
-      rule: "Host(`apiwhatsapp.fidscript.com`)"
-      service: whatsapp-api-svc
-      middlewares:
-        - security-headers
-        - compress
+      entryPoints:
+        - websecure
       tls:
         certResolver: letsencrypt-dns
 
   services:
-    fidscript-stalwart-admin-svc:
-      loadBalancer:
-        servers:
-          - url: "http://10.0.3.7:8080"
-
     fidscript-api:
       loadBalancer:
         servers:
-          - url: "http://fidscript_api:3001"
-
-    fidscript-saas-api:
-      loadBalancer:
-        servers:
-          - url: "http://fidscript_api:3001"
-
-    whatsapp-api-svc:
-      loadBalancer:
-        servers:
-          - url: "http://fidscript_whatsapp_api:3099"
+          - url: http://api:3001
 
     fidscript-dashboard:
       loadBalancer:
         servers:
-          - url: "http://fidscript_dashboard:3001"
+          - url: http://dashboard:3001
 
-    fidscript-minio-console:
-      loadBalancer:
-        servers:
-          - url: "http://fidscript_minio:9001"
-
-    fidscript-stalwart-jmap:
-      loadBalancer:
-        servers:
-          - url: "http://fidscript_stalwart:8080"
-
-    fidscript-stalwart-acme:
-      loadBalancer:
-        servers:
-          - url: "http://127.0.0.1:8080"
-
-    # ── WhatsApp SaaS Platform ───────────────────────────────────────────────
-    whatsapp-frontend-svc:
-      loadBalancer:
-        servers:
-          - url: "http://fidscript_whatsapp_frontend:80"
+certificatesResolvers:
+  myresolver:
+    acme:
+      email: admin@deploy.fidscript.com
+      storage: /acme-dns/acme.json
+      dnsChallenge:
+        provider: cloudflare
+        resolvers:
+          - 1.1.1.1
+          - 1.0.0.1

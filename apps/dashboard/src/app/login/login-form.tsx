@@ -13,11 +13,13 @@ interface LoginFormProps {
   error: string | null;
   loading: boolean;
   detecting: boolean;
+  /** Pre-filled email from the parent page (for auto-fill after method detection) */
+  email?: string;
+  onEmailChange?: (email: string) => void;
 }
 
-export function LoginForm({ authMethod, onMethodChange, error, loading, detecting }: LoginFormProps) {
-  const { login, sendMagicCode, verifyMagicCode, lookupAuthMethod } = useAuth();
-  const [email, setEmail] = useState('');
+export function LoginForm({ authMethod, onMethodChange, error, loading, detecting, email = '', onEmailChange }: LoginFormProps) {
+  const { login, sendMagicCode, verifyMagicCode } = useAuth();
   const [password, setPassword] = useState('');
   const [validationError, setValidationError] = useState('');
   const [step, setStep] = useState<'email' | 'code'>('email');
@@ -67,16 +69,18 @@ export function LoginForm({ authMethod, onMethodChange, error, loading, detectin
   return (
     <div className="flex flex-col gap-4">
       <Input label="Email" type="email" value={email}
-        onChange={e => { setEmail(e.target.value); setValidationError(''); }}
+        onChange={e => { onEmailChange?.(e.target.value); setValidationError(''); }}
         placeholder="you@example.com" autoComplete="email"
-        className="bg-[var(--surface-2)] border border-[var(--rail)] text-[var(--text)] placeholder:text-[var(--text-dim)]" />
+        className="bg-[var(--surface-2)] border border-[var(--rail)] text-[var(--text)] placeholder:text-[var(--text-dim)]"
+      />
 
       {authMethod === 'PASSWORD' ? (
         <form onSubmit={handlePasswordSubmit} noValidate className="flex flex-col gap-4">
           <Input label="Password" type="password" value={password}
             onChange={e => { setPassword(e.target.value); setValidationError(''); }}
             placeholder="Enter your password" autoComplete="current-password"
-            className="bg-[var(--surface-2)] border border-[var(--rail)] text-[var(--text)] placeholder:text-[var(--text-dim)]" />
+            className="bg-[var(--surface-2)] border border-[var(--rail)] text-[var(--text)] placeholder:text-[var(--text-dim)]"
+          />
           {(validationError || error) && (
             <p className="text-sm text-[var(--danger)]" role="alert">{validationError || error}</p>
           )}
