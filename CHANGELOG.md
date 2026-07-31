@@ -9,11 +9,17 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/).
 ### Changed
 - refactor(dashboard): split oversized scheduler, domains, settings, logs, platform/integrations/settings, login, register, databases, and email/analytics pages to meet 150-line limit
 - refactor(dashboard): split settings, logs, integrations/settings, login, register pages to meet 150-line limit
-- refactor(dashboard): split oversized email/mailbox, templates, monitoring detail, and email root pages:
+- refactor(dashboard): split oversized email/mailbox, templates, monitoring detail, email root, deployments, functions, realtime, webhooks, platform/email, and email/[domain] pages:
   - `email/[domain]/mailboxes/[mailbox]/` (379L) → page (148L) + message-list (58L) + message-detail (84L) + compose-modal (84L) + mailbox-toolbar (60L) + mailbox-empty-state (44L) + message-panel (31L)
   - `email/templates/` (262L) → page (129L) + template-editor-modal (103L) + template-preview-modal (44L)
   - `monitoring/[id]/` (264L) → page (108L) + alert-history (65L) + alert-actions (74L) + alert-rule-config (41L) + alert-channels (30L)
   - `email/page.tsx` (223L) → page (118L) + create-domain-modal (57L) + domain-card (44L) + email-project-selector (28L)
+  - `projects/[projectId]/deployments/[deploymentId]/` → page (128L) + deployment-actions (98L) + deployment-detail-body (131L) + use-deployment-realtime (32L)
+  - `projects/[projectId]/functions/[id]/` → page (147L) + function-utils (33L) + use-function-realtime (32L)
+  - `projects/[projectId]/realtime/` → page (129L) + realtime-channel-list (87L)
+  - `email/webhooks/` → page (137L) + create-webhook-modal (77L)
+  - `platform/email/` → page (150L) + platform-email-compose-form (106L) + platform-email-compose-modal (72L) + platform-email-mailbox-list (65L) + platform-email-message-list (64L) + platform-email-message-detail (50L) + platform-email-create-mailbox-modal (47L) + platform-email-mailbox-created-card (31L) + platform-email-attachment-chips (26L) + platform-email-send-mail (26L) + platform-email-three-panel (40L)
+  - `email/[domain]/` → page (150L) + domain-header (36L) + domain-tabs (43L)
   - All files under 150 lines per ANPAS rule
 - refactor(dashboard): split `apps/dashboard/src/contexts/auth-context.tsx` (281L) into auth-provider.tsx/auth-session.ts/auth-methods.ts/auth-token-utils.ts/auth-types.ts/use-auth.ts (all <150L)
 - refactor(dashboard): split `apps/dashboard/src/types/index.ts` (454L) into domain-specific files under `types/` (all <150L)

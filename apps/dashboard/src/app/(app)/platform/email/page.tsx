@@ -2,16 +2,15 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import { Spinner } from '@fidscript/ui';
-import type { PlatformMailboxMessage, PlatformMailboxSummary, StorageBackend } from '@fidscript-deploy/sdk';
+import type { PlatformMailboxMessage, PlatformMailboxSummary } from '@fidscript-deploy/sdk';
 
 import { useAuth } from '@/contexts/auth-context';
 import { PlatformEmailTopbar } from './platform-email-topbar';
 import { PlatformEmailCreateMailboxModal } from './platform-email-create-mailbox-modal';
 import { PlatformEmailComposeModal } from './platform-email-compose-modal';
-import { PlatformEmailMessageDetail } from './platform-email-message-detail';
-import { PlatformEmailMessageList } from './platform-email-message-list';
 import { PlatformEmailMailboxCreatedCard } from './platform-email-mailbox-created-card';
-import { PlatformEmailMailboxList } from './platform-email-mailbox-list';
+import { sendPlatformMail } from './platform-email-send-mail';
+import { PlatformEmailThreePanel } from './platform-email-three-panel';
 
 type Folder = 'inbox' | 'sent' | 'drafts' | 'trash' | 'junk' | 'archive';
 
@@ -89,7 +88,7 @@ export default function PlatformEmailPage() {
   async function moveMessage(msg: PlatformMailboxMessage, folder: Folder) {
     setMessages(prev => prev.filter(m => m.id !== msg.id));
     if (selectedMessage?.id === msg.id) setSelectedMessage(null);
-    try { await sdk.email.admin.patchMessage(msg.mailbox, msg.id, { moveTo: folder as 'inbox' | 'trash' | 'junk' | 'archive' }); } catch {}
+    try { await sdk.email.admin.patchMessage(msg.mailbox, msg.id, { moveTo: folder as Folder }); } catch {}
   }
 
   async function deleteMessage(msg: PlatformMailboxMessage) {
@@ -104,16 +103,6 @@ export default function PlatformEmailPage() {
     setCreateResult({ email: data.mailbox.email, password: data.password });
     await loadMailboxes();
     if (data.mailbox?.name) setSelectedLocal(data.mailbox.name);
-    return data;
-  }
-
-  async function handleSendMail(opts: {
-    fromLocal?: string; to: string; subject: string; text: string;
-    storageBackend: StorageBackend; attachments?: { filename: string; mimeType: string; data: string }[];
-  }) {
-    await sdk.email.admin.sendMail(opts as Parameters<typeof sdk.email.admin.sendMail>[0]);
-    setSendResult('Sent');
-    setActiveFolder('sent');
   }
 
   if (loadingMailboxes) return (
@@ -127,20 +116,20 @@ export default function PlatformEmailPage() {
       {error && <p className="text-[var(--danger)] mb-4 text-sm">{error}</p>}
       {sendResult && <p className="text-[var(--success)] mb-4 text-sm">{sendResult}</p>}
 
-      <div className="flex flex-1 gap-3 min-h-0">
-        <PlatformEmailMailboxList mailboxes={mailboxes} selectedLocal={selectedLocal}
-          onSelect={name => { setSelectedLocal(name); setSelectedMessage(null); }} />
-
-        <div className="w-96 flex-shrink-0 flex flex-col">
-          <PlatformEmailMessageList messages={messages} total={total} activeFolder={activeFolder}
-            selectedMessageId={selectedMessage?.id} loading={loadingMessages} onSelect={openMessage} />
-        </div>
-
-        <div className="flex-1 min-w-0 flex flex-col">
-          <PlatformEmailMessageDetail message={selectedMessage} onStar={starMessage}
-            onMove={moveMessage} onDelete={deleteMessage} />
-        </div>
-      </div>
+      <PlatformEmailThreePanel
+        mailboxes={mailboxes}
+        selectedLocal={selectedLocal}
+        messages={messages}
+        total={total}
+        activeFolder={activeFolder}
+        selectedMessage={selectedMessage}
+        loadingMessages={loadingMessages}
+        onSelectMailbox={name => { setSelectedLocal(name); setSelectedMessage(null); }}
+        onSelectMessage={openMessage}
+        onStar={starMessage}
+        onMove={moveMessage}
+        onDelete={deleteMessage}
+      />
 
       <PlatformEmailCreateMailboxModal isOpen={showCreate}
         onClose={() => { setShowCreate(false); setCreateResult(null); }}
@@ -154,7 +143,8 @@ export default function PlatformEmailPage() {
 
       <PlatformEmailComposeModal isOpen={showCompose}
         onClose={() => { setShowCompose(false); setSendResult(null); }}
-        selectedLocal={selectedLocal} onSent={() => loadMessages()} sendMail={handleSendMail} />
+        selectedLocal={selectedLocal} onSent={() => loadMessages()}
+        sendMail={opts => sendPlatformMail(sdk, opts, () => loadMessages(), setSendResult, setActiveFolder)} />
     </div>
   );
 }
