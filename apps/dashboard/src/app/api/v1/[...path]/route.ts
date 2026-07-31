@@ -1,12 +1,14 @@
 import { NextResponse } from 'next/server';
 
-const API_BASE = 'http://api:3001/api/v1';
+const API_BASE = 'http://10.0.2.9:3001/api/v1';
 const ALLOWED_ORIGIN = 'https://deploy.fidscript.com';
 
 function proxyHeaders(request: Request): Record<string, string> {
   const headers: Record<string, string> = {};
   for (const [key, value] of request.headers.entries()) {
-    if (!['content-length', 'host', 'connection'].includes(key.toLowerCase())) {
+    const k = key.toLowerCase();
+    // Skip hop-by-hop headers and content-type — we always override it explicitly
+    if (!['content-length', 'host', 'connection', 'content-type', 'transfer-encoding'].includes(k)) {
       headers[key] = value;
     }
   }
