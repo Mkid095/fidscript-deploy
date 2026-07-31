@@ -19,10 +19,12 @@ import {
   MetadataPanel,
   LogViewer,
   LivePreview,
-  RollbackPicker,
-  ConfirmDialog,
-  DeploymentHeader,
+  ProgressTimeline,
+  MetadataPanel,
+  LogViewer,
+  LivePreview,
 } from '@/components/deployments';
+import { DeploymentActions, RollbackModal, DeleteConfirmModal } from './deployment-actions';
 import { useDeploymentRealtime } from './use-deployment-realtime';
 
 function DeploymentDetailInner() {
@@ -111,11 +113,15 @@ function DeploymentDetailInner() {
         Back to Services
       </Link>
 
-      <DeploymentHeader
-        deployment={deployment} meta={meta} acting={acting} logStream={logStream}
-        inFlight={inFlight} canRollback={canRollback} canDelete={canDelete}
-        onAction={handleAction} onRollback={() => setShowRollbackPicker(true)}
-        onDelete={() => setShowDeleteConfirm(true)} showToast={showToast} formatDuration={formatDuration}
+      <DeploymentActions
+        deployment={deployment}
+        acting={acting}
+        logStream={logStream}
+        deploymentId={deploymentId}
+        projectId={projectId}
+        onAction={handleAction}
+        onRollbackOpen={() => setShowRollbackPicker(true)}
+        onDeleteOpen={() => setShowDeleteConfirm(true)}
       />
 
       <ProgressTimeline status={deployment.status} />
@@ -131,19 +137,19 @@ function DeploymentDetailInner() {
       )}
 
       {showRollbackPicker && (
-        <Modal isOpen title="Roll back deployment" onClose={() => setShowRollbackPicker(false)}>
-          <RollbackPicker projectId={projectId} currentId={deploymentId}
-            onPicked={() => { setShowRollbackPicker(false); showToast({ type: 'success', message: 'Rollback initiated.' }); load(); }}
-            onClose={() => setShowRollbackPicker(false)} />
-        </Modal>
+        <RollbackModal
+          projectId={projectId}
+          deploymentId={deploymentId}
+          onClose={() => { setShowRollbackPicker(false); showToast({ type: 'success', message: 'Rollback initiated.' }); load(); }}
+          onPicked={() => { setShowRollbackPicker(false); load(); }}
+        />
       )}
 
       {showDeleteConfirm && (
-        <ConfirmDialog title="Delete deployment"
-          message="This will permanently delete this deployment and remove it from the list. This action cannot be undone."
-          confirmLabel="Delete deployment" variant="danger"
+        <DeleteConfirmModal
           onConfirm={() => { setShowDeleteConfirm(false); handleAction('delete'); }}
-          onClose={() => setShowDeleteConfirm(false)} />
+          onClose={() => setShowDeleteConfirm(false)}
+        />
       )}
     </div>
   );

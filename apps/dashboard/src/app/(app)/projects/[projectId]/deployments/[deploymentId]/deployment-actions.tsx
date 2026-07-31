@@ -1,18 +1,12 @@
 'use client';
 
-import { useRouter } from 'next/navigation';
 import { Modal } from '@fidscript/ui';
-import { useToast } from '@/components/toast-provider';
 import {
-  statusMeta,
-  isInFlight,
-  ProgressTimeline,
-  MetadataPanel,
-  LogViewer,
-  LivePreview,
   RollbackPicker,
   ConfirmDialog,
   DeploymentHeader,
+  statusMeta,
+  isInFlight,
 } from '@/components/deployments';
 import type { Deployment } from '@/types';
 
@@ -22,12 +16,9 @@ interface DeploymentActionsProps {
   logStream: boolean;
   deploymentId: string;
   projectId: string;
-  getSdk: () => any;
-  showRollbackPicker: boolean;
-  showDeleteConfirm: boolean;
-  load: () => Promise<void>;
-  setShowRollbackPicker: (v: boolean) => void;
-  setShowDeleteConfirm: (v: boolean) => void;
+  onAction: (action: string) => void;
+  onRollbackOpen: () => void;
+  onDeleteOpen: () => void;
 }
 
 export function DeploymentActions({
@@ -36,74 +27,55 @@ export function DeploymentActions({
   logStream,
   deploymentId,
   projectId,
-  getSdk,
-  showRollbackPicker,
-  showDeleteConfirm,
-  load,
-  setShowRollbackPicker,
-  setShowDeleteConfirm,
+  onAction,
+  onRollbackOpen,
+  onDeleteOpen,
 }: DeploymentActionsProps) {
-  const { showToast } = useToast();
-  const router = useRouter();
-
   const meta = statusMeta(deployment.status);
   const inFlight = isInFlight(deployment.status);
   const canRollback = deployment.status === 'SUCCESS';
   const canDelete = ['SUCCESS', 'STOPPED', 'FAILED'].includes(deployment.status);
 
-  async function handleAction(action: string) {
-    if (acting) return;
-    try {
-      const sdk = getSdk();
-      if (action === 'stop') { await sdk.deployments.stop(projectId, deploymentId); showToast({ type: 'success', message: 'Deployment stopped.' }); }
-      if (action === 'restart') { await sdk.deployments.restart(projectId, deploymentId); showToast({ type: 'success', message: 'Deployment restarted.' }); }
-      if (action === 'delete') {
-        await sdk.deployments.destroy(projectId, deploymentId);
-        showToast({ type: 'success', message: 'Deployment deleted.' });
-        router.push(`/projects/${projectId}`);
-        return;
-      }
-      await load();
-    } catch (err) {
-      showToast({ type: 'error', message: err instanceof Error ? err.message : `Action failed: ${action}` });
-    }
-  }
-
   return (
-    <>
-      <DeploymentHeader
-        deployment={deployment} meta={meta} acting={acting} logStream={logStream}
-        inFlight={inFlight} canRollback={canRollback} canDelete={canDelete}
-        onAction={handleAction} onRollback={() => setShowRollbackPicker(true)}
-        onDelete={() => setShowDeleteConfirm(true)} showToast={showToast}
-        formatDuration={(s: number) => `${Math.floor(s / 60)}m ${s % 60}s`}
-      />
+    <DeploymentHeader
+      deployment={deployment} meta={meta} acting={acting} logStream={logStream}
+      inFlight={inFlight} canRollback={canRollback} canDelete={canDelete}
+      onAction={onAction} onRollback={onRollbackOpen}
+      onDelete={onDeleteOpen}
+    />
+  );
+}
 
-      <ProgressTimeline status={deployment.status} />
-      <MetadataPanel deployment={deployment} />
+export function RollbackModal({
+  projectId,
+  deploymentId,
+  onClose,
+  onPicked,
+}: {
+  projectId: string;
+  deploymentId: string;
+  onClose: () => void;
+  onPicked: () => void;
+}) {
+  return (
+    <Modal isOpen title="Roll back deployment" onClose={onClose}>
+      <RollbackPicker projectId={projectId} currentId={deploymentId}
+        onPicked={onPicked} onClose={onClose} />
+    </Modal>
+  );
+}
 
-      <LogViewer logs={''} inFlight={inFlight} realtimeEnabled={inFlight}
-        deploymentId={deploymentId} projectId={projectId} getSdk={getSdk} />
-
-      {deployment.status === 'SUCCESS' && deployment.deploymentUrl && (
-        <LivePreview url={deployment.deploymentUrl} />
-      )}
-
-      {showRollbackPicker && (
-        <Modal isOpen title="Roll back deployment" onClose={() => setShowRollbackPicker(false)}>
-          <RollbackPicker projectId={projectId} currentId={deploymentId}
-            onPicked={() => { setShowRollbackPicker(false); showToast({ type: 'success', message: 'Rollback initiated.' }); load(); }}
-            onClose={() => setShowRollbackPicker(false)} />
-        </Modal>
-      )}
-
-      {showDeleteConfirm && (
-        <ConfirmDialog title="Delete deployment"
-          message="This will permanently delete this deployment and remove it from the list. This action cannot be undone."
-          confirmLabel="Delete deployment" variant="danger"
-          onConfirm={() => { setShowDeleteConfirm(false); handleAction('delete'); }}
-          onClose={() => setShowDeleteConfirm(false)} />
-      )}
-    </>
+export function DeleteConfirmModal({
+  onConfirm,
+  onClose,
+}: {
+  onConfirm: () => void;
+  onClose: () => void;
+}) {
+  return (
+    <ConfirmDialog title="Delete deployment"
+      message="This will permanently delete this deployment and remove it from the list. This action cannot be undone."
+      confirmLabel="Delete deployment" variant="danger"
+      onConfirm={onConfirm} onClose={onClose} />
   );
 }

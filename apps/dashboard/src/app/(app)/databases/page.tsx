@@ -1,13 +1,13 @@
 'use client';
-/* eslint-disable import/order */
 
 import { useEffect, useState, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
-import { Card, Button, Input, Spinner, EmptyState, Toast } from '@fidscript/ui';
+import { Card, Button, Spinner, EmptyState, Toast } from '@fidscript/ui';
 import type { Database } from '@fidscript-deploy/sdk';
-import type { Project } from '@/types';
 import { useAuth } from '@/contexts/auth-context';
 import { useShellProjectId } from '@/contexts/project-context';
+import { DatabaseListHeader } from './database-list-header';
+import { DatabaseCreateForm } from './database-create-form';
 
 export default function DatabasesPage() {
   const { getSdk } = useAuth();
@@ -71,76 +71,24 @@ export default function DatabasesPage() {
 
   return (
     <div>
-      <div className="flex items-center justify-between mb-6">
-        <div>
-          <h1 className="text-xl font-bold text-[var(--text)] mb-1">Databases</h1>
-          <p className="text-sm text-[var(--text-muted)]">
-            {databases.length} database{databases.length !== 1 ? 's' : ''}
-          </p>
-        </div>
-        <Button
-          variant="primary"
-          size="sm"
-          onClick={() => setShowCreate(s => !s)}
-        >
-          {showCreate ? 'Cancel' : 'Create Database'}
-        </Button>
-      </div>
+      <DatabaseListHeader count={databases.length} showCreate={showCreate} onToggleCreate={() => setShowCreate(s => !s)} />
 
-      {error && (
-        <p className="text-[var(--danger)] mb-4 text-sm">{error}</p>
-      )}
+      {error && <p className="text-[var(--danger)] mb-4 text-sm">{error}</p>}
 
       {showCreate && (
-        <Card className="border border-[var(--rail)] mb-6" padding="lg">
-          <h2 className="text-sm font-semibold text-[var(--text)] mb-4">New Database</h2>
-          <form onSubmit={handleCreate} noValidate>
-            <div className="flex gap-3 flex-wrap items-end">
-              <div>
-                <label className="block text-xs text-[var(--text-muted)] mb-1">Database name</label>
-                <Input
-                  value={newName}
-                  onChange={e => setNewName(e.target.value)}
-                  placeholder="my-database"
-                  className="bg-[var(--surface-2)] border border-[var(--rail)] text-[var(--text)] placeholder:text-[var(--text-dim)]"
-                />
-              </div>
-              <div>
-                <label className="block text-xs text-[var(--text-muted)] mb-1">Type</label>
-                <select
-                  value={newType}
-                  onChange={e => setNewType(e.target.value as 'postgres' | 'redis')}
-                  className="bg-[var(--surface-2)] border border-[var(--rail)] text-[var(--text)] rounded-lg px-3 py-2 text-sm"
-                >
-                  <option value="postgres">PostgreSQL</option>
-                  <option value="redis">Redis</option>
-                  <option value="mysql" disabled style={{ opacity: 0.4 }}>MySQL (not yet available)</option>
-                </select>
-              </div>
-              <Button type="submit" variant="primary" size="sm" loading={creating}>
-                {creating ? 'Creating...' : 'Create'}
-              </Button>
-            </div>
-            {createError && (
-              <p className="text-[var(--danger)] text-xs mt-3">{createError}</p>
-            )}
-          </form>
-        </Card>
+        <DatabaseCreateForm
+          name={newName} type={newType} creating={creating} error={createError}
+          onNameChange={setNewName} onTypeChange={setNewType} onSubmit={handleCreate}
+        />
       )}
 
       {loading ? (
-        <div className="flex items-center justify-center min-h-64">
-          <Spinner size="lg" />
-        </div>
+        <div className="flex items-center justify-center min-h-64"><Spinner size="lg" /></div>
       ) : databases.length === 0 ? (
         <EmptyState
           title="No databases yet"
           description="Create your first managed database to get started."
-          action={
-            <Button variant="primary" size="sm" onClick={() => setShowCreate(true)}>
-              Create Database
-            </Button>
-          }
+          action={<Button variant="primary" size="sm" onClick={() => setShowCreate(true)}>Create Database</Button>}
         />
       ) : (
         <Card className="border border-[var(--rail)]" padding="none">
@@ -156,41 +104,17 @@ export default function DatabasesPage() {
             </thead>
             <tbody>
               {databases.map(db => (
-                <tr
-                  key={db.id}
-                  className="border-b border-[var(--rail)] last:border-0 hover:bg-[var(--rail)]/30"
-                >
+                <tr key={db.id} className="border-b border-[var(--rail)] last:border-0 hover:bg-[var(--rail)]/30">
                   <td className="px-4 py-3">
-                    <button
-                      className="text-left w-full text-[var(--text)] font-medium"
-                      onClick={() => router.push(`/databases/${db.id}`)}
-                    >
-                      {db.name}
-                    </button>
+                    <button className="text-left w-full text-[var(--text)] font-medium" onClick={() => router.push(`/databases/${db.id}`)}>{db.name}</button>
                   </td>
-                  <td className="px-4 py-3 hidden md:table-cell">
-                    <span className="text-[var(--text-muted)]">{db.type}</span>
-                  </td>
+                  <td className="px-4 py-3 hidden md:table-cell"><span className="text-[var(--text-muted)]">{db.type}</span></td>
                   <td className="px-4 py-3 hidden lg:table-cell">
-                    <span className={`text-xs px-2 py-0.5 rounded-full border ${
-                      db.status === 'ready'
-                        ? 'bg-[var(--success)]/10 border-[var(--success)]/30 text-[var(--success)]'
-                        : 'bg-[var(--rail)] border-[var(--rail)] text-[var(--text-muted)]'
-                    }`}>
-                      {db.status}
-                    </span>
+                    <span className={`text-xs px-2 py-0.5 rounded-full border ${db.status === 'ready' ? 'bg-[var(--success)]/10 border-[var(--success)]/30 text-[var(--success)]' : 'bg-[var(--rail)] border-[var(--rail)] text-[var(--text-muted)]'}`}>{db.status}</span>
                   </td>
-                  <td className="px-4 py-3 text-[var(--text-muted)] hidden lg:table-cell">
-                    {new Date(db.createdAt).toLocaleDateString()}
-                  </td>
+                  <td className="px-4 py-3 text-[var(--text-muted)] hidden lg:table-cell">{new Date(db.createdAt).toLocaleDateString()}</td>
                   <td className="px-4 py-3 text-right">
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => router.push(`/databases/${db.id}`)}
-                    >
-                      Manage
-                    </Button>
+                    <Button variant="ghost" size="sm" onClick={() => router.push(`/databases/${db.id}`)}>Manage</Button>
                   </td>
                 </tr>
               ))}
@@ -199,13 +123,7 @@ export default function DatabasesPage() {
         </Card>
       )}
 
-      {toast && (
-        <Toast
-          type={toast.type}
-          message={toast.message}
-          onClose={() => setToast(null)}
-        />
-      )}
+      {toast && <Toast type={toast.type} message={toast.message} onClose={() => setToast(null)} />}
     </div>
   );
 }

@@ -12,6 +12,7 @@ import { DbConnectionCard } from './db-connection-card';
 import { DbVersionsList } from './db-versions-list';
 import { DbSettings } from './db-settings';
 import { DbToast } from './db-toast';
+import { DbDetailHeader } from './db-detail-header';
 
 type Tab = 'overview' | 'backups' | 'connection' | 'versions' | 'settings';
 
@@ -41,32 +42,17 @@ export default function DatabaseDetailPage({ params }: PageProps) {
 
   if (error || !db) {
     return (
-      <div>
-        <div className="flex items-center gap-2 text-sm text-[var(--text-muted)] mb-6">
-          <Link href="/databases" className="hover:text-[var(--text-muted)]">Databases</Link>
-          <span>&rsaquo;</span>
-          <span className="text-[var(--danger)]">{error ?? 'Not found'}</span>
-        </div>
-        <p className="text-[var(--danger)]">{error ?? 'Database not found'}</p>
+      <div className="text-center py-12">
+        <p className="text-[var(--danger)] text-sm mb-4">{error ?? 'Database not found'}</p>
+        <Link href="/databases" className="text-sm text-[var(--accent)] hover:underline">Back to Databases</Link>
       </div>
     );
   }
 
   return (
     <div>
-      {/* Breadcrumb */}
-      <div className="flex items-center gap-2 text-sm text-[var(--text-muted)] mb-6">
-        <Link href="/databases" className="hover:text-[var(--text-muted)]">Databases</Link>
-        <span>&rsaquo;</span>
-        <span className="text-[var(--text)]">{db.name}</span>
-      </div>
-
-      <div className="flex items-center justify-between mb-6">
-        <div>
-          <h1 className="text-xl font-bold text-[var(--text)] mb-1">{db.name}</h1>
-          <p className="text-sm text-[var(--text-muted)]">Type: {db.type} &middot; Status: {db.status}</p>
-        </div>
-      </div>
+      <DbBreadcrumb href="/databases" />
+      <DbDetailHeader db={db} href="/databases" />
 
       {/* Tabs */}
       <div className="flex gap-1 border-b border-[var(--rail)] mb-6">
@@ -138,13 +124,7 @@ export default function DatabaseDetailPage({ params }: PageProps) {
 
       {toast && (
         <div className="fixed bottom-4 right-4 z-50">
-          <div className={`px-4 py-3 rounded border text-sm ${
-            toast.type === 'success'
-              ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-400'
-              : 'bg-rose-500/10 border-rose-500/30 text-rose-400'
-          }`}>
-            {toast.message}
-          </div>
+          <DbToast message={toast.message} type={toast.type} />
         </div>
       )}
     </div>
