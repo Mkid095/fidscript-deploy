@@ -34,10 +34,10 @@ interface Props {
   cloudName: string; setCloudName: (v: string) => void;
   apiKey: string; setApiKey: (v: string) => void;
   apiSecret: string; setApiSecret: (v: string) => void;
-  showCloudinarySecret: boolean; setShowCloudinarySecret: (v: boolean) => void;
+  showCloudinarySecret: boolean; setShowCloudinarySecret: (v: boolean | ((prev: boolean) => boolean)) => void;
   botToken: string; setBotToken: (v: string) => void;
   chatId: string; setChatId: (v: string) => void;
-  showBotToken: boolean; setShowBotToken: (v: boolean) => void;
+  showBotToken: boolean; setShowBotToken: (v: boolean | ((prev: boolean) => boolean)) => void;
   onSave: (e: React.FormEvent) => void;
   onTest: () => void;
 }

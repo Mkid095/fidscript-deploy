@@ -1,3 +1,4 @@
+import type { FidscriptSDK } from '@fidscript-deploy/sdk';
 'use client';
 
 import { useState } from 'react';
@@ -5,7 +6,7 @@ import { Button, Input, Modal } from '@fidscript/ui';
 
 interface CreateDomainModalProps {
   projectId: string;
-  getSdk: () => ReturnType<ReturnType<import('@/contexts/auth-context').useAuth>['getSdk']>;
+  getSdk: () => FidscriptSDK;
   onCreated: (domain: import('@fidscript-deploy/sdk').EmailDomain) => void;
   onClose: () => void;
 }

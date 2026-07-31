@@ -48,6 +48,7 @@ export function JobFormModal({ isOpen, onClose, onSubmit, loading, error, form, 
           onFieldChange={onFieldChange}
           error={error}
           onCancel={onClose}
+          onSubmit={() => {}}
           loading={loading}
         />
       </form>

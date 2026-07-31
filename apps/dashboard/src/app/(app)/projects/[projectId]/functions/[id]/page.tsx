@@ -19,7 +19,6 @@ import { getStarterCode } from './function-utils';
 import { FunctionBreadcrumb } from './function-breadcrumb';
 import { FunctionErrorState } from './function-error-state';
 import { useFunctionRealtime } from './use-function-realtime';
-import { useFunctionRealtime } from './use-function-realtime';
 
 export default function FunctionDetailPage() {
   const params = useParams();

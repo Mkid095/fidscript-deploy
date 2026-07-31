@@ -21,6 +21,8 @@ interface DeploymentDetailBodyProps {
   projectId: string;
   inFlight: boolean;
   getSdk: () => any;
+  showToast: (toast: { type: 'success' | 'error' | 'info' | 'warning'; message: string }) => void;
+  formatDuration: (start: string, end?: string | null) => string;
   showRollbackPicker: boolean;
   showDeleteConfirm: boolean;
   onAction: (action: string) => void;
@@ -41,6 +43,8 @@ export function DeploymentDetailBody({
   projectId,
   inFlight,
   getSdk,
+  showToast,
+  formatDuration,
   showRollbackPicker,
   showDeleteConfirm,
   onAction,
@@ -67,6 +71,8 @@ export function DeploymentDetailBody({
         logStream={logStream}
         deploymentId={deploymentId}
         projectId={projectId}
+        showToast={showToast}
+        formatDuration={formatDuration}
         onAction={onAction}
         onRollbackOpen={onRollbackOpen}
         onDeleteOpen={onDeleteOpen}

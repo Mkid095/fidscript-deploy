@@ -16,10 +16,12 @@ export default function SchedulerPage() {
   const shellProjectId = useShellProjectId();
   const sdk = getSdk();
 
+  const initialProjectId = shellProjectId ?? '';
+
   const {
     projects, pickedProjectId, setPickedProjectId, effectiveProjectId,
-    jobs, jobStats, loadingProjects, loadingJobs, error,
-  } = useSchedulerData(sdk, effectiveProjectId ?? '', shellProjectId);
+    jobs, setJobs, jobStats, loadingProjects, loadingJobs, error,
+  } = useSchedulerData(sdk, initialProjectId, shellProjectId);
 
   const [showCreate, setShowCreate] = useState(false);
   const [creating, setCreating] = useState(false);

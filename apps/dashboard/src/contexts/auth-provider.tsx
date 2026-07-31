@@ -21,7 +21,7 @@ export const AuthContext = createContext<AuthContextValue | null>(null);
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const router = useRouter();
-  const { state, sdkRef, buildSdk, hydrateUser } = useAuthSession();
+  const { state, setState, sdkRef, buildSdk, hydrateUser } = useAuthSession();
 
   async function login(email: string, password: string): Promise<void> {
     setState(s => ({ ...s, loading: true, error: null }));

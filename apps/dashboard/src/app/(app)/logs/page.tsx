@@ -23,7 +23,7 @@ export default function LogsPage() {
   const [autoScroll, setAutoScroll] = useState(true);
   const [pickedProjectId, setPickedProjectId] = useState(searchParams.get('project') ?? '');
 
-  const d = useLogsData(shellProjectId ?? pickedProjectId, stream, activeLevels, getSdk, shellProjectId);
+  const d = useLogsData(shellProjectId ?? pickedProjectId, stream, activeLevels, setActiveLevels, getSdk, shellProjectId);
 
   useEffect(() => {
     if (autoScroll && d.logs.length > 0) {

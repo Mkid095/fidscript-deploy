@@ -16,6 +16,8 @@ interface DeploymentActionsProps {
   logStream: boolean;
   deploymentId: string;
   projectId: string;
+  showToast: (toast: { type: 'success' | 'error' | 'info' | 'warning'; message: string }) => void;
+  formatDuration: (start: string, end?: string | null) => string;
   onAction: (action: string) => void;
   onRollbackOpen: () => void;
   onDeleteOpen: () => void;
@@ -27,6 +29,8 @@ export function DeploymentActions({
   logStream,
   deploymentId,
   projectId,
+  showToast,
+  formatDuration,
   onAction,
   onRollbackOpen,
   onDeleteOpen,
@@ -40,6 +44,7 @@ export function DeploymentActions({
     <DeploymentHeader
       deployment={deployment} meta={meta} acting={acting} logStream={logStream}
       inFlight={inFlight} canRollback={canRollback} canDelete={canDelete}
+      showToast={showToast} formatDuration={formatDuration}
       onAction={onAction} onRollback={onRollbackOpen}
       onDelete={onDeleteOpen}
     />

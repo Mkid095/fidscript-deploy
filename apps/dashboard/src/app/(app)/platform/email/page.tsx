@@ -81,14 +81,14 @@ export default function PlatformEmailPage() {
   async function starMessage(msg: PlatformMailboxMessage) {
     const ns = !msg.isStarred;
     setMessages(prev => prev.map(m => m.id === msg.id ? { ...m, isStarred: ns } : m));
-    if (selectedMessage?.id === msg.id) setSelectedMessage(prev => prev ? { ...prev, isStarred: ns } : prev);
+    if (selectedMessage?.id === msg.id) setSelectedMessage((prev: PlatformMailboxMessage | null) => prev ? { ...prev, isStarred: ns } : prev);
     try { await sdk.email.admin.patchMessage(msg.mailbox, msg.id, { isStarred: ns }); } catch {}
   }
 
   async function moveMessage(msg: PlatformMailboxMessage, folder: Folder) {
     setMessages(prev => prev.filter(m => m.id !== msg.id));
     if (selectedMessage?.id === msg.id) setSelectedMessage(null);
-    try { await sdk.email.admin.patchMessage(msg.mailbox, msg.id, { moveTo: folder as Folder }); } catch {}
+    try { await sdk.email.admin.patchMessage(msg.mailbox, msg.id, { moveTo: folder as 'archive' | 'inbox' | 'trash' | 'junk' }); } catch {}
   }
 
   async function deleteMessage(msg: PlatformMailboxMessage) {
@@ -103,6 +103,7 @@ export default function PlatformEmailPage() {
     setCreateResult({ email: data.mailbox.email, password: data.password });
     await loadMailboxes();
     if (data.mailbox?.name) setSelectedLocal(data.mailbox.name);
+    return data;
   }
 
   if (loadingMailboxes) return (
@@ -127,7 +128,7 @@ export default function PlatformEmailPage() {
         onSelectMailbox={name => { setSelectedLocal(name); setSelectedMessage(null); }}
         onSelectMessage={openMessage}
         onStar={starMessage}
-        onMove={moveMessage}
+        onMove={(msg, folder) => moveMessage(msg, folder as Folder)}
         onDelete={deleteMessage}
       />
 
@@ -144,7 +145,7 @@ export default function PlatformEmailPage() {
       <PlatformEmailComposeModal isOpen={showCompose}
         onClose={() => { setShowCompose(false); setSendResult(null); }}
         selectedLocal={selectedLocal} onSent={() => loadMessages()}
-        sendMail={opts => sendPlatformMail(sdk, opts, () => loadMessages(), setSendResult, setActiveFolder)} />
+        sendMail={opts => sendPlatformMail(sdk, opts, () => loadMessages(), setSendResult, setActiveFolder as (folder: string) => void)} />
     </div>
   );
 }

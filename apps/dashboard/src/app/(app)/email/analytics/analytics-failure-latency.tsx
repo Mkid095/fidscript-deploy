@@ -3,10 +3,10 @@
 import { Card } from '@fidscript/ui';
 import { LatencyBar } from './analytics-metrics';
 
-interface Failures { failureType: string; count: number; avgDurationMs: number; }[]
+interface Failures { failureType: string; count: number; avgDurationMs: number; }
 interface Latency { p50: number; p95: number; p99: number; count: number; }
 
-interface Props { failures: Failures; latency: Latency | null; }
+interface Props { failures: Failures[]; latency: Latency | null; }
 
 export function AnalyticsFailureLatency({ failures, latency }: Props) {
   return (

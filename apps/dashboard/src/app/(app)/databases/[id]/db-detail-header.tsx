@@ -5,14 +5,15 @@ import type { Database } from '@fidscript-deploy/sdk';
 
 interface Props {
   db: Database;
+  href?: string;
 }
 
-export function DbDetailHeader({ db }: Props) {
+export function DbDetailHeader({ db, href = '/databases' }: Props) {
   return (
     <>
       {/* Breadcrumb */}
       <div className="flex items-center gap-2 text-sm text-[var(--text-muted)] mb-6">
-        <Link href="/databases" className="hover:text-[var(--text-muted)]">Databases</Link>
+        <Link href={href} className="hover:text-[var(--text-muted)]">Databases</Link>
         <span>&rsaquo;</span>
         <span className="text-[var(--text)]">{db.name}</span>
       </div>

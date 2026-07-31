@@ -16,7 +16,7 @@ interface AddDomainModalHandlerProps {
   connection: DnsConnection | null;
   // Add modal
   isAddOpen: boolean;
-  onAddDomain: (domain: string, mode: 'manual' | 'cloudflare_auto', types: DomainType[]) => => Promise<void>;
+  onAddDomain: (domain: string, mode: 'manual' | 'cloudflare_auto', types: DomainType[]) => Promise<void>;
   onCloseAdd: () => void;
   // Connect modal
   isConnectOpen: boolean;
@@ -90,7 +90,7 @@ export function AddDomainModalHandler({
     setConnectError(null);
     try {
       await onConnectCloudflareOAuth();
-      setShowConnect(false);
+      onCloseConnect();
     } catch (err) {
       setConnectError(err instanceof Error ? err.message : 'Failed to start OAuth');
     } finally {

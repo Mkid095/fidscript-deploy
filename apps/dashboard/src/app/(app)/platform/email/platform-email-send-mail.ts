@@ -1,7 +1,7 @@
 'use client';
 
 import type { StorageBackend } from '@fidscript-deploy/sdk';
-import type { FidscriptSdk } from '@fidscript-deploy/sdk';
+import type { FidscriptSDK } from '@fidscript-deploy/sdk';
 
 type SendMailOpts = {
   fromLocal?: string;
@@ -13,7 +13,7 @@ type SendMailOpts = {
 };
 
 export async function sendPlatformMail(
-  sdk: FidscriptSdk,
+  sdk: FidscriptSDK,
   opts: SendMailOpts,
   onSent: () => void,
   setSendResult: (msg: string) => void,

@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import type { Mailbox } from '@fidscript-deploy/sdk';
+import type { FidscriptSDK, Mailbox } from '@fidscript-deploy/sdk';
 import { Button, Card } from '@fidscript/ui';
 import { CatchAllConfigModal } from './domain-catchall-config-modal';
 
@@ -24,10 +24,10 @@ interface Props {
   catchAllRule: CatchAllRule | null;
   mailboxes: Mailbox[];
   onSave: (rule: CatchAllRule | null) => void;
-  getSdk: () => ReturnType<typeof import('@/contexts/auth-context').useAuth>['getSdk'];
+  getSdk: () => FidscriptSDK;
 }
 
-export function DomainCatchallTab({ domainId, domainName, status, catchAllRule, mailboxes, onSave, getSdk }: Props) {
+export function DomainCatchallTab({ domainId, domainName, projectId, status, catchAllRule, mailboxes, onSave, getSdk }: Props) {
   const [showConfig, setShowConfig] = useState(false);
 
   async function handleDelete() {
@@ -58,7 +58,10 @@ export function DomainCatchallTab({ domainId, domainName, status, catchAllRule, 
                 </span>
                 <span className="text-sm text-[var(--text)] font-mono">
                   {catchAllRule.target.type === 'mailbox'
-                    ? mailboxes.find(m => m.id === catchAllRule.target.mailboxId)?.email ?? catchAllRule.target.mailboxId
+                    ? (() => {
+                        const t = catchAllRule.target as Extract<CatchAllTarget, { type: 'mailbox' }>;
+                        return mailboxes.find(m => m.id === t.mailboxId)?.email ?? t.mailboxId;
+                      })()
                     : String((catchAllRule.target as { address?: string }).address ?? '')}
                 </span>
               </div>

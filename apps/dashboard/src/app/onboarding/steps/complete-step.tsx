@@ -4,7 +4,7 @@ import { Button } from '@fidscript/ui';
 import { Card } from '@fidscript/ui';
 
 interface CompleteStepProps {
-  certPending: boolean;
+  certPending?: boolean;
   onContinue: () => void;
 }
 

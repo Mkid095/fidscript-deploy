@@ -15,8 +15,8 @@ interface ProgressEvent {
 }
 
 interface UseConfigureSSEOptions {
-  platformName: string;
-  platformDomain: string;
+  platformName?: string;
+  platformDomain?: string;
   serverIp: string;
   adminEmail: string;
   onComplete: () => void;

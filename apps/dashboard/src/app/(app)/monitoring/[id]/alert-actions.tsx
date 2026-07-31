@@ -1,3 +1,4 @@
+import type { FidscriptSDK } from '@fidscript-deploy/sdk';
 'use client';
 
 import { Button, Modal } from '@fidscript/ui';
@@ -8,7 +9,7 @@ import type { AlertRule, NotificationChannel } from '@/types';
 interface AlertActionsProps {
   rule: AlertRule;
   projectId: string;
-  getSdk: () => ReturnType<ReturnType<import('@/contexts/auth-context').useAuth>['getSdk']>;
+  getSdk: () => FidscriptSDK;
   onToggle: (updated: AlertRule) => void;
   onError: (msg: string) => void;
 }

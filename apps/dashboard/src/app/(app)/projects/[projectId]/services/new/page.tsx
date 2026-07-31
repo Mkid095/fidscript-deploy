@@ -40,12 +40,13 @@ function NewDeploymentPage({ project }: { project: NonNullable<ReturnType<typeof
     else router.push(`/projects/${project.id}/services`);
   };
 
-  const newDeploy = useNewDeploy({ project, getSdk, onShowToast: showToast, onDeploySuccess: handleDeploySuccess });
-  const github = useGithubRepos({ getSdk, sourceType: newDeploy.sourceType, onShowToast: showToast });
-  const archive = useArchiveUpload({ project, onShowToast: showToast });
+  const toastAdapter = (opts: { type: string; message: string }) => showToast({ type: opts.type as 'success' | 'error' | 'info' | 'warning', message: opts.message });
+  const newDeploy = useNewDeploy({ project, getSdk, onShowToast: toastAdapter, onDeploySuccess: handleDeploySuccess });
+  const github = useGithubRepos({ getSdk, sourceType: newDeploy.sourceType, onShowToast: toastAdapter });
+  const archive = useArchiveUpload({ project, onShowToast: toastAdapter });
 
   function handleStepClick(i: number) {
-    if (i <= Math.max(...newDeploy.completed, newDeploy.stepIndex)) newDeploy.continue();
+    if (i <= Math.max(...newDeploy.completed, newDeploy.stepIndex)) newDeploy.continueStep();
   }
 
   return (
@@ -81,7 +82,7 @@ function NewDeploymentPage({ project }: { project: NonNullable<ReturnType<typeof
               onArchiveChange={archive.setArchiveFile}
               onUploadArchive={archive.uploadArchive}
               onReplaceArchive={archive.replaceArchive}
-              onShowToast={showToast}
+              onShowToast={toastAdapter}
             />
           )}
           {newDeploy.stepIndex === 2 && (
@@ -123,7 +124,7 @@ function NewDeploymentPage({ project }: { project: NonNullable<ReturnType<typeof
         canContinue={newDeploy.canContinue}
         submitting={newDeploy.submitting}
         onBack={newDeploy.back}
-        onContinue={newDeploy.continue}
+        onContinue={newDeploy.continueStep}
         onDeploy={newDeploy.deploy}
       />
     </div>

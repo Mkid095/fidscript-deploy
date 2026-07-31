@@ -3,7 +3,8 @@
 import { useState, useCallback, useMemo } from 'react';
 import type { FidscriptSDK } from '@fidscript-deploy/sdk';
 import type { Project } from '@/types';
-import type { SourceType, BuildPlan } from './new-deploy-types';
+import type { BuildPlan } from './new-deploy-types';
+import type { SourceType } from './new-deploy-utils';
 import { parseEnvText, extractRepoInfo } from './new-deploy-utils';
 
 interface UseNewDeployOptions {
@@ -47,7 +48,7 @@ export function useNewDeploy({ project, getSdk, onShowToast, onDeploySuccess }: 
     return true;
   }, [stepIndex, sourceType, computedGitUrl, uploadedArchive]);
 
-  const continue = useCallback(() => {
+  const continueStep = useCallback(() => {
     setCompleted(prev => new Set(prev).add(stepIndex));
     setStepIndex(i => Math.min(i + 1, 3));
   }, [stepIndex]);
@@ -97,7 +98,7 @@ export function useNewDeploy({ project, getSdk, onShowToast, onDeploySuccess }: 
     } finally {
       setSubmitting(false);
     }
-  }, [sourceType, computedGitUrl, effectiveBranch, dockerfilePath, credentials, envVars, parsedEnvVars, uploadedArchive, project.id, getSdk, onShowToast, onDeploySuccess]);
+  }, [sourceType, computedGitUrl, effectiveBranch, dockerfilePath, credentials, parsedEnvVars, uploadedArchive, project.id, getSdk, onShowToast, onDeploySuccess]);
 
   return {
     stepIndex, completed, sourceType, gitUrl: computedGitUrl, selectedRepo, selectedBranch,
@@ -108,6 +109,6 @@ export function useNewDeploy({ project, getSdk, onShowToast, onDeploySuccess }: 
     setSourceType, setSelectedRepo, setSelectedBranch, setManualGitUrl,
     setDockerfilePath, setCredentials, setEnvText, setAutoDeploy, setBuildPlan,
     setShowAdvanced, setArchiveFile, setUploadedArchive,
-    continue, back, runDetection, deploy,
+    continueStep, back, runDetection, deploy,
   };
 }

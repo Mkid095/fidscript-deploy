@@ -4,7 +4,7 @@ import type { PlatformMailboxSummary } from '@fidscript-deploy/sdk';
 
 interface Props {
   mailboxes: PlatformMailboxSummary[];
-  selectedLocal: string;
+  selectedLocal: string | null;
   onSelect: (name: string) => void;
 }
 

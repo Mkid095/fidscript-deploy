@@ -1,6 +1,8 @@
 // Step 2: Configure — framework detection, env vars, advanced settings
 
 import { Card } from '@fidscript/ui';
+import { HugeiconsIcon } from '@hugeicons/react';
+import { Rocket01Icon, CheckmarkCircle02Icon } from '@hugeicons/core-free-icons';
 
 import type { SourceType, BuildPlan } from './new-deploy-utils';
 import { BuildPreview } from './build-preview';

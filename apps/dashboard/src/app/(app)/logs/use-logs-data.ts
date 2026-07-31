@@ -8,7 +8,7 @@ const LEVELS = ['debug', 'info', 'warn', 'error', 'fatal'] as const;
 type Stream = typeof STREAMS[number];
 type Level = typeof LEVELS[number];
 
-export function useLogsData(selectedProjectId: string, stream: Stream, activeLevels: Set<Level>, getSdk: () => any, shellProjectId: string | null) {
+export function useLogsData(selectedProjectId: string, stream: Stream, activeLevels: Set<Level>, setActiveLevels: (updater: (prev: Set<Level>) => Set<Level>) => void, getSdk: () => any, shellProjectId: string | null) {
   const [projects, setProjects] = useState<Project[]>([]);
   const [pickedProjectId, setPickedProjectId] = useState('');
   const [logs, setLogs] = useState<LogEntry[]>([]);

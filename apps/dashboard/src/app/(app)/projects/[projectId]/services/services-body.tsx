@@ -1,7 +1,7 @@
 // Services page body — error, loading, empty, or grid
 
 import { useRouter } from 'next/navigation';
-import { Card, Button, Spinner } from '@fidscript/ui';
+import { Card, Button, EmptyState, Spinner } from '@fidscript/ui';
 import { HugeiconsIcon } from '@hugeicons/react';
 import { Rocket01Icon, GithubIcon } from '@hugeicons/core-free-icons';
 

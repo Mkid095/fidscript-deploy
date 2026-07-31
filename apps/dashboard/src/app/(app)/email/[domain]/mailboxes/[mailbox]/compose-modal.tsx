@@ -1,5 +1,6 @@
 'use client';
 
+import type { FidscriptSDK } from '@fidscript-deploy/sdk';
 import { useState } from 'react';
 import { Button, Input, Modal } from '@fidscript/ui';
 import { HugeiconsIcon } from '@hugeicons/react';
@@ -7,7 +8,7 @@ import { Mail01Icon } from '@hugeicons/core-free-icons';
 
 interface ComposeModalProps {
   projectId: string;
-  getSdk: () => ReturnType<ReturnType<import('@/contexts/auth-context').useAuth>['getSdk']>;
+  getSdk: () => FidscriptSDK;
   folder: string;
   onSent: () => void;
   onClose: () => void;

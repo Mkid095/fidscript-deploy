@@ -17,7 +17,7 @@ interface Overview {
   openRate: number;
   clickRate: number;
 }
-interface Failures { failureType: string; count: number; avgDurationMs: number; }[]
+interface Failures { failureType: string; count: number; avgDurationMs: number; }
 interface Latency { p50: number; p95: number; p99: number; count: number; }
 interface TimelineItem { date: string; sent: number; bounced: number; failed: number; }
 
@@ -25,7 +25,7 @@ export default function AnalyticsPage() {
   const { getSdk } = useAuth();
   const projectId = useShellProjectId();
   const [overview, setOverview] = useState<Overview | null>(null);
-  const [failures, setFailures] = useState<Failures>([]);
+  const [failures, setFailures] = useState<Failures[]>([]);
   const [latency, setLatency] = useState<Latency | null>(null);
   const [timeline, setTimeline] = useState<TimelineItem[]>([]);
   const [loading, setLoading] = useState(true);

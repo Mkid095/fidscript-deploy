@@ -66,5 +66,5 @@ export function useAuthSession() {
     return () => { cancelled = true; };
   }, [hydrateUser]);
 
-  return { state, sdkRef, buildSdk, hydrateUser };
+  return { state, setState, sdkRef, buildSdk, hydrateUser };
 }
