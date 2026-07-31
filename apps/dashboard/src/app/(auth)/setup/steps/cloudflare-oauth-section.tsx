@@ -35,8 +35,8 @@ export function CloudflareOAuthSection({
         type="text"
         value={cloudflareClientId}
         onChange={e => onClientIdChange(e.target.value)}
-        placeholder="e.g. 4bc8f2a9b3c7d6e1..."
-        hint="From dash.cloudflare.com → Overview → Get your API token → OAuth"
+        placeholder="your-oauth-client-id"
+        hint="Create an OAuth app at dash.cloudflare.com → My Profile → API Tokens → OAuth Applications"
         className="bg-[var(--surface-2)] border border-[var(--rail)] text-[var(--text)] placeholder:text-[var(--text-dim)] mb-3"
       />
       <Input
@@ -44,7 +44,7 @@ export function CloudflareOAuthSection({
         type="password"
         value={cloudflareClientSecret}
         onChange={e => onClientSecretChange(e.target.value)}
-        placeholder="OAuth client secret"
+        placeholder="your-oauth-client-secret"
         className="bg-[var(--surface-2)] border border-[var(--rail)] text-[var(--text)] placeholder:text-[var(--text-dim)] mb-3"
       />
       {derivedRedirectUri && (
