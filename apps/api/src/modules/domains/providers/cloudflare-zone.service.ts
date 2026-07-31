@@ -12,6 +12,7 @@ export class CloudflareZoneService {
 
   constructor(private configService: ConfigService) {
     const apiTokenFile = this.configService.get<string>('CLOUDFLARE_API_TOKEN_FILE');
+    const cloudflareEmail = this.configService.get<string>('CLOUDFLARE_API_EMAIL');
 
     if (!apiTokenFile) {
       this.logger.warn(
@@ -38,12 +39,17 @@ export class CloudflareZoneService {
       return;
     }
 
+    const headers: Record<string, string> = {
+      Authorization: `Bearer ${token}`,
+      'Content-Type': 'application/json',
+    };
+    if (cloudflareEmail) {
+      headers['X-Auth-Email'] = cloudflareEmail;
+    }
+
     this.client = axios.create({
       baseURL: 'https://api.cloudflare.com/client/v4',
-      headers: {
-        Authorization: `Bearer ${token}`,
-        'Content-Type': 'application/json',
-      },
+      headers,
       timeout: 10_000,
     });
 
