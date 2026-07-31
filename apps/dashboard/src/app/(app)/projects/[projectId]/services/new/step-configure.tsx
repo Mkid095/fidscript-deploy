@@ -58,25 +58,8 @@ export function StepConfigure({
         detectError={detectError} onRunDetection={onRunDetection} />
 
       {/* Environment variables */}
-      <div>
-        <label className="block text-xs font-medium text-[var(--text-muted)] mb-1.5 uppercase tracking-wider">
-          Environment variables <span className="text-[var(--text-dim)] normal-case font-normal">(optional)</span>
-        </label>
-        <textarea value={envText} onChange={e => onEnvTextChange(e.target.value)}
-          placeholder={'DATABASE_URL=postgres://...\nAPI_SECRET=your-secret-here\n# Comments are ignored\nNEXT_PUBLIC_API_URL=https://...'}
-          rows={6}
-          className="w-full rounded-md bg-[var(--surface-2)] border border-[var(--rail)] text-[var(--text)] text-xs font-mono px-3 py-2.5 resize-y focus:outline-none focus:border-[var(--danger)]/40 placeholder:text-[var(--text-dim)]"
-          spellCheck={false} />
-        {Object.keys(parsedEnvVars).length > 0 && (
-          <div className="mt-2 flex items-center gap-1.5 text-xs text-[var(--success)]">
-            <HugeiconsIcon icon={CheckmarkCircle02Icon} size={12} />
-            {Object.keys(parsedEnvVars).length} variable{Object.keys(parsedEnvVars).length === 1 ? '' : 's'} ready
-          </div>
-        )}
-        <p className="text-[10px] text-[var(--text-dim)] mt-1.5">
-          Also configurable in <Link href={`/projects/${onProjectSlug}/settings`} className="text-[var(--accent)] hover:underline">project settings</Link>.
-        </p>
-      </div>
+      <EnvVarsSection value={envText} onChange={onEnvTextChange}
+        parsedCount={Object.keys(parsedEnvVars).length} projectSlug={onProjectSlug} />
 
       {/* Advanced settings */}
       <div className="border-t border-[var(--rail)] pt-4">
