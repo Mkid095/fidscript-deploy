@@ -15,7 +15,7 @@ import { MagicCodeInput } from '@/components/auth/magic-code-input';
 type AuthMethod = 'PASSWORD' | 'MAGIC_CODE';
 
 export default function RegisterPage() {
-  const { register, sendMagicCode, loading, error } = useAuth();
+  const { register, verifyMagicCode, loading, error } = useAuth();
 
   const [authMethod, setAuthMethod] = useState<AuthMethod>('PASSWORD');
   const [name, setName] = useState('');
@@ -66,6 +66,7 @@ export default function RegisterPage() {
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) { setValidationError('Enter a valid email address'); return; }
     setValidationError('');
     try {
+      // register() internally calls sendMagicCode — no duplicate call needed
       await register(email, name, '', 'MAGIC_CODE');
       const [local, domain] = email.split('@');
       setMaskedEmail(`${local.slice(0, 2)}***@${domain}`);
@@ -73,6 +74,18 @@ export default function RegisterPage() {
       setCountdown(30);
     } catch {
       // error handled by context
+    }
+  }
+
+  async function handleCodeComplete(rawCode: string) {
+    setCode(rawCode);
+    setCodeError('');
+    try {
+      await verifyMagicCode(email, rawCode);
+      // verifyMagicCode handles redirect on success
+    } catch (err) {
+      setCode('');
+      setCodeError(err instanceof Error ? err.message : 'Invalid or expired code');
     }
   }
 
@@ -212,7 +225,7 @@ export default function RegisterPage() {
               <p className="text-sm text-[var(--text-muted)] font-medium">{maskedEmail}</p>
             </div>
             <MagicCodeInput
-              onComplete={() => {}}
+              onComplete={handleCodeComplete}
               disabled={!!code}
               error={!!codeError}
             />

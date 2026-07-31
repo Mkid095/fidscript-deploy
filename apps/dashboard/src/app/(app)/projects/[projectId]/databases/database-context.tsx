@@ -3,7 +3,6 @@
 /**
  * DatabaseProvider — central store for the database dashboard.
  * Mirrors the real FidscriptSDK's DatabaseProvider interface where possible.
- * Some extended features (indexes, constraints) are only available in mock mode.
  */
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
 import { useAuth } from '@/contexts/auth-context';

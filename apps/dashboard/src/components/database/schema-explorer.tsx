@@ -158,10 +158,8 @@ export function SchemaExplorer() {
             <div className="flex-1 overflow-auto">
               {activeDetailTab === 'columns' && (
                 <div className="p-6 text-xs text-[var(--text-dim)]">
-                  Column details are shown in the Explorer tab when using mock mode.
-                  <br />
-                  <span className="text-[10px] opacity-60 mt-2 block">
-                    In production, use the SQL Editor to query <code className="font-mono">information_schema.columns</code> for full column metadata.
+                  <span className="text-[10px] opacity-60">
+                    Use the SQL Editor to query <code className="font-mono">information_schema.columns</code> for full column metadata.
                   </span>
                 </div>
               )}

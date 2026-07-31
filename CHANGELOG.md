@@ -6,15 +6,26 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
 ## [Unreleased]
 
-### Added
+### Changed
 
-- ANPAS project structure initialized (`.ai/` layer, docs/decisions/, CHANGELOG.md)
-- `docs/decisions/ADR-template.md` added
+- Split `contexts/auth-context.tsx` (281 lines) into ANPAS-compliant files:
+  - `contexts/auth-provider.tsx` (126 lines) — AuthProvider component
+  - `contexts/auth-session.ts` (70 lines) — session restoration hook
+  - `contexts/auth-methods.ts` (97 lines) — auth method implementations
+  - `contexts/auth-token-utils.ts` (32 lines) — token storage utilities
+  - `contexts/auth-types.ts` (24 lines) — AuthState/AuthContextValue interfaces
+  - `contexts/use-auth.ts` (9 lines) — useAuth hook
+  - `contexts/auth-context.tsx` (11 lines) — backwards-compatibility barrel
+- Split `types/index.ts` (454 lines) into domain-specific files under `types/`:
+  - `types/index.ts` (36 lines) — re-exports all types
+  - `types/user.ts`, `types/project.ts`, `types/deployment.ts`, `types/function.ts`, `types/queue.ts`, `types/cron.ts`, `types/logs.ts`, `types/monitoring.ts`, `types/storage.ts`, `types/realtime.ts`, `types/database.ts`, `types/database-backup.ts`, `types/email.ts` — domain-specific type exports
+  - All files under 150 lines per ANPAS rule
 
 ### Removed
 
 - `apps/dashboard/src/mocks/sdk.ts` (1,807 lines) — deleted mock SDK, production now always uses real `@fidscript-deploy/sdk`
 - `apps/dashboard/src/mocks/data.ts` (1,246 lines) — deleted all mock data
+- Stale "mock mode" comments removed from `schema-explorer.tsx` and `database-context.tsx`
 
 ### Changed
 
