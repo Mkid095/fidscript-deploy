@@ -1,12 +1,12 @@
 'use client';
 
 import { useEffect, useState, useCallback } from 'react';
-import { Button, Card, EmptyState, Modal, Spinner } from '@fidscript/ui';
-import { HugeiconsIcon } from '@hugeicons/react';
+import { Button, Card, EmptyState, Spinner } from '@fidscript/ui';
 
 import { useAuth } from '@/contexts/auth-context';
 import { useShellProjectId } from '@/contexts/project-context';
 import { TemplateEditor } from './template-editor-modal';
+import { TemplatePreviewModal } from './template-preview-modal';
 
 interface Template {
   id: string;
@@ -118,36 +118,11 @@ export default function TemplatesPage() {
       )}
 
       {previewing && (
-        <Modal
-          isOpen
+        <TemplatePreviewModal
+          template={previewing}
+          previewData={previewData}
           onClose={() => { setPreviewing(null); setPreviewData(null); }}
-          title={`Preview: ${previewing.name}`}
-        >
-          {previewData && (
-            <div className="space-y-4">
-              <div>
-                <label className="block text-xs text-[var(--text-muted)] mb-1">Rendered Subject</label>
-                <div className="text-sm text-[var(--text)] bg-[var(--surface-2)] border border-[var(--rail)] rounded px-3 py-2">
-                  {previewData.rendered.subject}
-                </div>
-              </div>
-              {previewData.rendered.html && (
-                <div>
-                  <label className="block text-xs text-[var(--text-muted)] mb-1">HTML Body</label>
-                  <iframe srcDoc={previewData.rendered.html} className="w-full h-64 border border-[var(--rail)] rounded bg-white" title="Template preview" />
-                </div>
-              )}
-              {previewData.rendered.text && (
-                <div>
-                  <label className="block text-xs text-[var(--text-muted)] mb-1">Text Body</label>
-                  <pre className="text-xs text-[var(--text)] bg-[var(--surface-2)] border border-[var(--rail)] rounded p-3 whitespace-pre-wrap max-h-48 overflow-y-auto">
-                    {previewData.rendered.text}
-                  </pre>
-                </div>
-              )}
-            </div>
-          )}
-        </Modal>
+        />
       )}
     </div>
   );

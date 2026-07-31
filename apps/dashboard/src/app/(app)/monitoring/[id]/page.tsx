@@ -2,10 +2,12 @@
 
 import { useEffect, useState } from 'react';
 import { useParams, useSearchParams } from 'next/navigation';
-import { Button, Card, Spinner } from '@fidscript/ui';
+import { Button, Spinner } from '@fidscript/ui';
 import type { AlertRule, NotificationChannel } from '@/types';
 
 import { useAuth } from '@/contexts/auth-context';
+import { AlertRuleConfig } from './alert-rule-config';
+import { AlertChannels } from './alert-channels';
 import { AlertHistory } from './alert-history';
 import { AlertActions } from './alert-actions';
 
@@ -17,12 +19,6 @@ interface AlertEvaluation {
   fired: boolean;
   message?: string;
 }
-
-const SEVERITY_COLORS: Record<string, string> = {
-  warning: 'bg-[var(--warning)]/10 text-[var(--warning)]',
-  critical: 'bg-[var(--danger)]/10 text-[var(--danger)]',
-  info: 'bg-[var(--accent)]/10 text-[var(--accent)]',
-};
 
 export default function AlertDetailPage() {
   const { getSdk } = useAuth();
@@ -76,8 +72,6 @@ export default function AlertDetailPage() {
 
   if (!rule) return null;
 
-  const intervalLabel = (s: number) => s >= 60 ? `${s / 60}m` : `${s}s`;
-
   return (
     <div>
       {/* Header */}
@@ -85,7 +79,7 @@ export default function AlertDetailPage() {
         <div>
           <div className="flex items-center gap-3 mb-1">
             <h1 className="text-xl font-bold text-[var(--text)]">{rule.name}</h1>
-            <span className={`text-xs px-2 py-0.5 rounded ${SEVERITY_COLORS[rule.severity] ?? 'bg-[var(--rail)] text-[var(--text-muted)]'}`}>
+            <span className={`text-xs px-2 py-0.5 rounded ${rule.severity === 'critical' ? 'bg-[var(--danger)]/10 text-[var(--danger)]' : rule.severity === 'warning' ? 'bg-[var(--warning)]/10 text-[var(--warning)]' : 'bg-[var(--accent)]/10 text-[var(--accent)]'}`}>
               {rule.severity}
             </span>
             <span className={`text-xs px-2 py-0.5 rounded ${rule.enabled ? 'bg-[var(--success)]/10 text-[var(--success)]' : 'bg-[var(--rail)] text-[var(--text-muted)]'}`}>
@@ -96,57 +90,15 @@ export default function AlertDetailPage() {
             {rule.metric} {rule.condition} {rule.threshold}
           </p>
         </div>
-        <AlertActions
-          rule={rule}
-          projectId={projectId}
-          getSdk={getSdk}
-          onToggle={setRule}
-          onError={setError}
-        />
+        <AlertActions rule={rule} projectId={projectId} getSdk={getSdk} onToggle={setRule} onError={setError} />
       </div>
 
       {error && <p className="text-[var(--danger)] text-sm mb-4">{error}</p>}
 
-      {/* Rule config grid */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
-        <Card className="border border-[var(--rail)]" padding="md">
-          <p className="text-xs text-[var(--text-muted)] mb-1">Metric</p>
-          <p className="text-sm font-mono text-[var(--text)]">{rule.metric}</p>
-        </Card>
-        <Card className="border border-[var(--rail)]" padding="md">
-          <p className="text-xs text-[var(--text-muted)] mb-1">Condition</p>
-          <p className="text-sm text-[var(--text)]">{rule.condition} {rule.threshold}</p>
-        </Card>
-        <Card className="border border-[var(--rail)]" padding="md">
-          <p className="text-xs text-[var(--text-muted)] mb-1">Interval</p>
-          <p className="text-sm text-[var(--text)]">{intervalLabel(rule.durationSeconds)}</p>
-        </Card>
-        <Card className="border border-[var(--rail)]" padding="md">
-          <p className="text-xs text-[var(--text-muted)] mb-1">Severity</p>
-          <span className={`text-xs px-2 py-0.5 rounded ${SEVERITY_COLORS[rule.severity] ?? 'bg-[var(--rail)] text-[var(--text-muted)]'}`}>
-            {rule.severity}
-          </span>
-        </Card>
-      </div>
+      <AlertRuleConfig rule={rule} />
 
-      {/* Notification channels */}
-      {rule.channels.length > 0 && (
-        <div className="mb-6">
-          <h2 className="text-sm font-semibold text-[var(--text)] mb-3">Notification Channels</h2>
-          <div className="flex flex-wrap gap-2">
-            {rule.channels.map(cid => {
-              const ch = channels.find(c => c.id === cid);
-              return (
-                <span key={cid} className="text-xs px-2 py-1 rounded bg-[var(--rail)] text-[var(--text-muted)] border border-[var(--rail)]">
-                  {ch ? `${ch.name} (${ch.type})` : cid}
-                </span>
-              );
-            })}
-          </div>
-        </div>
-      )}
+      <AlertChannels channels={rule.channels} allChannels={channels} />
 
-      {/* Evaluation history */}
       <div>
         <h2 className="text-sm font-semibold text-[var(--text)] mb-3">Recent Evaluations</h2>
         <AlertHistory evaluations={evaluations} />
