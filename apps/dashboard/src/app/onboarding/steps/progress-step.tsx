@@ -1,7 +1,9 @@
 'use client';
 
-import { Card } from '@fidscript/ui';
-import { Spinner } from '@fidscript/ui';
+import { Spinner, Badge } from '@fidscript/ui';
+import { HugeiconsIcon } from '@hugeicons/react';
+import { Tick02Icon, AlertCircleIcon } from '@hugeicons/core-free-icons';
+import { OnboardingShell } from '../components/onboarding-shell';
 import { useConfigureSSE } from '../hooks/use-configure-sse';
 
 interface ConfigureData {
@@ -22,31 +24,40 @@ export function ProgressStep({ configureData, onComplete }: ProgressStepProps) {
   const { configLogs, configComplete } = useConfigureSSE({ configureData, onComplete });
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-[var(--surface-2)] p-4">
-      <Card padding="lg" className="w-full max-w-md border border-[var(--rail)]">
-        <div className="text-center mb-6">
-          <div className="text-lg font-semibold text-[var(--text)] mb-1">Configuring your platform</div>
-          <div className="text-sm text-[var(--text-muted)]">This takes about a minute.</div>
-        </div>
-        <div className="space-y-2 mb-6">
-          {configLogs.map((log, i) => (
-            <div key={i} className="flex items-center gap-2 text-sm">
-              <span className={`flex-shrink-0 ${log.ok ? 'text-[var(--success)]' : 'text-[var(--danger)]'}`}>
-                {log.ok ? '' : ''}
-              </span>
-              <span className={log.ok ? 'text-[var(--text-muted)]' : 'text-[var(--danger)]'}>
-                {log.text}
-              </span>
-            </div>
-          ))}
-          {!configComplete && (
-            <div className="flex items-center gap-2 text-sm text-[var(--text-muted)]">
-              <Spinner size="sm" />
-              <span>Processing…</span>
-            </div>
-          )}
-        </div>
-      </Card>
-    </div>
+    <OnboardingShell
+      title="Configuring your platform"
+      subtitle="This usually takes about a minute."
+    >
+      <div className="space-y-2.5">
+        {configLogs.map((log, i) => (
+          <div key={i} className="flex items-start gap-2.5 text-sm">
+            <HugeiconsIcon
+              icon={log.ok ? Tick02Icon : AlertCircleIcon}
+              size={16}
+              className={`flex-shrink-0 mt-0.5 ${
+                log.ok ? 'text-[var(--success)]' : 'text-[var(--danger)]'
+              }`}
+            />
+            <span className={log.ok ? 'text-[var(--text-muted)]' : 'text-[var(--danger)]'}>
+              {log.text}
+            </span>
+          </div>
+        ))}
+        {!configComplete && (
+          <div className="flex items-center gap-2.5 text-sm text-[var(--text-muted)] pt-1">
+            <Spinner size="sm" />
+            <span>Processing…</span>
+          </div>
+        )}
+        {configComplete && (
+          <div className="pt-3 flex justify-center">
+            <Badge variant="success">
+              <HugeiconsIcon icon={Tick02Icon} size={12} />
+              Configuration complete
+            </Badge>
+          </div>
+        )}
+      </div>
+    </OnboardingShell>
   );
 }

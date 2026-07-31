@@ -7,6 +7,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/).
 ## [Unreleased]
 
 ### Changed
+- feat(dashboard): login page redesign — extracted into 8 components (auth-page-shell, auth-method-tabs, password-form, magic-code-form, login-error-banner, platform-auth-badge), all under 150 lines; handlers in use-login-form hook
+- feat(dashboard): onboarding page redesign — extracted into 6 components (onboarding-shell, form-field, auth-method-selector, password-fields, basic-config-fields), all under 150 lines
+- feat(dashboard): add an accessible light/dark theme toggle to the login card and persist the selection in localStorage (`apps/dashboard/src/app/login/login-theme-toggle.tsx`, `apps/dashboard/src/app/login/page.client.tsx`, `apps/dashboard/src/app/login/components/auth-page-shell.tsx`)
 - fix(dashboard): login page — server component fetches auth method server-side so SSR renders correct form immediately; CORS issue bypassed via dashboard API proxy route at /api/v1/installation/status
 - fix(dashboard): login page uses local /logo.svg instead of broken Cloudinary URL
 - fix(dashboard): login page shows "Platform auth: Password" badge when method is configured; hides tab strip entirely
