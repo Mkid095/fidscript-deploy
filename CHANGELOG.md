@@ -8,6 +8,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
 ### Changed
 - refactor(dashboard): split oversized scheduler and domains pages to meet 150-line limit
+- refactor(dashboard): split `apps/dashboard/src/contexts/auth-context.tsx` (281L) into auth-provider.tsx/auth-session.ts/auth-methods.ts/auth-token-utils.ts/auth-types.ts/use-auth.ts (all <150L)
+- refactor(dashboard): split `apps/dashboard/src/types/index.ts` (454L) into domain-specific files under `types/` (all <150L)
+- refactor(dashboard): split `apps/dashboard/src/app/(app)/projects/page.tsx` (961L) into sub-components + use-projects-page hook (all <150L)
+- refactor(dashboard): split `apps/dashboard/src/app/(app)/projects/[projectId]/services/page.tsx` (639L) into services-section-inner/services-header/services-body (all <150L)
+- refactor(dashboard): split `apps/dashboard/src/app/(app)/projects/[projectId]/services/new/page.tsx` (983L) into step-source/step-select/step-configure/step-review + hooks (all <150L)
 
 - `apps/dashboard/src/components/storage/status-badge.tsx` (20L) — added Hugeicons icons (`CheckmarkCircle01Icon` / `MinusCircleIcon`) to status badge, matching UX spec requirement that "a status badge always has label + icon"
 - Split `app/(app)/projects/[projectId]/layout.tsx` (218L) into ANPAS-compliant sub-components:

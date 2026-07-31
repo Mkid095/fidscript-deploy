@@ -6,16 +6,12 @@
  * A 4-step flow with a horizontal Stepper, scrollable form, and a sticky footer.
  */
 import { useRouter } from 'next/navigation';
-import Link from 'next/link';
-import { Button, Stepper } from '@fidscript/ui';
-import type { StepperStep } from '@fidscript/ui';
-import { HugeiconsIcon } from '@hugeicons/react';
-import { ArrowLeft01Icon, ArrowRight01Icon, Upload02Icon } from '@hugeicons/core-free-icons';
 
 import { useAuth } from '@/contexts/auth-context';
 import { useProjectContext } from '@/contexts/project-context';
 import { ToastProvider, useToast } from '@/components/toast-provider';
-import { STEPS } from './new-deploy-utils';
+import { WizardHeader } from './wizard-header';
+import { WizardFooter } from './wizard-footer';
 import { StepSource } from './step-source';
 import { StepSelect } from './step-select';
 import { StepConfigure } from './step-configure';
@@ -23,8 +19,6 @@ import { StepReview } from './step-review';
 import { useNewDeploy } from './use-new-deploy';
 import { useGithubRepos } from './use-githubRepos';
 import { useArchiveUpload } from './use-archive-upload';
-
-const STEPS_FOR_STEPPER: StepperStep[] = STEPS.map(s => ({ label: s.label }));
 
 export default function NewDeploymentPageWrapper() {
   const { project } = useProjectContext();
@@ -50,25 +44,18 @@ function NewDeploymentPage({ project }: { project: NonNullable<ReturnType<typeof
   const github = useGithubRepos({ getSdk, sourceType: newDeploy.sourceType, onShowToast: showToast });
   const archive = useArchiveUpload({ project, onShowToast: showToast });
 
+  function handleStepClick(i: number) {
+    if (i <= Math.max(...newDeploy.completed, newDeploy.stepIndex)) newDeploy.continue();
+  }
+
   return (
     <div className="min-h-full flex flex-col">
-      {/* Header */}
-      <div className="px-4 sm:px-6 lg:px-8 pt-6 pb-4 border-b border-[var(--rail)]">
-        <div className="max-w-2xl mx-auto">
-          <Link href={`/projects/${project.id}/services`}
-            className="inline-flex items-center gap-1.5 text-xs text-[var(--text-muted)] hover:text-[var(--text-muted)] transition-colors mb-3">
-            <HugeiconsIcon icon={ArrowLeft01Icon} size={12} /> Back to services
-          </Link>
-          <h1 className="text-xl font-bold text-[var(--text)]">New deployment</h1>
-          <p className="sm:hidden mt-2 text-xs text-[var(--text-muted)]">
-            Step {newDeploy.stepIndex + 1} of {STEPS.length}: <span className="font-medium">{STEPS[newDeploy.stepIndex].label}</span>
-          </p>
-          <div className="hidden sm:block mt-4">
-            <Stepper steps={STEPS_FOR_STEPPER} current={newDeploy.stepIndex} completed={newDeploy.completed}
-              onStepClick={i => i <= Math.max(...newDeploy.completed, newDeploy.stepIndex) && newDeploy.continue()} />
-          </div>
-        </div>
-      </div>
+      <WizardHeader
+        projectId={project.id}
+        stepIndex={newDeploy.stepIndex}
+        completed={newDeploy.completed}
+        onStepClick={handleStepClick}
+      />
 
       {/* Scrollable form */}
       <div className="flex-1 overflow-y-auto px-4 sm:px-6 lg:px-8 py-6 pb-32">
@@ -78,48 +65,33 @@ function NewDeploymentPage({ project }: { project: NonNullable<ReturnType<typeof
           )}
           {newDeploy.stepIndex === 1 && (
             <StepSelect
-              sourceType={newDeploy.sourceType}
-              githubStatus={github.status}
-              repos={github.repos}
-              repoPage={github.repoPage}
-              repoHasMore={github.repoHasMore}
-              repoLoading={github.repoLoading}
-              repoSearch={github.repoSearch}
-              selectedRepo={github.selectedRepo}
-              branches={github.branches}
-              branchLoading={github.branchLoading}
-              selectedBranch={github.selectedBranch}
+              sourceType={newDeploy.sourceType} githubStatus={github.status}
+              repos={github.repos} repoPage={github.repoPage} repoHasMore={github.repoHasMore}
+              repoLoading={github.repoLoading} repoSearch={github.repoSearch}
+              selectedRepo={github.selectedRepo} branches={github.branches}
+              branchLoading={github.branchLoading} selectedBranch={github.selectedBranch}
               manualGitUrl={newDeploy.manualGitUrl}
-              archiveFile={archive.archiveFile}
-              uploadedArchive={archive.uploadedArchive}
+              archiveFile={archive.archiveFile} uploadedArchive={archive.uploadedArchive}
               uploadingArchive={archive.uploadingArchive}
-              onSelectRepo={github.selectRepo}
-              onClearRepo={github.clearRepo}
+              onSelectRepo={github.selectRepo} onClearRepo={github.clearRepo}
               onLoadMoreRepos={() => github.loadRepos(github.repoPage + 1, true)}
-              onRepoSearchChange={github.setRepoSearch}
-              onBranchSelect={github.setSelectedBranch}
+              onRepoSearchChange={github.setRepoSearch} onBranchSelect={github.setSelectedBranch}
               onManualUrlChange={newDeploy.setManualGitUrl}
               onConnectGithub={github.connect}
               onArchiveChange={archive.setArchiveFile}
               onUploadArchive={archive.uploadArchive}
               onReplaceArchive={archive.replaceArchive}
-              onShowToast={showToast ?? (() => {})}
+              onShowToast={showToast}
             />
           )}
           {newDeploy.stepIndex === 2 && (
             <StepConfigure
-              sourceType={newDeploy.sourceType}
-              gitUrl={newDeploy.gitUrl}
-              branch={newDeploy.effectiveBranch}
-              repoName={newDeploy.repoName}
-              dockerfilePath={newDeploy.dockerfilePath}
-              credentials={newDeploy.credentials}
-              selectedRepo={github.selectedRepo}
-              buildPlan={newDeploy.buildPlan}
-              detecting={newDeploy.detecting}
-              detectError={newDeploy.detectError}
-              envText={newDeploy.envText}
-              showAdvanced={newDeploy.showAdvanced}
+              sourceType={newDeploy.sourceType} gitUrl={newDeploy.gitUrl}
+              branch={newDeploy.effectiveBranch} repoName={newDeploy.repoName}
+              dockerfilePath={newDeploy.dockerfilePath} credentials={newDeploy.credentials}
+              selectedRepo={github.selectedRepo} buildPlan={newDeploy.buildPlan}
+              detecting={newDeploy.detecting} detectError={newDeploy.detectError}
+              envText={newDeploy.envText} showAdvanced={newDeploy.showAdvanced}
               onDockerfileChange={newDeploy.setDockerfilePath}
               onCredentialsChange={newDeploy.setCredentials}
               onEnvTextChange={newDeploy.setEnvText}
@@ -131,8 +103,7 @@ function NewDeploymentPage({ project }: { project: NonNullable<ReturnType<typeof
           )}
           {newDeploy.stepIndex === 3 && (
             <StepReview
-              sourceType={newDeploy.sourceType}
-              gitUrl={newDeploy.gitUrl}
+              sourceType={newDeploy.sourceType} gitUrl={newDeploy.gitUrl}
               selectedRepo={github.selectedRepo}
               effectiveBranch={newDeploy.effectiveBranch}
               archiveFile={archive.archiveFile}
@@ -147,24 +118,14 @@ function NewDeploymentPage({ project }: { project: NonNullable<ReturnType<typeof
         </div>
       </div>
 
-      {/* Sticky footer */}
-      <div className="fixed bottom-0 inset-x-0 border-t border-[var(--rail)] bg-[var(--surface)]/95 backdrop-blur-sm">
-        <div className="max-w-2xl mx-auto px-4 sm:px-6 lg:px-8 py-3 flex items-center justify-between gap-3">
-          <Button variant="ghost" size="sm" onClick={newDeploy.back} disabled={newDeploy.stepIndex === 0}>
-            <HugeiconsIcon icon={ArrowLeft01Icon} size={13} /> Back
-          </Button>
-          {newDeploy.stepIndex < STEPS.length - 1 ? (
-            <Button variant="primary" size="sm" onClick={newDeploy.continue} disabled={!newDeploy.canContinue}>
-              Continue <HugeiconsIcon icon={ArrowRight01Icon} size={13} />
-            </Button>
-          ) : (
-            <Button variant="primary" size="sm" onClick={newDeploy.deploy} loading={newDeploy.submitting} disabled={!newDeploy.canContinue}>
-              <HugeiconsIcon icon={Upload02Icon} size={13} />
-              {newDeploy.submitting ? 'Deploying…' : 'Deploy'}
-            </Button>
-          )}
-        </div>
-      </div>
+      <WizardFooter
+        stepIndex={newDeploy.stepIndex}
+        canContinue={newDeploy.canContinue}
+        submitting={newDeploy.submitting}
+        onBack={newDeploy.back}
+        onContinue={newDeploy.continue}
+        onDeploy={newDeploy.deploy}
+      />
     </div>
   );
 }
