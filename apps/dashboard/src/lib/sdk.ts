@@ -4,29 +4,12 @@
  * The Docker build sets NEXT_PUBLIC_API_URL as a build arg (see
  * apps/dashboard/Dockerfile). At runtime, this is the only place the
  * dashboard reads it — every createFidscript call goes through here.
- *
- * Mock mode: Set NEXT_PUBLIC_USE_MOCK_API=true to use mock data without
- * a backend. This is useful for UI development and testing.
- *
- * To switch to real API: set NEXT_PUBLIC_USE_MOCK_API=false or remove it.
  */
 import { createFidscript, type FidscriptSDK } from '@fidscript-deploy/sdk';
-import { createMockSdk } from '@/mocks/sdk';
-
-// Check for mock mode flag
-const USE_MOCK = process.env.NEXT_PUBLIC_USE_MOCK_API === 'true';
-
-/**
- * Indicates whether the SDK is running in mock mode.
- * In mock mode, all API calls return fake data without HTTP requests.
- */
-export const IS_MOCK_MODE = USE_MOCK;
 
 const RAW_URL = process.env.NEXT_PUBLIC_API_URL;
 
-if (USE_MOCK) {
-  console.info('[sdk] Mock mode enabled — using fake data. Set NEXT_PUBLIC_USE_MOCK_API=false to use real API.');
-} else if (!RAW_URL) {
+if (!RAW_URL) {
   // Surface the error in the browser console early; createFidscript will
   // also throw with the missing baseURL message when actually called.
   console.error('[sdk] NEXT_PUBLIC_API_URL is not set — check the dashboard Docker build args.');
@@ -76,11 +59,6 @@ async function refreshAccessToken(): Promise<string | null> {
 }
 
 export function makeSdk(_apiKey?: string): FidscriptSDK {
-  // In mock mode, always return the mock SDK
-  if (USE_MOCK) {
-    return createMockSdk();
-  }
-
   if (!API_BASE_URL) {
     throw new Error(
       'API base URL is not configured. The dashboard was built without NEXT_PUBLIC_API_URL — ' +
