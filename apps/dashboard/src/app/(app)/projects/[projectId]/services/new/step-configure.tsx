@@ -1,12 +1,11 @@
 // Step 2: Configure — framework detection, env vars, advanced settings
 
 import { Card } from '@fidscript/ui';
-import { HugeiconsIcon } from '@hugeicons/react';
-import { Settings01Icon, ArrowRight01Icon } from '@hugeicons/core-free-icons';
 
 import type { SourceType, BuildPlan } from './new-deploy-utils';
 import { BuildPreview } from './build-preview';
 import { EnvVarsSection } from './env-vars-section';
+import { AdvancedSettings } from './advanced-settings';
 
 interface StepConfigureProps {
   sourceType: SourceType;
@@ -62,34 +61,16 @@ export function StepConfigure({
         parsedCount={Object.keys(parsedEnvVars).length} projectSlug={onProjectSlug} />
 
       {/* Advanced settings */}
-      <div className="border-t border-[var(--rail)] pt-4">
-        <button type="button" onClick={onToggleAdvanced}
-          className="flex items-center gap-1.5 text-xs text-[var(--text-muted)] hover:text-[var(--text-muted)] transition-colors">
-          <HugeiconsIcon icon={Settings01Icon} size={13} />
-          Advanced settings
-          <span className={`transition-transform ${showAdvanced ? 'rotate-90' : ''}`}><HugeiconsIcon icon={ArrowRight01Icon} size={10} /></span>
-        </button>
-        {showAdvanced && (
-          <div className="mt-3 space-y-3">
-            <div>
-              <label className="block text-xs font-medium text-[var(--text-muted)] mb-1.5 uppercase tracking-wider">
-                Dockerfile path <span className="text-[var(--text-dim)] normal-case font-normal">(overrides auto-detect)</span>
-              </label>
-              <Input value={dockerfilePath} onChange={e => onDockerfileChange(e.target.value)} placeholder="./Dockerfile"
-                className="bg-[var(--surface-2)] border border-[var(--rail)] text-[var(--text)]" />
-            </div>
-            {sourceType === 'git' && !selectedRepo && (
-              <div>
-                <label className="block text-xs font-medium text-[var(--text-muted)] mb-1.5 uppercase tracking-wider">
-                  Credentials <span className="text-[var(--text-dim)] normal-case font-normal">(for private repos)</span>
-                </label>
-                <Input value={credentials} onChange={e => onCredentialsChange(e.target.value)} placeholder="Deploy key or user:token"
-                  className="bg-[var(--surface-2)] border border-[var(--rail)] text-[var(--text)]" />
-              </div>
-            )}
-          </div>
-        )}
-      </div>
+      <AdvancedSettings
+        show={showAdvanced}
+        sourceType={sourceType}
+        dockerfilePath={dockerfilePath}
+        credentials={credentials}
+        selectedRepo={selectedRepo}
+        onDockerfileChange={onDockerfileChange}
+        onCredentialsChange={onCredentialsChange}
+        onToggle={onToggleAdvanced}
+      />
 
       {/* Build preview */}
       <BuildPreview sourceType={sourceType} gitUrl={gitUrl} branch={branch} repoName={repoName}

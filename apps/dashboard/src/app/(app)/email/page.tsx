@@ -3,24 +3,12 @@
 import type { EmailDomain } from '@fidscript-deploy/sdk';
 import { useEffect, useState } from 'react';
 import { Button, Card, EmptyState, Spinner } from '@fidscript/ui';
-import Link from 'next/link';
 
 import type { Project } from '@/types';
 import { useAuth } from '@/contexts/auth-context';
 import { useShellProjectId } from '@/contexts/project-context';
 import { CreateDomainModal } from './create-domain-modal';
-
-const STATUS_COLORS: Record<string, string> = {
-  PENDING:  'bg-[var(--rail)] text-[var(--text-muted)]',
-  VERIFIED: 'bg-blue-900 text-[var(--accent)]',
-  ACTIVE:   'bg-emerald-900 text-[var(--success)]',
-  FAILED:   'bg-red-900 text-[var(--danger)]',
-};
-
-const VERIFY_COLORS: Record<string, string> = {
-  true:  'bg-emerald-900 text-[var(--success)]',
-  false: 'bg-[var(--rail)] text-[var(--text-muted)]',
-};
+import { DomainCard } from './domain-card';
 
 export default function EmailPage() {
   const { getSdk } = useAuth();
@@ -81,16 +69,11 @@ export default function EmailPage() {
       <div className="flex items-center justify-between mb-6">
         <div>
           <h1 className="text-xl font-bold text-[var(--text)] mb-1">Email</h1>
-          <p className="text-sm text-[var(--text-muted)]">
-            {domains.length} domain{domains.length !== 1 ? 's' : ''}
-          </p>
+          <p className="text-sm text-[var(--text-muted)]">{domains.length} domain{domains.length !== 1 ? 's' : ''}</p>
         </div>
-        <Button variant="primary" size="sm" onClick={() => setShowAdd(true)}>
-          Add Domain
-        </Button>
+        <Button variant="primary" size="sm" onClick={() => setShowAdd(true)}>Add Domain</Button>
       </div>
 
-      {/* Project selector — hidden when the project shell already chose a project */}
       {!shellProjectId && (
         <div className="mb-6">
           <label className="block text-xs text-[var(--text-muted)] mb-1">Project</label>
@@ -118,39 +101,13 @@ export default function EmailPage() {
           <EmptyState
             title="No email domains"
             description="Add a domain to start managing email for this project."
-            action={
-              <Button variant="primary" size="sm" onClick={() => setShowAdd(true)}>
-                Add Domain
-              </Button>
-            }
+            action={<Button variant="primary" size="sm" onClick={() => setShowAdd(true)}>Add Domain</Button>}
           />
         </Card>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
           {domains.map(domain => (
-            <Link key={domain.id} href={`/email/${domain.id}`} className="no-underline">
-              <div className="rounded-lg border border-[var(--rail)] bg-[var(--surface-2)] p-5 cursor-pointer transition-colors duration-150 hover:border-[var(--accent)]">
-                <div className="flex items-start justify-between mb-3">
-                  <div>
-                    <h3 className="text-sm font-semibold text-[var(--text)] mb-0.5">{domain.domain}</h3>
-                    <p className="text-xs text-[var(--text-muted)] font-mono">{domain.id.slice(0, 12)}…</p>
-                  </div>
-                  <span className={`text-xs px-2 py-0.5 rounded-full capitalize ${STATUS_COLORS[domain.status ?? 'UNKNOWN'] ?? 'bg-[var(--rail)] text-[var(--text-muted)]'}`}>
-                    {domain.status ?? 'UNKNOWN'}
-                  </span>
-                </div>
-                <div className="flex flex-wrap items-center gap-2">
-                  {(['dkim', 'spf', 'dmarc', 'mx'] as const).map((rec) => (
-                    <span key={rec} className="flex items-center gap-1">
-                      <span className="text-xs text-[var(--text-muted)] capitalize">{rec}:</span>
-                      <span className={`text-xs px-2 py-0.5 rounded-full capitalize ${VERIFY_COLORS[String(domain[`${rec}Verified`])]}`}>
-                        {domain[`${rec}Verified`] ? '✓' : '✗'}
-                      </span>
-                    </span>
-                  ))}
-                </div>
-              </div>
-            </Link>
+            <DomainCard key={domain.id} domain={domain} />
           ))}
         </div>
       )}
