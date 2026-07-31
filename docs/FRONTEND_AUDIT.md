@@ -2,7 +2,30 @@
 
 > **Purpose:** Living source of truth for all frontend work. Every page, component, and gap is tracked here.
 > Updated per session. Teammates mark items DONE and note what was changed.
-> Last updated: 2026-07-31
+> Last updated: 2026-07-31 (session 2 — massive split complete)
+
+## Sessions Complete
+
+### Session 1 — Phase 1+2 (commits afebff0, 5eea220)
+- Mocks deleted (sdk.ts −1,807L, data.ts −1,246L)
+- auth-context split (281→11L thin shell + providers/hooks)
+- types/index.ts split (454→36L + domain types)
+- onboarding split (482→76L + 6 step components)
+- register magic code handler fixed (was empty function)
+
+### Session 2 — Phase 3+4 (commits 5699337, 6c0b890)
+- scheduler/page split (850→job-list-header/content/stats/page)
+- projects/page split (961→project-card/form/skeleton + page)
+- email/[domain]/page split (688→overview/mailboxes/aliases/catchall tabs)
+- platform/email split (584→compose/message-list/message-detail/mailbox-list/page)
+- services/page and services/new split into step components
+- domains/page split (796→list-header/content/cloudflare-oauth/handlers)
+- projects/[id]/sections/settings split into settings tabs
+- storage/status-badge fixed (added Hugeicons per UX spec)
+- projects/[id]/layout split
+- SQL editor duplicates deleted (sql-editor.tsx, log-viewer.tsx)
+- setup wizard split with Cloudflare credential helper link added
+- onboarding hooks refactored
 
 ---
 
@@ -12,7 +35,7 @@
 |---|---|
 | Mock data in frontend | ✅ **CLEAN** — zero mock imports anywhere |
 | SDK wiring | ✅ All pages use real `@fidscript-deploy/sdk` |
-| ANPAS 150-line cap | 🔴 **33 pages** + **unknown components** still over limit |
+| ANPAS 150-line cap | 🟡 **In progress** — 15 pages over 150L remain |
 | Auth BaaS UI | 🚫 **MISSING** — backend exists, no frontend |
 | Centralized styles | 🚫 No central design tokens file |
 | Mobile responsiveness | 🟡 Partial — sidebar exists, mobile-tab-bar exists |
