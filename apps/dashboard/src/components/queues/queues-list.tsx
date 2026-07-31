@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { Icon } from '@iconify/react';
-import { Button } from '@fidscript-deploy/ui';
+import { Button } from '@fidscript/ui';
 import { useAuth } from '@/contexts/auth-context';
 import { useShellProjectId } from '@/contexts/project-context';
 import { useQueuesRealtime } from './use-queues-realtime';

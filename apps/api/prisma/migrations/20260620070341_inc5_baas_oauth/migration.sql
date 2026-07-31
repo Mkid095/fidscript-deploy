@@ -16,7 +16,7 @@
 CREATE TYPE "projects.AuthProviderName" AS ENUM ('GOOGLE', 'GITHUB');
 
 -- CreateTable
-CREATE TABLE "projects.auth_providers" (
+CREATE TABLE IF NOT EXISTS "projects.auth_providers" (
     "id" TEXT NOT NULL,
     "project_id" TEXT NOT NULL,
     "provider" "projects.AuthProviderName" NOT NULL,
@@ -32,7 +32,7 @@ CREATE TABLE "projects.auth_providers" (
 );
 
 -- CreateTable
-CREATE TABLE "projects.app_oauth_accounts" (
+CREATE TABLE IF NOT EXISTS "projects.app_oauth_accounts" (
     "id" TEXT NOT NULL,
     "app_user_id" TEXT NOT NULL,
     "project_id" TEXT NOT NULL,

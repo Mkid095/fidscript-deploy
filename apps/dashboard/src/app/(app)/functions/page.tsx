@@ -4,7 +4,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { HugeiconsIcon } from '@hugeicons/react';
 import { Add01Icon, FunctionIcon } from '@hugeicons/core-free-icons';
-import { Button, Spinner } from '@fidscript-deploy/ui';
+import { Button, Spinner } from '@fidscript/ui';
 
 import { useAuth } from '@/contexts/auth-context';
 import { useShellProjectId } from '@/contexts/project-context';

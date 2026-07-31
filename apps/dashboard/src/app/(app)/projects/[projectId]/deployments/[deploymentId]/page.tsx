@@ -3,7 +3,7 @@
 import { useEffect, useState, useCallback } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { Modal } from '@fidscript-deploy/ui';
+import { Modal } from '@fidscript/ui';
 import { HugeiconsIcon } from '@hugeicons/react';
 import { ArrowLeftIcon } from '@hugeicons/core-free-icons';
 

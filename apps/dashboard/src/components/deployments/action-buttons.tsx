@@ -1,6 +1,6 @@
 'use client';
 
-import { Button } from '@fidscript-deploy/ui';
+import { Button } from '@fidscript/ui';
 import { HugeiconsIcon } from '@hugeicons/react';
 import {
   StopCircleIcon,

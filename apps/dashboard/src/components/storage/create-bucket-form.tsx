@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { Icon } from '@iconify/react';
-import { Card, Button, Input } from '@fidscript-deploy/ui';
+import { Card, Button, Input } from '@fidscript/ui';
 import type { Bucket } from './bucket';
 import type { StorageProviderType } from '@/types';
 

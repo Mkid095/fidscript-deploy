@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
-import { Button, Modal } from '@fidscript-deploy/ui';
+import { Button, Modal } from '@fidscript/ui';
 
 import { useAuth } from '@/contexts/auth-context';
 import type { Project } from '@/types';

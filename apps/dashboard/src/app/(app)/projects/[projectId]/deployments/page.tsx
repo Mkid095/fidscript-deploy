@@ -2,7 +2,7 @@
 
 import { useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
-import { Spinner } from '@fidscript-deploy/ui';
+import { Spinner } from '@fidscript/ui';
 
 // The F05 project dashboard shell renders the deployments section via `?section=deployments`.
 // We keep that pattern but expose a clean path-segment URL for the sidebar — this client

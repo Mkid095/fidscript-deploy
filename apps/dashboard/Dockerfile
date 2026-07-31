@@ -1,49 +1,32 @@
 # syntax=docker/dockerfile:1
 #
 # FIDScript Deploy — Dashboard (Next.js, standalone output)
-# Build context MUST be the monorepo root.
-# Required build args (set at install time by docker-compose):
+# Build context MUST be the monorepo root at /home/ken/fidscript-deploy.
+#
+# Build strategy: `next build` runs LOCALLY first (outside Docker) with
+# NODE_OPTIONS='--max-old-space-size=4096' to avoid in-container OOM.
+# This Dockerfile is SINGLE-STAGE — it only copies the pre-built output.
+# No pnpm install, no next build inside Docker.
+#
+# Required env at build time (for reference — values are baked into the JS bundle
+# at local build time, so these don't functionally change the output):
 #   NEXT_PUBLIC_PLATFORM_DOMAIN  — e.g. deploy.fidscript.com
-#   NEXT_PUBLIC_API_URL          — e.g. https://deploy.fidscript.com/api
-# These are baked into the JS bundle at build time. There is no hardcoded
-# default — running without them is a build configuration error.
+#   NEXT_PUBLIC_API_URL         — e.g. https://deploy.fidscript.com/api
 #
-# Example:
-#   docker build \
-#     --build-arg NEXT_PUBLIC_PLATFORM_DOMAIN=deploy.fidscript.com \
-#     --build-arg NEXT_PUBLIC_API_URL=https://deploy.fidscript.com/api \
-#     -f apps/dashboard/Dockerfile -t docker-dashboard .
-#
-# Multi-stage: installs + `next build` (output: 'standalone'), then a slim
-# non-root runtime running the standalone server.
-
-FROM node:20-bookworm-slim AS build
-ARG NEXT_PUBLIC_PLATFORM_DOMAIN
-ARG NEXT_PUBLIC_API_URL
-ENV NEXT_PUBLIC_PLATFORM_DOMAIN=${NEXT_PUBLIC_PLATFORM_DOMAIN}
-ENV NEXT_PUBLIC_API_URL=${NEXT_PUBLIC_API_URL}
-RUN corepack enable && corepack prepare pnpm@9.0.0 --activate
-WORKDIR /app
-
-COPY . .
-RUN pnpm install --frozen-lockfile
-# turbo respects dependsOn:["^build"] — builds @fidscript/ui, @fidscript/sdk and
-# @fidscript/types (their dist/) BEFORE the dashboard, so `next build` can
-# resolve them. A bare `pnpm --filter ... build` skips deps and fails with
-# "Module not found: Can't resolve '@fidscript/sdk'" in a clean build context.
-RUN npx turbo build --filter=@fidscript/dashboard
+# Runtime env (passed by compose, control how the Node server starts):
+#   PORT=3001, HOSTNAME=0.0.0.0 — baked into standalone server.js
 
 FROM node:20-bookworm-slim AS runtime
 ENV NODE_ENV=production PORT=3001 HOSTNAME=0.0.0.0
 WORKDIR /app
 
-# Standalone bundles a minimal node_modules + server.js mirroring the monorepo
-# layout (apps/dashboard/server.js). Static assets are copied alongside so the
-# server can serve them from ./apps/dashboard/.next/static.
-COPY --from=build /app/apps/dashboard/.next/standalone ./
-COPY --from=build /app/apps/dashboard/.next/static ./apps/dashboard/.next/static
-# Server pages (compiled app routes) — needed for Next.js App Router
-COPY --from=build /app/apps/dashboard/.next/server ./apps/dashboard/.next/server
+# Copy pre-built standalone output directly from the build context (monorepo).
+# The standalone/ directory and .next/ tree are produced by `next build` running
+# locally on the host before this docker build runs.
+COPY apps/dashboard/.next/standalone ./
+COPY apps/dashboard/.next/static ./apps/dashboard/.next/static
+COPY apps/dashboard/.next/server ./apps/dashboard/.next/server
+COPY apps/dashboard/public ./apps/dashboard/public
 
 RUN chown -R node:node /app
 USER node

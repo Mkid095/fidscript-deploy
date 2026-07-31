@@ -15,7 +15,7 @@ import {
   ArrowRight01Icon,
 } from '@hugeicons/core-free-icons';
 import { HugeiconsIcon } from '@hugeicons/react';
-import { Button, Card, EmptyState, Input, Modal, Spinner } from '@fidscript-deploy/ui';
+import { Button, Card, EmptyState, Input, Modal, Spinner } from '@fidscript/ui';
 import type { MailboxMessage } from '@fidscript-deploy/sdk';
 
 import { useAuth } from '@/contexts/auth-context';

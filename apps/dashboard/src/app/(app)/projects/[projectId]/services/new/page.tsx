@@ -21,8 +21,8 @@
 import { useEffect, useState, useCallback, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { Button, Card, Input, Spinner, Stepper, Dropzone, Tabs } from '@fidscript-deploy/ui';
-import type { StepperStep } from '@fidscript-deploy/ui';
+import { Button, Card, Input, Spinner, Stepper, Dropzone, Tabs } from '@fidscript/ui';
+import type { StepperStep } from '@fidscript/ui';
 import { HugeiconsIcon } from '@hugeicons/react';
 import {
   ArrowLeft01Icon,

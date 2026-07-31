@@ -14,7 +14,7 @@
  * decrypted values. We mask them by default in the UI and reveal on click.
  */
 import { useEffect, useState, useCallback } from 'react';
-import { Card, Button, Input, Spinner, Modal, Tabs, EmptyState } from '@fidscript-deploy/ui';
+import { Card, Button, Input, Spinner, Modal, Tabs, EmptyState } from '@fidscript/ui';
 import { HugeiconsIcon } from '@hugeicons/react';
 import {
   Settings01Icon,

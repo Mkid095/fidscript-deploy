@@ -29,7 +29,7 @@ import { Delete01Icon, Attachment01Icon } from '@hugeicons/core-free-icons';
  *   "make it work" milestone. (See docs/IMPLEMENTATION_ROADMAP.md F08.)
  */
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { Button, Card, EmptyState, Input, Modal, Spinner } from '@fidscript-deploy/ui';
+import { Button, Card, EmptyState, Input, Modal, Spinner } from '@fidscript/ui';
 import type { PlatformMailboxMessage, PlatformMailboxSummary, StorageBackend } from '@fidscript-deploy/sdk';
 
 import { useAuth } from '@/contexts/auth-context';
@@ -163,7 +163,7 @@ export default function PlatformEmailPage() {
     const newStar = !msg.isStarred;
     setMessages(prev => prev.map(m => m.id === msg.id ? { ...m, isStarred: newStar } : m));
     if (selectedMessage?.id === msg.id) {
-      setSelectedMessage(prev => prev ? { ...prev, isStarred: newStar } : prev);
+      setSelectedMessage((prev: PlatformMailboxMessage | null) => prev ? { ...prev, isStarred: newStar } : prev);
     }
     try {
       await sdk.email.admin.patchMessage(msg.mailbox, msg.id, { isStarred: newStar });

@@ -19,7 +19,7 @@ import { FloppyDiskIcon, SentIcon, CloudIcon, ViewIcon, ViewOffIcon, CheckmarkCi
  * Layout mirrors the existing PlatformEmailPage: 3-column layout.
  */
 import { useCallback, useEffect, useState } from 'react';
-import { Button, Card, Input, Spinner } from '@fidscript-deploy/ui';
+import { Button, Card, Input, Spinner } from '@fidscript/ui';
 import type { StorageBackend, AdminAttachmentConfig } from '@fidscript-deploy/sdk';
 
 import { useAuth } from '@/contexts/auth-context';

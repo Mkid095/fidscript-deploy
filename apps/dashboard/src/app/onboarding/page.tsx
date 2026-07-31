@@ -2,9 +2,9 @@
 
 import { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
-import { Button } from '@fidscript-deploy/ui';
-import { Card } from '@fidscript-deploy/ui';
-import { Spinner } from '@fidscript-deploy/ui';
+import { Button } from '@fidscript/ui';
+import { Card } from '@fidscript/ui';
+import { Spinner } from '@fidscript/ui';
 
 type WizardStep = 'welcome' | 'discovery' | 'configure' | 'progress' | 'complete';
 

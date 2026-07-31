@@ -1,5 +1,5 @@
 -- CreateProjectStorageConfig
-CREATE TABLE "storage"."project_storage_configs" (
+CREATE TABLE IF NOT EXISTS "storage"."project_storage_configs" (
   "id" VARCHAR(36) PRIMARY KEY DEFAULT gen_random_uuid()::text,
   "project_id" VARCHAR(36) NOT NULL,
   "default_provider" VARCHAR(50) NOT NULL DEFAULT 'internal',

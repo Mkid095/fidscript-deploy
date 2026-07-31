@@ -2,7 +2,7 @@
 
 import Image from 'next/image';
 import { Icon } from '@iconify/react';
-import { Card } from '@fidscript-deploy/ui';
+import { Card } from '@fidscript/ui';
 import type { StorageFile } from '@/types';
 
 function formatBytes(bytes: number): string {

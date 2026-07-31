@@ -3,7 +3,7 @@
 
 import { useEffect, useState, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
-import { Card, Button, Input, Spinner, EmptyState, Toast } from '@fidscript-deploy/ui';
+import { Card, Button, Input, Spinner, EmptyState, Toast } from '@fidscript/ui';
 import type { Database } from '@fidscript-deploy/sdk';
 import type { Project } from '@/types';
 import { useAuth } from '@/contexts/auth-context';

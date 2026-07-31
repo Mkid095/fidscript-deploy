@@ -1,10 +1,14 @@
 # Everything that should not enter a Docker build context.
-# The images run their own `pnpm install` + build, so host build artifacts
-# and dependencies must be excluded (keeps context small, avoids stale code).
-**/node_modules
-**/dist
-**/.next
-**/.turbo
+#
+# Build strategy: the monorepo is built LOCALLY (api `nest build`, dashboard
+# `next build` with NODE_OPTIONS=--max-old-space-size=4096). Docker DOES NOT
+# rebuild — its Dockerfile just COPYs the pre-built artifacts (dist/, .next/,
+# node_modules/) and installs OS-level packages. Excluding these from the
+# context would prevent that COPY strategy from working.
+#
+# Therefore we NO LONGER exclude **/dist, **/.next, **/node_modules, **/.turbo.
+# The build context can be large; mitigate by keeping the repo lean and
+# rebuilding the context rarely (only when artifacts change).
 **/coverage
 .git
 .gitignore

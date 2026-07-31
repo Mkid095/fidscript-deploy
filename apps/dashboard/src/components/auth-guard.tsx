@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, type ReactNode } from 'react';
-import { Spinner } from '@fidscript-deploy/ui';
+import { Spinner } from '@fidscript/ui';
 
 import { useAuth } from '@/contexts/auth-context';
 

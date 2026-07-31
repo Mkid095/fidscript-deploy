@@ -4,20 +4,31 @@
 # Build context MUST be the monorepo root:
 #   docker build -f apps/api/Dockerfile -t fidscript-api .
 #
-# Multi-stage: installs + prisma generate + nest build, then a slim non-root
-# runtime carrying only dist + prisma + node_modules.
+# Build strategy: builds happen LOCALLY (api `pnpm --filter @fidscript/api exec nest build`
+# + dashboard `next build` with NODE_OPTIONS=--max-old-space-size=4096). The Docker image
+# does NOT rebuild — it just installs OS packages, runs `prisma generate` against the
+# pre-built client schema, and COPYs the pre-built dist + node_modules from the build
+# context. This avoids in-container OOM on 8GB hosts when building Next.js.
+#
+# Multi-stage: a thin build stage that ONLY runs prisma generate (needs node_modules),
+# then a slim non-root runtime carrying pre-built dist + prisma + node_modules.
 
 FROM node:20-bookworm-slim AS build
 RUN corepack enable && corepack prepare pnpm@9.0.0 --activate
 WORKDIR /app
 
-# Whole repo (node_modules/dist/.next excluded via .dockerignore); frozen lockfile
-# keeps the workspace install reproducible.
-COPY . .
-RUN pnpm install --frozen-lockfile
-# turbo respects dependsOn: ["^build"] — builds all dependencies first, then the API
+# node_modules must be in the build context for prisma generate to resolve.
+# .dockerignore no longer excludes **/node_modules or **/dist (see top-of-file).
+COPY package.json pnpm-lock.yaml pnpm-workspace.yaml .npmrc* ./
+COPY apps/api/package.json ./apps/api/package.json
+COPY packages ./packages
+COPY apps/api/prisma ./apps/api/prisma
+COPY apps/api/dist ./apps/api/dist
+COPY node_modules ./node_modules
+COPY apps/api/node_modules ./apps/api/node_modules
+COPY installer ./installer
+# prisma generate writes to node_modules/@prisma/client and apps/api/node_modules/.prisma.
 RUN pnpm --filter @fidscript/api exec prisma generate
-RUN npx turbo build --filter=@fidscript/api --force
 
 FROM node:20-bookworm-slim AS runtime
 ENV NODE_ENV=production

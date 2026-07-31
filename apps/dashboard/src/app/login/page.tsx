@@ -4,9 +4,9 @@ import { useState, useEffect, useCallback } from 'react';
 import Image from 'next/image';
 import { HugeiconsIcon } from '@hugeicons/react';
 import { Key01Icon, Mail01Icon, LockPasswordIcon } from '@hugeicons/core-free-icons';
-import { Button } from '@fidscript-deploy/ui';
-import { Input } from '@fidscript-deploy/ui';
-import { Card } from '@fidscript-deploy/ui';
+import { Button } from '@fidscript/ui';
+import { Input } from '@fidscript/ui';
+import { Card } from '@fidscript/ui';
 
 import { useAuth } from '@/contexts/auth-context';
 import { MagicCodeInput } from '@/components/auth/magic-code-input';

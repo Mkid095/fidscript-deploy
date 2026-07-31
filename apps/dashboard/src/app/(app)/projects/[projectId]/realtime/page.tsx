@@ -16,7 +16,7 @@ import { HugeiconsIcon } from '@hugeicons/react';
 import {
   FlashIcon, Add01Icon, Delete01Icon, LockKeyIcon, Globe02Icon, RefreshIcon,
 } from '@hugeicons/core-free-icons';
-import { Button, Card, Input, Spinner } from '@fidscript-deploy/ui';
+import { Button, Card, Input, Spinner } from '@fidscript/ui';
 
 import { useProjectContext } from '@/contexts/project-context';
 import { useAuth } from '@/contexts/auth-context';

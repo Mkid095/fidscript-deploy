@@ -1,6 +1,6 @@
 'use client';
 
-import { Badge, Spinner } from '@fidscript-deploy/ui';
+import { Badge, Spinner } from '@fidscript/ui';
 
 interface StatusBadgeProps {
   meta: { label: string; variant: string };

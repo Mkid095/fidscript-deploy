@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { Button, Spinner } from '@fidscript-deploy/ui';
+import { Button, Spinner } from '@fidscript/ui';
 
 import { useAuth } from '@/contexts/auth-context';
 import { relativeTime } from './status-utils';

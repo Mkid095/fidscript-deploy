@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { Icon } from '@iconify/react';
-import { Button } from '@fidscript-deploy/ui';
+import { Button } from '@fidscript/ui';
 
 interface PurgeQueueModalProps {
   queueId: string;

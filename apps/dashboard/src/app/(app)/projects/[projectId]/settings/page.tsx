@@ -2,7 +2,7 @@
 
 import { useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
-import { Spinner } from '@fidscript-deploy/ui';
+import { Spinner } from '@fidscript/ui';
 
 export default function SettingsRoute() {
   const params = useParams();

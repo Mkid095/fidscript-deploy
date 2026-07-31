@@ -11,7 +11,7 @@ CREATE TYPE "InstallationLifecycle" AS ENUM (
 );
 
 -- 2. InstallationStatus singleton
-CREATE TABLE "platform.installation_status" (
+CREATE TABLE IF NOT EXISTS "platform.installation_status" (
   "id" VARCHAR(255) PRIMARY KEY DEFAULT 'installation',
   "lifecycle" "InstallationLifecycle" NOT NULL DEFAULT 'UNCONFIGURED',
   "last_operation_id" VARCHAR(36),
@@ -21,7 +21,7 @@ CREATE TABLE "platform.installation_status" (
 INSERT INTO "platform.installation_status" ("id", "lifecycle") VALUES ('installation', 'UNCONFIGURED');
 
 -- 3. InstallationOperation
-CREATE TABLE "platform.installation_operations" (
+CREATE TABLE IF NOT EXISTS "platform.installation_operations" (
   "id" UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   "type" VARCHAR(50) NOT NULL,
   "status" VARCHAR(20) NOT NULL DEFAULT 'PENDING',
@@ -36,7 +36,7 @@ CREATE TABLE "platform.installation_operations" (
 CREATE INDEX "installation_operations_status_idx" ON "platform.installation_operations" ("status");
 
 -- 4. InstallationSettingsVersion
-CREATE TABLE "platform.installation_settings_versions" (
+CREATE TABLE IF NOT EXISTS "platform.installation_settings_versions" (
   "id" UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   "changed_by" VARCHAR(255),
   "changed_at" TIMESTAMPTZ NOT NULL DEFAULT NOW(),
@@ -46,7 +46,7 @@ CREATE TABLE "platform.installation_settings_versions" (
 );
 
 -- 5. InstallationSettings
-CREATE TABLE "platform.installation_settings" (
+CREATE TABLE IF NOT EXISTS "platform.installation_settings" (
   "id" VARCHAR(255) PRIMARY KEY DEFAULT 'installation',
   "platform_name" VARCHAR(255) NOT NULL DEFAULT 'FIDScript Deploy',
   "platform_domain" VARCHAR(255) NOT NULL,
@@ -66,7 +66,7 @@ CREATE TYPE "CredentialType" AS ENUM (
 );
 
 -- 7. UserCredential
-CREATE TABLE "identity.user_credentials" (
+CREATE TABLE IF NOT EXISTS "identity.user_credentials" (
   "id" UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   "user_id" UUID NOT NULL REFERENCES "identity.users" ("id") ON DELETE CASCADE,
   "type" "CredentialType" NOT NULL,

@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
 import { HugeiconsIcon } from '@hugeicons/react';
 import { Rocket01Icon, UserGroupIcon, LockPasswordIcon, Mail01Icon, Database02Icon, Globe02Icon, Activity01Icon, UserWarning01Icon, RefreshDotIcon } from '@hugeicons/core-free-icons';
-import { Spinner, EmptyState } from '@fidscript-deploy/ui';
+import { Spinner, EmptyState } from '@fidscript/ui';
 
 import type { Project } from '@/types';
 import { useAuth } from '@/contexts/auth-context';

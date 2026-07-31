@@ -4,7 +4,7 @@ import { useEffect, useState, useCallback } from 'react';
 import Link from 'next/link';
 import { useParams } from 'next/navigation';
 import { Icon } from '@iconify/react';
-import { Card, Button, Input, Spinner } from '@fidscript-deploy/ui';
+import { Card, Button, Input, Spinner } from '@fidscript/ui';
 import type { ProjectStorageConfig } from '@/types';
 import { useAuth } from '@/contexts/auth-context';
 

@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { Button, Input, Modal } from '@fidscript-deploy/ui';
+import { Button, Input, Modal } from '@fidscript/ui';
 import type { Function_ } from '@/types';
 
 interface CreateFunctionModalProps {

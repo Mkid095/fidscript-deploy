@@ -2,8 +2,8 @@
 
 import { useState } from 'react';
 import { Icon } from '@iconify/react';
-import { Modal } from '@fidscript-deploy/ui';
-import { Button, Input } from '@fidscript-deploy/ui';
+import { Modal } from '@fidscript/ui';
+import { Button, Input } from '@fidscript/ui';
 
 interface NewFolderModalProps {
   isOpen: boolean;

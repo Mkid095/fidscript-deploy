@@ -2,7 +2,7 @@
 
 import { useEffect } from 'react';
 import { useParams, useSearchParams, useRouter } from 'next/navigation';
-import { Spinner } from '@fidscript-deploy/ui';
+import { Spinner } from '@fidscript/ui';
 
 // Top-level /functions/[id] redirects into the project shell so the sidebar stays visible.
 // Without a project context it falls back to a minimal standalone page.

@@ -6,7 +6,7 @@
   "scripts": {
     "dev": "rm -f nul && next dev -p 3000",
     "dev:mock": "rm -f nul && NEXT_PUBLIC_USE_MOCK_API=true next dev -p 3000",
-    "build": "next build",
+    "build": "node -e \"process.env.NODE_OPTIONS='--max-old-space-size=4096'; require('child_process').execSync('next build', {stdio:'inherit'})\"",
     "start": "next start",
     "lint": "next lint",
     "typecheck": "tsc --noEmit",

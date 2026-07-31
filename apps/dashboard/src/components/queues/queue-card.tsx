@@ -2,7 +2,7 @@
 
 import { useRouter } from 'next/navigation';
 import { Icon } from '@iconify/react';
-import { Card } from '@fidscript-deploy/ui';
+import { Card } from '@fidscript/ui';
 
 export interface Queue {
   id: string;

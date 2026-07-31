@@ -22,7 +22,12 @@ done
 
 cd /app/apps/api
 
-# Migrations go through DIRECT_URL (postgres direct), not pgbouncer.
+# Optional: skip migrations entirely (for fresh installs where DB is already seeded).
+# Set SKIP_MIGRATIONS=1 in docker-compose environment to enable.
+if [ "$SKIP_MIGRATIONS" = "1" ]; then
+    echo "[entrypoint] SKIP_MIGRATIONS=1 — bypassing migrate deploy"
+else
+    # Migrations go through DIRECT_URL (postgres direct), not pgbouncer.
 # pgbouncer in transaction mode conflicts with Prisma's prepared statements.
 # Use ? to append query params, not & — otherwise they become part of the database name.
 export DATABASE_URL="${DIRECT_URL}?lock_timeout=30000&statement_timeout=60000"
@@ -50,7 +55,8 @@ case "$_status" in
         echo "[entrypoint] Running Prisma migrations..."
         npx prisma migrate deploy
         ;;
-esac
+    esac
+fi
 
 echo "[entrypoint] Seeding database..."
 npx prisma db seed || echo "[entrypoint] Seed skipped (admin may already exist)"

@@ -6,7 +6,7 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { HugeiconsIcon } from '@hugeicons/react';
 import { ChevronRightIcon, PanelLeftIcon } from '@hugeicons/core-free-icons';
-import { Spinner } from '@fidscript-deploy/ui';
+import { Spinner } from '@fidscript/ui';
 import { ThemeToggle } from '@/components/theme/theme-toggle';
 
 import type { Project } from '@/types';

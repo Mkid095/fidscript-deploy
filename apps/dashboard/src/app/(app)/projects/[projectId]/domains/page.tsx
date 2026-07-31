@@ -4,7 +4,7 @@ import type { Domain, DnsConnection, DomainType } from '@fidscript-deploy/sdk';
 import { useEffect, useState, useCallback, useRef } from 'react';
 import { useParams } from 'next/navigation';
 import Link from 'next/link';
-import { Button, Card, Input, Modal, Spinner, EmptyState, Toast, Badge } from '@fidscript-deploy/ui';
+import { Button, Card, Input, Modal, Spinner, EmptyState, Toast, Badge } from '@fidscript/ui';
 
 import { useAuth } from '@/contexts/auth-context';
 

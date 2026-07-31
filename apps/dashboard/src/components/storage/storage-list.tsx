@@ -3,7 +3,7 @@
 import { useEffect, useState, useCallback } from 'react';
 import Link from 'next/link';
 import { Icon } from '@iconify/react';
-import { Card, Button, Spinner } from '@fidscript-deploy/ui';
+import { Card, Button, Spinner } from '@fidscript/ui';
 import { useAuth } from '@/contexts/auth-context';
 import { Banner } from './banner';
 import { BucketCard } from './bucket-card';

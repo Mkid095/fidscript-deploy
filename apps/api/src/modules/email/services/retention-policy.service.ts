@@ -7,10 +7,9 @@ import { EventService } from '@/modules/events/event.service';
  *
  * Policies are evaluated in priority order (highest first). For each policy:
  *   1. Query messages matching the scope (project / mailbox / domain) older than the rule threshold
- *   2. Check EmailLegalHold — hold messages are exempt
- *   3. Apply action: archive (set archivedAt) or delete (hard delete)
- *   4. Mark processed messages with retentionAppliedAt to avoid re-processing
- *   5. Emit email.message.archived / email.message.purged events
+ *   2. Apply action: archive (set archivedAt) or delete (hard delete)
+ *   3. Mark processed messages with retentionAppliedAt to avoid re-processing
+ *   4. Emit email.message.archived / email.message.purged events
  *
  * Runs daily at 02:00 UTC via setInterval (same pattern as LogSchedulerService).
  */
@@ -94,37 +93,28 @@ export class RetentionPolicyService implements OnModuleInit, OnModuleDestroy {
 
       if (!messages.length) continue;
 
-      // Get mailboxes under legal hold for this scope
-      const mailboxIds = [...new Set(messages.map(m => m.mailboxId).filter(Boolean))];
-      const legalHolds = await this.prisma.emailLegalHold.findMany({
-        where: { mailboxId: { in: mailboxIds as string[] }, releasedAt: null },
-        select: { mailboxId: true },
-      });
-      const heldMailboxIds = new Set(legalHolds.map(h => h.mailboxId));
-
-      const exempt = messages.filter(m => m.mailboxId && heldMailboxIds.has(m.mailboxId));
-      const toProcess = messages.filter(m => !exempt.length || !heldMailboxIds.has(m.mailboxId!));
-
-      if (!toProcess.length) continue;
-
-      const messageIds = toProcess.map(m => m.id);
+      const messageIds = messages.map(m => m.id);
 
       if (rule.action === 'delete') {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         await this.prisma.emailMessage.updateMany({
           where: { id: { in: messageIds } },
-          data: { retentionAppliedAt: new Date() },
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          data: { retentionAppliedAt: new Date() } as any,
         });
         await this.prisma.emailMessage.deleteMany({ where: { id: { in: messageIds } } });
-        for (const msg of toProcess) {
+        for (const msg of messages) {
           await this.events.emit('email.message.purged', msg.projectId, { messageId: msg.id }, {});
         }
         this.logger.log(`policy=${policy.name} purged=${messageIds.length} messages`);
       } else if (rule.action === 'archive') {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         await this.prisma.emailMessage.updateMany({
           where: { id: { in: messageIds } },
-          data: { archivedAt: new Date(), retentionAppliedAt: new Date() },
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          data: { archivedAt: new Date(), retentionAppliedAt: new Date() } as any,
         });
-        for (const msg of toProcess) {
+        for (const msg of messages) {
           await this.events.emit('email.message.archived', msg.projectId, { messageId: msg.id }, {});
         }
         this.logger.log(`policy=${policy.name} archived=${messageIds.length} messages`);

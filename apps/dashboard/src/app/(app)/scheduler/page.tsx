@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { Button, Card, EmptyState, Input, Modal, Spinner } from '@fidscript-deploy/ui';
+import { Button, Card, EmptyState, Input, Modal, Spinner } from '@fidscript/ui';
 import { HugeiconsIcon } from '@hugeicons/react';
 import { AlarmClockIcon, CheckmarkCircle02Icon, AlertCircleIcon, ArrowRight01Icon } from '@hugeicons/core-free-icons';
 import { useRouter } from 'next/navigation';

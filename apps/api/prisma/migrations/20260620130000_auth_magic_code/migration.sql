@@ -6,7 +6,7 @@
 -- (AUTH-05/06, which queried `where user.email === token`). See
 -- docs/phases/frontend/f02-auth.md.
 
-CREATE TABLE "identity.magic_codes" (
+CREATE TABLE IF NOT EXISTS "identity.magic_codes" (
     "id" TEXT NOT NULL,
     "email" VARCHAR(255) NOT NULL,
     "code_hash" VARCHAR(255) NOT NULL,

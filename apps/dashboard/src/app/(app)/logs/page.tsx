@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
-import { Button, Card, EmptyState, Spinner } from '@fidscript-deploy/ui';
+import { Button, Card, EmptyState, Spinner } from '@fidscript/ui';
 import { useSearchParams } from 'next/navigation';
 
 import { useAuth } from '@/contexts/auth-context';

@@ -17,7 +17,7 @@ import {
   EyeIcon,
   EyeOffIcon,
 } from '@hugeicons/core-free-icons';
-import { Button, Card, EmptyState, Input, RightPanel, Spinner } from '@fidscript-deploy/ui';
+import { Button, Card, EmptyState, Input, RightPanel, Spinner } from '@fidscript/ui';
 import { AuthError, RateLimitError } from '@fidscript-deploy/sdk';
 
 import { useAuth } from '@/contexts/auth-context';

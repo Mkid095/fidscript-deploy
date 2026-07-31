@@ -6,7 +6,7 @@ import { mockDomainRepairPolicy, mockDomainRepairRuns, mockDomainIncidents } fro
 import { useEffect, useState, useCallback, useRef } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { Button, Card, Badge, Spinner, Toast, Modal } from '@fidscript-deploy/ui';
+import { Button, Card, Badge, Spinner, Toast, Modal } from '@fidscript/ui';
 
 import { useAuth } from '@/contexts/auth-context';
 

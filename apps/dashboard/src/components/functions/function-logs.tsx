@@ -1,7 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useState } from 'react';
-import { Spinner } from '@fidscript-deploy/ui';
+import { Spinner } from '@fidscript/ui';
 
 import { LogViewer } from '@/components/deployments/log-viewer';
 import type { FidscriptSDK } from '@fidscript-deploy/sdk';

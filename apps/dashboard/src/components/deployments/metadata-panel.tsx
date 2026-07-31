@@ -1,6 +1,6 @@
 'use client';
 
-import { Card } from '@fidscript-deploy/ui';
+import { Card } from '@fidscript/ui';
 import { GitBranchIcon, GitCommitIcon, Image01Icon, ExternalLinkIcon } from '@hugeicons/core-free-icons';
 
 import type { Deployment } from '@/types';

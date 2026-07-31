@@ -6,7 +6,7 @@ ALTER TABLE "monitoring.alerts" ADD COLUMN "fired_at" TIMESTAMPTZ;
 ALTER TABLE "monitoring.alerts" ALTER COLUMN "status" SET DEFAULT 'pending';
 
 -- Notification: one row per delivery attempt on a firing alert.
-CREATE TABLE "monitoring.notifications" (
+CREATE TABLE IF NOT EXISTS "monitoring.notifications" (
     "id" TEXT NOT NULL,
     "alert_id" TEXT NOT NULL,
     "channel_id" TEXT NOT NULL,

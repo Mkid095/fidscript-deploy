@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { Icon } from '@iconify/react';
-import { Button } from '@fidscript-deploy/ui';
+import { Button } from '@fidscript/ui';
 
 type ViewMode = 'list' | 'grid';
 

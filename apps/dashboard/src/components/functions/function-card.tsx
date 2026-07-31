@@ -4,7 +4,7 @@ import Link from 'next/link';
 import { useState } from 'react';
 import { HugeiconsIcon } from '@hugeicons/react';
 import { Delete01Icon } from '@hugeicons/core-free-icons';
-import { Button, Spinner } from '@fidscript-deploy/ui';
+import { Button, Spinner } from '@fidscript/ui';
 
 import { FunctionStatusBadge } from './function-status-badge';
 import { ConfirmDialog } from '@/components/deployments/confirm-dialog';
