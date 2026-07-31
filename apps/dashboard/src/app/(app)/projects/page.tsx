@@ -1,139 +1,74 @@
 'use client';
 
 import { useEffect, useState, useCallback, useRef } from 'react';
-import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { HugeiconsIcon } from '@hugeicons/react';
 import {
   Add01Icon,
-  Edit01Icon,
-  Delete01Icon,
-  Folder01Icon,
   Search01Icon,
   Refresh01Icon,
   AlertCircleIcon,
   Time01Icon,
-  ArchiveRestoreIcon,
   EyeIcon,
   EyeOffIcon,
 } from '@hugeicons/core-free-icons';
-import { Button, Card, EmptyState, Input, RightPanel, Spinner } from '@fidscript/ui';
+import { Button, Card, EmptyState, Input, RightPanel } from '@fidscript/ui';
 import { AuthError, RateLimitError } from '@fidscript-deploy/sdk';
 
 import { useAuth } from '@/contexts/auth-context';
 import type { Project } from '@/types';
-
-// Must match the Prisma ProjectType enum exactly (API rejects anything else).
-// FRONTEND | BACKEND | WORKER | CRON | DOCKER | STATIC
-type ProjectType = 'frontend' | 'backend' | 'worker' | 'cron' | 'docker' | 'static';
-const PROJECT_TYPES: ProjectType[] = ['frontend', 'backend', 'worker', 'cron', 'docker', 'static'];
-
-// Universal status palette per ADR-036 principle 7.
-// Maps every ProjectStatus value to a visible style.
-const STATUS_PALETTE: Record<string, string> = {
-  ACTIVE: 'bg-emerald-900/30 text-[var(--success)] border-[var(--success)]/30/60',
-  HEALTHY: 'bg-emerald-900/30 text-[var(--success)] border-[var(--success)]/30/60',
-  RUNNING: 'bg-[var(--accent)]/10 text-[var(--accent)] border-blue-800/60',
-  PENDING: 'bg-yellow-900/30 text-[var(--warning)] border-yellow-800/60',
-  WARNING: 'bg-orange-900/30 text-[var(--warning)] border-orange-800/60',
-  SUSPENDED: 'bg-yellow-900/30 text-[var(--warning)] border-yellow-800/60',
-  FAILED: 'bg-red-900/30 text-[var(--danger)] border-[var(--danger)]/30/60',
-  STOPPED: 'bg-[var(--rail)] text-[var(--text-muted)] border-[var(--rail-light)]',
-  CREATING: 'bg-[var(--accent)]/10 text-[var(--accent)] border-blue-800/60',
-  ARCHIVED: 'bg-purple-900/30 text-purple-300 border-purple-800/60',
-};
-
-function slugify(name: string): string {
-  return name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
-}
-
-/** Unicode NFC normalization — ensures "café" and "café" match the same way. */
-function normalize(str: string): string {
-  return str.trim().toLowerCase().normalize('NFC');
-}
-function relativeTime(iso?: string): string {
-  if (!iso) return '—';
-  const t = new Date(iso).getTime();
-  if (Number.isNaN(t)) return '—';
-  const diff = Date.now() - t;
-  if (diff < 60_000) return 'Just now';
-  if (diff < 3_600_000) return `${Math.floor(diff / 60_000)} min ago`;
-  if (diff < 86_400_000) return `${Math.floor(diff / 3_600_000)} hr ago`;
-  if (diff < 604_800_000) return `${Math.floor(diff / 86_400_000)} days ago`;
-  return new Date(iso).toLocaleDateString();
-}
+import { canEdit, canDelete, normalize, relativeTime, slugify } from './projects-utils';
+import { ProjectCard, DeletedProjectCard } from './project-card';
+import { SkeletonGrid } from './projects-skeleton';
+import { ProjectForm } from './project-form';
 
 export default function ProjectsPage() {
   const { user, getSdk } = useAuth();
   const router = useRouter();
   const searchParams = useSearchParams();
-  // Debounce timer for URL sync — avoids flooding the URL on rapid keystrokes.
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  // ── Data state ─────────────────────────────────────────────────────────
   const [projects, setProjects] = useState<Project[]>([]);
   const [loading, setLoading] = useState(true);
-  const [loadingInitial, setLoadingInitial] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [showDeleted, setShowDeleted] = useState(false);
   const [deletedProjects, setDeletedProjects] = useState<Project[]>([]);
   const [search, setSearch] = useState(searchParams.get('q') ?? '');
-  // Rate-limit countdown shown in the load error banner.
   const [rateLimitCountdown, setRateLimitCountdown] = useState<number | null>(null);
   const abortRef = useRef<AbortController | null>(null);
   const rateLimitTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
-  // ── Right-panel state (ADR-036 principle 12) ──────────────────────────
-  // ponytail: one open at a time. The previous <Modal> design had three
-  // modals with separate state; collapsing to a single "active panel" state
-  // is fewer lines and impossible-to-misuse (only one is open at a time).
   const [activePanel, setActivePanel] = useState<'create' | 'edit' | 'delete' | 'purge' | null>(null);
   const [editing, setEditing] = useState<Project | null>(null);
   const [deleting, setDeleting] = useState<Project | null>(null);
 
-  // Create fields — name-only: type is set by the server, user edits it later if they want
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
   const [creating, setCreating] = useState(false);
   const [createError, setCreateError] = useState<string | null>(null);
-  const slug = slugify(name);
 
-  // Edit fields
   const [editName, setEditName] = useState('');
-  const [editType, setEditType] = useState<ProjectType>('frontend');
+  const [editType, setEditType] = useState<'frontend' | 'backend' | 'worker' | 'cron' | 'docker' | 'static'>('frontend');
   const [editDescription, setEditDescription] = useState('');
   const [savingEdit, setSavingEdit] = useState(false);
   const [editError, setEditError] = useState<string | null>(null);
 
-  // Delete fields — destructive confirm requires an explicit "I understand" tick
   const [deleteAck, setDeleteAck] = useState(false);
   const [deletingNow, setDeletingNow] = useState(false);
   const [deleteError, setDeleteError] = useState<string | null>(null);
 
-  // Purge (permanent delete) state
   const [purgeProject, setPurgeProject] = useState<Project | null>(null);
   const [purgeCode, setPurgeCode] = useState('');
   const [purgeRequested, setPurgeRequested] = useState(false);
   const [purgeVerifying, setPurgeVerifying] = useState(false);
   const [purgeError, setPurgeError] = useState<string | null>(null);
 
-  // API contract: PATCH requires admin/owner; DELETE requires owner only.
-  // Developer can see + navigate; cannot edit or delete.
-  // role is returned uppercase from auth.me() (e.g. 'ADMIN') and lowercase from
-  // the projects list (e.g. 'owner') — normalize both to lowercase for comparison.
-  const canEdit = (p?: Project) =>
-    ([user?.role, p?.role].some(r => r?.toLowerCase() === 'owner') ||
-    [user?.role, p?.role].some(r => r?.toLowerCase() === 'admin'));
-  // Delete is owner-only (API enforces this server-side too).
-  const canDelete = (p?: Project) =>
-    [user?.role, p?.role].some(r => r?.toLowerCase() === 'owner');
+  const slug = slugify(name);
 
-  // ── Load ───────────────────────────────────────────────────────────────
+  // Load
   const load = useCallback(async () => {
-    // Cancel any in-flight request before starting a new one.
     abortRef.current?.abort();
     abortRef.current = new AbortController();
-    // Clear any previous rate-limit countdown.
     if (rateLimitTimerRef.current) {
       clearInterval(rateLimitTimerRef.current);
       rateLimitTimerRef.current = null;
@@ -149,15 +84,10 @@ export default function ProjectsPage() {
         sdk.projects.list(),
         sdk.projects.list({ includeDeleted: true }),
       ]);
-      const activeList = activeData.projects ?? [];
-      const deletedList = deletedData.projects ?? [];
-      setProjects(activeList.filter((p: Project) => !p.deletedAt));
-      setDeletedProjects(deletedList.filter((p: Project) => !!p.deletedAt));
+      setProjects((activeData.projects ?? []).filter((p: Project) => !p.deletedAt));
+      setDeletedProjects((deletedData.projects ?? []).filter((p: Project) => !!p.deletedAt));
     } catch (err) {
-      if (err instanceof AuthError) {
-        router.replace('/login');
-        return;
-      }
+      if (err instanceof AuthError) { router.replace('/login'); return; }
       if (err instanceof RateLimitError && err.retryAfterMs) {
         isRateLimit = true;
         let remaining = Math.ceil(err.retryAfterMs / 1000);
@@ -173,72 +103,41 @@ export default function ProjectsPage() {
         setLoadError(`Rate limited. Retrying in ${remaining}s…`);
         return;
       }
-      if (!isRateLimit) {
-        setLoadError(err instanceof Error ? err.message : 'Failed to load projects');
-      }
+      if (!isRateLimit) setLoadError(err instanceof Error ? err.message : 'Failed to load projects');
     } finally {
       setLoading(false);
-      setLoadingInitial(false);
     }
   }, [getSdk, router]);
 
-  // Cleanup on unmount: cancel any pending request and clear rate-limit timer.
   useEffect(() => {
     return () => {
       abortRef.current?.abort();
-      if (rateLimitTimerRef.current) {
-        clearInterval(rateLimitTimerRef.current);
-        rateLimitTimerRef.current = null;
-      }
+      if (rateLimitTimerRef.current) { clearInterval(rateLimitTimerRef.current); rateLimitTimerRef.current = null; }
     };
   }, []);
 
   useEffect(() => { load(); }, [load]);
 
-  // ── Create ─────────────────────────────────────────────────────────────
-  function openCreate() {
-    setName(''); setDescription(''); setCreateError(null);
-    setActivePanel('create');
-  }
+  // Create
   async function handleCreate() {
     if (!name.trim()) return;
     setCreating(true);
     setCreateError(null);
     try {
       const sdk = getSdk();
-      const created = await sdk.projects.create({
-        name: name.trim(),
-        description: description.trim() || undefined,
-        type: 'frontend',
-      });
+      const created = await sdk.projects.create({ name: name.trim(), description: description.trim() || undefined, type: 'frontend' });
       setActivePanel(null);
-      // ponytail: jump straight into the new project — the user just created
-      // it, they want to see it, not bounce back to the list.
       router.push(`/projects/${created.id}`);
     } catch (err) {
-      if (err instanceof AuthError) {
-        router.replace('/login');
-        return;
-      }
-      if (err instanceof RateLimitError) {
-        setCreateError('Rate limited. Please wait a moment and try again.');
-        return;
-      }
+      if (err instanceof AuthError) { router.replace('/login'); return; }
+      if (err instanceof RateLimitError) { setCreateError('Rate limited. Please wait a moment and try again.'); return; }
       setCreateError(err instanceof Error ? err.message : 'Failed to create project');
     } finally {
       setCreating(false);
     }
   }
 
-  // ── Edit ───────────────────────────────────────────────────────────────
-  function openEdit(p: Project) {
-    setEditing(p);
-    setEditName(p.name);
-    setEditType((p.type as ProjectType) ?? 'frontend');
-    setEditDescription(p.description ?? '');
-    setEditError(null);
-    setActivePanel('edit');
-  }
+  // Edit
   async function handleSaveEdit() {
     if (!editing || !editName.trim()) return;
     setSavingEdit(true);
@@ -246,35 +145,19 @@ export default function ProjectsPage() {
     try {
       const sdk = getSdk();
       const trimmedDesc = editDescription.trim();
-      await sdk.projects.update(editing.id, {
-        name: editName.trim(),
-        type: editType,
-        ...(trimmedDesc ? { description: trimmedDesc } : {}),
-      });
+      await sdk.projects.update(editing.id, { name: editName.trim(), type: editType, ...(trimmedDesc ? { description: trimmedDesc } : {}) });
       setActivePanel(null);
       await load();
     } catch (err) {
-      if (err instanceof AuthError) {
-        router.replace('/login');
-        return;
-      }
-      if (err instanceof RateLimitError) {
-        setEditError('Rate limited. Please wait a moment and try again.');
-        return;
-      }
+      if (err instanceof AuthError) { router.replace('/login'); return; }
+      if (err instanceof RateLimitError) { setEditError('Rate limited. Please wait a moment and try again.'); return; }
       setEditError(err instanceof Error ? err.message : 'Failed to save');
     } finally {
       setSavingEdit(false);
     }
   }
 
-  // ── Delete ─────────────────────────────────────────────────────────────
-  function openDelete(p: Project) {
-    setDeleting(p);
-    setDeleteAck(false);
-    setDeleteError(null);
-    setActivePanel('delete');
-  }
+  // Delete
   async function handleConfirmDelete() {
     if (!deleting || !deleteAck) return;
     setDeletingNow(true);
@@ -282,34 +165,18 @@ export default function ProjectsPage() {
     try {
       const sdk = getSdk();
       await sdk.projects.delete(deleting.id);
-      // ponytail: removing the project here does NOT cascade to its data
-      // (deployments, env vars, etc.) — the API handles that server-side.
       setActivePanel(null);
       await load();
     } catch (err) {
-      if (err instanceof AuthError) {
-        router.replace('/login');
-        return;
-      }
-      if (err instanceof RateLimitError) {
-        setDeleteError('Rate limited. Please wait a moment and try again.');
-        return;
-      }
+      if (err instanceof AuthError) { router.replace('/login'); return; }
+      if (err instanceof RateLimitError) { setDeleteError('Rate limited. Please wait a moment and try again.'); return; }
       setDeleteError(err instanceof Error ? err.message : 'Failed to delete');
     } finally {
       setDeletingNow(false);
     }
   }
 
-  // ── Purge (permanent delete) ─────────────────────────────────────────
-  function openPurge(p: Project) {
-    setPurgeProject(p);
-    setPurgeCode('');
-    setPurgeRequested(false);
-    setPurgeError(null);
-    setActivePanel('purge');
-  }
-
+  // Purge
   async function handleRequestPurge() {
     if (!purgeProject) return;
     setPurgeVerifying(true);
@@ -341,89 +208,57 @@ export default function ProjectsPage() {
     }
   }
 
-  // ── Restore ────────────────────────────────────────────────────────
+  // Restore
   async function handleRestore(p: Project) {
-    try {
-      const sdk = getSdk();
-      await sdk.projects.restore(p.id);
-      await load();
-    } catch {}
+    try { const sdk = getSdk(); await sdk.projects.restore(p.id); await load(); } catch {}
   }
 
-  // ── Search handler — debounced URL sync (ADR-036 principle 8) ──────────
+  // Search
   function handleSearchChange(value: string) {
     setSearch(value);
-    // Debounce: update ?q= 300ms after the user stops typing.
     if (debounceRef.current) clearTimeout(debounceRef.current);
     debounceRef.current = setTimeout(() => {
       const params = new URLSearchParams(searchParams.toString());
-      if (value.trim()) {
-        params.set('q', value.trim());
-      } else {
-        params.delete('q');
-      }
+      if (value.trim()) params.set('q', value.trim()); else params.delete('q');
       router.replace(`${location.pathname}?${params.toString()}`, { scroll: false });
     }, 300);
   }
 
-  // ── Filter (locale-aware: NFC Unicode normalization) ─────────────────
+  // Filter
   const q = normalize(search);
   const filtered = q
-    ? projects.filter(p =>
-        normalize(p.name).includes(q) ||
-        normalize(p.slug).includes(q) ||
-        normalize(p.description ?? '').includes(q),
-      )
+    ? projects.filter(p => normalize(p.name).includes(q) || normalize(p.slug).includes(q) || normalize(p.description ?? '').includes(q))
     : projects;
 
   return (
     <div className="max-w-6xl mx-auto">
-      {/* Header — title + search + hero action (ADR-036 principle 5) */}
+      {/* Header */}
       <div className="flex items-center justify-between gap-4 mb-6">
         <div>
           <h1 className="text-xl font-bold text-[var(--text)] mb-1">
             {user?.name ? `Welcome back, ${user.name}` : 'Projects'}
           </h1>
           <p className="text-sm text-[var(--text-muted)]" aria-live="polite">
-            {loading
-              ? 'Loading…'
-              : q
-                ? `${filtered.length} of ${projects.length} project${projects.length !== 1 ? 's' : ''}`
-                : `${projects.length} project${projects.length !== 1 ? 's' : ''}`}
+            {loading ? 'Loading…' : q ? `${filtered.length} of ${projects.length} projects` : `${projects.length} project${projects.length !== 1 ? 's' : ''}`}
           </p>
         </div>
-
         <div className="flex items-center gap-2 flex-1 max-w-md justify-end">
-          {/* Search input — always visible, never behind a button */}
           <div className="relative flex-1 max-w-xs">
             <HugeiconsIcon icon={Search01Icon} size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--text-dim)] pointer-events-none" />
-            <Input
-              value={search}
-              onChange={e => handleSearchChange(e.target.value)}
-              placeholder="Search projects…"
-              aria-label="Search projects"
-              className="pl-9 bg-[var(--surface-2)] border border-[var(--rail)] text-[var(--text)] placeholder:text-[var(--text-dim)]"
-            />
+            <Input value={search} onChange={e => handleSearchChange(e.target.value)} placeholder="Search projects…" aria-label="Search projects"
+              className="pl-9 bg-[var(--surface-2)] border border-[var(--rail)] text-[var(--text)] placeholder:text-[var(--text-dim)]" />
           </div>
           <Button variant="ghost" size="sm" onClick={load} title="Refresh" aria-label="Refresh" disabled={loading}>
             <HugeiconsIcon icon={Refresh01Icon} size={14} />
           </Button>
           {deletedProjects.length > 0 && (
-            <Button
-              variant={showDeleted ? 'secondary' : 'ghost'}
-              size="sm"
-              onClick={() => setShowDeleted(v => !v)}
-              title="Deleted projects"
-              aria-label="Toggle deleted projects"
-            >
+            <Button variant={showDeleted ? 'secondary' : 'ghost'} size="sm" onClick={() => setShowDeleted(v => !v)} title="Deleted projects" aria-label="Toggle deleted projects">
               <HugeiconsIcon icon={showDeleted ? EyeOffIcon : EyeIcon} size={14} />
-              {deletedProjects.length > 0 && (
-                <span className="ml-1 text-xs text-[var(--text-muted)]">{deletedProjects.length}</span>
-              )}
+              {deletedProjects.length > 0 && <span className="ml-1 text-xs text-[var(--text-muted)]">{deletedProjects.length}</span>}
             </Button>
           )}
-          {canEdit() && (
-            <Button variant="primary" size="sm" onClick={openCreate} className="flex items-center gap-1.5">
+          {canEdit(user?.role) && (
+            <Button variant="primary" size="sm" onClick={() => { setName(''); setDescription(''); setCreateError(null); setActivePanel('create'); }} className="flex items-center gap-1.5">
               <HugeiconsIcon icon={Add01Icon} size={14} />
               New project
             </Button>
@@ -434,14 +269,10 @@ export default function ProjectsPage() {
       {loadError && (
         <div className="bg-[var(--danger)]/10 border border-[var(--danger)]/30 rounded-lg p-3 mb-4 text-sm text-[var(--danger)] flex items-center justify-between">
           <span className="flex items-center gap-2">
-            {rateLimitCountdown !== null && (
-              <HugeiconsIcon icon={Time01Icon} size={14} className="text-[var(--warning)] flex-shrink-0" />
-            )}
+            {rateLimitCountdown !== null && <HugeiconsIcon icon={Time01Icon} size={14} className="text-[var(--warning)] flex-shrink-0" />}
             {loadError}
           </span>
-          {!rateLimitCountdown && (
-            <button onClick={load} className="text-xs text-[var(--danger)] hover:text-red-200 underline">Retry</button>
-          )}
+          {!rateLimitCountdown && <button onClick={load} className="text-xs text-[var(--danger)] hover:text-red-200 underline">Retry</button>}
         </div>
       )}
 
@@ -450,513 +281,108 @@ export default function ProjectsPage() {
         <SkeletonGrid />
       ) : projects.length === 0 ? (
         <Card className="border border-[var(--rail)]">
-          <EmptyState
-            icon={<HugeiconsIcon icon={Folder01Icon} size={48} className="text-[var(--text-dim)]" />}
-            title={canEdit() ? 'No projects yet' : 'No projects'}
-            description={canEdit()
-              ? 'Create your first project to start deploying apps, databases, and more.'
-              : 'No projects have been created yet. Contact your project owner to get access.'}
-            action={canEdit() ? (
-              <Button variant="primary" size="sm" onClick={openCreate} className="flex items-center gap-1.5">
-                <HugeiconsIcon icon={Add01Icon} size={14} />
-                Create your first project
+          <EmptyState icon={<HugeiconsIcon icon={Search01Icon} size={48} className="text-[var(--text-dim)]" />}
+            title={canEdit(user?.role) ? 'No projects yet' : 'No projects'}
+            description={canEdit(user?.role) ? 'Create your first project to start deploying apps, databases, and more.' : 'No projects have been created yet. Contact your project owner to get access.'}
+            action={canEdit(user?.role) ? (
+              <Button variant="primary" size="sm" onClick={() => { setName(''); setDescription(''); setCreateError(null); setActivePanel('create'); }} className="flex items-center gap-1.5">
+                <HugeiconsIcon icon={Add01Icon} size={14} /> Create your first project
               </Button>
-            ) : undefined}
-          />
+            ) : undefined} />
         </Card>
       ) : filtered.length === 0 ? (
         <Card className="border border-[var(--rail)]">
-          <EmptyState
-            icon={<HugeiconsIcon icon={Search01Icon} size={48} className="text-[var(--text-dim)]" />}
-            title="No matches"
-            description={`No projects match "${search}".`}
-            action={
-              <Button variant="ghost" size="sm" onClick={() => { setSearch(''); router.replace('/projects', { scroll: false }); }}>
-                Clear search
-              </Button>
-            }
-          />
+          <EmptyState icon={<HugeiconsIcon icon={Search01Icon} size={48} className="text-[var(--text-dim)]" />} title="No matches" description={`No projects match "${search}".`}
+            action={<Button variant="ghost" size="sm" onClick={() => { setSearch(''); router.replace('/projects', { scroll: false }); }}>Clear search</Button>} />
         </Card>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4" aria-live="polite" aria-label="Projects list">
           {filtered.map(project => (
-            <ProjectCard
-              key={project.id}
-              project={project}
+            <ProjectCard key={project.id} project={project}
               onOpen={() => router.push(`/projects/${project.slug}`)}
-              onEdit={canEdit(project) ? () => openEdit(project) : undefined}
-              onDelete={canDelete(project) ? () => openDelete(project) : undefined}
-            />
+              onEdit={canEdit(user?.role, project.role) ? () => { setEditing(project); setEditName(project.name); setEditType(project.type as typeof editType); setEditDescription(project.description ?? ''); setEditError(null); setActivePanel('edit'); } : undefined}
+              onDelete={canDelete(user?.role, project.role) ? () => { setDeleting(project); setDeleteAck(false); setDeleteError(null); setActivePanel('delete'); } : undefined} />
           ))}
         </div>
       )}
 
-      {/* ── Trash section ── */}
+      {/* Trash section */}
       {showDeleted && deletedProjects.length > 0 && (
         <div className="mt-10">
           <div className="flex items-center gap-2 mb-4">
             <h2 className="text-sm font-semibold text-[var(--text-muted)]">Deleted projects</h2>
-            <span className="text-xs text-[var(--text-muted)]">
-              {deletedProjects.length} item{deletedProjects.length !== 1 ? 's' : ''} · purged after 30 days
-            </span>
+            <span className="text-xs text-[var(--text-muted)]">{deletedProjects.length} item{deletedProjects.length !== 1 ? 's' : ''} · purged after 30 days</span>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4" aria-live="polite" aria-label="Deleted projects">
             {deletedProjects.map(project => (
-              <DeletedProjectCard
-                key={project.id}
-                project={project}
-                onRestore={canDelete(project) ? () => handleRestore(project) : undefined}
-                onPurge={canDelete(project) ? () => openPurge(project) : undefined}
-              />
+              <DeletedProjectCard key={project.id} project={project}
+                onRestore={canDelete(user?.role, project.role) ? () => handleRestore(project) : undefined}
+                onPurge={canDelete(user?.role, project.role) ? () => { setPurgeProject(project); setPurgeCode(''); setPurgeRequested(false); setPurgeError(null); setActivePanel('purge'); } : undefined} />
             ))}
           </div>
         </div>
       )}
 
-      {/* ── Right panel: Create ── */}
-      <RightPanel
-        isOpen={activePanel === 'create'}
-        onClose={() => setActivePanel(null)}
-        title="New project"
+      {/* Right panel: Create */}
+      <RightPanel isOpen={activePanel === 'create'} onClose={() => setActivePanel(null)} title="New project"
         subtitle="Pick a name. You can configure everything else from the dashboard."
-        footer={{
-          onCancel: () => setActivePanel(null),
-          onSubmit: handleCreate,
-          submitLabel: 'Create project',
-          loading: creating,
-          submitDisabled: !name.trim(),
-        }}
-      >
-        <ProjectForm
-          name={name} onNameChange={setName}
-          description={description} onDescriptionChange={setDescription}
-          slug={slug}
-          error={createError}
-        />
+        footer={{ onCancel: () => setActivePanel(null), onSubmit: handleCreate, submitLabel: 'Create project', loading: creating, submitDisabled: !name.trim() }}>
+        <ProjectForm name={name} onNameChange={setName} description={description} onDescriptionChange={setDescription} slug={slug} error={createError} />
       </RightPanel>
 
-      {/* ── Right panel: Edit ── */}
-      <RightPanel
-        isOpen={activePanel === 'edit' && !!editing}
-        onClose={() => setActivePanel(null)}
-        title={editing ? `Edit "${editing.name}"` : 'Edit project'}
-        subtitle="Changes save immediately to this project only."
-        footer={{
-          onCancel: () => setActivePanel(null),
-          onSubmit: handleSaveEdit,
-          submitLabel: 'Save changes',
-          loading: savingEdit,
-          submitDisabled: !editName.trim(),
-        }}
-      >
-        <ProjectForm
-          name={editName} onNameChange={setEditName}
-          type={editType} onTypeChange={setEditType}
-          description={editDescription} onDescriptionChange={setEditDescription}
-          slug=""
-          error={editError}
-          descriptionPlaceholder={editing?.description ?? 'What does this project do?'}
-          nameLabel="Project name"
-          showType
-          slugLabel={editing?.slug}
-        />
+      {/* Right panel: Edit */}
+      <RightPanel isOpen={activePanel === 'edit' && !!editing} onClose={() => setActivePanel(null)}
+        title={editing ? `Edit "${editing.name}"` : 'Edit project'} subtitle="Changes save immediately to this project only."
+        footer={{ onCancel: () => setActivePanel(null), onSubmit: handleSaveEdit, submitLabel: 'Save changes', loading: savingEdit, submitDisabled: !editName.trim() }}>
+        {editing && (
+          <ProjectForm name={editName} onNameChange={setEditName} type={editType} onTypeChange={v => setEditType(v)} description={editDescription} onDescriptionChange={setEditDescription}
+            slug="" error={editError} descriptionPlaceholder={editing.description ?? 'What does this project do?'} nameLabel="Project name" showType slugLabel={editing.slug} />
+        )}
       </RightPanel>
 
-      {/* ── Right panel: Delete (destructive) ── */}
-      <RightPanel
-        isOpen={activePanel === 'delete' && !!deleting}
-        onClose={() => setActivePanel(null)}
-        title="Delete project?"
-        footer={{
-          onCancel: () => setActivePanel(null),
-          onSubmit: handleConfirmDelete,
-          submitLabel: 'Delete project',
-          loading: deletingNow,
-          submitDisabled: !deleteAck,
-          submitDanger: true,
-          hideCancel: false,
-        }}
-      >
+      {/* Right panel: Delete */}
+      <RightPanel isOpen={activePanel === 'delete' && !!deleting} onClose={() => setActivePanel(null)} title="Delete project?"
+        footer={{ onCancel: () => setActivePanel(null), onSubmit: handleConfirmDelete, submitLabel: 'Delete project', loading: deletingNow, submitDisabled: !deleteAck, submitDanger: true, hideCancel: false }}>
         {deleting && (
           <div className="space-y-4">
-            <p className="text-sm text-[var(--text-muted)]">
-              You are about to permanently delete <strong className="text-[var(--text)]">{deleting.name}</strong>.
-              This will remove the project and the following data, which cannot be recovered:
-            </p>
+            <p className="text-sm text-[var(--text-muted)]">You are about to permanently delete <strong className="text-[var(--text)]">{deleting.name}</strong>. This will remove the project and all data, which cannot be recovered:</p>
             <ul className="space-y-1.5 text-sm text-[var(--text-muted)] ml-1">
-              <li className="flex items-center gap-2">
-                <HugeiconsIcon icon={AlertCircleIcon} size={14} className="text-[var(--danger)] flex-shrink-0" />
-                Deployments and release history
-              </li>
-              <li className="flex items-center gap-2">
-                <HugeiconsIcon icon={AlertCircleIcon} size={14} className="text-[var(--danger)] flex-shrink-0" />
-                Environment variables and secrets
-              </li>
-              <li className="flex items-center gap-2">
-                <HugeiconsIcon icon={AlertCircleIcon} size={14} className="text-[var(--danger)] flex-shrink-0" />
-                Database instances and backups
-              </li>
-              <li className="flex items-center gap-2">
-                <HugeiconsIcon icon={AlertCircleIcon} size={14} className="text-[var(--danger)] flex-shrink-0" />
-                Storage buckets and uploaded files
-              </li>
-              <li className="flex items-center gap-2">
-                <HugeiconsIcon icon={AlertCircleIcon} size={14} className="text-[var(--danger)] flex-shrink-0" />
-                Email mailboxes, aliases, and messages
-              </li>
-              <li className="flex items-center gap-2">
-                <HugeiconsIcon icon={AlertCircleIcon} size={14} className="text-[var(--danger)] flex-shrink-0" />
-                Custom domains and DNS records
-              </li>
+              {['Deployments and release history', 'Environment variables and secrets', 'Database instances and backups', 'Storage buckets and uploaded files', 'Email mailboxes, aliases, and messages', 'Custom domains and DNS records'].map(item => (
+                <li key={item} className="flex items-center gap-2"><HugeiconsIcon icon={AlertCircleIcon} size={14} className="text-[var(--danger)] flex-shrink-0" /> {item}</li>
+              ))}
             </ul>
             <label className="flex items-start gap-2 pt-3 border-t border-[var(--rail)] cursor-pointer">
-              <input
-                type="checkbox"
-                checked={deleteAck}
-                onChange={e => setDeleteAck(e.target.checked)}
-                className="mt-0.5 w-4 h-4 rounded border-slate-600 bg-[var(--rail)] text-[var(--danger)] focus:ring-[var(--danger)] focus:ring-offset-0"
-              />
-              <span className="text-sm text-[var(--text-muted)]">
-                I understand this will permanently delete <strong className="text-[var(--text)]">{deleting.name}</strong> and all of its data.
-              </span>
+              <input type="checkbox" checked={deleteAck} onChange={e => setDeleteAck(e.target.checked)}
+                className="mt-0.5 w-4 h-4 rounded border-slate-600 bg-[var(--rail)] text-[var(--danger)] focus:ring-[var(--danger)] focus:ring-offset-0" />
+              <span className="text-sm text-[var(--text-muted)]">I understand this will permanently delete <strong className="text-[var(--text)]">{deleting.name}</strong> and all of its data.</span>
             </label>
             {deleteError && <p className="text-sm text-[var(--danger)]">{deleteError}</p>}
           </div>
         )}
       </RightPanel>
 
-      {/* ── Right panel: Purge (permanent delete with verification) ── */}
-      <RightPanel
-        isOpen={activePanel === 'purge' && !!purgeProject}
-        onClose={() => setActivePanel(null)}
-        title="Permanently delete?"
-        footer={{
-          onCancel: () => setActivePanel(null),
-          onSubmit: purgeRequested ? handleConfirmPurge : handleRequestPurge,
-          submitLabel: purgeRequested ? 'Delete permanently' : 'Send verification code',
-          loading: purgeVerifying,
-          submitDisabled: purgeRequested && !purgeCode.trim(),
-          submitDanger: true,
-          hideCancel: false,
-        }}
-      >
+      {/* Right panel: Purge */}
+      <RightPanel isOpen={activePanel === 'purge' && !!purgeProject} onClose={() => setActivePanel(null)} title="Permanently delete?"
+        footer={{ onCancel: () => setActivePanel(null), onSubmit: purgeRequested ? handleConfirmPurge : handleRequestPurge,
+          submitLabel: purgeRequested ? 'Delete permanently' : 'Send verification code', loading: purgeVerifying, submitDisabled: purgeRequested && !purgeCode.trim(), submitDanger: true, hideCancel: false }}>
         {purgeProject && (
           <div className="space-y-4">
             {!purgeRequested ? (
               <>
-                <p className="text-sm text-[var(--text-muted)]">
-                  Permanently deleting <strong className="text-[var(--text)]">{purgeProject.name}</strong> cannot be undone.
-                  A verification code will be sent to your email address.
-                </p>
-                <div className="bg-amber-950/30 border border-[var(--warning)]/30/50 rounded-lg p-3 text-xs text-[var(--warning)]">
-                  This project will be permanently removed from the system along with all deployments, databases, and storage.
-                </div>
+                <p className="text-sm text-[var(--text-muted)]">Permanently deleting <strong className="text-[var(--text)]">{purgeProject.name}</strong> cannot be undone. A verification code will be sent to your email address.</p>
+                <div className="bg-amber-950/30 border border-[var(--warning)]/30/50 rounded-lg p-3 text-xs text-[var(--warning)]">This project will be permanently removed along with all deployments, databases, and storage.</div>
               </>
             ) : (
               <>
-                <p className="text-sm text-[var(--text-muted)]">
-                  A verification code was sent to your email. Enter it below to confirm permanent deletion of{' '}
-                  <strong className="text-[var(--text)]">{purgeProject.name}</strong>.
-                </p>
-                <div>
-                  <Input
-                    label="Verification code"
-                    value={purgeCode}
-                    onChange={e => setPurgeCode(e.target.value)}
-                    placeholder="000000"
-                    autoFocus
-                    className="bg-[var(--surface-2)] border border-[var(--rail)] text-[var(--text)] placeholder:text-[var(--text-dim)] font-mono text-center text-lg tracking-widest"
-                  />
-                </div>
-                <p className="text-xs text-[var(--text-muted)]">
-                  Didn&apos;t receive it?{' '}
-                  <button
-                    onClick={handleRequestPurge}
-                    disabled={purgeVerifying}
-                    className="text-[var(--accent)] hover:text-[var(--accent)] underline disabled:opacity-50"
-                  >
-                    Resend
-                  </button>
-                </p>
+                <p className="text-sm text-[var(--text-muted)]">A verification code was sent to your email. Enter it below to confirm permanent deletion of <strong className="text-[var(--text)]">{purgeProject.name}</strong>.</p>
+                <Input label="Verification code" value={purgeCode} onChange={e => setPurgeCode(e.target.value)} placeholder="000000" autoFocus className="bg-[var(--surface-2)] border border-[var(--rail)] text-[var(--text)] placeholder:text-[var(--text-dim)] font-mono text-center text-lg tracking-widest" />
+                <p className="text-xs text-[var(--text-muted)]">Didn&apos;t receive it? <button onClick={handleRequestPurge} disabled={purgeVerifying} className="text-[var(--accent)] hover:text-[var(--accent)] underline disabled:opacity-50">Resend</button></p>
               </>
             )}
             {purgeError && <p className="text-sm text-[var(--danger)]">{purgeError}</p>}
           </div>
         )}
       </RightPanel>
-    </div>
-  );
-}
-
-/* ── Deleted project card (trash section) ── */
-interface DeletedProjectCardProps {
-  project: Project;
-  onRestore?: () => void;
-  onPurge?: () => void;
-}
-
-function DeletedProjectCard({ project, onRestore, onPurge }: DeletedProjectCardProps) {
-  const deletedAt = project.deletedAt ? relativeTime(project.deletedAt) : null;
-
-  return (
-    <div className="group relative rounded-lg border border-red-900/30 bg-red-950/10 opacity-75">
-      <div className="p-5">
-        <div className="flex items-start justify-between gap-3 mb-2">
-          <div className="min-w-0 flex-1">
-            <h3 className="text-sm font-semibold text-[var(--text-muted)] truncate">
-              {project.name}
-            </h3>
-            <p className="text-xs text-[var(--text-muted)] font-mono truncate mt-0.5">
-              {project.slug}
-            </p>
-          </div>
-        </div>
-
-        <div className="flex items-center gap-2 mb-3">
-          <span className="text-xs px-2 py-0.5 rounded-full border bg-red-900/30 text-[var(--danger)] border-[var(--danger)]/30/50">
-            Deleted {deletedAt}
-          </span>
-        </div>
-
-        {project.description && (
-          <p className="text-xs text-[var(--text-muted)] line-clamp-2 mb-3 min-h-[2rem]">
-            {project.description}
-          </p>
-        )}
-
-        <div className="flex items-center justify-between pt-2 border-t border-red-900/30">
-          <span className="text-xs px-2 py-0.5 rounded bg-red-950/50 text-[var(--text-muted)] border border-red-900/30 capitalize">
-            {project.type}
-          </span>
-          <span className="text-xs text-[var(--text-dim)]">Permanently removed</span>
-        </div>
-      </div>
-
-      {/* Restore + Purge actions */}
-      {(onRestore || onPurge) && (
-        <div className="absolute top-2 right-2 flex items-center gap-1">
-          {onRestore && (
-            <button
-              type="button"
-              onClick={e => { e.preventDefault(); e.stopPropagation(); onRestore(); }}
-              className="p-1.5 rounded-md text-[var(--text-muted)] hover:text-[var(--success)] hover:bg-[var(--rail)] transition-colors"
-              aria-label={`Restore ${project.name}`}
-              title="Restore"
-            >
-              <HugeiconsIcon icon={ArchiveRestoreIcon} size={14} />
-            </button>
-          )}
-          {onPurge && (
-            <button
-              type="button"
-              onClick={e => { e.preventDefault(); e.stopPropagation(); onPurge(); }}
-              className="p-1.5 rounded-md text-[var(--text-muted)] hover:text-[var(--danger)] hover:bg-[var(--rail)] transition-colors"
-              aria-label={`Permanently delete ${project.name}`}
-              title="Delete permanently"
-            >
-              <HugeiconsIcon icon={Delete01Icon} size={14} />
-            </button>
-          )}
-        </div>
-      )}
-    </div>
-  );
-}
-
-/* ── Project card (always-visible actions per user request) ── */
-interface ProjectCardProps {
-  project: Project;
-  onOpen: () => void;
-  onEdit?: () => void;
-  onDelete?: () => void;
-}
-
-function ProjectCard({ project, onOpen, onEdit, onDelete }: ProjectCardProps) {
-  // Per ADR-036 principle 1: card answers "what is it, is it healthy, can I open it"
-  const lastActive = project.lastActivityAt ?? project.updatedAt;
-  const statusKey = (project.status ?? '').toUpperCase();
-  const statusColor = STATUS_PALETTE[statusKey] ?? 'bg-[var(--rail)] text-[var(--text-muted)] border-[var(--rail-light)]';
-
-  return (
-    <div className="group relative rounded-lg border border-[var(--rail)] bg-[var(--surface-2)] hover:border-[var(--accent)]/50 transition-colors">
-      {/* Main clickable area — slug-based URL per ADR-036 principle 6 */}
-      <Link
-        href={`/projects/${project.slug}`}
-        className="block p-5 no-underline"
-      >
-        <div className="flex items-start justify-between gap-3 mb-2">
-          <div className="min-w-0 flex-1">
-            <h3 className="text-sm font-semibold text-[var(--text)] truncate group-hover:text-[var(--accent)] transition-colors">
-              {project.name}
-            </h3>
-            <p className="text-xs text-[var(--text-muted)] font-mono truncate mt-0.5">
-              {project.slug}
-            </p>
-          </div>
-        </div>
-
-        {/* Health indicator: status pill + last-active line (ADR-036 principle 1) */}
-        <div className="flex items-center gap-2 mb-3">
-          <span className={`text-xs px-2 py-0.5 rounded-full border capitalize ${statusColor}`}>
-            {project.status?.toLowerCase() ?? 'unknown'}
-          </span>
-          {lastActive && (
-            <span className="text-xs text-[var(--text-muted)] flex items-center gap-1">
-              <HugeiconsIcon icon={Time01Icon} size={12} className="text-[var(--text-dim)]" />
-              {relativeTime(lastActive)}
-            </span>
-          )}
-        </div>
-
-        {project.description && (
-          <p className="text-xs text-[var(--text-muted)] line-clamp-2 mb-3 min-h-[2rem]">
-            {project.description}
-          </p>
-        )}
-
-        <div className="flex items-center justify-between pt-2 border-t border-[var(--rail)]">
-          <span className="text-xs px-2 py-0.5 rounded bg-[var(--rail)] text-[var(--text-muted)] border border-[var(--rail-light)] capitalize">
-            {project.type}
-          </span>
-          <span className="text-xs text-[var(--text-dim)]">Open →</span>
-        </div>
-      </Link>
-
-      {/* Always-visible action buttons (user explicitly requested these not be hover-only) */}
-      {(onEdit || onDelete) && (
-        <div className="absolute top-2 right-2 flex items-center gap-1">
-          {onEdit && (
-            <button
-              type="button"
-              onClick={e => { e.preventDefault(); e.stopPropagation(); onEdit(); }}
-              className="p-1.5 rounded-md text-[var(--text-muted)] hover:text-[var(--accent)] hover:bg-[var(--rail)] transition-colors"
-              aria-label={`Edit ${project.name}`}
-              title="Edit"
-            >
-              <HugeiconsIcon icon={Edit01Icon} size={14} />
-            </button>
-          )}
-          {onDelete && (
-            <button
-              type="button"
-              onClick={e => { e.preventDefault(); e.stopPropagation(); onDelete(); }}
-              className="p-1.5 rounded-md text-[var(--text-muted)] hover:text-[var(--danger)] hover:bg-[var(--rail)] transition-colors"
-              aria-label={`Delete ${project.name}`}
-              title="Delete"
-            >
-              <HugeiconsIcon icon={Delete01Icon} size={14} />
-            </button>
-          )}
-        </div>
-      )}
-    </div>
-  );
-}
-
-/* ── Skeleton cards (ADR-036 principle 15) ── */
-function SkeletonGrid() {
-  return (
-    <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
-      {[0, 1, 2].map(i => (
-        <div key={i} className="rounded-lg border border-[var(--rail)] bg-[var(--surface-2)] p-5 animate-pulse">
-          <div className="h-4 bg-[var(--rail)] rounded w-2/3 mb-2" />
-          <div className="h-3 bg-[var(--rail)] rounded w-1/2 mb-4" />
-          <div className="flex items-center gap-2 mb-3">
-            <div className="h-4 w-16 bg-[var(--rail)] rounded-full" />
-            <div className="h-3 w-20 bg-[var(--rail)] rounded" />
-          </div>
-          <div className="h-3 bg-[var(--rail)] rounded w-full mb-2" />
-          <div className="h-3 bg-[var(--rail)] rounded w-4/5 mb-4" />
-          <div className="flex items-center justify-between pt-2 border-t border-[var(--rail)]">
-            <div className="h-3 w-14 bg-[var(--rail)] rounded" />
-            <div className="h-3 w-10 bg-[var(--rail)] rounded" />
-          </div>
-        </div>
-      ))}
-    </div>
-  );
-}
-
-/* ── Shared form (used by both Create and Edit panels) ── */
-interface ProjectFormProps {
-  name: string;
-  onNameChange: (v: string) => void;
-  description: string;
-  onDescriptionChange: (v: string) => void;
-  slug: string;
-  error: string | null;
-  descriptionPlaceholder?: string;
-  nameLabel?: string;
-  /** Render the type picker — only shown in the Edit panel. */
-  showType?: boolean;
-  type?: ProjectType;
-  onTypeChange?: (v: ProjectType) => void;
-  /** Read-only real slug — shown in Edit panel. When absent the live slug preview is shown instead. */
-  slugLabel?: string;
-}
-
-function ProjectForm({
-  name, onNameChange,
-  description, onDescriptionChange, slug, error,
-  descriptionPlaceholder = 'What does this project do?',
-  nameLabel = 'Project name',
-  showType,
-  type = 'frontend',
-  onTypeChange,
-  slugLabel,
-}: ProjectFormProps) {
-  return (
-    <div className="space-y-4">
-      <div>
-        <Input
-          label={nameLabel}
-          value={name}
-          onChange={e => onNameChange(e.target.value)}
-          placeholder="my-app"
-          autoFocus
-          className="bg-[var(--surface-2)] border border-[var(--rail)] text-[var(--text)] placeholder:text-[var(--text-dim)]"
-        />
-        {name && slugLabel ? (
-          // Edit panel: show the real server-assigned slug, read-only.
-          <p className="text-xs text-[var(--text-muted)] mt-1.5">
-            Slug: <span className="font-mono text-[var(--text-muted)]">{slugLabel}</span>
-          </p>
-        ) : name && slug ? (
-          // Create panel: show a live preview (server appends a random suffix to this).
-          <p className="text-xs text-[var(--text-muted)] mt-1.5">
-            Slug preview: <span className="font-mono text-[var(--text-muted)]">{slug}</span>
-            <span className="text-[var(--text-dim)]"> (a suffix will be added)</span>
-          </p>
-        ) : null}
-      </div>
-
-      {showType && onTypeChange && (
-        <div>
-          <label className="block text-xs text-[var(--text-muted)] mb-1.5">Type</label>
-          <select
-            value={type}
-            onChange={e => onTypeChange(e.target.value as ProjectType)}
-            className="w-full bg-[var(--surface-2)] border border-[var(--rail)] text-[var(--text)] rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-[var(--warning)]"
-          >
-            {PROJECT_TYPES.map(t => (
-              <option key={t} value={t}>{t}</option>
-            ))}
-          </select>
-        </div>
-      )}
-
-      <div>
-        <label className="block text-xs text-[var(--text-muted)] mb-1.5">Description</label>
-        <textarea
-          value={description}
-          onChange={e => onDescriptionChange(e.target.value)}
-          placeholder={descriptionPlaceholder}
-          rows={3}
-          className="w-full bg-[var(--surface-2)] border border-[var(--rail)] text-[var(--text)] placeholder:text-[var(--text-dim)] rounded-lg px-3 py-2 text-sm resize-none focus:outline-none focus:border-[var(--warning)]"
-        />
-      </div>
-
-      {error && <p className="text-sm text-[var(--danger)]">{error}</p>}
     </div>
   );
 }

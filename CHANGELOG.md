@@ -35,3 +35,14 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/).
 - `apps/dashboard/src/app/(app)/projects/[projectId]/domains/[domainId]/` — split 1,037-line `page.tsx` into 7 sub-components (overview-tab, dns-tab, health-tab, email-tab, ssl-tab, wizard-tab, repairs-tab), each self-managing its own data fetching; page.tsx is now a 74-line thin shell
 
 - Initial ANPAS bootstrap — 2026-07-30
+
+### Fixed
+
+- `apps/dashboard/src/app/register/page.tsx` — fixed broken magic-code verification: `MagicCodeInput onComplete` was empty `() => {}`; now calls `verifyMagicCode(email, code)` and shows "Invalid or expired code" on failure; also fixed duplicate `sendMagicCode` call in `handleMagicCodeSubmit` since `register()` already sends the code
+- `apps/dashboard/src/app/onboarding/page.tsx` (482 lines) — split into ANPAS-compliant sub-components under `app/onboarding/`:
+  - `steps/welcome-step.tsx` (25L), `steps/discovery-step.tsx` (79L), `steps/configure-step.tsx` (126L), `steps/progress-step.tsx` (48L), `steps/complete-step.tsx` (29L)
+  - `components/health-row.tsx` (25L)
+  - `hooks/use-discovery.ts` (92L) — discovery fetch logic
+  - `hooks/use-configure-sse.ts` (139L) — configure API + SSE progress stream
+  - `page.tsx` is now a 77-line thin shell that lifts state and delegates to step components
+  - All files under 150 lines per ANPAS rule

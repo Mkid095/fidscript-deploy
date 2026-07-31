@@ -2,18 +2,21 @@
 
 import { Card } from '@fidscript/ui';
 import { Spinner } from '@fidscript/ui';
-
-interface ConfigLog {
-  text: string;
-  ok: boolean;
-}
+import { useConfigureSSE } from '../hooks/use-configure-sse';
 
 interface ProgressStepProps {
-  configLogs: ConfigLog[];
-  configComplete: boolean;
+  serverIp: string;
+  adminEmail: string;
+  onComplete: () => void;
 }
 
-export function ProgressStep({ configLogs, configComplete }: ProgressStepProps) {
+export function ProgressStep({ serverIp, adminEmail, onComplete }: ProgressStepProps) {
+  const { configLogs, configComplete } = useConfigureSSE({
+    serverIp,
+    adminEmail,
+    onComplete,
+  });
+
   return (
     <div className="min-h-screen flex items-center justify-center bg-[var(--surface-2)] p-4">
       <Card padding="lg" className="w-full max-w-md border border-[var(--rail)]">
