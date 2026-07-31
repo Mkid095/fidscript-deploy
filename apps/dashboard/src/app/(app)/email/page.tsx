@@ -2,12 +2,13 @@
 
 import type { EmailDomain } from '@fidscript-deploy/sdk';
 import { useEffect, useState } from 'react';
-import { Button, Card, EmptyState, Input, Modal, Spinner } from '@fidscript/ui';
+import { Button, Card, EmptyState, Spinner } from '@fidscript/ui';
 import Link from 'next/link';
 
 import type { Project } from '@/types';
 import { useAuth } from '@/contexts/auth-context';
 import { useShellProjectId } from '@/contexts/project-context';
+import { CreateDomainModal } from './create-domain-modal';
 
 const STATUS_COLORS: Record<string, string> = {
   PENDING:  'bg-[var(--rail)] text-[var(--text-muted)]',
@@ -32,9 +33,6 @@ export default function EmailPage() {
   const [loadingDomains, setLoadingDomains] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [showAdd, setShowAdd] = useState(false);
-  const [newDomain, setNewDomain] = useState('');
-  const [adding, setAdding] = useState(false);
-  const [addError, setAddError] = useState<string | null>(null);
 
   useEffect(() => {
     if (shellProjectId) return;
@@ -46,11 +44,8 @@ export default function EmailPage() {
         if ((data.projects ?? []).length > 0 && !pickedProjectId) {
           setPickedProjectId((data.projects ?? [])[0].id);
         }
-      } catch {
-        // ignore
-      } finally {
-        setLoadingProjects(false);
-      }
+      } catch { /* ignore */ }
+      finally { setLoadingProjects(false); }
     }
     load();
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -58,13 +53,11 @@ export default function EmailPage() {
 
   useEffect(() => {
     if (!selectedProjectId) return;
-
     async function loadDomains() {
       setLoadingDomains(true);
       setError(null);
       try {
-        const sdk = getSdk();
-        const list = await sdk.email.listDomains(selectedProjectId);
+        const list = await getSdk().email.listDomains(selectedProjectId);
         setDomains(list);
       } catch (err) {
         setError(err instanceof Error ? err.message : 'Failed to load domains');
@@ -74,24 +67,6 @@ export default function EmailPage() {
     }
     loadDomains();
   }, [selectedProjectId, getSdk]);
-
-  async function handleAddDomain(e: React.FormEvent) {
-    e.preventDefault();
-    if (!newDomain.trim()) return;
-    setAdding(true);
-    setAddError(null);
-    try {
-      const sdk = getSdk();
-      const created = await sdk.email.createDomain(selectedProjectId, newDomain.trim());
-      setDomains(prev => [...prev, created as EmailDomain]);
-      setNewDomain('');
-      setShowAdd(false);
-    } catch (err) {
-      setAddError(err instanceof Error ? err.message : 'Failed to add domain');
-    } finally {
-      setAdding(false);
-    }
-  }
 
   if (loadingProjects) {
     return (
@@ -132,9 +107,7 @@ export default function EmailPage() {
         </div>
       )}
 
-      {error && (
-        <p className="text-[var(--danger)] mb-4 text-sm">{error}</p>
-      )}
+      {error && <p className="text-[var(--danger)] mb-4 text-sm">{error}</p>}
 
       {loadingDomains ? (
         <div className="flex items-center justify-center min-h-48">
@@ -167,22 +140,14 @@ export default function EmailPage() {
                   </span>
                 </div>
                 <div className="flex flex-wrap items-center gap-2">
-                  <span className="text-xs text-[var(--text-muted)]">DKIM:</span>
-                  <span className={`text-xs px-2 py-0.5 rounded-full capitalize ${VERIFY_COLORS[String(domain.dkimVerified)]}`}>
-                    {domain.dkimVerified ? '✓' : '✗'}
-                  </span>
-                  <span className="text-xs text-[var(--text-muted)]">SPF:</span>
-                  <span className={`text-xs px-2 py-0.5 rounded-full capitalize ${VERIFY_COLORS[String(domain.spfVerified)]}`}>
-                    {domain.spfVerified ? '✓' : '✗'}
-                  </span>
-                  <span className="text-xs text-[var(--text-muted)]">DMARC:</span>
-                  <span className={`text-xs px-2 py-0.5 rounded-full capitalize ${VERIFY_COLORS[String(domain.dmarcVerified)]}`}>
-                    {domain.dmarcVerified ? '✓' : '✗'}
-                  </span>
-                  <span className="text-xs text-[var(--text-muted)]">MX:</span>
-                  <span className={`text-xs px-2 py-0.5 rounded-full capitalize ${VERIFY_COLORS[String(domain.mxVerified)]}`}>
-                    {domain.mxVerified ? '✓' : '✗'}
-                  </span>
+                  {(['dkim', 'spf', 'dmarc', 'mx'] as const).map((rec) => (
+                    <span key={rec} className="flex items-center gap-1">
+                      <span className="text-xs text-[var(--text-muted)] capitalize">{rec}:</span>
+                      <span className={`text-xs px-2 py-0.5 rounded-full capitalize ${VERIFY_COLORS[String(domain[`${rec}Verified`])]}`}>
+                        {domain[`${rec}Verified`] ? '✓' : '✗'}
+                      </span>
+                    </span>
+                  ))}
                 </div>
               </div>
             </Link>
@@ -190,35 +155,14 @@ export default function EmailPage() {
         </div>
       )}
 
-      {/* Add Domain Modal */}
-      <Modal
-        isOpen={showAdd}
-        onClose={() => { setShowAdd(false); setNewDomain(''); setAddError(null); }}
-        title="Add Domain"
-      >
-        <form onSubmit={handleAddDomain} noValidate>
-          <div className="mb-4">
-            <label className="block text-xs text-[var(--text-muted)] mb-1">Domain name</label>
-            <Input
-              value={newDomain}
-              onChange={e => setNewDomain(e.target.value)}
-              placeholder="mail.example.com"
-              className="bg-[var(--surface-2)] border border-[var(--rail)] text-[var(--text)] placeholder:text-[var(--text-dim)] w-full"
-            />
-          </div>
-          {addError && (
-            <p className="text-[var(--danger)] text-xs mb-4">{addError}</p>
-          )}
-          <div className="flex justify-end gap-3">
-            <Button variant="ghost" size="sm" type="button" onClick={() => { setShowAdd(false); setAddError(null); }}>
-              Cancel
-            </Button>
-            <Button variant="primary" size="sm" type="submit" loading={adding}>
-              {adding ? 'Adding...' : 'Add Domain'}
-            </Button>
-          </div>
-        </form>
-      </Modal>
+      {showAdd && (
+        <CreateDomainModal
+          projectId={selectedProjectId}
+          getSdk={getSdk}
+          onCreated={d => setDomains(prev => [...prev, d])}
+          onClose={() => setShowAdd(false)}
+        />
+      )}
     </div>
   );
 }

@@ -1,12 +1,12 @@
 // Step 2: Configure — framework detection, env vars, advanced settings
 
-import Link from 'next/link';
-import { Card, Input } from '@fidscript/ui';
+import { Card } from '@fidscript/ui';
 import { HugeiconsIcon } from '@hugeicons/react';
-import { Rocket01Icon, CheckmarkCircle02Icon, ArrowRight01Icon, Settings01Icon } from '@hugeicons/core-free-icons';
+import { Settings01Icon, ArrowRight01Icon } from '@hugeicons/core-free-icons';
 
 import type { SourceType, BuildPlan } from './new-deploy-utils';
 import { BuildPreview } from './build-preview';
+import { EnvVarsSection } from './env-vars-section';
 
 interface StepConfigureProps {
   sourceType: SourceType;

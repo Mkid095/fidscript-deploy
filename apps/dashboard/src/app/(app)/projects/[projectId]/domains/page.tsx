@@ -8,7 +8,9 @@ import { useAuth } from '@/contexts/auth-context';
 import { useDomainData } from './use-domain-data';
 import { DomainListHeader } from './domain-list-header';
 import { DomainListContent } from './domain-list-content';
-import { AddDomainModalHandler } from './add-domain-modal-handler';
+import { AddDomainModal } from './add-domain-modal';
+import { ConnectCloudflareModal } from './connect-cloudflare-modal';
+import { DnsInstructionsModal } from './dns-instructions-modal';
 
 export default function DomainsPage() {
   const params = useParams();
@@ -45,20 +47,31 @@ export default function DomainsPage() {
         onConnectCloudflare={() => d.setShowConnect(true)}
       />
 
-      <AddDomainModalHandler
+      <AddDomainModal
         projectId={projectId}
         connection={d.connection}
-        isAddOpen={d.showAdd}
-        onAddDomain={d.handleAddDomain}
-        onCloseAdd={() => d.setShowAdd(false)}
-        isConnectOpen={d.showConnect}
-        onConnectCloudflareOAuth={d.handleConnectCloudflareOAuth}
-        onConnectCloudflareToken={d.handleConnectCloudflareToken}
-        onCloseConnect={() => d.setShowConnect(false)}
-        selectedDomain={d.selectedDomain}
-        onShowInstructions={d.setSelectedDomain}
-        onCloseInstructions={() => d.setSelectedDomain(null)}
-        getSdk={getSdk}
+        isOpen={d.showAdd}
+        onAdd={d.handleAddDomain}
+        onClose={() => d.setShowAdd(false)}
+        onOpenConnect={() => d.setShowConnect(true)}
+        getDnsDetection={d.getDnsDetection}
+      />
+
+      <ConnectCloudflareModal
+        isOpen={d.showConnect}
+        onClose={() => d.setShowConnect(false)}
+        onOAuth={d.handleConnectCloudflareOAuth}
+        onToken={d.handleConnectCloudflareToken}
+      />
+
+      <DnsInstructionsModal
+        domain={d.selectedDomain}
+        onClose={() => d.setSelectedDomain(null)}
+        getInstructions={async (domain) => {
+          const sdk = getSdk();
+          const data = await sdk.domains.getInstructions(projectId, domain.id);
+          return data.instructions ?? [];
+        }}
       />
 
       {d.toast && (

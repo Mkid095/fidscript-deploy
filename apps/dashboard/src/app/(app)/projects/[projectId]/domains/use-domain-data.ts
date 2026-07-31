@@ -34,6 +34,11 @@ export function useDomainData(projectId: string, getSdk: () => any) {
     }
   }, [getSdk, projectId]);
 
+  async function getDnsDetection(projectId: string, domain: string) {
+    const sdk = getSdk();
+    return sdk.domains.detectDnsProvider(projectId, domain) as Promise<any>;
+  }
+
   async function handleAddDomain(domain: string, mode: 'manual' | 'cloudflare_auto', types: DomainType[]) {
     const sdk = getSdk();
     const created = await sdk.domains.create(projectId, domain, mode, undefined, types) as Domain;
