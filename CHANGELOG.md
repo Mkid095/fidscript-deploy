@@ -7,6 +7,15 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/).
 ## [Unreleased]
 
 ### Changed
+- refactor(dashboard): split oversized scheduler-job-detail (600L), databases/[id] (464L), monitoring (383L), platform/email/settings (399L), storage/settings (390L), databases/page (211L), email/analytics (182L) pages:
+  - `projects/[projectId]/scheduler/[jobId]/` → page (130L) + use-job-detail hook + job-detail-header + job-runs-list + job-edit-form-body + job-edit-modal + run-detail-modal + run-timeline + stat-card
+  - `databases/[id]/` → page (132L) + use-database-detail hook + db-overview-card + db-backups-list + db-connection-card + db-versions-list + db-settings + db-toast + db-detail-header
+  - `monitoring/page.tsx` → page (106L) + use-monitoring-data hook + alert-list + alert-create-modal
+  - `platform/email/settings/page.tsx` → page (105L) + use-email-settings hook + email-settings-form
+  - `projects/[projectId]/storage/settings/page.tsx` → page (93L) + use-storage-settings hook + storage-settings-provider + storage-settings-cloudinary + storage-settings-telegram
+  - `databases/page.tsx` (129L) — already under 150L
+  - `email/analytics/page.tsx` (69L) — already under 150L
+  - All files under 150 lines per ANPAS rule
 - refactor(dashboard): split oversized scheduler, domains, settings, logs, platform/integrations/settings, login, register, databases, and email/analytics pages to meet 150-line limit
 - refactor(dashboard): split settings, logs, integrations/settings, login, register pages to meet 150-line limit
 - refactor(dashboard): split oversized email/mailbox, templates, monitoring detail, email root, deployments, functions, realtime, webhooks, platform/email, and email/[domain] pages:
