@@ -36,9 +36,19 @@ export function CloudflareOAuthSection({
         value={cloudflareClientId}
         onChange={e => onClientIdChange(e.target.value)}
         placeholder="your-oauth-client-id"
-        hint="Create an OAuth app at dash.cloudflare.com → My Profile → API Tokens → OAuth Applications"
-        className="bg-[var(--surface-2)] border border-[var(--rail)] text-[var(--text)] placeholder:text-[var(--text-dim)] mb-3"
+        className="bg-[var(--surface-2)] border border-[var(--rail)] text-[var(--text)] placeholder:text-[var(--text-dim)] mb-1.5"
       />
+      <p className="text-xs text-[var(--text-dim)] mb-3">
+        Get your OAuth credentials from{' '}
+        <a
+          href="https://dash.cloudflare.com/profile/api-tokens"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="text-[var(--accent)] hover:underline"
+        >
+          dash.cloudflare.com → API Tokens → OAuth Applications
+        </a>
+      </p>
       <Input
         label="Cloudflare Client Secret"
         type="password"
