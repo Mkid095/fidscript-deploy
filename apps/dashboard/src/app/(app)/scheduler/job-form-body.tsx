@@ -26,7 +26,7 @@ interface JobFormBodyProps {
   };
   onFieldChange: (fields: Partial<typeof form>) => void;
   error: string | null;
-  onSubmit: () => void;
+  onCancel: () => void;
   loading: boolean;
 }
 
@@ -123,7 +123,7 @@ export function JobFormBody({ form, onFieldChange, error, onSubmit, loading }: J
       {error && <p className="text-sm text-[var(--danger)]">{error}</p>}
 
       <div className="flex justify-end gap-3 pt-3 border-t border-[var(--rail)]">
-        <Button variant="ghost" size="sm" type="button" onClick={onSubmit}>Cancel</Button>
+        <Button variant="ghost" size="sm" type="button" onClick={onCancel}>Cancel</Button>
         <Button variant="primary" size="sm" type="submit" loading={loading} disabled={!form.name.trim() || !form.expression.trim()}>
           {loading ? 'Creating…' : 'Create job'}
         </Button>
