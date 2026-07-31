@@ -1,10 +1,11 @@
 'use client';
 
 import { useCallback, useEffect, useState } from 'react';
-import { Button, Spinner } from '@fidscript/ui';
+import { Spinner } from '@fidscript/ui';
 import type { PlatformMailboxMessage, PlatformMailboxSummary, StorageBackend } from '@fidscript-deploy/sdk';
 
 import { useAuth } from '@/contexts/auth-context';
+import { PlatformEmailTopbar } from './platform-email-topbar';
 import { PlatformEmailCreateMailboxModal } from './platform-email-create-mailbox-modal';
 import { PlatformEmailComposeModal } from './platform-email-compose-modal';
 import { PlatformEmailMessageDetail } from './platform-email-message-detail';
@@ -88,10 +89,7 @@ export default function PlatformEmailPage() {
   async function moveMessage(msg: PlatformMailboxMessage, folder: Folder) {
     setMessages(prev => prev.filter(m => m.id !== msg.id));
     if (selectedMessage?.id === msg.id) setSelectedMessage(null);
-    try {
-      const mt = folder as 'inbox' | 'trash' | 'junk' | 'archive';
-      await sdk.email.admin.patchMessage(msg.mailbox, msg.id, { moveTo: mt });
-    } catch {}
+    try { await sdk.email.admin.patchMessage(msg.mailbox, msg.id, { moveTo: folder as 'inbox' | 'trash' | 'junk' | 'archive' }); } catch {}
   }
 
   async function deleteMessage(msg: PlatformMailboxMessage) {
@@ -110,99 +108,53 @@ export default function PlatformEmailPage() {
   }
 
   async function handleSendMail(opts: {
-    fromLocal?: string;
-    to: string;
-    subject: string;
-    text: string;
-    storageBackend: StorageBackend;
-    attachments?: { filename: string; mimeType: string; data: string }[];
+    fromLocal?: string; to: string; subject: string; text: string;
+    storageBackend: StorageBackend; attachments?: { filename: string; mimeType: string; data: string }[];
   }) {
     await sdk.email.admin.sendMail(opts as Parameters<typeof sdk.email.admin.sendMail>[0]);
     setSendResult('Sent');
     setActiveFolder('sent');
   }
 
-  if (loadingMailboxes) {
-    return (
-      <div className="flex items-center justify-center min-h-96">
-        <Spinner size="lg" />
-      </div>
-    );
-  }
+  if (loadingMailboxes) return (
+    <div className="flex items-center justify-center min-h-96"><Spinner size="lg" /></div>
+  );
 
   return (
     <div className="flex flex-col h-[calc(100vh-100px)]">
-      {/* Top bar */}
-      <div className="flex items-center justify-between mb-4">
-        <div>
-          <h1 className="text-xl font-bold text-[var(--text)] mb-1">Platform Mailboxes</h1>
-          <p className="text-sm text-[var(--text-muted)]">
-            {mailboxes.length} mailbox{mailboxes.length !== 1 ? 'es' : ''} on {mailboxes[0]?.email?.split('@')[1] ?? 'platform'}
-          </p>
-        </div>
-        <div className="flex gap-2">
-          <Button variant="ghost" size="sm" onClick={() => setShowCompose(true)}>Compose</Button>
-          <Button variant="primary" size="sm" onClick={() => setShowCreate(true)}>New Mailbox</Button>
-        </div>
-      </div>
+      <PlatformEmailTopbar mailboxes={mailboxes} onCompose={() => setShowCompose(true)} onNewMailbox={() => setShowCreate(true)} />
 
       {error && <p className="text-[var(--danger)] mb-4 text-sm">{error}</p>}
       {sendResult && <p className="text-[var(--success)] mb-4 text-sm">{sendResult}</p>}
 
       <div className="flex flex-1 gap-3 min-h-0">
-        {/* Left: mailbox list */}
-        <PlatformEmailMailboxList
-          mailboxes={mailboxes}
-          selectedLocal={selectedLocal}
-          onSelect={name => { setSelectedLocal(name); setSelectedMessage(null); }}
-        />
+        <PlatformEmailMailboxList mailboxes={mailboxes} selectedLocal={selectedLocal}
+          onSelect={name => { setSelectedLocal(name); setSelectedMessage(null); }} />
 
-        {/* Center: message list */}
         <div className="w-96 flex-shrink-0 flex flex-col">
-          <PlatformEmailMessageList
-            messages={messages}
-            total={total}
-            activeFolder={activeFolder}
-            selectedMessageId={selectedMessage?.id}
-            loading={loadingMessages}
-            onSelect={openMessage}
-          />
+          <PlatformEmailMessageList messages={messages} total={total} activeFolder={activeFolder}
+            selectedMessageId={selectedMessage?.id} loading={loadingMessages} onSelect={openMessage} />
         </div>
 
-        {/* Right: message detail */}
         <div className="flex-1 min-w-0 flex flex-col">
-          <PlatformEmailMessageDetail
-            message={selectedMessage}
-            onStar={starMessage}
-            onMove={moveMessage}
-            onDelete={deleteMessage}
-          />
+          <PlatformEmailMessageDetail message={selectedMessage} onStar={starMessage}
+            onMove={moveMessage} onDelete={deleteMessage} />
         </div>
       </div>
 
-      {/* Modals */}
-      <PlatformEmailCreateMailboxModal
-        isOpen={showCreate}
+      <PlatformEmailCreateMailboxModal isOpen={showCreate}
         onClose={() => { setShowCreate(false); setCreateResult(null); }}
         onCreated={(email, password) => setCreateResult({ email, password })}
-        onCreate={handleCreateMailbox}
-      />
+        onCreate={handleCreateMailbox} />
 
       {createResult && (
-        <PlatformEmailMailboxCreatedCard
-          email={createResult.email}
-          password={createResult.password}
-          onDone={() => setCreateResult(null)}
-        />
+        <PlatformEmailMailboxCreatedCard email={createResult.email} password={createResult.password}
+          onDone={() => setCreateResult(null)} />
       )}
 
-      <PlatformEmailComposeModal
-        isOpen={showCompose}
+      <PlatformEmailComposeModal isOpen={showCompose}
         onClose={() => { setShowCompose(false); setSendResult(null); }}
-        selectedLocal={selectedLocal}
-        onSent={() => loadMessages()}
-        sendMail={handleSendMail}
-      />
+        selectedLocal={selectedLocal} onSent={() => loadMessages()} sendMail={handleSendMail} />
     </div>
   );
 }

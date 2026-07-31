@@ -16,6 +16,10 @@ import {
 } from '@/components/functions';
 import type { Function_ } from '@/types';
 import { getStarterCode } from './function-utils';
+import { FunctionBreadcrumb } from './function-breadcrumb';
+import { FunctionErrorState } from './function-error-state';
+import { useFunctionRealtime } from './use-function-realtime';
+import { useFunctionRealtime } from './use-function-realtime';
 
 export default function FunctionDetailPage() {
   const params = useParams();
@@ -52,35 +56,13 @@ export default function FunctionDetailPage() {
 
   useEffect(() => { load(); }, [load]);
 
-  // Realtime subscription
-  useEffect(() => {
-    if (!projectId || !functionId) return;
-    let cancelled = false;
-    const sdk = getSdk();
-    const rt = (sdk as any).realtime;
-    if (!rt) return;
-
-    const token = localStorage.getItem('fidscript_access_token') ?? localStorage.getItem('fidscript_token') ?? '';
-
-    rt.connect(() => token, projectId).then(() => {
-      if (cancelled) return;
-      const unsub = rt.subscribeFunctions(projectId, (event: any) => {
-        const et = event?.type;
-        if (!et || et === 'function.deleted') return;
-        const statusMap: Record<string, string> = {
-          'function.created': 'ACTIVE', 'function.deployed': 'ACTIVE', 'function.error': 'FAILED',
-        };
-        const newStatus = statusMap[et];
-        if (newStatus) setFn(prev => prev ? { ...prev, status: newStatus } : prev);
-        if (et === 'function.deployed' || et === 'function.error') {
-          setTimeout(() => { if (!cancelled) load(); }, 800);
-        }
-      });
-      if (cancelled) unsub();
-    });
-
-    return () => { cancelled = true; };
-  }, [projectId, functionId, getSdk, load]);
+  useFunctionRealtime({
+    projectId,
+    functionId,
+    getSdk,
+    onStatusUpdate: status => setFn(prev => prev ? { ...prev, status } : prev),
+    onReload: load,
+  });
 
   async function handleDeploy(c: string, version?: string) {
     setDeploying(true);
@@ -127,21 +109,11 @@ export default function FunctionDetailPage() {
     <div className="flex items-center justify-center min-h-96"><Spinner size="lg" /></div>
   );
 
-  if (error || !fn) return (
-    <div className="text-center py-12">
-      <p className="text-[var(--danger)] text-sm mb-4">{error ?? 'Function not found'}</p>
-      <a href={`/projects/${projectId}/functions`} className="text-sm text-[var(--accent)] hover:underline">Back to Functions</a>
-    </div>
-  );
+  if (error || !fn) return <FunctionErrorState error={error} projectId={projectId} />;
 
   return (
     <div className="px-4 sm:px-6 lg:px-8 py-6 flex flex-col h-full gap-6 overflow-y-auto">
-      {/* Breadcrumb */}
-      <div className="flex items-center gap-2 text-sm text-[var(--text-muted)] flex-shrink-0">
-        <a href={`/projects/${projectId}/functions`} className="hover:text-[var(--text)] transition-colors">Functions</a>
-        <span>/</span>
-        <span className="text-[var(--text)]">{fn.name}</span>
-      </div>
+      <FunctionBreadcrumb projectId={projectId} fn={fn} />
 
       <FunctionHeader
         fn={fn} deploying={deploying} invokeError={invokeError} invokeResult={invokeResult}

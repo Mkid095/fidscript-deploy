@@ -1,9 +1,11 @@
 'use client';
 
 import { useEffect, useState, useCallback } from 'react';
-import { Button, Card, EmptyState, Input, Modal, Spinner } from '@fidscript/ui';
+import { Button, Card, EmptyState, Spinner } from '@fidscript/ui';
+
 import { useAuth } from '@/contexts/auth-context';
 import { useShellProjectId } from '@/contexts/project-context';
+import { CreateWebhookModal } from './create-webhook-modal';
 
 interface WebhookSub {
   id: string;
@@ -17,8 +19,6 @@ interface WebhookSub {
   createdAt: string;
 }
 
-const ALL_EVENTS = ['sent', 'delivered', 'opened', 'clicked', 'bounced', 'complained', 'failed'];
-
 export default function WebhooksPage() {
   const { getSdk } = useAuth();
   const projectId = useShellProjectId();
@@ -31,8 +31,7 @@ export default function WebhooksPage() {
     if (!projectId) return;
     setLoading(true);
     try {
-      const sdk = getSdk();
-      const list = await sdk.email.listWebhooks(projectId);
+      const list = await getSdk().email.listWebhooks(projectId);
       setWebhooks(list);
     } catch { /* ignore */ } finally {
       setLoading(false);
@@ -45,8 +44,7 @@ export default function WebhooksPage() {
     if (!projectId) return;
     setTesting(id);
     try {
-      const sdk = getSdk();
-      await sdk.email.testWebhook(projectId, id);
+      await getSdk().email.testWebhook(projectId, id);
       load();
     } catch { /* ignore */ } finally {
       setTesting(null);
@@ -56,8 +54,7 @@ export default function WebhooksPage() {
   async function handleToggle(wh: WebhookSub) {
     if (!projectId) return;
     try {
-      const sdk = getSdk();
-      await sdk.email.updateWebhook(projectId, wh.id, { isActive: !wh.isActive });
+      await getSdk().email.updateWebhook(projectId, wh.id, { isActive: !wh.isActive });
       load();
     } catch { /* ignore */ }
   }
@@ -65,8 +62,7 @@ export default function WebhooksPage() {
   async function handleDelete(id: string) {
     if (!projectId) return;
     try {
-      const sdk = getSdk();
-      await sdk.email.deleteWebhook(projectId, id);
+      await getSdk().email.deleteWebhook(projectId, id);
       setWebhooks(prev => prev.filter(w => w.id !== id));
     } catch { /* ignore */ }
   }
@@ -112,20 +108,14 @@ export default function WebhooksPage() {
                   </div>
                 </div>
                 <div className="flex gap-2 flex-shrink-0">
-                  <Button variant="secondary" size="sm" onClick={() => handleTest(wh.id)} loading={testing === wh.id}>
-                    Test
-                  </Button>
-                  <Button variant="ghost" size="sm" onClick={() => handleToggle(wh)}>
-                    {wh.isActive ? 'Disable' : 'Enable'}
-                  </Button>
-                  <Button variant="danger" size="sm" onClick={() => handleDelete(wh.id)}>
-                    Delete
-                  </Button>
+                  <Button variant="secondary" size="sm" onClick={() => handleTest(wh.id)} loading={testing === wh.id}>Test</Button>
+                  <Button variant="ghost" size="sm" onClick={() => handleToggle(wh)}>{wh.isActive ? 'Disable' : 'Enable'}</Button>
+                  <Button variant="danger" size="sm" onClick={() => handleDelete(wh.id)}>Delete</Button>
                 </div>
               </div>
               <div className="flex gap-6 text-xs text-[var(--text-muted)] pt-3 border-t border-[var(--rail)]">
-                <span>✅ {wh.successCount} delivered</span>
-                <span>❌ {wh.failureCount} failed</span>
+                <span>{wh.successCount} delivered</span>
+                <span>{wh.failureCount} failed</span>
                 <span>Last: {wh.lastStatus ?? '—'}</span>
                 {wh.lastSentAt && <span>{new Date(wh.lastSentAt).toLocaleString()}</span>}
               </div>
@@ -143,80 +133,5 @@ export default function WebhooksPage() {
         />
       )}
     </div>
-  );
-}
-
-function CreateWebhookModal({ projectId, getSdk, onClose, onCreated }: {
-  projectId: string;
-  getSdk: () => any;
-  onClose: () => void;
-  onCreated: () => void;
-}) {
-  const [url, setUrl] = useState('');
-  const [events, setEvents] = useState<string[]>(['delivered', 'bounced']);
-  const [saving, setSaving] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-
-  function toggleEvent(ev: string) {
-    setEvents(prev => prev.includes(ev) ? prev.filter(e => e !== ev) : [...prev, ev]);
-  }
-
-  async function handleSave(e: React.FormEvent) {
-    e.preventDefault();
-    if (!url.trim() || events.length === 0) return;
-    setSaving(true);
-    setError(null);
-    try {
-      const sdk = getSdk();
-      await sdk.email.createWebhook(projectId, { url: url.trim(), events });
-      onCreated();
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to create webhook');
-    } finally {
-      setSaving(false);
-    }
-  }
-
-  return (
-    <Modal isOpen onClose={onClose} title="Add Email Webhook">
-      <form onSubmit={handleSave} noValidate className="space-y-4">
-        <div>
-          <label className="block text-xs text-[var(--text-muted)] mb-1">Webhook URL *</label>
-          <Input
-            type="url"
-            value={url}
-            onChange={e => setUrl(e.target.value)}
-            placeholder="https://your-app.com/hooks/email"
-            className="bg-[var(--surface-2)] border border-[var(--rail)] w-full"
-          />
-        </div>
-        <div>
-          <label className="block text-xs text-[var(--text-muted)] mb-2">Events to subscribe</label>
-          <div className="grid grid-cols-2 gap-2">
-            {ALL_EVENTS.map(ev => (
-              <label key={ev} className="flex items-center gap-2 cursor-pointer">
-                <input
-                  type="checkbox"
-                  checked={events.includes(ev)}
-                  onChange={() => toggleEvent(ev)}
-                  className="accent-[var(--accent)]"
-                />
-                <span className="text-sm text-[var(--text)]">{ev}</span>
-              </label>
-            ))}
-          </div>
-        </div>
-        <div className="rounded-lg border border-[var(--accent)]/30 bg-[var(--accent)]/10 px-3 py-2 text-xs text-[var(--accent)]">
-          Webhooks are signed with HMAC-SHA256. The signature is sent in the <code className="font-mono">X-FIDScript-Signature</code> header.
-        </div>
-        {error && <p className="text-[var(--danger)] text-xs">{error}</p>}
-        <div className="flex justify-end gap-3">
-          <Button variant="ghost" size="sm" type="button" onClick={onClose}>Cancel</Button>
-          <Button variant="primary" size="sm" type="submit" loading={saving}>
-            {saving ? 'Creating...' : 'Create Webhook'}
-          </Button>
-        </div>
-      </form>
-    </Modal>
   );
 }

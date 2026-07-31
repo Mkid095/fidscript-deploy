@@ -2,15 +2,11 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import { HugeiconsIcon } from '@hugeicons/react';
-import { CloudIcon, CheckmarkCircle01Icon, CancelCircleIcon, LockIcon, ViewIcon, ViewOffIcon } from '@hugeicons/core-free-icons';
-import { Button, Card, Input, Spinner } from '@fidscript/ui';
+import { CloudIcon, CheckmarkCircle01Icon, CancelCircleIcon } from '@hugeicons/core-free-icons';
+import { Button, Card, Spinner } from '@fidscript/ui';
 import { useAuth } from '@/contexts/auth-context';
+import { CloudflareOAuthForm } from './cloudflare-oauth-form';
 import { MoreIntegrationsCard } from './more-integrations-card';
-
-function mask(str: string): string {
-  if (!str || str.length < 8) return '••••••••';
-  return str.slice(0, 4) + '••••' + str.slice(-4);
-}
 
 export function IntegrationConfigModal() {
   const sdk = useAuth().getSdk();
@@ -19,7 +15,6 @@ export function IntegrationConfigModal() {
   const [statusError, setStatusError] = useState<string | null>(null);
   const [clientId, setClientId] = useState('');
   const [clientSecret, setClientSecret] = useState('');
-  const [showSecret, setShowSecret] = useState(false);
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
   const [saveSuccess, setSaveSuccess] = useState(false);
@@ -41,8 +36,7 @@ export function IntegrationConfigModal() {
 
   useEffect(() => { loadStatus(); }, [loadStatus]);
 
-  async function handleTest(e: React.MouseEvent) {
-    e.preventDefault();
+  async function handleTest() {
     if (!clientId.trim() || !clientSecret.trim()) return;
     setTesting(true);
     setTestResult(null);
@@ -50,15 +44,11 @@ export function IntegrationConfigModal() {
     try {
       const res = await sdk.installation.testCloudflareConnection(clientId.trim(), clientSecret.trim());
       setTestResult(res.valid ? 'valid' : 'invalid');
-    } catch {
-      setTestResult('invalid');
-    } finally {
-      setTesting(false);
-    }
+    } catch { setTestResult('invalid'); }
+    finally { setTesting(false); }
   }
 
-  async function handleSave(e: React.FormEvent) {
-    e.preventDefault();
+  async function handleSave() {
     setSaving(true);
     setSaveError(null);
     setSaveSuccess(false);
@@ -72,13 +62,10 @@ export function IntegrationConfigModal() {
       setTimeout(() => setSaveSuccess(false), 4000);
     } catch (e) {
       setSaveError(e instanceof Error ? e.message : 'Save failed');
-    } finally {
-      setSaving(false);
-    }
+    } finally { setSaving(false); }
   }
 
-  async function handleDisable(e: React.MouseEvent) {
-    e.preventDefault();
+  async function handleDisable() {
     if (!confirm('Disable Cloudflare OAuth?')) return;
     setSaving(true);
     setSaveError(null);
@@ -91,9 +78,7 @@ export function IntegrationConfigModal() {
       setTimeout(() => setSaveSuccess(false), 4000);
     } catch (e) {
       setSaveError(e instanceof Error ? e.message : 'Disable failed');
-    } finally {
-      setSaving(false);
-    }
+    } finally { setSaving(false); }
   }
 
   return (
@@ -124,73 +109,17 @@ export function IntegrationConfigModal() {
         {statusError ? (
           <p className="text-xs text-[var(--danger)]">{statusError}</p>
         ) : (
-          <form onSubmit={handleSave} noValidate className="flex flex-col gap-4">
-            <div className="border-t border-[var(--rail)] pt-4">
-              <p className="text-xs text-[var(--text-muted)] mb-3">
-                Enter your Cloudflare OAuth app credentials. Users see a "Connect with Cloudflare" button in the domain wizard.
-                <br />
-                <span className="text-[var(--text-dim)]">
-                  Create an OAuth app at{' '}
-                  <a href="https://dash.cloudflare.com/my-profile/api-tokens" target="_blank" rel="noopener noreferrer" className="text-[var(--accent)] hover:underline">dash.cloudflare.com → My Profile → API Tokens</a>
-                </span>
-              </p>
-              <div className="flex flex-col gap-3">
-                <Input label="Client ID" type="text" value={clientId}
-                  onChange={e => { setClientId(e.target.value); setTestResult(null); }}
-                  placeholder="e.g. 4bc8f2a9b3c7d6e1..."
-                  className="bg-[var(--surface-2)] border border-[var(--rail)] text-[var(--text)] placeholder:text-[var(--text-dim)]" />
-                <div>
-                  <div className="flex items-center justify-between mb-1.5">
-                    <label className="block text-xs text-[var(--text-muted)]">Client Secret</label>
-                    <button type="button" onClick={() => setShowSecret(v => !v)}
-                      className="text-xs text-[var(--text-dim)] hover:text-[var(--text-muted)] flex items-center gap-1">
-                      <HugeiconsIcon icon={showSecret ? ViewIcon : ViewOffIcon} size={11} />
-                      {showSecret ? 'Hide' : 'Show'}
-                    </button>
-                  </div>
-                  <Input type={showSecret ? 'text' : 'password'} value={clientSecret}
-                    onChange={e => { setClientSecret(e.target.value); setTestResult(null); }}
-                    placeholder="OAuth client secret"
-                    className="bg-[var(--surface-2)] border border-[var(--rail)] text-[var(--text)] placeholder:text-[var(--text-dim)]" />
-                </div>
-
-                {oauthStatus?.enabled && (
-                  <div className="flex items-center gap-2 p-3 rounded-lg bg-[var(--surface-2)] border border-[var(--rail)] text-xs text-[var(--text-muted)]">
-                    <HugeiconsIcon icon={LockIcon} size={12} className="shrink-0" />
-                    <span>OAuth is <span className="text-green-400 font-medium">enabled</span>. Users see the Cloudflare button. Enter new values above to change credentials.</span>
-                  </div>
-                )}
-
-                {clientId.trim() && clientSecret.trim() && (
-                  <div className="flex items-center gap-3">
-                    <button type="button" onClick={handleTest} disabled={testing}
-                      className="text-xs px-3 py-1.5 rounded border border-[var(--rail)] text-[var(--text-muted)] hover:text-[var(--text)] hover:border-slate-500 transition-colors disabled:opacity-50">
-                      {testing ? 'Testing…' : testResult === 'valid' ? '✓ Valid' : testResult === 'invalid' ? '✗ Invalid' : 'Test Connection'}
-                    </button>
-                    {testResult === 'valid' && <span className="text-xs text-green-400">Credentials are valid</span>}
-                    {testResult === 'invalid' && <span className="text-xs text-[var(--danger)]">Invalid credentials</span>}
-                  </div>
-                )}
-              </div>
-            </div>
-            {saveError && <p className="text-sm text-[var(--danger)]">{saveError}</p>}
-            {saveSuccess && (
-              <div className="flex items-center gap-2 text-xs text-green-400">
-                <HugeiconsIcon icon={CheckmarkCircle01Icon} size={13} />Settings saved successfully
-              </div>
-            )}
-            <div className="flex items-center gap-3 pt-2">
-              <Button type="submit" variant="primary" size="sm" disabled={saving || (!clientId.trim() && !clientSecret.trim())} className="min-w-[100px]">
-                {saving ? 'Saving…' : 'Save'}
-              </Button>
-              {oauthStatus?.enabled && (
-                <button type="button" onClick={handleDisable} disabled={saving}
-                  className="text-xs text-[var(--text-dim)] hover:text-[var(--danger)] transition-colors disabled:opacity-50">
-                  Disable OAuth
-                </button>
-              )}
-            </div>
-          </form>
+          <CloudflareOAuthForm
+            clientId={clientId} clientSecret={clientSecret}
+            oauthStatus={oauthStatus}
+            saving={saving} saveError={saveError} saveSuccess={saveSuccess}
+            testing={testing} testResult={testResult}
+            onClientIdChange={v => { setClientId(v); }}
+            onClientSecretChange={v => { setClientSecret(v); }}
+            onTest={handleTest}
+            onSave={handleSave}
+            onDisable={handleDisable}
+          />
         )}
       </Card>
 

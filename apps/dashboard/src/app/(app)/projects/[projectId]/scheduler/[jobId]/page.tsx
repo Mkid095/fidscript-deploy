@@ -1,8 +1,7 @@
 'use client';
 
-import { useRouter } from 'next/navigation';
+import { useRouter, useParams } from 'next/navigation';
 import { Button, Spinner } from '@fidscript/ui';
-import { HugeiconsIcon } from '@hugeicons/react';
 import { AlarmClockIcon, CheckmarkCircle02Icon, AlertCircleIcon } from '@hugeicons/core-free-icons';
 import { useAuth } from '@/contexts/auth-context';
 import { useJobDetail } from './use-job-detail';
@@ -10,11 +9,14 @@ import { RunDetailModal } from './run-detail-modal';
 import { JobEditModal } from './job-edit-modal';
 import { JobRunsList } from './job-runs-list';
 import { StatCard } from './stat-card';
+import { JobDetailHeader } from './job-detail-header';
 
 export default function ProjectSchedulerJobDetailPage() {
   const { getSdk } = useAuth();
   const router = useRouter();
-  const params = { projectId: '', jobId: '' };
+  const params = useParams();
+  const projectId = params.projectId as string;
+  const jobId = params.jobId as string;
 
   const {
     job,
@@ -32,6 +34,10 @@ export default function ProjectSchedulerJobDetailPage() {
     hasMoreRuns,
     recentRuns,
     successRate,
+    runs,
+    handleTrigger,
+    handleSave,
+    populateForm,
     formName, setFormName,
     formExpression, setFormExpression,
     formTimezone, setFormTimezone,
@@ -42,10 +48,7 @@ export default function ProjectSchedulerJobDetailPage() {
     formRetryAttempts, setFormRetryAttempts,
     formRetryDelay, setFormRetryDelay,
     formTimeout, setFormTimeout,
-    handleTrigger,
-    handleSave,
-    populateForm,
-  } = useJobDetail({ projectId: params.projectId, jobId: params.jobId, getSdk });
+  } = useJobDetail({ projectId, jobId, getSdk });
 
   if (loading) {
     return (
@@ -68,44 +71,14 @@ export default function ProjectSchedulerJobDetailPage() {
 
   return (
     <div className="max-w-5xl mx-auto space-y-6">
-      {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4">
-        <div className="min-w-0">
-          <button
-            onClick={() => router.push(`/projects/${params.projectId}/scheduler`)}
-            className="text-xs text-[var(--text-muted)] hover:text-[var(--accent)] transition-colors flex items-center gap-1 mb-2"
-          >
-            ← Scheduler
-          </button>
-          <div className="flex items-center gap-3 mb-1">
-            <h1 className="text-xl font-bold text-[var(--text)] truncate">{job.name}</h1>
-            <span className={`flex-shrink-0 text-[10px] px-2 py-0.5 rounded-full border font-medium ${
-              job.enabled
-                ? 'bg-[var(--success)]/10 text-[var(--success)] border-[var(--success)]/20'
-                : 'bg-[var(--rail)] text-[var(--text-muted)] border-[var(--rail-light)]'
-            }`}>
-              {job.enabled ? 'Active' : 'Paused'}
-            </span>
-          </div>
-          <p className="text-xs text-[var(--text-dim)] font-mono">
-            {job.cronExpression} · {job.timezone ?? 'UTC'} · {job.retryAttempts} retries
-          </p>
-        </div>
-        <div className="flex items-center gap-2 flex-shrink-0">
-          <Button variant="secondary" size="sm" onClick={() => { populateForm(job!); setShowEdit(true); }}>
-            Edit
-          </Button>
-          <Button
-            variant="primary"
-            size="sm"
-            onClick={handleTrigger}
-            loading={triggering}
-            disabled={!job.enabled}
-          >
-            Run now
-          </Button>
-        </div>
-      </div>
+      <JobDetailHeader
+        job={job}
+        projectId={projectId}
+        triggering={triggering}
+        onBack={() => router.push(`/projects/${projectId}/scheduler`)}
+        onEdit={() => { populateForm(job!); setShowEdit(true); }}
+        onTrigger={handleTrigger}
+      />
 
       {/* Stats grid */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
@@ -122,7 +95,7 @@ export default function ProjectSchedulerJobDetailPage() {
 
       {/* Execution history */}
       <JobRunsList
-        runs={recentRuns}
+        runs={runs}
         recentRuns={recentRuns}
         hasMoreRuns={hasMoreRuns}
         onLoadMore={() => setRunsPage(p => p + 1)}
@@ -136,7 +109,7 @@ export default function ProjectSchedulerJobDetailPage() {
         saveError={saveError}
         onSave={handleSave}
         onClose={() => setShowEdit(false)}
-        formName={formName} setFormName={formName => setFormName(formName)}
+        formName={formName} setFormName={setFormName}
         formExpression={formExpression} setFormExpression={setFormExpression}
         formTimezone={formTimezone} setFormTimezone={setFormTimezone}
         formTargetType={formTargetType} setFormTargetType={setFormTargetType}
