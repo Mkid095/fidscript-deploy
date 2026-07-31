@@ -2,7 +2,7 @@
 
 > **Purpose:** Living source of truth for all frontend work. Every page, component, and gap is tracked here.
 > Updated per session. Teammates mark items DONE and note what was changed.
-> Last updated: 2026-07-31 (session 2 — massive split complete)
+> Last updated: 2026-07-31 (session 2-10 — ongoing split sprint)
 
 ## Sessions Complete
 
@@ -26,6 +26,19 @@
 - SQL editor duplicates deleted (sql-editor.tsx, log-viewer.tsx)
 - setup wizard split with Cloudflare credential helper link added
 - onboarding hooks refactored
+
+### Sessions 3-10 — Remaining pages (in progress, commits f905f4f, 6c0b890+)
+- scheduler job-card.tsx, cron-builder.tsx, cron-utils.ts, use-scheduler-data.ts
+- projects: projects-list-body.tsx, use-projects-page.ts, deleted-project-card.tsx, delete-panel.tsx, project-header.tsx
+- services/new: use-archive-upload.ts, use-githubRepos.ts, use-new-deploy.ts, step-* components
+- email: mailbox compose-modal, message-detail, message-list, mailbox-toolbar, email-project-selector
+- email/[domain]/page: domain-overview-tab, domain-mailboxes-tab, domain-aliases-tab, domain-catchall-tab
+- monitoring/[id]: alert-history.tsx, alert-channels.tsx, alert-rule-config.tsx
+- projects/[projectId]/domains: connect-cloudflare-modal.tsx, dns-instructions-modal.tsx, add-domain-form.tsx
+- setup wizard: method-step, cloudflare-oauth-section, cloudflare-token-field, domain-step, done-step, progress-step, use-setup-discovery, use-configure-submit
+- settings: security-settings.tsx, notification-settings.tsx, account-settings (in progress)
+- logs: use-logs-data.ts
+- email domain-card.tsx, platform-email-settings-*, integrations-list, email/analytics sub-components
 
 ---
 
