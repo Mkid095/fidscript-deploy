@@ -7,6 +7,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/).
 ## [Unreleased]
 
 ### Changed
+- refactor(dashboard): split oversized scheduler and domains pages to meet 150-line limit
 
 - `apps/dashboard/src/components/storage/status-badge.tsx` (20L) — added Hugeicons icons (`CheckmarkCircle01Icon` / `MinusCircleIcon`) to status badge, matching UX spec requirement that "a status badge always has label + icon"
 - Split `app/(app)/projects/[projectId]/layout.tsx` (218L) into ANPAS-compliant sub-components:

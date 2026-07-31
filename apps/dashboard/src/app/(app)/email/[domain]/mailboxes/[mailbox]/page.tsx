@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { useParams } from 'next/navigation';
 import { HugeiconsIcon } from '@hugeicons/react';
 import { ArrowLeft01Icon } from '@hugeicons/core-free-icons';
-import { Button, Card, EmptyState, Spinner } from '@fidscript/ui';
+import { Button, Card, Spinner } from '@fidscript/ui';
 import type { MailboxMessage } from '@fidscript-deploy/sdk';
 
 import { useAuth } from '@/contexts/auth-context';
@@ -14,6 +14,7 @@ import { MessageList } from './message-list';
 import { MessagePreview } from './message-detail';
 import { ComposeModal } from './compose-modal';
 import { MailboxToolbar } from './mailbox-toolbar';
+import { MailboxEmptyState } from './mailbox-empty-state';
 
 type Folder = 'inbox' | 'sent' | 'trash';
 
@@ -118,18 +119,7 @@ export default function MailboxPage() {
           <Spinner size="lg" />
         </div>
       ) : filtered.length === 0 ? (
-        <Card className="border border-[var(--rail)]">
-          <EmptyState
-            title={search ? 'No matches' : folder === 'inbox' ? 'Inbox is empty' : folder === 'sent' ? 'Nothing sent yet' : 'Trash is empty'}
-            description={search ? 'Try a different search term.' : folder === 'inbox' ? 'Inbound mail will appear here.' : folder === 'sent' ? 'Mail you send from this mailbox will appear here.' : 'Deleted messages will appear here.'}
-            action={folder === 'inbox' || folder === 'sent' ? (
-              <Button variant="primary" size="sm" onClick={() => setShowCompose(true)} className="flex items-center gap-1.5">
-                <HugeiconsIcon icon={ArrowLeft01Icon} size={14} />
-                Compose
-              </Button>
-            ) : undefined}
-          />
-        </Card>
+        <MailboxEmptyState folder={folder} search={search} onCompose={() => setShowCompose(true)} />
       ) : (
         <div className="grid grid-cols-1 lg:grid-cols-[1fr_1fr] gap-4">
           <MessageList

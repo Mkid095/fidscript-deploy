@@ -9,6 +9,7 @@ import { useAuth } from '@/contexts/auth-context';
 import { useShellProjectId } from '@/contexts/project-context';
 import { CreateDomainModal } from './create-domain-modal';
 import { DomainCard } from './domain-card';
+import { EmailProjectSelector } from './email-project-selector';
 
 export default function EmailPage() {
   const { getSdk } = useAuth();
@@ -75,19 +76,11 @@ export default function EmailPage() {
       </div>
 
       {!shellProjectId && (
-        <div className="mb-6">
-          <label className="block text-xs text-[var(--text-muted)] mb-1">Project</label>
-          <select
-            value={pickedProjectId}
-            onChange={e => setPickedProjectId(e.target.value)}
-            className="bg-[var(--surface-2)] border border-[var(--rail)] text-[var(--text)] rounded-lg px-3 py-2 text-sm min-w-52"
-          >
-            <option value="">Select a project</option>
-            {projects.map(p => (
-              <option key={p.id} value={p.id}>{p.name}</option>
-            ))}
-          </select>
-        </div>
+        <EmailProjectSelector
+          projects={projects}
+          pickedProjectId={pickedProjectId}
+          onPick={setPickedProjectId}
+        />
       )}
 
       {error && <p className="text-[var(--danger)] mb-4 text-sm">{error}</p>}
