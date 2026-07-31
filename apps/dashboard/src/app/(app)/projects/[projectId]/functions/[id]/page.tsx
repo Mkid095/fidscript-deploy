@@ -15,13 +15,14 @@ import {
   FunctionInvoke,
 } from '@/components/functions';
 import type { Function_ } from '@/types';
+import { getStarterCode } from './function-utils';
 
 export default function FunctionDetailPage() {
   const params = useParams();
   const projectId = params.projectId as string;
   const functionId = params.id as string;
-
   const { getSdk } = useAuth();
+
   const [fn, setFn] = useState<Function_ | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -41,7 +42,7 @@ export default function FunctionDetailPage() {
       const f = await sdk.functions.get(projectId, functionId) as Function_;
       setFn(f);
       const draft = localStorage.getItem(`fn_draft_${functionId}`);
-      setCode(draft ?? f.currentVersion ? '' : getStarterCode(f.runtime));
+      setCode(draft ?? (f.currentVersion ? '' : getStarterCode(f.runtime)));
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to load function');
     } finally {
@@ -59,8 +60,7 @@ export default function FunctionDetailPage() {
     const rt = (sdk as any).realtime;
     if (!rt) return;
 
-    const token = localStorage.getItem('fidscript_access_token')
-      ?? localStorage.getItem('fidscript_token') ?? '';
+    const token = localStorage.getItem('fidscript_access_token') ?? localStorage.getItem('fidscript_token') ?? '';
 
     rt.connect(() => token, projectId).then(() => {
       if (cancelled) return;
@@ -68,14 +68,10 @@ export default function FunctionDetailPage() {
         const et = event?.type;
         if (!et || et === 'function.deleted') return;
         const statusMap: Record<string, string> = {
-          'function.created': 'ACTIVE',
-          'function.deployed': 'ACTIVE',
-          'function.error': 'FAILED',
+          'function.created': 'ACTIVE', 'function.deployed': 'ACTIVE', 'function.error': 'FAILED',
         };
         const newStatus = statusMap[et];
-        if (newStatus) {
-          setFn(prev => prev ? { ...prev, status: newStatus } : prev);
-        }
+        if (newStatus) setFn(prev => prev ? { ...prev, status: newStatus } : prev);
         if (et === 'function.deployed' || et === 'function.error') {
           setTimeout(() => { if (!cancelled) load(); }, 800);
         }
@@ -127,115 +123,53 @@ export default function FunctionDetailPage() {
     window.location.href = `/projects/${projectId}/functions`;
   }
 
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center min-h-96">
-        <Spinner size="lg" />
-      </div>
-    );
-  }
+  if (loading) return (
+    <div className="flex items-center justify-center min-h-96"><Spinner size="lg" /></div>
+  );
 
-  if (error || !fn) {
-    return (
-      <div className="text-center py-12">
-        <p className="text-[var(--danger)] text-sm mb-4">{error ?? 'Function not found'}</p>
-        <a href={`/projects/${projectId}/functions`} className="text-sm text-[var(--accent)] hover:underline">
-          Back to Functions
-        </a>
-      </div>
-    );
-  }
+  if (error || !fn) return (
+    <div className="text-center py-12">
+      <p className="text-[var(--danger)] text-sm mb-4">{error ?? 'Function not found'}</p>
+      <a href={`/projects/${projectId}/functions`} className="text-sm text-[var(--accent)] hover:underline">Back to Functions</a>
+    </div>
+  );
 
   return (
     <div className="px-4 sm:px-6 lg:px-8 py-6 flex flex-col h-full gap-6 overflow-y-auto">
       {/* Breadcrumb */}
       <div className="flex items-center gap-2 text-sm text-[var(--text-muted)] flex-shrink-0">
-        <a
-          href={`/projects/${projectId}/functions`}
-          className="hover:text-[var(--text)] transition-colors"
-        >
-          Functions
-        </a>
+        <a href={`/projects/${projectId}/functions`} className="hover:text-[var(--text)] transition-colors">Functions</a>
         <span>/</span>
         <span className="text-[var(--text)]">{fn.name}</span>
       </div>
 
-      {/* Header */}
       <FunctionHeader
-        fn={fn}
-        deploying={deploying}
-        invokeError={invokeError}
-        invokeResult={invokeResult}
-        onDeploy={() => handleDeploy(code)}
-        onInvoke={handleInvoke}
-        onDelete={handleDelete}
+        fn={fn} deploying={deploying} invokeError={invokeError} invokeResult={invokeResult}
+        onDeploy={() => handleDeploy(code)} onInvoke={handleInvoke} onDelete={handleDelete}
       />
 
-      {/* Tabs */}
-      <FunctionTabs
-        activeTab={activeTab}
-        onTabChange={setActiveTab}
-      />
+      <FunctionTabs activeTab={activeTab} onTabChange={setActiveTab} />
 
-      {/* Tab panels */}
       <div className="flex-1 min-h-0 flex flex-col">
         {activeTab === 'code' && (
-          <FunctionCode
-            projectId={projectId}
-            functionId={functionId}
-            runtime={fn.runtime}
-            getSdk={getSdk}
-            initialCode={code}
-            deploying={deploying}
-            deployMsg={deployMsg}
-            onDeploy={handleDeploy}
-          />
+          <FunctionCode projectId={projectId} functionId={functionId} runtime={fn.runtime}
+            getSdk={getSdk} initialCode={code} deploying={deploying} deployMsg={deployMsg}
+            onDeploy={handleDeploy} />
         )}
-
         {activeTab === 'logs' && (
-          <FunctionLogs
-            projectId={projectId}
-            functionId={functionId}
-            getSdk={getSdk}
-            inFlight={fn.status === 'BUILDING' || fn.status === 'DEPLOYING'}
-          />
+          <FunctionLogs projectId={projectId} functionId={functionId} getSdk={getSdk}
+            inFlight={fn.status === 'BUILDING' || fn.status === 'DEPLOYING'} />
         )}
-
         {activeTab === 'versions' && (
-          <FunctionVersions
-            projectId={projectId}
-            functionId={functionId}
-            getSdk={getSdk}
-          />
+          <FunctionVersions projectId={projectId} functionId={functionId} getSdk={getSdk} />
         )}
-
         {activeTab === 'settings' && (
-          <FunctionSettings
-            fn={fn}
-            onUpdate={handleUpdate}
-            onDelete={handleDelete}
-          />
+          <FunctionSettings fn={fn} onUpdate={handleUpdate} onDelete={handleDelete} />
         )}
-
         {activeTab === 'invoke' && (
-          <FunctionInvoke
-            projectId={projectId}
-            functionId={functionId}
-            getSdk={getSdk}
-          />
+          <FunctionInvoke projectId={projectId} functionId={functionId} getSdk={getSdk} />
         )}
       </div>
     </div>
   );
-}
-
-function getStarterCode(runtime: string): string {
-  switch (runtime) {
-    case 'node':
-      return `// FIDScript Edge Function\nexport async function handler(event) {\n  const { request, env } = event;\n  return Response.json({\n    message: 'Hello from FIDScript',\n    timestamp: new Date().toISOString(),\n  });\n}\n`;
-    case 'python':
-      return `# FIDScript Edge Function\ndef handler(event, env):\n    return {\n        "statusCode": 200,\n        "body": {"message": "Hello from FIDScript"}\n    }\n`;
-    default:
-      return '// Your function code here\n';
-  }
 }

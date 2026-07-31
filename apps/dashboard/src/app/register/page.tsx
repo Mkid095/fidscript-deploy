@@ -1,248 +1,53 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import Image from 'next/image';
 import { HugeiconsIcon } from '@hugeicons/react';
 import { LockPasswordIcon, Mail01Icon } from '@hugeicons/core-free-icons';
-import { Button } from '@fidscript/ui';
-import { Input } from '@fidscript/ui';
 import { Card } from '@fidscript/ui';
 
 import { useAuth } from '@/contexts/auth-context';
-import { PasswordStrength } from '@/components/auth/password-strength';
-import { MagicCodeInput } from '@/components/auth/magic-code-input';
+import { RegisterForm } from './register-form';
 
 type AuthMethod = 'PASSWORD' | 'MAGIC_CODE';
 
 export default function RegisterPage() {
-  const { register, verifyMagicCode, loading, error } = useAuth();
-
+  const { loading, error } = useAuth();
   const [authMethod, setAuthMethod] = useState<AuthMethod>('PASSWORD');
-  const [name, setName] = useState('');
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [confirm, setConfirm] = useState('');
-  const [validationError, setValidationError] = useState('');
-  const [step, setStep] = useState<'form' | 'code'>('form');
-  const [maskedEmail, setMaskedEmail] = useState('');
-  const [code, setCode] = useState('');
-  const [codeError, setCodeError] = useState('');
-  const [countdown, setCountdown] = useState(0);
-
-  useEffect(() => {
-    if (countdown > 0) {
-      const t = setTimeout(() => setCountdown(countdown - 1), 1000);
-      return () => clearTimeout(t);
-    }
-  }, [countdown]);
-
-  function validatePassword(): boolean {
-    if (!name.trim()) { setValidationError('Name is required'); return false; }
-    if (!email.trim()) { setValidationError('Email is required'); return false; }
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) { setValidationError('Enter a valid email address'); return false; }
-    if (password.length < 12) { setValidationError('Password must be at least 12 characters'); return false; }
-    if (!/[A-Z]/.test(password)) { setValidationError('Password must contain an uppercase letter'); return false; }
-    if (!/[a-z]/.test(password)) { setValidationError('Password must contain a lowercase letter'); return false; }
-    if (!/[0-9]/.test(password)) { setValidationError('Password must contain a number'); return false; }
-    if (password !== confirm) { setValidationError('Passwords do not match'); return false; }
-    setValidationError('');
-    return true;
-  }
-
-  async function handlePasswordSubmit(e: React.FormEvent) {
-    e.preventDefault();
-    if (!validatePassword()) return;
-    try {
-      await register(email, name, password, 'PASSWORD');
-    } catch {
-      // error handled by context
-    }
-  }
-
-  async function handleMagicCodeSubmit(e: React.FormEvent) {
-    e.preventDefault();
-    if (!name.trim()) { setValidationError('Name is required'); return; }
-    if (!email.trim()) { setValidationError('Email is required'); return; }
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) { setValidationError('Enter a valid email address'); return; }
-    setValidationError('');
-    try {
-      // register() internally calls sendMagicCode — no duplicate call needed
-      await register(email, name, '', 'MAGIC_CODE');
-      const [local, domain] = email.split('@');
-      setMaskedEmail(`${local.slice(0, 2)}***@${domain}`);
-      setStep('code');
-      setCountdown(30);
-    } catch {
-      // error handled by context
-    }
-  }
-
-  async function handleCodeComplete(rawCode: string) {
-    setCode(rawCode);
-    setCodeError('');
-    try {
-      await verifyMagicCode(email, rawCode);
-      // verifyMagicCode handles redirect on success
-    } catch (err) {
-      setCode('');
-      setCodeError(err instanceof Error ? err.message : 'Invalid or expired code');
-    }
-  }
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-[var(--surface-2)] p-4">
       <Card padding="lg" className="w-full max-w-md border border-[var(--rail)]">
-        {/* Logo + wordmark */}
         <div className="mb-8 text-center">
           <Image
             src="https://res.cloudinary.com/dfp7uhzy3/image/upload/v1782017464/Generated_Image_June_21__2026_-_2_00AM-removebg-preview_ekpdad.png"
-            alt="FIDScript"
-            width={72}
-            height={72}
+            alt="FIDScript" width={72} height={72}
             className="mx-auto mb-3 rounded-xl"
           />
           <h1 className="text-xl font-bold text-[var(--text)] mb-0.5">Create account</h1>
           <p className="text-xs text-[var(--text-muted)]">fidscript deploy &middot; by NextMavens</p>
         </div>
 
-        {step === 'form' ? (
-          <>
-            {/* Auth method selector */}
-            <div className="flex rounded-lg bg-[var(--surface-2)] p-1 mb-6 border border-[var(--rail)]">
-              <button
-                type="button"
-                onClick={() => setAuthMethod('PASSWORD')}
-                className={`flex-1 flex items-center justify-center gap-2 py-2 text-sm font-medium rounded-md transition-colors duration-150 ${
-                  authMethod === 'PASSWORD' ? 'bg-[var(--rail)] text-[var(--text)]' : 'text-[var(--text-muted)] hover:text-[var(--text)]'
-                }`}
-              >
-                <HugeiconsIcon icon={LockPasswordIcon} size={16} />
-                Password
-              </button>
-              <button
-                type="button"
-                onClick={() => setAuthMethod('MAGIC_CODE')}
-                className={`flex-1 flex items-center justify-center gap-2 py-2 text-sm font-medium rounded-md transition-colors duration-150 ${
-                  authMethod === 'MAGIC_CODE' ? 'bg-[var(--rail)] text-[var(--text)]' : 'text-[var(--text-muted)] hover:text-[var(--text)]'
-                }`}
-              >
-                <HugeiconsIcon icon={Mail01Icon} size={16} />
-                Magic code
-              </button>
-            </div>
+        <div className="flex rounded-lg bg-[var(--surface-2)] p-1 mb-6 border border-[var(--rail)]">
+          <button type="button" onClick={() => setAuthMethod('PASSWORD')}
+            className={`flex-1 flex items-center justify-center gap-2 py-2 text-sm font-medium rounded-md transition-colors duration-150 ${
+              authMethod === 'PASSWORD' ? 'bg-[var(--rail)] text-[var(--text)]' : 'text-[var(--text-muted)] hover:text-[var(--text)]'
+            }`}>
+            <HugeiconsIcon icon={LockPasswordIcon} size={16} />Password
+          </button>
+          <button type="button" onClick={() => setAuthMethod('MAGIC_CODE')}
+            className={`flex-1 flex items-center justify-center gap-2 py-2 text-sm font-medium rounded-md transition-colors duration-150 ${
+              authMethod === 'MAGIC_CODE' ? 'bg-[var(--rail)] text-[var(--text)]' : 'text-[var(--text-muted)] hover:text-[var(--text)]'
+            }`}>
+            <HugeiconsIcon icon={Mail01Icon} size={16} />Magic code
+          </button>
+        </div>
 
-            {authMethod === 'PASSWORD' ? (
-              <form onSubmit={handlePasswordSubmit} noValidate>
-                <div className="flex flex-col gap-4">
-                  <Input
-                    label="Name"
-                    type="text"
-                    value={name}
-                    onChange={e => { setName(e.target.value); setValidationError(''); }}
-                    placeholder="Your full name"
-                    autoComplete="name"
-                    className="bg-[var(--surface-2)] border border-[var(--rail)] text-[var(--text)] placeholder:text-[var(--text-dim)]"
-                  />
-                  <Input
-                    label="Email"
-                    type="email"
-                    value={email}
-                    onChange={e => { setEmail(e.target.value); setValidationError(''); }}
-                    placeholder="you@example.com"
-                    autoComplete="email"
-                    className="bg-[var(--surface-2)] border border-[var(--rail)] text-[var(--text)] placeholder:text-[var(--text-dim)]"
-                  />
-                  <div className="space-y-1">
-                    <Input
-                      label="Password"
-                      type="password"
-                      value={password}
-                      onChange={e => { setPassword(e.target.value); setValidationError(''); }}
-                      placeholder="At least 12 characters"
-                      autoComplete="new-password"
-                      className="bg-[var(--surface-2)] border border-[var(--rail)] text-[var(--text)] placeholder:text-[var(--text-dim)]"
-                    />
-                    <PasswordStrength password={password} />
-                  </div>
-                  <Input
-                    label="Confirm password"
-                    type="password"
-                    value={confirm}
-                    onChange={e => { setConfirm(e.target.value); setValidationError(''); }}
-                    placeholder="Re-enter password"
-                    autoComplete="new-password"
-                    className="bg-[var(--surface-2)] border border-[var(--rail)] text-[var(--text)] placeholder:text-[var(--text-dim)]"
-                  />
-                  {(validationError || error) && (
-                    <p className="text-sm text-[var(--danger)]" role="alert">{validationError || error}</p>
-                  )}
-                  <Button type="submit" disabled={loading} variant="primary" className="w-full mt-1">
-                    {loading ? 'Creating account…' : 'Create account'}
-                  </Button>
-                </div>
-              </form>
-            ) : (
-              <form onSubmit={handleMagicCodeSubmit} noValidate>
-                <div className="flex flex-col gap-4">
-                  <div className="rounded-lg bg-orange-900/20 border border-orange-800/40 p-3">
-                    <p className="text-xs text-orange-300">
-                      A magic code will be sent to your email each time you sign in.
-                    </p>
-                  </div>
-                  <Input
-                    label="Name"
-                    type="text"
-                    value={name}
-                    onChange={e => { setName(e.target.value); setValidationError(''); }}
-                    placeholder="Your full name"
-                    autoComplete="name"
-                    className="bg-[var(--surface-2)] border border-[var(--rail)] text-[var(--text)] placeholder:text-[var(--text-dim)]"
-                  />
-                  <Input
-                    label="Email"
-                    type="email"
-                    value={email}
-                    onChange={e => { setEmail(e.target.value); setValidationError(''); }}
-                    placeholder="you@example.com"
-                    autoComplete="email"
-                    className="bg-[var(--surface-2)] border border-[var(--rail)] text-[var(--text)] placeholder:text-[var(--text-dim)]"
-                  />
-                  {(validationError || error) && (
-                    <p className="text-sm text-[var(--danger)]" role="alert">{validationError || error}</p>
-                  )}
-                  <Button type="submit" disabled={loading} variant="primary" className="w-full mt-1">
-                    {loading ? 'Creating account…' : 'Create account'}
-                  </Button>
-                </div>
-              </form>
-            )}
-          </>
-        ) : (
-          /* Magic code verification step */
-          <div className="flex flex-col gap-4">
-            <div className="text-center space-y-1">
-              <p className="text-sm text-[var(--text-muted)]">Check your inbox</p>
-              <p className="text-sm text-[var(--text-muted)] font-medium">{maskedEmail}</p>
-            </div>
-            <MagicCodeInput
-              onComplete={handleCodeComplete}
-              disabled={!!code}
-              error={!!codeError}
-            />
-            {codeError && (
-              <p className="text-sm text-[var(--danger)] text-center" role="alert">{codeError}</p>
-            )}
-            {code && !codeError && (
-              <p className="text-sm text-green-400 text-center">Verified — signing in…</p>
-            )}
-          </div>
-        )}
+        <RegisterForm authMethod={authMethod} onMethodChange={setAuthMethod} error={error} loading={loading} />
 
         <p className="text-center text-sm text-[var(--text-muted)] mt-6">
           Already have an account?{' '}
-          <a href="/login" className="text-[var(--accent)] hover:text-[var(--accent)]">
-            Sign in
-          </a>
+          <a href="/login" className="text-[var(--accent)] hover:text-[var(--accent)]">Sign in</a>
         </p>
       </Card>
     </div>

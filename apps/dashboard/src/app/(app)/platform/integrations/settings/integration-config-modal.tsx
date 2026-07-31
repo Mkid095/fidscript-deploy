@@ -5,6 +5,7 @@ import { HugeiconsIcon } from '@hugeicons/react';
 import { CloudIcon, CheckmarkCircle01Icon, CancelCircleIcon, LockIcon, ViewIcon, ViewOffIcon } from '@hugeicons/core-free-icons';
 import { Button, Card, Input, Spinner } from '@fidscript/ui';
 import { useAuth } from '@/contexts/auth-context';
+import { MoreIntegrationsCard } from './more-integrations-card';
 
 function mask(str: string): string {
   if (!str || str.length < 8) return '••••••••';
@@ -193,18 +194,7 @@ export function IntegrationConfigModal() {
         )}
       </Card>
 
-      <Card padding="lg">
-        <div className="flex items-center gap-3 mb-3">
-          <div className="w-9 h-9 rounded-lg bg-slate-500/10 border border-slate-500/20 flex items-center justify-center shrink-0">
-            <HugeiconsIcon icon={CloudIcon} size={16} className="text-slate-400" />
-          </div>
-          <div>
-            <h2 className="text-sm font-semibold text-[var(--text)]">More integrations</h2>
-            <p className="text-xs text-[var(--text-muted)] mt-0.5">GitHub, Vercel, and more coming soon</p>
-          </div>
-        </div>
-        <p className="text-xs text-[var(--text-dim)]">Additional cloud provider integrations are planned.</p>
-      </Card>
+      <MoreIntegrationsCard />
     </>
   );
 }
