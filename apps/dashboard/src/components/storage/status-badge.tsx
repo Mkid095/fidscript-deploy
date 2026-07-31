@@ -1,5 +1,8 @@
 'use client';
 
+import { HugeiconsIcon } from '@hugeicons/react';
+import { CheckmarkCircle01Icon, MinusCircleIcon } from '@hugeicons/core-free-icons';
+
 interface StatusBadgeProps {
   status: string;
 }
@@ -12,7 +15,11 @@ export function StatusBadge({ status }: StatusBadgeProps) {
         ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20'
         : 'bg-[var(--rail)] text-[var(--text-dim)] border border-[var(--rail)]'
     }`}>
-      <span className={`w-1.5 h-1.5 rounded-full ${isActive ? 'bg-emerald-400' : 'bg-[var(--text-dim)]'}`} />
+      <HugeiconsIcon
+        icon={isActive ? CheckmarkCircle01Icon : MinusCircleIcon}
+        size={10}
+        className={isActive ? 'text-emerald-400' : 'text-[var(--text-dim)]'}
+      />
       {status}
     </span>
   );

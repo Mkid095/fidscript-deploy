@@ -33,6 +33,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/).
 - `apps/dashboard/src/contexts/auth-context.tsx` — removed `IS_MOCK_MODE` and `mockUser`; session restore now only uses real auth flow (localStorage tokens -> `sdk.auth.me()` -> refresh on failure)
 - `apps/dashboard/src/app/(app)/projects/[projectId]/domains/[domainId]/page.tsx` — removed mock type/data imports; `wizard` and `repairs` tabs now show "not yet available" placeholder (no real backend API exists for these features)
 - `apps/dashboard/src/app/(app)/projects/[projectId]/domains/[domainId]/` — split 1,037-line `page.tsx` into 7 sub-components (overview-tab, dns-tab, health-tab, email-tab, ssl-tab, wizard-tab, repairs-tab), each self-managing its own data fetching; page.tsx is now a 74-line thin shell
+- `apps/dashboard/src/app/(app)/email/[domain]/` — split 688-line `page.tsx` into tab components (domain-overview-tab, domain-mailboxes-tab, domain-aliases-tab, domain-catchall-tab, domain-catchall-config-modal), page.tsx now 176-line shell
+- `apps/dashboard/src/app/(app)/platform/email/` — split 584-line `page.tsx` into platform-email-compose-form, platform-email-compose-modal, platform-email-mailbox-list, platform-email-message-list, platform-email-message-detail, platform-email-create-mailbox-modal, platform-email-mailbox-created-card, platform-email-attachment-chips; page.tsx now 208-line shell
 
 - Initial ANPAS bootstrap — 2026-07-30
 
@@ -45,4 +47,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/).
   - `hooks/use-discovery.ts` (92L) — discovery fetch logic
   - `hooks/use-configure-sse.ts` (139L) — configure API + SSE progress stream
   - `page.tsx` is now a 77-line thin shell that lifts state and delegates to step components
+  - All files under 150 lines per ANPAS rule
+- `apps/dashboard/src/app/(auth)/setup/page.tsx` (625 lines) — split into ANPAS-compliant sub-components:
+  - `shared/setup-logo.tsx` (18L), `steps/method-step.tsx` (53L), `steps/domain-step.tsx` (146L), `steps/progress-step.tsx` (86L), `steps/done-step.tsx` (50L)
+  - `steps/cloudflare-oauth-section.tsx` (84L), `steps/password-fields.tsx` (42L), `steps/auth-method-badge.tsx` (23L), `steps/cloudflare-token-field.tsx` (22L), `steps/admin-email-field.tsx` (22L), `steps/platform-name-field.tsx` (21L)
+  - `hooks/use-setup-sse.ts` (71L), `hooks/use-domain-validation.ts` (44L), `hooks/use-configure-submit.ts` (48L), `hooks/use-setup-discovery.ts` (27L)
+  - `page.tsx` is now a 146-line thin shell that orchestrates step components
   - All files under 150 lines per ANPAS rule
