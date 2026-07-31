@@ -2,7 +2,43 @@
 
 FIDScript Deploy — AI Development Constitution
 
-> **Operating mode (from 2026-06-16):** Hardening, not feature-chasing. The platform is being rebuilt
+> **STRICT RULE — READ BEFORE ANY WORK:** This project follows ANPAS (AI-Native Project Architecture Standard). All AI agents doing development work in this codebase MUST follow the rules in `.ai/coding-rules.md` and verify their work against `.ai/review-checklist.md` BEFORE declaring done. Non-compliance is not optional.
+
+---
+
+## Non-Negotiable Development Rules
+
+These rules are enforced on every task. No exceptions without documented approval.
+
+| Rule | Limit | Enforcement |
+|------|-------|-------------|
+| Max file size | **150 lines** | Count before committing |
+| File naming | `[domain]-[action]-[type].ts` | No `helpers.ts`, `common.ts`, `utils.ts` |
+| Business logic | **NEVER** in React/Next.js components | Always in services/lib/server |
+| UI components | **NEVER** contain API calls, validation, or business logic | Only rendering + event emission |
+| Generic utilities | **FORBIDDEN** | helpers.ts, common.ts, misc.ts, utils.ts do not exist |
+| TypeScript | Strict — no `any`, no implicit `any` | tsc --noEmit must pass |
+| Commit | **Always update CHANGELOG.md** | Every commit, every change |
+| Documentation | **Docs-as-you-build** | Feature doc created AT implementation time |
+| No dead code | **Remove unused code** | Never comment out — delete |
+
+---
+
+## AI Agent Entry Order
+
+Before touching any code, read in this exact order:
+
+1. **`.ai/coding-rules.md`** — enforcement rules (non-negotiable)
+2. **`.ai/project-manifest.md`** — system overview, domains, flows
+3. **`.ai/review-checklist.md`** — must complete every item before declaring done
+4. **`.ai/workflows.md`** — execution flow
+5. This file (`CLAUDE.md`)
+6. Then relevant phase docs: `docs/phases/phase-*.md` or `docs/phases/frontend/*.md`
+7. Then inspect the actual source files
+
+---
+
+> **Operating mode (from 2026-06-16):**
 > dependency-first from Phase 0, with every phase verified on the VPS before advancing. See
 > `docs/AUDIT.md` for why.
 >
@@ -420,4 +456,18 @@ FIDScript Deploy repo
 
 ---
 
-*Last updated: 2026-06-20 — documentation-first phase; the blueprint (`docs/product/` + backend inventory + per-service specs + screen/component inventories + F02 exemplar) is in place. F02 implementation is the first vertical slice gated on this blueprint's review and approval; F03–F11 specs follow the same template.*
+*Last updated: 2026-07-30 — ANPAS layer added; documentation-first phase; the blueprint (`docs/product/` + backend inventory + per-service specs + screen/component inventories + F02 exemplar) is in place. F02 implementation is the first vertical slice gated on this blueprint's review and approval; F03–F11 specs follow the same template.*
+
+---
+
+## Verification Checklist (Run Before Every Commit)
+
+- [ ] No file exceeds 150 lines (count with `wc -l`)
+- [ ] No `helpers.ts`, `common.ts`, `misc.ts`, `utils.ts`, `tools.ts` files exist
+- [ ] No business logic in React/Next.js components (`apps/frontend/src/**/*.tsx`)
+- [ ] No `any` types introduced
+- [ ] No commented-out code — delete instead
+- [ ] CHANGELOG.md updated with this change
+- [ ] `tsc --noEmit` passes in the relevant app
+- [ ] Phase doc (`docs/phases/phase-*.md`) updated if implementation changed current state
+- [ ] Commit message follows `feat(domain): description` format
