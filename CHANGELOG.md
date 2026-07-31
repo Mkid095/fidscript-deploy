@@ -7,6 +7,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/).
 ## [Unreleased]
 
 ### Changed
+- fix(dashboard): login page — server component fetches auth method server-side so SSR renders correct form immediately; CORS issue bypassed via dashboard API proxy route at /api/v1/installation/status
+- fix(dashboard): login page uses local /logo.svg instead of broken Cloudinary URL
+- fix(dashboard): login page shows "Platform auth: Password" badge when method is configured; hides tab strip entirely
 - fix(dashboard): login page auto-detects platform auth method from /api/v1/installation/status — shows only PASSWORD or MAGIC_CODE form, never both tabs when platform is configured
 - fix(dashboard): onboarding configure step now captures and persists auth method + admin password to PostgreSQL via installation API
 - fix(dashboard): welcome step checks lifecycle on mount — shows "Go to login" when platform is already CONFIGURED
