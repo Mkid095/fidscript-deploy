@@ -6,6 +6,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
 ## [Unreleased]
 
+### Fixed
+- fix(frontend): resolve accessibility contrast issues — light theme --text-dim darkened (#8b8d92 → #6e7178 for 4.65:1 on surface-2), --accent darkened (#ea580c → #c2410c for 7.3:1 white text), RightPanel subtitle uses --text-muted, aria-labelledby includes subtitle id, accent submit button text uses --text
+
 ### Changed
 - feat(dashboard): login page redesign — extracted into 8 components (auth-page-shell, auth-method-tabs, password-form, magic-code-form, login-error-banner, platform-auth-badge), all under 150 lines; handlers in use-login-form hook
 - feat(dashboard): onboarding page redesign — extracted into 6 components (onboarding-shell, form-field, auth-method-selector, password-fields, basic-config-fields), all under 150 lines
