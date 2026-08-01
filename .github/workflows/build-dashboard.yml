@@ -1,0 +1,51 @@
+name: Build Dashboard
+
+on:
+  workflow_dispatch:
+    inputs:
+      image_tag:
+        description: 'Image tag (e.g. app-20260801)'
+        required: true
+        default: 'app-20260801'
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'pnpm'
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build Next.js
+        run: |
+          pnpm --filter @fidscript/dashboard exec next build --no-lint
+        env:
+          NEXT_PUBLIC_API_URL: https://api.deploy.fidscript.com
+          NEXT_PUBLIC_PLATFORM_DOMAIN: deploy.fidscript.com
+          NODE_OPTIONS: --max-old-space-size=4096
+          NEXT_DISABLE_TELEMETRY: '1'
+
+      - name: Build Docker image
+        run: |
+          docker build \
+            --build-arg NEXT_PUBLIC_PLATFORM_DOMAIN=${{ vars.PLATFORM_DOMAIN || 'deploy.fidscript.com' }} \
+            --build-arg NEXT_PUBLIC_API_URL=https://api.${{ vars.PLATFORM_DOMAIN || 'deploy.fidscript.com' }} \
+            -t ghcr.io/${{ github.repository }}/dashboard:${{ inputs.image_tag }} \
+            -t ghcr.io/${{ github.repository }}/dashboard:latest \
+            -f apps/dashboard/Dockerfile .
+
+      - name: Push image
+        run: |
+          echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u "${{ github.actor }}" --password-stdin
+          docker push ghcr.io/${{ github.repository }}/dashboard:${{ inputs.image_tag }}
+          docker push ghcr.io/${{ github.repository }}/dashboard:latest
