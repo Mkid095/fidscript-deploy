@@ -14,6 +14,7 @@ export interface AuthContextValue extends AuthState {
   sendMagicCode: (email: string) => Promise<{ sent: boolean }>;
   verifyMagicCode: (email: string, code: string) => Promise<void>;
   changePassword: (currentPassword: string, newPassword: string) => Promise<void>;
+  forgotPassword: (email: string) => Promise<void>;
   clearError: () => void;
   /** Returns an SDK instance authenticated with the current access token. */
   getSdk: () => FidscriptSDK;

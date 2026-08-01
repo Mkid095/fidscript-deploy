@@ -6,6 +6,19 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
 ## [Unreleased]
 
+### Fixed
+- fix(auth): seed no longer skips on admin email mismatch — `prisma/seed.ts` now checks whether ANY admin exists before creating one. Previously, if `ADMIN_EMAIL` in docker-compose did not match the seeded admin's email, the seed silently skipped but a subsequent installation flow could create a duplicate admin. Now it safely skips if any admin already exists with a different email. (`apps/api/prisma/seed.ts`)
+- fix(auth): `inviteKeyword` validation in register service now correctly checks `SIGNUP_INVITE_KEYWORD` env var without shadowing the outer variable, and the missing `UnauthorizedException` import is restored. (`apps/api/src/modules/auth/services/auth-register.service.ts`)
+- fix(auth): rate limiting restructured — account lockout check (`rateLimiter.count`) now runs AFTER user lookup, not before. This prevents an attacker from probing which emails are registered by observing whether a non-existent email triggers the "too many attempts" response. (`apps/api/src/modules/auth/services/auth-login.service.ts`)
+- feat(auth): added `POST /auth/forgot-password` endpoint as a dedicated alias for `/auth/send-verification` with `type=PASSWORD_RESET`. (`apps/api/src/modules/auth/controllers/auth.controller.ts`)
+- feat(auth): `RegisterDto` now accepts `inviteKeyword` field; `AuthRegisterService` validates it against `SIGNUP_INVITE_KEYWORD` env var (case-insensitive, skips if env var is unset). (`apps/api/src/modules/auth/dto/register.dto.ts`, `apps/api/src/modules/auth/services/auth-register.service.ts`)
+- fix(auth): password change now updates `User.passwordHash` in addition to `UserCredential.secretHash` — login verifies against `User.passwordHash` (`auth-login.service.ts:83`), so without this update the seed's bootstrap hash remained the only thing accepted and a UI password change silently had no effect on future logins. After this fix, a successful `/change-password` is immediately honoured at next login. (`apps/api/src/modules/auth/services/auth-password.service.ts`)
+- fix(installer): `install.sh` and `setup-wizard.sh` no longer overwrite populated secret files (`secrets/postgres_password.txt`, `secrets/jwt_secret.txt`, `secrets/stalwart_admin_token.txt`, etc.). Re-running the installer on an existing deployment previously rotated every credential, invalidating DB connections, JWT signing keys, Stalwart admin tokens, and Stalwart webhook secrets — locking the operator out and breaking running services. A `generate_secret` helper now skips files that are non-empty. (`installer/scripts/install.sh`, `installer/scripts/setup-wizard.sh`)
+- fix(installer): `setup-wizard.sh` no longer overwrites `secrets/api.env` on every run — re-running would otherwise blank the operator's GITHUB_CLIENT_ID/SECRET and force a container recreate. (`installer/scripts/setup-wizard.sh`)
+- fix(installer): `install.sh` no longer overwrites `secrets/api.env` on re-run — same preservation invariant as the wizard. (`installer/scripts/install.sh`)
+- fix(installer): aligned `SMTP_SUBMISSION_PASS` in `installer/docker/.env`, `installer/docker/secrets/api.env`, and `installer/docker/secrets/smtp_submission_pass.txt` to the current `secrets/stalwart_admin_token.txt` (`Tqu6QQHLg8AIGK5x`). They had drifted apart, causing SMTP submission to fail against the Stalwart admin token after the stalwart token was rotated. Added comments documenting the stalwart_admin_token ↔ SMTP_SUBMISSION_PASS invariant.
+- feat(installer): `api-entrypoint.sh` honours `SKIP_SEED=1` env var to bypass `prisma db seed` on container start. The seed itself is idempotent, but this gives operators an explicit knob. `docker-compose.yml` exposes it as `SKIP_SEED=${SKIP_SEED:-0}`.
+
 ### Changed
 - feat(dashboard): projects list empty state UI — `projects-list-body.tsx` redesigned with cleaner single-message copy, larger icon in circular surface-2 badge, more vertical spacing (py-16), prominent centered "New project" CTA using `bg-[var(--accent)] text-[var(--text)]`; card uses `bg-[var(--surface)]` instead of `--surface-2`; replaced generic Search icon with Folder icon; `aria-live` on title + description; role/aria-label on region. `projects-list-header.tsx` New-project button now applies accent classes directly so the accent color is visible across themes.
 
@@ -14,6 +27,15 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
 ### Fixed
 - fix(frontend): resolve accessibility contrast issues — light theme --text-dim darkened (#8b8d92 → #6e7178 for 4.65:1 on surface-2), --accent darkened (#ea580c → #c2410c for 7.3:1 white text), RightPanel subtitle uses --text-muted, aria-labelledby includes subtitle id, accent submit button text uses --text
+
+### Added
+- feat(dashboard): register page redesigned — now uses `AuthPageShell` layout consistent with login page (centered card, proper visual hierarchy, logo, footer with sign-in link). `register-form.tsx` extracted into `register/components/` sub-components: `auth-method-toggle.tsx`, `password-registration-form.tsx`, `magic-code-registration-step.tsx`, `magic-code-confirm-step.tsx`, `invite-keyword-input.tsx`. All files under 150 lines.
+- feat(dashboard): registration now requires an invite keyword (`"nextmavens"`, case-insensitive) verified client-side via SHA-256 hash comparison before the backend call. Keyword field placed at the top of both password and magic-code registration forms with inline error display.
+- feat(dashboard): registration no longer auto-logs in after password signup — shows pending state. Magic-code registration shows a separate confirmation step after sending the code. Backend errors displayed inline via `LoginErrorBanner`, not buried.
+- feat(dashboard): add `forgot-password` page at `/forgot-password` — email input, sends password reset via `auth.sendVerification(type=PASSWORD_RESET)`, shows success state with "check your inbox" envelope icon and option to try again. Layout matches login page via `AuthPageShell`.
+- feat(dashboard): `AuthProvider` gains `forgotPassword(email)` method backed by `sdk.auth.sendVerification(email, 'PASSWORD_RESET')` — plumbed through `auth-methods.ts`, `auth-provider.tsx`, and `auth-types.ts`.
+- fix(dashboard): removed hardcoded orange `bg-orange-900/20 border-orange-800/40` magic-code notice in register form — replaced with CSS variable `bg-[var(--warning)]/10 border-[var(--warning)]/20`.
+- fix(dashboard): removed duplicate `placeholder:text-[var(--var(--text-dim))]` typo in magic-code email input field (`register-form.tsx`).
 - feat(dashboard): polish project cards — `project-card.tsx` and `deleted-project-card.tsx` now use `bg-[var(--surface)]` for card background, `hover:bg-[var(--hover)]` consistently, accent-colored "Open →" indicator on hover, and CSS-variable-only colors for all status badges / time icons / action buttons (edit, delete, restore, purge)
 
 ### Changed

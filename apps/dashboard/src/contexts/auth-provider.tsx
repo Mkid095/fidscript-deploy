@@ -15,6 +15,7 @@ import {
   sendMagicCodeMethod,
   verifyMagicCodeMethod,
   changePasswordMethod,
+  forgotPasswordMethod,
 } from './auth-methods';
 
 export const AuthContext = createContext<AuthContextValue | null>(null);
@@ -91,6 +92,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }
 
+  async function forgotPassword(email: string): Promise<void> {
+    setState(s => ({ ...s, loading: true, error: null }));
+    try {
+      await forgotPasswordMethod(email);
+      setState(s => ({ ...s, loading: false, error: null }));
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Failed to send reset email';
+      setState(s => ({ ...s, loading: false, error: message }));
+      throw err;
+    }
+  }
+
   function clearError() {
     setState(s => ({ ...s, error: null }));
   }
@@ -114,6 +127,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         sendMagicCode,
         verifyMagicCode,
         changePassword,
+        forgotPassword,
         clearError,
         getSdk,
         getToken,

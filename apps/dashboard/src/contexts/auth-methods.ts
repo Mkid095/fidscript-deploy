@@ -95,3 +95,10 @@ export async function changePasswordMethod(
   await hydrateUser(res.accessToken);
   window.location.href = getNextRoute();
 }
+
+export async function forgotPasswordMethod(
+  email: string,
+): Promise<void> {
+  const sdk = makeSdk();
+  await sdk.auth.sendVerification(email, 'PASSWORD_RESET');
+}
