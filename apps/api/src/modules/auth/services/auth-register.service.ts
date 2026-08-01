@@ -1,4 +1,4 @@
-import { Injectable, ConflictException, BadRequestException } from '@nestjs/common';
+import { Injectable, ConflictException, BadRequestException, UnauthorizedException } from '@nestjs/common';
 import { PrismaService } from '@/prisma/prisma.service';
 import { EventService } from '@/modules/events/event.service';
 import { AuthMagicCodeService } from '@/modules/auth/services/auth-magic-code.service';
@@ -15,10 +15,16 @@ export class AuthRegisterService {
   ) {}
 
   async register(
-    dto: { email: string; password?: string; name?: string; authMethod?: 'PASSWORD' | 'MAGIC_CODE' },
+    dto: { email: string; password?: string; name?: string; authMethod?: 'PASSWORD' | 'MAGIC_CODE'; inviteKeyword?: string },
     ipAddress?: string,
     userAgent?: string,
   ) {
+    const requiredKeyword = process.env.SIGNUP_INVITE_KEYWORD?.trim();
+    if (requiredKeyword) {
+      if (!dto.inviteKeyword || dto.inviteKeyword.trim().toLowerCase() !== requiredKeyword.toLowerCase()) {
+        throw new UnauthorizedException('Invalid or missing invite keyword');
+      }
+    }
     const authMethod = dto.authMethod ?? 'PASSWORD';
     const existing = await this.prisma.user.findUnique({ where: { email: dto.email } });
     if (existing) throw new ConflictException('Email already registered');

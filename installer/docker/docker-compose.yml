@@ -289,6 +289,9 @@ services:
     env_file:
       - ./secrets/api.env
     environment:
+      # Set SKIP_SEED=1 to skip `prisma db seed` on container start.
+      # Default is to run seed (it's idempotent: skips if admin already exists).
+      SKIP_SEED: "${SKIP_SEED:-0}"
       # First-run admin seed (consumed by apps/api/prisma/seed.ts via ADMIN_EMAIL/ADMIN_PASSWORD).
       # The seed runs on every container start (entrypoint.sh line 56) and is idempotent —
       # if the admin user already exists, it skips. ponytail: this is the minimum
@@ -296,6 +299,8 @@ services:
       # flow will replace this with a proper install wizard.
       ADMIN_EMAIL: ${ADMIN_EMAIL}
       ADMIN_PASSWORD: ${ADMIN_PASSWORD}
+      # Signup protection: new users must provide this keyword. Set to "nextmavens" or empty to disable.
+      SIGNUP_INVITE_KEYWORD: ${SIGNUP_INVITE_KEYWORD:-}
       # Use direct postgres (not pgbouncer) to avoid transaction-mode conflicts with Prisma.
       DATABASE_URL: postgresql://fidscript:${POSTGRES_PASSWORD}@postgres:5432/fidscript
       DIRECT_URL: postgresql://fidscript:${POSTGRES_PASSWORD}@postgres:5432/fidscript

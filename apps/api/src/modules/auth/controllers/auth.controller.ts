@@ -107,6 +107,15 @@ export class AuthController {
     return this.authService.sendVerification(dto, ipAddress, userAgent);
   }
 
+  @Post('forgot-password')
+  @UseGuards(InstallationGuard)
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Request a password reset email' })
+  async forgotPassword(@Body() dto: SendVerificationDto, @Req() req: Request) {
+    const { ipAddress, userAgent } = extractRequestContext(req);
+    return this.authService.sendVerification({ ...dto, type: 'PASSWORD_RESET' as const }, ipAddress, userAgent);
+  }
+
   @Post('verify-email')
   @UseGuards(InstallationGuard)
   @HttpCode(HttpStatus.OK)

@@ -1,4 +1,4 @@
-import { IsEmail, IsString, MinLength, IsOptional, IsIn } from 'class-validator';
+import { IsEmail, IsString, IsOptional, IsIn } from 'class-validator';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 
 export class RegisterDto {
@@ -20,4 +20,9 @@ export class RegisterDto {
   @IsOptional()
   @IsIn(['PASSWORD', 'MAGIC_CODE'])
   authMethod?: 'PASSWORD' | 'MAGIC_CODE';
+
+  @ApiPropertyOptional({ description: 'Signup access keyword — required for public registration.' })
+  @IsString()
+  @IsOptional()
+  inviteKeyword?: string;
 }

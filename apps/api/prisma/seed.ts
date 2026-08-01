@@ -23,6 +23,19 @@ async function main() {
     return;
   }
 
+  // Admin exists under a different email — this means the operator changed ADMIN_EMAIL
+  // in the compose file after initial seeding. Do NOT create a new admin (would
+  // leave orphaned admin accounts). Skip silently so container restarts are not broken.
+  const anyAdmin = await prisma.user.findFirst({
+    where: { role: { in: ['ADMIN', 'OWNER'] } },
+    select: { email: true },
+    orderBy: { createdAt: 'asc' },
+  });
+  if (anyAdmin) {
+    console.log(`Another admin (${anyAdmin.email}) already exists — skipping seed (ADMIN_EMAIL mismatch)`);
+    return;
+  }
+
   const passwordHash = await bcrypt.hash(password, 12);
 
   const user = await prisma.user.create({

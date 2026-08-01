@@ -28,7 +28,9 @@ export class AuthLoginService {
   ) {}
 
   async login(dto: { email: string; password: string }, ipAddress?: string, userAgent?: string): Promise<LoginResult> {
-    // Rate limiting (Phase 03 gap): per-IP attempt cap + per-account failure lockout.
+    // Rate limiting: per-IP attempt cap (always). Per-account lockout is checked
+    // only after confirming the user exists — this prevents probing valid emails
+    // via the lockout threshold (user-not-found must NOT consume the account counter).
     const acctKey = `rl:login:fail:${dto.email.toLowerCase()}`;
     if (ipAddress) {
       const ipRl = await this.rateLimiter.consume(
@@ -38,20 +40,23 @@ export class AuthLoginService {
         throw new HttpException('Too many login attempts from this address. Try again later.', HttpStatus.TOO_MANY_REQUESTS);
       }
     }
-    if ((await this.rateLimiter.count(acctKey)) >= LOGIN_ACCT_LIMIT) {
-      throw new HttpException('Account temporarily locked after repeated failures. Try again later.', HttpStatus.TOO_MANY_REQUESTS);
-    }
 
     const user = await this.prisma.user.findUnique({ where: { email: dto.email } });
 
     if (!user) {
-      await this.rateLimiter.consume(acctKey, LOGIN_ACCT_LIMIT, LOGIN_WINDOW_SEC);
+      // User-not-found must NOT consume the account lockout counter.
       await this.eventService.emit(
         'identity.user.login_failed', null,
         { email: dto.email, reason: 'user_not_found' },
         { actorType: 'user', resourceType: 'user', resourceId: 'unknown', ipAddress, userAgent },
       );
       throw new UnauthorizedException('Invalid credentials');
+    }
+
+    // Account lockout check runs AFTER confirming user exists — non-existent
+    // emails cannot trigger lockout on real accounts via email-probing.
+    if ((await this.rateLimiter.count(acctKey)) >= LOGIN_ACCT_LIMIT) {
+      throw new HttpException('Account temporarily locked after repeated failures. Try again later.', HttpStatus.TOO_MANY_REQUESTS);
     }
 
     // If user prefers magic code, allow password login anyway when the user has
