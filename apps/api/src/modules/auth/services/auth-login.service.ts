@@ -8,9 +8,9 @@ import * as crypto from 'crypto';
 
 const BCRYPT_ROUNDS = 12;
 // Login brute-force protection (Phase 03 gap): Redis-backed fixed-window limits.
-const LOGIN_IP_LIMIT = 30; // max attempts per IP within the window
-const LOGIN_ACCT_LIMIT = 5; // max failed attempts per account within the window
-const LOGIN_WINDOW_SEC = 15 * 60;
+const LOGIN_IP_LIMIT = 100; // max attempts per IP within the window
+const LOGIN_ACCT_LIMIT = 20; // max failed attempts per account within the window
+const LOGIN_WINDOW_SEC = 5 * 60; // 5 minutes (was 15 — too long for dev)
 
 interface LoginResult {
   user: { id: string; email: string; name: string | null; role: string };
