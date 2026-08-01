@@ -44,4 +44,4 @@ providers:
   docker:
     endpoint: "http://fidscript_docker_tcp:2375"
     exposedByDefault: false
-    network: fidscript-app
+    network: fidscript-deployment

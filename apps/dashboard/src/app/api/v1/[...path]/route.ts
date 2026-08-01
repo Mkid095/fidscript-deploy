@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 
-const API_BASE = 'http://10.0.2.9:3001/api/v1';
+const API_BASE = 'http://api:3001/api/v1';
 const ALLOWED_ORIGIN = 'https://deploy.fidscript.com';
 
 function proxyHeaders(request: Request): Record<string, string> {
