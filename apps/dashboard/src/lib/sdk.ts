@@ -51,7 +51,7 @@ async function refreshAccessToken(): Promise<string | null> {
 }
 
 export function makeSdk(_apiKey?: string): FidscriptSDK {
-  // Wire transparent token refresh so mid-session access-token expiry (15 min)
-  // no longer 401s every call until a full page reload.
-  return createFidscript({ baseURL: '/', apiKey: _apiKey, onUnauthorized: refreshAccessToken });
+  // Always read the live token so getSdk() never returns an unauthenticated client.
+  const token = _apiKey ?? localStorage.getItem(ACCESS_TOKEN_KEY) ?? localStorage.getItem(LEGACY_TOKEN_KEY) ?? undefined;
+  return createFidscript({ baseURL: '/', apiKey: token, onUnauthorized: refreshAccessToken });
 }

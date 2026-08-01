@@ -6,8 +6,15 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
 ## [Unreleased]
 
+### Changed
+- feat(dashboard): projects list empty state UI — `projects-list-body.tsx` redesigned with cleaner single-message copy, larger icon in circular surface-2 badge, more vertical spacing (py-16), prominent centered "New project" CTA using `bg-[var(--accent)] text-[var(--text)]`; card uses `bg-[var(--surface)]` instead of `--surface-2`; replaced generic Search icon with Folder icon; `aria-live` on title + description; role/aria-label on region. `projects-list-header.tsx` New-project button now applies accent classes directly so the accent color is visible across themes.
+
+### Fixed
+- fix(dashboard): light theme eye-strain — `--canvas` softened from `#ffffff` to `#f5f6f8` (soft off-white reduces blow-out); surface hierarchy inverted so `--surface = #ffffff` (white cards pop on the off-white canvas) and `--surface-2` deepened to `#eef0f3` for the app chrome / header band; `--rail` family adjusted to match the new tonal range. `--text` (#1a1a1a) and `--text-muted` (#55575c) already met WCAG AA — left unchanged.
+
 ### Fixed
 - fix(frontend): resolve accessibility contrast issues — light theme --text-dim darkened (#8b8d92 → #6e7178 for 4.65:1 on surface-2), --accent darkened (#ea580c → #c2410c for 7.3:1 white text), RightPanel subtitle uses --text-muted, aria-labelledby includes subtitle id, accent submit button text uses --text
+- feat(dashboard): polish project cards — `project-card.tsx` and `deleted-project-card.tsx` now use `bg-[var(--surface)]` for card background, `hover:bg-[var(--hover)]` consistently, accent-colored "Open →" indicator on hover, and CSS-variable-only colors for all status badges / time icons / action buttons (edit, delete, restore, purge)
 
 ### Changed
 - feat(dashboard): login page redesign — extracted into 8 components (auth-page-shell, auth-method-tabs, password-form, magic-code-form, login-error-banner, platform-auth-badge), all under 150 lines; handlers in use-login-form hook

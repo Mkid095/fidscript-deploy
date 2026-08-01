@@ -16,7 +16,7 @@ export function DeletedProjectCard({ project, onRestore, onPurge }: DeletedProje
   const deletedAt = project.deletedAt ? relativeTime(project.deletedAt) : null;
 
   return (
-    <div className="group relative rounded-lg border border-[var(--danger)]/30 bg-[var(--danger)]/5 opacity-75">
+    <div className="group relative rounded-lg border border-[var(--danger)]/30 bg-[var(--surface)] hover:bg-[var(--hover)] opacity-75 transition-colors">
       <div className="p-5">
         <div className="flex items-start justify-between gap-3 mb-2">
           <div className="min-w-0 flex-1">
@@ -33,7 +33,7 @@ export function DeletedProjectCard({ project, onRestore, onPurge }: DeletedProje
           <p className="text-xs text-[var(--text-muted)] line-clamp-2 mb-3 min-h-[2rem]">{project.description}</p>
         )}
         <div className="flex items-center justify-between pt-2 border-t border-[var(--danger)]/30">
-          <span className="text-xs px-2 py-0.5 rounded bg-[var(--surface-2)] text-[var(--text-muted)] border border-[var(--rail-light)] capitalize">
+          <span className="text-xs px-2 py-0.5 rounded bg-[var(--rail)] text-[var(--text-muted)] border border-[var(--rail-light)] capitalize">
             {project.type}
           </span>
           <span className="text-xs text-[var(--text-dim)]">Permanently removed</span>
@@ -43,14 +43,14 @@ export function DeletedProjectCard({ project, onRestore, onPurge }: DeletedProje
         <div className="absolute top-2 right-2 flex items-center gap-1">
           {onRestore && (
             <button type="button" onClick={e => { e.preventDefault(); e.stopPropagation(); onRestore(); }}
-              className="p-1.5 rounded-md text-[var(--text-muted)] hover:text-[var(--success)] hover:bg-[var(--rail)] transition-colors"
+              className="p-1.5 rounded-md text-[var(--text-muted)] hover:text-[var(--success)] hover:bg-[var(--hover)] transition-colors"
               aria-label={`Restore ${project.name}`} title="Restore">
               <HugeiconsIcon icon={ArchiveRestoreIcon} size={14} />
             </button>
           )}
           {onPurge && (
             <button type="button" onClick={e => { e.preventDefault(); e.stopPropagation(); onPurge(); }}
-              className="p-1.5 rounded-md text-[var(--text-muted)] hover:text-[var(--danger)] hover:bg-[var(--rail)] transition-colors"
+              className="p-1.5 rounded-md text-[var(--text-muted)] hover:text-[var(--danger)] hover:bg-[var(--hover)] transition-colors"
               aria-label={`Permanently delete ${project.name}`} title="Delete permanently">
               <HugeiconsIcon icon={Delete01Icon} size={14} />
             </button>

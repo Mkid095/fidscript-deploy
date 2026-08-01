@@ -22,7 +22,7 @@ export function ProjectCard({ project, onOpen, onEdit, onDelete }: ProjectCardPr
     'bg-[var(--rail)] text-[var(--text-muted)] border-[var(--rail-light)]';
 
   return (
-    <div className="group relative rounded-lg border border-[var(--rail)] bg-[var(--surface-2)] hover:border-[var(--accent)]/50 transition-colors">
+    <div className="group relative rounded-lg border border-[var(--rail)] bg-[var(--surface)] hover:bg-[var(--hover)] hover:border-[var(--accent)]/50 transition-colors">
       <Link href={`/projects/${project.slug}`} className="block p-5 no-underline">
         <div className="flex items-start justify-between gap-3 mb-2">
           <div className="min-w-0 flex-1">
@@ -50,21 +50,21 @@ export function ProjectCard({ project, onOpen, onEdit, onDelete }: ProjectCardPr
           <span className="text-xs px-2 py-0.5 rounded bg-[var(--rail)] text-[var(--text-muted)] border border-[var(--rail-light)] capitalize">
             {project.type}
           </span>
-          <span className="text-xs text-[var(--text-dim)]">Open →</span>
+          <span className="text-xs text-[var(--text-dim)] group-hover:text-[var(--accent)] transition-colors">Open →</span>
         </div>
       </Link>
       {(onEdit || onDelete) && (
         <div className="absolute top-2 right-2 flex items-center gap-1">
           {onEdit && (
             <button type="button" onClick={e => { e.preventDefault(); e.stopPropagation(); onEdit(); }}
-              className="p-1.5 rounded-md text-[var(--text-muted)] hover:text-[var(--accent)] hover:bg-[var(--rail)] transition-colors"
+              className="p-1.5 rounded-md text-[var(--text-muted)] hover:text-[var(--accent)] hover:bg-[var(--hover)] transition-colors"
               aria-label={`Edit ${project.name}`} title="Edit">
               <HugeiconsIcon icon={Edit01Icon} size={14} />
             </button>
           )}
           {onDelete && (
             <button type="button" onClick={e => { e.preventDefault(); e.stopPropagation(); onDelete(); }}
-              className="p-1.5 rounded-md text-[var(--text-muted)] hover:text-[var(--danger)] hover:bg-[var(--rail)] transition-colors"
+              className="p-1.5 rounded-md text-[var(--text-muted)] hover:text-[var(--danger)] hover:bg-[var(--hover)] transition-colors"
               aria-label={`Delete ${project.name}`} title="Delete">
               <HugeiconsIcon icon={Delete01Icon} size={14} />
             </button>

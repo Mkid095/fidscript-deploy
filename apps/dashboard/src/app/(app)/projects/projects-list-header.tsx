@@ -85,7 +85,12 @@ export function ProjectsListHeader({
           </Button>
         )}
         {canCreate && (
-          <Button variant="primary" size="sm" onClick={onCreate} className="flex items-center gap-1.5">
+          <Button
+            variant="primary"
+            size="sm"
+            onClick={onCreate}
+            className="flex items-center gap-1.5 bg-[var(--accent)] text-[var(--text)] hover:opacity-90"
+          >
             <HugeiconsIcon icon={Add01Icon} size={14} />
             New project
           </Button>

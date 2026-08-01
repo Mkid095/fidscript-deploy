@@ -36,15 +36,15 @@
 
 /* ── LIGHT THEME ────────────────────────────────────────────── */
 [data-theme="light"] {
-  --canvas: #ffffff;
-  --surface: #f8f9fa;
-  --surface-2: #f0f1f3;
-  --surface-3: #e8e9eb;
-  --rail: #e1e2e5;
-  --rail-light: #d1d2d6;
-  --rail-dark: #edeef0;
-  --text: #1a1a1a;
-  --text-muted: #55575c;
+  --canvas: #f5f6f8;        /* soft off-white — reduces eye strain vs pure white */
+  --surface: #ffffff;        /* white cards on the off-white canvas create a clean elevated feel */
+  --surface-2: #eef0f3;     /* slightly deeper tint for the app chrome / header band */
+  --surface-3: #e3e6eb;
+  --rail: #d9dce0;
+  --rail-light: #c8cbd1;
+  --rail-dark: #e8eaee;
+  --text: #1a1a1a;          /* near-black (WCAG AAA on --surface) */
+  --text-muted: #55575c;    /* WCAG AA on --surface */
   --text-dim: #6e7178;
   --accent: #c2410c;
   --accent-dim: #c2410c;
