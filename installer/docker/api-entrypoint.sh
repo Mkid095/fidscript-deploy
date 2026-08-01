@@ -59,7 +59,13 @@ case "$_status" in
 fi
 
 echo "[entrypoint] Seeding database..."
-npx prisma db seed || echo "[entrypoint] Seed skipped (admin may already exist)"
+# Seed is idempotent (skips if admin already exists), but operators can
+# opt out on every restart by setting SKIP_SEED=1 in docker-compose.
+if [ "$SKIP_SEED" = "1" ]; then
+    echo "[entrypoint] SKIP_SEED=1 — bypassing db seed"
+else
+    npx prisma db seed || echo "[entrypoint] Seed skipped (admin may already exist)"
+fi
 
 # Restore DATABASE_URL to the pgbouncer-pooled one for runtime queries.
 export DATABASE_URL="postgresql://fidscript:${POSTGRES_PASSWORD}@pgbouncer:6432/fidscript?pgbouncer=true"

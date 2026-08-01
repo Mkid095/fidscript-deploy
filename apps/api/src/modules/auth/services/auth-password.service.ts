@@ -63,6 +63,15 @@ export class AuthPasswordService {
       update: { secretHash: passwordHash },
     });
 
+    // Also update User.passwordHash — login verifies against this column
+    // (auth-login.service.ts:83). Without this, the seed's bootstrap hash
+    // would remain the only thing login accepts and a UI password change
+    // would silently have no effect on future logins.
+    await this.prisma.user.update({
+      where: { id: userId },
+      data: { passwordHash },
+    });
+
     // Clear mustChangePassword flag
     await this.prisma.user.update({
       where: { id: userId },

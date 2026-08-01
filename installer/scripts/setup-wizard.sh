@@ -179,22 +179,47 @@ DOCKER_DIR="$(dirname "$SCRIPT_DIR")/docker"
 SECRETS_DIR="$DOCKER_DIR/secrets"
 mkdir -p "$SECRETS_DIR"
 
-openssl rand -hex 32 > "$SECRETS_DIR/postgres_password.txt"
-openssl rand -hex 32 > "$SECRETS_DIR/redis_password.txt"
-openssl rand -hex 32 > "$SECRETS_DIR/minio_access_key.txt"
-openssl rand -hex 32 > "$SECRETS_DIR/minio_secret_key.txt"
-openssl rand -hex 64 > "$SECRETS_DIR/jwt_secret.txt"
-openssl rand -hex 32 > "$SECRETS_DIR/stalwart_admin_token.txt"
-openssl rand -hex 32 > "$SECRETS_DIR/stalwart_webhook_secret.txt"
+# Generate a secret ONLY if the file is missing or empty. Re-running this
+# wizard on an existing deployment MUST NOT rotate credentials — that would
+# invalidate all sessions, break DB connections, and lock the operator out.
+generate_secret() {
+  local file="$1" hex_bytes="$2"
+  if [[ -s "$file" ]]; then
+    info "Keeping existing $(basename "$file")"
+    return
+  fi
+  openssl rand -hex "$hex_bytes" > "$file"
+  chmod 600 "$file"
+  info "Generated $(basename "$file")"
+}
+
+generate_secret "$SECRETS_DIR/postgres_password.txt"     32
+generate_secret "$SECRETS_DIR/redis_password.txt"        32
+generate_secret "$SECRETS_DIR/minio_access_key.txt"      32
+generate_secret "$SECRETS_DIR/minio_secret_key.txt"      32
+generate_secret "$SECRETS_DIR/jwt_secret.txt"            64
+generate_secret "$SECRETS_DIR/stalwart_admin_token.txt"  32
+generate_secret "$SECRETS_DIR/stalwart_webhook_secret.txt" 32
+
 STALWART_ADMIN_TOKEN="$(cat "$SECRETS_DIR/stalwart_admin_token.txt")"
-SYSTEM_MAILBOX_PASSWORD="$(openssl rand -base64 24 | tr -d '/=' | head -c 32)"
-echo "$SYSTEM_MAILBOX_PASSWORD" > "$SECRETS_DIR/system_mailbox_password.txt"
-echo "$CLOUDFLARE_API_TOKEN" > "$SECRETS_DIR/cf_api_token.txt"
+if [[ ! -s "$SECRETS_DIR/system_mailbox_password.txt" ]]; then
+  SYSTEM_MAILBOX_PASSWORD="$(openssl rand -base64 24 | tr -d '/=' | head -c 32)"
+  echo "$SYSTEM_MAILBOX_PASSWORD" > "$SECRETS_DIR/system_mailbox_password.txt"
+  chmod 600 "$SECRETS_DIR/system_mailbox_password.txt"
+fi
+# Cloudflare token — never auto-rotated (operator's secret). Only set if empty.
+if [[ ! -s "$SECRETS_DIR/cf_api_token.txt" && -n "$CLOUDFLARE_API_TOKEN" ]]; then
+  echo "$CLOUDFLARE_API_TOKEN" > "$SECRETS_DIR/cf_api_token.txt"
+  chmod 600 "$SECRETS_DIR/cf_api_token.txt"
+fi
+# SMTP submission user/pass derive from the (now-stable) stalwart admin token.
 echo "admin" > "$SECRETS_DIR/smtp_submission_user.txt"
 echo "$STALWART_ADMIN_TOKEN" > "$SECRETS_DIR/smtp_submission_pass.txt"
 echo "admin $STALWART_ADMIN_TOKEN" > "$SECRETS_DIR/stalwart_credentials.txt"
-chmod 600 "$SECRETS_DIR"/*.txt
-info "Secrets generated."
+chmod 600 "$SECRETS_DIR"/smtp_submission_user.txt \
+          "$SECRETS_DIR"/smtp_submission_pass.txt \
+          "$SECRETS_DIR"/stalwart_credentials.txt
+info "Secrets ensured."
 
 # ── Load values ─────────────────────────────────────────────────────────────
 POSTGRES_PASSWORD="$(cat "$SECRETS_DIR/postgres_password.txt")"
@@ -222,7 +247,13 @@ MINIO_EXTERNAL_ENDPOINT=https://storage.$DOMAIN
 DOCKER_GID=$DOCKER_GID
 ENVEOF
 
-cat > "$SECRETS_DIR/api.env" << APIENV
+# Write api.env ONLY if absent. Re-running the wizard on an existing
+# deployment would otherwise overwrite GITHUB_CLIENT_ID/SECRET (the operator
+# already entered real OAuth credentials after first install) and force a
+# rotation of every env it contains. Compose reads it via env_file, so any
+# change here forces a container recreate.
+if [[ ! -f "$SECRETS_DIR/api.env" ]]; then
+  cat > "$SECRETS_DIR/api.env" << APIENV
 POSTGRES_PASSWORD=$POSTGRES_PASSWORD
 REDIS_PASSWORD=$REDIS_PASSWORD
 MINIO_ACCESS_KEY=$MINIO_ACCESS_KEY
@@ -235,7 +266,11 @@ SYSTEM_MAILBOX_PASSWORD=$SYSTEM_MAILBOX_PASSWORD
 GITHUB_CLIENT_ID=$GITHUB_CLIENT_ID
 GITHUB_CLIENT_SECRET=$GITHUB_CLIENT_SECRET
 APIENV
-chmod 600 "$SECRETS_DIR/api.env"
+  chmod 600 "$SECRETS_DIR/api.env"
+  info "api.env written."
+else
+  info "Keeping existing api.env — OAuth credentials preserved."
+fi
 
 # ── pgbouncer userlist ─────────────────────────────────────────────────────
 cat > "$DOCKER_DIR/userlist.txt" << EOF
