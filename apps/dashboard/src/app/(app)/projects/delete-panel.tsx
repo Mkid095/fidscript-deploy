@@ -43,7 +43,7 @@ export function DeletePanel({ deleting, deleteAck, deletingNow, deleteError, onA
           </ul>
           <label className="flex items-start gap-2 pt-3 border-t border-[var(--rail)] cursor-pointer">
             <input type="checkbox" checked={deleteAck} onChange={e => onAckChange(e.target.checked)}
-              className="mt-0.5 w-4 h-4 rounded border-slate-600 bg-[var(--rail)] text-[var(--danger)] focus:ring-[var(--danger)] focus:ring-offset-0" />
+              className="mt-0.5 w-4 h-4 rounded border-[var(--rail-light)] bg-[var(--surface-2)] text-[var(--danger)] focus:ring-[var(--danger)] focus:ring-offset-0" />
             <span className="text-sm text-[var(--text-muted)]">
               I understand this will permanently delete <strong className="text-[var(--text)]">{deleting.name}</strong> and all of its data.
             </span>
@@ -81,7 +81,7 @@ export function PurgePanel({ purgeProject, purgeCode, purgeRequested, purgeVerif
                 Permanently deleting <strong className="text-[var(--text)]">{purgeProject.name}</strong> cannot be undone.
                 A verification code will be sent to your email address.
               </p>
-              <div className="bg-amber-950/30 border border-[var(--warning)]/30/50 rounded-lg p-3 text-xs text-[var(--warning)]">
+              <div className="bg-[var(--warning)]/10 border border-[var(--warning)]/30 rounded-lg p-3 text-xs text-[var(--warning)]">
                 This project will be permanently removed along with all deployments, databases, and storage.
               </div>
             </>

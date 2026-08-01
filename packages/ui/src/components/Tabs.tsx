@@ -60,7 +60,7 @@ export function Tabs({ tabs, value, onChange, size = 'md', fullWidth = false, cl
     <div
       role="tablist"
       aria-label="Tabs"
-      className={`inline-flex items-center gap-1 rounded-lg bg-[#080a0d] border border-[#1e2130] p-1 ${className} ${fullWidth ? 'flex w-full' : ''}`}
+      className={`inline-flex items-center gap-1 rounded-lg bg-[var(--canvas)] border border-[var(--rail)] p-1 ${className} ${fullWidth ? 'flex w-full' : ''}`}
     >
       {tabs.map((tab, i) => {
         const isActive = tab.id === value;
@@ -80,12 +80,12 @@ export function Tabs({ tabs, value, onChange, size = 'md', fullWidth = false, cl
               ${fullWidth ? 'flex-1' : ''}
               ${pad}
               ${isActive
-                ? 'bg-[#1e2130] text-slate-100 shadow-sm'
+                ? 'bg-[var(--surface-2)] text-[var(--text)] shadow-sm'
                 : tab.disabled
-                  ? 'text-slate-700 cursor-not-allowed'
-                  : 'text-slate-400 hover:text-slate-200 hover:bg-[#1e2130]/50'
+                  ? 'text-[var(--text-dim)] cursor-not-allowed'
+                  : 'text-[var(--text-muted)] hover:text-[var(--text)] hover:bg-[var(--surface-2)]'
               }
-              focus-visible:ring-2 focus-visible:ring-red-500/40
+              focus-visible:ring-2 focus-visible:ring-[var(--accent)]/40
             `}
           >
             {tab.icon && <span className="flex items-center justify-center">{tab.icon}</span>}

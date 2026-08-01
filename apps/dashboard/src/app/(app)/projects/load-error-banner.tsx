@@ -19,7 +19,7 @@ export function LoadErrorBanner({ message, countdown, onRetry }: LoadErrorBanner
         {message}
       </span>
       {countdown === null && (
-        <button onClick={onRetry} className="text-xs text-[var(--danger)] hover:text-red-200 underline">
+        <button onClick={onRetry} className="text-xs text-[var(--danger)] hover:text-[var(--text)] underline">
           Retry
         </button>
       )}

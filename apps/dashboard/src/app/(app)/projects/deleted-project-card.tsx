@@ -16,7 +16,7 @@ export function DeletedProjectCard({ project, onRestore, onPurge }: DeletedProje
   const deletedAt = project.deletedAt ? relativeTime(project.deletedAt) : null;
 
   return (
-    <div className="group relative rounded-lg border border-red-900/30 bg-red-950/10 opacity-75">
+    <div className="group relative rounded-lg border border-[var(--danger)]/30 bg-[var(--danger)]/5 opacity-75">
       <div className="p-5">
         <div className="flex items-start justify-between gap-3 mb-2">
           <div className="min-w-0 flex-1">
@@ -25,15 +25,15 @@ export function DeletedProjectCard({ project, onRestore, onPurge }: DeletedProje
           </div>
         </div>
         <div className="flex items-center gap-2 mb-3">
-          <span className="text-xs px-2 py-0.5 rounded-full border bg-red-900/30 text-[var(--danger)] border-[var(--danger)]/30/50">
+          <span className="text-xs px-2 py-0.5 rounded-full border bg-[var(--danger)]/10 text-[var(--danger)] border-[var(--danger)]/30">
             Deleted {deletedAt}
           </span>
         </div>
         {project.description && (
           <p className="text-xs text-[var(--text-muted)] line-clamp-2 mb-3 min-h-[2rem]">{project.description}</p>
         )}
-        <div className="flex items-center justify-between pt-2 border-t border-red-900/30">
-          <span className="text-xs px-2 py-0.5 rounded bg-red-950/50 text-[var(--text-muted)] border border-red-900/30 capitalize">
+        <div className="flex items-center justify-between pt-2 border-t border-[var(--danger)]/30">
+          <span className="text-xs px-2 py-0.5 rounded bg-[var(--surface-2)] text-[var(--text-muted)] border border-[var(--rail-light)] capitalize">
             {project.type}
           </span>
           <span className="text-xs text-[var(--text-dim)]">Permanently removed</span>

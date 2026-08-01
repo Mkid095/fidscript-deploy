@@ -90,7 +90,8 @@ export function useProjectsPage(getSdk: () => FidscriptSDK) {
     setCreating(true); setCreateError(null);
     try {
       const created = await getSdk().projects.create({ name: name.trim(), description: description.trim() || undefined, type: 'frontend' });
-      setActivePanel(null); router.push(`/projects/${created.id}`);
+      // Redirect by slug for prettier URLs (/projects/my-project); API also accepts UUID for back-compat.
+      setActivePanel(null); router.push(`/projects/${created.slug ?? created.id}`);
     } catch (err) {
       if (err instanceof AuthError) { router.replace('/login'); return; }
       if (err instanceof RateLimitError) { setCreateError('Rate limited. Please wait.'); return; }

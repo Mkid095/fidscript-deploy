@@ -10,10 +10,10 @@ interface ToastProps {
 }
 
 const typeClasses: Record<ToastType, string> = {
-  success: 'bg-emerald-500/10 border-emerald-500/30 text-emerald-400',
-  error: 'bg-red-500/10 border-red-500/30 text-red-400',
-  warning: 'bg-amber-500/10 border-amber-500/30 text-amber-400',
-  info: 'bg-blue-500/10 border-blue-500/30 text-blue-400',
+  success: 'bg-[var(--success)]/10 border-[var(--success)]/30 text-[var(--success)]',
+  error: 'bg-[var(--danger)]/10 border-[var(--danger)]/30 text-[var(--danger)]',
+  warning: 'bg-[var(--warning)]/10 border-[var(--warning)]/30 text-[var(--warning)]',
+  info: 'bg-[var(--info)]/10 border-[var(--info)]/30 text-[var(--info)]',
 };
 
 export function Toast({ type, message, duration = 5000, onClose }: ToastProps) {

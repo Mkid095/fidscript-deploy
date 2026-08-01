@@ -40,7 +40,7 @@ export function ProjectsListBody({
 
   if (projects.length === 0) {
     return (
-      <Card className="border border-[var(--rail)]">
+      <Card className="border border-[var(--rail)] bg-[var(--surface-2)]">
         <EmptyState icon={<HugeiconsIcon icon={Search01Icon} size={48} className="text-[var(--text-dim)]" />}
           title={canEdit(userRole) ? 'No projects yet' : 'No projects'}
           description={canEdit(userRole) ? 'Create your first project to start deploying apps, databases, and more.' : 'No projects have been created yet.'}
@@ -56,7 +56,7 @@ export function ProjectsListBody({
 
   if (filtered.length === 0) {
     return (
-      <Card className="border border-[var(--rail)]">
+      <Card className="border border-[var(--rail)] bg-[var(--surface-2)]">
         <EmptyState icon={<HugeiconsIcon icon={Search01Icon} size={48} className="text-[var(--text-dim)]" />}
           title="No matches" description={`No projects match "${search}".`}
           action={<Button variant="ghost" size="sm" onClick={onClearSearch}>Clear search</Button>} />

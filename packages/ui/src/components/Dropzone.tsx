@@ -133,12 +133,12 @@ export function Dropzone({
           rounded-xl border-2 border-dashed transition-all duration-200
           px-6 py-10 outline-none
           ${disabled
-            ? 'border-[#1e2130] bg-[#080a0d] opacity-60 cursor-not-allowed'
+            ? 'border-[var(--rail)] bg-[var(--canvas)] opacity-60 cursor-not-allowed'
             : isDragging
-              ? 'border-red-500 bg-red-500/5 ring-4 ring-red-500/10'
-              : 'border-[#2a2d3a] bg-[#080a0d] hover:border-red-500/50 hover:bg-red-500/[0.02]'
+              ? 'border-[var(--accent)] bg-[var(--accent)]/5 ring-4 ring-[var(--accent-glow)]'
+              : 'border-[var(--rail-light)] bg-[var(--canvas)] hover:border-[var(--accent)]/50 hover:bg-[var(--accent)]/[0.02]'
           }
-          focus-visible:ring-4 focus-visible:ring-red-500/20
+          focus-visible:ring-4 focus-visible:ring-[var(--accent)]/20
         `}
       >
         <input
@@ -157,11 +157,11 @@ export function Dropzone({
         />
         {children ?? (
           <>
-            <UploadIcon className={isDragging ? 'text-red-400' : 'text-slate-600'} />
-            <p className={`mt-3 text-sm font-medium ${isDragging ? 'text-red-300' : 'text-slate-400'}`}>
+            <UploadIcon className={isDragging ? 'text-[var(--accent)]' : 'text-[var(--text-dim)]'} />
+            <p className={`mt-3 text-sm font-medium ${isDragging ? 'text-[var(--accent)]' : 'text-[var(--text-muted)]'}`}>
               {title}
             </p>
-            <p className="mt-1 text-xs text-slate-600">
+            <p className="mt-1 text-xs text-[var(--text-dim)]">
               {hint ?? 'or click to browse'}
             </p>
           </>

@@ -61,13 +61,13 @@ export function Stepper({ steps, current, completed, onStepClick, className = ''
                 relative flex items-center justify-center flex-shrink-0
                 w-8 h-8 rounded-full border-2 transition-colors duration-200
                 ${isComplete
-                  ? 'bg-red-600 border-red-600 text-white'
+                  ? 'bg-[var(--accent)] border-[var(--accent)] text-white'
                   : isCurrent
-                    ? 'bg-[#0f1117] border-red-500 text-red-400 ring-4 ring-red-500/10'
-                    : 'bg-[#0f1117] border-[#2a2d3a] text-slate-600'
+                    ? 'bg-[var(--surface)] border-[var(--accent)] text-[var(--accent)] ring-4 ring-[var(--accent-glow)]'
+                    : 'bg-[var(--surface)] border-[var(--rail-light)] text-[var(--text-dim)]'
                 }
-                ${interactive ? 'cursor-pointer hover:border-red-400' : 'cursor-default'}
-                focus:outline-none focus-visible:ring-4 focus-visible:ring-red-500/20
+                ${interactive ? 'cursor-pointer hover:border-[var(--accent-dim)]' : 'cursor-default'}
+                focus:outline-none focus-visible:ring-4 focus-visible:ring-[var(--accent)]/20
               `}
             >
               {isComplete ? (
@@ -85,13 +85,13 @@ export function Stepper({ steps, current, completed, onStepClick, className = ''
             <div className="hidden sm:block ml-2 min-w-0">
               <p
                 className={`text-xs font-medium truncate ${
-                  isCurrent ? 'text-slate-200' : isComplete ? 'text-slate-400' : 'text-slate-600'
+                  isCurrent ? 'text-[var(--text)]' : isComplete ? 'text-[var(--text-muted)]' : 'text-[var(--text-dim)]'
                 }`}
               >
                 {step.label}
               </p>
               {step.hint && isCurrent && (
-                <p className="text-[10px] text-slate-600 truncate">{step.hint}</p>
+                <p className="text-[10px] text-[var(--text-dim)] truncate">{step.hint}</p>
               )}
             </div>
 
@@ -100,7 +100,7 @@ export function Stepper({ steps, current, completed, onStepClick, className = ''
               <div className="flex-1 mx-2 sm:mx-3 h-px min-w-[16px]">
                 <div
                   className={`h-full transition-colors duration-300 ${
-                    i < current ? 'bg-red-600' : 'bg-[#2a2d3a]'
+                    i < current ? 'bg-[var(--accent)]' : 'bg-[var(--rail-light)]'
                   }`}
                 />
               </div>

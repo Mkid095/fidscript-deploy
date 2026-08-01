@@ -37,10 +37,10 @@ export function Spinner({ size = 'md', className = '' }: SpinnerProps) {
 
 export function LoadingOverlay({ message }: { message?: string }) {
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-[var(--canvas)]/40 backdrop-blur-sm">
       <div className="flex flex-col items-center gap-3">
-        <Spinner size="lg" className="text-red-500" />
-        {message && <p className="text-sm text-slate-400">{message}</p>}
+        <Spinner size="lg" className="text-[var(--accent)]" />
+        {message && <p className="text-sm text-[var(--text-muted)]">{message}</p>}
       </div>
     </div>
   );

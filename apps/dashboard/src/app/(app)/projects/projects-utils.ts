@@ -7,17 +7,18 @@ export type ProjectType = 'frontend' | 'backend' | 'worker' | 'cron' | 'docker' 
 export const PROJECT_TYPES: ProjectType[] = ['frontend', 'backend', 'worker', 'cron', 'docker', 'static'];
 
 // Universal status palette per ADR-036 principle 7.
+// All colors come from theme CSS variables so light + dark keep legible contrast.
 export const STATUS_PALETTE: Record<string, string> = {
-  ACTIVE: 'bg-emerald-900/30 text-[var(--success)] border-[var(--success)]/30/60',
-  HEALTHY: 'bg-emerald-900/30 text-[var(--success)] border-[var(--success)]/30/60',
-  RUNNING: 'bg-[var(--accent)]/10 text-[var(--accent)] border-blue-800/60',
-  PENDING: 'bg-yellow-900/30 text-[var(--warning)] border-yellow-800/60',
-  WARNING: 'bg-orange-900/30 text-[var(--warning)] border-orange-800/60',
-  SUSPENDED: 'bg-yellow-900/30 text-[var(--warning)] border-yellow-800/60',
-  FAILED: 'bg-red-900/30 text-[var(--danger)] border-[var(--danger)]/30/60',
+  ACTIVE: 'bg-[var(--success)]/10 text-[var(--success)] border-[var(--success)]/30',
+  HEALTHY: 'bg-[var(--success)]/10 text-[var(--success)] border-[var(--success)]/30',
+  RUNNING: 'bg-[var(--accent)]/10 text-[var(--accent)] border-[var(--accent)]/30',
+  PENDING: 'bg-[var(--warning)]/10 text-[var(--warning)] border-[var(--warning)]/30',
+  WARNING: 'bg-[var(--warning)]/10 text-[var(--warning)] border-[var(--warning)]/30',
+  SUSPENDED: 'bg-[var(--warning)]/10 text-[var(--warning)] border-[var(--warning)]/30',
+  FAILED: 'bg-[var(--danger)]/10 text-[var(--danger)] border-[var(--danger)]/30',
   STOPPED: 'bg-[var(--rail)] text-[var(--text-muted)] border-[var(--rail-light)]',
-  CREATING: 'bg-[var(--accent)]/10 text-[var(--accent)] border-blue-800/60',
-  ARCHIVED: 'bg-purple-900/30 text-purple-300 border-purple-800/60',
+  CREATING: 'bg-[var(--accent)]/10 text-[var(--accent)] border-[var(--accent)]/30',
+  ARCHIVED: 'bg-[var(--brand)]/10 text-[var(--brand)] border-[var(--brand)]/30',
 };
 
 export function slugify(name: string): string {

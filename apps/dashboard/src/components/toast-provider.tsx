@@ -30,10 +30,10 @@ const ICONS: Record<ToastType, typeof CheckmarkCircle02Icon> = {
 };
 
 const COLORS: Record<ToastType, string> = {
-  success: 'border-[var(--success)]/30 bg-emerald-950/80 text-[var(--success)]',
-  error:   'border-[var(--danger)]/30 bg-red-950/80 text-[var(--danger)]',
-  warning: 'border-[var(--warning)]/30 bg-amber-950/80 text-[var(--warning)]',
-  info:    'border-blue-800 bg-blue-950/80 text-[var(--accent)]',
+  success: 'border-[var(--success)]/30 bg-[var(--success)]/10 text-[var(--success)]',
+  error:   'border-[var(--danger)]/30 bg-[var(--danger)]/10 text-[var(--danger)]',
+  warning: 'border-[var(--warning)]/30 bg-[var(--warning)]/10 text-[var(--warning)]',
+  info:    'border-[var(--info)]/30 bg-[var(--info)]/10 text-[var(--info)]',
 };
 
 const ICON_COLORS: Record<ToastType, string> = {

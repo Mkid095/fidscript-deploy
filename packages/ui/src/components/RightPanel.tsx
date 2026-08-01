@@ -93,11 +93,11 @@ export function RightPanel({
   return (
     <div
       ref={overlayRef}
-      className="fixed inset-0 z-50 flex justify-end bg-black/60 backdrop-blur-sm"
+      className="fixed inset-0 z-50 flex justify-end bg-[var(--canvas)]/60 backdrop-blur-sm"
       onClick={(e) => e.target === overlayRef.current && !(footer && typeof footer === 'object' && 'loading' in footer && footer.loading) && onClose()}
       role="dialog"
       aria-modal="true"
-      aria-labelledby={title ? 'right-panel-title' : undefined}
+      aria-labelledby={title ? (subtitle ? 'right-panel-title right-panel-subtitle' : 'right-panel-title') : undefined}
     >
       <div
         ref={panelRef}
@@ -113,7 +113,7 @@ export function RightPanel({
                 </h2>
               )}
               {subtitle && (
-                <p className="text-xs text-[var(--text-dim)] mt-0.5">{subtitle}</p>
+                <p id="right-panel-subtitle" className="text-xs text-[var(--text-muted)] mt-0.5">{subtitle}</p>
               )}
             </div>
             <button
@@ -151,7 +151,7 @@ export function RightPanel({
               className={`px-4 py-1.5 text-sm font-medium rounded-md transition disabled:opacity-50 disabled:cursor-not-allowed ${
                 formFooter.submitDanger
                   ? 'bg-[var(--danger)] text-white hover:opacity-90'
-                  : 'bg-[var(--accent)] text-white hover:opacity-90'
+                  : 'bg-[var(--accent)] text-[var(--text)] hover:opacity-90'
               }`}
             >
               {formFooter.loading ? 'Working…' : (formFooter.submitLabel ?? 'Submit')}
