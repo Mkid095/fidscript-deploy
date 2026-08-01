@@ -3,7 +3,7 @@
 import { useRouter } from 'next/navigation';
 import { Card, EmptyState, Button } from '@fidscript/ui';
 import { HugeiconsIcon } from '@hugeicons/react';
-import { Search01Icon } from '@hugeicons/core-free-icons';
+import { Search01Icon, Add01Icon } from '@hugeicons/core-free-icons';
 
 import type { Project } from '@/types';
 import { canEdit, canDelete, normalize } from './projects-utils';
@@ -23,11 +23,12 @@ interface ProjectsListBodyProps {
   onRestore: (p: Project) => void;
   onPurge: (p: Project) => void;
   onClearSearch: () => void;
+  onCreate: () => void;
 }
 
 export function ProjectsListBody({
   userRole, projects, deletedProjects, loading, showDeleted, search,
-  onEdit, onDelete, onRestore, onPurge, onClearSearch,
+  onEdit, onDelete, onRestore, onPurge, onClearSearch, onCreate,
 }: ProjectsListBodyProps) {
   const router = useRouter();
   const q = normalize(search);
@@ -42,7 +43,13 @@ export function ProjectsListBody({
       <Card className="border border-[var(--rail)]">
         <EmptyState icon={<HugeiconsIcon icon={Search01Icon} size={48} className="text-[var(--text-dim)]" />}
           title={canEdit(userRole) ? 'No projects yet' : 'No projects'}
-          description={canEdit(userRole) ? 'Create your first project to start deploying apps, databases, and more.' : 'No projects have been created yet.'} />
+          description={canEdit(userRole) ? 'Create your first project to start deploying apps, databases, and more.' : 'No projects have been created yet.'}
+          action={canEdit(userRole) ? (
+            <Button variant="primary" onClick={onCreate}>
+              <HugeiconsIcon icon={Add01Icon} size={14} />
+              New project
+            </Button>
+          ) : undefined} />
       </Card>
     );
   }

@@ -101,26 +101,26 @@ export function RightPanel({
     >
       <div
         ref={panelRef}
-        className={`w-full ${sizeClasses[size]} h-full bg-[#0f1217] border-l border-slate-800 shadow-2xl flex flex-col transform transition-transform duration-200 ease-out translate-x-0`}
+        className={`w-full ${sizeClasses[size]} h-full bg-[var(--surface)] border-l border-[var(--rail)] shadow-2xl flex flex-col transform transition-transform duration-200 ease-out translate-x-0`}
       >
         {/* Header */}
         {(title || subtitle) && (
-          <div className="flex items-start justify-between gap-3 px-6 py-4 border-b border-slate-800 flex-shrink-0">
+          <div className="flex items-start justify-between gap-3 px-6 py-4 border-b border-[var(--rail)] flex-shrink-0">
             <div className="min-w-0 flex-1">
               {title && (
-                <h2 id="right-panel-title" className="text-base font-semibold text-white truncate">
+                <h2 id="right-panel-title" className="text-base font-semibold text-[var(--text)] truncate">
                   {title}
                 </h2>
               )}
               {subtitle && (
-                <p className="text-xs text-slate-500 mt-0.5">{subtitle}</p>
+                <p className="text-xs text-[var(--text-dim)] mt-0.5">{subtitle}</p>
               )}
             </div>
             <button
               type="button"
               onClick={onClose}
               aria-label="Close panel"
-              className="text-slate-400 hover:text-white transition flex-shrink-0 p-1 -m-1 rounded"
+              className="text-[var(--text-muted)] hover:text-[var(--text)] transition flex-shrink-0 p-1 -m-1 rounded"
             >
               <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
@@ -134,12 +134,12 @@ export function RightPanel({
 
         {/* Footer */}
         {formFooter ? (
-          <div className="flex items-center justify-end gap-2 px-6 py-4 border-t border-slate-800 flex-shrink-0">
+          <div className="flex items-center justify-end gap-2 px-6 py-4 border-t border-[var(--rail)] flex-shrink-0">
             {!formFooter.hideCancel && (
               <button
                 type="button"
                 onClick={formFooter.onCancel}
-                className="px-3 py-1.5 text-sm text-slate-300 hover:text-white transition rounded-md hover:bg-slate-800"
+                className="px-3 py-1.5 text-sm text-[var(--text)] hover:text-[var(--text)] transition rounded-md hover:bg-[var(--hover)]"
               >
                 {formFooter.cancelLabel ?? 'Cancel'}
               </button>
@@ -150,15 +150,15 @@ export function RightPanel({
               disabled={formFooter.loading || formFooter.submitDisabled}
               className={`px-4 py-1.5 text-sm font-medium rounded-md transition disabled:opacity-50 disabled:cursor-not-allowed ${
                 formFooter.submitDanger
-                  ? 'bg-red-600 text-white hover:bg-red-500'
-                  : 'bg-orange-500 text-white hover:bg-orange-400'
+                  ? 'bg-[var(--danger)] text-white hover:opacity-90'
+                  : 'bg-[var(--accent)] text-white hover:opacity-90'
               }`}
             >
               {formFooter.loading ? 'Working…' : (formFooter.submitLabel ?? 'Submit')}
             </button>
           </div>
         ) : footer ? (
-          <div className="px-6 py-4 border-t border-slate-800 flex-shrink-0">{footer as React.ReactNode}</div>
+          <div className="px-6 py-4 border-t border-[var(--rail)] flex-shrink-0">{footer as React.ReactNode}</div>
         ) : null}
       </div>
     </div>

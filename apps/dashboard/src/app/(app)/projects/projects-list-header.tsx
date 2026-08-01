@@ -42,10 +42,10 @@ export function ProjectsListHeader({
   return (
     <div className="flex items-center justify-between gap-4 mb-6">
       <div>
-        <h1 className="text-xl font-bold text-slate-200 mb-1">
+        <h1 className="text-xl font-bold text-[var(--text)] mb-1">
           {userName ? `Welcome back, ${userName}` : 'Projects'}
         </h1>
-        <p className="text-sm text-slate-500" aria-live="polite">
+        <p className="text-sm text-[var(--text-muted)]" aria-live="polite">
           {loading
             ? 'Loading…'
             : search
@@ -59,14 +59,14 @@ export function ProjectsListHeader({
           <HugeiconsIcon
             icon={Search01Icon}
             size={14}
-            className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-600 pointer-events-none"
+            className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--text-dim)] pointer-events-none"
           />
           <Input
             value={search}
             onChange={e => onSearchChange(e.target.value)}
             placeholder="Search projects…"
             aria-label="Search projects"
-            className="pl-9 bg-[#080a0d] border border-[#1e2130] text-slate-200 placeholder:text-slate-600"
+            className="pl-9 bg-[var(--surface-2)] border border-[var(--rail)] text-[var(--text)] placeholder:text-[var(--text-dim)]"
           />
         </div>
         <Button variant="ghost" size="sm" onClick={onRefresh} title="Refresh" aria-label="Refresh" disabled={loading}>
@@ -81,7 +81,7 @@ export function ProjectsListHeader({
             aria-label="Toggle deleted projects"
           >
             <HugeiconsIcon icon={showDeleted ? EyeOffIcon : EyeIcon} size={14} />
-            <span className="ml-1 text-xs text-slate-400">{deletedCount}</span>
+            <span className="ml-1 text-xs text-[var(--text-muted)]">{deletedCount}</span>
           </Button>
         )}
         {canCreate && (

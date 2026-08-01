@@ -34,6 +34,7 @@ export default function ProjectsPage() {
         onRestore={p.handleRestore}
         onPurge={p.handlePurgeOpen}
         onClearSearch={p.handleClearSearch}
+        onCreate={p.handleCreateOpen}
       />
 
       <ProjectsPanels
