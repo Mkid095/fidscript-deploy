@@ -7,6 +7,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/).
 ## [Unreleased]
 
 ### Changed
+- `fix(mcp): database tools — remove misleading projectId requirement from get/delete/backup/listBackups/restore (SDK methods take only databaseId; projectId was ignored by the handler)`
+- `fix(mcp): monitoring surfaces — make callApi() accept method+body; createDashboard now POSTs name+widgets, updateIntegrationConfig now PATCHes enabled+config (was issuing GET with no body)`
 - `anpas(dashboard): extract sdk calls from remaining pages to hooks (functions, deployments, mcp-hub, monitoring, integration-config-modal, add-domain-modal-handler)`
 - `anpas(email): extract sdk calls from email page files to hooks (domain-page-hooks, suppressions-hooks, analytics-hooks, catchall-hooks)`
 - `anpas(pages): extract sdk calls from scheduler, databases, functions pages to hooks`

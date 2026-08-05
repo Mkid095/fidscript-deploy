@@ -22,10 +22,9 @@ export const databaseTools: Tool[] = [
     inputSchema: {
       type: 'object',
       properties: {
-        projectId: { type: 'string', description: 'Project ID' },
         databaseId: { type: 'string', description: 'Database ID' },
       },
-      required: ['projectId', 'databaseId'],
+      required: ['databaseId'],
     },
   },
   {
@@ -48,10 +47,9 @@ export const databaseTools: Tool[] = [
     inputSchema: {
       type: 'object',
       properties: {
-        projectId: { type: 'string', description: 'Project ID' },
         databaseId: { type: 'string', description: 'Database ID' },
       },
-      required: ['projectId', 'databaseId'],
+      required: ['databaseId'],
     },
   },
   {
@@ -60,10 +58,9 @@ export const databaseTools: Tool[] = [
     inputSchema: {
       type: 'object',
       properties: {
-        projectId: { type: 'string', description: 'Project ID' },
         databaseId: { type: 'string', description: 'Database ID' },
       },
-      required: ['projectId', 'databaseId'],
+      required: ['databaseId'],
     },
   },
   {
@@ -72,10 +69,9 @@ export const databaseTools: Tool[] = [
     inputSchema: {
       type: 'object',
       properties: {
-        projectId: { type: 'string', description: 'Project ID' },
         databaseId: { type: 'string', description: 'Database ID' },
       },
-      required: ['projectId', 'databaseId'],
+      required: ['databaseId'],
     },
   },
   {
@@ -84,11 +80,10 @@ export const databaseTools: Tool[] = [
     inputSchema: {
       type: 'object',
       properties: {
-        projectId: { type: 'string', description: 'Project ID' },
         databaseId: { type: 'string', description: 'Database ID' },
         backupId: { type: 'string', description: 'Backup ID to restore from' },
       },
-      required: ['projectId', 'databaseId', 'backupId'],
+      required: ['databaseId', 'backupId'],
     },
   },
 ];

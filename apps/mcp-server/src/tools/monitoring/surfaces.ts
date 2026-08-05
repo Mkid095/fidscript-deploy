@@ -11,9 +11,14 @@ import type { FidscriptSDK } from '@fidscript-deploy/sdk';
 const apiUrl = process.env.FIDSCRIPT_API_URL || 'http://localhost:3001';
 const apiKey = process.env.FIDSCRIPT_API_KEY ?? '';
 
-async function callApi(path: string): Promise<unknown> {
+async function callApi(path: string, method = 'GET', body?: unknown): Promise<unknown> {
   const res = await fetch(`${apiUrl}${path}`, {
-    headers: { Authorization: `Bearer ${apiKey}` },
+    method,
+    headers: {
+      Authorization: `Bearer ${apiKey}`,
+      ...(body ? { 'Content-Type': 'application/json' } : {}),
+    },
+    body: body ? JSON.stringify(body) : undefined,
   });
   if (!res.ok) {
     const text = await res.text().catch(() => '');
@@ -104,7 +109,14 @@ export async function handleSurfaceTool(
     case 'monitoring_listDashboards':
       return callApi(`/api/v1/projects/${projectId}/monitoring/dashboards`);
     case 'monitoring_createDashboard':
-      return callApi(`/api/v1/projects/${projectId}/monitoring/dashboards`);
+      return callApi(
+        `/api/v1/projects/${projectId}/monitoring/dashboards`,
+        'POST',
+        {
+          name: args['name'],
+          widgets: args['widgets'],
+        },
+      );
     case 'monitoring_getUptime':
       return callApi(
         `/api/v1/projects/${projectId}/monitoring/uptime` +
@@ -119,6 +131,11 @@ export async function handleSurfaceTool(
     case 'monitoring_updateIntegrationConfig':
       return callApi(
         `/api/v1/projects/${projectId}/monitoring/integrations/${args['integrationId'] as string}`,
+        'PATCH',
+        {
+          enabled: args['enabled'],
+          config: args['config'],
+        },
       );
     default:
       throw new Error(`Unknown monitoring surface tool: ${name}`);
