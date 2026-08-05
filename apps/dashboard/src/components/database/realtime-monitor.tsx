@@ -5,6 +5,7 @@ import { useAuth } from '@/contexts/auth-context';
 import { useDatabase } from '@/app/(app)/projects/[projectId]/databases/database-context';
 import { HugeiconsIcon } from '@hugeicons/react';
 import { PodcastIcon, BoltIcon } from '@hugeicons/core-free-icons';
+import { useRealtimeMonitorSubscribe } from './use-realtime-monitor-subscribe';
 
 export function RealtimeMonitor() {
   const { getSdk } = useAuth();
@@ -50,14 +51,14 @@ export function RealtimeMonitor() {
   }, []);
 
   const eventColor: Record<string, string> = {
-    INSERT: 'text-emerald-400',
-    UPDATE: 'text-blue-400',
-    DELETE: 'text-rose-400',
+    INSERT: 'text-[var(--success)]',
+    UPDATE: 'text-[var(--info)]',
+    DELETE: 'text-[var(--danger)]',
   };
   const eventBg: Record<string, string> = {
-    INSERT: 'bg-emerald-500/10',
-    UPDATE: 'bg-blue-500/10',
-    DELETE: 'bg-rose-500/10',
+    INSERT: 'bg-[var(--success)]/10',
+    UPDATE: 'bg-[var(--info)]/10',
+    DELETE: 'bg-[var(--danger)]/10',
   };
 
   return (
@@ -82,11 +83,11 @@ export function RealtimeMonitor() {
                 onClick={() => toggleTable(rt.table)}
                 className={`w-full text-left px-2 py-1.5 rounded text-xs flex items-center gap-2 transition-colors ${
                   subscribedTables.has(rt.table)
-                    ? 'bg-emerald-500/10 text-emerald-400'
+                    ? 'bg-[var(--success)]/10 text-[var(--success)]'
                     : 'text-[var(--text-dim)] hover:text-[var(--text)] hover:bg-[var(--rail)]/30'
                 }`}
               >
-                <span className={`w-2 h-2 rounded-full flex-shrink-0 ${subscribedTables.has(rt.table) ? 'bg-emerald-400' : 'bg-[var(--rail)]'}`} />
+                <span className={`w-2 h-2 rounded-full flex-shrink-0 ${subscribedTables.has(rt.table) ? 'bg-[var(--success)]' : 'bg-[var(--rail)]'}`} />
                 <span className="flex-1 truncate font-mono">{rt.table}</span>
                 <span className="text-[10px] opacity-60">{rt.subscribers ?? 1}</span>
               </button>
@@ -104,7 +105,7 @@ export function RealtimeMonitor() {
         <div className="px-4 py-2 border-b border-[var(--rail)] bg-[var(--surface)] flex items-center gap-3 flex-shrink-0">
           <span className="text-xs font-semibold text-[var(--text)]">Live Events</span>
           {subscribedTables.size > 0 && (
-            <span className="text-[10px] px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 font-bold animate-pulse flex items-center gap-1">
+            <span className="text-[10px] px-2 py-0.5 rounded-full bg-[var(--success)]/10 text-[var(--success)] font-bold animate-pulse flex items-center gap-1">
               <HugeiconsIcon icon={PodcastIcon} size={10} className="animate-pulse" />LIVE</span>
           )}
           <div className="flex-1" />

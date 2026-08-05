@@ -7,6 +7,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/).
 ## [Unreleased]
 
 ### Changed
+- `anpas(dashboard): replace hardcoded Tailwind colors with CSS variables in realtime-monitor.tsx and purge-queue-modal.tsx`
 - `refactor(dashboard): split create-project-modal into types/hooks/form/modal`
 - `refactor(dashboard): split migrations-panel into hooks/table/modal`
 

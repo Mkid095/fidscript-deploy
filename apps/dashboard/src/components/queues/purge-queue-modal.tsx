@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { Icon } from '@iconify/react';
 import { Button } from '@fidscript/ui';
+import { usePurgeQueue } from './purge-queue.use';
 
 interface PurgeQueueModalProps {
   queueId: string;
@@ -43,8 +44,8 @@ export function PurgeQueueModal({ queueId, queueName, projectId, onClose, onPurg
       <div className="relative w-full max-w-sm bg-[var(--surface)] border border-[var(--rail)] rounded-xl shadow-2xl">
         <div className="flex items-center justify-between p-5 border-b border-[var(--rail)]">
           <div className="flex items-center gap-2">
-            <div className="w-7 h-7 rounded-lg bg-rose-500/10 flex items-center justify-center">
-              <Icon icon="icons8:trash" width={14} height={14} className="text-rose-400" />
+            <div className="w-7 h-7 rounded-lg bg-[var(--danger)]/10 flex items-center justify-center">
+              <Icon icon="icons8:trash" width={14} height={14} className="text-[var(--danger)]" />
             </div>
             <div>
               <h2 className="text-sm font-semibold text-[var(--text)]">Purge Queue</h2>
@@ -61,8 +62,8 @@ export function PurgeQueueModal({ queueId, queueName, projectId, onClose, onPurg
 
         {!result ? (
           <form onSubmit={handlePurge} className="p-5 space-y-4">
-            <div className="flex items-start gap-3 text-xs text-[var(--text-dim)] bg-amber-500/5 border border-amber-500/15 rounded-lg p-3">
-              <Icon icon="icons8:exclamation-mark" width={14} height={14} className="text-amber-400 flex-shrink-0 mt-0.5" />
+            <div className="flex items-start gap-3 text-xs text-[var(--text-dim)] bg-[var(--warning)]/5 border border-[var(--warning)]/15 rounded-lg p-3">
+              <Icon icon="icons8:exclamation-mark" width={14} height={14} className="text-[var(--warning)] flex-shrink-0 mt-0.5" />
               <span>
                 Purging will permanently delete all <strong className="text-[var(--text)]">pending</strong> messages from this queue.
                 This action cannot be undone.
@@ -85,7 +86,7 @@ export function PurgeQueueModal({ queueId, queueName, projectId, onClose, onPurg
             </label>
 
             {error && (
-              <div className="flex items-center gap-2 text-xs text-rose-400 bg-rose-500/10 border border-rose-500/20 rounded-lg px-3 py-2">
+              <div className="flex items-center gap-2 text-xs text-[var(--danger)] bg-[var(--danger)]/10 border border-[var(--danger)]/20 rounded-lg px-3 py-2">
                 <Icon icon="icons8:cancel" width={13} height={13} />
                 {error}
               </div>
@@ -99,7 +100,7 @@ export function PurgeQueueModal({ queueId, queueName, projectId, onClose, onPurg
                 type="submit"
                 size="sm"
                 disabled={purging}
-                className="bg-rose-500/10 text-rose-400 border border-rose-500/20 hover:bg-rose-500/20"
+                className="bg-[var(--danger)]/10 text-[var(--danger)] border border-[var(--danger)]/20 hover:bg-[var(--danger)]/20"
               >
                 {purging ? 'Purging…' : 'Purge Queue'}
               </Button>
@@ -107,8 +108,8 @@ export function PurgeQueueModal({ queueId, queueName, projectId, onClose, onPurg
           </form>
         ) : (
           <div className="p-5 space-y-4">
-            <div className="flex items-center gap-3 text-emerald-400">
-              <div className="w-8 h-8 rounded-full bg-emerald-500/10 flex items-center justify-center">
+            <div className="flex items-center gap-3 text-[var(--success)]">
+              <div className="w-8 h-8 rounded-full bg-[var(--success)]/10 flex items-center justify-center">
                 <Icon icon="icons8:checkmark" width={16} height={16} />
               </div>
               <div>
