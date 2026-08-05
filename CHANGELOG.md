@@ -12,6 +12,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/).
 - `feat(dashboard): wire domains repairs tab — health check, zone sync/import, open incidents + verification history`
 
 ### Fixed
+- `fix(api): add project membership check to realtime presence methods`
 - `fix(sdk): add /api/v1 prefix to template method paths`
 
 ### Audit findings (api-mcp-audit)

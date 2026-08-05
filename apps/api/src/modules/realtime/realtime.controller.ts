@@ -10,6 +10,7 @@ import {
 } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
+import { CurrentUser } from '../auth/current-user.decorator';
 import { RealtimeService } from './realtime.service';
 import { CreateChannelDto, SetPresenceDto, GetChannelMessagesDto } from './dto/index';
 
@@ -28,8 +29,8 @@ export class RealtimeController {
 
   @Get('channels')
   @ApiOperation({ summary: 'List channels' })
-  async listChannels(@Param('projectId') projectId: string) {
-    const channels = await this.realtimeService.listChannels(projectId);
+  async listChannels(@Param('projectId') projectId: string, @CurrentUser() user: any) {
+    const channels = await this.realtimeService.listChannels(projectId, user.userId);
     return { channels };
   }
 
@@ -57,14 +58,14 @@ export class RealtimeController {
 
   @Post('presence')
   @ApiOperation({ summary: 'Set user presence' })
-  async setPresence(@Param('projectId') projectId: string, @Body() dto: SetPresenceDto) {
-    return this.realtimeService.setUserPresence(projectId, dto.channelId, dto);
+  async setPresence(@Param('projectId') projectId: string, @Body() dto: SetPresenceDto, @CurrentUser() user: any) {
+    return this.realtimeService.setUserPresence(projectId, user.userId, dto);
   }
 
   @Get('channels/:channelId/presence')
   @ApiOperation({ summary: 'Get channel presence' })
-  async getChannelPresence(@Param('projectId') projectId: string, @Param('channelId') channelId: string) {
-    const presence = await this.realtimeService.getChannelPresence(projectId, channelId);
+  async getChannelPresence(@Param('projectId') projectId: string, @Param('channelId') channelId: string, @CurrentUser() user: any) {
+    const presence = await this.realtimeService.getChannelPresence(projectId, channelId, user.userId);
     return { presence };
   }
 

@@ -3,6 +3,7 @@ import * as crypto from 'crypto';
 import * as bcrypt from 'bcrypt';
 import { PrismaService } from '../../prisma/prisma.service';
 import { EventService } from '../events/event.service';
+import { ProjectAccessService } from '../projects/services/project-access.service';
 import { CreateChannelDto, SetPresenceDto } from './dto/index';
 
 @Injectable()
@@ -10,6 +11,7 @@ export class RealtimeService {
   constructor(
     private prisma: PrismaService,
     private eventService: EventService,
+    private access: ProjectAccessService,
   ) {}
 
   async createChannel(projectId: string, dto: CreateChannelDto) {
@@ -40,7 +42,8 @@ export class RealtimeService {
     return channel;
   }
 
-  async listChannels(projectId: string) {
+  async listChannels(projectId: string, userId: string) {
+    await this.access.findProjectWithAccess(userId, projectId);
     return this.prisma.realtimeChannel.findMany({
       where: { projectId },
       orderBy: { createdAt: 'desc' },
@@ -93,6 +96,7 @@ export class RealtimeService {
   }
 
   async setUserPresence(projectId: string, userId: string, dto: SetPresenceDto) {
+    await this.access.findProjectWithAccess(userId, projectId);
     const presence = await this.prisma.realtimePresence.upsert({
       where: { projectId_userId_channelId: {
         projectId,
@@ -111,7 +115,8 @@ export class RealtimeService {
     return presence;
   }
 
-  async getChannelPresence(projectId: string, channelId: string) {
+  async getChannelPresence(projectId: string, channelId: string, userId: string) {
+    await this.access.findProjectWithAccess(userId, projectId);
     return this.prisma.realtimePresence.findMany({
       where: { projectId, channelId },
     });
