@@ -7,7 +7,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/).
 ## [Unreleased]
 
 ### Changed
-- `anpas(dashboard): extract business logic to hook files in 8 components — data-grid, realtime-monitor, rollback-picker, publish-message-modal, purge-queue-modal, bucket-detail, storage-list, queue-detail`
+- `anpas(dashboard): split docs.tsx (189L) into docs-page.tsx/docs-sidebar.tsx/docs-content.tsx/docs-hooks.ts; split project-sidebar.tsx (166L) into project-sidebar.tsx/sidebar-nav-items.tsx/sidebar-footer.tsx/sidebar-hooks.ts; split domain-mailboxes-tab.tsx (159L) into domain-mailboxes-tab.tsx/mailbox-list.tsx/mailbox-create-modal.tsx/mailbox-hooks.ts; split domain-aliases-tab.tsx (155L) into domain-aliases-tab.tsx/alias-list.tsx/alias-create-modal.tsx/alias-hooks.ts; doc content uses dangerouslySetInnerHTML with contentHtml strings to avoid JSX in .ts files`
 - `anpas(dashboard): replace hardcoded Tailwind colors with CSS variables in realtime-monitor.tsx and purge-queue-modal.tsx`
 - `refactor(dashboard): split create-project-modal into types/hooks/form/modal`
 - `refactor(dashboard): split migrations-panel into hooks/table/modal`

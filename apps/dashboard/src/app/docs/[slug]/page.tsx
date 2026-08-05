@@ -2,7 +2,7 @@ import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
 import { HugeiconsIcon } from '@hugeicons/react';
 
-import { DOCS, getDoc } from '@/content/docs';
+import { DOCS, getDoc, DocsContent } from '@/content/docs';
 import { CopyPage } from '@/components/docs/copy-page';
 
 export const metadata: Metadata = {
@@ -18,7 +18,7 @@ export default async function DocPage({ params }: { params: Promise<{ slug: stri
   const { slug } = await params;
   const doc = getDoc(slug);
   if (!doc) notFound();
-  const { Content, title, icon } = doc;
+  const { title, icon } = doc;
 
   return (
     <article className="max-w-3xl">
@@ -33,7 +33,7 @@ export default async function DocPage({ params }: { params: Promise<{ slug: stri
       </header>
 
       <div data-doc-content className="prose-invert max-w-none text-[var(--text-muted)]">
-        <Content />
+        <DocsContent doc={doc} />
       </div>
     </article>
   );
