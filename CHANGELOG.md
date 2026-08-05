@@ -6,6 +6,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
 ## [Unreleased]
 
+### Added
+- `feat(cli): add functions and databases CRUD commands — fidscript functions list|get|create|delete|invoke and fidscript databases list|get|create|delete, extracted to apps/cli/src/commands/{functions,databases}.ts (≤120 lines each) and registered from the bin entry`
+
 ### Changed
 - `fix(mcp): database tools — remove misleading projectId requirement from get/delete/backup/listBackups/restore (SDK methods take only databaseId; projectId was ignored by the handler)`
 - `fix(mcp): monitoring surfaces — make callApi() accept method+body; createDashboard now POSTs name+widgets, updateIntegrationConfig now PATCHes enabled+config (was issuing GET with no body)`
