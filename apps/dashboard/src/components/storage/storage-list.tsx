@@ -2,7 +2,8 @@
 
 import { useEffect, useState, useCallback } from 'react';
 import Link from 'next/link';
-import { Icon } from '@iconify/react';
+import { HugeiconsIcon } from '@hugeicons/react';
+import { SettingsIcon, HardDriveIcon, Folder01Icon } from '@hugeicons/core-free-icons';
 import { Card, Button, Spinner } from '@fidscript/ui';
 import { useAuth } from '@/contexts/auth-context';
 import { Banner } from './banner';
@@ -57,7 +58,7 @@ export function StorageList({ projectId }: StorageListProps) {
         <div className="flex items-center gap-2 flex-shrink-0">
           <Link href={`/projects/${projectId}/storage/settings`}>
             <Button variant="ghost" size="sm" className="text-[var(--text-dim)] hover:text-[var(--text)]">
-              <Icon icon="icons8:settings" width={13} height={13} className="mr-1.5" />
+              <HugeiconsIcon icon={SettingsIcon} size={13} className="mr-1.5" />
               Settings
             </Button>
           </Link>
@@ -95,7 +96,7 @@ export function StorageList({ projectId }: StorageListProps) {
       ) : buckets.length === 0 ? (
         <Card className="border border-[var(--rail)]" padding="lg">
           <div className="text-center py-10">
-            <Icon icon="icons8:hdd" width={32} height={32} className="text-[var(--text-dim)] mx-auto mb-3" />
+            <HugeiconsIcon icon={HardDriveIcon} size={32} className="text-[var(--text-dim)] mx-auto mb-3" />
             <p className="text-xs font-semibold text-[var(--text)] mb-1">No buckets yet</p>
             <p className="text-[10px] text-[var(--text-dim)] mb-4">
               Create your first bucket to store files, backups, and assets.
@@ -106,7 +107,7 @@ export function StorageList({ projectId }: StorageListProps) {
               onClick={() => setShowCreate(true)}
               className="bg-[var(--accent)] hover:bg-[var(--accent-dim)]"
             >
-              <Icon icon="icons8:folder" width={12} height={12} className="mr-1.5" />
+              <HugeiconsIcon icon={Folder01Icon} size={12} className="mr-1.5" />
               Create Bucket
             </Button>
           </div>
