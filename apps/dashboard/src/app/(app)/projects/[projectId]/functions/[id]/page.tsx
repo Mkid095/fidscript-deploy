@@ -28,14 +28,15 @@ export default function FunctionDetailPage() {
     fn, loading, error, activeTab, setActiveTab,
     code, deploying, deployMsg,
     handleDeploy, handleInvoke, handleUpdate, handleDelete,
+    handleStatusUpdate, handleReload,
   } = useFunctionDetail({ projectId, functionId });
 
   useFunctionRealtime({
     projectId,
     functionId,
     getSdk,
-    onStatusUpdate: status => fn ? { ...fn, status } : fn,
-    onReload: () => {},
+    onStatusUpdate: handleStatusUpdate,
+    onReload: handleReload,
   });
 
   if (loading) return (

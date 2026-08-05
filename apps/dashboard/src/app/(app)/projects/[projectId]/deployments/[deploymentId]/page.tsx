@@ -35,7 +35,8 @@ function DeploymentDetailInner() {
     showRollbackPicker, setShowRollbackPicker,
     showDeleteConfirm, setShowDeleteConfirm,
     logStream, setLogStream,
-    handleAction, handleRollbackPicked, handleDeleteConfirm,
+    load, handleAction, handleRollbackPicked, handleDeleteConfirm,
+    handleStatusUpdate,
   } = useDeploymentDetail({ projectId, deploymentId, showToast });
 
   useDeploymentRealtime({
@@ -43,9 +44,9 @@ function DeploymentDetailInner() {
     deploymentId,
     deployment,
     getSdk,
-    onUpdate: status => deployment ? { ...deployment, status } : deployment,
+    onUpdate: handleStatusUpdate,
     onLogStream: setLogStream,
-    load: async () => {},
+    load,
   });
 
   if (loading) return (

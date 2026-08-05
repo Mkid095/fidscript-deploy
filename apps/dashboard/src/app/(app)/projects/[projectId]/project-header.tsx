@@ -7,6 +7,7 @@ import { ChevronRightIcon, PanelLeftIcon } from '@hugeicons/core-free-icons';
 
 import { ThemeToggle } from '@/components/theme/theme-toggle';
 import { AvatarDropdown } from '@/components/layout/avatar-dropdown';
+import { RealtimeStatusIndicator } from '@/components/layout/realtime-status-indicator';
 import { ProjectSwitcherModal } from '@/components/layout/project-switcher-modal';
 import { SECTION_MAP } from '@/components/layout/project-sidebar';
 import { useProjectContext } from '@/contexts/project-context';
@@ -117,6 +118,7 @@ export function ProjectHeader({
 
       {/* Right controls */}
       <div className="flex items-center gap-2 flex-shrink-0 z-10 relative">
+        <RealtimeStatusIndicator />
         <ThemeToggle />
         <AvatarDropdown />
       </div>

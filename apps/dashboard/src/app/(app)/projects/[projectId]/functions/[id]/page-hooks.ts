@@ -23,6 +23,8 @@ interface UseFunctionDetailReturn {
   handleInvoke: () => Promise<void>;
   handleUpdate: (data: Partial<Function_>) => Promise<void>;
   handleDelete: () => Promise<void>;
+  handleStatusUpdate: (status: string) => void;
+  handleReload: () => void;
 }
 
 export function useFunctionDetail({
@@ -54,6 +56,18 @@ export function useFunctionDetail({
       setLoading(false);
     }
   }, [projectId, functionId, getSdk]);
+
+  /**
+   * Realtime mutation: apply a status patch from `function.deployed` /
+   * `function.error` / `function.created` events without waiting for a full
+   * reload. Falls through to `load()` when the event is broader (e.g. delete).
+   */
+  const handleStatusUpdate = useCallback((status: string) => {
+    setFn(prev => prev ? { ...prev, status: status as Function_['status'] } : prev);
+  }, []);
+
+  /** Realtime mutation: trigger a full reload (e.g. after a new deployment version). */
+  const handleReload = useCallback(() => { void load(); }, [load]);
 
   useEffect(() => { load(); }, [load]);
 
@@ -95,5 +109,6 @@ export function useFunctionDetail({
     fn, loading, error, activeTab, setActiveTab,
     code, setCode, deploying, deployMsg,
     load, handleDeploy, handleInvoke, handleUpdate, handleDelete,
+    handleStatusUpdate, handleReload,
   };
 }

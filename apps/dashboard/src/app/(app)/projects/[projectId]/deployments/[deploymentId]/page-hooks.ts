@@ -25,6 +25,7 @@ interface UseDeploymentDetailReturn {
   handleAction: (action: string) => Promise<void>;
   handleRollbackPicked: () => Promise<void>;
   handleDeleteConfirm: () => Promise<void>;
+  handleStatusUpdate: (status: Deployment['status']) => void;
 }
 
 export function useDeploymentDetail({
@@ -42,6 +43,15 @@ export function useDeploymentDetail({
   const [showRollbackPicker, setShowRollbackPicker] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [logStream, setLogStream] = useState(false);
+
+  /**
+   * Realtime mutation: optimistic status update from a `deployments.deployment.*` event.
+   * Falls through to `load()` when the event signals a terminal transition (realtime
+   * only knows the name, not the full row).
+   */
+  const handleStatusUpdate = useCallback((status: Deployment['status']) => {
+    setDeployment(prev => prev ? { ...prev, status } : prev);
+  }, []);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -79,6 +89,8 @@ export function useDeploymentDetail({
   }, [projectId, deploymentId, getSdk, load, router, showToast]);
 
   const handleRollbackPicked = useCallback(async () => {
+    // The RollbackPicker has already invoked sdk.deployments.rollback(targetId)
+    // before invoking onPicked. We just close the picker, toast, and reload.
     setShowRollbackPicker(false);
     showToast?.({ type: 'success', message: 'Rollback initiated.' });
     await load();
@@ -95,5 +107,6 @@ export function useDeploymentDetail({
     showDeleteConfirm, setShowDeleteConfirm,
     logStream, setLogStream,
     load, handleAction, handleRollbackPicked, handleDeleteConfirm,
+    handleStatusUpdate,
   };
 }
