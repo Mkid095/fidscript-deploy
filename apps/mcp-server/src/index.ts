@@ -44,6 +44,13 @@ import { emailTools, handleEmailTool } from './tools/email.js';
 import { domainTools, handleDomainTool } from './tools/domains.js';
 import { projectTools, handleProjectTool } from './tools/projects.js';
 import { authTools, handleAuthTool } from './tools/auth.js';
+import { deploymentTools, handleDeploymentTool } from './tools/deployments.js';
+import { functionTools, handleFunctionTool } from './tools/functions.js';
+import { queueTools, handleQueueTool } from './tools/queues.js';
+import { storageTools, handleStorageTool } from './tools/storage.js';
+import { databaseTools, handleDatabaseTool } from './tools/databases.js';
+import { cronTools, handleCronTool } from './tools/cron.js';
+import { realtimeTools, handleRealtimeTool } from './tools/realtime.js';
 
 const apiKey = process.env.FIDSCRIPT_API_KEY;
 const apiUrl = process.env.FIDSCRIPT_API_URL || 'http://localhost:3001';
@@ -55,7 +62,19 @@ if (!apiKey) {
 
 const sdk = createFidscript({ apiKey, baseURL: apiUrl });
 
-const allTools = [...emailTools, ...domainTools, ...projectTools, ...authTools];
+const allTools = [
+  ...emailTools,
+  ...domainTools,
+  ...projectTools,
+  ...authTools,
+  ...deploymentTools,
+  ...functionTools,
+  ...queueTools,
+  ...storageTools,
+  ...databaseTools,
+  ...cronTools,
+  ...realtimeTools,
+];
 
 const server = new Server(
   { name: 'fidscript-mcp', version: '1.0.0' },
@@ -112,6 +131,20 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
       result = await handleProjectTool(name, args ?? {}, sdk);
     } else if (name.startsWith('auth_')) {
       result = await handleAuthTool(name, args ?? {}, sdk);
+    } else if (name.startsWith('deployments_')) {
+      result = await handleDeploymentTool(name, args ?? {}, sdk);
+    } else if (name.startsWith('functions_')) {
+      result = await handleFunctionTool(name, args ?? {}, sdk);
+    } else if (name.startsWith('queues_')) {
+      result = await handleQueueTool(name, args ?? {}, sdk);
+    } else if (name.startsWith('storage_')) {
+      result = await handleStorageTool(name, args ?? {}, sdk);
+    } else if (name.startsWith('databases_')) {
+      result = await handleDatabaseTool(name, args ?? {}, sdk);
+    } else if (name.startsWith('cron_')) {
+      result = await handleCronTool(name, args ?? {}, sdk);
+    } else if (name.startsWith('realtime_')) {
+      result = await handleRealtimeTool(name, args ?? {}, sdk);
     } else {
       return {
         content: [{ type: 'text', text: `Unknown tool: ${name}` }],
