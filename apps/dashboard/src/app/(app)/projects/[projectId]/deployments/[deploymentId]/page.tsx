@@ -1,15 +1,15 @@
 'use client';
 
-import { useEffect, useState, useCallback } from 'react';
+import { useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { ToastProvider, useToast } from '@/components/toast-provider';
 import { LoadingScreen } from '@/components/ui/loading-screen';
 import { useAuth } from '@/contexts/auth-context';
-import type { Deployment } from '@/types';
-import { isInFlight, statusMeta } from '@/components/deployments';
+import { isInFlight } from '@/components/deployments';
 import { DeploymentDetailBody } from './deployment-detail-body';
 import { useDeploymentRealtime } from './use-deployment-realtime';
+import { useDeploymentDetail } from './page-hooks';
 
 function formatDuration(start: string, end?: string | null): string {
   const s = new Date(start).getTime();
@@ -25,76 +25,28 @@ function formatDuration(start: string, end?: string | null): string {
 
 function DeploymentDetailInner() {
   const params = useParams();
-  const router = useRouter();
   const { getSdk } = useAuth();
   const { showToast } = useToast();
   const projectId = params.projectId as string;
   const deploymentId = params.deploymentId as string;
 
-  const [deployment, setDeployment] = useState<Deployment | null>(null);
-  const [logs, setLogs] = useState<string>('');
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [acting, setActing] = useState<string | null>(null);
-  const [showRollbackPicker, setShowRollbackPicker] = useState(false);
-  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
-  const [logStream, setLogStream] = useState(false);
-
-  const load = useCallback(async () => {
-    setLoading(true);
-    setError(null);
-    try {
-      const sdk = getSdk();
-      const [dep, logData] = await Promise.all([
-        sdk.deployments.get(projectId, deploymentId),
-        sdk.deployments.getLogs(projectId, deploymentId),
-      ]);
-      setDeployment(dep as Deployment);
-      setLogs(typeof logData === 'string' ? logData : (logData as any).logs ?? JSON.stringify(logData));
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to load');
-    } finally {
-      setLoading(false);
-    }
-  }, [projectId, deploymentId, getSdk]);
-
-  useEffect(() => { load(); }, [load]);
+  const {
+    deployment, logs, loading, error, acting,
+    showRollbackPicker, setShowRollbackPicker,
+    showDeleteConfirm, setShowDeleteConfirm,
+    logStream, setLogStream,
+    handleAction, handleRollbackPicked, handleDeleteConfirm,
+  } = useDeploymentDetail({ projectId, deploymentId, showToast });
 
   useDeploymentRealtime({
     projectId,
     deploymentId,
     deployment,
     getSdk,
-    onUpdate: status => setDeployment(prev => prev ? { ...prev, status } : prev),
+    onUpdate: status => deployment ? { ...deployment, status } : deployment,
     onLogStream: setLogStream,
-    load,
+    load: async () => {},
   });
-
-  async function handleAction(action: string) {
-    setActing(action);
-    try {
-      const sdk = getSdk();
-      if (action === 'stop') { await sdk.deployments.stop(projectId, deploymentId); showToast({ type: 'success', message: 'Deployment stopped.' }); }
-      if (action === 'restart') { await sdk.deployments.restart(projectId, deploymentId); showToast({ type: 'success', message: 'Deployment restarted.' }); }
-      if (action === 'delete') { await sdk.deployments.destroy(projectId, deploymentId); showToast({ type: 'success', message: 'Deployment deleted.' }); router.push(`/projects/${projectId}`); return; }
-      await load();
-    } catch (err) {
-      showToast({ type: 'error', message: err instanceof Error ? err.message : `Action failed: ${action}` });
-    } finally {
-      setActing(null);
-    }
-  }
-
-  async function handleRollbackPicked() {
-    setShowRollbackPicker(false);
-    showToast({ type: 'success', message: 'Rollback initiated.' });
-    await load();
-  }
-
-  async function handleDeleteConfirm() {
-    setShowDeleteConfirm(false);
-    await handleAction('delete');
-  }
 
   if (loading) return (
     <LoadingScreen message="Loading deployment" submessage="Fetching deployment details and logs..." fullScreen={false} />

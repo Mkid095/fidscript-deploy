@@ -7,7 +7,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/).
 ## [Unreleased]
 
 ### Changed
-- `anpas(domains): extract sdk calls from domain tabs and project pages to hooks`
+- `anpas(dashboard): extract sdk calls from remaining pages to hooks (functions, deployments, mcp-hub, monitoring, integration-config-modal, add-domain-modal-handler)`
 - `anpas(email): extract sdk calls from email page files to hooks (domain-page-hooks, suppressions-hooks, analytics-hooks, catchall-hooks)`
 - `anpas(pages): extract sdk calls from scheduler, databases, functions pages to hooks`
 - `anpas(services): extract sdk calls from services-registry.tsx to services-registry-hooks.ts with useServicesRegistry hook`

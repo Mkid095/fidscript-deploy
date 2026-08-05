@@ -1,85 +1,19 @@
 'use client';
 
-import { useCallback, useEffect, useState } from 'react';
 import { HugeiconsIcon } from '@hugeicons/react';
 import { CloudIcon, CheckmarkCircle01Icon, CancelCircleIcon } from '@hugeicons/core-free-icons';
-import { Button, Card, Spinner } from '@fidscript/ui';
-import { useAuth } from '@/contexts/auth-context';
+import { Card, Spinner } from '@fidscript/ui';
+import { useIntegrationConfig } from './integration-config-modal-hooks';
 import { CloudflareOAuthForm } from './cloudflare-oauth-form';
 import { MoreIntegrationsCard } from './more-integrations-card';
 
 export function IntegrationConfigModal() {
-  const sdk = useAuth().getSdk();
-  const [oauthStatus, setOauthStatus] = useState<{ enabled: boolean } | null>(null);
-  const [loadingStatus, setLoadingStatus] = useState(true);
-  const [statusError, setStatusError] = useState<string | null>(null);
-  const [clientId, setClientId] = useState('');
-  const [clientSecret, setClientSecret] = useState('');
-  const [saving, setSaving] = useState(false);
-  const [saveError, setSaveError] = useState<string | null>(null);
-  const [saveSuccess, setSaveSuccess] = useState(false);
-  const [testing, setTesting] = useState(false);
-  const [testResult, setTestResult] = useState<'valid' | 'invalid' | null>(null);
-
-  const loadStatus = useCallback(async () => {
-    setLoadingStatus(true);
-    setStatusError(null);
-    try {
-      const data = await sdk.installation.getCloudflareOAuthStatus();
-      setOauthStatus(data);
-    } catch (e) {
-      setStatusError(e instanceof Error ? e.message : 'Failed to load status');
-    } finally {
-      setLoadingStatus(false);
-    }
-  }, [sdk]);
-
-  useEffect(() => { loadStatus(); }, [loadStatus]);
-
-  async function handleTest() {
-    if (!clientId.trim() || !clientSecret.trim()) return;
-    setTesting(true);
-    setTestResult(null);
-    setSaveError(null);
-    try {
-      const res = await sdk.installation.testCloudflareConnection(clientId.trim(), clientSecret.trim());
-      setTestResult(res.valid ? 'valid' : 'invalid');
-    } catch { setTestResult('invalid'); }
-    finally { setTesting(false); }
-  }
-
-  async function handleSave() {
-    setSaving(true);
-    setSaveError(null);
-    setSaveSuccess(false);
-    setTestResult(null);
-    try {
-      await sdk.installation.updateCloudflareOAuth({ clientId: clientId.trim() || undefined, clientSecret: clientSecret.trim() || undefined });
-      await loadStatus();
-      setClientId('');
-      setClientSecret('');
-      setSaveSuccess(true);
-      setTimeout(() => setSaveSuccess(false), 4000);
-    } catch (e) {
-      setSaveError(e instanceof Error ? e.message : 'Save failed');
-    } finally { setSaving(false); }
-  }
-
-  async function handleDisable() {
-    if (!confirm('Disable Cloudflare OAuth?')) return;
-    setSaving(true);
-    setSaveError(null);
-    try {
-      await sdk.installation.updateCloudflareOAuth({ enabled: false });
-      await loadStatus();
-      setClientId('');
-      setClientSecret('');
-      setSaveSuccess(true);
-      setTimeout(() => setSaveSuccess(false), 4000);
-    } catch (e) {
-      setSaveError(e instanceof Error ? e.message : 'Disable failed');
-    } finally { setSaving(false); }
-  }
+  const {
+    oauthStatus, loadingStatus, statusError,
+    clientId, setClientId, clientSecret, setClientSecret,
+    saving, saveError, saveSuccess, testing, testResult,
+    handleTest, handleSave, handleDisable,
+  } = useIntegrationConfig();
 
   return (
     <>

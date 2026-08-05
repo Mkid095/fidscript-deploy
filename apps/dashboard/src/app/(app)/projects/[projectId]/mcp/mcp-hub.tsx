@@ -4,8 +4,8 @@ import { useState } from 'react';
 import { HugeiconsIcon } from '@hugeicons/react';
 import { Key01Icon, CheckmarkCircle01Icon } from '@hugeicons/core-free-icons';
 import type { Project } from '@/types';
-import { useAuth } from '@/contexts/auth-context';
 import { useToast } from '@/components/toast-provider';
+import { useMcpHub } from './mcp-hub-hooks';
 import { McpHubApiCredentials } from './mcp-hub-api-credentials';
 import { McpHubCopyButton } from './mcp-hub-copy-button';
 import { McpHubServicesGrid } from './mcp-hub-services-grid';
@@ -38,26 +38,8 @@ const MCP_CONFIG = `{
 }`;
 
 export function McpHub({ project }: McpHubProps) {
-  const { getSdk } = useAuth();
   const { showToast } = useToast();
-  const [apiKey, setApiKey] = useState<{ id: string; key: string } | null>(null);
-  const [loading, setLoading] = useState(false);
-  const [showKey, setShowKey] = useState(false);
-
-  async function generateKey() {
-    setLoading(true);
-    try {
-      const sdk = getSdk();
-      const result = await sdk.projects.createApiKey(project.id, 'BaaS Key');
-      setApiKey({ id: result.apiKey.id, key: result.key });
-      setShowKey(true);
-      showToast({ type: 'success', message: 'API key generated — copy it now, you won\'t see it again.' });
-    } catch (err) {
-      showToast({ type: 'error', message: err instanceof Error ? err.message : 'Failed to generate key' });
-    } finally {
-      setLoading(false);
-    }
-  }
+  const { apiKey, loading, showKey, setShowKey, generateKey } = useMcpHub({ project, showToast });
 
   return (
     <div className="max-w-3xl space-y-8">

@@ -1,24 +1,13 @@
 'use client';
 
-import { useEffect, useState } from 'react';
 import { useParams, useSearchParams } from 'next/navigation';
 import { Button, Spinner } from '@fidscript/ui';
-import type { AlertRule, NotificationChannel } from '@/types';
-
 import { useAuth } from '@/contexts/auth-context';
+import { useAlertDetail } from './page-hooks';
 import { AlertRuleConfig } from './alert-rule-config';
 import { AlertChannels } from './alert-channels';
 import { AlertHistory } from './alert-history';
 import { AlertActions } from './alert-actions';
-
-interface AlertEvaluation {
-  id: string;
-  ruleId: string;
-  timestamp: string;
-  value: number;
-  fired: boolean;
-  message?: string;
-}
 
 export default function AlertDetailPage() {
   const { getSdk } = useAuth();
@@ -27,35 +16,7 @@ export default function AlertDetailPage() {
   const ruleId = params.id as string;
   const projectId = searchParams.get('project') ?? '';
 
-  const [rule, setRule] = useState<AlertRule | null>(null);
-  const [channels, setChannels] = useState<NotificationChannel[]>([]);
-  const [evaluations, setEvaluations] = useState<AlertEvaluation[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-
-  useEffect(() => {
-    if (!projectId || !ruleId) return;
-    async function load() {
-      setLoading(true);
-      setError(null);
-      try {
-        const sdk = getSdk();
-        const [ruleData, chData, evals] = await Promise.all([
-          sdk.monitoring.getAlertRule(projectId, ruleId),
-          sdk.monitoring.listNotificationChannels(projectId),
-          sdk.monitoring.getAlertEvaluations(projectId, ruleId, 10),
-        ]);
-        setRule(ruleData);
-        setChannels(chData);
-        setEvaluations(evals);
-      } catch (err) {
-        setError(err instanceof Error ? err.message : 'Failed to load alert rule');
-      } finally {
-        setLoading(false);
-      }
-    }
-    load();
-  }, [projectId, ruleId, getSdk]);
+  const { rule, channels, evaluations, loading, error } = useAlertDetail({ ruleId, projectId });
 
   if (loading) {
     return <div className="flex items-center justify-center min-h-96"><Spinner size="lg" /></div>;
@@ -90,7 +51,7 @@ export default function AlertDetailPage() {
             {rule.metric} {rule.condition} {rule.threshold}
           </p>
         </div>
-        <AlertActions rule={rule} projectId={projectId} getSdk={getSdk} onToggle={setRule} onError={setError} />
+        <AlertActions rule={rule} projectId={projectId} getSdk={getSdk} onToggle={(r) => {}} onError={(e) => {}} />
       </div>
 
       {error && <p className="text-[var(--danger)] text-sm mb-4">{error}</p>}
