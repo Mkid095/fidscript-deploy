@@ -7,13 +7,17 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/).
 ## [Unreleased]
 
 ### Added
+- `feat(cli): hard-error on --region for storage create-bucket — the controller ignores the --region flag, so the CLI now exits 1 with a clear message rather than silently creating a bucket in the default region. (`apps/cli/src/commands/storage-create-bucket.ts`)`
 - `feat(cli): add functions and databases CRUD commands — fidscript functions list|get|create|delete|invoke and fidscript databases list|get|create|delete, extracted to apps/cli/src/commands/{functions,databases}.ts (≤120 lines each) and registered from the bin entry`
 - `feat(cli): add cron and domains CRUD commands — fidscript cron list|get|create|update|delete|trigger and fidscript domains list|get|create|get-dns-records|check-health|delete, extracted to apps/cli/src/commands/{cron,domains}.ts and registered from the bin entry`
 - `feat(cli): add storage and queues CRUD commands — fidscript storage list-buckets|create-bucket|list-files|upload|delete-bucket and fidscript queues list|get|create|publish|purge|delete. Each module is split into {storage,queue}-{read,write,helpers}.ts so every file stays under the 150-line ANPAS limit. Bucket names are resolved to IDs via listBuckets; --region now hard-errors (exit 1) because the controller ignores it; --retention is hours converted to days; --delay is logged because the current SDK publish path does not transmit delaySeconds yet`
 
 ### Changed
-- `fix(mcp): database tools — remove misleading projectId requirement from get/delete/backup/listBackups/restore (SDK methods take only databaseId; projectId was ignored by the handler)`
-- `fix(mcp): monitoring surfaces — make callApi() accept method+body; createDashboard now POSTs name+widgets, updateIntegrationConfig now PATCHes enabled+config (was issuing GET with no body)`
+- `fix(mcp): correct database & monitoring surface handlers — monitoring createDashboard now POSTs name+widgets (was issuing GET with no body), updateIntegrationConfig now PATCHes enabled+config (was issuing GET with no body), and database tools drop the misleading projectId requirement (SDK methods take only databaseId)`
+- `anpas(dashboard): move createDatabase to useDatabasesData hook — extracted from page.tsx so all database SDK calls go through a single typed hook`
+- `anpas(dashboard): extract sdk calls from domain tabs and project pages to hooks (domains-page-hooks, project-page-hooks)`
+- `anpas(dashboard): replace @iconify with Hugeicons in 5 storage settings files (storage-section-header, storage-settings-cloudinary, storage-settings-provider, storage-settings-telegram, page.tsx)`
+- `fix(cli): use sdk.auth.me() instead of non-existent getSession() — the CLI was calling a method that doesn't exist on the SDK; corrected to use sdk.auth.me() for the session check`
 - `anpas(dashboard): extract sdk calls from remaining pages to hooks (functions, deployments, mcp-hub, monitoring, integration-config-modal, add-domain-modal-handler)`
 - `anpas(email): extract sdk calls from email page files to hooks (domain-page-hooks, suppressions-hooks, analytics-hooks, catchall-hooks)`
 - `anpas(pages): extract sdk calls from scheduler, databases, functions pages to hooks`
@@ -40,6 +44,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/).
 - `refactor(dashboard): split db-normalize.ts (346L) into 5 domain-specific adapter files — db-normalize.ts (28L barrel), db-normalize-types.ts (84L raw SDK shapes), db-normalize-database.ts (58L Database + DatabaseStatus), db-normalize-schema.ts (68L ColumnInfo + QueryResult + RealtimeTableInfo), db-normalize-migrations.ts (25L MigrationRecord), db-normalize-backups.ts (30L BackupRecord); removed dead `normalizeFunction` and `normalizeDeployment` exports`
 
 ### Removed
+- `chore(api): remove dead stub controller files — controllers with no implementation and no routes were removed from the modules index`
 - `chore(dashboard): delete dead duplicate log hooks — use-log-buffer.ts and use-log-stream.ts were unused; their active implementations live in log-viewer-hooks.ts and are imported by log-viewer.tsx`
 
 ### Fixed
