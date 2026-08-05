@@ -2,7 +2,8 @@
 
 import Link from 'next/link';
 import { useParams } from 'next/navigation';
-import { Icon } from '@iconify/react';
+import { HugeiconsIcon } from '@hugeicons/react';
+import { ArrowLeft01Icon, ChevronRightIcon, CheckmarkCircle01Icon, CancelCircleIcon } from '@hugeicons/core-free-icons';
 import { Card, Spinner } from '@fidscript/ui';
 import { useAuth } from '@/contexts/auth-context';
 import { useStorageSettings } from './use-storage-settings';
@@ -15,7 +16,7 @@ function Banner({ message, type }: { message: string; type: 'success' | 'error' 
     <div className={`flex items-center gap-2 px-4 py-2.5 rounded border text-xs ${
       type === 'success' ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-400' : 'bg-rose-500/10 border-rose-500/30 text-rose-400'
     }`}>
-      <Icon icon={type === 'success' ? 'icons8:checkmark' : 'icons8:cancel'} width={12} height={12} />
+      <HugeiconsIcon icon={type === 'success' ? CheckmarkCircle01Icon : CancelCircleIcon} size={12} />
       {message}
     </div>
   );
@@ -54,10 +55,10 @@ export default function StorageSettingsPage() {
       {/* Page header */}
       <div className="flex items-center gap-3 text-xs text-[var(--text-dim)] mb-2">
         <Link href={`/projects/${projectId}/storage`} className="flex items-center gap-1 hover:text-[var(--text)] transition-colors">
-          <Icon icon="icons8:left-arrow" width={11} height={11} />
+          <HugeiconsIcon icon={ArrowLeft01Icon} size={11} />
           Storage
         </Link>
-        <Icon icon="icons8:chevron-right" width={10} height={10} />
+        <HugeiconsIcon icon={ChevronRightIcon} size={10} />
         <span className="text-[var(--text)] font-medium">Settings</span>
       </div>
 

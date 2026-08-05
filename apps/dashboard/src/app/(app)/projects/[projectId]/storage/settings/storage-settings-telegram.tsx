@@ -1,7 +1,8 @@
 'use client';
 
 import { Card, Button, Input } from '@fidscript/ui';
-import { Icon } from '@iconify/react';
+import { HugeiconsIcon } from '@hugeicons/react';
+import { TelegramIcon, CheckmarkCircle01Icon } from '@hugeicons/core-free-icons';
 
 interface Props {
   telegramCredsSet: boolean;
@@ -24,7 +25,7 @@ export function StorageSettingsTelegram({
     <Card className="border border-[var(--rail)]" padding="lg">
       <div className="flex items-start gap-3 mb-5">
         <div className="w-8 h-8 rounded-lg bg-[var(--rail)] flex items-center justify-center flex-shrink-0 mt-0.5">
-          <Icon icon="icons8:telegram" width={14} height={14} className="text-[var(--text-dim)]" />
+          <HugeiconsIcon icon={TelegramIcon} size={14} className="text-[var(--text-dim)]" />
         </div>
         <div>
           <h2 className="text-xs font-semibold text-[var(--text)]">Telegram</h2>
@@ -34,7 +35,7 @@ export function StorageSettingsTelegram({
 
       {telegramCredsSet && (
         <div className="flex items-center gap-2 mb-4 px-3 py-2 rounded bg-emerald-500/10 border border-emerald-500/20">
-          <Icon icon="icons8:checkmark" width={12} height={12} className="text-emerald-400 flex-shrink-0" />
+          <HugeiconsIcon icon={CheckmarkCircle01Icon} size={12} className="text-emerald-400 flex-shrink-0" />
           <span className="text-[10px] font-medium text-emerald-400">Telegram credentials are configured</span>
         </div>
       )}
