@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { Button, Input, Modal } from '@fidscript/ui';
+import { useTemplateEditor } from './template-editor-modal-hooks';
 
 interface Template {
   id: string;
@@ -21,7 +22,7 @@ interface Template {
 interface TemplateEditorProps {
   template: Template | null;
   projectId: string;
-  getSdk: () => any;
+  getSdk: () => unknown;
   onClose: () => void;
   onSaved: () => void;
 }
@@ -34,28 +35,19 @@ export function TemplateEditor({ template, projectId, getSdk, onClose, onSaved }
   const [htmlBody, setHtmlBody] = useState(template?.htmlBody ?? '');
   const [textBody, setTextBody] = useState(template?.textBody ?? '');
   const [vars, setVars] = useState((template?.variables ?? []).map(v => v.name).join(', '));
-  const [saving, setSaving] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+
+  const { saving, error, saveTemplate } = useTemplateEditor({ projectId, template, getSdk: getSdk as () => { email: { createTemplate: (projectId: string, data: unknown) => Promise<unknown>; updateTemplate: (projectId: string, templateId: string, data: unknown) => Promise<unknown>; } } });
 
   async function handleSave(e: React.FormEvent) {
     e.preventDefault();
     if (!name.trim() || !subject.trim()) return;
-    setSaving(true);
-    setError(null);
+    const variables = vars.split(',').map(v => v.trim()).filter(Boolean).map(v => ({ name: v }));
+    const data = { name: name.trim(), description: description || undefined, fromAddress: fromAddress || undefined, subject, htmlBody: htmlBody || undefined, textBody: textBody || undefined, variables };
     try {
-      const sdk = getSdk();
-      const variables = vars.split(',').map(v => v.trim()).filter(Boolean).map(v => ({ name: v }));
-      const data = { name: name.trim(), description: description || undefined, fromAddress: fromAddress || undefined, subject, htmlBody: htmlBody || undefined, textBody: textBody || undefined, variables };
-      if (template) {
-        await sdk.email.updateTemplate(projectId, template.id, data);
-      } else {
-        await sdk.email.createTemplate(projectId, data);
-      }
+      await saveTemplate(data);
       onSaved();
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to save');
-    } finally {
-      setSaving(false);
+    } catch {
+      // error is handled by the hook
     }
   }
 
