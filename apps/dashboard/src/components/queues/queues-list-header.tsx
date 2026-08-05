@@ -1,6 +1,7 @@
 'use client';
 
-import { Icon } from '@iconify/react';
+import { HugeiconsIcon } from '@hugeicons/react';
+import { Add01Icon } from '@hugeicons/core-free-icons';
 import { Button } from '@fidscript/ui';
 
 interface QueuesListHeaderProps {
@@ -19,7 +20,7 @@ export function QueuesListHeader({ queueCount, loading, onNewQueue }: QueuesList
         </p>
       </div>
       <Button onClick={onNewQueue} size="sm" className="gap-1.5">
-        <Icon icon="icons8:plus" width={14} height={14} />
+        <HugeiconsIcon icon={Add01Icon} size={14} />
         New Queue
       </Button>
     </div>

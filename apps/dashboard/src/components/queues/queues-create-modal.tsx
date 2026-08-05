@@ -1,7 +1,8 @@
 'use client';
 
 import { useState } from 'react';
-import { Icon } from '@iconify/react';
+import { HugeiconsIcon } from '@hugeicons/react';
+import { Cancel01Icon, Share01Icon, Database01Icon } from '@hugeicons/core-free-icons';
 import { Button } from '@fidscript/ui';
 
 interface QueuesCreateModalProps {
@@ -11,9 +12,9 @@ interface QueuesCreateModalProps {
 }
 
 const QUEUE_TYPES = [
-  { value: 'stream',    label: 'NATS JetStream', icon: 'icons8:share',  desc: 'High-throughput, durable' },
-  { value: 'workqueue', label: 'Work Queue',      icon: 'icons8:queue',  desc: 'Single consumer, at-least-once' },
-  { value: 'queue',     label: 'Redis Queue',     icon: 'icons8:database', desc: 'In-memory, fast' },
+  { value: 'stream',    label: 'NATS JetStream', icon: Share01Icon,  desc: 'High-throughput, durable' },
+  { value: 'workqueue', label: 'Work Queue',      icon: null,         desc: 'Single consumer, at-least-once' },
+  { value: 'queue',     label: 'Redis Queue',     icon: Database01Icon, desc: 'In-memory, fast' },
 ];
 
 export function QueuesCreateModal({ onClose, onConfirm, submitting }: QueuesCreateModalProps) {
@@ -36,7 +37,7 @@ export function QueuesCreateModal({ onClose, onConfirm, submitting }: QueuesCrea
             onClick={() => !submitting && onClose()}
             className="p-1 rounded-lg text-[var(--text-dim)] hover:text-[var(--text)] hover:bg-[var(--rail)] transition-colors"
           >
-            <Icon icon="icons8:cancel" width={14} height={14} />
+            <HugeiconsIcon icon={Cancel01Icon} size={14} />
           </button>
         </div>
         <form onSubmit={handleSubmit} className="p-5 space-y-4">
@@ -67,12 +68,13 @@ export function QueuesCreateModal({ onClose, onConfirm, submitting }: QueuesCrea
                   }`}
                 >
                   <div className="flex items-center gap-2 mb-1">
-                    <Icon
-                      icon={icon}
-                      width={13}
-                      height={13}
-                      className={type === value ? 'text-[var(--accent)]' : 'text-[var(--text-dim)]'}
-                    />
+                    {icon && (
+                      <HugeiconsIcon
+                        icon={icon}
+                        size={13}
+                        className={type === value ? 'text-[var(--accent)]' : 'text-[var(--text-dim)]'}
+                      />
+                    )}
                     <span className="text-xs font-medium text-[var(--text)]">{label}</span>
                   </div>
                   <span className="text-[10px] text-[var(--text-dim)]">{desc}</span>

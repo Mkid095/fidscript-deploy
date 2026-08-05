@@ -1,7 +1,8 @@
 'use client';
 
 import { useRouter } from 'next/navigation';
-import { Icon } from '@iconify/react';
+import { HugeiconsIcon } from '@hugeicons/react';
+import { Share01Icon, ChevronRightIcon, Delete02Icon, Task01Icon, CheckmarkCircle01Icon, Cancel01Icon, Database01Icon } from '@hugeicons/core-free-icons';
 import { Card } from '@fidscript/ui';
 
 export interface Queue {
@@ -19,10 +20,10 @@ interface QueueStats {
   jsDepth: number;
 }
 
-const TYPE_ICONS: Record<string, string> = {
-  stream:    'icons8:share',
-  queue:     'icons8:database',
-  workqueue: 'icons8:queue',
+const TYPE_ICONS: Record<string, typeof Share01Icon> = {
+  stream:    Share01Icon,
+  queue:     Database01Icon,
+  workqueue: Share01Icon,
 };
 
 const TYPE_LABELS: Record<string, string> = {
@@ -41,7 +42,7 @@ interface QueueCardProps {
 export function QueueCard({ queue, stats, projectId, onDelete }: QueueCardProps) {
   const router = useRouter();
 
-  const typeIcon = TYPE_ICONS[queue.type] ?? 'icons8:share';
+  const typeIcon = TYPE_ICONS[queue.type] ?? Share01Icon;
   const typeLabel = TYPE_LABELS[queue.type] ?? queue.type;
   const isPaused = queue.status === 'paused';
   const hasPending = (stats?.pending ?? 0) > 0;
@@ -59,7 +60,7 @@ export function QueueCard({ queue, stats, projectId, onDelete }: QueueCardProps)
           <div className="flex items-start justify-between gap-4">
             <div className="flex items-start gap-3 min-w-0 flex-1">
               <div className="w-9 h-9 rounded-lg bg-[var(--rail)] flex items-center justify-center flex-shrink-0 mt-0.5">
-                <Icon icon={typeIcon} width={15} height={15} className="text-[var(--text-dim)]" />
+                <HugeiconsIcon icon={typeIcon} size={15} className="text-[var(--text-dim)]" />
               </div>
               <div className="min-w-0 flex-1">
                 <div className="flex items-center gap-2 flex-wrap mb-1">
@@ -78,7 +79,7 @@ export function QueueCard({ queue, stats, projectId, onDelete }: QueueCardProps)
 
                 <div className="flex items-center gap-3 text-[10px] text-[var(--text-dim)] mb-2">
                   <span className="flex items-center gap-1">
-                    <Icon icon="icons8:share" width={10} height={10} />
+                    <HugeiconsIcon icon={Share01Icon} size={10} />
                     {typeLabel}
                   </span>
                   <span>·</span>
@@ -90,20 +91,20 @@ export function QueueCard({ queue, stats, projectId, onDelete }: QueueCardProps)
                 {stats && (
                   <div className="flex items-center gap-4">
                     <div className="flex items-center gap-1.5">
-                      <Icon icon="icons8:tasks" width={10} height={10} className="text-[var(--text-dim)]" />
+                      <HugeiconsIcon icon={Task01Icon} size={10} className="text-[var(--text-dim)]" />
                       <span className="text-[10px] text-[var(--text-dim)]">
                         <span className="text-[var(--text)] font-medium">{stats.pending}</span> pending
                       </span>
                     </div>
                     <div className="flex items-center gap-1.5">
-                      <Icon icon="icons8:checked" width={10} height={10} className="text-emerald-400" />
+                      <HugeiconsIcon icon={CheckmarkCircle01Icon} size={10} className="text-emerald-400" />
                       <span className="text-[10px] text-[var(--text-dim)]">
                         <span className="text-[var(--text)] font-medium">{stats.delivered}</span> delivered
                       </span>
                     </div>
                     {stats.deadLettered > 0 && (
                       <div className="flex items-center gap-1.5">
-                        <Icon icon="icons8:cancel" width={10} height={10} className="text-rose-400" />
+                        <HugeiconsIcon icon={Cancel01Icon} size={10} className="text-rose-400" />
                         <span className="text-[10px] text-rose-400">
                           <span className="font-medium">{stats.deadLettered}</span> dead-letter
                         </span>
@@ -116,7 +117,7 @@ export function QueueCard({ queue, stats, projectId, onDelete }: QueueCardProps)
 
             <div className="flex items-center gap-2 flex-shrink-0">
               <div className="w-6 h-6 rounded-full flex items-center justify-center bg-[var(--rail)] group-hover:bg-[var(--accent)]/10 transition-colors">
-                <Icon icon="icons8:chevron-right" width={12} height={12} className="text-[var(--text-dim)] group-hover:text-[var(--accent)] transition-colors" />
+                <HugeiconsIcon icon={ChevronRightIcon} size={12} className="text-[var(--text-dim)] group-hover:text-[var(--accent)] transition-colors" />
               </div>
             </div>
           </div>
@@ -129,7 +130,7 @@ export function QueueCard({ queue, stats, projectId, onDelete }: QueueCardProps)
         className="absolute top-3 right-3 p-1.5 rounded-lg text-[var(--text-dim)] hover:text-rose-400 hover:bg-rose-500/10 opacity-0 group-hover:opacity-100 transition-all"
         title="Delete queue"
       >
-        <Icon icon="icons8:trash" width={13} height={13} />
+        <HugeiconsIcon icon={Delete02Icon} size={13} />
       </button>
     </div>
   );

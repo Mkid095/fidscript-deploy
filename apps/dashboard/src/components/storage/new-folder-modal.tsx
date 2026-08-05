@@ -1,7 +1,8 @@
 'use client';
 
 import { useState } from 'react';
-import { Icon } from '@iconify/react';
+import { HugeiconsIcon } from '@hugeicons/react';
+import { Folder01Icon } from '@hugeicons/core-free-icons';
 import { Modal } from '@fidscript/ui';
 import { Button, Input } from '@fidscript/ui';
 
@@ -67,7 +68,7 @@ export function NewFolderModal({ isOpen, onClose, currentPrefix, onCreated }: Ne
             Cancel
           </Button>
           <Button type="submit" variant="primary" size="sm" disabled={!name.trim()} className="bg-[var(--accent)] hover:bg-[var(--accent-dim)]">
-            <Icon icon="icons8:folder" width={13} height={13} className="mr-1.5" />
+            <HugeiconsIcon icon={Folder01Icon} size={13} className="mr-1.5" />
             Create Folder
           </Button>
         </div>

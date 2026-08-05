@@ -1,6 +1,7 @@
 'use client';
 
-import { Icon } from '@iconify/react';
+import { HugeiconsIcon } from '@hugeicons/react';
+import { RefreshIcon, File02Icon } from '@hugeicons/core-free-icons';
 import type { QueueMessage, MessageTab } from './use-queues-realtime';
 
 const STATUS_COLORS: Record<string, string> = {
@@ -40,7 +41,7 @@ function MessageRow({ msg, selected, onToggle }: MessageRowProps) {
       <td className="px-3 py-2.5 text-[var(--text-dim)]">
         {msg.attempts > 0 && (
           <span className={`inline-flex items-center gap-1 ${msg.attempts >= 3 ? 'text-rose-400' : 'text-amber-400'}`}>
-            <Icon icon="icons8:refresh" width={10} height={10} />
+            <HugeiconsIcon icon={RefreshIcon} size={10} />
             {msg.attempts}
           </span>
         )}
@@ -108,7 +109,7 @@ export function QueueMessagesTable({
       {messages.length === 0 ? (
         <div className="flex flex-col items-center justify-center py-16 text-center">
           <div className="w-12 h-12 rounded-xl bg-[var(--rail)] flex items-center justify-center mb-3">
-            <Icon icon="icons8:document" width={20} height={20} className="text-[var(--text-dim)]" />
+            <HugeiconsIcon icon={File02Icon} size={20} className="text-[var(--text-dim)]" />
           </div>
           <p className="text-xs text-[var(--text-dim)]">No {activeTab} messages</p>
         </div>

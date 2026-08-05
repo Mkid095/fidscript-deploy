@@ -1,6 +1,16 @@
 'use client';
 
+import {
+  File01Icon,
+  Image01Icon,
+  Video01Icon,
+  MusicNote01Icon,
+  Pdf01Icon,
+  FileZipIcon,
+} from '@hugeicons/core-free-icons';
 import type { StorageFile } from '@/types';
+
+type FileTypeIcon = typeof File01Icon;
 
 export function formatBytes(bytes: number): string {
   if (bytes === 0) return '0 B';
@@ -10,15 +20,15 @@ export function formatBytes(bytes: number): string {
   return `${parseFloat((bytes / Math.pow(k, i)).toFixed(1))} ${sizes[i]}`;
 }
 
-export function getFileTypeInfo(mimeType?: string) {
-  if (!mimeType) return { icon: 'icons8:file', label: 'Unknown', color: 'text-[var(--text-dim)]' };
-  if (mimeType.startsWith('image/')) return { icon: 'icons8:image-file', label: 'Image', color: 'text-violet-400' };
-  if (mimeType.startsWith('video/')) return { icon: 'icons8:video-file', label: 'Video', color: 'text-rose-400' };
-  if (mimeType.startsWith('audio/')) return { icon: 'icons8:music', label: 'Audio', color: 'text-amber-400' };
-  if (mimeType === 'application/pdf') return { icon: 'icons8:pdf', label: 'PDF', color: 'text-red-400' };
-  if (mimeType.match(/zip|tar|gzip|compressed/)) return { icon: 'icons8:compress', label: 'Archive', color: 'text-emerald-400' };
-  if (mimeType.startsWith('text/')) return { icon: 'icons8:file', label: 'Text', color: 'text-blue-400' };
-  return { icon: 'icons8:file', label: 'File', color: 'text-[var(--text-dim)]' };
+export function getFileTypeInfo(mimeType?: string): { Icon: FileTypeIcon; label: string; color: string } {
+  if (!mimeType) return { Icon: File01Icon, label: 'Unknown', color: 'text-[var(--text-dim)]' };
+  if (mimeType.startsWith('image/')) return { Icon: Image01Icon, label: 'Image', color: 'text-violet-400' };
+  if (mimeType.startsWith('video/')) return { Icon: Video01Icon, label: 'Video', color: 'text-rose-400' };
+  if (mimeType.startsWith('audio/')) return { Icon: MusicNote01Icon, label: 'Audio', color: 'text-amber-400' };
+  if (mimeType === 'application/pdf') return { Icon: Pdf01Icon, label: 'PDF', color: 'text-red-400' };
+  if (mimeType.match(/zip|tar|gzip|compressed/)) return { Icon: FileZipIcon, label: 'Archive', color: 'text-emerald-400' };
+  if (mimeType.startsWith('text/')) return { Icon: File01Icon, label: 'Text', color: 'text-blue-400' };
+  return { Icon: File01Icon, label: 'File', color: 'text-[var(--text-dim)]' };
 }
 
 export function isPreviewable(mimeType?: string) {
@@ -31,10 +41,10 @@ export function isPreviewable(mimeType?: string) {
   );
 }
 
-export function fileIcon(mimeType: string): string {
-  if (mimeType.startsWith('image/')) return 'icons8:image-file';
-  if (mimeType.startsWith('video/')) return 'icons8:video-file';
-  if (mimeType.startsWith('audio/')) return 'icons8:music';
-  if (mimeType === 'application/pdf') return 'icons8:pdf';
-  return 'icons8:file';
+export function fileIcon(mimeType: string): FileTypeIcon {
+  if (mimeType.startsWith('image/')) return Image01Icon;
+  if (mimeType.startsWith('video/')) return Video01Icon;
+  if (mimeType.startsWith('audio/')) return MusicNote01Icon;
+  if (mimeType === 'application/pdf') return Pdf01Icon;
+  return File01Icon;
 }

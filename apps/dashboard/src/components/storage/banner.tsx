@@ -1,6 +1,7 @@
 'use client';
 
-import { Icon } from '@iconify/react';
+import { HugeiconsIcon } from '@hugeicons/react';
+import { CheckmarkCircle01Icon, InformationCircleIcon } from '@hugeicons/core-free-icons';
 import type { BannerProps } from './types';
 
 export function Banner({ message, type }: BannerProps) {
@@ -10,10 +11,9 @@ export function Banner({ message, type }: BannerProps) {
         ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-400'
         : 'bg-rose-500/10 border-rose-500/30 text-rose-400'
     }`}>
-      <Icon
-        icon={type === 'success' ? 'icons8:checkmark' : 'icons8:info'}
-        width={12}
-        height={12}
+      <HugeiconsIcon
+        icon={type === 'success' ? CheckmarkCircle01Icon : InformationCircleIcon}
+        size={12}
       />
       {message}
     </div>

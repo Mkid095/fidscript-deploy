@@ -1,6 +1,11 @@
 'use client';
 
-import { Icon } from '@iconify/react';
+import { HugeiconsIcon } from '@hugeicons/react';
+import {
+  Cancel01Icon,
+  CheckmarkCircle01Icon,
+  Upload01Icon,
+} from '@hugeicons/core-free-icons';
 import { fileIcon } from './file-utils';
 
 export type UploadStatus = 'pending' | 'uploading' | 'done' | 'error';
@@ -20,10 +25,9 @@ export function UploadFileRow({ item, onRemove }: UploadFileRowProps) {
   const { file, status, error } = item;
   return (
     <div className="flex items-center gap-3 p-2 rounded-lg bg-[var(--surface-2)] border border-[var(--rail)]">
-      <Icon
+      <HugeiconsIcon
         icon={fileIcon(file.type)}
-        width={16}
-        height={16}
+        size={16}
         className="text-[var(--text-dim)] flex-shrink-0"
       />
       <div className="flex-1 min-w-0">
@@ -39,17 +43,17 @@ export function UploadFileRow({ item, onRemove }: UploadFileRowProps) {
             onClick={onRemove}
             className="text-[var(--text-dim)] hover:text-rose-400 transition-colors"
           >
-            <Icon icon="icons8:cancel" width={14} height={14} />
+            <HugeiconsIcon icon={Cancel01Icon} size={14} />
           </button>
         )}
         {status === 'uploading' && (
-          <Icon icon="icons8:upload" width={14} height={14} className="text-[var(--accent)] animate-pulse" />
+          <HugeiconsIcon icon={Upload01Icon} size={14} className="text-[var(--accent)] animate-pulse" />
         )}
         {status === 'done' && (
-          <Icon icon="icons8:checkmark" width={14} height={14} className="text-emerald-400" />
+          <HugeiconsIcon icon={CheckmarkCircle01Icon} size={14} className="text-emerald-400" />
         )}
         {status === 'error' && (
-          <Icon icon="icons8:cancel" width={14} height={14} className="text-rose-400" />
+          <HugeiconsIcon icon={Cancel01Icon} size={14} className="text-rose-400" />
         )}
       </div>
     </div>

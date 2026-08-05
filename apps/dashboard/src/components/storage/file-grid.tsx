@@ -1,7 +1,12 @@
 'use client';
 
 import Image from 'next/image';
-import { Icon } from '@iconify/react';
+import { HugeiconsIcon } from '@hugeicons/react';
+import {
+  Delete02Icon,
+  FileExportIcon,
+  Image01Icon,
+} from '@hugeicons/core-free-icons';
 import { Card } from '@fidscript/ui';
 import type { StorageFile } from '@/types';
 import { formatBytes, getFileTypeInfo, isPreviewable } from './file-utils';
@@ -46,11 +51,11 @@ export function FileGrid({
                       sizes="200px"
                     />
                   ) : (
-                    <Icon icon={typeInfo.icon} width={28} height={28} className={typeInfo.color} />
+                    <HugeiconsIcon icon={typeInfo.Icon} size={28} className={typeInfo.color} />
                   )}
                   {/* Hover overlay */}
                   <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-colors flex items-center justify-center opacity-0 group-hover:opacity-100">
-                    {previewable && <Icon icon="icons8:picture" width={20} height={20} className="text-white" />}
+                    {previewable && <HugeiconsIcon icon={Image01Icon} size={20} className="text-white" />}
                   </div>
                 </div>
                 <div className="p-2">
@@ -70,7 +75,7 @@ export function FileGrid({
                   className="w-6 h-6 rounded bg-black/60 flex items-center justify-center hover:bg-black/80 transition-colors"
                   title="Preview"
                 >
-                  <Icon icon="icons8:picture" width={11} height={11} className="text-white" />
+                  <HugeiconsIcon icon={Image01Icon} size={11} className="text-white" />
                 </button>
               )}
               <button
@@ -78,7 +83,7 @@ export function FileGrid({
                 className="w-6 h-6 rounded bg-black/60 flex items-center justify-center hover:bg-black/80 transition-colors"
                 title="Copy URL"
               >
-                <Icon icon="icons8:export" width={11} height={11} className="text-white" />
+                <HugeiconsIcon icon={FileExportIcon} size={11} className="text-white" />
               </button>
               <button
                 onClick={(e) => { e.stopPropagation(); onDelete(file.id, file.originalName ?? file.key); }}
@@ -86,7 +91,7 @@ export function FileGrid({
                 className="w-6 h-6 rounded bg-black/60 flex items-center justify-center hover:bg-rose-500/80 transition-colors disabled:opacity-50"
                 title="Delete"
               >
-                <Icon icon="icons8:trash" width={11} height={11} className="text-white" />
+                <HugeiconsIcon icon={Delete02Icon} size={11} className="text-white" />
               </button>
             </div>
           </div>

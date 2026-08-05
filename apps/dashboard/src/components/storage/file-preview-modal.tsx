@@ -1,7 +1,15 @@
 'use client';
 
 import Image from 'next/image';
-import { Icon } from '@iconify/react';
+import { HugeiconsIcon } from '@hugeicons/react';
+import {
+  AppleMusicIcon,
+  Cancel01Icon,
+  Delete02Icon,
+  File02Icon,
+  FileExportIcon,
+  InformationCircleIcon,
+} from '@hugeicons/core-free-icons';
 import { Spinner } from '@fidscript/ui';
 import type { StorageFile } from '@/types';
 import { formatBytes } from './file-utils';
@@ -45,13 +53,13 @@ export function FilePreviewModal({
               className="p-1.5 rounded text-[var(--text-dim)] hover:text-[var(--text)] hover:bg-[var(--rail)] transition-colors"
               title="Copy URL"
             >
-              <Icon icon="icons8:export" width={14} height={14} />
+              <HugeiconsIcon icon={FileExportIcon} size={14} />
             </button>
             <button
               onClick={onClose}
               className="p-1.5 rounded text-[var(--text-dim)] hover:text-[var(--text)] hover:bg-[var(--rail)] transition-colors"
             >
-              <Icon icon="icons8:cancel" width={14} height={14} />
+              <HugeiconsIcon icon={Cancel01Icon} size={14} />
             </button>
           </div>
         </div>
@@ -83,20 +91,20 @@ export function FilePreviewModal({
               </video>
             ) : file.mimeType?.startsWith('audio/') ? (
               <div className="text-center">
-                <Icon icon="icons8:music" width={48} height={48} className="text-[var(--text-dim)] mx-auto mb-4" />
+                <HugeiconsIcon icon={AppleMusicIcon} size={48} className="text-[var(--text-dim)] mx-auto mb-4" />
                 <audio src={url} controls className="w-80 mx-auto block">
                   Your browser does not support audio playback.
                 </audio>
               </div>
             ) : (
               <div className="text-center py-12">
-                <Icon icon="icons8:file" width={48} height={48} className="text-[var(--text-dim)] mx-auto mb-3" />
+                <HugeiconsIcon icon={File02Icon} size={48} className="text-[var(--text-dim)] mx-auto mb-3" />
                 <p className="text-xs text-[var(--text-dim)]">Preview not available for this file type.</p>
               </div>
             )
           ) : (
             <div className="text-center py-12">
-              <Icon icon="icons8:info" width={40} height={40} className="text-rose-400 mx-auto mb-3" />
+              <HugeiconsIcon icon={InformationCircleIcon} size={40} className="text-rose-400 mx-auto mb-3" />
               <p className="text-xs text-rose-400">Failed to load preview</p>
             </div>
           )}
@@ -112,7 +120,7 @@ export function FilePreviewModal({
             onClick={() => onDelete(file.id, file.originalName ?? file.key)}
             className="flex items-center gap-1.5 text-[10px] text-rose-400 hover:text-rose-300 transition-colors"
           >
-            <Icon icon="icons8:trash" width={11} height={11} />
+            <HugeiconsIcon icon={Delete02Icon} size={11} />
             Delete
           </button>
         </div>

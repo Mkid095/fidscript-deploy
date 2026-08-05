@@ -1,6 +1,7 @@
 'use client';
 
-import { Icon } from '@iconify/react';
+import { HugeiconsIcon } from '@hugeicons/react';
+import { Cancel01Icon } from '@hugeicons/core-free-icons';
 import { Button } from '@fidscript/ui';
 import type { Queue } from './queue-card';
 
@@ -22,7 +23,7 @@ export function QueuesDeleteConfirmation({ target, deleting, onCancel, onConfirm
             onClick={() => !deleting && onCancel()}
             className="p-1 rounded-lg text-[var(--text-dim)] hover:text-[var(--text)] hover:bg-[var(--rail)] transition-colors"
           >
-            <Icon icon="icons8:cancel" width={14} height={14} />
+            <HugeiconsIcon icon={Cancel01Icon} size={14} />
           </button>
         </div>
         <div className="p-5 space-y-3">

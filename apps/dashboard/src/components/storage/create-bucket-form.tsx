@@ -1,7 +1,8 @@
 'use client';
 
 import { useState } from 'react';
-import { Icon } from '@iconify/react';
+import { HugeiconsIcon } from '@hugeicons/react';
+import { Add01Icon, Cancel01Icon } from '@hugeicons/core-free-icons';
 import { Card, Button, Input } from '@fidscript/ui';
 import type { FidscriptSDK } from '@fidscript-deploy/sdk';
 import type { Bucket } from './bucket';
@@ -87,7 +88,7 @@ export function CreateBucketForm({ projectId, onCreated, onError, getSdk }: Crea
                 onClick={() => { setShow(false); setName(''); }}
                 className="text-[var(--text-dim)]"
               >
-                <Icon icon="icons8:cancel" width={12} height={12} className="mr-1.5" />
+                <HugeiconsIcon icon={Cancel01Icon} size={12} className="mr-1.5" />
                 Cancel
               </Button>
             )}
@@ -98,7 +99,7 @@ export function CreateBucketForm({ projectId, onCreated, onError, getSdk }: Crea
               loading={loading}
               className="bg-[var(--accent)] hover:bg-[var(--accent-dim)]"
             >
-              <Icon icon="icons8:plus" width={12} height={12} className="mr-1.5" />
+              <HugeiconsIcon icon={Add01Icon} size={12} className="mr-1.5" />
               {loading ? 'Creating…' : 'Create Bucket'}
             </Button>
           </div>

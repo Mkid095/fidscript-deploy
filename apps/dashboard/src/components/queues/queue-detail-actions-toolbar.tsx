@@ -1,6 +1,7 @@
 'use client';
 
-import { Icon } from '@iconify/react';
+import { HugeiconsIcon } from '@hugeicons/react';
+import { Share01Icon, Download01Icon, Delete02Icon, CheckmarkCircle01Icon, RefreshIcon } from '@hugeicons/core-free-icons';
 import { Button } from '@fidscript/ui';
 
 interface QueueDetailActionsToolbarProps {
@@ -28,15 +29,15 @@ export function QueueDetailActionsToolbar({
     <div className="flex items-center justify-between gap-3 flex-wrap">
       <div className="flex items-center gap-2">
         <Button size="sm" onClick={onPublish} className="gap-1.5">
-          <Icon icon="icons8:share" width={13} height={13} />
+          <HugeiconsIcon icon={Share01Icon} size={13} />
           Publish
         </Button>
         <Button size="sm" variant="secondary" onClick={onConsume} disabled={consuming} className="gap-1.5">
-          <Icon icon="icons8:download" width={13} height={13} />
+          <HugeiconsIcon icon={Download01Icon} size={13} />
           {consuming ? 'Consuming…' : 'Consume'}
         </Button>
         <Button size="sm" variant="ghost" onClick={onPurge} className="gap-1.5 text-rose-400 hover:bg-rose-500/10">
-          <Icon icon="icons8:trash" width={13} height={13} />
+          <HugeiconsIcon icon={Delete02Icon} size={13} />
           Purge
         </Button>
       </div>
@@ -44,11 +45,11 @@ export function QueueDetailActionsToolbar({
         <div className="flex items-center gap-2">
           <span className="text-xs text-[var(--text-dim)]">{selectedCount} selected</span>
           <Button size="sm" variant="secondary" onClick={onAck} disabled={actionLoading} className="gap-1.5">
-            <Icon icon="icons8:checkmark" width={13} height={13} />
+            <HugeiconsIcon icon={CheckmarkCircle01Icon} size={13} />
             Ack
           </Button>
           <Button size="sm" variant="secondary" onClick={onRetry} disabled={actionLoading} className="gap-1.5">
-            <Icon icon="icons8:refresh" width={13} height={13} />
+            <HugeiconsIcon icon={RefreshIcon} size={13} />
             Retry
           </Button>
         </div>

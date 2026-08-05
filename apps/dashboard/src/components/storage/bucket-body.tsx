@@ -1,6 +1,7 @@
 'use client';
 
-import { Icon } from '@iconify/react';
+import { HugeiconsIcon } from '@hugeicons/react';
+import { Upload01Icon } from '@hugeicons/core-free-icons';
 import { BucketHeader } from './bucket-header';
 import { BucketContent } from './bucket-content';
 import { FilePreviewModal } from './file-preview-modal';
@@ -50,7 +51,7 @@ export function BucketBody({
       {dragging && (
         <div className="fixed inset-0 z-50 bg-[var(--accent)]/10 border-2 border-dashed border-[var(--accent)] flex items-center justify-center pointer-events-none">
           <div className="bg-[var(--surface)] rounded-2xl p-10 text-center border-2 border-dashed border-[var(--accent)] shadow-2xl">
-            <Icon icon="icons8:upload" width={40} height={40} className="text-[var(--accent)] mx-auto mb-3" />
+            <HugeiconsIcon icon={Upload01Icon} size={40} className="text-[var(--accent)] mx-auto mb-3" />
             <p className="text-[var(--text)] font-semibold text-sm">Drop files to upload</p>
           </div>
         </div>

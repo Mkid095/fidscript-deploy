@@ -1,7 +1,8 @@
 'use client';
 
 import { useRef, useState } from 'react';
-import { Icon } from '@iconify/react';
+import { HugeiconsIcon } from '@hugeicons/react';
+import { Upload01Icon } from '@hugeicons/core-free-icons';
 import { Modal, Button } from '@fidscript/ui';
 import type { FidscriptSDK } from '@fidscript-deploy/sdk';
 import type { StorageFile } from '@/types';
@@ -50,7 +51,7 @@ export function UploadFilesModal({
           `}
         >
           <input ref={inputRef} type="file" multiple className="hidden" onChange={e => { if (e.target.files) addFiles(e.target.files); e.target.value = ''; }} />
-          <Icon icon="icons8:upload" width={32} height={32} className="text-[var(--text-dim)] mx-auto mb-2" />
+          <HugeiconsIcon icon={Upload01Icon} size={32} className="text-[var(--text-dim)] mx-auto mb-2" />
           <p className="text-sm text-[var(--text)] font-medium">
             Drop files here or <span className="text-[var(--accent)]">browse</span>
           </p>
@@ -77,7 +78,7 @@ export function UploadFilesModal({
             <Button variant="ghost" size="sm" onClick={handleClose}>Cancel</Button>
             {pendingCount > 0 && (
               <Button variant="primary" size="sm" onClick={uploadAll} className="bg-[var(--accent)] hover:bg-[var(--accent-dim)]">
-                <Icon icon="icons8:upload" width={13} height={13} className="mr-1.5" />
+                <HugeiconsIcon icon={Upload01Icon} size={13} className="mr-1.5" />
                 Upload {pendingCount} file{pendingCount !== 1 ? 's' : ''}
               </Button>
             )}

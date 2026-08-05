@@ -1,16 +1,22 @@
 'use client';
 
 import { useRouter } from 'next/navigation';
-import { Icon } from '@iconify/react';
+import { HugeiconsIcon } from '@hugeicons/react';
+import {
+  ArrowRight01Icon,
+  Database01Icon,
+  Delete02Icon,
+  HddIcon,
+} from '@hugeicons/core-free-icons';
 import { Card } from '@fidscript/ui';
 import { ProviderBadge } from './provider-badge';
 import { StatusBadge } from './status-badge';
 
-const PROVIDER_ICONS: Record<string, string> = {
-  cloudinary: 'icons8:database',
-  telegram:   'icons8:share',
-  s3:         'icons8:hdd',
-  internal:   'icons8:database',
+const PROVIDER_ICONS: Record<string, typeof HddIcon> = {
+  cloudinary: Database01Icon,
+  telegram:   ArrowRight01Icon,
+  s3:         HddIcon,
+  internal:   Database01Icon,
 };
 
 export interface Bucket {
@@ -39,7 +45,7 @@ export function BucketCard({ bucket, projectId, onDelete }: BucketCardProps) {
           <div className="flex items-center justify-between gap-4">
             <div className="flex items-center gap-3 min-w-0">
               <div className="w-8 h-8 rounded-lg bg-[var(--rail)] flex items-center justify-center flex-shrink-0">
-                <Icon icon={PROVIDER_ICONS[bucket.provider] ?? 'icons8:database'} width={14} height={14} className="text-[var(--text-dim)]" />
+                <HugeiconsIcon icon={PROVIDER_ICONS[bucket.provider] ?? Database01Icon} size={14} className="text-[var(--text-dim)]" />
               </div>
               <div className="min-w-0">
                 <div className="flex items-center gap-2 flex-wrap">
@@ -55,7 +61,7 @@ export function BucketCard({ bucket, projectId, onDelete }: BucketCardProps) {
             </div>
             <div className="flex items-center gap-3 flex-shrink-0">
               <StatusBadge status={bucket.status} />
-              <Icon icon="icons8:right-arrow" width={14} height={14} className="text-[var(--text-dim)] group-hover:text-[var(--accent)] transition-colors" />
+              <HugeiconsIcon icon={ArrowRight01Icon} size={14} className="text-[var(--text-dim)] group-hover:text-[var(--accent)] transition-colors" />
             </div>
           </div>
         </Card>
@@ -67,7 +73,7 @@ export function BucketCard({ bucket, projectId, onDelete }: BucketCardProps) {
         className="absolute top-3 right-3 p-1.5 rounded-lg text-[var(--text-dim)] hover:text-rose-400 hover:bg-rose-500/10 opacity-0 group-hover:opacity-100 transition-all"
         title="Delete bucket"
       >
-        <Icon icon="icons8:trash" width={14} height={14} />
+        <HugeiconsIcon icon={Delete02Icon} size={14} />
       </button>
     </div>
   );

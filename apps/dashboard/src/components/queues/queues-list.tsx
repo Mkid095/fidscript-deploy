@@ -1,7 +1,8 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Icon } from '@iconify/react';
+import { HugeiconsIcon } from '@hugeicons/react';
+import { InformationCircleIcon, Share01Icon, Add01Icon } from '@hugeicons/core-free-icons';
 import { Button } from '@fidscript/ui';
 import { useAuth } from '@/contexts/auth-context';
 import { useShellProjectId } from '@/contexts/project-context';
@@ -54,7 +55,7 @@ export function QueuesList() {
   if (!projectId) {
     return (
       <div className="flex items-center justify-center h-64 text-[var(--text-dim)]">
-        <Icon icon="icons8:info" width={20} className="mr-2" />
+        <HugeiconsIcon icon={InformationCircleIcon} size={20} className="mr-2" />
         No project selected.
       </div>
     );
@@ -78,14 +79,14 @@ export function QueuesList() {
       ) : queues.length === 0 ? (
         <div className="flex flex-col items-center justify-center py-20 text-center">
           <div className="w-14 h-14 rounded-xl bg-[var(--surface-2)] border border-[var(--rail)] flex items-center justify-center mb-4">
-            <Icon icon="icons8:share" width={24} height={24} className="text-[var(--text-dim)]" />
+            <HugeiconsIcon icon={Share01Icon} size={24} className="text-[var(--text-dim)]" />
           </div>
           <h3 className="text-sm font-medium text-[var(--text)] mb-1">No queues yet</h3>
           <p className="text-xs text-[var(--text-dim)] max-w-xs">
             Create your first queue to start processing background tasks reliably.
           </p>
           <Button onClick={() => setShowCreate(true)} size="sm" className="mt-4 gap-1.5">
-            <Icon icon="icons8:plus" width={13} height={13} />
+            <HugeiconsIcon icon={Add01Icon} size={13} />
             Create Queue
           </Button>
         </div>

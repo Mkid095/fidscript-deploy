@@ -1,6 +1,11 @@
 'use client';
 
-import { Icon } from '@iconify/react';
+import { HugeiconsIcon } from '@hugeicons/react';
+import {
+  Delete02Icon,
+  FileExportIcon,
+  Image01Icon,
+} from '@hugeicons/core-free-icons';
 import type { StorageFile } from '@/types';
 import { formatBytes, getFileTypeInfo, isPreviewable } from './file-utils';
 
@@ -33,7 +38,7 @@ export function FileTable({ files, deletingId, onPreview, onCopyUrl, onDelete }:
                 <td className="px-4 py-3">
                   <div className="flex items-center gap-2.5">
                     <div className="w-7 h-7 rounded flex items-center justify-center flex-shrink-0 bg-[var(--rail)]">
-                      <Icon icon={typeInfo.icon} width={12} height={12} className={typeInfo.color} />
+                      <HugeiconsIcon icon={typeInfo.Icon} size={12} className={typeInfo.color} />
                     </div>
                     <div className="min-w-0">
                       <button
@@ -66,7 +71,7 @@ export function FileTable({ files, deletingId, onPreview, onCopyUrl, onDelete }:
                         className="p-1.5 rounded text-[var(--text-dim)] hover:text-[var(--text)] hover:bg-[var(--rail)] transition-colors"
                         title="Preview"
                       >
-                        <Icon icon="icons8:picture" width={12} height={12} />
+                        <HugeiconsIcon icon={Image01Icon} size={12} />
                       </button>
                     )}
                     <button
@@ -74,7 +79,7 @@ export function FileTable({ files, deletingId, onPreview, onCopyUrl, onDelete }:
                       className="p-1.5 rounded text-[var(--text-dim)] hover:text-[var(--text)] hover:bg-[var(--rail)] transition-colors"
                       title="Copy URL"
                     >
-                      <Icon icon="icons8:export" width={12} height={12} />
+                      <HugeiconsIcon icon={FileExportIcon} size={12} />
                     </button>
                     <button
                       onClick={() => onDelete(file.id, file.originalName ?? file.key)}
@@ -82,7 +87,7 @@ export function FileTable({ files, deletingId, onPreview, onCopyUrl, onDelete }:
                       className="p-1.5 rounded text-[var(--text-dim)] hover:text-rose-400 hover:bg-rose-500/10 transition-colors disabled:opacity-50"
                       title="Delete"
                     >
-                      <Icon icon="icons8:trash" width={12} height={12} />
+                      <HugeiconsIcon icon={Delete02Icon} size={12} />
                     </button>
                   </div>
                 </td>

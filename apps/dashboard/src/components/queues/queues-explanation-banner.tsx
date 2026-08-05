@@ -1,13 +1,14 @@
 'use client';
 
-import { Icon } from '@iconify/react';
+import { HugeiconsIcon } from '@hugeicons/react';
+import { InformationCircleIcon } from '@hugeicons/core-free-icons';
 
 export function QueuesExplanationBanner() {
   return (
     <div className="rounded-xl border border-[var(--accent)]/20 bg-[var(--accent)]/5 p-5">
       <div className="flex items-start gap-3">
         <div className="w-9 h-9 rounded-lg bg-[var(--accent)]/10 flex items-center justify-center flex-shrink-0 mt-0.5">
-          <Icon icon="icons8:info" width={16} height={16} className="text-[var(--accent)]" />
+          <HugeiconsIcon icon={InformationCircleIcon} size={16} className="text-[var(--accent)]" />
         </div>
         <div>
           <h3 className="text-sm font-semibold text-[var(--text)] mb-1">What are Queues?</h3>
