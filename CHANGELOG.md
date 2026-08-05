@@ -7,6 +7,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/).
 ## [Unreleased]
 
 ### Changed
+- `anpas(services): extract sdk calls from services-registry.tsx to services-registry-hooks.ts with useServicesRegistry hook`
 - `anpas(email): extract sdk calls from template-editor-modal.tsx to template-editor-modal-hooks.ts with useTemplateEditor hook`
 - `anpas(queues): extract sdk calls from queue-detail.tsx to use-queue-detail-data hook`
 - `anpas(settings): extract sdk calls from settings/page.tsx to settings-page-hooks.ts with useSettingsPage() hook`

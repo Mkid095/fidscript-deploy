@@ -3,17 +3,14 @@
 // Services page — registry of deployed applications for this project.
 // Renders real `Deployment` entities from DEPL-01 (list) with realtime updates.
 
-import { useEffect, useState, useCallback, useMemo } from 'react';
+import { useMemo, useCallback, useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-
-import { useToast } from '@/components/toast-provider';
-import { useAuth } from '@/contexts/auth-context';
 import type { Deployment } from '@/types';
 
 import { ServicesHeader } from './services-header';
 import { ServicesBody } from './services-body';
 import { ServicesSkeleton } from './services-skeleton';
-import { useServicesRealtime } from './services-realtime';
+import { useServicesRegistry } from './services-registry-hooks';
 import { extractRepoKey, isInFlight, type ServiceGroup } from './services-utils';
 
 interface ServicesRegistryProps {
@@ -22,14 +19,18 @@ interface ServicesRegistryProps {
 
 export function ServicesRegistry({ projectId }: ServicesRegistryProps) {
   const router = useRouter();
-  const { getSdk } = useAuth();
-  const { showToast } = useToast();
 
-  const [deployments, setDeployments] = useState<Deployment[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [githubConnected, setGithubConnected] = useState(false);
-  const [connecting, setConnecting] = useState(false);
+  const {
+    deployments,
+    loading,
+    error,
+    githubConnected,
+    connecting,
+    load,
+    handleConnectGithub,
+    handleAction,
+  } = useServicesRegistry({ projectId });
+
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
 
   const services = useMemo<ServiceGroup[]>(() => {
@@ -49,67 +50,6 @@ export function ServicesRegistry({ projectId }: ServicesRegistryProps) {
 
   const healthyCount = services.filter(s => s.deployments[0]?.status === 'SUCCESS').length;
   const activeCount  = services.filter(s => isInFlight(s.deployments[0]?.status)).length;
-
-  const load = useCallback(async () => {
-    try {
-      const sdk = getSdk();
-      const data = await sdk.deployments.list(projectId, { limit: 100 });
-      const list = (data as { deployments?: Deployment[] }).deployments
-        ?? (Array.isArray(data) ? (data as Deployment[]) : []);
-      setDeployments(list);
-      setError(null);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to load services');
-    } finally {
-      setLoading(false);
-    }
-  }, [projectId, getSdk]);
-
-  useEffect(() => { void load(); }, [load]);
-
-  useEffect(() => {
-    getSdk().github.status()
-      .then(s => setGithubConnected(Boolean(s?.connected)))
-      .catch(() => setGithubConnected(false));
-  }, [getSdk]);
-
-  useServicesRealtime({ projectId, getSdk, onDeploymentsChange: setDeployments, onReload: load });
-
-  const handleConnectGithub = useCallback(async () => {
-    setConnecting(true);
-    try {
-      const status = await getSdk().github.connect();
-      setGithubConnected(Boolean(status?.connected));
-      showToast({
-        type: 'success',
-        message: status?.username ? `Connected to GitHub as ${status.username}` : 'GitHub connected',
-      });
-    } catch (err) {
-      showToast({ type: 'error', message: err instanceof Error ? err.message : 'Failed to connect GitHub' });
-    } finally {
-      setConnecting(false);
-    }
-  }, [getSdk, showToast]);
-
-  const handleAction = useCallback(async (id: string, action: string) => {
-    try {
-      const sdk = getSdk();
-      if (action === 'stop') {
-        await sdk.deployments.stop(projectId, id);
-        showToast({ type: 'success', message: 'Deployment stopping.' });
-      } else if (action === 'restart') {
-        await sdk.deployments.restart(projectId, id);
-        showToast({ type: 'success', message: 'Deployment restarting.' });
-      } else if (action === 'delete') {
-        if (!confirm('Delete this deployment? This cannot be undone.')) return;
-        await sdk.deployments.destroy(projectId, id);
-        showToast({ type: 'success', message: 'Deployment deleted.' });
-      }
-      await load();
-    } catch (err) {
-      showToast({ type: 'error', message: err instanceof Error ? err.message : 'Action failed' });
-    }
-  }, [projectId, getSdk, load, showToast]);
 
   const toggleService = useCallback((name: string) => {
     setExpanded(prev => {
