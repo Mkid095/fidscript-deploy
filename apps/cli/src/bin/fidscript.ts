@@ -20,6 +20,8 @@ import { registerFunctionsCommands } from '../commands/functions';
 import { registerDatabasesCommands } from '../commands/databases';
 import { registerCronCommands } from '../commands/cron';
 import { registerDomainsCommands } from '../commands/domains';
+import { registerStorageCommands } from '../commands/storage';
+import { registerQueuesCommands } from '../commands/queues';
 
 function getApiKey(): string | undefined {
   return loadCredentials().apiKey;
@@ -191,6 +193,8 @@ async function run(argv: string[]): Promise<void> {
   registerDatabasesCommands(program, { apiUrl: cfg.apiUrl, getApiKey, loadConfig });
   registerCronCommands(program, { apiUrl: cfg.apiUrl, getApiKey, loadConfig });
   registerDomainsCommands(program, { apiUrl: cfg.apiUrl, getApiKey, loadConfig });
+  registerStorageCommands(program, { apiUrl: cfg.apiUrl, getApiKey, loadConfig });
+  registerQueuesCommands(program, { apiUrl: cfg.apiUrl, getApiKey, loadConfig });
 
   // ── EMAIL COMMANDS ──────────────────────────────────────────────────
   const emailCmd = new Command('email');
