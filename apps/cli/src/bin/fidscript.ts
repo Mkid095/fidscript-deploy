@@ -87,7 +87,7 @@ async function run(argv: string[]): Promise<void> {
     const { createFidscript } = await import('@fidscript-deploy/sdk');
     const sdk = createFidscript({ apiKey, baseURL: cfg.apiUrl });
       try {
-        const { user } = await (sdk.auth as any).getSession();
+        const user = await sdk.auth.me();
       console.log(`Logged in as ${user.email} (role: ${user.role})`);
     } catch (e) {
       die(`Authentication failed: ${(e as Error).message}`);
