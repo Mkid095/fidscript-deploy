@@ -2,7 +2,7 @@ import {
   Controller, Get, Post, Patch, Delete, Body, Param, Query, UseGuards,
 } from '@nestjs/common';
 import { ApiTags, ApiBearerAuth } from '@nestjs/swagger';
-import { JwtAuthGuard } from '@/modules/auth/jwt-auth.guard';
+import { ApiKeyOrJwtGuard } from '@/modules/auth/guards/api-key-or-jwt.guard';
 import { QueuesService } from '@/modules/queues/queues.service';
 import {
   CreateQueueDto, UpdateQueueDto, PublishMessageDto, PublishBatchDto,
@@ -12,7 +12,7 @@ import {
 
 @ApiTags('queues')
 @Controller('projects/:projectId/queues')
-@UseGuards(JwtAuthGuard)
+@UseGuards(ApiKeyOrJwtGuard)
 @ApiBearerAuth()
 export class QueuesController {
   constructor(private queues: QueuesService) {}

@@ -6,7 +6,14 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
 ## [Unreleased]
 
+### Fixed
+- `fix(api): use ApiKeyOrJwtGuard on QueuesController for BaaS API-key access`
+
 ### Refactored
+- `refactor(dashboard): split function-settings.tsx (184L) into 4 files — function-settings.tsx (85L) orchestrator, function-env-vars.tsx (71L) env var editor, function-settings-hooks.ts (80L) business logic, function-settings-types.ts (11L) shared types`
+- `refactor(dashboard): split notification-bell.tsx (189L) into 5 files — notification-bell.tsx (54L) orchestrator, notification-bell-hooks.ts (75L) with all business logic (polling, read state, mark read), notification-dropdown.tsx (77L) panel, notification-item.tsx (36L) row, notification-types.ts (28L) shared types`
+- `refactor(database): split backups-panel.tsx and backup-settings-panel.tsx`
+- `refactor(dashboard): split email-settings-form.tsx (162L) into 4 files — email-settings-form.tsx (117L) orchestrator with backend selector UI, email-smtp-config.tsx (82L) cloudinary/telegram credential forms, email-settings-hooks.ts (42L) all form state, email-settings-types.ts (30L) shared types`
 - `refactor(database): split sql-editor-v2 (703L) into 13 focused files under components/database/ — SqlEditorV2 orchestrator (89L), sql-editor.types (48L), sql-editor.utils (54L), sql-editor.use hook (109L), sql-editor-tabs.use (50L), sql-editor-sidebar.use (43L), SqlEditorSidebar (129L), SqlEditorTabBar (65L), SqlEditorMonaco (36L), SqlEditorResultsPane (90L), SqlEditorTable (51L), SqlEditorSchemaTree (50L), SqlEditorMessagesTab (50L), SqlEditorSavedQueries (32L), SqlEditorHistory (32L); extracts business logic into custom hooks; removes schema/savedQueries/queryHistory from hook return — components call useDatabase() directly`
 - `refactor(database): split data-grid (478L) into 8 focused files under components/database/ — DataGrid (150L), DataGridToolbar+DeleteBanner+ErrorBanner (82L), DataGridHeader (34L), DataGridBody (52L), DataGridPagination (53L), InsertRowModal (83L), EditRowModal (88L), data-grid-utils (25L), data-grid-use-mutation hook (70L); moves business logic into useDataGridMutations/useDataGridMutation hooks`
 - `refactor(dashboard): split database-context (436L), add-domain-modal-handler (404L), and activity (267L) into focused sub-components — database-context split into 10 hook files (schema/rows/columns/mutations/sql/saved-queries/status/migrations/backup/realtime) + provider; activity split into types (130L), icons (30L), realtime-hook (68L), and component (63L); add-domain split into dns-hook (35L), handler (98L)`
