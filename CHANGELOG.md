@@ -8,6 +8,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
 ### Added
 - `feat(cli): add functions and databases CRUD commands — fidscript functions list|get|create|delete|invoke and fidscript databases list|get|create|delete, extracted to apps/cli/src/commands/{functions,databases}.ts (≤120 lines each) and registered from the bin entry`
+- `feat(cli): add cron and domains CRUD commands — fidscript cron list|get|create|update|delete|trigger and fidscript domains list|get|create|get-dns-records|check-health|delete, extracted to apps/cli/src/commands/{cron,domains}.ts and registered from the bin entry`
 
 ### Changed
 - `fix(mcp): database tools — remove misleading projectId requirement from get/delete/backup/listBackups/restore (SDK methods take only databaseId; projectId was ignored by the handler)`
