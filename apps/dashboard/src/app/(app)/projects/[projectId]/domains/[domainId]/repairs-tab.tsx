@@ -2,71 +2,35 @@
 
 import { useEffect, useState, useCallback } from 'react';
 import type { DomainIncident, DomainVerificationRun } from '@fidscript-deploy/sdk';
-import { Button, Card, Spinner, Toast, Badge } from '@fidscript/ui';
+import { Button, Card, Spinner, Toast } from '@fidscript/ui';
 import { useAuth } from '@/contexts/auth-context';
+import { RepairsIncidents } from './repairs-incidents';
+import { RepairsHistory } from './repairs-history';
 
-// ── Props ────────────────────────────────────────────────────────────────────
+// ── Props ─────────────────────────────────────────────────────────────────────
 
-interface Props {
-  projectId: string;
-  domainId: string;
-}
+interface Props { projectId: string; domainId: string; }
 
-// ── Incident card ─────────────────────────────────────────────────────────────
+// ── Action card ───────────────────────────────────────────────────────────────
 
-function IncidentCard({ incident }: { incident: DomainIncident }) {
-  const severityColor = incident.severity === 'critical' ? 'border-[var(--danger)]/40 bg-red-950/20'
-    : incident.severity === 'warning' ? 'border-yellow-500/40 bg-yellow-950/20'
-    : 'border-[var(--rail)] bg-[var(--surface)]';
+function ActionCard({ title, description, loading, onClick }: {
+  title: string;
+  description: string;
+  loading: boolean;
+  onClick: () => void;
+}) {
   return (
-    <div className={`rounded-lg border p-4 ${severityColor}`}>
-      <div className="flex items-start justify-between gap-3">
-        <div>
-          <p className="text-sm font-medium text-[var(--text)]">{incident.title}</p>
-          {incident.description && (
-            <p className="text-xs text-[var(--text-muted)] mt-1">{incident.description}</p>
-          )}
-          <p className="text-xs text-[var(--text-dim)] mt-1.5">
-            Opened {new Date(incident.openedAt).toLocaleString()}
-          </p>
-        </div>
-        <Badge variant={incident.severity === 'critical' ? 'danger' : incident.severity === 'warning' ? 'info' : 'default'}>
-          {incident.severity}
-        </Badge>
-      </div>
-    </div>
+    <Card className="border border-[var(--rail)]" padding="md">
+      <h3 className="text-sm font-semibold text-[var(--text)] mb-1">{title}</h3>
+      <p className="text-xs text-[var(--text-muted)] mb-4">{description}</p>
+      <Button size="sm" variant="secondary" loading={loading} onClick={onClick}>
+        Run
+      </Button>
+    </Card>
   );
 }
 
-// ── Verification history row ──────────────────────────────────────────────────
-
-function HistoryRow({ run }: { run: DomainVerificationRun }) {
-  const improved = run.newStatus === 'HEALTHY' || run.newStatus === 'DEGRADED';
-  const degraded = run.newStatus === 'FAILED' || run.previousStatus === 'HEALTHY' && run.newStatus === 'DEGRADED';
-  return (
-    <div className="flex items-center justify-between py-3 border-b border-[var(--rail)] last:border-0">
-      <div className="flex items-center gap-3">
-        <span className={`text-lg ${improved ? 'text-[var(--success)]' : degraded ? 'text-[var(--danger)]' : 'text-[var(--text-muted)]'}`}>
-          {improved ? '↑' : degraded ? '↓' : '→'}
-        </span>
-        <div>
-          <p className="text-sm text-[var(--text)] capitalize">{run.reason.replace(/_/g, ' ')}</p>
-          <p className="text-xs text-[var(--text-dim)]">{new Date(run.createdAt).toLocaleString()}</p>
-        </div>
-      </div>
-      <div className="flex items-center gap-2 text-xs text-[var(--text-muted)]">
-        {run.previousScore !== null && (
-          <span>{run.previousScore} → </span>
-        )}
-        <span className={run.newScore !== null && run.newScore >= 80 ? 'text-[var(--success)]' : run.newScore !== null && run.newScore < 60 ? 'text-[var(--danger)]' : 'text-[var(--text-muted)]'}>
-          {run.newScore ?? '—'}
-        </span>
-      </div>
-    </div>
-  );
-}
-
-// ── Main RepairsTab ───────────────────────────────────────────────────────────
+// ── RepairsTab ────────────────────────────────────────────────────────────────
 
 export default function RepairsTab({ projectId, domainId }: Props) {
   const { getSdk } = useAuth();
@@ -96,7 +60,7 @@ export default function RepairsTab({ projectId, domainId }: Props) {
     setChecking(true);
     try {
       await getSdk().domains.triggerHealthCheck(projectId, domainId);
-      setToast({ message: 'Health check triggered — results will update shortly', type: 'success' });
+      setToast({ message: 'Health check triggered — results update shortly', type: 'success' });
       setTimeout(() => load(), 5000);
     } catch (err) {
       setToast({ message: err instanceof Error ? err.message : 'Health check failed', type: 'error' });
@@ -107,7 +71,6 @@ export default function RepairsTab({ projectId, domainId }: Props) {
     setSyncing(true);
     try {
       // TODO (backend): POST /api/v1/projects/:projectId/domains/:domainId/sync-zone
-      // SDK has syncZone() but endpoint may not be wired yet.
       await getSdk().domains.syncZone(projectId, domainId);
       setToast({ message: 'Zone sync complete', type: 'success' });
       await load();
@@ -130,76 +93,17 @@ export default function RepairsTab({ projectId, domainId }: Props) {
 
   if (loading) return <div className="flex justify-center py-12"><Spinner size="md" /></div>;
 
-  const openIncidents = incidents.filter(i => i.status === 'open');
-
   return (
     <div className="space-y-6">
       {/* Repair actions */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <Card className="border border-[var(--rail)]" padding="md">
-          <h3 className="text-sm font-semibold text-[var(--text)] mb-1">Health Check</h3>
-          <p className="text-xs text-[var(--text-muted)] mb-4">Re-run DNS, routing, SSL, and email checks.</p>
-          <Button size="sm" variant="secondary" loading={checking} onClick={handleHealthCheck}>
-            Run Health Check
-          </Button>
-        </Card>
-        <Card className="border border-[var(--rail)]" padding="md">
-          <h3 className="text-sm font-semibold text-[var(--text)] mb-1">Sync Zone</h3>
-          <p className="text-xs text-[var(--text-muted)] mb-4">
-            Sync platform-managed records with your DNS provider.
-            {/* TODO (backend): POST /api/v1/projects/:projectId/domains/:domainId/sync-zone */}
-          </p>
-          <Button size="sm" variant="secondary" loading={syncing} onClick={handleSync}>
-            Sync Zone
-          </Button>
-        </Card>
-        <Card className="border border-[var(--rail)]" padding="md">
-          <h3 className="text-sm font-semibold text-[var(--text)] mb-1">Import Zone</h3>
-          <p className="text-xs text-[var(--text-muted)] mb-4">
-            Import existing records from your DNS provider.
-            {/* TODO (backend): POST /api/v1/projects/:projectId/domains/:domainId/import-zone */}
-          </p>
-          <Button size="sm" variant="secondary" loading={importing} onClick={handleImport}>
-            Import Zone
-          </Button>
-        </Card>
+        <ActionCard title="Health Check" description="Re-run DNS, routing, SSL, and email checks." loading={checking} onClick={handleHealthCheck} />
+        <ActionCard title="Sync Zone" description="Sync platform-managed records with your DNS provider." loading={syncing} onClick={handleSync} />
+        <ActionCard title="Import Zone" description="Import existing records from your DNS provider." loading={importing} onClick={handleImport} />
       </div>
-
-      {/* Open incidents */}
-      <div>
-        <h2 className="text-sm font-semibold text-[var(--text)] mb-3">
-          Open Incidents
-          {openIncidents.length > 0 && (
-            <Badge variant="danger" className="ml-2">{openIncidents.length}</Badge>
-          )}
-        </h2>
-        {openIncidents.length === 0 ? (
-          <Card className="border border-[var(--rail)]" padding="lg">
-            <p className="text-sm text-[var(--text-muted)] text-center py-4">No open incidents — domain is healthy.</p>
-          </Card>
-        ) : (
-          <div className="space-y-3">
-            {openIncidents.map(inc => <IncidentCard key={inc.id} incident={inc} />)}
-          </div>
-        )}
-      </div>
-
-      {/* Verification history */}
-      <div>
-        <h2 className="text-sm font-semibold text-[var(--text)] mb-3">Verification History</h2>
-        <Card className="border border-[var(--rail)]" padding="none">
-          {history.length === 0 ? (
-            <div className="p-6 text-center">
-              <p className="text-sm text-[var(--text-muted)]">No verification history yet.</p>
-            </div>
-          ) : (
-            <div className="px-4">
-              {history.slice(0, 10).map(run => <HistoryRow key={run.id} run={run} />)}
-            </div>
-          )}
-        </Card>
-      </div>
-
+      {/* Incidents + history */}
+      <RepairsIncidents incidents={incidents} />
+      <RepairsHistory history={history} />
       {toast && <Toast type={toast.type} message={toast.message} onClose={() => setToast(null)} />}
     </div>
   );
