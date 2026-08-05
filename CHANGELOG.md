@@ -8,6 +8,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
 ### Refactored
 - `refactor(database): split data-grid (478L) into 8 focused files under components/database/ — DataGrid (150L), DataGridToolbar+DeleteBanner+ErrorBanner (82L), DataGridHeader (34L), DataGridBody (52L), DataGridPagination (53L), InsertRowModal (83L), EditRowModal (88L), data-grid-utils (25L), data-grid-use-mutation hook (70L); moves business logic into useDataGridMutations/useDataGridMutation hooks`
+- `refactor(dashboard): split database-context (436L), add-domain-modal-handler (404L), and activity (267L) into focused sub-components — database-context split into 10 hook files (schema/rows/columns/mutations/sql/saved-queries/status/migrations/backup/realtime) + provider; activity split into types (130L), icons (30L), realtime-hook (68L), and component (63L); add-domain split into dns-hook (35L), handler (98L)`
 
 ### Added
 - `feat(mcp): add monitoring, logging, AI, and marketplace tools — 60 new tools (25 monitoring, 12 logging, 10 AI, 13 marketplace) wired through the SDK where available and direct API fetch for endpoints the SDK does not yet cover`
