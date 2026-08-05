@@ -7,12 +7,24 @@ import { formatDuration, formatBytes } from '@/lib/format';
 import { HugeiconsIcon } from '@hugeicons/react';
 import { CheckmarkCircle03Icon, AlertCircleIcon, RefreshIcon } from '@hugeicons/core-free-icons';
 
+/** DB-07 connection response — password never returned (DB-08 returns one-time password). */
+interface DbConnectionInfo {
+  host: string;
+  port: number;
+  database: string;
+  user: string;
+  connectionString: string;
+  pgbouncerHost?: string;
+  pgbouncerPort?: number;
+  ssl?: boolean;
+  poolSize?: number;
+}
+
 export function ConnectionPanel() {
   const { getSdk } = useAuth();
   const { databaseId, dbStatus, refreshStatus } = useDatabase();
-  const [connInfo, setConnInfo] = useState<Record<string, string> | null>(null);
+  const [connInfo, setConnInfo] = useState<DbConnectionInfo | null>(null);
   const [loadingConn, setLoadingConn] = useState(false);
-  const [showPassword, setShowPassword] = useState(false);
   const [rotating, setRotating] = useState(false);
   const [newPassword, setNewPassword] = useState<string | null>(null);
 
@@ -20,7 +32,7 @@ export function ConnectionPanel() {
     if (!databaseId) return;
     setLoadingConn(true);
     try {
-      const conn = await getSdk().database(databaseId).connection() as Record<string, string>;
+      const conn = await getSdk().database(databaseId).connection() as DbConnectionInfo;
       setConnInfo(conn);
     } catch { /* ignore */ } finally { setLoadingConn(false); }
   };
@@ -93,15 +105,6 @@ export function ConnectionPanel() {
                 <code className="text-xs font-mono text-[var(--text-muted)] bg-[var(--surface-2)] px-2 py-1 rounded flex-1 truncate">{value}</code>
               </div>
             ))}
-            <div className="flex items-center gap-3">
-              <span className="text-xs text-[var(--text-dim)] w-24 flex-shrink-0">Password</span>
-              <code className="text-xs font-mono text-[var(--text-muted)] bg-[var(--surface-2)] px-2 py-1 rounded flex-1">
-                {newPassword ? newPassword : showPassword ? (connInfo.password ?? '••••••') : '••••••••••'}
-              </code>
-              <button onClick={() => setShowPassword(s => !s)} className="text-[10px] text-[var(--text-dim)] hover:text-[var(--text)]">
-                {showPassword ? 'Hide' : 'Show'}
-              </button>
-            </div>
             <div className="flex items-center gap-3">
               <span className="text-xs text-[var(--text-dim)] w-24 flex-shrink-0">Connection String</span>
               <code className="text-[10px] font-mono text-[var(--text-muted)] bg-[var(--surface-2)] px-2 py-1 rounded flex-1 truncate" title={connInfo.connectionString ?? ''}>

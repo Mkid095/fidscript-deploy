@@ -18,6 +18,16 @@ export interface Queue {
   createdAt: string;
 }
 
+export interface QueueMessage {
+  id: string;
+  body: string;
+  status: string;
+  attempts: number;
+  createdAt: string;
+}
+
+export type MessageTab = 'pending' | 'delivered' | 'dead-letter';
+
 interface QueuesRealtimeOptions {
   onQueueCreated?: (queue: Queue) => void;
   onQueueDeleted?: (queue: { id: string }) => void;

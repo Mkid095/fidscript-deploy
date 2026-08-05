@@ -58,7 +58,7 @@ export default function DomainPage() {
       try {
         const sdk = getSdk();
         const pid = projectId ?? '';
-        const domainName = domain.domain ?? domain.name ?? '';
+        const domainName = domain!.domain ?? domain!.name ?? '';
         const [mbList, aliasList, catchAll] = await Promise.all([
           sdk.email.listMailboxes(pid),
           sdk.email.listAliases(pid),
@@ -112,7 +112,7 @@ export default function DomainPage() {
           domainName={domainName}
           projectId={projectId ?? ''}
           mailboxes={mailboxes}
-          onCreate={setMailboxes}
+          onCreate={m => setMailboxes(prev => [...prev, m])}
           onDelete={id => setMailboxes(prev => prev.filter(m => m.id !== id))}
           getSdk={getSdk}
         />
@@ -125,7 +125,7 @@ export default function DomainPage() {
           projectId={projectId ?? ''}
           aliases={aliases}
           mailboxes={mailboxes}
-          onCreate={setAliases}
+          onCreate={a => setAliases(prev => [...prev, a])}
           onDelete={id => setAliases(prev => prev.filter(a => a.id !== id))}
           getSdk={getSdk}
         />

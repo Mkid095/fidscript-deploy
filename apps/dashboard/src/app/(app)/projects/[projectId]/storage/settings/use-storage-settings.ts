@@ -1,7 +1,7 @@
-import type { FidscriptSDK } from '@fidscript-deploy/sdk';
 'use client';
 
 import { useEffect, useState, useCallback } from 'react';
+import type { FidscriptSDK } from '@fidscript-deploy/sdk';
 import type { ProjectStorageConfig } from '@/types';
 
 interface UseStorageSettingsOptions {

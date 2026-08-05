@@ -7,7 +7,6 @@ import { Button, Card, Input, Spinner } from '@fidscript/ui';
 import { useAuth } from '@/contexts/auth-context';
 import { useProjectContext } from '@/contexts/project-context';
 import { useToast } from '@/components/toast-provider';
-import type { Project } from '@/types';
 
 interface Channel {
   id: string;

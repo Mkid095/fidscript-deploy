@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { Spinner } from '@fidscript/ui';
 
 import { LogViewer } from '@/components/deployments/log-viewer';
@@ -27,8 +27,9 @@ export function FunctionLogs({ projectId, functionId, getSdk, inFlight }: Functi
 
   const loadLogs = useCallback(async () => {
     try {
-      // Real SDK returns { logs: FunctionLog[] }, unwrap
-      const raw = await getSdk().functions.getLogs(projectId, functionId, 100) as { logs: FunctionLog[] } | FunctionLog[];
+      const raw = await getSdk().functions.getLogs(projectId, functionId, 100) as
+        | { logs: FunctionLog[] }
+        | FunctionLog[];
       const data: FunctionLog[] = Array.isArray(raw) ? raw : raw.logs;
       const formatted = data
         .map(l => `[${new Date(l.timestamp).toLocaleTimeString()}] [${l.level.toUpperCase()}] ${l.message}`)
@@ -44,32 +45,36 @@ export function FunctionLogs({ projectId, functionId, getSdk, inFlight }: Functi
 
   useEffect(() => { loadLogs(); }, [loadLogs]);
 
-  // Realtime: subscribe to function events and refresh logs on deploy/invoke/error
+  const unsubRef = useRef<(() => void) | undefined>(undefined);
+
   useEffect(() => {
     if (!projectId || !functionId) return;
+
+    unsubRef.current?.();
+
     const sdk = getSdk();
-    const rt = (sdk as any).realtime;
+    const rt = (sdk as unknown as Record<string, unknown>).realtime;
     if (!rt) return;
 
-    let cancelled = false;
-    let unsub: (() => void) | undefined;
-    const token = localStorage.getItem('fidscript_access_token')
-      ?? localStorage.getItem('fidscript_token') ?? '';
+    const token = (localStorage.getItem('fidscript_access_token')
+      ?? localStorage.getItem('fidscript_token')
+      ?? '') as string;
 
-    rt.connect(() => token, projectId).then(() => {
-      if (cancelled) return;
-      unsub = rt.subscribeFunctions(projectId, (event: any) => {
-        if (cancelled) return;
-        const et = event?.type;
-        if (et === 'function.deployed' || et === 'function.invoked' || et === 'function.error') {
-          loadLogs();
-        }
+    (rt as { connect: (t: () => string, p: string) => Promise<void> })
+      .connect(() => token, projectId)
+      .then(() => {
+        unsubRef.current = (rt as {
+          subscribeFunctions: (p: string, cb: (e: unknown) => void) => () => void
+        }).subscribeFunctions(projectId, (event: unknown) => {
+          const et = (event as { type?: string })?.type;
+          if (et === 'function.deployed' || et === 'function.invoked' || et === 'function.error') {
+            loadLogs();
+          }
+        });
       });
-    });
 
     return () => {
-      cancelled = true;
-      unsub?.();
+      unsubRef.current?.();
     };
   }, [projectId, functionId, getSdk, loadLogs]);
 

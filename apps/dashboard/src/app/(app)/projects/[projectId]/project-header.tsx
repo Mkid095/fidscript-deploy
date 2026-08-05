@@ -9,7 +9,9 @@ import { ThemeToggle } from '@/components/theme/theme-toggle';
 import { AvatarDropdown } from '@/components/layout/avatar-dropdown';
 import { ProjectSwitcherModal } from '@/components/layout/project-switcher-modal';
 import { SECTION_MAP } from '@/components/layout/project-sidebar';
+import { useProjectContext } from '@/contexts/project-context';
 import type { Project } from '@/types';
+import type { ProjectMode } from './use-project-mode';
 
 interface ProjectHeaderProps {
   project: Project;
@@ -20,6 +22,8 @@ interface ProjectHeaderProps {
   onShowSwitcher: (v: boolean) => void;
   allProjects: Project[];
   projectId: string;
+  mode: ProjectMode;
+  onModeChange: (mode: ProjectMode) => void;
 }
 
 export function ProjectHeader({
@@ -31,7 +35,16 @@ export function ProjectHeader({
   onShowSwitcher,
   allProjects,
   projectId,
+  mode,
+  onModeChange,
 }: ProjectHeaderProps) {
+  const ctx = useProjectContext();
+  const currentMode = mode ?? ctx.mode ?? 'deploy';
+
+  function switchMode(m: ProjectMode) {
+    onModeChange(m);
+  }
+
   return (
     <header className="h-14 bg-[var(--surface-2)] border-b border-[var(--rail)] flex items-center px-4 gap-3 flex-shrink-0">
       {/* Logo — links back to the project picker */}
@@ -67,7 +80,6 @@ export function ProjectHeader({
 
       {/* Breadcrumb */}
       <nav className="flex items-center gap-1.5 text-sm text-[var(--text-muted)] min-w-0">
-        {/* Mobile: just project name with chevron */}
         <HugeiconsIcon icon={ChevronRightIcon} size={12} className="text-[var(--text-dim)] flex-shrink-0" />
         <button
           onClick={() => onShowSwitcher(true)}
@@ -75,7 +87,6 @@ export function ProjectHeader({
         >
           {project.name}
         </button>
-        {/* Desktop: full breadcrumb */}
         <div className="hidden md:flex items-center gap-1.5">
           <HugeiconsIcon icon={ChevronRightIcon} size={12} className="text-[var(--text-dim)] flex-shrink-0" />
           <span className="text-[var(--text-dim)] font-normal">{SECTION_MAP[effectiveSection]?.group ?? '—'}</span>
@@ -83,6 +94,24 @@ export function ProjectHeader({
           <span className="text-[var(--text)] font-medium">{SECTION_MAP[effectiveSection]?.label ?? effectiveSection}</span>
         </div>
       </nav>
+
+      {/* Mode toggle: Deploy / Backend */}
+      <div className="hidden md:flex items-center gap-1 px-1.5 py-1 rounded-lg bg-[var(--surface)] border border-[var(--rail)]">
+        {(['deploy', 'baas'] as ProjectMode[]).map((m) => (
+          <button
+            key={m}
+            onClick={() => switchMode(m)}
+            className={`
+              px-3 py-1 rounded-md text-xs font-medium transition-colors capitalize
+              ${currentMode === m
+                ? 'bg-[var(--accent)] text-[var(--text)]'
+                : 'text-[var(--text-muted)] hover:text-[var(--text)]'}
+            `}
+          >
+            {m === 'deploy' ? 'Deploy' : 'Backend'}
+          </button>
+        ))}
+      </div>
 
       <div className="flex-1" />
 

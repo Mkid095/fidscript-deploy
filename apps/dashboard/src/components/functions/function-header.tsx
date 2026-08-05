@@ -12,8 +12,6 @@ import type { Function_ } from '@/types';
 interface FunctionHeaderProps {
   fn: Function_;
   deploying: boolean;
-  invokeError?: string | null;
-  invokeResult?: string | null;
   onDeploy: () => void;
   onInvoke: () => void;
   onDelete: () => void;
@@ -29,8 +27,6 @@ const RUNTIME_LABELS: Record<string, string> = {
 export function FunctionHeader({
   fn,
   deploying,
-  invokeError,
-  invokeResult,
   onDeploy,
   onInvoke,
   onDelete,
@@ -60,13 +56,6 @@ export function FunctionHeader({
 
         {/* Right: action buttons */}
         <div className="flex items-center gap-2">
-          {invokeError && (
-            <span className="text-xs text-[var(--danger)] mr-2">{invokeError}</span>
-          )}
-          {invokeResult && (
-            <span className="text-xs text-[var(--success)] mr-2">Invoked successfully</span>
-          )}
-
           <Button
             variant="outline"
             size="sm"

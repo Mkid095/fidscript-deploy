@@ -1,13 +1,14 @@
 'use client';
 /* eslint-disable import/order */
 
-
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback, type ChangeEvent, type FormEvent } from 'react';
 import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
 import { useAuth } from '@/contexts/auth-context';
-import { Card, Button, Input, Spinner, EmptyState, Toast } from '@fidscript/ui';
+import { Button, Input, Spinner, EmptyState, Toast } from '@fidscript/ui';
 import type { Database } from '@fidscript-deploy/sdk';
+
+type Environment = 'production' | 'staging' | 'preview' | 'development';
 
 export default function ProjectDatabasesPage() {
   const { getSdk } = useAuth();
@@ -19,6 +20,7 @@ export default function ProjectDatabasesPage() {
   const [loading, setLoading] = useState(true);
   const [creating, setCreating] = useState(false);
   const [newName, setNewName] = useState('');
+  const [environment, setEnvironment] = useState<Environment>('production');
   const [toast, setToast] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
 
   const load = useCallback(async () => {
@@ -27,25 +29,28 @@ export default function ProjectDatabasesPage() {
     try {
       const list = await getSdk().databases.list(projectId);
       setDatabases(list);
-    } catch (err: any) {
-      setToast({ type: 'error', message: err.message });
+    } catch (error) {
+      setToast({ type: 'error', message: error instanceof Error ? error.message : String(error) });
     } finally { setLoading(false); }
   }, [projectId, getSdk]);
 
   useEffect(() => { load(); }, [load]);
 
-  const create = async (e: React.FormEvent) => {
+  const create = async (e: FormEvent) => {
     e.preventDefault();
     if (!newName.trim() || !projectId) return;
     setCreating(true);
     try {
-      const db = await getSdk().databases.create(projectId, { name: newName.trim() });
+      const db = await getSdk().databases.create(projectId, {
+        name: newName.trim(),
+        environment,
+      });
       setToast({ type: 'success', message: `Database "${db.name}" provisioned` });
       setNewName('');
       await load();
       router.push(`/projects/${projectId}/databases/${db.id}`);
-    } catch (err: any) {
-      setToast({ type: 'error', message: err.message });
+    } catch (error) {
+      setToast({ type: 'error', message: error instanceof Error ? error.message : String(error) });
     } finally { setCreating(false); }
   };
 
@@ -59,10 +64,21 @@ export default function ProjectDatabasesPage() {
         <form onSubmit={create} className="flex items-center gap-2">
           <Input
             value={newName}
-            onChange={(e: any) => setNewName(e.target.value)}
+            onChange={(e: ChangeEvent<HTMLInputElement>) => setNewName(e.target.value)}
             placeholder="db-name"
             className="bg-[var(--surface-2)] border border-[var(--rail)] text-[var(--text)] text-xs w-48"
           />
+          <select
+            value={environment}
+            onChange={(e: ChangeEvent<HTMLSelectElement>) => setEnvironment(e.target.value as Environment)}
+            className="bg-[var(--surface-2)] border border-[var(--rail)] text-[var(--text)] text-xs rounded px-2 py-1.5"
+            aria-label="Environment"
+          >
+            <option value="production">Production</option>
+            <option value="staging">Staging</option>
+            <option value="preview">Preview</option>
+            <option value="development">Development</option>
+          </select>
           <Button type="submit" variant="primary" size="sm" loading={creating} disabled={!newName.trim()}>
             + Create
           </Button>
@@ -95,7 +111,7 @@ export default function ProjectDatabasesPage() {
                 </span>
               </div>
               <p className="text-[10px] text-[var(--text-dim)] font-mono mt-1">
-                {db.type} {db.version} · {'region' in db ? String((db as unknown as Record<string, unknown>).region ?? db.environment) : db.environment}
+                {db.type} {db.version} · {db.environment}
               </p>
               <p className="text-[10px] text-[var(--text-dim)] mt-1 font-mono">{db.id.slice(0, 8)}…</p>
             </Link>

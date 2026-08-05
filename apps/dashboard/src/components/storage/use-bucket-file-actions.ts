@@ -1,13 +1,14 @@
 'use client';
 
 import { useCallback } from 'react';
+import type { FidscriptSDK } from '@fidscript-deploy/sdk';
 import type { StorageFile } from '@/types';
 
 interface UseBucketFileActionsProps {
   projectId: string;
   bucketId: string;
   prefix: string;
-  getSdk: () => { storage: { deleteFile: Function; getSignedUrl: Function } };
+  getSdk: () => FidscriptSDK;
   onFilesChange: (files: StorageFile[] | ((prev: StorageFile[]) => StorageFile[])) => void;
   onBanner: (message: string, type: 'success' | 'error') => void;
 }

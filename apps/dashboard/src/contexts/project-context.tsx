@@ -3,6 +3,7 @@
 import { createContext, useContext } from 'react';
 
 import type { Project } from '@/types';
+import type { ProjectMode } from '@/app/(app)/projects/[projectId]/use-project-mode';
 
 /**
  * The "active project" for a sub-route under the project shell.
@@ -13,19 +14,20 @@ import type { Project } from '@/types';
  * shell (top-level /functions, /databases) get `null` and fall back to
  * their own picker.
  *
- * ponytail: one context with three fields, no provider-side state, no
- * effects — just a typed handoff from the shell to its children.
+ * Also carries `mode` so ProjectSidebar and MobileTabBar can render the
+ * correct nav without prop-drilling.
  */
 interface ProjectContextValue {
   projectId: string | null;
   project: Project | null;
+  mode: ProjectMode;
 }
 
-const ProjectContext = createContext<ProjectContextValue>({ projectId: null, project: null });
+const ProjectContext = createContext<ProjectContextValue>({ projectId: null, project: null, mode: 'deploy' });
 
-export function ProjectProvider({ projectId, project, children }: ProjectContextValue & { children: React.ReactNode }) {
+export function ProjectProvider({ projectId, project, mode, children }: ProjectContextValue & { children: React.ReactNode }) {
   return (
-    <ProjectContext.Provider value={{ projectId, project }}>
+    <ProjectContext.Provider value={{ projectId, project, mode }}>
       {children}
     </ProjectContext.Provider>
   );

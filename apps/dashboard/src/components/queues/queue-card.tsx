@@ -20,17 +20,15 @@ interface QueueStats {
 }
 
 const TYPE_ICONS: Record<string, string> = {
-  redis:     'icons8:database',
-  jetstream:  'icons8:share',
-  nats:       'icons8:share',
-  memory:     'icons8:database',
+  stream:    'icons8:share',
+  queue:     'icons8:database',
+  workqueue: 'icons8:queue',
 };
 
 const TYPE_LABELS: Record<string, string> = {
-  redis:    'Redis',
-  jetstream: 'NATS JetStream',
-  nats:      'NATS',
-  memory:    'Memory',
+  stream:    'NATS JetStream',
+  queue:     'Redis Queue',
+  workqueue: 'Work Queue',
 };
 
 interface QueueCardProps {

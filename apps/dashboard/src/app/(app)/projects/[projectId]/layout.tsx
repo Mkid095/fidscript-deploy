@@ -11,6 +11,7 @@ import { ProjectProvider } from '@/contexts/project-context';
 import { ProjectSidebar } from '@/components/layout/project-sidebar';
 import { MobileTabBar } from '@/components/layout/mobile-tab-bar';
 import { useLocalStorage } from './use-local-storage';
+import { useProjectMode } from './use-project-mode';
 import { ProjectHeader } from './project-header';
 
 const SIDEBAR_KEY = 'fidscript.sidebar.collapsed';
@@ -29,6 +30,7 @@ export default function ProjectLayout({ children }: { children: React.ReactNode 
   const [error, setError] = useState<string | null>(null);
   const [showSwitcher, setShowSwitcher] = useState(false);
   const [sidebarCollapsed, setSidebarCollapsed] = useLocalStorage(SIDEBAR_KEY, false);
+  const [projectMode, setProjectMode] = useProjectMode(projectId);
 
   // Load project + all projects on mount.
   useEffect(() => {
@@ -97,13 +99,14 @@ export default function ProjectLayout({ children }: { children: React.ReactNode 
   const effectiveSection = currentSection || lastSection || 'services';
 
   return (
-    <ProjectProvider projectId={projectId} project={project}>
+    <ProjectProvider projectId={projectId} project={project} mode={projectMode}>
     <div className="flex h-screen bg-[var(--surface-2)] overflow-hidden">
       {/* Project sidebar */}
       <ProjectSidebar
         project={project}
         collapsed={sidebarCollapsed}
         onCollapse={setSidebarCollapsed}
+        mode={projectMode}
       />
 
       {/* Main content */}
@@ -117,6 +120,8 @@ export default function ProjectLayout({ children }: { children: React.ReactNode 
           onShowSwitcher={setShowSwitcher}
           allProjects={allProjects}
           projectId={projectId}
+          mode={projectMode}
+          onModeChange={setProjectMode}
         />
 
         {/* Content — padding gives breathing room between content and chrome */}
@@ -128,7 +133,7 @@ export default function ProjectLayout({ children }: { children: React.ReactNode 
       </div>
 
       {/* Mobile bottom tab bar (hidden on >= md where the sidebar shows) */}
-      <MobileTabBar project={project} />
+      <MobileTabBar project={project} mode={projectMode} />
     </div>
     </ProjectProvider>
   );

@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { Icon } from '@iconify/react';
 import { Card, Button, Input } from '@fidscript/ui';
+import type { FidscriptSDK } from '@fidscript-deploy/sdk';
 import type { Bucket } from './bucket';
 import type { StorageProviderType } from '@/types';
 
@@ -10,7 +11,7 @@ interface CreateBucketFormProps {
   projectId: string;
   onCreated: (bucket: Bucket) => void;
   onError: (message: string) => void;
-  getSdk: () => { storage: { createBucket: Function } };
+  getSdk: () => FidscriptSDK;
 }
 
 const PROVIDERS: { value: StorageProviderType; label: string }[] = [

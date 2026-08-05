@@ -33,8 +33,6 @@ export default function FunctionDetailPage() {
   const [code, setCode] = useState('');
   const [deploying, setDeploying] = useState(false);
   const [deployMsg, setDeployMsg] = useState<string | null>(null);
-  const [invokeResult, setInvokeResult] = useState<string | null>(null);
-  const [invokeError, setInvokeError] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     if (!projectId || !functionId) return;
@@ -81,15 +79,8 @@ export default function FunctionDetailPage() {
   }
 
   async function handleInvoke() {
-    setInvokeResult(null);
-    setInvokeError(null);
-    try {
-      const sdk = getSdk();
-      const res = await sdk.functions.invoke(projectId, functionId, {}) as any;
-      setInvokeResult(JSON.stringify(res.result ?? res, null, 2));
-    } catch (err) {
-      setInvokeError(err instanceof Error ? err.message : 'Invocation failed');
-    }
+    const sdk = getSdk();
+    await sdk.functions.invoke(projectId, functionId, {});
   }
 
   async function handleUpdate(data: Partial<Function_>) {
@@ -115,7 +106,7 @@ export default function FunctionDetailPage() {
       <FunctionBreadcrumb projectId={projectId} fn={fn} />
 
       <FunctionHeader
-        fn={fn} deploying={deploying} invokeError={invokeError} invokeResult={invokeResult}
+        fn={fn} deploying={deploying}
         onDeploy={() => handleDeploy(code)} onInvoke={handleInvoke} onDelete={handleDelete}
       />
 
@@ -123,9 +114,12 @@ export default function FunctionDetailPage() {
 
       <div className="flex-1 min-h-0 flex flex-col">
         {activeTab === 'code' && (
-          <FunctionCode projectId={projectId} functionId={functionId} runtime={fn.runtime}
+          <FunctionCode
+            projectId={projectId} functionId={functionId} runtime={fn.runtime}
+            status={fn.status} currentVersion={fn.currentVersion} memoryMb={fn.memoryMb}
             getSdk={getSdk} initialCode={code} deploying={deploying} deployMsg={deployMsg}
-            onDeploy={handleDeploy} />
+            onDeploy={handleDeploy} onInvoke={handleInvoke}
+          />
         )}
         {activeTab === 'logs' && (
           <FunctionLogs projectId={projectId} functionId={functionId} getSdk={getSdk}

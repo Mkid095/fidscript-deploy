@@ -1,124 +1,70 @@
 'use client';
 
 import Link from 'next/link';
-import { usePathname } from 'next/navigation';
 import { HugeiconsIcon } from '@hugeicons/react';
 import {
   ArrowLeft01Icon,
-  Rocket01Icon,
-  Database01Icon,
-  HardDriveIcon,
-  SourceCodeIcon,
-  Share08Icon,
-  Clock01Icon,
-  Mail01Icon,
-  GlobalIcon,
-  FlashIcon,
-  Analytics01Icon,
-  Note01Icon,
-  Settings01Icon,
-  Layers01Icon,
-  ArrowRight01Icon,
   FoldHorizontalIcon,
 } from '@hugeicons/core-free-icons';
 
 import type { Project } from '@/types';
+import type { ProjectMode } from '@/app/(app)/projects/[projectId]/use-project-mode';
+import { getNavGroups } from '@/app/(app)/projects/[projectId]/nav-groups';
+import { SidebarCollapsedNav } from './sidebar-collapsed-nav';
+import { SidebarExpandedNav } from './sidebar-expanded-nav';
 
-export interface NavItem {
-  id: string;
-  label: string;
-  href: string;
-  icon: typeof Rocket01Icon;
-  badge?: string;
-  adminOnly?: boolean;
-}
+// ─── Re-export NavItem so MobileTabBar can import it from here ───────────────
+export type { NavItem } from '@/app/(app)/projects/[projectId]/nav-groups';
 
-export const MOBILE_PRIORITY_IDS = ['services', 'databases', 'storage', 'logs'];
-
-export const NAV_GROUPS: { label: string; items: NavItem[] }[] = [
-  {
-    label: 'Deploy',
-    items: [
-      { id: 'services',  label: 'Services',  href: '/services',  icon: Rocket01Icon },
-      { id: 'functions', label: 'Functions', href: '/functions', icon: SourceCodeIcon },
-    ],
-  },
-  {
-    label: 'Data',
-    items: [
-      { id: 'databases', label: 'Databases', href: '/databases', icon: Database01Icon },
-      { id: 'storage',   label: 'Storage',   href: '/storage',   icon: HardDriveIcon },
-      { id: 'queues',    label: 'Queues',    href: '/queues',    icon: Share08Icon },
-    ],
-  },
-  {
-    label: 'Infra',
-    items: [
-      { id: 'scheduler',  label: 'Scheduler',  href: '/scheduler',  icon: Clock01Icon },
-      { id: 'email',      label: 'Email',      href: '/email',      icon: Mail01Icon },
-      { id: 'domains',    label: 'Domains',    href: '/domains',    icon: GlobalIcon },
-      { id: 'realtime',   label: 'Realtime',   href: '/realtime',   icon: FlashIcon },
-    ],
-  },
-  {
-    label: 'Observe',
-    items: [
-      { id: 'monitoring', label: 'Monitoring', href: '/monitoring', icon: Analytics01Icon },
-      { id: 'logs',       label: 'Logs',       href: '/logs',       icon: Note01Icon },
-    ],
-  },
-  {
-    label: 'Settings',
-    items: [
-      { id: 'settings', label: 'Settings', href: '/settings', icon: Settings01Icon, adminOnly: true },
-      { id: 'mcp',      label: 'MCP',      href: '/mcp',      icon: Layers01Icon,   adminOnly: true },
-    ],
-  },
-];
+// ─── Section map (used by ProjectHeader for breadcrumbs) ───────────────────
 
 export interface SectionInfo {
   group: string;
   label: string;
 }
 
-// Flat lookup map for breadcrumb display
+// Merged map: all possible sections (both deploy + baas modes)
 export const SECTION_MAP: Record<string, SectionInfo> = {
-  services:   { group: 'Deploy',   label: 'Services' },
-  functions:  { group: 'Deploy',   label: 'Functions' },
-  databases:  { group: 'Data',     label: 'Databases' },
-  storage:    { group: 'Data',     label: 'Storage' },
-  queues:     { group: 'Data',     label: 'Queues' },
-  scheduler:  { group: 'Infra',    label: 'Scheduler' },
-  email:      { group: 'Infra',    label: 'Email' },
-  domains:    { group: 'Infra',    label: 'Domains' },
-  realtime:  { group: 'Infra',    label: 'Realtime' },
-  monitoring: { group: 'Observe',  label: 'Monitoring' },
-  logs:       { group: 'Observe',  label: 'Logs' },
-  settings:   { group: 'Settings', label: 'Settings' },
-  mcp:        { group: 'Settings', label: 'MCP' },
+  // Deploy mode
+  services:    { group: 'Deploy',      label: 'Services'    },
+  functions:   { group: 'Deploy',      label: 'Functions'   },
+  deployments: { group: 'Deploy',      label: 'Deployments' },
+  databases:   { group: 'Data',        label: 'Databases'   },
+  storage:     { group: 'Data',        label: 'Storage'     },
+  queues:      { group: 'Data',        label: 'Queues'      },
+  scheduler:   { group: 'Automation',  label: 'Scheduler'  },
+  email:       { group: 'Automation',  label: 'Email'      },
+  domains:     { group: 'Automation',  label: 'Domains'   },
+  realtime:    { group: 'Data',        label: 'Realtime'   },
+  monitoring:  { group: 'Observe',     label: 'Monitoring' },
+  logs:        { group: 'Observe',     label: 'Logs'       },
+  settings:    { group: 'Settings',    label: 'Settings'   },
+  // BaaS mode
+  mcp:         { group: 'Platform',    label: 'API & MCP'  },
 };
-
-function isActive(href: string, pathname: string): boolean {
-  return pathname === href || pathname.startsWith(href + '/');
-}
 
 interface ProjectSidebarProps {
   project: Project;
   collapsed: boolean;
   onCollapse: (v: boolean) => void;
+  mode: ProjectMode;
 }
 
 function StatusDot({ status }: { status?: string }) {
-  const color =
-    status === 'ACTIVE' ? 'bg-emerald-400' :
-    status === 'SUSPENDED' ? 'bg-amber-400' :
-    status === 'CREATING' ? 'bg-blue-400 animate-pulse' :
-    'bg-slate-500';
-  return <span className={`w-2 h-2 rounded-full ${color}`} />;
+  const colorVar =
+    status === 'ACTIVE' ? 'var(--success)' :
+    status === 'SUSPENDED' ? 'var(--warning)' :
+    status === 'CREATING' ? 'var(--info)' :
+    'var(--text-dim)';
+  return (
+    <span
+      className={`w-2 h-2 rounded-full ${status === 'CREATING' ? 'animate-pulse' : ''}`}
+      style={{ backgroundColor: colorVar }}
+    />
+  );
 }
 
-export function ProjectSidebar({ project, collapsed, onCollapse }: ProjectSidebarProps) {
-  const pathname = usePathname();
+export function ProjectSidebar({ project, collapsed, onCollapse, mode }: ProjectSidebarProps) {
   const role = (project.role ?? 'viewer').toLowerCase();
 
   return (
@@ -134,12 +80,10 @@ export function ProjectSidebar({ project, collapsed, onCollapse }: ProjectSideba
           style={{ padding: collapsed ? '0.75rem 0.625rem' : '0.875rem 1rem' }}
         >
           {collapsed ? (
-            // Collapsed: avatar button (clicking does nothing since top bar controls expand)
             <div className="w-9 h-9 rounded-lg bg-[var(--rail)] flex items-center justify-center text-sm font-bold text-[var(--text)]">
               {project.name.charAt(0).toUpperCase()}
             </div>
           ) : (
-            // Expanded: full project info
             <div className="flex items-center gap-2.5 min-w-0 flex-1">
               <div className="w-9 h-9 rounded-lg bg-[var(--accent)]/10 flex items-center justify-center text-sm font-bold text-[var(--accent)] flex-shrink-0">
                 {project.name.charAt(0).toUpperCase()}
@@ -171,87 +115,33 @@ export function ProjectSidebar({ project, collapsed, onCollapse }: ProjectSideba
 
       {/* Navigation */}
       {collapsed ? (
-        // Collapsed: icons only
         <nav className="flex-1 overflow-y-auto py-2 px-1.5">
-          <div className="space-y-0.5">
-            {NAV_GROUPS.flatMap(g => g.items).map(item => {
-              const href = `/projects/${project.id}${item.href}`;
-              const active = isActive(href, pathname);
-              const locked = item.adminOnly && !['owner', 'admin'].includes(role);
-
-              return (
-                <Link
-                  key={item.id}
-                  href={locked ? '#' : href}
-                  onClick={e => locked && e.preventDefault()}
-                  title={item.label}
-                  className={`
-                    group flex items-center justify-center w-10 h-10 rounded-lg transition-all duration-150
-                    ${active
-                      ? 'bg-[var(--accent)]/15 text-[var(--accent)]'
-                      : locked
-                        ? 'text-[var(--text-dim)] cursor-not-allowed opacity-50'
-                        : 'text-[var(--text-dim)] hover:bg-[var(--hover)] hover:text-[var(--text-muted)]'
-                    }
-                  `}
-                >
-                  <HugeiconsIcon icon={item.icon} size={18} />
-                </Link>
-              );
-            })}
-          </div>
+          <SidebarCollapsedNav
+            items={getNavGroups(mode).flatMap(g => g.items)}
+            projectId={project.id}
+            role={role}
+          />
         </nav>
       ) : (
-        // Expanded: grouped nav
         <nav className="flex-1 overflow-y-auto py-3 px-2">
-          {NAV_GROUPS.map(group => {
+          {getNavGroups(mode).map(group => {
             const visibleItems = group.items.filter(
               item => !item.adminOnly || ['owner', 'admin'].includes(role),
             );
             if (visibleItems.length === 0) return null;
-
             return (
               <div key={group.label} className="mb-4 last:mb-0">
                 <p className="text-[10px] font-semibold tracking-wider text-[var(--text-dim)] uppercase mb-1 px-2">
                   {group.label}
                 </p>
-                <div className="space-y-0.5">
-                  {visibleItems.map(item => {
-                    const href = `/projects/${project.id}${item.href}`;
-                    const active = isActive(href, pathname);
-
-                    return (
-                      <Link
-                        key={item.id}
-                        href={href}
-                        className={`
-                          group flex items-center gap-3 px-2.5 py-2 rounded-lg text-sm transition-all duration-150
-                          ${active
-                            ? 'bg-[var(--accent)]/15 text-[var(--accent)] font-medium'
-                            : 'text-[var(--text-dim)] hover:bg-[var(--hover)] hover:text-[var(--text-muted)]'
-                          }
-                        `}
-                      >
-                        <HugeiconsIcon
-                          icon={item.icon}
-                          size={17}
-                          className={active ? 'text-[var(--accent)]' : 'text-[var(--text-dim)] group-hover:text-[var(--text-dim)]'}
-                        />
-                        <span className="flex-1">{item.label}</span>
-                        {active && (
-                          <HugeiconsIcon icon={ArrowRight01Icon} size={13} className="text-[var(--accent)]" />
-                        )}
-                      </Link>
-                    );
-                  })}
-                </div>
+                <SidebarExpandedNav items={visibleItems} projectId={project.id} role={role} />
               </div>
             );
           })}
         </nav>
       )}
 
-      {/* Footer — status + expand button (only when collapsed) */}
+      {/* Footer */}
       <div
         className="border-t border-[var(--rail)] flex-shrink-0"
         style={{ padding: collapsed ? '0.5rem' : '0.75rem 1rem' }}
@@ -265,11 +155,9 @@ export function ProjectSidebar({ project, collapsed, onCollapse }: ProjectSideba
             <HugeiconsIcon icon={FoldHorizontalIcon} size={16} />
           </button>
         ) : (
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <StatusDot status={project.status} />
-              <span className="text-xs text-[var(--text-dim)] capitalize">{project.status?.toLowerCase()}</span>
-            </div>
+          <div className="flex items-center gap-2">
+            <StatusDot status={project.status} />
+            <span className="text-xs text-[var(--text-dim)] capitalize">{project.status?.toLowerCase()}</span>
           </div>
         )}
       </div>

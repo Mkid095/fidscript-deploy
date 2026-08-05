@@ -8,6 +8,8 @@ import { NewFolderModal } from './new-folder-modal';
 import { UploadFilesModal } from './upload-files-modal';
 import { useBucketFileActions } from './use-bucket-file-actions';
 import { useUploadFiles } from './use-upload-files';
+import { useBucketRealtime } from './use-bucket-realtime';
+import { useFilePreview } from './use-file-preview';
 import type { StorageFile } from '@/types';
 
 type ViewMode = 'list' | 'grid';
@@ -30,9 +32,6 @@ export function BucketDetail({ projectId, bucketId }: BucketDetailProps) {
   const [dragging, setDragging] = useState(false);
   const [showNewFolderModal, setShowNewFolderModal] = useState(false);
   const [showUploadModal, setShowUploadModal] = useState(false);
-  const [previewFile, setPreviewFile] = useState<StorageFile | null>(null);
-  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
-  const [previewLoading, setPreviewLoading] = useState(false);
   const dropRef = useRef<HTMLDivElement>(null);
 
   const showBanner = useCallback((message: string, type: 'success' | 'error') => {
@@ -58,28 +57,29 @@ export function BucketDetail({ projectId, bucketId }: BucketDetailProps) {
 
   useEffect(() => { loadFiles(); }, [loadFiles]);
 
-  useEffect(() => {
-    let unsub: (() => void) | undefined;
-    async function setup() {
-      try {
-        const token = getToken();
-        if (!token) return;
-        const rt = getSdk().realtime;
-        await rt.connect(token);
-        unsub = rt.subscribeStorage(projectId, (event) => {
-          if (event.type === 'storage.file.uploaded') {
-            const p = event.metadata as { bucketId: string; file: StorageFile };
-            if (p.bucketId === bucketId) setFiles(prev => prev.find(f => f.id === p.file.id) ? prev : [p.file, ...prev]);
-          } else if (event.type === 'storage.file.deleted') {
-            const p = event.metadata as { bucketId: string; fileId: string };
-            if (p.bucketId === bucketId) setFiles(prev => prev.filter(f => f.id !== p.fileId));
-          }
-        });
-      } catch { /* realtime optional */ }
-    }
-    setup();
-    return () => { unsub?.(); };
-  }, [projectId, bucketId, getSdk, getToken]);
+  const cachePreviewUrl = useCallback((fileId: string, url: string) => {
+    setPreviewUrls(prev => ({ ...prev, [fileId]: url }));
+  }, []);
+
+  const preview = useFilePreview({ projectId, bucketId, getSdk, onPreviewUrlCached: cachePreviewUrl });
+
+  const handleFileUploaded = useCallback((file: StorageFile) => {
+    setFiles(prev => prev.find(f => f.id === file.id) ? prev : [file, ...prev]);
+  }, []);
+
+  const handleFileDeleted = useCallback((fileId: string) => {
+    setFiles(prev => prev.filter(f => f.id !== fileId));
+    setPreviewUrls(prev => {
+      const { [fileId]: _, ...rest } = prev;
+      return rest;
+    });
+  }, []);
+
+  useBucketRealtime({
+    projectId, bucketId, getSdk, getToken,
+    onFileUploaded: handleFileUploaded,
+    onFileDeleted: handleFileDeleted,
+  });
 
   const { handleDelete, handleCopyUrl } = useBucketFileActions({
     projectId, bucketId, prefix, getSdk, onFilesChange: setFiles, onBanner: showBanner,
@@ -95,20 +95,6 @@ export function BucketDetail({ projectId, bucketId }: BucketDetailProps) {
     await uploadFiles(Array.from(e.dataTransfer.files));
   }, [uploadFiles]);
 
-  const handlePreview = useCallback(async (file: StorageFile) => {
-    setPreviewFile(file);
-    setPreviewUrl(null);
-    setPreviewLoading(true);
-    try {
-      const url = await getSdk().storage.getSignedUrl(projectId, bucketId, file.id);
-      setPreviewUrl(url);
-      if (file.mimeType?.startsWith('image/')) {
-        setPreviewUrls(prev => ({ ...prev, [file.id]: url }));
-      }
-    } catch { setPreviewUrl(null); }
-    finally { setPreviewLoading(false); }
-  }, [projectId, bucketId, getSdk]);
-
   const navigateToFolder = useCallback((folderPrefix: string) => {
     setPrefix(folderPrefix);
   }, []);
@@ -121,18 +107,18 @@ export function BucketDetail({ projectId, bucketId }: BucketDetailProps) {
         files={files} previewUrls={previewUrls} loading={loading}
         error={error} viewMode={viewMode}
         prefix={prefix} dragging={dragging}
-        previewFile={previewFile} previewUrl={previewUrl}
-        previewLoading={previewLoading} deletingId={null}
+        previewFile={preview.file} previewUrl={preview.url}
+        previewLoading={preview.loading} deletingId={null}
         dropRef={dropRef}
         onViewModeChange={setViewMode}
         onNewFolder={navigateToFolder}
         onOpenNewFolderModal={() => setShowNewFolderModal(true)}
         onUploadInputChange={() => setShowUploadModal(true)}
-        onPreview={handlePreview}
+        onPreview={preview.open}
         onCopyUrl={handleCopyUrl}
         onDelete={handleDelete}
         onDrop={handleDrop}
-        onPreviewClose={() => { setPreviewFile(null); setPreviewUrl(null); }}
+        onPreviewClose={preview.close}
       />
 
       <NewFolderModal
