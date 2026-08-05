@@ -4,6 +4,7 @@ import { useState } from 'react';
 import type { FidscriptSDK, Mailbox } from '@fidscript-deploy/sdk';
 import { Button, Card } from '@fidscript/ui';
 import { CatchAllConfigModal } from './domain-catchall-config-modal';
+import { deleteCatchAll } from './catchall-hooks';
 
 type CatchAllTarget =
   | { type: 'mailbox'; mailboxId: string }
@@ -23,7 +24,7 @@ interface Props {
   status: string;
   catchAllRule: CatchAllRule | null;
   mailboxes: Mailbox[];
-  onSave: (rule: CatchAllRule | null) => void;
+  onSave: () => void;
   getSdk: () => FidscriptSDK;
 }
 
@@ -32,8 +33,8 @@ export function DomainCatchallTab({ domainId, domainName, projectId, status, cat
 
   async function handleDelete() {
     const sdk = getSdk();
-    await sdk.email.deleteCatchAll(projectId, domainId);
-    onSave(null);
+    await deleteCatchAll(sdk, projectId, domainId);
+    onSave();
   }
 
   return (
@@ -100,11 +101,7 @@ export function DomainCatchallTab({ domainId, domainName, projectId, status, cat
         projectId={projectId}
         initialRule={catchAllRule}
         mailboxes={mailboxes}
-        onSave={() => {
-          // Reload catchall state from parent
-          const sdk = getSdk();
-          sdk.email.getCatchAll(projectId, domainId).then(r => onSave(r as CatchAllRule)).catch(() => {});
-        }}
+        onSave={onSave}
         getSdk={getSdk}
       />
     </>

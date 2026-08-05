@@ -1,16 +1,9 @@
 'use client';
 
-import { useEffect, useState, useCallback } from 'react';
+import { useState } from 'react';
 import { Button, Card, EmptyState, Input, Modal, Spinner } from '@fidscript/ui';
-import { useAuth } from '@/contexts/auth-context';
-import { useShellProjectId } from '@/contexts/project-context';
 
-interface Suppression {
-  id: string;
-  email: string;
-  reason: string;
-  createdAt: string;
-}
+import { useSuppressions } from './suppressions-hooks';
 
 const REASON_COLORS: Record<string, string> = {
   BOUNCE: 'bg-red-900 text-[var(--danger)]',
@@ -19,50 +12,22 @@ const REASON_COLORS: Record<string, string> = {
 };
 
 export default function SuppressionsPage() {
-  const { getSdk } = useAuth();
-  const projectId = useShellProjectId();
-  const [items, setItems] = useState<Suppression[]>([]);
-  const [loading, setLoading] = useState(true);
+  const { items, loading, add, remove } = useSuppressions();
   const [showAdd, setShowAdd] = useState(false);
   const [newEmail, setNewEmail] = useState('');
   const [adding, setAdding] = useState(false);
 
-  const load = useCallback(async () => {
-    if (!projectId) return;
-    setLoading(true);
-    try {
-      const sdk = getSdk();
-      const list = await sdk.email.listSuppressions(projectId);
-      setItems(list);
-    } catch { /* ignore */ } finally {
-      setLoading(false);
-    }
-  }, [projectId, getSdk]);
-
-  useEffect(() => { load(); }, [load]);
-
   async function handleAdd(e: React.FormEvent) {
     e.preventDefault();
-    if (!newEmail.trim() || !projectId) return;
+    if (!newEmail.trim()) return;
     setAdding(true);
     try {
-      const sdk = getSdk();
-      await sdk.email.addSuppression(projectId, newEmail.trim());
+      await add(newEmail.trim());
       setNewEmail('');
       setShowAdd(false);
-      load();
     } catch { /* ignore */ } finally {
       setAdding(false);
     }
-  }
-
-  async function handleRemove(email: string) {
-    if (!projectId) return;
-    try {
-      const sdk = getSdk();
-      await sdk.email.removeSuppression(projectId, email);
-      setItems(prev => prev.filter(i => i.email !== email));
-    } catch { /* ignore */ }
   }
 
   return (
@@ -109,7 +74,7 @@ export default function SuppressionsPage() {
                   </td>
                   <td className="px-4 py-3 text-right">
                     <button
-                      onClick={() => handleRemove(item.email)}
+                      onClick={() => remove(item.email)}
                       className="text-xs text-[var(--danger)] hover:underline"
                     >
                       Remove

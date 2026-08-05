@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import type { FidscriptSDK, Mailbox } from '@fidscript-deploy/sdk';
 import { Button, Input, Modal } from '@fidscript/ui';
+import { saveCatchAll } from './catchall-hooks';
 
 interface Props {
   isOpen: boolean;
@@ -35,7 +36,7 @@ export function CatchAllConfigModal({ isOpen, onClose, domainId, projectId, init
       const target = targetType === 'mailbox'
         ? { type: 'mailbox' as const, mailboxId }
         : { type: 'external' as const, address: external.trim() };
-      await sdk.email.setCatchAll(projectId, domainId, target);
+      await saveCatchAll(sdk, projectId, domainId, target);
       onSave();
       onClose();
     } catch (err) {

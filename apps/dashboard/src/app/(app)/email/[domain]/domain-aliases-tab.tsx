@@ -12,12 +12,12 @@ interface Props {
   projectId: string | undefined;
   aliases: EmailAlias[];
   mailboxes: Mailbox[];
-  onCreate: (alias: EmailAlias) => void;
   onDelete: (id: string) => void;
   getSdk: () => FidscriptSDK;
+  reload: () => void;
 }
 
-export function DomainAliasesTab({ domainId, domainName, projectId, aliases, mailboxes, onCreate, onDelete, getSdk }: Props) {
+export function DomainAliasesTab({ domainId, domainName, projectId, aliases, mailboxes, onDelete, getSdk, reload }: Props) {
   const [showCreate, setShowCreate] = useState(false);
 
   return (
@@ -38,7 +38,7 @@ export function DomainAliasesTab({ domainId, domainName, projectId, aliases, mai
         mailboxes={mailboxes}
         getSdk={getSdk}
         onClose={() => setShowCreate(false)}
-        onCreated={onCreate}
+        onCreated={reload}
       />
     </div>
   );

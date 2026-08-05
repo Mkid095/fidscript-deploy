@@ -7,6 +7,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/).
 ## [Unreleased]
 
 ### Changed
+- `anpas(email): extract sdk calls from email page files to hooks (domain-page-hooks, suppressions-hooks, analytics-hooks, catchall-hooks)`
 - `anpas(pages): extract sdk calls from scheduler, databases, functions pages to hooks`
 - `anpas(services): extract sdk calls from services-registry.tsx to services-registry-hooks.ts with useServicesRegistry hook`
 - `anpas(email): extract sdk calls from template-editor-modal.tsx to template-editor-modal-hooks.ts with useTemplateEditor hook`

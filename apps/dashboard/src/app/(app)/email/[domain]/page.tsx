@@ -1,8 +1,8 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { useParams } from 'next/navigation';
-import type { EmailDomain, Mailbox, EmailAlias } from '@fidscript-deploy/sdk';
+import type { EmailDomain } from '@fidscript-deploy/sdk';
 import { Spinner } from '@fidscript/ui';
 
 import { useAuth } from '@/contexts/auth-context';
@@ -13,6 +13,7 @@ import { DomainOverviewTab } from './domain-overview-tab';
 import { DomainMailboxesTab } from './domain-mailboxes-tab';
 import { DomainAliasesTab } from './domain-aliases-tab';
 import { DomainCatchallTab } from './domain-catchall-tab';
+import { useDomainData, useCatchAllRule } from './domain-page-hooks';
 
 type Tab = 'overview' | 'mailboxes' | 'aliases' | 'catchall';
 
@@ -28,52 +29,13 @@ export default function DomainPage() {
   const domainId = params.domain as string;
   const projectId = useShellProjectId();
 
-  const [domain, setDomain] = useState<(EmailDomain & Record<string, unknown>) | null>(null);
-  const [mailboxes, setMailboxes] = useState<Mailbox[]>([]);
-  const [aliases, setAliases] = useState<EmailAlias[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const { data, loading, error, reload } = useDomainData(domainId);
+  const { rule: catchAllRule } = useCatchAllRule(projectId ?? '', domainId);
   const [activeTab, setActiveTab] = useState<Tab>('overview');
-  const [catchAllRule, setCatchAllRule] = useState<CatchAllRule | null>(null);
 
-  useEffect(() => {
-    if (!projectId) return;
-    async function loadDomain() {
-      try {
-        const sdk = getSdk();
-        const data = await sdk.email.getDomain(projectId ?? '', domainId);
-        setDomain(data as (EmailDomain & Record<string, unknown>));
-      } catch (err) {
-        setError(err instanceof Error ? err.message : 'Failed to load domain');
-      } finally {
-        setLoading(false);
-      }
-    }
-    loadDomain();
-  }, [projectId, domainId, getSdk]);
-
-  useEffect(() => {
-    if (!projectId || !domain) return;
-    async function loadDetails() {
-      try {
-        const sdk = getSdk();
-        const pid = projectId ?? '';
-        const domainName = domain!.domain ?? domain!.name ?? '';
-        const [mbList, aliasList, catchAll] = await Promise.all([
-          sdk.email.listMailboxes(pid),
-          sdk.email.listAliases(pid),
-          sdk.email.getCatchAll(pid, domainId).catch(() => null),
-        ]);
-        setMailboxes((mbList ?? []).filter((m: Mailbox) => m.email.endsWith(`@${domainName}`)));
-        setAliases((aliasList ?? []).filter((a: EmailAlias) => a.alias.endsWith(`@${domainName}`)));
-        setCatchAllRule(catchAll as CatchAllRule | null);
-      } catch {
-        // ignore load errors silently
-      }
-    }
-    loadDetails();
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [projectId, domainId, getSdk, domain]);
+  const domain = data?.domain ?? null;
+  const mailboxes = data?.mailboxes ?? [];
+  const aliases = data?.aliases ?? [];
 
   if (loading) {
     return (
@@ -112,9 +74,9 @@ export default function DomainPage() {
           domainName={domainName}
           projectId={projectId ?? ''}
           mailboxes={mailboxes}
-          onCreate={m => setMailboxes(prev => [...prev, m])}
-          onDelete={id => setMailboxes(prev => prev.filter(m => m.id !== id))}
+          onDelete={reload}
           getSdk={getSdk}
+          reload={reload}
         />
       )}
 
@@ -125,9 +87,9 @@ export default function DomainPage() {
           projectId={projectId ?? ''}
           aliases={aliases}
           mailboxes={mailboxes}
-          onCreate={a => setAliases(prev => [...prev, a])}
-          onDelete={id => setAliases(prev => prev.filter(a => a.id !== id))}
+          onDelete={reload}
           getSdk={getSdk}
+          reload={reload}
         />
       )}
 
@@ -137,9 +99,9 @@ export default function DomainPage() {
           domainName={domainName}
           projectId={projectId ?? ''}
           status={domain.status ?? 'UNKNOWN'}
-          catchAllRule={catchAllRule}
+          catchAllRule={catchAllRule as CatchAllRule | null}
           mailboxes={mailboxes}
-          onSave={setCatchAllRule}
+          onSave={reload}
           getSdk={getSdk}
         />
       )}
