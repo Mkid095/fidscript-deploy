@@ -1,9 +1,10 @@
 'use client';
 
-import { useEffect, useState, useCallback } from 'react';
+import { useState } from 'react';
 import type { DomainHealth, DnsRecord } from '@fidscript-deploy/sdk';
 import { Card, Spinner, Stepper } from '@fidscript/ui';
 import { useAuth } from '@/contexts/auth-context';
+import { useDomainWizard } from '../domain-tab-hooks';
 import { WizardRecordsStage } from './wizard-records-stage';
 import { WizardVerifyStage } from './wizard-verify-stage';
 
@@ -72,35 +73,16 @@ function ActiveStage({ health, onVerify, onRecords }: {
 
 export default function WizardTab({ projectId, domainId }: Props) {
   const { getSdk } = useAuth();
-  const [records, setRecords] = useState<DnsRecord[]>([]);
-  const [health, setHealth] = useState<DomainHealth | null>(null);
-  const [loading, setLoading] = useState(true);
+  const { records, health, loading } = useDomainWizard(projectId, domainId, getSdk);
 
   // TODO (backend): GET /api/v1/projects/:projectId/domains/wizard/:domainId
   // returns DomainWizardStatus with stage + progress fields. Wire once DOM-W01 exists.
-  const [stage, setStage] = useState<Stage>('records');
-
-  const load = useCallback(async () => {
-    try {
-      const sdk = getSdk();
-      const [dnsData, healthData] = await Promise.all([
-        sdk.domains.getDnsRecords(projectId, domainId).catch(() => null),
-        sdk.domains.getHealth(projectId, domainId).catch(() => null),
-      ]);
-      if (dnsData) {
-        const d = dnsData as { records?: DnsRecord[] };
-        setRecords(d.records ?? []);
-      }
-      if (healthData) {
-        setHealth(healthData as DomainHealth);
-        const h = healthData as DomainHealth;
-        if (h.dnsOk && h.routingOk && h.sslOk) setStage('active');
-        else if (h.dnsOk || h.routingOk || h.sslOk) setStage('verify');
-      }
-    } catch { /* ignore */ } finally { setLoading(false); }
-  }, [getSdk, projectId, domainId]);
-
-  useEffect(() => { load(); }, [load]);
+  const [stage, setStage] = useState<Stage>(() => {
+    if (!health) return 'records';
+    if (health.dnsOk && health.routingOk && health.sslOk) return 'active';
+    if (health.dnsOk || health.routingOk || health.sslOk) return 'verify';
+    return 'records';
+  });
 
   if (loading) return <div className="flex justify-center py-12"><Spinner size="md" /></div>;
 

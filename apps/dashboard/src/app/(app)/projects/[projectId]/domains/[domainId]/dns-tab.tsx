@@ -1,10 +1,11 @@
 'use client';
 
-import { useEffect, useState, useCallback } from 'react';
+import { useState, useCallback } from 'react';
 import type { DnsRecord } from '@fidscript-deploy/sdk';
 import { Button, Card, Badge, Spinner, Toast } from '@fidscript/ui';
 
 import { useAuth } from '@/contexts/auth-context';
+import { useDnsRecords } from '../domain-tab-hooks';
 
 interface Props {
   projectId: string;
@@ -31,30 +32,16 @@ function CopyButton({ text }: { text: string }) {
 
 export default function DnsTab({ projectId, domainId }: Props) {
   const { getSdk } = useAuth();
-  const [dnsRecords, setDnsRecords] = useState<DnsRecord[]>([]);
-  const [loading, setLoading] = useState(true);
+  const { dnsRecords, loading, reload } = useDnsRecords(projectId, domainId, getSdk);
   const [autoConfiguring, setAutoConfiguring] = useState(false);
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
-
-  const load = useCallback(async () => {
-    try {
-      const sdk = getSdk();
-      const dnsData = await sdk.domains.getDnsRecords(projectId, domainId).catch(() => null);
-      if (dnsData) {
-        const d = dnsData as { records?: DnsRecord[] };
-        setDnsRecords(d.records ?? []);
-      }
-    } catch { /* ignore */ } finally { setLoading(false); }
-  }, [getSdk, projectId, domainId]);
-
-  useEffect(() => { load(); }, [load]);
 
   async function handleAutoConfigure() {
     setAutoConfiguring(true);
     try {
       await getSdk().domains.autoConfigureDnsRecords(projectId, domainId);
       setToast({ message: 'DNS records auto-configured via Cloudflare', type: 'success' });
-      await load();
+      await reload();
     } catch (err) {
       setToast({ message: err instanceof Error ? err.message : 'Auto-configure failed', type: 'error' });
     } finally {

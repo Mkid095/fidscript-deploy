@@ -6,6 +6,7 @@ import { Toast } from '@fidscript/ui';
 
 import { useAuth } from '@/contexts/auth-context';
 import { useDomainData } from './use-domain-data';
+import { useDomainInstructions } from './use-domain-instructions';
 import { DomainListHeader } from './domain-list-header';
 import { DomainListContent } from './domain-list-content';
 import { AddDomainModal } from './add-domain-modal';
@@ -18,6 +19,7 @@ export default function DomainsPage() {
   const { getSdk } = useAuth();
 
   const d = useDomainData(projectId, getSdk);
+  const { getInstructions } = useDomainInstructions(projectId, getSdk);
   useEffect(() => { d.load(); }, []);
 
   return (
@@ -67,11 +69,7 @@ export default function DomainsPage() {
       <DnsInstructionsModal
         domain={d.selectedDomain}
         onClose={() => d.setSelectedDomain(null)}
-        getInstructions={async (domain) => {
-          const sdk = getSdk();
-          const data = await sdk.domains.getInstructions(projectId, domain.id);
-          return data.instructions ?? [];
-        }}
+        getInstructions={getInstructions}
       />
 
       {d.toast && (

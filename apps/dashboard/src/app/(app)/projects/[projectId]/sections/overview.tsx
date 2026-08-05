@@ -1,36 +1,16 @@
 'use client';
 
-import { useEffect, useState } from 'react';
 import { Card, Spinner } from '@fidscript/ui';
 
+import type { Project } from '@/types';
 import { useAuth } from '@/contexts/auth-context';
-import type { Project, EnvVar, ProjectMember } from '@/types';
+import { useProjectOverviewData } from './use-project-overview-data';
 
 interface Props { project: Project }
 
 export function OverviewSection({ project }: Props) {
   const { getSdk } = useAuth();
-  const [envVars, setEnvVars] = useState<EnvVar[]>([]);
-  const [members, setMembers] = useState<ProjectMember[]>([]);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    let cancelled = false;
-    async function load() {
-      const sdk = getSdk();
-      const [envRes, membersRes] = await Promise.allSettled([
-        sdk.projects.getEnvVars(project.id),
-        sdk.projects.listMembers(project.id),
-      ]);
-      if (!cancelled) {
-        if (envRes.status === 'fulfilled') setEnvVars(envRes.value);
-        if (membersRes.status === 'fulfilled') setMembers(Array.isArray(membersRes.value) ? membersRes.value : []);
-        setLoading(false);
-      }
-    }
-    load();
-    return () => { cancelled = true; };
-  }, [project.id, getSdk]);
+  const { envVars, members, loading } = useProjectOverviewData({ projectId: project.id, getSdk });
 
   if (loading) return <Spinner size="md" />;
 

@@ -1,10 +1,11 @@
 'use client';
 
-import { useEffect, useState, useCallback } from 'react';
+import { useState } from 'react';
 import type { DomainSslInfo } from '@fidscript-deploy/sdk';
 import { Button, Card, Badge, Spinner, Toast } from '@fidscript/ui';
 
 import { useAuth } from '@/contexts/auth-context';
+import { useDomainSsl } from '../domain-tab-hooks';
 
 interface Props {
   projectId: string;
@@ -13,28 +14,17 @@ interface Props {
 
 export default function SslTab({ projectId, domainId }: Props) {
   const { getSdk } = useAuth();
-  const [ssl, setSsl] = useState<DomainSslInfo | null>(null);
-  const [loading, setLoading] = useState(true);
+  const { ssl, loading, reload } = useDomainSsl(projectId, domainId, getSdk);
   const [renewingSsl, setRenewingSsl] = useState(false);
   const [reissuingSsl, setReissuingSsl] = useState(false);
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
-
-  const load = useCallback(async () => {
-    try {
-      const sdk = getSdk();
-      const sslData = await sdk.domains.getSsl(projectId, domainId).catch(() => null);
-      setSsl(sslData as DomainSslInfo | null);
-    } catch { /* ignore */ } finally { setLoading(false); }
-  }, [getSdk, projectId, domainId]);
-
-  useEffect(() => { load(); }, [load]);
 
   async function handleRenew() {
     setRenewingSsl(true);
     try {
       await getSdk().domains.renewSsl(projectId, domainId);
       setToast({ message: 'SSL renewal initiated — certificate will be updated shortly', type: 'success' });
-      await load();
+      await reload();
     } catch (err) {
       setToast({ message: err instanceof Error ? err.message : 'SSL renewal failed', type: 'error' });
     } finally { setRenewingSsl(false); }
@@ -45,7 +35,7 @@ export default function SslTab({ projectId, domainId }: Props) {
     try {
       await getSdk().domains.reissueSsl(projectId, domainId);
       setToast({ message: 'SSL reissue initiated — new certificate will be issued shortly', type: 'success' });
-      await load();
+      await reload();
     } catch (err) {
       setToast({ message: err instanceof Error ? err.message : 'SSL reissue failed', type: 'error' });
     } finally { setReissuingSsl(false); }

@@ -1,9 +1,10 @@
 'use client';
 
-import { useEffect, useState, useCallback } from 'react';
+import { useState } from 'react';
 import type { DomainIncident, DomainVerificationRun } from '@fidscript-deploy/sdk';
 import { Button, Card, Spinner, Toast } from '@fidscript/ui';
 import { useAuth } from '@/contexts/auth-context';
+import { useDomainRepairs } from '../domain-tab-hooks';
 import { RepairsIncidents } from './repairs-incidents';
 import { RepairsHistory } from './repairs-history';
 
@@ -34,34 +35,18 @@ function ActionCard({ title, description, loading, onClick }: {
 
 export default function RepairsTab({ projectId, domainId }: Props) {
   const { getSdk } = useAuth();
-  const [incidents, setIncidents] = useState<DomainIncident[]>([]);
-  const [history, setHistory] = useState<DomainVerificationRun[]>([]);
-  const [loading, setLoading] = useState(true);
+  const { incidents, history, loading, reload } = useDomainRepairs(projectId, domainId, getSdk);
   const [checking, setChecking] = useState(false);
   const [syncing, setSyncing] = useState(false);
   const [importing, setImporting] = useState(false);
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
-
-  const load = useCallback(async () => {
-    try {
-      const sdk = getSdk();
-      const [incidentData, historyData] = await Promise.all([
-        sdk.domains.getIncidents(projectId, domainId).catch(() => null),
-        sdk.domains.getHistory(projectId, domainId).catch(() => null),
-      ]);
-      if (incidentData) setIncidents(incidentData as DomainIncident[]);
-      if (historyData) setHistory(historyData as DomainVerificationRun[]);
-    } catch { /* ignore */ } finally { setLoading(false); }
-  }, [getSdk, projectId, domainId]);
-
-  useEffect(() => { load(); }, [load]);
 
   async function handleHealthCheck() {
     setChecking(true);
     try {
       await getSdk().domains.triggerHealthCheck(projectId, domainId);
       setToast({ message: 'Health check triggered — results update shortly', type: 'success' });
-      setTimeout(() => load(), 5000);
+      setTimeout(() => reload(), 5000);
     } catch (err) {
       setToast({ message: err instanceof Error ? err.message : 'Health check failed', type: 'error' });
     } finally { setChecking(false); }
@@ -70,10 +55,9 @@ export default function RepairsTab({ projectId, domainId }: Props) {
   async function handleSync() {
     setSyncing(true);
     try {
-      // TODO (backend): POST /api/v1/projects/:projectId/domains/:domainId/sync-zone
       await getSdk().domains.syncZone(projectId, domainId);
       setToast({ message: 'Zone sync complete', type: 'success' });
-      await load();
+      await reload();
     } catch (err) {
       setToast({ message: err instanceof Error ? err.message : 'Sync failed — endpoint may not be available', type: 'error' });
     } finally { setSyncing(false); }
@@ -82,10 +66,9 @@ export default function RepairsTab({ projectId, domainId }: Props) {
   async function handleImport() {
     setImporting(true);
     try {
-      // TODO (backend): POST /api/v1/projects/:projectId/domains/:domainId/import-zone
       await getSdk().domains.importZone(projectId, domainId);
       setToast({ message: 'Zone imported successfully', type: 'success' });
-      await load();
+      await reload();
     } catch (err) {
       setToast({ message: err instanceof Error ? err.message : 'Import failed — endpoint may not be available', type: 'error' });
     } finally { setImporting(false); }

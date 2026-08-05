@@ -5,7 +5,6 @@ import { useParams, usePathname } from 'next/navigation';
 import Link from 'next/link';
 import { Spinner } from '@fidscript/ui';
 
-import type { Project } from '@/types';
 import { useAuth } from '@/contexts/auth-context';
 import { ProjectProvider } from '@/contexts/project-context';
 import { ProjectSidebar } from '@/components/layout/project-sidebar';
@@ -13,6 +12,7 @@ import { MobileTabBar } from '@/components/layout/mobile-tab-bar';
 import { useLocalStorage } from './use-local-storage';
 import { useProjectMode } from './use-project-mode';
 import { ProjectHeader } from './project-header';
+import { useProjectAndProjects } from './use-project-and-projects';
 
 const SIDEBAR_KEY = 'fidscript.sidebar.collapsed';
 const SECTION_KEY = (id: string) => `fidscript.lastSection.${id}`;
@@ -24,39 +24,10 @@ export default function ProjectLayout({ children }: { children: React.ReactNode 
 
   const projectId = params.projectId as string;
 
-  const [project, setProject] = useState<Project | null>(null);
-  const [allProjects, setAllProjects] = useState<Project[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const { project, allProjects, loading, error } = useProjectAndProjects({ projectId, getSdk });
   const [showSwitcher, setShowSwitcher] = useState(false);
   const [sidebarCollapsed, setSidebarCollapsed] = useLocalStorage(SIDEBAR_KEY, false);
   const [projectMode, setProjectMode] = useProjectMode(projectId);
-
-  // Load project + all projects on mount.
-  useEffect(() => {
-    let cancelled = false;
-    async function load() {
-      const sdk = getSdk();
-      try {
-        const [proj, list] = await Promise.all([
-          sdk.projects.get(projectId),
-          sdk.projects.list(),
-        ]);
-        if (!cancelled) {
-          setProject(proj);
-          setAllProjects(Array.isArray(list) ? list : (list as any).projects ?? []);
-          setLoading(false);
-        }
-      } catch (err) {
-        if (!cancelled) {
-          setError(err instanceof Error ? err.message : 'Failed to load project');
-          setLoading(false);
-        }
-      }
-    }
-    load();
-    return () => { cancelled = true; };
-  }, [projectId, getSdk]);
 
   // Persist last section when pathname changes.
   useEffect(() => {

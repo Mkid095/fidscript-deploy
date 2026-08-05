@@ -1,10 +1,11 @@
 'use client';
 
-import { useEffect, useState, useCallback, useRef } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import type { DomainHealth } from '@fidscript-deploy/sdk';
 import { Button, Card, Spinner } from '@fidscript/ui';
 
 import { useAuth } from '@/contexts/auth-context';
+import { useDomainHealth } from '../domain-tab-hooks';
 
 interface Props {
   projectId: string;
@@ -13,20 +14,10 @@ interface Props {
 
 export default function HealthTab({ projectId, domainId }: Props) {
   const { getSdk } = useAuth();
-  const [health, setHealth] = useState<DomainHealth | null>(null);
-  const [loading, setLoading] = useState(true);
+  const { health, loading, triggerHealthCheck } = useDomainHealth(projectId, domainId, getSdk, { polling: true });
   const [checkingHealth, setCheckingHealth] = useState(false);
+
   const pollingRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-
-  const load = useCallback(async () => {
-    try {
-      const sdk = getSdk();
-      const healthData = await sdk.domains.getHealth(projectId, domainId).catch(() => null);
-      setHealth(healthData as DomainHealth | null);
-    } catch { } finally { setLoading(false); }
-  }, [getSdk, projectId, domainId]);
-
-  useEffect(() => { load(); }, [load]);
 
   function startPolling() {
     if (pollingRef.current) clearTimeout(pollingRef.current);
@@ -37,13 +28,15 @@ export default function HealthTab({ projectId, domainId }: Props) {
       getSdk().domains.getHealth(projectId, domainId)
         .then((result: unknown) => {
           const h = result as DomainHealth | null;
-          if (h && h.status !== 'degraded') { setHealth(h); setCheckingHealth(false); return; }
+          if (h && h.status !== 'degraded') { setCheckingHealth(false); return; }
           pollingRef.current = setTimeout(poll, 3000);
         })
         .catch(() => { pollingRef.current = setTimeout(poll, 3000); });
     }
     pollingRef.current = setTimeout(poll, 3000);
   }
+
+  useEffect(() => () => { if (pollingRef.current) clearTimeout(pollingRef.current); }, []);
 
   async function handleHealthCheck() {
     setCheckingHealth(true);
@@ -52,6 +45,7 @@ export default function HealthTab({ projectId, domainId }: Props) {
       startPolling();
     } catch { setCheckingHealth(false); }
   }
+
   if (loading) return <div className="flex justify-center py-12"><Spinner size="md" /></div>;
   const scoreColor =
     health && health.score >= 90 ? 'text-[var(--success)]' :

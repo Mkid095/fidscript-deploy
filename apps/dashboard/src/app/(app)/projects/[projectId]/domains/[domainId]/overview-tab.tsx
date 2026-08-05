@@ -1,46 +1,23 @@
 'use client';
 
-import { useEffect, useState, useCallback } from 'react';
-import type { Domain, DomainHealth } from '@fidscript-deploy/sdk';
 import { Card, Badge, Spinner } from '@fidscript/ui';
 
 import { useAuth } from '@/contexts/auth-context';
+import { useDomainOverview } from '../domain-tab-hooks';
 
 interface Props {
   projectId: string;
   domainId: string;
 }
 
-function healthScore(health: DomainHealth | null): number {
+function healthScore(health: { score?: number | null } | null): number {
   if (!health) return 0;
   return health.score ?? 0;
 }
 
 export default function OverviewTab({ projectId, domainId }: Props) {
   const { getSdk } = useAuth();
-  const [domain, setDomain] = useState<Domain | null>(null);
-  const [health, setHealth] = useState<DomainHealth | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-
-  const load = useCallback(async () => {
-    try {
-      const sdk = getSdk();
-      const [domainData, healthData] = await Promise.all([
-        sdk.domains.get(domainId).catch(() => null),
-        sdk.domains.getHealth(projectId, domainId).catch(() => null),
-      ]);
-      if (!domainData) { setError('Domain not found'); return; }
-      setDomain(domainData as Domain);
-      setHealth(healthData as DomainHealth | null);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to load');
-    } finally {
-      setLoading(false);
-    }
-  }, [getSdk, projectId, domainId]);
-
-  useEffect(() => { load(); }, [load]);
+  const { domain, health, loading, error } = useDomainOverview(projectId, domainId, getSdk);
 
   if (loading) return <div className="flex justify-center py-12"><Spinner size="md" /></div>;
   if (error || !domain) return <p className="text-[var(--danger)] text-sm p-4">{error ?? 'Not found'}</p>;
