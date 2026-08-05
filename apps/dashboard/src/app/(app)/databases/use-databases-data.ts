@@ -47,6 +47,11 @@ export function useDatabasesData(
     loadDatabases();
   }, [sdk, projectId]);
 
+  const createDatabase = async (name: string, type: 'postgres' | 'redis') => {
+    if (!projectId) throw new Error('No project selected');
+    return sdk.databases.create(projectId, { name, type });
+  };
+
   return {
     databases,
     setDatabases,
@@ -55,5 +60,6 @@ export function useDatabasesData(
     loadingDatabases,
     loadingProjects,
     error,
+    createDatabase,
   };
 }

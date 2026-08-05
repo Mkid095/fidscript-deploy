@@ -22,6 +22,7 @@ export default function DatabasesPage() {
     loadingDatabases: loading,
     loadingProjects,
     error,
+    createDatabase,
   } = useDatabasesData(sdk, shellProjectId);
 
   const [showCreate, setShowCreate] = useState(false);
@@ -37,7 +38,7 @@ export default function DatabasesPage() {
     setCreating(true);
     setCreateError(null);
     try {
-      const created = await sdk.databases.create(projectId, { name: newName.trim(), type: newType });
+      const created = await createDatabase(newName.trim(), newType);
       setDatabases(prev => [...prev, created]);
       setNewName('');
       setNewType('postgres');
@@ -48,7 +49,7 @@ export default function DatabasesPage() {
     } finally {
       setCreating(false);
     }
-  }, [newName, newType, sdk, projectId, setDatabases]);
+  }, [newName, newType, createDatabase, projectId, setDatabases]);
 
   return (
     <div>
