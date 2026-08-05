@@ -7,6 +7,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/).
 ## [Unreleased]
 
 ### Added
+- `feat(mcp): add monitoring, logging, AI, and marketplace tools — 60 new tools (25 monitoring, 12 logging, 10 AI, 13 marketplace) wired through the SDK where available and direct API fetch for endpoints the SDK does not yet cover`
 - `feat(dashboard): wire MCP page to real McpHub component — replaces stub with live API key generation, tool manifest, and stdio connection instructions`
 - `feat(dashboard): wire domains wizard tab — guides users through DNS record setup with live health verification polling`
 - `feat(dashboard): wire domains repairs tab — health check, zone sync/import, open incidents + verification history`

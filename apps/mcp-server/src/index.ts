@@ -51,6 +51,10 @@ import { storageTools, handleStorageTool } from './tools/storage.js';
 import { databaseTools, handleDatabaseTool } from './tools/databases.js';
 import { cronTools, handleCronTool } from './tools/cron.js';
 import { realtimeTools, handleRealtimeTool } from './tools/realtime.js';
+import { monitoringTools, handleMonitoringTool } from './tools/monitoring/index.js';
+import { loggingTools, handleLoggingTool } from './tools/logging/index.js';
+import { aiTools, handleAiTool } from './tools/ai/index.js';
+import { marketplaceTools, handleMarketplaceTool } from './tools/marketplace/index.js';
 
 const apiKey = process.env.FIDSCRIPT_API_KEY;
 const apiUrl = process.env.FIDSCRIPT_API_URL || 'http://localhost:3001';
@@ -74,6 +78,10 @@ const allTools = [
   ...databaseTools,
   ...cronTools,
   ...realtimeTools,
+  ...monitoringTools,
+  ...loggingTools,
+  ...aiTools,
+  ...marketplaceTools,
 ];
 
 const server = new Server(
@@ -145,6 +153,14 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
       result = await handleCronTool(name, args ?? {}, sdk);
     } else if (name.startsWith('realtime_')) {
       result = await handleRealtimeTool(name, args ?? {}, sdk);
+    } else if (name.startsWith('monitoring_')) {
+      result = await handleMonitoringTool(name, args ?? {}, sdk);
+    } else if (name.startsWith('logging_')) {
+      result = await handleLoggingTool(name, args ?? {}, sdk);
+    } else if (name.startsWith('ai_')) {
+      result = await handleAiTool(name, args ?? {}, sdk);
+    } else if (name.startsWith('marketplace_')) {
+      result = await handleMarketplaceTool(name, args ?? {}, sdk);
     } else {
       return {
         content: [{ type: 'text', text: `Unknown tool: ${name}` }],
