@@ -7,6 +7,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/).
 ## [Unreleased]
 
 ### Changed
+- `anpas(queues): extract sdk calls from queue-detail.tsx to use-queue-detail-data hook`
 - `anpas(settings): extract sdk calls from settings/page.tsx to settings-page-hooks.ts with useSettingsPage() hook`
 - `anpas(settings): extract sdk calls from notification-settings.tsx to notification-settings-hooks.ts with useNotificationSettings() hook`
 - `chore(audit): deep re-audit report — all 4 TS apps pass tsc --noEmit, SDK /api/v1/ prefix verified across 19 modules (194 MCP tool registrations, 0 broken), 0 @iconify/react remaining, 0 hardcoded MOCK/STUB data, 0 .tsx files over 150 lines. Findings: 20 files use Tailwind palette tokens directly (semantic status colors — known existing debt), MCP controller missing @UseGuards, components/README.md was missing at parent level`

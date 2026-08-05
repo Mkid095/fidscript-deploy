@@ -1,10 +1,11 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/contexts/auth-context';
 import { useShellProjectId } from '@/contexts/project-context';
 import { useQueuesRealtime } from './use-queues-realtime';
+import { useQueueDetailData } from './use-queue-detail-data';
 import { QueueMessagesTable } from './queue-messages-table';
 import { QueueDetailHeader } from './queue-detail-header';
 import { QueueDetailStatsBar } from './queue-detail-stats-bar';
@@ -13,17 +14,12 @@ import { QueueDetailLoading } from './queue-detail-loading';
 import { QueueDetailNotFound } from './queue-detail-not-found';
 import { QueueDetailActionsToolbar } from './queue-detail-actions-toolbar';
 import { useQueueDetailHandlers } from './queue-detail-handlers';
-import type { Queue, QueueStats, QueueMessage } from './use-queues-realtime';
 
 export function QueueDetail({ queueId }: { queueId: string }) {
   const { getSdk, getToken } = useAuth();
   const projectId = useShellProjectId();
   const router = useRouter();
 
-  const [queue, setQueue] = useState<Queue | null>(null);
-  const [stats, setStats] = useState<QueueStats | null>(null);
-  const [messages, setMessages] = useState<QueueMessage[]>([]);
-  const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<'pending' | 'delivered' | 'dead-letter'>('pending');
   const [showPublish, setShowPublish] = useState(false);
   const [showPurge, setShowPurge] = useState(false);
@@ -31,30 +27,15 @@ export function QueueDetail({ queueId }: { queueId: string }) {
   const [actionLoading, setActionLoading] = useState(false);
   const [consuming, setConsuming] = useState(false);
 
-  const loadQueue = useCallback(async () => {
-    const sdk = getSdk();
-    if (!projectId) return;
-    try {
-      const [q, s, msgResult] = await Promise.all([
-        sdk.queues.get(projectId, queueId),
-        sdk.queues.getStats(projectId, queueId),
-        sdk.queues.getMessages(projectId, queueId, { limit: 50 }),
-      ]);
-      setQueue(q);
-      setStats({ pending: s.pending, delivered: s.delivered, deadLettered: s.deadLettered, jsDepth: s.jsDepth });
-      setMessages(msgResult.messages);
-    } catch (err) {
-      console.error('Failed to load queue', err);
-    } finally {
-      setLoading(false);
-    }
-  }, [getSdk, projectId, queueId]);
-
-  useEffect(() => { loadQueue(); }, [loadQueue]);
+  const { queue, stats, messages, loading, loadQueue, setMessages } = useQueueDetailData({
+    projectId,
+    queueId,
+    getSdk,
+  });
 
   useQueuesRealtime(getSdk, getToken, projectId, {
-    onQueueUpdated: (q) => { if (q.id === queueId) setQueue((prev) => prev ? { ...prev, ...q } : prev); },
-    onStatsUpdated: (qid, s) => { if (qid === queueId) setStats((prev) => prev ? { ...prev, ...s } : prev); },
+    onQueueUpdated: (q) => { if (q.id === queueId) { loadQueue(); } },
+    onStatsUpdated: (qid, s) => { if (qid === queueId) { loadQueue(); } },
     onQueueDeleted: (q) => { if (q.id === queueId) router.push(`/projects/${projectId}/queues`); },
   });
 
