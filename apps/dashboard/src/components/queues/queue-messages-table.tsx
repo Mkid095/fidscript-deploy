@@ -1,62 +1,9 @@
 'use client';
 
 import { HugeiconsIcon } from '@hugeicons/react';
-import { RefreshIcon, File02Icon } from '@hugeicons/core-free-icons';
+import { File02Icon } from '@hugeicons/core-free-icons';
 import type { QueueMessage, MessageTab } from './use-queues-realtime';
-
-const STATUS_COLORS: Record<string, string> = {
-  pending:      'text-amber-400 bg-amber-500/10 border-amber-500/20',
-  delivered:    'text-emerald-400 bg-emerald-500/10 border-emerald-500/20',
-  'dead-letter': 'text-rose-400 bg-rose-500/10 border-rose-500/20',
-  active:       'text-emerald-400 bg-emerald-500/10 border-emerald-500/20',
-  paused:       'text-amber-400 bg-amber-500/10 border-amber-500/20',
-};
-
-
-interface MessageRowProps {
-  msg: QueueMessage;
-  selected: boolean;
-  onToggle: (id: string) => void;
-}
-
-function MessageRow({ msg, selected, onToggle }: MessageRowProps) {
-  return (
-    <tr
-      className={`border-b border-[var(--rail)] last:border-0 hover:bg-[var(--surface)]/50 transition-colors cursor-pointer ${selected ? 'bg-[var(--accent)]/5' : ''}`}
-      onClick={() => onToggle(msg.id)}
-    >
-      <td className="px-3 py-2.5">
-        <input
-          type="checkbox"
-          checked={selected}
-          onChange={() => onToggle(msg.id)}
-          onClick={(e) => e.stopPropagation()}
-          className="rounded"
-        />
-      </td>
-      <td className="px-3 py-2.5 text-[var(--text-dim)] font-mono text-[10px]">{msg.id}</td>
-      <td className="px-3 py-2.5 max-w-xs truncate font-mono text-[10px] text-[var(--text)]" title={msg.body}>
-        {msg.body.length > 80 ? msg.body.slice(0, 80) + '…' : msg.body}
-      </td>
-      <td className="px-3 py-2.5 text-[var(--text-dim)]">
-        {msg.attempts > 0 && (
-          <span className={`inline-flex items-center gap-1 ${msg.attempts >= 3 ? 'text-rose-400' : 'text-amber-400'}`}>
-            <HugeiconsIcon icon={RefreshIcon} size={10} />
-            {msg.attempts}
-          </span>
-        )}
-      </td>
-      <td className="px-3 py-2.5 text-[var(--text-dim)] whitespace-nowrap">
-        {new Date(msg.createdAt).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
-      </td>
-      <td className="px-3 py-2.5">
-        <span className={`text-[9px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded border ${STATUS_COLORS[msg.status] ?? ''}`}>
-          {msg.status}
-        </span>
-      </td>
-    </tr>
-  );
-}
+import { MessageRow } from './queue-message-row';
 
 interface QueueMessagesTableProps {
   messages: QueueMessage[];
@@ -68,6 +15,18 @@ interface QueueMessagesTableProps {
   onToggleSelectAll: () => void;
 }
 
+const TAB_LABELS: Record<MessageTab, string> = {
+  pending: 'Pending',
+  delivered: 'Delivered',
+  'dead-letter': 'Dead Letter',
+};
+
+const STAT_COLORS: Record<MessageTab, string> = {
+  pending: 'bg-amber-500/10 text-amber-400',
+  delivered: 'bg-emerald-500/10 text-emerald-400',
+  'dead-letter': 'bg-rose-500/10 text-rose-400',
+};
+
 export function QueueMessagesTable({
   messages,
   stats,
@@ -77,11 +36,12 @@ export function QueueMessagesTable({
   onToggleSelect,
   onToggleSelectAll,
 }: QueueMessagesTableProps) {
+  const tabs: MessageTab[] = ['pending', 'delivered', 'dead-letter'];
+
   return (
     <div className="bg-[var(--surface-2)] border border-[var(--rail)] rounded-xl overflow-hidden">
-      {/* Tabs */}
       <div className="flex items-center border-b border-[var(--rail)] px-4 gap-1 overflow-x-auto">
-        {(['pending', 'delivered', 'dead-letter'] as MessageTab[]).map((tab) => (
+        {tabs.map((tab) => (
           <button
             key={tab}
             onClick={() => onTabChange(tab)}
@@ -91,13 +51,9 @@ export function QueueMessagesTable({
                 : 'border-transparent text-[var(--text-dim)] hover:text-[var(--text)]'
             }`}
           >
-            {tab === 'dead-letter' ? 'Dead Letter' : tab.charAt(0).toUpperCase() + tab.slice(1)}
+            {TAB_LABELS[tab]}
             {stats && (
-              <span className={`ml-1.5 text-[10px] px-1.5 py-0.5 rounded-full ${
-                tab === 'pending' ? 'bg-amber-500/10 text-amber-400' :
-                tab === 'delivered' ? 'bg-emerald-500/10 text-emerald-400' :
-                'bg-rose-500/10 text-rose-400'
-              }`}>
+              <span className={`ml-1.5 text-[10px] px-1.5 py-0.5 rounded-full ${STAT_COLORS[tab]}`}>
                 {tab === 'pending' ? stats.pending : tab === 'delivered' ? stats.delivered : stats.deadLettered}
               </span>
             )}
@@ -105,7 +61,6 @@ export function QueueMessagesTable({
         ))}
       </div>
 
-      {/* Table */}
       {messages.length === 0 ? (
         <div className="flex flex-col items-center justify-center py-16 text-center">
           <div className="w-12 h-12 rounded-xl bg-[var(--rail)] flex items-center justify-center mb-3">

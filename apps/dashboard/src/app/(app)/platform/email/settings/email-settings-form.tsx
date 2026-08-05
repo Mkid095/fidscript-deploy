@@ -1,29 +1,13 @@
 'use client';
 
-import { Button, Input, Card } from '@fidscript/ui';
+import { Button, Card } from '@fidscript/ui';
 import { HugeiconsIcon } from '@hugeicons/react';
-import { FloppyDiskIcon, SentIcon, CloudIcon, ViewIcon, ViewOffIcon, CheckmarkCircle01Icon, CancelCircleIcon } from '@hugeicons/core-free-icons';
+import { CheckmarkCircle01Icon, CancelCircleIcon } from '@hugeicons/core-free-icons';
 import type { StorageBackend } from '@fidscript-deploy/sdk';
+import { BACKEND_INFO } from './email-settings-hooks';
+import { CredentialsPanel } from './email-settings-credentials';
 
-const BACKEND_INFO: Record<StorageBackend, { label: string; description: string; icon: React.ReactNode }> = {
-  internal: {
-    label: 'Internal (VPS)',
-    description: 'Store attachments on the platform VPS using MinIO S3-compatible storage. No external service required.',
-    icon: <HugeiconsIcon icon={FloppyDiskIcon} size={14} strokeWidth={1.5} />,
-  },
-  telegram: {
-    label: 'Telegram',
-    description: 'Upload attachments to a private Telegram chat via the Bot API. Free and reliable for moderate traffic.',
-    icon: <HugeiconsIcon icon={SentIcon} size={14} strokeWidth={1.5} />,
-  },
-  cloudinary: {
-    label: 'Cloudinary',
-    description: 'Upload attachments to Cloudinary CDN. Fast global delivery with transformation support.',
-    icon: <HugeiconsIcon icon={CloudIcon} size={14} strokeWidth={1.5} />,
-  },
-};
-
-interface Props {
+export interface Props {
   selectedProvider: StorageBackend;
   setSelectedProvider: (v: StorageBackend) => void;
   saving: boolean;
@@ -34,25 +18,34 @@ interface Props {
   cloudName: string; setCloudName: (v: string) => void;
   apiKey: string; setApiKey: (v: string) => void;
   apiSecret: string; setApiSecret: (v: string) => void;
-  showCloudinarySecret: boolean; setShowCloudinarySecret: (v: boolean | ((prev: boolean) => boolean)) => void;
+  showCloudinarySecret: boolean;
+  setShowCloudinarySecret: (v: boolean | ((prev: boolean) => boolean)) => void;
   botToken: string; setBotToken: (v: string) => void;
   chatId: string; setChatId: (v: string) => void;
-  showBotToken: boolean; setShowBotToken: (v: boolean | ((prev: boolean) => boolean)) => void;
+  showBotToken: boolean;
+  setShowBotToken: (v: boolean | ((prev: boolean) => boolean)) => void;
   onSave: (e: React.FormEvent) => void;
   onTest: () => void;
 }
 
 export function EmailSettingsForm({
   selectedProvider, setSelectedProvider,
-  saving, saveError, saveSuccess, testResult, testing,
   cloudName, setCloudName,
   apiKey, setApiKey,
   apiSecret, setApiSecret, showCloudinarySecret, setShowCloudinarySecret,
   botToken, setBotToken, chatId, setChatId, showBotToken, setShowBotToken,
+  saving, saveError, saveSuccess, testResult, testing,
   onSave, onTest,
 }: Props) {
-  const isDisabled = (selectedProvider === 'cloudinary' && (!cloudName.trim() || !apiKey.trim() || !apiSecret.trim())) ||
+  const isDisabled =
+    (selectedProvider === 'cloudinary' && (!cloudName.trim() || !apiKey.trim() || !apiSecret.trim())) ||
     (selectedProvider === 'telegram' && (!botToken.trim() || !chatId.trim()));
+
+  const resetToInternal = () => {
+    setSelectedProvider('internal');
+    setCloudName(''); setApiKey(''); setApiSecret('');
+    setBotToken(''); setChatId('');
+  };
 
   return (
     <Card className="border border-[var(--rail)] p-5">
@@ -85,54 +78,20 @@ export function EmailSettingsForm({
             );
           })}
         </div>
-        {selectedProvider === 'cloudinary' && (
-          <div className="border border-[var(--rail)] rounded-lg p-4 mb-6 bg-[var(--surface-2)] space-y-4">
-            <h3 className="text-xs font-semibold text-[var(--text-muted)] uppercase tracking-wider mb-3">Cloudinary Credentials</h3>
-            <div>
-              <label className="block text-xs text-[var(--text-muted)] mb-1">Cloud Name</label>
-              <Input value={cloudName} onChange={e => setCloudName(e.target.value)} placeholder="my-cloud"
-                className="bg-[var(--surface-2)] border border-[var(--rail)] text-[var(--text)] placeholder:text-[var(--text-dim)] w-full" />
-            </div>
-            <div>
-              <label className="block text-xs text-[var(--text-muted)] mb-1">API Key</label>
-              <Input value={apiKey} onChange={e => setApiKey(e.target.value)} placeholder="123456789012345"
-                className="bg-[var(--surface-2)] border border-[var(--rail)] text-[var(--text)] placeholder:text-[var(--text-dim)] w-full" />
-            </div>
-            <div>
-              <label className="block text-xs text-[var(--text-muted)] mb-1">API Secret</label>
-              <div className="relative">
-                <Input type={showCloudinarySecret ? 'text' : 'password'} value={apiSecret} onChange={e => setApiSecret(e.target.value)} placeholder=".............."
-                  className="bg-[var(--surface-2)] border border-[var(--rail)] text-[var(--text)] placeholder:text-[var(--text-dim)] w-full pr-10" />
-                <button type="button" onClick={() => setShowCloudinarySecret(v => !v)}
-                  className="absolute right-2 top-1/2 -translate-y-1/2 text-xs text-[var(--text-muted)] hover:text-[var(--text-muted)]">
-                  {showCloudinarySecret ? <HugeiconsIcon icon={ViewOffIcon} size={14} strokeWidth={1.5} /> : <HugeiconsIcon icon={ViewIcon} size={14} strokeWidth={1.5} />}
-                </button>
-              </div>
-            </div>
-          </div>
-        )}
-        {selectedProvider === 'telegram' && (
-          <div className="border border-[var(--rail)] rounded-lg p-4 mb-6 bg-[var(--surface-2)] space-y-4">
-            <h3 className="text-xs font-semibold text-[var(--text-muted)] uppercase tracking-wider mb-3">Telegram Bot Credentials</h3>
-            <div>
-              <label className="block text-xs text-[var(--text-muted)] mb-1">Bot Token</label>
-              <div className="relative">
-                <Input type={showBotToken ? 'text' : 'password'} value={botToken} onChange={e => setBotToken(e.target.value)}
-                  placeholder="123456789:ABCdefGHIjklMNOpqrsTUVwxyz"
-                  className="bg-[var(--surface-2)] border border-[var(--rail)] text-[var(--text)] placeholder:text-[var(--text-dim)] w-full pr-10" />
-                <button type="button" onClick={() => setShowBotToken(v => !v)}
-                  className="absolute right-2 top-1/2 -translate-y-1/2 text-xs text-[var(--text-muted)] hover:text-[var(--text-muted)]">
-                  {showBotToken ? <HugeiconsIcon icon={ViewOffIcon} size={14} strokeWidth={1.5} /> : <HugeiconsIcon icon={ViewIcon} size={14} strokeWidth={1.5} />}
-                </button>
-              </div>
-            </div>
-            <div>
-              <label className="block text-xs text-[var(--text-muted)] mb-1">Chat / Channel ID</label>
-              <Input value={chatId} onChange={e => setChatId(e.target.value)} placeholder="-1001234567890"
-                className="bg-[var(--surface-2)] border border-[var(--rail)] text-[var(--text)] placeholder:text-[var(--text-dim)] w-full" />
-            </div>
-          </div>
-        )}
+
+        <CredentialsPanel
+          selectedProvider={selectedProvider}
+          cloudName={cloudName} setCloudName={setCloudName}
+          apiKey={apiKey} setApiKey={setApiKey}
+          apiSecret={apiSecret} setApiSecret={setApiSecret}
+          showCloudinarySecret={showCloudinarySecret}
+          setShowCloudinarySecret={setShowCloudinarySecret}
+          botToken={botToken} setBotToken={setBotToken}
+          chatId={chatId} setChatId={setChatId}
+          showBotToken={showBotToken}
+          setShowBotToken={setShowBotToken}
+        />
+
         <div className="mb-6">
           <Button type="button" variant="ghost" size="sm" loading={testing} onClick={onTest} disabled={isDisabled}>
             {testing ? 'Testing...' : 'Test Connection'}
@@ -151,7 +110,7 @@ export function EmailSettingsForm({
             {saving ? 'Saving...' : 'Save Settings'}
           </Button>
           {selectedProvider !== 'internal' && (
-            <Button type="button" variant="ghost" size="sm" onClick={() => { setSelectedProvider('internal'); setCloudName(''); setApiKey(''); setApiSecret(''); setBotToken(''); setChatId(''); }}>
+            <Button type="button" variant="ghost" size="sm" onClick={resetToInternal}>
               Reset to Internal
             </Button>
           )}

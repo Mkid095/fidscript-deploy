@@ -8,6 +8,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
 ### Changed
 - `anpas(dashboard): split docs.tsx (189L) into docs-page.tsx/docs-sidebar.tsx/docs-content.tsx/docs-hooks.ts; split project-sidebar.tsx (166L) into project-sidebar.tsx/sidebar-nav-items.tsx/sidebar-footer.tsx/sidebar-hooks.ts; split domain-mailboxes-tab.tsx (159L) into domain-mailboxes-tab.tsx/mailbox-list.tsx/mailbox-create-modal.tsx/mailbox-hooks.ts; split domain-aliases-tab.tsx (155L) into domain-aliases-tab.tsx/alias-list.tsx/alias-create-modal.tsx/alias-hooks.ts; doc content uses dangerouslySetInnerHTML with contentHtml strings to avoid JSX in .ts files`
+- `anpas(dashboard): split notification-bell.tsx (189L→53L) using existing notification-bell-hooks/notification-item/notification-dropdown; split email-settings-form.tsx (162L→121L) extracting BACKEND_INFO to hooks and credentials to email-settings-credentials.tsx; split queue-messages-table.tsx (151L→106L) extracting MessageRow and STATUS_COLORS to queue-message-row.tsx/queue-messages-table-hooks.ts`
 - `anpas(dashboard): replace hardcoded Tailwind colors with CSS variables in realtime-monitor.tsx and purge-queue-modal.tsx`
 - `anpas(audit): fix Hugeicons violations across 26 files (queues + storage components); extract business logic to hooks for publish-message-modal, purge-queue-modal, realtime-monitor, data-grid, rollback-picker, queue-detail, bucket-detail, storage-list`
 - `anpas(dashboard): replace @iconify with Hugeicons in storage-list.tsx (Icons: SettingsIcon, HardDriveIcon, Folder01Icon)`
