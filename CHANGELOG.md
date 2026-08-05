@@ -10,6 +10,15 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/).
 - `refactor(dashboard): split create-project-modal into types/hooks/form/modal`
 - `refactor(dashboard): split migrations-panel into hooks/table/modal`
 
+### Docs
+- `docs(dashboard): add READMEs to all 12 component directories — auth, database (38 files), deployments (28 files), docs, functions (25 files), landing, layout, projects, queues (21 files), storage (28 files), theme, ui. Each README lists sub-areas, file purpose tables, props where applicable, and conventions`
+
+### Refactored
+- `refactor(dashboard): split db-normalize.ts (346L) into 5 domain-specific adapter files — db-normalize.ts (28L barrel), db-normalize-types.ts (84L raw SDK shapes), db-normalize-database.ts (58L Database + DatabaseStatus), db-normalize-schema.ts (68L ColumnInfo + QueryResult + RealtimeTableInfo), db-normalize-migrations.ts (25L MigrationRecord), db-normalize-backups.ts (30L BackupRecord); removed dead `normalizeFunction` and `normalizeDeployment` exports`
+
+### Removed
+- `chore(dashboard): delete dead duplicate log hooks — use-log-buffer.ts and use-log-stream.ts were unused; their active implementations live in log-viewer-hooks.ts and are imported by log-viewer.tsx`
+
 ### Fixed
 - `fix(api): use ApiKeyOrJwtGuard on QueuesController for BaaS API-key access`
 
