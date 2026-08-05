@@ -1,84 +1,38 @@
 'use client';
 
-import { useCallback, useRef, useState } from 'react';
+import { useRef } from 'react';
 import { useDatabase } from '@/app/(app)/projects/[projectId]/databases/database-context';
-import { formatRelativeTime } from '@/lib/format';
 import { HugeiconsIcon } from '@hugeicons/react';
 import {
   ArrowUp01Icon, CheckmarkCircle03Icon, AlertCircleIcon,
-  RefreshIcon, Upload02Icon, TerminalIcon,
-  CloudIcon, UserIcon,
+  RefreshIcon, Upload02Icon,
 } from '@hugeicons/core-free-icons';
-import type { MigrationRecord } from '@/types';
+import { useMigrationsForm, useMigrationStats } from './migrations-hooks';
+import { MigrationsTable } from './migrations-table';
 
 export function MigrationsPanel() {
   const { migrations, refreshMigrations, applyMigration } = useDatabase();
-  const [runningMigration, setRunningMigration] = useState(false);
-  const [migrationSql, setMigrationSql] = useState('');
-  const [migrationName, setMigrationName] = useState('');
-  const [migrationError, setMigrationError] = useState<string | null>(null);
-  const [migrationSuccess, setMigrationSuccess] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const pendingMigrations = migrations.filter(m => m.status === 'pending');
-  const appliedMigrations = migrations.filter(m => m.status === 'applied');
-  const failedMigrations = migrations.filter(m => m.status === 'failed');
+  const {
+    migrationSql, setMigrationSql,
+    migrationName, setMigrationName,
+    runningMigration,
+    migrationError, migrationSuccess,
+    handleApply,
+    handleFileUpload,
+  } = useMigrationsForm({ applyMigration });
 
-  const handleApply = async () => {
-    if (!migrationSql.trim()) return;
-    setRunningMigration(true);
-    setMigrationError(null);
-    setMigrationSuccess(null);
-    try {
-      await applyMigration(migrationSql.trim(), migrationName.trim() || undefined, 'manual');
-      setMigrationSuccess('Migration applied successfully!');
-      setMigrationSql('');
-      setMigrationName('');
-    } catch (err: unknown) {
-      setMigrationError(err instanceof Error ? err.message : String(err));
-    } finally {
-      setRunningMigration(false);
-    }
-  };
-
-  const handleFileUpload = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    const reader = new FileReader();
-    reader.onload = (ev) => {
-      const content = ev.target?.result as string;
-      setMigrationSql(content);
-      // Auto-generate name from filename
-      const name = file.name.replace(/\.sql$/i, '');
-      setMigrationName(name);
-    };
-    reader.readAsText(file);
-    // Reset the input so the same file can be selected again
-    e.target.value = '';
-  }, []);
-
-  const statusColor: Record<string, string> = {
-    applied:  'text-emerald-400',
-    pending:  'text-yellow-400',
-    failed:   'text-rose-400',
-  };
-  const statusBg: Record<string, string> = {
-    applied:  'bg-emerald-500/10',
-    pending:  'bg-yellow-500/10',
-    failed:   'bg-rose-500/10',
-  };
-
-  const sourceIcon = (source?: string) => {
-    if (source === 'cli')  return <HugeiconsIcon icon={TerminalIcon} size={10} className="inline mr-0.5" />;
-    if (source === 'api')  return <HugeiconsIcon icon={CloudIcon} size={10} className="inline mr-0.5" />;
-    return <HugeiconsIcon icon={UserIcon} size={10} className="inline mr-0.5" />;
-  };
+  const { applied, pending, failed } = useMigrationStats(migrations);
 
   return (
     <div className="p-6 space-y-6">
       <div className="flex items-center justify-between">
         <h2 className="text-sm font-semibold text-[var(--text)]">Migrations</h2>
-        <button onClick={refreshMigrations} className="flex items-center gap-1.5 text-[10px] text-[var(--text-dim)] hover:text-[var(--text)]">
+        <button
+          onClick={refreshMigrations}
+          className="flex items-center gap-1.5 text-[10px] text-[var(--text-dim)] hover:text-[var(--text)]"
+        >
           <HugeiconsIcon icon={RefreshIcon} size={12} />Refresh
         </button>
       </div>
@@ -144,18 +98,9 @@ export function MigrationsPanel() {
 
       {/* Migration stats */}
       <div className="grid grid-cols-3 gap-3">
-        <div className="rounded-lg border border-[var(--rail)] bg-[var(--surface)] p-3">
-          <p className="text-[10px] uppercase tracking-wider text-[var(--text-dim)] font-semibold">Applied</p>
-          <p className="text-xl font-mono font-bold text-emerald-400 mt-1">{appliedMigrations.length}</p>
-        </div>
-        <div className="rounded-lg border border-[var(--rail)] bg-[var(--surface)] p-3">
-          <p className="text-[10px] uppercase tracking-wider text-[var(--text-dim)] font-semibold">Pending</p>
-          <p className="text-xl font-mono font-bold text-yellow-400 mt-1">{pendingMigrations.length}</p>
-        </div>
-        <div className="rounded-lg border border-[var(--rail)] bg-[var(--surface)] p-3">
-          <p className="text-[10px] uppercase tracking-wider text-[var(--text-dim)] font-semibold">Failed</p>
-          <p className="text-xl font-mono font-bold text-rose-400 mt-1">{failedMigrations.length}</p>
-        </div>
+        <StatCard label="Applied" count={applied.length} color="emerald" />
+        <StatCard label="Pending" count={pending.length} color="yellow" />
+        <StatCard label="Failed" count={failed.length} color="rose" />
       </div>
 
       {/* Migration history */}
@@ -163,50 +108,18 @@ export function MigrationsPanel() {
         <div className="px-4 py-3 bg-[var(--surface)] border-b border-[var(--rail)]">
           <p className="text-xs font-semibold text-[var(--text)]">Migration History</p>
         </div>
-        {migrations.length === 0 ? (
-          <div className="p-8 text-center text-xs text-[var(--text-dim)]">No migrations recorded.</div>
-        ) : (
-          <table className="w-full text-xs">
-            <thead className="bg-[var(--surface)]">
-              <tr className="border-b border-[var(--rail)]">
-                {['Status', 'Version', 'Name', 'Source', 'Applied by', 'Applied At', 'Error'].map(h => (
-                  <th key={h} className="text-left px-4 py-2.5 font-semibold text-[var(--text-dim)] uppercase tracking-wider text-[9px]">{h}</th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {migrations.map(m => (
-                <tr key={m.id} className="border-b border-[var(--rail)]/40 hover:bg-[var(--rail)]/20">
-                  <td className="px-4 py-2.5">
-                    <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded ${statusBg[m.status] ?? ''} ${statusColor[m.status] ?? ''}`}>
-                      {m.status.toUpperCase()}
-                    </span>
-                  </td>
-                  <td className="px-4 py-2.5 font-mono text-[10px] text-[var(--text-dim)]">{m.version}</td>
-                  <td className="px-4 py-2.5 font-mono text-[var(--text-muted)]">{m.name}</td>
-                  <td className="px-4 py-2.5">
-                    {m.source && (
-                      <span className="text-[10px] text-[var(--text-dim)]">{sourceIcon(m.source)}{m.source}</span>
-                    )}
-                  </td>
-                  <td className="px-4 py-2.5 text-[10px] text-[var(--text-dim)]">{m.appliedBy ?? '—'}</td>
-                  <td className="px-4 py-2.5 text-[var(--text-dim)]">
-                    {m.appliedAt ? formatRelativeTime(m.appliedAt) : <span className="opacity-30">—</span>}
-                  </td>
-                  <td className="px-4 py-2.5 text-rose-400 text-[10px] truncate max-w-32" title={m.error ?? ''}>
-                    {m.error ? (
-                      <span className="flex items-center gap-1">
-                        <HugeiconsIcon icon={AlertCircleIcon} size={10} />
-                        {m.error}
-                      </span>
-                    ) : <span className="opacity-30">—</span>}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        )}
+        <MigrationsTable migrations={migrations} />
       </div>
+    </div>
+  );
+}
+
+function StatCard({ label, count, color }: { label: string; count: number; color: 'emerald' | 'yellow' | 'rose' }) {
+  const colorMap = { emerald: 'text-emerald-400', yellow: 'text-yellow-400', rose: 'text-rose-400' };
+  return (
+    <div className="rounded-lg border border-[var(--rail)] bg-[var(--surface)] p-3">
+      <p className="text-[10px] uppercase tracking-wider text-[var(--text-dim)] font-semibold">{label}</p>
+      <p className={`text-xl font-mono font-bold ${colorMap[color]} mt-1`}>{count}</p>
     </div>
   );
 }

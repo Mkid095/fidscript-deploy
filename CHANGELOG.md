@@ -6,6 +6,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
 ## [Unreleased]
 
+### Changed
+- `refactor(dashboard): split create-project-modal into types/hooks/form/modal`
+- `refactor(dashboard): split migrations-panel into hooks/table/modal`
+
 ### Fixed
 - `fix(api): use ApiKeyOrJwtGuard on QueuesController for BaaS API-key access`
 
