@@ -8,6 +8,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
 ### Changed
 - `anpas(settings): extract sdk calls from settings/page.tsx to settings-page-hooks.ts with useSettingsPage() hook`
+- `anpas(settings): extract sdk calls from notification-settings.tsx to notification-settings-hooks.ts with useNotificationSettings() hook`
 - `chore(audit): deep re-audit report — all 4 TS apps pass tsc --noEmit, SDK /api/v1/ prefix verified across 19 modules (194 MCP tool registrations, 0 broken), 0 @iconify/react remaining, 0 hardcoded MOCK/STUB data, 0 .tsx files over 150 lines. Findings: 20 files use Tailwind palette tokens directly (semantic status colors — known existing debt), MCP controller missing @UseGuards, components/README.md was missing at parent level`
 - `anpas(dashboard): replace @iconify with Hugeicons in 5 storage settings files (storage-section-header, storage-settings-cloudinary, storage-settings-provider, storage-settings-telegram, page.tsx)`
 - `anpas(dashboard): split docs.tsx (189L) into docs-page.tsx/docs-sidebar.tsx/docs-content.tsx/docs-hooks.ts; split project-sidebar.tsx (166L) into project-sidebar.tsx/sidebar-nav-items.tsx/sidebar-footer.tsx/sidebar-hooks.ts; split domain-mailboxes-tab.tsx (159L) into domain-mailboxes-tab.tsx/mailbox-list.tsx/mailbox-create-modal.tsx/mailbox-hooks.ts; split domain-aliases-tab.tsx (155L) into domain-aliases-tab.tsx/alias-list.tsx/alias-create-modal.tsx/alias-hooks.ts; doc content uses dangerouslySetInnerHTML with contentHtml strings to avoid JSX in .ts files`

@@ -1,8 +1,9 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { Button, Card, Input, Spinner } from '@fidscript/ui';
 import { useAuth } from '@/contexts/auth-context';
+import { useNotificationSettings } from './notification-settings-hooks';
 import type { NotificationChannel } from '@/types';
 
 interface NotificationSettingsProps {
@@ -16,27 +17,11 @@ interface NotificationSettingsProps {
 
 export function NotificationSettings({ onTest, onDelete, testingId, deletingId, channelError, onAdd }: NotificationSettingsProps) {
   const { getSdk } = useAuth();
-  const [channels, setChannels] = useState<NotificationChannel[]>([]);
-  const [loadingChannels, setLoadingChannels] = useState(true);
+  const { channels, loadingChannels } = useNotificationSettings({ getSdk });
   const [showAddChannel, setShowAddChannel] = useState(false);
   const [channelType, setChannelType] = useState<'email' | 'slack'>('email');
   const [channelName, setChannelName] = useState('');
   const [channelValue, setChannelValue] = useState('');
-
-  useEffect(() => {
-    async function loadChannels() {
-      setLoadingChannels(true);
-      try {
-        const sdk = getSdk();
-        const { projects } = await sdk.projects.list();
-        if (projects.length === 0) { setLoadingChannels(false); return; }
-        const ch = await sdk.monitoring.listNotificationChannels(projects[0].id);
-        setChannels(ch);
-      } catch { /* channels may not be available */ }
-      finally { setLoadingChannels(false); }
-    }
-    loadChannels();
-  }, [getSdk]);
 
   function handleAddChannel() {
     if (!channelName.trim() || !channelValue.trim()) return;
