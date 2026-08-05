@@ -10,6 +10,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/).
 - `fix(api): use ApiKeyOrJwtGuard on QueuesController for BaaS API-key access`
 
 ### Refactored
+- `refactor(dashboard): split log-viewer.tsx (196L) into 4 files — log-viewer.tsx (114L) orchestrator, log-viewer-hooks.ts (123L) useLogBuffer/useLogStream/useLogFilter business logic, log-stream-indicator.tsx (12L) streaming indicator, log-content.tsx (64L) updated to use LogStreamIndicator`
+- `refactor(dashboard): split schema-explorer.tsx (189L) into 4 files — schema-explorer.tsx (39L) orchestrator, schema-explorer-hooks.ts (15L) column fetching logic, schema-tree.tsx (104L) schema/table sidebar, schema-detail.tsx (131L) table detail panel with tabs`
 - `refactor(dashboard): split function-settings.tsx (184L) into 4 files — function-settings.tsx (85L) orchestrator, function-env-vars.tsx (71L) env var editor, function-settings-hooks.ts (80L) business logic, function-settings-types.ts (11L) shared types`
 - `refactor(dashboard): split notification-bell.tsx (189L) into 5 files — notification-bell.tsx (54L) orchestrator, notification-bell-hooks.ts (75L) with all business logic (polling, read state, mark read), notification-dropdown.tsx (77L) panel, notification-item.tsx (36L) row, notification-types.ts (28L) shared types`
 - `refactor(database): split connection-panel.tsx (187L) into 4 files — connection-panel.tsx (69L) orchestrator, connection-string.tsx (63L) connection string display/copy, connection-status.tsx (59L) health status, connection-panel-hooks.ts (44L) connection testing/rotation, connection-panel-types.ts (32L) shared types`

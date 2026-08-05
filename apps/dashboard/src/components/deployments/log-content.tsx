@@ -2,6 +2,7 @@
 
 import { Spinner } from '@fidscript/ui';
 import { LEVEL_STYLE, LogLine } from './log-types';
+import { LogStreamIndicator } from './log-stream-indicator';
 
 interface LogContentProps {
   containerRef: React.RefObject<HTMLDivElement | null>;
@@ -35,15 +36,7 @@ export function LogContent({ containerRef, filtered, inFlight, onScroll, isStrea
             <LogLineItem key={line.id} line={line} />
           ))}
           
-          {/* Streaming indicator at bottom */}
-          {isStreaming && inFlight && (
-            <div className="sticky bottom-0 left-0 right-0 px-4 py-2 bg-gradient-to-t from-[var(--surface-2)] to-transparent">
-              <div className="flex items-center gap-2 text-[10px] text-[var(--accent)]">
-                <span className="w-1.5 h-1.5 rounded-full bg-[var(--accent)] animate-pulse" />
-                Receiving live logs…
-              </div>
-            </div>
-          )}
+          {isStreaming && inFlight && <LogStreamIndicator />}
         </div>
       )}
     </div>
