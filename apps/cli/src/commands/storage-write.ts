@@ -20,10 +20,10 @@ export function addStorageWriteCommands(storage: Command, ctx: CliContext): void
     .description('Create a storage bucket')
     .option('-p, --project <id>', 'Project ID')
     .option('--provider <provider>', 'Storage provider (default: internal)', 'internal')
-    .option('--region <region>', 'Region (accepted but currently ignored by the API)')
+    .option('--region <region>', 'Region (NOT supported by current API — see storage controller)')
     .option('--public', 'Make the bucket public', false)
     .action(async (name: string, opts: { project?: string; provider?: string; region?: string; public?: boolean }) => {
-      if (opts.region) console.warn('Note: --region is accepted but not stored by the current API (Bucket.region is provider-driven).');
+      if (opts.region) die('--region is not supported by the current API. Bucket region is provider-driven; remove --region and retry.');
       const sdk = await loadSdk(ctx);
       const projectId = opts.project ?? die('No project ID (--project)');
       try {
