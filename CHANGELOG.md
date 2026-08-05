@@ -6,6 +6,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
 ## [Unreleased]
 
+### Fixed
+- `fix(sdk): add /api/v1 prefix to template method paths`
+
 ### Audit findings (api-mcp-audit)
 - **`mcp-hub.tsx`**: Connect snippet hardcoded `https://api.deploy.fidscript.com/api/v1` — replaced with dynamic `window.location.origin` so it works in all environments.
 - `sdk.mcp.*` module does not exist in `@fidscript/sdk` — MCP page falls back to `sdk.projects.createApiKey()` (PROJ-20) for key generation. Missing SDK coverage: `mcp.listTools()`, `mcp.enable()`, `mcp.disable()`, `mcp.listServers()`, `mcp.registerServer()`. Backend has MCP controller but no project-scoped server registry endpoints.

@@ -37,21 +37,21 @@ export class TemplatesModule {
    */
   async list(projectId: string, category?: string) {
     const params = category ? `?category=${category}` : '';
-    return this.client.get<Template[]>(`/projects/${projectId}/templates${params}`);
+    return this.client.get<Template[]>(`/api/v1/projects/${projectId}/templates${params}`);
   }
 
   /**
    * Get a single template.
    */
   async get(projectId: string, templateId: string) {
-    return this.client.get<Template>(`/projects/${projectId}/templates/${templateId}`);
+    return this.client.get<Template>(`/api/v1/projects/${projectId}/templates/${templateId}`);
   }
 
   /**
    * List template categories.
    */
   async listCategories() {
-    const res = await this.client.get<{ categories: string[] }>(`/projects/00000000-0000-0000-0000-000000000000/templates/categories`);
+    const res = await this.client.get<{ categories: string[] }>(`/api/v1/projects/00000000-0000-0000-0000-000000000000/templates/categories`);
     return res.categories ?? [];
   }
 
@@ -61,7 +61,7 @@ export class TemplatesModule {
    */
   async generate(projectId: string, templateId: string, name: string, variables: Record<string, string>) {
     return this.client.post<{ project: { id: string; name: string; slug: string }; files: unknown[]; templateName: string }>(
-      `/projects/${projectId}/templates/generate`,
+      `/api/v1/projects/${projectId}/templates/generate`,
       { templateId, name, variables },
     );
   }
@@ -72,7 +72,7 @@ export class TemplatesModule {
    */
   async generateAndDeploy(projectId: string, templateId: string, name: string, variables: Record<string, string>) {
     return this.client.post<GenerateAndDeployResult>(
-      `/projects/${projectId}/templates/generate-and-deploy`,
+      `/api/v1/projects/${projectId}/templates/generate-and-deploy`,
       { templateId, name, variables },
     );
   }
