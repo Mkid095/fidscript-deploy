@@ -67,8 +67,8 @@ export default function DomainDetailPage() {
       {activeTab === 'health' && <HealthTab projectId={projectId} domainId={domainId} />}
       {activeTab === 'email' && <EmailTab projectId={projectId} domainId={domainId} />}
       {activeTab === 'ssl' && <SslTab projectId={projectId} domainId={domainId} />}
-      {activeTab === 'wizard' && <WizardTab />}
-      {activeTab === 'repairs' && <RepairsTab />}
+      {activeTab === 'wizard' && <WizardTab projectId={projectId} domainId={domainId} />}
+      {activeTab === 'repairs' && <RepairsTab projectId={projectId} domainId={domainId} />}
     </div>
   );
 }

@@ -6,6 +6,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
 ## [Unreleased]
 
+### Added
+- `feat(dashboard): wire MCP page to real McpHub component — replaces stub with live API key generation, tool manifest, and stdio connection instructions`
+- `feat(dashboard): wire domains wizard tab — guides users through DNS record setup with live health verification polling`
+- `feat(dashboard): wire domains repairs tab — health check, zone sync/import, open incidents + verification history`
+
 ### Fixed
 - `fix(sdk): add /api/v1 prefix to template method paths`
 

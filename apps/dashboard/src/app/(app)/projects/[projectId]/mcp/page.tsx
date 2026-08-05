@@ -1,68 +1,18 @@
 'use client';
 
-import Link from 'next/link';
-import { HugeiconsIcon } from '@hugeicons/react';
-import { SourceCodeIcon, ArrowRight01Icon, AlertCircleIcon } from '@hugeicons/core-free-icons';
-import { Card, Button } from '@fidscript/ui';
+import { useProjectContext } from '@/contexts/project-context';
+import { McpHub } from './mcp-hub';
 
-/**
- * MCP — coming soon.
- *
- * The Model Context Protocol (MCP) surface is the most missing piece of the platform.
- * No SDK module exists for it yet (`packages/sdk/src/modules/` has no `mcp.ts`).
- * The endpoint inventory is sketched in `docs/product/services/mcp.md` and the
- * inventory in `docs/phases/frontend/backend/surfaces.md` (MCP-* IDs).
- *
- * Per rule 16, this stub is honest about what's missing — the AddServer button
- * is disabled with a TODO pointing at the missing SDK module.
- */
-export default function McpStub() {
-  return (
-    <div className="max-w-3xl">
-      <div className="flex items-center gap-3 mb-6">
-        <HugeiconsIcon icon={SourceCodeIcon} size={20} className="text-[var(--text-muted)]" />
-        <h1 className="text-xl font-bold text-[var(--text-muted)]">MCP</h1>
-        <span className="text-xs px-2 py-0.5 rounded-full border bg-[var(--rail)] text-[var(--text-muted)] border-[var(--rail-light)]">
-          Coming soon
-        </span>
+export default function McpPage() {
+  const { project } = useProjectContext();
+
+  if (!project) {
+    return (
+      <div className="flex items-center justify-center min-h-64">
+        <p className="text-sm text-[var(--text-muted)]">Select a project to view MCP settings.</p>
       </div>
+    );
+  }
 
-      <Card className="border border-[var(--rail)] p-6 mb-4">
-        <h2 className="text-sm font-semibold text-[var(--text)] mb-2">What this screen will do</h2>
-        <p className="text-sm text-[var(--text-muted)] mb-4">
-          The platform exposes itself as an MCP server, so AI agents (Claude Code, Cursor, etc.)
-          can call platform endpoints through the standardized Model Context Protocol.
-          Once built, this screen will list MCP servers, expose tool manifests, and surface
-          connection health.
-        </p>
-        <ul className="space-y-1.5 text-sm text-[var(--text-muted)] ml-1 mb-4">
-          <li className="flex items-center gap-2">
-            <HugeiconsIcon icon={ArrowRight01Icon} size={14} className="text-[var(--text-dim)]" />
-            List MCP servers registered for this project
-          </li>
-          <li className="flex items-center gap-2">
-            <HugeiconsIcon icon={ArrowRight01Icon} size={14} className="text-[var(--text-dim)]" />
-            Show the tool manifest (what MCP methods are exposed)
-          </li>
-          <li className="flex items-center gap-2">
-            <HugeiconsIcon icon={ArrowRight01Icon} size={14} className="text-[var(--text-dim)]" />
-            Health + recent call metrics
-          </li>
-        </ul>
-        <Button variant="ghost" size="sm" disabled className="flex items-center gap-1.5">
-          <HugeiconsIcon icon={SourceCodeIcon} size={14} />
-          Add MCP server
-        </Button>
-      </Card>
-
-      <div className="bg-[var(--rail)]/50 border border-[var(--rail-light)] rounded-lg p-3 flex items-start gap-2">
-        <HugeiconsIcon icon={AlertCircleIcon} size={14} className="text-[var(--text-muted)] flex-shrink-0 mt-0.5" />
-        <p className="text-xs text-[var(--text-muted)]">
-          Blocked on a missing SDK module:{' '}
-          <code className="text-[var(--text-muted)]">packages/sdk/src/modules/mcp.ts</code>.
-          See the <Link href="/docs/product/services/mcp" className="text-[var(--accent)] hover:text-[var(--accent)]">MCP service spec</Link> for the inventory and acceptance criteria.
-        </p>
-      </div>
-    </div>
-  );
+  return <McpHub project={project} />;
 }
