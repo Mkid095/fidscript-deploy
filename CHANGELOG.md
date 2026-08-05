@@ -7,6 +7,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/).
 ## [Unreleased]
 
 ### Changed
+- `anpas(settings): extract sdk calls from settings/page.tsx to settings-page-hooks.ts with useSettingsPage() hook`
+- `chore(audit): deep re-audit report — all 4 TS apps pass tsc --noEmit, SDK /api/v1/ prefix verified across 19 modules (194 MCP tool registrations, 0 broken), 0 @iconify/react remaining, 0 hardcoded MOCK/STUB data, 0 .tsx files over 150 lines. Findings: 20 files use Tailwind palette tokens directly (semantic status colors — known existing debt), MCP controller missing @UseGuards, components/README.md was missing at parent level`
 - `anpas(dashboard): replace @iconify with Hugeicons in 5 storage settings files (storage-section-header, storage-settings-cloudinary, storage-settings-provider, storage-settings-telegram, page.tsx)`
 - `anpas(dashboard): split docs.tsx (189L) into docs-page.tsx/docs-sidebar.tsx/docs-content.tsx/docs-hooks.ts; split project-sidebar.tsx (166L) into project-sidebar.tsx/sidebar-nav-items.tsx/sidebar-footer.tsx/sidebar-hooks.ts; split domain-mailboxes-tab.tsx (159L) into domain-mailboxes-tab.tsx/mailbox-list.tsx/mailbox-create-modal.tsx/mailbox-hooks.ts; split domain-aliases-tab.tsx (155L) into domain-aliases-tab.tsx/alias-list.tsx/alias-create-modal.tsx/alias-hooks.ts; doc content uses dangerouslySetInnerHTML with contentHtml strings to avoid JSX in .ts files`
 - `anpas(dashboard): split notification-bell.tsx (189L→53L) using existing notification-bell-hooks/notification-item/notification-dropdown; split email-settings-form.tsx (162L→121L) extracting BACKEND_INFO to hooks and credentials to email-settings-credentials.tsx; split queue-messages-table.tsx (151L→106L) extracting MessageRow and STATUS_COLORS to queue-message-row.tsx/queue-messages-table-hooks.ts`
@@ -17,6 +19,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/).
 - `refactor(dashboard): split migrations-panel into hooks/table/modal`
 
 ### Docs
+- `docs(dashboard): add parent components/README.md with directory map, conventions (no SDK calls in components, Hugeicons only, status-color tokens), and the new-component checklist — completes the 13/13 README coverage across the components tree`
 - `docs(dashboard): add READMEs to all 12 component directories — auth, database (38 files), deployments (28 files), docs, functions (25 files), landing, layout, projects, queues (21 files), storage (28 files), theme, ui. Each README lists sub-areas, file purpose tables, props where applicable, and conventions`
 
 ### Refactored
@@ -26,6 +29,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/).
 - `chore(dashboard): delete dead duplicate log hooks — use-log-buffer.ts and use-log-stream.ts were unused; their active implementations live in log-viewer-hooks.ts and are imported by log-viewer.tsx`
 
 ### Fixed
+- `fix(api): add @UseGuards(JwtAuthGuard) to McpController — endpoints were extracting req.user?.id with no guard populating it, so every MCP admin call returned 403 for authenticated users`
 - `fix(api): use ApiKeyOrJwtGuard on QueuesController for BaaS API-key access`
 
 ### Refactored
