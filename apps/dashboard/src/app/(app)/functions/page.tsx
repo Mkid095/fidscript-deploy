@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useState } from 'react';
+import { useState } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { HugeiconsIcon } from '@hugeicons/react';
 import { Add01Icon, FunctionIcon } from '@hugeicons/core-free-icons';
@@ -8,74 +8,19 @@ import { Button, Spinner } from '@fidscript/ui';
 
 import { useAuth } from '@/contexts/auth-context';
 import { useShellProjectId } from '@/contexts/project-context';
+import { useFunctionsData } from './use-functions-data';
 import { FunctionList, CreateFunctionModal } from '@/components/functions';
-import type { Function_ } from '@/types';
 
 export default function FunctionsPage() {
   const { getSdk } = useAuth();
   const shellProjectId = useShellProjectId();
   const searchParams = useSearchParams();
-  const [projectId, setProjectId] = useState(shellProjectId ?? '');
-  const [functions, setFunctions] = useState<Function_[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const sdk = getSdk();
   const [showCreate, setShowCreate] = useState(searchParams.get('createFunction') === 'true');
 
-  const loadFunctions = useCallback(async () => {
-    if (!projectId) return;
-    setLoading(true);
-    try {
-      const sdk = getSdk();
-      const data = await sdk.functions.list(projectId);
-      setFunctions(data as Function_[]);
-      setError(null);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to load functions');
-    } finally {
-      setLoading(false);
-    }
-  }, [projectId, getSdk]);
-
-  useEffect(() => { loadFunctions(); }, [loadFunctions]);
-
-  // Realtime subscription for function events
-  useEffect(() => {
-    if (!projectId) return;
-    const sdk = getSdk();
-    const rt = (sdk as any).realtime;
-    if (!rt) return;
-
-    const token = localStorage.getItem('fidscript_access_token')
-      ?? localStorage.getItem('fidscript_token') ?? '';
-
-    let cancelled = false;
-
-    rt.connect(() => token, projectId).then(() => {
-      if (cancelled) return;
-      const unsub = rt.subscribeFunctions(projectId, (event: any) => {
-        const et = event?.type;
-        if (!et) return;
-        if (et === 'function.created' || et === 'function.deleted') {
-          loadFunctions();
-        }
-      });
-      if (cancelled) unsub();
-    });
-
-    return () => { cancelled = true; };
-  }, [projectId, getSdk, loadFunctions]);
-
-  async function handleCreate(data: { name: string; runtime: string }) {
-    const sdk = getSdk();
-    const created = await sdk.functions.create(projectId, data) as Function_;
-    setFunctions(prev => [...prev, created]);
-    return created;
-  }
-
-  async function handleDelete(fn: Function_) {
-    const sdk = getSdk();
-    await sdk.functions.delete(projectId, fn.id);
-  }
+  const projectId = shellProjectId ?? '';
+  const { functions, loading, error, loadFunctions, handleCreate, handleDelete } =
+    useFunctionsData(sdk, projectId);
 
   return (
     <div className="px-4 sm:px-6 lg:px-8 py-6">

@@ -1,11 +1,11 @@
 'use client';
 
-import { useEffect, useState, useCallback } from 'react';
+import { useState, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { Card, Button, Spinner, EmptyState, Toast } from '@fidscript/ui';
-import type { Database } from '@fidscript-deploy/sdk';
 import { useAuth } from '@/contexts/auth-context';
 import { useShellProjectId } from '@/contexts/project-context';
+import { useDatabasesData } from './use-databases-data';
 import { DatabaseListHeader } from './database-list-header';
 import { DatabaseCreateForm } from './database-create-form';
 
@@ -13,10 +13,17 @@ export default function DatabasesPage() {
   const { getSdk } = useAuth();
   const router = useRouter();
   const shellProjectId = useShellProjectId();
+  const sdk = getSdk();
 
-  const [databases, setDatabases] = useState<Database[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const {
+    databases, setDatabases,
+    projects,
+    projectId,
+    loadingDatabases: loading,
+    loadingProjects,
+    error,
+  } = useDatabasesData(sdk, shellProjectId);
+
   const [showCreate, setShowCreate] = useState(false);
   const [newName, setNewName] = useState('');
   const [newType, setNewType] = useState<'postgres' | 'redis'>('postgres');
@@ -24,38 +31,12 @@ export default function DatabasesPage() {
   const [createError, setCreateError] = useState<string | null>(null);
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
 
-  useEffect(() => {
-    async function load() {
-      if (!shellProjectId) return;
-      setLoading(true);
-      setError(null);
-      try {
-        const sdk = getSdk();
-        const data = await sdk.databases.list(shellProjectId);
-        setDatabases(data);
-      } catch (err) {
-        setError(err instanceof Error ? err.message : 'Failed to load databases');
-      } finally {
-        setLoading(false);
-      }
-    }
-    load();
-  }, [getSdk, shellProjectId]);
-
   const handleCreate = useCallback(async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!newName.trim()) return;
+    if (!newName.trim() || !projectId) return;
     setCreating(true);
     setCreateError(null);
     try {
-      const sdk = getSdk();
-      const { projects: projectList } = await sdk.projects.list();
-      const projectId = shellProjectId ?? (projectList ?? [])[0]?.id;
-      if (!projectId) {
-        setCreateError('No project found. Create a project first.');
-        setCreating(false);
-        return;
-      }
       const created = await sdk.databases.create(projectId, { name: newName.trim(), type: newType });
       setDatabases(prev => [...prev, created]);
       setNewName('');
@@ -67,7 +48,7 @@ export default function DatabasesPage() {
     } finally {
       setCreating(false);
     }
-  }, [newName, newType, getSdk, shellProjectId]);
+  }, [newName, newType, sdk, projectId, setDatabases]);
 
   return (
     <div>

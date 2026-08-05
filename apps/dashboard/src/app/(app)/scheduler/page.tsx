@@ -7,6 +7,7 @@ import { useAuth } from '@/contexts/auth-context';
 import { useShellProjectId } from '@/contexts/project-context';
 import type { CronJob } from '@/types';
 import { useSchedulerData } from './use-scheduler-data';
+import { useSchedulerActions } from './use-scheduler-actions';
 import { JobListHeader } from './job-list-header';
 import { JobListContent } from './job-list-content';
 import { JobFormModal } from './job-form-modal';
@@ -22,6 +23,9 @@ export default function SchedulerPage() {
     projects, pickedProjectId, setPickedProjectId, effectiveProjectId,
     jobs, setJobs, jobStats, loadingProjects, loadingJobs, error,
   } = useSchedulerData(sdk, initialProjectId, shellProjectId);
+
+  const { handleCreate: sdkCreate, handleToggle: sdkToggle, handleTrigger: sdkTrigger } =
+    useSchedulerActions(sdk, effectiveProjectId, setJobs);
 
   const [showCreate, setShowCreate] = useState(false);
   const [creating, setCreating] = useState(false);
@@ -45,9 +49,7 @@ export default function SchedulerPage() {
     setCreating(true);
     setCreateError(null);
     try {
-      await sdk.cron.create(effectiveProjectId, data);
-      const updated = await sdk.cron.list(effectiveProjectId);
-      setJobs(updated);
+      await sdkCreate(data);
       setForm({ name: '', expression: '', timezone: 'UTC', targetType: 'endpoint', endpoint: '', functionId: '', payload: '{}', retryAttempts: 3, retryDelay: 60, timeout: 300 });
       setShowCreate(false);
     } catch (err) {
@@ -61,8 +63,7 @@ export default function SchedulerPage() {
     if (!effectiveProjectId) return;
     setTogglingId(job.id);
     try {
-      await sdk.cron.update(effectiveProjectId, job.id, { enabled: !job.enabled });
-      setJobs(prev => prev.map(j => j.id === job.id ? { ...j, enabled: !j.enabled } : j));
+      await sdkToggle(job);
     } finally {
       setTogglingId(null);
     }
@@ -70,7 +71,7 @@ export default function SchedulerPage() {
 
   async function handleTrigger(job: CronJob) {
     if (!effectiveProjectId) return;
-    try { await sdk.cron.trigger(effectiveProjectId, job.id); } catch { /* fire and forget */ }
+    try { await sdkTrigger(job.id); } catch { /* fire and forget */ }
   }
 
   if (loadingProjects) {

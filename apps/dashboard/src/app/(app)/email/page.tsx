@@ -4,9 +4,9 @@ import type { EmailDomain } from '@fidscript-deploy/sdk';
 import { useEffect, useState } from 'react';
 import { Button, Card, EmptyState, Spinner } from '@fidscript/ui';
 
-import type { Project } from '@/types';
 import { useAuth } from '@/contexts/auth-context';
 import { useShellProjectId } from '@/contexts/project-context';
+import { useEmailProjects } from './use-email-projects';
 import { CreateDomainModal } from './create-domain-modal';
 import { DomainCard } from './domain-card';
 import { EmailProjectSelector } from './email-project-selector';
@@ -14,31 +14,14 @@ import { EmailProjectSelector } from './email-project-selector';
 export default function EmailPage() {
   const { getSdk } = useAuth();
   const shellProjectId = useShellProjectId();
-  const [projects, setProjects] = useState<Project[]>([]);
-  const [pickedProjectId, setPickedProjectId] = useState('');
+  const sdk = getSdk();
+  const { projects, pickedProjectId, setPickedProjectId, loading: loadingProjects } =
+    useEmailProjects(sdk, shellProjectId);
   const selectedProjectId = shellProjectId ?? pickedProjectId;
   const [domains, setDomains] = useState<EmailDomain[]>([]);
-  const [loadingProjects, setLoadingProjects] = useState(!shellProjectId);
   const [loadingDomains, setLoadingDomains] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [showAdd, setShowAdd] = useState(false);
-
-  useEffect(() => {
-    if (shellProjectId) return;
-    async function load() {
-      try {
-        const sdk = getSdk();
-        const data = await sdk.projects.list();
-        setProjects(data.projects ?? []);
-        if ((data.projects ?? []).length > 0 && !pickedProjectId) {
-          setPickedProjectId((data.projects ?? [])[0].id);
-        }
-      } catch { /* ignore */ }
-      finally { setLoadingProjects(false); }
-    }
-    load();
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [getSdk, shellProjectId]);
 
   useEffect(() => {
     if (!selectedProjectId) return;
