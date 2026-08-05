@@ -9,6 +9,7 @@ import { Banner } from './banner';
 import { BucketCard } from './bucket-card';
 import { CreateBucketForm } from './create-bucket-form';
 import { useStorageRealtime } from './use-storage-realtime';
+import { useStorageList } from './storage-list.use';
 import type { Bucket } from './bucket';
 
 interface StorageListProps {
@@ -17,9 +18,6 @@ interface StorageListProps {
 
 export function StorageList({ projectId }: StorageListProps) {
   const { getSdk, getToken } = useAuth();
-  const [buckets, setBuckets] = useState<Bucket[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
   const [banner, setBanner] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
   const [showCreate, setShowCreate] = useState(false);
 
@@ -28,40 +26,23 @@ export function StorageList({ projectId }: StorageListProps) {
     setTimeout(() => setBanner(null), 4000);
   }, []);
 
-  const loadBuckets = useCallback(async () => {
-    setLoading(true);
-    setError(null);
-    try {
-      const data = await getSdk().storage.listBuckets(projectId) as Bucket[];
-      setBuckets(data);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to load buckets');
-    } finally {
-      setLoading(false);
-    }
-  }, [projectId, getSdk]);
-
-  useEffect(() => { loadBuckets(); }, [loadBuckets]);
+  const { buckets, setBuckets, loading, error, deleteBucket } = useStorageList(projectId, getSdk);
 
   useStorageRealtime(getSdk, getToken, projectId, {
     onBucketCreated: (bucket) => {
-      setBuckets(prev => prev.find(b => b.id === bucket.id) ? prev : [...prev, bucket]);
+      setBuckets((prev: Bucket[]) => prev.find(b => b.id === bucket.id) ? prev : [...prev, bucket]);
     },
     onBucketDeleted: (bucketId) => {
-      setBuckets(prev => prev.filter(b => b.id !== bucketId));
+      setBuckets((prev: Bucket[]) => prev.filter(b => b.id !== bucketId));
     },
   });
 
   const handleDeleteBucket = useCallback(async (bucket: Bucket) => {
     if (!confirm(`Delete bucket "${bucket.name}"? All files inside will be permanently deleted.`)) return;
-    try {
-      await getSdk().storage.deleteBucket(projectId, bucket.id);
-      setBuckets(prev => prev.filter(b => b.id !== bucket.id));
-      showBanner(`Bucket "${bucket.name}" deleted`, 'success');
-    } catch (err) {
-      showBanner(err instanceof Error ? err.message : 'Delete failed', 'error');
-    }
-  }, [projectId, getSdk, showBanner]);
+    const ok = await deleteBucket(bucket);
+    if (ok) showBanner(`Bucket "${bucket.name}" deleted`, 'success');
+    else showBanner('Delete failed', 'error');
+  }, [deleteBucket, showBanner]);
 
   return (
     <div className="p-6 lg:p-8 max-w-5xl space-y-6">

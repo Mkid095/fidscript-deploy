@@ -10,6 +10,7 @@ import { useBucketFileActions } from './use-bucket-file-actions';
 import { useUploadFiles } from './use-upload-files';
 import { useBucketRealtime } from './use-bucket-realtime';
 import { useFilePreview } from './use-file-preview';
+import { useBucketFiles } from './bucket-detail.use';
 import type { StorageFile } from '@/types';
 
 type ViewMode = 'list' | 'grid';
@@ -22,10 +23,7 @@ interface BucketDetailProps {
 export function BucketDetail({ projectId, bucketId }: BucketDetailProps) {
   const { getSdk, getToken } = useAuth();
 
-  const [files, setFiles] = useState<StorageFile[]>([]);
   const [previewUrls, setPreviewUrls] = useState<Record<string, string>>({});
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
   const [banner, setBanner] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
   const [viewMode, setViewMode] = useState<ViewMode>('list');
   const [prefix, setPrefix] = useState('');
@@ -39,23 +37,7 @@ export function BucketDetail({ projectId, bucketId }: BucketDetailProps) {
     setTimeout(() => setBanner(null), 4000);
   }, []);
 
-  const loadFiles = useCallback(async () => {
-    setLoading(true);
-    setError(null);
-    try {
-      const data = await getSdk().storage.listFiles(projectId, bucketId, {
-        prefix: prefix || undefined,
-        limit: 50,
-      });
-      setFiles(data.files ?? []);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to load files');
-    } finally {
-      setLoading(false);
-    }
-  }, [projectId, bucketId, getSdk, prefix]);
-
-  useEffect(() => { loadFiles(); }, [loadFiles]);
+  const { files, setFiles, loading, error, loadFiles } = useBucketFiles(projectId, bucketId, prefix, getSdk);
 
   const cachePreviewUrl = useCallback((fileId: string, url: string) => {
     setPreviewUrls(prev => ({ ...prev, [fileId]: url }));
@@ -64,16 +46,16 @@ export function BucketDetail({ projectId, bucketId }: BucketDetailProps) {
   const preview = useFilePreview({ projectId, bucketId, getSdk, onPreviewUrlCached: cachePreviewUrl });
 
   const handleFileUploaded = useCallback((file: StorageFile) => {
-    setFiles(prev => prev.find(f => f.id === file.id) ? prev : [file, ...prev]);
-  }, []);
+    setFiles((prev: StorageFile[]) => prev.find(f => f.id === file.id) ? prev : [file, ...prev]);
+  }, [setFiles]);
 
   const handleFileDeleted = useCallback((fileId: string) => {
-    setFiles(prev => prev.filter(f => f.id !== fileId));
+    setFiles((prev: StorageFile[]) => prev.filter(f => f.id !== fileId));
     setPreviewUrls(prev => {
       const { [fileId]: _, ...rest } = prev;
       return rest;
     });
-  }, []);
+  }, [setFiles]);
 
   useBucketRealtime({
     projectId, bucketId, getSdk, getToken,

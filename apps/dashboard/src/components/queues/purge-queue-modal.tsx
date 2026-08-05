@@ -1,7 +1,8 @@
 'use client';
 
 import { useState } from 'react';
-import { Icon } from '@iconify/react';
+import { HugeiconsIcon } from '@hugeicons/react';
+import { Delete02Icon, Cancel01Icon, ExclamationMarkIcon, CheckmarkCircle01Icon } from '@hugeicons/core-free-icons';
 import { Button } from '@fidscript/ui';
 import { usePurgeQueue } from './purge-queue.use';
 
@@ -16,25 +17,13 @@ interface PurgeQueueModalProps {
 
 export function PurgeQueueModal({ queueId, queueName, projectId, onClose, onPurged, getSdk }: PurgeQueueModalProps) {
   const [includeDlq, setIncludeDlq] = useState(false);
-  const [purging, setPurging] = useState(false);
-  const [result, setResult] = useState<{ purged: number; dlqPurged: number } | null>(null);
-  const [error, setError] = useState<string | null>(null);
+  const { purging, result, error, purge } = usePurgeQueue(projectId, queueId, getSdk);
 
   const handlePurge = async (e: React.FormEvent) => {
     e.preventDefault();
-    setPurging(true);
-    setError(null);
-    try {
-      const sdk = getSdk();
-      const res = await sdk.queues.purge(projectId, queueId, includeDlq);
-      setResult(res);
-      if (!includeDlq || res.dlqPurged === 0) {
-        setTimeout(() => { onPurged(); onClose(); }, 1500);
-      }
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to purge queue');
-    } finally {
-      setPurging(false);
+    const res = await purge(includeDlq);
+    if (res && (!includeDlq || res.dlqPurged === 0)) {
+      setTimeout(() => { onPurged(); onClose(); }, 1500);
     }
   };
 
@@ -45,7 +34,7 @@ export function PurgeQueueModal({ queueId, queueName, projectId, onClose, onPurg
         <div className="flex items-center justify-between p-5 border-b border-[var(--rail)]">
           <div className="flex items-center gap-2">
             <div className="w-7 h-7 rounded-lg bg-[var(--danger)]/10 flex items-center justify-center">
-              <Icon icon="icons8:trash" width={14} height={14} className="text-[var(--danger)]" />
+              <HugeiconsIcon icon={Delete02Icon} size={14} className="text-[var(--danger)]" />
             </div>
             <div>
               <h2 className="text-sm font-semibold text-[var(--text)]">Purge Queue</h2>
@@ -56,14 +45,14 @@ export function PurgeQueueModal({ queueId, queueName, projectId, onClose, onPurg
             onClick={onClose}
             className="p-1 rounded-lg text-[var(--text-dim)] hover:text-[var(--text)] hover:bg-[var(--rail)] transition-colors"
           >
-            <Icon icon="icons8:cancel" width={14} height={14} />
+            <HugeiconsIcon icon={Cancel01Icon} size={14} />
           </button>
         </div>
 
         {!result ? (
           <form onSubmit={handlePurge} className="p-5 space-y-4">
             <div className="flex items-start gap-3 text-xs text-[var(--text-dim)] bg-[var(--warning)]/5 border border-[var(--warning)]/15 rounded-lg p-3">
-              <Icon icon="icons8:exclamation-mark" width={14} height={14} className="text-[var(--warning)] flex-shrink-0 mt-0.5" />
+              <HugeiconsIcon icon={ExclamationMarkIcon} size={14} className="text-[var(--warning)] flex-shrink-0 mt-0.5" />
               <span>
                 Purging will permanently delete all <strong className="text-[var(--text)]">pending</strong> messages from this queue.
                 This action cannot be undone.
@@ -87,7 +76,7 @@ export function PurgeQueueModal({ queueId, queueName, projectId, onClose, onPurg
 
             {error && (
               <div className="flex items-center gap-2 text-xs text-[var(--danger)] bg-[var(--danger)]/10 border border-[var(--danger)]/20 rounded-lg px-3 py-2">
-                <Icon icon="icons8:cancel" width={13} height={13} />
+                <HugeiconsIcon icon={Cancel01Icon} size={13} />
                 {error}
               </div>
             )}
@@ -110,7 +99,7 @@ export function PurgeQueueModal({ queueId, queueName, projectId, onClose, onPurg
           <div className="p-5 space-y-4">
             <div className="flex items-center gap-3 text-[var(--success)]">
               <div className="w-8 h-8 rounded-full bg-[var(--success)]/10 flex items-center justify-center">
-                <Icon icon="icons8:checkmark" width={16} height={16} />
+                <HugeiconsIcon icon={CheckmarkCircle01Icon} size={16} />
               </div>
               <div>
                 <p className="text-sm font-medium">Queue purged successfully</p>

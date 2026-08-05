@@ -16,27 +16,25 @@ export function RealtimeMonitor() {
   }>>([]);
   const [autoScroll, setAutoScroll] = useState(true);
   const bottomRef = useRef<HTMLDivElement>(null);
-  const unsubsRef = useRef<Record<string, () => void>>({});
+
+  const { subscribe, unsubscribe, unsubscribeAll } = useRealtimeMonitorSubscribe(databaseId, getSdk);
 
   // Subscribe/unsubscribe a table
   const toggleTable = useCallback((table: string) => {
     if (!databaseId) return;
     if (subscribedTables.has(table)) {
-      unsubsRef.current[table]?.();
-      delete unsubsRef.current[table];
+      unsubscribe(table);
       setSubscribedTables(prev => { const n = new Set(prev); n.delete(table); return n; });
     } else {
-      const sdk = getSdk();
-      sdk.database(databaseId).from(table).subscribe((event: unknown) => {
-        const e = event as { eventType: string; old: unknown; new: unknown; timestamp: string };
+      subscribe(table, (e) => {
         setRealtimeEvents(prev => [
           { table, eventType: e.eventType, old: (e.old ?? {}) as Record<string, unknown>, new: (e.new ?? {}) as Record<string, unknown>, timestamp: e.timestamp ?? new Date().toISOString() },
           ...prev,
         ].slice(0, 200));
-      }).then(sub => { unsubsRef.current[table] = () => { sub.unsubscribe(); }; });
+      });
       setSubscribedTables(prev => new Set(prev).add(table));
     }
-  }, [databaseId, getSdk, subscribedTables]);
+  }, [databaseId, subscribedTables, subscribe, unsubscribe]);
 
   // Auto-scroll
   useEffect(() => {
@@ -47,8 +45,8 @@ export function RealtimeMonitor() {
 
   // Cleanup subscriptions on unmount
   useEffect(() => {
-    return () => { Object.values(unsubsRef.current).forEach(fn => fn()); };
-  }, []);
+    return () => { unsubscribeAll(); };
+  }, [unsubscribeAll]);
 
   const eventColor: Record<string, string> = {
     INSERT: 'text-[var(--success)]',

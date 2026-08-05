@@ -1,10 +1,10 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useAuth } from '@/contexts/auth-context';
 import { Button, Spinner } from '@fidscript/ui';
 
-import { useAuth } from '@/contexts/auth-context';
 import { relativeTime } from './status-utils';
+import { useRollbackPicker } from './rollback-picker.use';
 import type { Deployment } from '@/types';
 
 interface RollbackPickerProps {
@@ -16,36 +16,12 @@ interface RollbackPickerProps {
 
 export function RollbackPicker({ projectId, currentId, onPicked, onClose }: RollbackPickerProps) {
   const { getSdk } = useAuth();
-  const [deployments, setDeployments] = useState<Deployment[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [selected, setSelected] = useState<string | null>(null);
-  const [submitting, setSubmitting] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const { deployments, loading, selected, setSelected, submitting, error, handleRollback } = useRollbackPicker(projectId, currentId, getSdk);
 
-  useEffect(() => {
-    getSdk().deployments.list(projectId, { limit: 50 })
-      .then(data => {
-        const all: Deployment[] = (data as any).deployments ?? data ?? [];
-        setDeployments(all.filter((d: Deployment) => d.status === 'SUCCESS' && d.id !== currentId));
-        setLoading(false);
-      })
-      .catch(() => setLoading(false));
-  }, [projectId, currentId, getSdk]);
-
-  async function handleRollback() {
-    if (!selected) return;
-    setSubmitting(true);
-    setError(null);
-    try {
-      const sdk = getSdk();
-      await sdk.deployments.rollback(projectId, currentId, selected);
-      onPicked(selected);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Rollback failed');
-    } finally {
-      setSubmitting(false);
-    }
-  }
+  const onRollback = async () => {
+    const result = await handleRollback();
+    if (result) onPicked(result);
+  };
 
   return (
     <div className="space-y-4">
@@ -71,7 +47,7 @@ export function RollbackPicker({ projectId, currentId, onPicked, onClose }: Roll
           size="sm"
           disabled={!selected || submitting}
           loading={submitting}
-          onClick={handleRollback}
+          onClick={onRollback}
         >
           Roll back
         </Button>

@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useAuth } from '@/contexts/auth-context';
 import { useDatabase } from '@/app/(app)/projects/[projectId]/databases/database-context';
 import { ConfirmDialog } from '@/components/deployments/confirm-dialog';
@@ -15,6 +15,7 @@ import { DataGridPagination } from './data-grid-pagination';
 import { InsertRowModal } from './data-grid-insert-modal';
 import { EditRowModal } from './data-grid-edit-modal';
 import { useDataGridMutation, useDataGridMutations } from './data-grid-use-mutation';
+import { useDataGridRealtime } from './data-grid-use-realtime';
 
 interface DataGridProps {
   table: string;
@@ -32,7 +33,6 @@ export function DataGrid({ table, state, onRefresh, isRealtime, columns: colInfo
   const [showInsertModal, setShowInsertModal] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [editingRow, setEditingRow] = useState<Record<string, unknown> | null>(null);
-  const unsubRef = useRef<(() => void) | null>(null);
 
   const { mutating, setMutating, mutateMsg, showMsg } = useDataGridMutation();
   const totalPages = Math.max(1, Math.ceil((state.total ?? 0) / PAGE_SIZE));
@@ -42,19 +42,7 @@ export function DataGrid({ table, state, onRefresh, isRealtime, columns: colInfo
     table, insertRow, updateRow, deleteRows, onRefresh, showMsg, setMutating,
   });
 
-  // Subscribe to realtime changes
-  useEffect(() => {
-    if (!isRealtime || !databaseId) return;
-    const sdk = getSdk();
-    let mounted = true;
-    sdk.database(databaseId).from(table).subscribe((event: unknown) => {
-      if (!mounted) return;
-      const e = event as { eventType: string };
-      if (['INSERT', 'UPDATE', 'DELETE'].includes(e.eventType)) onRefresh();
-    }).then(sub => { if (mounted) unsubRef.current = () => sub.unsubscribe(); })
-      .catch(() => { /* realtime not available */ });
-    return () => { mounted = false; unsubRef.current?.(); unsubRef.current = null; };
-  }, [isRealtime, databaseId, table, getSdk, onRefresh]);
+  useDataGridRealtime(table, databaseId, isRealtime, getSdk, onRefresh);
 
   useEffect(() => {
     setPage(1);

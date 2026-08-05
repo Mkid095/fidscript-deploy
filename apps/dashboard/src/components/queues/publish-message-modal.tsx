@@ -1,8 +1,10 @@
 'use client';
 
 import { useState } from 'react';
-import { Icon } from '@iconify/react';
+import { HugeiconsIcon } from '@hugeicons/react';
+import { Share01Icon, Cancel01Icon } from '@hugeicons/core-free-icons';
 import { Button } from '@fidscript/ui';
+import { usePublishMessage } from './publish-message.use';
 
 interface PublishMessageModalProps {
   queueId: string;
@@ -15,28 +17,20 @@ interface PublishMessageModalProps {
 
 export function PublishMessageModal({ queueId, queueName, projectId, onClose, onPublished, getSdk }: PublishMessageModalProps) {
   const [message, setMessage] = useState('{\n  \n}');
-  const [publishing, setPublishing] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const { publishing, error, publish } = usePublishMessage(projectId, queueId, getSdk);
 
   const handlePublish = async (e: React.FormEvent) => {
     e.preventDefault();
-    setPublishing(true);
-    setError(null);
+    let parsed: string | object;
     try {
-      let parsed: string | object;
-      try {
-        parsed = JSON.parse(message);
-      } catch {
-        parsed = message;
-      }
-      const sdk = getSdk();
-      await sdk.queues.publish(projectId, queueId, parsed);
+      parsed = JSON.parse(message);
+    } catch {
+      parsed = message;
+    }
+    const ok = await publish(message);
+    if (ok) {
       onPublished();
       onClose();
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to publish message');
-    } finally {
-      setPublishing(false);
     }
   };
 
@@ -47,7 +41,7 @@ export function PublishMessageModal({ queueId, queueName, projectId, onClose, on
         <div className="flex items-center justify-between p-5 border-b border-[var(--rail)]">
           <div className="flex items-center gap-2">
             <div className="w-7 h-7 rounded-lg bg-[var(--accent)]/10 flex items-center justify-center">
-              <Icon icon="icons8:share" width={14} height={14} className="text-[var(--accent)]" />
+              <HugeiconsIcon icon={Share01Icon} size={14} className="text-[var(--accent)]" />
             </div>
             <div>
               <h2 className="text-sm font-semibold text-[var(--text)]">Publish Message</h2>
@@ -58,7 +52,7 @@ export function PublishMessageModal({ queueId, queueName, projectId, onClose, on
             onClick={onClose}
             className="p-1 rounded-lg text-[var(--text-dim)] hover:text-[var(--text)] hover:bg-[var(--rail)] transition-colors"
           >
-            <Icon icon="icons8:cancel" width={14} height={14} />
+            <HugeiconsIcon icon={Cancel01Icon} size={14} />
           </button>
         </div>
 
@@ -79,8 +73,8 @@ export function PublishMessageModal({ queueId, queueName, projectId, onClose, on
           </div>
 
           {error && (
-            <div className="flex items-center gap-2 text-xs text-rose-400 bg-rose-500/10 border border-rose-500/20 rounded-lg px-3 py-2">
-              <Icon icon="icons8:cancel" width={13} height={13} />
+            <div className="flex items-center gap-2 text-xs text-[var(--danger)] bg-[var(--danger)]/10 border border-[var(--danger)]/20 rounded-lg px-3 py-2">
+              <HugeiconsIcon icon={Cancel01Icon} size={13} />
               {error}
             </div>
           )}
@@ -97,7 +91,7 @@ export function PublishMessageModal({ queueId, queueName, projectId, onClose, on
                 </>
               ) : (
                 <>
-                  <Icon icon="icons8:share" width={13} height={13} className="mr-1.5" />
+                  <HugeiconsIcon icon={Share01Icon} size={13} className="mr-1.5" />
                   Publish Message
                 </>
               )}
