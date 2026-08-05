@@ -15,11 +15,11 @@ interface CreateBucketFormProps {
   getSdk: () => FidscriptSDK;
 }
 
-const PROVIDERS: { value: StorageProviderType; label: string }[] = [
+const PROVIDERS: { value: StorageProviderType; label: string; comingSoon?: boolean }[] = [
   { value: 'internal',   label: 'Internal' },
   { value: 'cloudinary', label: 'Cloudinary' },
-  { value: 'telegram',  label: 'Telegram' },
-  { value: 's3',         label: 'AWS S3' },
+  { value: 'telegram',   label: 'Telegram' },
+  { value: 's3',         label: 'AWS S3 (not yet available)', comingSoon: true },
 ];
 
 export function CreateBucketForm({ projectId, onCreated, onError, getSdk }: CreateBucketFormProps) {
@@ -31,6 +31,11 @@ export function CreateBucketForm({ projectId, onCreated, onError, getSdk }: Crea
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!name.trim()) return;
+    const selected = PROVIDERS.find(p => p.value === provider);
+    if (selected?.comingSoon) {
+      onError('AWS S3 provider is not yet available. Use Internal, Cloudinary, or Telegram.');
+      return;
+    }
     setLoading(true);
     try {
       const created = await getSdk().storage.createBucket(projectId, name.trim(), provider);
@@ -70,7 +75,7 @@ export function CreateBucketForm({ projectId, onCreated, onError, getSdk }: Crea
               className="w-full bg-[var(--surface-2)] border border-[var(--rail)] text-[var(--text)] rounded-lg px-3 py-2 text-xs h-[36px]"
             >
               {PROVIDERS.map(p => (
-                <option key={p.value} value={p.value}>{p.label}</option>
+                <option key={p.value} value={p.value} disabled={p.comingSoon ?? false}>{p.label}</option>
               ))}
             </select>
           </div>

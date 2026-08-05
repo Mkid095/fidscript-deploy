@@ -5,10 +5,10 @@ import { HugeiconsIcon } from '@hugeicons/react';
 import { Database01Icon, CloudIcon, TelegramIcon, HardDriveIcon, CheckmarkCircle01Icon, Cancel01Icon } from '@hugeicons/core-free-icons';
 
 const PROVIDERS = [
-  { value: 'internal', label: 'MinIO / Internal', desc: 'Built-in S3-compatible storage on this server', icon: Database01Icon },
-  { value: 'cloudinary', label: 'Cloudinary', desc: 'Cloud-based image & video optimization, CDN delivery', icon: CloudIcon },
-  { value: 'telegram', label: 'Telegram', desc: 'Store files as documents in a Telegram chat', icon: TelegramIcon },
-  { value: 's3', label: 'AWS S3', desc: 'Amazon S3 — scalable object storage', icon: HardDriveIcon },
+  { value: 'internal', label: 'MinIO / Internal', desc: 'Built-in S3-compatible storage on this server', icon: Database01Icon, comingSoon: false },
+  { value: 'cloudinary', label: 'Cloudinary', desc: 'Cloud-based image & video optimization, CDN delivery', icon: CloudIcon, comingSoon: false },
+  { value: 'telegram', label: 'Telegram', desc: 'Store files as documents in a Telegram chat', icon: TelegramIcon, comingSoon: false },
+  { value: 's3', label: 'AWS S3', desc: 'Amazon S3 — scalable object storage (not yet available)', icon: HardDriveIcon, comingSoon: true },
 ];
 
 interface Props {
@@ -37,7 +37,8 @@ export function StorageSettingsProvider({ config, onProviderChange }: Props) {
             (p.value === 'cloudinary' && config?.cloudinaryCredsSet) ||
             (p.value === 'telegram' && config?.telegramCredsSet);
           const isActive = defaultProvider === p.value;
-          const isDisabled = !isSet && p.value !== 'internal';
+          const isUnavailable = p.comingSoon;
+          const isDisabled = isUnavailable || (!isSet && p.value !== 'internal');
 
           return (
             <button
@@ -53,8 +54,11 @@ export function StorageSettingsProvider({ config, onProviderChange }: Props) {
                   <div>
                     <div className="flex items-center gap-1.5">
                       <span className="text-xs font-medium text-[var(--text)]">{p.label}</span>
-                      {isSet && <HugeiconsIcon icon={CheckmarkCircle01Icon} size={11} className="text-emerald-400" />}
-                      {!isSet && p.value !== 'internal' && <HugeiconsIcon icon={Cancel01Icon} size={11} className="text-[var(--text-dim)]" />}
+                      {isUnavailable && (
+                        <span className="text-[9px] font-bold uppercase tracking-wider text-[var(--text-dim)] bg-[var(--rail)] px-1.5 py-0.5 rounded">Coming soon</span>
+                      )}
+                      {!isUnavailable && isSet && <HugeiconsIcon icon={CheckmarkCircle01Icon} size={11} className="text-emerald-400" />}
+                      {!isUnavailable && !isSet && p.value !== 'internal' && <HugeiconsIcon icon={Cancel01Icon} size={11} className="text-[var(--text-dim)]" />}
                       {isActive && <span className="text-[9px] font-bold uppercase tracking-wider text-[var(--accent)]">Active</span>}
                     </div>
                     <p className="text-[10px] text-[var(--text-dim)] mt-0.5">{p.desc}</p>
