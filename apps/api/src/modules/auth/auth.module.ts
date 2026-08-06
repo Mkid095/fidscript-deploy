@@ -8,6 +8,7 @@ import { OrganizationController, InvitationAcceptController } from '@/modules/au
 import { AuthService } from '@/modules/auth/services/auth.service';
 import { AuthSessionService } from '@/modules/auth/services/auth-session.service';
 import { AuthRegisterService } from '@/modules/auth/services/auth-register.service';
+import { AuthOnboardingService } from '@/modules/auth/services/auth-onboarding.service';
 import { AuthLoginService } from '@/modules/auth/services/auth-login.service';
 import { AuthTokenService } from '@/modules/auth/services/auth-token.service';
 import { AuthProfileService } from '@/modules/auth/services/auth-profile.service';
@@ -25,6 +26,8 @@ import { JwtAuthGuard } from '@/modules/auth/jwt-auth.guard';
 import { PlatformAdminGuard } from '@/modules/auth/guards/platform-admin.guard';
 import { InstallationGuard } from '@/modules/auth/guards/installation.guard';
 import { ApiKeyOrJwtGuard } from '@/modules/auth/guards/api-key-or-jwt.guard';
+import { ProjectMemberGuard } from '@/modules/auth/guards/project-member.guard';
+import { EmailVerifiedGuard } from '@/modules/auth/guards/email-verified.guard';
 import { InstallationModule } from '@/modules/installation/installation.module';
 import { ProjectsModule } from '@/modules/projects/projects.module';
 
@@ -48,6 +51,7 @@ import { ProjectsModule } from '@/modules/projects/projects.module';
     AuthService,
     AuthSessionService,
     AuthRegisterService,
+    AuthOnboardingService,
     AuthLoginService,
     AuthTokenService,
     AuthProfileService,
@@ -64,7 +68,9 @@ import { ProjectsModule } from '@/modules/projects/projects.module';
     ApiKeyOrJwtGuard,
     PlatformAdminGuard,
     InstallationGuard,
+    ProjectMemberGuard,
+    EmailVerifiedGuard,
   ],
-  exports: [AuthService, OrganizationService, TeamService, JwtAuthGuard, ApiKeyOrJwtGuard, PlatformAdminGuard, InstallationGuard, JwtModule],
+  exports: [AuthService, OrganizationService, TeamService, JwtAuthGuard, ApiKeyOrJwtGuard, PlatformAdminGuard, InstallationGuard, ProjectMemberGuard, EmailVerifiedGuard, JwtModule],
 })
 export class AuthModule {}

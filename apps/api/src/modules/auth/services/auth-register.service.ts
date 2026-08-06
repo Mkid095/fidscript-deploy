@@ -1,17 +1,21 @@
-import { Injectable, ConflictException, BadRequestException, UnauthorizedException } from '@nestjs/common';
+import { Injectable, ConflictException, BadRequestException, UnauthorizedException, Logger } from '@nestjs/common';
 import { PrismaService } from '@/prisma/prisma.service';
 import { EventService } from '@/modules/events/event.service';
 import { AuthMagicCodeService } from '@/modules/auth/services/auth-magic-code.service';
+import { AuthOnboardingService } from '@/modules/auth/services/auth-onboarding.service';
 import * as bcrypt from 'bcrypt';
 
 const BCRYPT_ROUNDS = 12;
 
 @Injectable()
 export class AuthRegisterService {
+  private readonly logger = new Logger(AuthRegisterService.name);
+
   constructor(
     private prisma: PrismaService,
     private eventService: EventService,
     private magicCodeService: AuthMagicCodeService,
+    private onboarding: AuthOnboardingService,
   ) {}
 
   async register(
@@ -19,11 +23,19 @@ export class AuthRegisterService {
     ipAddress?: string,
     userAgent?: string,
   ) {
-    const requiredKeyword = process.env.SIGNUP_INVITE_KEYWORD?.trim();
+    const requiredKeyword = process.env['SIGNUP_INVITE_KEYWORD']?.trim();
     if (requiredKeyword) {
       if (!dto.inviteKeyword || dto.inviteKeyword.trim().toLowerCase() !== requiredKeyword.toLowerCase()) {
         throw new UnauthorizedException('Invalid or missing invite keyword');
       }
+    } else if (process.env['NODE_ENV'] === 'production') {
+      // No invite gate set in production → log loudly. The onboarding service
+      // below ensures every signup still has a usable workspace. The operator
+      // can set SIGNUP_INVITE_KEYWORD to close registration later.
+      this.logger.warn(
+        'SIGNUP_INVITE_KEYWORD is unset in production — open registration is enabled. ' +
+        'Set SIGNUP_INVITE_KEYWORD to restrict who can register.',
+      );
     }
     const authMethod = dto.authMethod ?? 'PASSWORD';
     const existing = await this.prisma.user.findUnique({ where: { email: dto.email } });
@@ -62,5 +74,9 @@ export class AuthRegisterService {
     );
 
     return user;
+  }
+
+  async provisionForNewUser(userId: string, email: string) {
+    return this.onboarding.provisionDefaults(userId, email);
   }
 }

@@ -33,8 +33,17 @@ export class AuthService {
 
   async register(dto: any, ip?: string, ua?: string) {
     const user = await this.authRegister.register(dto, ip, ua);
+    // Auto-provision a default Organization + Project so the dashboard is
+    // never empty on first login. Failures are swallowed inside the onboarding
+    // service; we still ship the auth tokens so the user can sign in and try
+    // provisioning manually (or a background job can reconcile later).
+    const onboarding = await this.authRegister.provisionForNewUser(user.id, user.email);
     const sess = await this.session.createSession(user.id, ip, ua);
-    return this.session.buildAuthResponse(user, sess);
+    const response = this.session.buildAuthResponse(user, sess);
+    return {
+      ...response,
+      onboarding: onboarding ?? null,
+    };
   }
 
   async login(dto: any, ip?: string, ua?: string) {
