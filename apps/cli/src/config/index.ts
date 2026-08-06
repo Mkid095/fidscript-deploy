@@ -5,6 +5,7 @@
 import { homedir } from 'os';
 import { join } from 'path';
 import { readFileSync, writeFileSync, mkdirSync, existsSync, chmodSync } from 'fs';
+import { loadLocalProjectId } from './project-context-loader';
 
 export const CONFIG_DIR = join(homedir(), '.fidscript');
 const CONFIG_FILE = join(CONFIG_DIR, 'config.json');
@@ -34,14 +35,24 @@ export function loadConfig(): CliConfig {
   if (!existsSync(CONFIG_FILE)) {
     return {
       apiUrl: process.env.FIDScript_API_URL ?? '',
+      currentProject: loadLocalProjectId(),
       outputFormat: 'table',
     };
   }
   try {
     const raw = readFileSync(CONFIG_FILE, 'utf8');
-    return JSON.parse(raw) as CliConfig;
+    const config = JSON.parse(raw) as CliConfig;
+    return {
+      ...config,
+      apiUrl: process.env.FIDScript_API_URL ?? config.apiUrl,
+      currentProject: loadLocalProjectId() ?? config.currentProject,
+    };
   } catch {
-    return { apiUrl: process.env.FIDScript_API_URL ?? '', outputFormat: 'table' };
+    return {
+      apiUrl: process.env.FIDScript_API_URL ?? '',
+      currentProject: loadLocalProjectId(),
+      outputFormat: 'table',
+    };
   }
 }
 

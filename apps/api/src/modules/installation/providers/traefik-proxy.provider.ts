@@ -62,6 +62,19 @@ export class TraefikProxyProvider implements IReverseProxyProvider {
   }
 
   private buildDynamicYml(domain: string): string {
+    // Traefik resolves certResolver names against the resolvers defined in
+    // installer/traefik/traefik.yml. The committed traefik.yml defines two
+    // resolvers: `letsencrypt-dns` (DNS-01 via Cloudflare) and
+    // `letsencrypt-http` (HTTP-01 fallback). The previous template used a
+    // hardcoded `myresolver` placeholder which doesn't exist in the static
+    // config — Traefik silently ignores the tls block and certificates
+    // never get issued. Use the real resolver names.
+    //
+    // NOTE: do NOT define `certificatesResolvers` here — the file provider
+    // can only define them per the static config. The original template's
+    // `certificatesResolvers: myresolver` block was both a typo and a no-op
+    // (file providers can't redefine resolvers that already exist on the
+    // static config).
     return `# Managed by FIDScript Platform — do not edit manually
 http:
   routers:
@@ -71,7 +84,7 @@ http:
       entryPoints:
         - websecure
       tls:
-        certResolver: myresolver
+        certResolver: letsencrypt-dns
 
     fidscript-dashboard:
       rule: \`Host(\`${domain}\`)\`
@@ -79,7 +92,7 @@ http:
       entryPoints:
         - websecure
       tls:
-        certResolver: myresolver
+        certResolver: letsencrypt-dns
 
   services:
     fidscript-api:
@@ -91,17 +104,6 @@ http:
       loadBalancer:
         servers:
           - url: http://fidscript-dashboard:3000
-
-certificatesResolvers:
-  myresolver:
-    acme:
-      email: admin@${domain}
-      storage: /acme-dns/acme.json
-      dnsChallenge:
-        provider: cloudflare
-        resolvers:
-          - 1.1.1.1
-          - 1.0.0.1
 `;
   }
 }

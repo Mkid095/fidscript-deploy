@@ -48,9 +48,18 @@ async function bootstrap() {
     }),
   );
 
+  // CORS — allow a comma-separated list of origins (e.g. "https://deploy.fidscript.com,https://app.deploy.fidscript.com")
+  // so the dashboard works whether it's served at the root domain or the app. alias.
+  // Falls back to '*' if unset (dev only). '*' is incompatible with credentials, so
+  // when CORS_ORIGIN is '*' we explicitly disable credentials.
+  const corsOriginRaw = process.env.CORS_ORIGIN?.trim();
+  const corsOrigin = corsOriginRaw && corsOriginRaw !== '*'
+    ? corsOriginRaw.split(',').map((o) => o.trim()).filter(Boolean)
+    : '*';
+  const corsCredentials = corsOrigin !== '*';
   app.enableCors({
-    origin: process.env.CORS_ORIGIN || '*',
-    credentials: true,
+    origin: corsOrigin,
+    credentials: corsCredentials,
   });
 
   const config = new DocumentBuilder()
