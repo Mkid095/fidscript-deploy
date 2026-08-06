@@ -49,10 +49,16 @@ export class QueuesModule {
     return this.client.delete(`/api/v1/projects/${projectId}/queues/${queueId}`);
   }
 
-  async publish(projectId: string, queueId: string, body: string | object, headers?: Record<string, string>) {
+  async publish(
+    projectId: string,
+    queueId: string,
+    body: string | object,
+    options?: { headers?: Record<string, string>; delaySeconds?: number },
+  ) {
     return this.client.post(`/api/v1/projects/${projectId}/queues/${queueId}/messages`, {
       body: typeof body === 'string' ? body : JSON.stringify(body),
-      headers,
+      headers: options?.headers,
+      delaySeconds: options?.delaySeconds,
     });
   }
 

@@ -3,6 +3,12 @@
 import { useState, useCallback } from 'react';
 import type { FidscriptSDK } from '@fidscript-deploy/sdk';
 
+export interface PublishMessageInputs {
+  body: string;
+  delaySeconds?: number;
+  headers?: Record<string, string>;
+}
+
 export function usePublishMessage(
   projectId: string,
   queueId: string,
@@ -11,18 +17,26 @@ export function usePublishMessage(
   const [publishing, setPublishing] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const publish = useCallback(async (message: string): Promise<boolean> => {
+  const publish = useCallback(async (inputs: PublishMessageInputs): Promise<boolean> => {
     setPublishing(true);
     setError(null);
     try {
       let parsed: string | object;
       try {
-        parsed = JSON.parse(message);
+        parsed = JSON.parse(inputs.body);
       } catch {
-        parsed = message;
+        parsed = inputs.body;
       }
       const sdk = getSdk();
-      await sdk.queues.publish(projectId, queueId, parsed);
+      const normalizedHeaders: Record<string, string> | undefined = inputs.headers
+        ? Object.fromEntries(
+            Object.entries(inputs.headers).filter(([, v]) => v.trim().length > 0),
+          )
+        : undefined;
+      await sdk.queues.publish(projectId, queueId, parsed, {
+        delaySeconds: inputs.delaySeconds,
+        headers: normalizedHeaders && Object.keys(normalizedHeaders).length > 0 ? normalizedHeaders : undefined,
+      });
       return true;
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to publish message');
