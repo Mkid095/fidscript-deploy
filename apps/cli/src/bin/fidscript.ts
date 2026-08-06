@@ -18,6 +18,8 @@ import {
 } from '../config/index';
 import { registerFunctionsCommands } from '../commands/functions';
 import { registerDatabasesCommands } from '../commands/databases';
+import { registerProjectsCommands } from '../commands/projects';
+import { registerDeploymentsCommands } from '../commands/deployments';
 import { registerCronCommands } from '../commands/cron';
 import { registerDomainsCommands } from '../commands/domains';
 import { registerStorageCommands } from '../commands/storage';
@@ -101,33 +103,6 @@ async function run(argv: string[]): Promise<void> {
     }
   });
 
-  // projects — parent command with subcommands
-  const projectsCmd = new Command('projects');
-  projectsCmd
-    .command('create <name>')
-    .description('Create a new project')
-    .option('--type <type>', 'Project type', 'frontend')
-    .action(async (name: string, opts: { type?: string }) => {
-      if (!cfg.apiUrl) die('No API URL configured — set FIDScript_API_URL env var or run: fidscript configure');
-      const apiKey = getApiKey() ?? die('Not logged in');
-      const { createFidscript } = await import('@fidscript-deploy/sdk');
-      const sdk = createFidscript({ apiKey, baseURL: cfg.apiUrl });
-      const p = await sdk.projects.create({ name, type: opts.type ?? 'frontend' });
-      console.log(`Created project ${p.id}: ${p.name}`);
-    });
-  projectsCmd
-    .command('list')
-    .description('List all projects')
-    .action(async () => {
-      if (!cfg.apiUrl) die('No API URL configured — set FIDScript_API_URL env var or run: fidscript configure');
-      const apiKey = getApiKey() ?? die('Not logged in');
-      const { createFidscript } = await import('@fidscript-deploy/sdk');
-      const sdk = createFidscript({ apiKey, baseURL: cfg.apiUrl });
-      const items = await sdk.projects.list();
-      printTable(items as unknown as Record<string, unknown>[], program.opts().output ?? 'table');
-    });
-  program.addCommand(projectsCmd);
-
   // logs tail [--project <id>]
   program
     .command('logs tail')
@@ -174,21 +149,6 @@ async function run(argv: string[]): Promise<void> {
       }
     });
 
-  // deployments list [--project <id>]
-  program
-    .command('deployments list')
-    .description('List deployments for a project')
-    .option('-p, --project <id>', 'Project ID', cfg.currentProject ?? '')
-    .action(async (opts: { project?: string }) => {
-      if (!cfg.apiUrl) die('No API URL configured — set FIDScript_API_URL env var or run: fidscript configure');
-      const apiKey = getApiKey() ?? die('Not logged in');
-      const projectId = opts.project ?? die('No project ID (--project or set currentProject in config)');
-      const { createFidscript } = await import('@fidscript-deploy/sdk');
-      const sdk = createFidscript({ apiKey, baseURL: cfg.apiUrl });
-      const items = await sdk.deployments.list(projectId);
-      printTable(items as unknown as Record<string, unknown>[], program.opts().output ?? 'table');
-    });
-
   // ── FUNCTIONS + DATABASES COMMANDS (extracted to keep bin under 150L) ───
   registerFunctionsCommands(program, { apiUrl: cfg.apiUrl, getApiKey, loadConfig });
   registerDatabasesCommands(program, { apiUrl: cfg.apiUrl, getApiKey, loadConfig });
@@ -197,6 +157,10 @@ async function run(argv: string[]): Promise<void> {
   registerStorageCommands(program, { apiUrl: cfg.apiUrl, getApiKey, loadConfig });
   registerQueuesCommands(program, { apiUrl: cfg.apiUrl, getApiKey, loadConfig });
   registerEnvCommands(program, { apiUrl: cfg.apiUrl, getApiKey, loadConfig });
+
+  // ── PROJECTS + DEPLOYMENTS COMMANDS (CLI Phase 18 gaps) ─────────────────
+  registerProjectsCommands(program, { apiUrl: cfg.apiUrl, getApiKey, loadConfig });
+  registerDeploymentsCommands(program, { apiUrl: cfg.apiUrl, getApiKey, loadConfig });
 
   // ── EMAIL COMMANDS ──────────────────────────────────────────────────
   const emailCmd = new Command('email');

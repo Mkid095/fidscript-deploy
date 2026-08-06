@@ -1,28 +1,16 @@
 /**
  * CLI commands — functions (edge runtime).
  * Mirrors sdk.functions.* methods; follows the patterns in fidscript.ts.
+ * `functions logs` lives in functions-logs.ts to keep this orchestrator under
+ * the ANPAS 150-line limit; shared helpers in functions-helpers.ts.
  */
 import { Command } from 'commander';
-import { createRequire } from 'module';
-const require = createRequire(import.meta.url);
+import { die, loadSdk } from './functions-helpers';
+import type { CliContext } from './functions-helpers';
+import { addFunctionLogsCommand } from './functions-logs';
 
-export interface CliContext {
-  apiUrl: string | undefined;
-  getApiKey(): string | undefined;
-  loadConfig(): { apiUrl?: string; outputFormat?: string; currentProject?: string };
-}
-
-function die(msg: string): never {
-  console.error(`Error: ${msg}`);
-  process.exit(1);
-}
-
-async function loadSdk(ctx: CliContext) {
-  if (!ctx.apiUrl) die('No API URL configured — set FIDScript_API_URL env var or run: fidscript configure');
-  const apiKey = ctx.getApiKey() ?? die('Not logged in');
-  const { createFidscript } = require('@fidscript-deploy/sdk');
-  return createFidscript({ apiKey, baseURL: ctx.apiUrl });
-}
+export { loadSdk };
+export type { CliContext } from './functions-helpers';
 
 export function registerFunctionsCommands(program: Command, ctx: CliContext): void {
   const fn = new Command('functions');
@@ -114,6 +102,8 @@ export function registerFunctionsCommands(program: Command, ctx: CliContext): vo
         console.log(JSON.stringify(res.result ?? res, null, 2));
       } catch (e) { die(`Invoke failed: ${(e as Error).message}`); }
     });
+
+  addFunctionLogsCommand(fn, ctx);
 
   program.addCommand(fn);
 }
