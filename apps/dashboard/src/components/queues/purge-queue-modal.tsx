@@ -43,6 +43,7 @@ export function PurgeQueueModal({ queueId, queueName, projectId, onClose, onPurg
           </div>
           <button
             onClick={onClose}
+            aria-label="Close purge dialog"
             className="p-1 rounded-lg text-[var(--text-dim)] hover:text-[var(--text)] hover:bg-[var(--rail)] transition-colors"
           >
             <HugeiconsIcon icon={Cancel01Icon} size={14} />

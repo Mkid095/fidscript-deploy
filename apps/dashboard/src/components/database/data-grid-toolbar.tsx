@@ -65,6 +65,7 @@ export function DeleteBanner({ count, onDelete, onClear }: DeleteBannerProps) {
       </button>
       <button
         onClick={onClear}
+        aria-label="Clear selection"
         className="text-rose-400/70 hover:text-rose-400 ml-auto p-0.5 rounded hover:bg-rose-500/10"
       >
         <HugeiconsIcon icon={Cancel01Icon} size={14} />

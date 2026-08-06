@@ -41,6 +41,7 @@ export function UploadFileRow({ item, onRemove }: UploadFileRowProps) {
         {status === 'pending' && (
           <button
             onClick={onRemove}
+            aria-label="Remove upload"
             className="text-[var(--text-dim)] hover:text-rose-400 transition-colors"
           >
             <HugeiconsIcon icon={Cancel01Icon} size={14} />

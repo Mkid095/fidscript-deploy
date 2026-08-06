@@ -44,6 +44,7 @@ export function EditRowModal({
           </h3>
           <button
             onClick={onClose}
+            aria-label="Close edit dialog"
             className="text-[var(--text-dim)] hover:text-[var(--text)] p-1 rounded hover:bg-[var(--rail)]"
           >
             <HugeiconsIcon icon={Cancel01Icon} size={16} />

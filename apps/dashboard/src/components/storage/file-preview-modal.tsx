@@ -57,6 +57,7 @@ export function FilePreviewModal({
             </button>
             <button
               onClick={onClose}
+              aria-label="Close preview"
               className="p-1.5 rounded text-[var(--text-dim)] hover:text-[var(--text)] hover:bg-[var(--rail)] transition-colors"
             >
               <HugeiconsIcon icon={Cancel01Icon} size={14} />
