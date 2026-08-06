@@ -318,13 +318,20 @@ services:
       EVOLUTION_API_URL: http://fidscript_whatsapp_api:3099
       MINIO_ENDPOINT: minio:9000
       MINIO_PORT: "9000"
-      MINIO_EXTERNAL_ENDPOINT: ${MINIO_EXTERNAL_ENDPOINT:-http://localhost:9000}
+      # Public MinIO endpoint used for signed URLs returned to clients.
+      # default to the storage.* subdomain the installer creates; the heredoc
+      # in setup-wizard.sh sets this to https://storage.${DOMAIN}.
+      MINIO_EXTERNAL_ENDPOINT: ${MINIO_EXTERNAL_ENDPOINT:-https://storage.${PLATFORM_DOMAIN:-deploy.fidscript.com}}
       MINIO_ACCESS_KEY: ${MINIO_ACCESS_KEY}
       MINIO_SECRET_KEY: ${MINIO_SECRET_KEY}
       JWT_SECRET_FILE: /run/secrets/jwt_secret
       ENCRYPTION_KEY_FILE: /run/secrets/encryption_key
       API_PORT: "3001"
-      CORS_ORIGIN: https://app.${PLATFORM_DOMAIN:-deploy.fidscript.com}
+      # Dashboard is served at https://${PLATFORM_DOMAIN} (root) via the
+      # Host(`deploy.fidscript.com`) router in dynamic.yml. An additional
+      # app.${PLATFORM_DOMAIN} alias may also be routed. Both are added
+      # comma-separated so CORS covers the actual origin(s) the browser uses.
+      CORS_ORIGIN: https://${PLATFORM_DOMAIN:-deploy.fidscript.com},https://app.${PLATFORM_DOMAIN:-deploy.fidscript.com}
       SERVER_IP: ${SERVER_IP}
       PLATFORM_DOMAIN: ${PLATFORM_DOMAIN:-deploy.fidscript.com}
       PLATFORM_PUBLIC_URL: https://api.${PLATFORM_DOMAIN:-deploy.fidscript.com}

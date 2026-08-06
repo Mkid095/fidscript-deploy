@@ -1,3 +1,24 @@
+# Default Traefik dynamic configuration.
+#
+# On first boot BEFORE the setup wizard runs, this file is mounted into the
+# traefik container. It serves:
+#   - the dashboard at the root domain (deploy.fidscript.com)
+#   - any subdomain at *.deploy.fidscript.com (per-deployment apps)
+#   - the API at /api path prefix
+#   - the MinIO console at storage.deploy.fidscript.com
+#   - Stalwart at jmap.deploy.fidscript.com + imap.deploy.fidscript.com
+#
+# IMPORTANT: this default assumes the production platform domain
+# `deploy.fidscript.com`. On a fresh install where the wizard runs, this
+# file is OVERWRITTEN with the user's real domain and CERT_RESOLVER — at
+# which point the wizard generates the actual config for the user's VPS.
+# If you're using this file as a template outside the standard install:
+#   - swap `deploy.fidscript.com` for your own domain
+#   - ensure `certResolver` below matches a resolver defined in traefik.yml
+#     (currently: `letsencrypt-dns` or `letsencrypt-http`)
+#   - ensure the DNS-01 / HTTP-01 challenge will actually succeed for that
+#     domain (Cloudflare token in secrets/cf_api_token.txt, or open port 80)
+
 http:
   middlewares:
     security-headers:
@@ -14,7 +35,8 @@ http:
       compress: {}
 
   routers:
-    dashboard:
+    # Dashboard at the root domain deploy.${DOMAIN}.
+    dashboard-root:
       rule: "Host(`deploy.fidscript.com`)"
       service: dashboard
       middlewares:
@@ -22,7 +44,26 @@ http:
         - compress
       tls:
         certResolver: letsencrypt-dns
+      priority: 20
 
+    # Dashboard also served at the app.${DOMAIN} alias (matches installer
+    # wizard's DNS records: app.${DOMAIN} → SERVER_IP).
+    dashboard-app:
+      rule: "Host(`app.deploy.fidscript.com`)"
+      service: dashboard
+      middlewares:
+        - security-headers
+        - compress
+      tls:
+        certResolver: letsencrypt-dns
+      priority: 20
+
+    # Per-deployment subdomains: <slug>.apps.deploy.fidscript.com → handled
+    # by the deployment's own Docker container via labels (see
+    # apps/api/src/modules/deployments/runner/docker-build-args.service.ts).
+    # The wildcard AC here is for the API to receive the request first and
+    # proxy to the right container; the actual app-level router is added
+    # per-container at deployment time via Traefik Docker labels.
     api:
       rule: "PathPrefix(`/api`)"
       service: api
@@ -32,8 +73,11 @@ http:
       tls:
         certResolver: letsencrypt-dns
 
+    # MinIO console — must be the storage.<DOMAIN> subzone, not the bare
+    # fidscript.com apex (the previous template had `storage.fidscript.com`
+    # which pointed at the wrong zone and never resolved).
     minio-console:
-      rule: "Host(`storage.fidscript.com`)"
+      rule: "Host(`storage.deploy.fidscript.com`)"
       service: minio-console
       middlewares:
         - security-headers
@@ -41,7 +85,7 @@ http:
       tls:
         certResolver: letsencrypt-dns
 
-    # Stalwart JMAP / management HTTP — internal port 8443
+    # Stalwart JMAP / management HTTP
     jmap:
       rule: "Host(`jmap.deploy.fidscript.com`)"
       service: stalwart-jmap
@@ -60,6 +104,8 @@ http:
         certResolver: letsencrypt-dns
 
     # ACME HTTP-01 challenge — routes to Stalwart's internal ACME listener
+    # (note: traefik itself also listens for /.well-known/acme-challenge/ on
+    # port 80; this is a fallback for the IMAP/JMAP host).
     acme-challenge:
       rule: "PathPrefix(`/.well-known/acme-challenge/`)"
       service: stalwart-acme
@@ -95,4 +141,8 @@ http:
     stalwart-acme:
       loadBalancer:
         servers:
-          - url: "http://127.0.0.1:8080"
+          # The acme-challenge router only fires for stalwart.* hosts; the
+          # backend is the Docker-network name (fidscript_stalwart), NOT
+          # 127.0.0.1 (the previous template used 127.0.0.1:8080 which from
+          # the traefik container's network namespace is traefik itself).
+          - url: "http://fidscript_stalwart:8080"

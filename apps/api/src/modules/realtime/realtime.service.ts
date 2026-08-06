@@ -122,7 +122,16 @@ export class RealtimeService {
     });
   }
 
-  async generateChannelToken(channelId: string, _userId: string): Promise<string> {
+  async generateChannelToken(projectId: string, channelId: string, userId: string): Promise<string> {
+    // Require project membership before issuing a channel-scoped secret.
+    // The body of the request no longer accepts a userId — the caller must
+    // be a member, and identity is bound at presentation time.
+    await this.access.findProjectWithAccess(userId, projectId);
+    const channel = await this.prisma.realtimeChannel.findFirst({
+      where: { id: channelId, projectId },
+    });
+    if (!channel) throw new NotFoundException('Channel not found');
+
     // Generate a secure random token, bcrypt-hash it before storing, return the raw token once
     const rawToken = crypto.randomBytes(32).toString('hex');
     const hashedToken = await bcrypt.hash(rawToken, 10);

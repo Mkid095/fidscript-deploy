@@ -12,7 +12,12 @@ import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { CurrentUser } from '../auth/current-user.decorator';
 import { RealtimeService } from './realtime.service';
-import { CreateChannelDto, SetPresenceDto, GetChannelMessagesDto } from './dto/index';
+import {
+  CreateChannelDto,
+  SetPresenceDto,
+  GetChannelMessagesDto,
+  GenerateChannelTokenDto,
+} from './dto/index';
 
 @ApiTags('realtime')
 @Controller('projects/:projectId/realtime')
@@ -74,9 +79,14 @@ export class RealtimeController {
   async generateChannelToken(
     @Param('projectId') projectId: string,
     @Param('channelId') channelId: string,
-    @Body() body: { userId: string },
+    @Body() _dto: GenerateChannelTokenDto,
+    @CurrentUser() user: any,
   ) {
-    const token = await this.realtimeService.generateChannelToken(channelId, body.userId);
+    const token = await this.realtimeService.generateChannelToken(
+      projectId,
+      channelId,
+      user.userId,
+    );
     return { token };
   }
 }

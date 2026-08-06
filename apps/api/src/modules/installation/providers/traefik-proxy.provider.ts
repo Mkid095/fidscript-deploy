@@ -13,9 +13,10 @@ export class TraefikProxyProvider implements IReverseProxyProvider {
   private readonly traefikDynamicYml = '/etc/traefik/dynamic.yml';
 
   async configurePlatformRouting(domain: string): Promise<void> {
-    // Use TRAEFIK_DYNAMIC_DIR as the host path (must be set to the directory containing
-    // dynamic.yml on the HOST, e.g. /home/ken/fidscript-deploy/installer/docker/traefik).
-    // Falls back to /etc/traefik for dev/CI where that path is writable.
+    // Use TRAEFIK_DYNAMIC_DIR as the host path (must be set to the directory
+    // containing dynamic.yml on the HOST, e.g.
+    // /home/ken/fidscript-deploy/installer/docker/traefik). Falls back to
+    // /etc/traefik for dev/CI where that path is writable.
     const traefikDir = process.env.TRAEFIK_DYNAMIC_DIR ?? '/etc/traefik';
     const dynamicYmlPath = join(traefikDir, 'dynamic.yml');
 
@@ -36,8 +37,8 @@ export class TraefikProxyProvider implements IReverseProxyProvider {
 
   async reload(): Promise<void> {
     try {
-      // Traefik watches dynamic.yml via `watch: true` — no explicit reload needed.
-      // But we can signal via the API if configured.
+      // Traefik watches dynamic.yml via `watch: true` — no explicit reload
+      // needed. But we can signal via the API if configured.
       this.logger.log('Traefik configuration updated (watch trigger)');
     } catch (err) {
       this.logger.error(`Failed to reload Traefik: ${err instanceof Error ? err.message : err}`);
@@ -45,11 +46,13 @@ export class TraefikProxyProvider implements IReverseProxyProvider {
   }
 
   async isWritable(): Promise<boolean> {
-    // TRAEFIK_DYNAMIC_DIR must be the host path (e.g. /home/ken/fidscript-deploy/installer/docker/traefik)
-    // NOT the in-container path (/etc/traefik). The host path is passed via the env var so the
-    // API (running in its own network namespace) can reach the host filesystem via the
-    // /var/run/docker.sock mount — or when TRAEFIK_DYNAMIC_DIR is unset, fall back to the
-    // container path for dev/CI environments where that path is writable.
+    // TRAEFIK_DYNAMIC_DIR must be the host path (e.g.
+    // /home/ken/fidscript-deploy/installer/docker/traefik) NOT the in-container
+    // path (/etc/traefik). The host path is passed via the env var so the API
+    // (running in its own network namespace) can reach the host filesystem via
+    // the /var/run/docker.sock mount — or when TRAEFIK_DYNAMIC_DIR is unset,
+    // fall back to the container path for dev/CI environments where that path
+    // is writable.
     const traefikDir = process.env.TRAEFIK_DYNAMIC_DIR ?? '/etc/traefik';
     const dynamicYmlPath = join(traefikDir, 'dynamic.yml');
     try {
@@ -67,13 +70,13 @@ export class TraefikProxyProvider implements IReverseProxyProvider {
     // resolvers: `letsencrypt-dns` (DNS-01 via Cloudflare) and
     // `letsencrypt-http` (HTTP-01 fallback). The previous template used a
     // hardcoded `myresolver` placeholder which doesn't exist in the static
-    // config — Traefik silently ignores the tls block and certificates
-    // never get issued. Use the real resolver names.
+    // config — Traefik silently ignores the tls block and certificates never
+    // get issued. Use the real resolver names.
     //
     // NOTE: do NOT define `certificatesResolvers` here — the file provider
-    // can only define them per the static config. The original template's
+    // can only define them in the static config. The original template's
     // `certificatesResolvers: myresolver` block was both a typo and a no-op
-    // (file providers can't redefine resolvers that already exist on the
+    // (file providers can't redefine resolvers that already exist in the
     // static config).
     return `# Managed by FIDScript Platform — do not edit manually
 http:
