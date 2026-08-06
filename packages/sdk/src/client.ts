@@ -5,4 +5,4 @@
  * `./client-core` to satisfy the ANPAS 150-line limit.
  */
 export { FidscriptClient, FidscriptClientOptions } from './client-core';
-export { FidscriptError, AuthError, NotFoundError, ValidationError, RateLimitError } from './client-core';
+export { FidscriptError, AuthError, NotFoundError, ValidationError, RateLimitError } from './modules/errors';
