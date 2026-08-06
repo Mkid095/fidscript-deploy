@@ -43,6 +43,8 @@ export class PostgresProvisionService {
       await ownerPool.query(`GRANT ALL ON SCHEMA public TO ${quotedUser}`);
       await ownerPool.query(`ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON TABLES TO ${quotedUser}`);
       await ownerPool.query(`ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON SEQUENCES TO ${quotedUser}`);
+      // Seed placeholder tables so a freshly-provisioned DB feels live.
+      await this.seedPlaceholderTables(ownerPool, quotedUser);
     } finally {
       await ownerPool.end();
     }
@@ -50,6 +52,52 @@ export class PostgresProvisionService {
     await pool.query(`REVOKE ALL ON SCHEMA public FROM PUBLIC`);
 
     return this.buildCredentials(dbName, dbUser, password);
+  }
+
+  /**
+   * Create two placeholder tables (`users`, `posts`) with seed rows. The new
+   * role is granted table-level access so dashboard CRUD + SQL editor work
+   * immediately. If seeding fails (e.g. re-provision on an existing DB), the
+   * caller still gets valid credentials — DB stays usable, just empty.
+   */
+  private async seedPlaceholderTables(ownerPool: Pool, quotedUser: string): Promise<void> {
+    const sql = `
+      CREATE TABLE IF NOT EXISTS users (
+        id BIGSERIAL PRIMARY KEY,
+        email TEXT NOT NULL UNIQUE,
+        name TEXT NOT NULL,
+        created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+      );
+      CREATE TABLE IF NOT EXISTS posts (
+        id BIGSERIAL PRIMARY KEY,
+        user_id BIGINT REFERENCES users(id) ON DELETE CASCADE,
+        title TEXT NOT NULL,
+        body TEXT NOT NULL DEFAULT '',
+        published BOOLEAN NOT NULL DEFAULT FALSE,
+        created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+      );
+      INSERT INTO users (email, name) VALUES
+        ('alice@example.com', 'Alice'),
+        ('bob@example.com',   'Bob'),
+        ('carol@example.com', 'Carol')
+      ON CONFLICT (email) DO NOTHING;
+      INSERT INTO posts (user_id, title, body, published) VALUES
+        ((SELECT id FROM users WHERE email = 'alice@example.com'),
+         'Welcome to FIDScript', 'This is your first post.', TRUE),
+        ((SELECT id FROM users WHERE email = 'bob@example.com'),
+         'Draft post',           'Not published yet.',    FALSE)
+      ON CONFLICT DO NOTHING;
+    `;
+    try {
+      await ownerPool.query(sql);
+      await ownerPool.query(`GRANT ALL ON TABLE users TO ${quotedUser}`);
+      await ownerPool.query(`GRANT ALL ON TABLE posts TO ${quotedUser}`);
+      await ownerPool.query(`GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA public TO ${quotedUser}`);
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      // eslint-disable-next-line no-console
+      console.warn(`[PostgresProvisionService] Placeholder seed skipped: ${msg}`);
+    }
   }
 
   async delete(credentials: DatabaseCredentials): Promise<void> {
