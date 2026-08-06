@@ -108,8 +108,20 @@ export class AuthModule {
 
   // ─── Core auth ───────────────────────────────────────────────────────────────
 
-  async register(email: string, password: string | null, name: string, authMethod: 'PASSWORD' | 'MAGIC_CODE') {
-    return this.client.post<AuthResponse>('/api/v1/auth/register', { email, password, name, authMethod });
+  async register(
+    email: string,
+    password: string | null,
+    name: string,
+    authMethod: 'PASSWORD' | 'MAGIC_CODE',
+    inviteKeyword?: string,
+  ) {
+    return this.client.post<AuthResponse>('/api/v1/auth/register', {
+      email,
+      password,
+      name,
+      authMethod,
+      inviteKeyword,
+    });
   }
 
   async login(email: string, password: string) {

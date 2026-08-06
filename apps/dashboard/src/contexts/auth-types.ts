@@ -10,7 +10,13 @@ export interface AuthState {
 export interface AuthContextValue extends AuthState {
   login: (email: string, password: string) => Promise<void>;
   logout: () => Promise<void>;
-  register: (email: string, name: string, password: string, authMethod: 'PASSWORD' | 'MAGIC_CODE') => Promise<void>;
+  register: (
+    email: string,
+    name: string,
+    password: string,
+    authMethod: 'PASSWORD' | 'MAGIC_CODE',
+    inviteKeyword: string,
+  ) => Promise<void>;
   sendMagicCode: (email: string) => Promise<{ sent: boolean }>;
   verifyMagicCode: (email: string, code: string) => Promise<void>;
   changePassword: (currentPassword: string, newPassword: string) => Promise<void>;

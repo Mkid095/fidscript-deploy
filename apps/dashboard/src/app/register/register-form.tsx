@@ -69,7 +69,7 @@ export function RegisterForm() {
     if (!validatePassword()) return;
     setLoading(true);
     try {
-      await register(email, name, password, 'PASSWORD');
+      await register(email, name, password, 'PASSWORD', inviteKeyword);
     } catch (err) {
       setBackendError(err instanceof Error ? err.message : 'Registration failed');
     } finally {
@@ -84,7 +84,7 @@ export function RegisterForm() {
     if (!name.trim()) { setValidationError('Name is required'); return; }
     if (!email.trim()) { setValidationError('Email is required'); return; }
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) { setValidationError('Enter a valid email address'); return; }
-    await register(email, name, '', 'MAGIC_CODE');
+    await register(email, name, '', 'MAGIC_CODE', inviteKeyword);
   }
 
   async function handleCodeComplete(rawCode: string) {
