@@ -28,7 +28,20 @@ export class QueuesModule {
     return this.client.get<Queue>(`/api/v1/projects/${projectId}/queues/${queueId}`);
   }
 
-  async create(projectId: string, data: { name: string; type?: string }) {
+  async create(
+    projectId: string,
+    data: {
+      name: string;
+      type?: string;
+      retentionDays?: number;
+      maxMessages?: number;
+      maxBytes?: number;
+      replicas?: number;
+      retryAttempts?: number;
+      retryDelaySeconds?: number;
+      deadLetterQueue?: string;
+    },
+  ) {
     return this.client.post<Queue>(`/api/v1/projects/${projectId}/queues`, data);
   }
 

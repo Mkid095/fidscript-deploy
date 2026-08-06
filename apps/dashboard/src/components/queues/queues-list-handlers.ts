@@ -58,12 +58,22 @@ export function useQueuesListHandlers({
     }
   }, [getSdk, projectId, setQueues, setQueueStats, setCreating]);
 
-  const handleCreate = useCallback(async (name: string, type: string) => {
+  const handleCreate = useCallback(async (options: {
+    name: string;
+    type: string;
+    retentionDays?: number;
+    maxMessages?: number;
+    maxBytes?: number;
+    replicas?: number;
+    retryAttempts?: number;
+    retryDelaySeconds?: number;
+    deadLetterQueue?: string;
+  }) => {
     if (!projectId) return;
     setCreating(true);
     try {
       const sdk = getSdk();
-      await sdk.queues.create(projectId, { name, type });
+      await sdk.queues.create(projectId, options);
       setShowCreate(false);
       await loadQueues();
     } catch (err) {

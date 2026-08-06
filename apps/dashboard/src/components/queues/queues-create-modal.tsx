@@ -2,29 +2,64 @@
 
 import { useState } from 'react';
 import { HugeiconsIcon } from '@hugeicons/react';
-import { Cancel01Icon, Share01Icon, Database01Icon } from '@hugeicons/core-free-icons';
+import {
+  Cancel01Icon,
+  Share01Icon,
+  Database01Icon,
+  ArrowDown01Icon,
+  ArrowUp01Icon,
+} from '@hugeicons/core-free-icons';
 import { Button } from '@fidscript/ui';
+import {
+  QueueAdvancedSettings,
+  QUEUE_ADVANCED_DEFAULTS,
+  type QueueAdvancedValues,
+} from './queue-advanced-settings';
+
+export interface QueueCreateOptions {
+  name: string;
+  type: string;
+  retentionDays?: number;
+  maxMessages?: number;
+  maxBytes?: number;
+  replicas?: number;
+  retryAttempts?: number;
+  retryDelaySeconds?: number;
+  deadLetterQueue?: string;
+}
 
 interface QueuesCreateModalProps {
   onClose: () => void;
-  onConfirm: (name: string, type: string) => void;
+  onConfirm: (options: QueueCreateOptions) => void;
   submitting: boolean;
 }
 
 const QUEUE_TYPES = [
-  { value: 'stream',    label: 'NATS JetStream', icon: Share01Icon,  desc: 'High-throughput, durable' },
-  { value: 'workqueue', label: 'Work Queue',      icon: null,         desc: 'Single consumer, at-least-once' },
-  { value: 'queue',     label: 'Redis Queue',     icon: Database01Icon, desc: 'In-memory, fast' },
+  { value: 'stream',    label: 'NATS JetStream', icon: Share01Icon,    desc: 'High-throughput, durable' },
+  { value: 'workqueue', label: 'Work Queue',     icon: null,           desc: 'Single consumer, at-least-once' },
+  { value: 'queue',     label: 'Redis Queue',    icon: Database01Icon, desc: 'In-memory, fast' },
 ];
 
 export function QueuesCreateModal({ onClose, onConfirm, submitting }: QueuesCreateModalProps) {
   const [name, setName] = useState('');
   const [type, setType] = useState('stream');
+  const [showAdvanced, setShowAdvanced] = useState(false);
+  const [advanced, setAdvanced] = useState<QueueAdvancedValues>(QUEUE_ADVANCED_DEFAULTS);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!name.trim()) return;
-    onConfirm(name.trim(), type);
+    onConfirm({
+      name: name.trim(),
+      type,
+      retentionDays: advanced.retentionDays,
+      maxMessages: advanced.maxMessages,
+      maxBytes: advanced.maxBytes,
+      replicas: advanced.replicas,
+      retryAttempts: advanced.retryAttempts,
+      retryDelaySeconds: advanced.retryDelaySeconds,
+      deadLetterQueue: advanced.deadLetterQueue.trim() || undefined,
+    });
   };
 
   return (
@@ -36,14 +71,16 @@ export function QueuesCreateModal({ onClose, onConfirm, submitting }: QueuesCrea
           <button
             onClick={() => !submitting && onClose()}
             className="p-1 rounded-lg text-[var(--text-dim)] hover:text-[var(--text)] hover:bg-[var(--rail)] transition-colors"
+            aria-label="Close"
           >
             <HugeiconsIcon icon={Cancel01Icon} size={14} />
           </button>
         </div>
-        <form onSubmit={handleSubmit} className="p-5 space-y-4">
+        <form onSubmit={handleSubmit} className="p-5 space-y-4 max-h-[80vh] overflow-y-auto">
           <div>
-            <label className="block text-xs font-medium text-[var(--text-dim)] mb-1.5">Queue Name</label>
+            <label htmlFor="queue-name" className="block text-xs font-medium text-[var(--text-dim)] mb-1.5">Queue Name</label>
             <input
+              id="queue-name"
               type="text"
               value={name}
               onChange={(e) => setName(e.target.value)}
@@ -82,6 +119,20 @@ export function QueuesCreateModal({ onClose, onConfirm, submitting }: QueuesCrea
               ))}
             </div>
           </div>
+
+          <div className="border-t border-[var(--rail)] pt-3">
+            <button
+              type="button"
+              onClick={() => setShowAdvanced((v) => !v)}
+              className="flex items-center gap-1.5 text-xs font-medium text-[var(--text-dim)] hover:text-[var(--text)] transition-colors"
+              aria-expanded={showAdvanced}
+            >
+              <HugeiconsIcon icon={showAdvanced ? ArrowUp01Icon : ArrowDown01Icon} size={12} />
+              Advanced settings
+            </button>
+            {showAdvanced && <QueueAdvancedSettings values={advanced} onChange={setAdvanced} />}
+          </div>
+
           <div className="flex items-center justify-end gap-2 pt-1">
             <Button type="button" variant="ghost" size="sm" onClick={onClose} disabled={submitting}>
               Cancel
