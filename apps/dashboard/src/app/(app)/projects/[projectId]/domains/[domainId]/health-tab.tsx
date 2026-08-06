@@ -1,6 +1,5 @@
 'use client';
 
-import { useEffect, useState, useRef } from 'react';
 import type { DomainHealth } from '@fidscript-deploy/sdk';
 import { Button, Card, Spinner } from '@fidscript/ui';
 
@@ -14,36 +13,10 @@ interface Props {
 
 export default function HealthTab({ projectId, domainId }: Props) {
   const { getSdk } = useAuth();
-  const { health, loading, triggerHealthCheck } = useDomainHealth(projectId, domainId, getSdk, { polling: true });
-  const [checkingHealth, setCheckingHealth] = useState(false);
-
-  const pollingRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-
-  function startPolling() {
-    if (pollingRef.current) clearTimeout(pollingRef.current);
-    let attempts = 0;
-    function poll() {
-      if (attempts >= 20) return;
-      attempts++;
-      getSdk().domains.getHealth(projectId, domainId)
-        .then((result: unknown) => {
-          const h = result as DomainHealth | null;
-          if (h && h.status !== 'degraded') { setCheckingHealth(false); return; }
-          pollingRef.current = setTimeout(poll, 3000);
-        })
-        .catch(() => { pollingRef.current = setTimeout(poll, 3000); });
-    }
-    pollingRef.current = setTimeout(poll, 3000);
-  }
-
-  useEffect(() => () => { if (pollingRef.current) clearTimeout(pollingRef.current); }, []);
+  const { health, loading, checkingHealth, triggerHealthCheck } = useDomainHealth(projectId, domainId, getSdk, { polling: true });
 
   async function handleHealthCheck() {
-    setCheckingHealth(true);
-    try {
-      await getSdk().domains.triggerHealthCheck(projectId, domainId);
-      startPolling();
-    } catch { setCheckingHealth(false); }
+    await triggerHealthCheck();
   }
 
   if (loading) return <div className="flex justify-center py-12"><Spinner size="md" /></div>;
