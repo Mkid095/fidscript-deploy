@@ -1,88 +1,8 @@
 import { FidscriptClient } from '../client';
+import { CronJob, CronJobRun, CronJobStats, CronJobActionType, CronJobEmailConfig, CronJobQueueConfig, CronActionType } from './cron-types';
 
-/**
- * Supported cron job action types. Each maps to a distinct executor in
- * apps/api: CronJobActionExecutorService (email, queue) or inline on
- * CronJobExecutionService (function, http).
- */
-export type CronJobActionType = 'http' | 'function' | 'email' | 'queue';
-
-export const CronActionType = {
-  Http: 'http' as const,
-  Function: 'function' as const,
-  /** Send an email via the project's email service. Requires `emailConfig`. */
-  Email: 'email' as const,
-  /** Publish a message to a project queue. Requires `queueConfig`. */
-  Queue: 'queue' as const,
-} as const;
-
-export interface CronJobEmailConfig {
-  to: string;
-  subject: string;
-  text?: string;
-  html?: string;
-  from?: string;
-}
-
-export interface CronJobQueueConfig {
-  queueId: string;
-  body?: unknown;
-  headers?: Record<string, string>;
-  delaySeconds?: number;
-}
-
-export interface CronJob {
-  id: string;
-  projectId: string;
-  name: string;
-  cronExpression: string;
-  timezone: string;
-  targetType?: string;
-  actionType?: CronJobActionType;
-  endpoint?: string;
-  functionId?: string;
-  emailConfig?: CronJobEmailConfig;
-  queueConfig?: CronJobQueueConfig;
-  payload?: Record<string, unknown>;
-  enabled: boolean;
-  retryAttempts: number;
-  retryDelaySeconds: number;
-  timeoutSeconds: number;
-  lastRunAt?: string;
-  nextRunAt?: string;
-  state: 'idling' | 'scheduled' | 'running' | 'completed' | 'failed' | 'dead';
-  createdAt: string;
-  updatedAt: string;
-}
-
-export interface CronJobRun {
-  id: string;
-  cronJobId: string;
-  status: 'running' | 'completed' | 'failed' | 'skipped';
-  attempt: number;
-  scheduledAt: string;
-  startedAt: string;
-  completedAt?: string;
-  durationMs?: number;
-  errorMessage?: string;
-  statusReason?: string;
-  failureType?: 'none' | 'timeout' | 'network_error' | 'invalid_payload' | 'dependency_failure' | 'system_error';
-  payloadSnapshot?: Record<string, unknown>;
-  replayedFromRunId?: string;
-  leaseUntil?: string;
-  heartbeatAt?: string;
-  executionReason?: 'scheduled' | 'retry' | 'manual' | 'deduplicated' | 'lease_recovery';
-  createdAt: string;
-}
-
-export interface CronJobStats {
-  total: number;
-  completed: number;
-  failed: number;
-  successRate: number | null;
-  avgDurationMs: number | null;
-  sparkline: { status: string; durationMs: number | null }[];
-}
+export type { CronJob, CronJobRun, CronJobStats, CronJobActionType, CronJobEmailConfig, CronJobQueueConfig };
+export { CronActionType };
 
 export class CronModule {
   constructor(private client: FidscriptClient) {}
@@ -143,9 +63,7 @@ export class CronModule {
     return this.client.get<{ nextRunAt: string | null }>(`/api/v1/projects/${projectId}/cron/${jobId}/next-run`);
   }
 
-  /**
-   * Simulate next N execution times for this cron job (dry-run).
-   */
+  /** Simulate next N execution times for this cron job (dry-run). */
   async simulate(projectId: string, jobId: string, count = 5) {
     return this.client.get<{ scheduledAt: string }[]>(
       `/api/v1/projects/${projectId}/cron/${jobId}/simulate`,
@@ -153,10 +71,7 @@ export class CronModule {
     );
   }
 
-  /**
-   * Simulate next N execution times for any cron expression (dry-run).
-   * Requires a projectId context — use any valid projectId for the namespace.
-   */
+  /** Simulate next N execution times for any cron expression (dry-run). */
   async simulateExpression(projectId: string, cronExpression: string, timezone = 'UTC', count = 5) {
     return this.client.post<{ scheduledAt: string }[]>(
       `/api/v1/projects/${projectId}/cron/simulate-expression`,
@@ -172,10 +87,7 @@ export class CronModule {
     );
   }
 
-  /**
-   * Replay a run with its stored payload snapshot.
-   * Creates a new run linked to the original and enqueues it for execution.
-   */
+  /** Replay a run with its stored payload snapshot. */
   async replay(projectId: string, jobId: string, runId: string) {
     return this.client.post<{ runId: string; replayedFrom: string; status: string }>(
       `/api/v1/projects/${projectId}/cron/${jobId}/runs/${runId}/replay`,
@@ -183,10 +95,7 @@ export class CronModule {
     );
   }
 
-  /**
-   * Create a cron job that sends an email on schedule.
-   * Requires the project to have at least one ACTIVE sender domain.
-   */
+  /** Create a cron job that sends an email on schedule. */
   async createEmailJob(
     projectId: string,
     data: {
@@ -204,9 +113,7 @@ export class CronModule {
     return this.create(projectId, { ...data, actionType: CronActionType.Email });
   }
 
-  /**
-   * Create a cron job that publishes a queue message on schedule.
-   */
+  /** Create a cron job that publishes a queue message on schedule. */
   async createQueueJob(
     projectId: string,
     data: {
