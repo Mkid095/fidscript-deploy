@@ -20,6 +20,44 @@ push their logs into the platform too.
 - `LogEntry` — id, streamId, level (`debug|info|warn|error`), source, message, metadata
   (Record<string,unknown>), correlationId, timestamp.
 
+## 3.1 Default streams
+
+Streams are **lazy-created on first ingest** by `LogWriteService.writeLog` /
+`writeBatchLogs` — when a caller writes an entry to a stream name that doesn't
+yet exist for the project, a `LogStream` row is created with `type =
+'application'` and the given `name`. There is no project-provisioning step
+that pre-creates a fixed set of streams.
+
+Convention used across the platform (caller-supplied `name`):
+
+| Stream name      | UI label   | Written by                                                         | Type           |
+|------------------|------------|--------------------------------------------------------------------|----------------|
+| `default`        | System     | Application catch-all (`writeLog` with no specific stream)         | `application`  |
+| `build`          | Deployment | `DeploymentStateService.onLog` (build/deploy output); `deployments.deployment.log` event payload | `application`  |
+| `access`         | API        | (planned) HTTP access logs from the Traefik / API gateway          | `application`  |
+| `database`       | Database   | (planned) Database query / migration events                        | `application`  |
+| `auth`           | Auth       | (planned) Identity events (`identity.user.logged_in`, `*.login_failed`) | `application`  |
+| `<caller>`       | _hidden_   | Any custom stream a customer app passes to `POST /api/v1/logs/ingest` | `application`  |
+
+**Dashboard UI** maps these names to operator-facing labels in
+`apps/dashboard/src/app/(app)/logs/stream-taxonomy.ts` (`STREAM_TAXONOMY`).
+Backwards-compatibility: a stream named `default`, `build`, `access`, `error`,
+or anything else can co-exist; unknown names appear in the stream viewer but
+not in the taxonomy pills.
+
+**Important:** the dashboard's Stream filter shows only the **taxonomy**
+(default, build, access, database, auth) plus an "All" (no-filter) option.
+Custom caller-created streams are visible in the stream list / viewer, but
+not in the operator pill row — the audit notes this as a known UX gap.
+
+**Backend gaps** (from the audit):
+- Stream type is **always set to `'application'`** at creation; the documented
+  types (`function|deployment|email|system|audit`) are never used. UI that
+  relies on `LogStream.type` for grouping will see everything as `application`.
+- No project-provisioning hook emits `logs.stream.created` on first ingest.
+- Retention is project-wide; per-stream `retentionDays` is stored but not
+  enforced (audit §logging).
+
 ## 4. API mapping
 - Streams: `LOG-01..04`. Write (single + batch): `LOG-05/06`. Read (filter/timeline/stats):
   `LOG-07/08/09/10`. **Public ingest:** `LOG-11` (`POST /api/v1/logs/ingest`, X-API-Key, no JWT).
