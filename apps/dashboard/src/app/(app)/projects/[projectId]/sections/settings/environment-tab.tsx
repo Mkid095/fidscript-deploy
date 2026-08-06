@@ -58,6 +58,61 @@ export function EnvironmentTab({ project }: { project: Project }) {
     }
   }
 
+  function handleExport() {
+    const dotenv = envVars
+      .map(({ key, value }) => {
+        const needsQuotes = /[\s#"']/.test(value);
+        const escaped = value.replace(/\\/g, '\\\\').replace(/"/g, '\\"');
+        return needsQuotes ? `${key}="${escaped}"` : `${key}=${value}`;
+      })
+      .join('\n');
+    const blob = new Blob([`# Exported from FIDScript — ${new Date().toISOString()}\n${dotenv}\n`], { type: 'text/plain' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `${project.slug || 'project'}.env`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    showToast({ type: 'success', message: `Exported ${envVars.length} env var(s) as .env` });
+  }
+
+  async function handleImport(file: File) {
+    const text = await file.text();
+    const parsed: Record<string, string> = {};
+    for (const rawLine of text.split(/\r?\n/)) {
+      const line = rawLine.trim();
+      if (!line || line.startsWith('#')) continue;
+      const eq = line.indexOf('=');
+      if (eq < 0) continue;
+      const key = line.slice(0, eq).trim();
+      let value = line.slice(eq + 1).trim();
+      if ((value.startsWith('"') && value.endsWith('"')) || (value.startsWith("'") && value.endsWith("'"))) {
+        value = value.slice(1, -1);
+      }
+      if (key) parsed[key] = value;
+    }
+    const keys = Object.keys(parsed);
+    if (keys.length === 0) {
+      showToast({ type: 'error', message: 'No KEY=VALUE pairs found in file' });
+      return;
+    }
+    try {
+      await getSdk().projects.setEnvVars(project.id, parsed);
+      const merged = [...envVars];
+      for (const k of keys) {
+        const i = merged.findIndex(v => v.key === k);
+        if (i >= 0) merged[i] = { key: k, value: parsed[k]! };
+        else merged.push({ key: k, value: parsed[k]! });
+      }
+      setEnvVars(merged);
+      showToast({ type: 'success', message: `Imported ${keys.length} env var(s)` });
+    } catch (err) {
+      showToast({ type: 'error', message: err instanceof Error ? err.message : 'Import failed' });
+    }
+  }
+
   if (loading) return <div className="flex justify-center py-8"><Spinner /></div>;
 
   return (
@@ -68,7 +123,21 @@ export function EnvironmentTab({ project }: { project: Project }) {
             <h2 className="text-sm font-semibold text-[var(--text)]">Environment Variables</h2>
             <p className="text-xs text-[var(--text-muted)] mt-0.5">Encrypted at rest (AES-256-GCM). Applied to all deployments.</p>
           </div>
-          <Button variant="secondary" size="sm" onClick={() => setShowAdd(true)}>+ Add</Button>
+          <div className="flex gap-2">
+            <Button variant="ghost" size="sm" onClick={handleExport} disabled={envVars.length === 0}>Export .env</Button>
+            <label className="inline-flex">
+              <input
+                type="file"
+                accept=".env,text/plain"
+                className="hidden"
+                onChange={(e) => { const f = e.target.files?.[0]; if (f) handleImport(f); e.target.value = ''; }}
+              />
+              <span className="inline-flex items-center px-3 py-1.5 rounded-md border border-[var(--rail)] text-xs text-[var(--text-muted)] hover:text-[var(--text)] hover:border-[var(--text-dim)] cursor-pointer transition-colors">
+                Import .env
+              </span>
+            </label>
+            <Button variant="secondary" size="sm" onClick={() => setShowAdd(true)}>+ Add</Button>
+          </div>
         </div>
 
         {envVars.length === 0 ? (

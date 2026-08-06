@@ -1,6 +1,6 @@
 // useNewDeploy — wizard state and handlers for the new deployment page
 
-import { useState, useCallback, useMemo } from 'react';
+import { useState, useCallback, useMemo, useEffect } from 'react';
 import type { FidscriptSDK } from '@fidscript-deploy/sdk';
 import type { Project } from '@/types';
 import type { BuildPlan } from './new-deploy-types';
@@ -33,6 +33,25 @@ export function useNewDeploy({ project, getSdk, onShowToast, onDeploySuccess }: 
   const [submitting, setSubmitting] = useState(false);
   const [archiveFile, setArchiveFile] = useState<File | null>(null);
   const [uploadedArchive, setUploadedArchive] = useState<{ bucketId: string; objectKey: string } | null>(null);
+  const [subdomain, setSubdomain] = useState('');
+  const [availableDomains, setAvailableDomains] = useState<Array<{ id: string; domain: string }>>([]);
+  const [assignedDomainId, setAssignedDomainId] = useState<string | null>(null);
+
+  // Load project domains once the wizard mounts so the subdomain picker can offer them.
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const sdk = getSdk();
+        const list = await sdk.domains.list(project.id);
+        if (cancelled) return;
+        setAvailableDomains(
+          (list as Array<{ id: string; domain: string }>).map(d => ({ id: d.id, domain: d.domain })),
+        );
+      } catch { /* non-fatal */ }
+    })();
+    return () => { cancelled = true; };
+  }, [project.id, getSdk]);
 
   const effectiveBranch = selectedRepo ? selectedBranch : (manualGitUrl ? 'main' : '');
   const computedGitUrl = selectedRepo ? `https://github.com/${selectedRepo.full_name}.git` : manualGitUrl.trim();
@@ -82,12 +101,16 @@ export function useNewDeploy({ project, getSdk, onShowToast, onDeploySuccess }: 
           source: { type: 'git', git: { url: computedGitUrl, branch: effectiveBranch || 'main', ...(dockerfilePath.trim() && { dockerfilePath: dockerfilePath.trim() }), ...(credentials.trim() && { credentials: credentials.trim() }) } },
           branch: effectiveBranch || 'main',
           ...(envVars && { envVars }),
+          ...(subdomain.trim() && { subdomain: subdomain.trim() }),
+          ...(assignedDomainId && { domainId: assignedDomainId }),
         });
         deploymentId = (created as { id?: string }).id;
       } else if (uploadedArchive) {
         const created = await sdk.deployments.create(project.id, {
           source: { type: 'archive', archive: { bucketId: uploadedArchive.bucketId, objectKey: uploadedArchive.objectKey, ...(dockerfilePath.trim() && { dockerfilePath: dockerfilePath.trim() }) } },
           ...(envVars && { envVars }),
+          ...(subdomain.trim() && { subdomain: subdomain.trim() }),
+          ...(assignedDomainId && { domainId: assignedDomainId }),
         });
         deploymentId = (created as { id?: string }).id;
       }
@@ -98,17 +121,19 @@ export function useNewDeploy({ project, getSdk, onShowToast, onDeploySuccess }: 
     } finally {
       setSubmitting(false);
     }
-  }, [sourceType, computedGitUrl, effectiveBranch, dockerfilePath, credentials, parsedEnvVars, uploadedArchive, project.id, getSdk, onShowToast, onDeploySuccess]);
+  }, [sourceType, computedGitUrl, effectiveBranch, dockerfilePath, credentials, parsedEnvVars, uploadedArchive, subdomain, assignedDomainId, project.id, getSdk, onShowToast, onDeploySuccess]);
 
   return {
     stepIndex, completed, sourceType, gitUrl: computedGitUrl, selectedRepo, selectedBranch,
     manualGitUrl, dockerfilePath, credentials, envText, autoDeploy, buildPlan,
     detecting, detectError, showAdvanced, submitting,
     archiveFile, uploadedArchive,
+    subdomain, availableDomains, assignedDomainId,
     effectiveBranch, repoName, parsedEnvVars, canContinue,
     setSourceType, setSelectedRepo, setSelectedBranch, setManualGitUrl,
     setDockerfilePath, setCredentials, setEnvText, setAutoDeploy, setBuildPlan,
     setShowAdvanced, setArchiveFile, setUploadedArchive,
+    setSubdomain, setAssignedDomainId,
     continueStep, back, runDetection, deploy,
   };
 }

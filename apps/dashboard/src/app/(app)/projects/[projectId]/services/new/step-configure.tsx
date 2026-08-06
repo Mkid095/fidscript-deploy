@@ -1,4 +1,4 @@
-// Step 2: Configure — framework detection, env vars, advanced settings
+// Step 2: Configure — framework detection, subdomain, env vars, advanced settings
 
 import { Card } from '@fidscript/ui';
 import { HugeiconsIcon } from '@hugeicons/react';
@@ -8,6 +8,7 @@ import type { SourceType, BuildPlan } from './new-deploy-utils';
 import { BuildPreview } from './build-preview';
 import { EnvVarsSection } from './env-vars-section';
 import { AdvancedSettings } from './advanced-settings';
+import { SubdomainSelection } from './subdomain-selection';
 
 interface StepConfigureProps {
   sourceType: SourceType;
@@ -22,11 +23,16 @@ interface StepConfigureProps {
   detectError: string | null;
   envText: string;
   showAdvanced: boolean;
+  subdomain: string;
+  platformDomain: string;
+  availableDomains: Array<{ id: string; domain: string }>;
   onDockerfileChange: (v: string) => void;
   onCredentialsChange: (v: string) => void;
   onEnvTextChange: (v: string) => void;
   onToggleAdvanced: () => void;
   onRunDetection: () => void;
+  onSubdomainChange: (v: string) => void;
+  onAssignExistingDomain: (domainId: string) => void;
   onProjectSlug: string;
   parsedEnvVars: Record<string, string>;
 }
@@ -44,11 +50,16 @@ export function StepConfigure({
   detectError,
   envText,
   showAdvanced,
+  subdomain,
+  platformDomain,
+  availableDomains,
   onDockerfileChange,
   onCredentialsChange,
   onEnvTextChange,
   onToggleAdvanced,
   onRunDetection,
+  onSubdomainChange,
+  onAssignExistingDomain,
   onProjectSlug,
   parsedEnvVars,
 }: StepConfigureProps) {
@@ -57,6 +68,16 @@ export function StepConfigure({
       {/* Framework detection */}
       <FrameworkDetection sourceType={sourceType} buildPlan={buildPlan} detecting={detecting}
         detectError={detectError} onRunDetection={onRunDetection} />
+
+      {/* Subdomain selection */}
+      <SubdomainSelection
+        projectSlug={onProjectSlug}
+        platformDomain={platformDomain}
+        value={subdomain}
+        onChange={onSubdomainChange}
+        availableDomains={availableDomains}
+        onAssignExisting={onAssignExistingDomain}
+      />
 
       {/* Environment variables */}
       <EnvVarsSection value={envText} onChange={onEnvTextChange}

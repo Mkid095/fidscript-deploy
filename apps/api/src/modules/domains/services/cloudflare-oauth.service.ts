@@ -175,7 +175,7 @@ export class CloudflareOAuthService {
     // Find by projectId since there's no unique constraint on it
     const connections = await this.prisma.domainConnection.findMany({ where: { projectId } });
     const connection = connections[0];
-    if (!connection || connection.provider !== 'cloudflare') return [];
+    if (!connection || (connection.provider || '').toUpperCase() !== 'CLOUDFLARE') return [];
 
     const token = this.decryptSecret(connection.encryptedToken);
     try {

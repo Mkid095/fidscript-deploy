@@ -93,11 +93,16 @@ function NewDeploymentPage({ project }: { project: NonNullable<ReturnType<typeof
               selectedRepo={github.selectedRepo} buildPlan={newDeploy.buildPlan}
               detecting={newDeploy.detecting} detectError={newDeploy.detectError}
               envText={newDeploy.envText} showAdvanced={newDeploy.showAdvanced}
+              subdomain={newDeploy.subdomain}
+              platformDomain={process.env.NEXT_PUBLIC_PLATFORM_DOMAIN ?? 'deploy.fidscript.com'}
+              availableDomains={newDeploy.availableDomains}
               onDockerfileChange={newDeploy.setDockerfilePath}
               onCredentialsChange={newDeploy.setCredentials}
               onEnvTextChange={newDeploy.setEnvText}
               onToggleAdvanced={() => newDeploy.setShowAdvanced(v => !v)}
               onRunDetection={newDeploy.runDetection}
+              onSubdomainChange={newDeploy.setSubdomain}
+              onAssignExistingDomain={(id) => newDeploy.setAssignedDomainId(id)}
               onProjectSlug={project.slug}
               parsedEnvVars={newDeploy.parsedEnvVars}
             />

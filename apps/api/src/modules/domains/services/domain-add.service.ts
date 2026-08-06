@@ -36,10 +36,31 @@ export class DomainAddService {
     const existing = await this.prisma.domain.findFirst({ where: { projectId, domain: dto.domain } });
     if (existing) throw new ConflictException('Domain already added to this project');
 
+    // Cross-project conflict check: same domain cannot be the primary in two
+    // projects at once. Apex domains (e.g. example.com) are the natural primary
+    // and must be unique platform-wide. Subdomains can coexist across projects
+    // because they target different deployments.
     const isPlatform = dto.domain.endsWith(`.${this.platformDomain}`);
     const isApex = !dto.domain.startsWith('www.') && dto.domain.split('.').length === 2;
+    const isPrimaryRequested = dto.type?.includes('DEPLOYMENT') ?? true;
+    if (isApex && isPrimaryRequested) {
+      const primaryElsewhere = await this.prisma.domain.findFirst({
+        where: {
+          domain: dto.domain,
+          isPrimary: true,
+          projectId: { not: projectId },
+        },
+      });
+      if (primaryElsewhere) {
+        throw new ConflictException(
+          `Domain "${dto.domain}" is already the primary domain of another project. ` +
+          `Detach it from the other project before adding here.`,
+        );
+      }
+    }
+
     const mx = await this.domainMxService.checkMxRecords(dto.domain);
-    const isPrimary = (await this.prisma.domain.count({ where: { projectId } })) === 0;
+    const isPrimary = isApex && isPrimaryRequested && (await this.prisma.domain.count({ where: { projectId, isPrimary: true } })) === 0;
 
     // Derive capabilities from domain type array, defaulting to DEPLOYMENT
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
