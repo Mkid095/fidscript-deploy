@@ -1,15 +1,19 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { Button } from '@fidscript/ui';
+import { HugeiconsIcon } from '@hugeicons/react';
+import { Download01Icon } from '@hugeicons/core-free-icons';
 
 import { useAuth } from '@/contexts/auth-context';
 import { useShellProjectId } from '@/contexts/project-context';
 import { useLogsData } from './use-logs-data';
 import { LogFilters } from './log-filters';
 import { LogList } from './log-list';
+import { downloadLogs } from './download-logs';
+import { streamInfoFor, type StreamKey } from './stream-taxonomy';
 
 const LEVELS = ['debug', 'info', 'warn', 'error', 'fatal'] as const;
 type Level = typeof LEVELS[number];
@@ -18,24 +22,24 @@ export default function LogsPage() {
   const searchParams = useSearchParams();
   const { getSdk } = useAuth();
   const shellProjectId = useShellProjectId();
-  const [stream, setStream] = useState<'default' | 'build' | 'access' | 'error'>('default');
+  const [streamKey, setStreamKey] = useState<StreamKey>('default');
   const [activeLevels, setActiveLevels] = useState<Set<Level>>(new Set(LEVELS));
-  const [autoScroll, setAutoScroll] = useState(true);
+  const [searchTerm, setSearchTerm] = useState('');
   const [pickedProjectId, setPickedProjectId] = useState(searchParams.get('project') ?? '');
 
-  const d = useLogsData(shellProjectId ?? pickedProjectId, stream, activeLevels, setActiveLevels, getSdk, shellProjectId);
-
-  useEffect(() => {
-    if (autoScroll && d.logs.length > 0) {
-      // auto-scroll handled by LogList
-    }
-  }, [d.logs, autoScroll]);
+  const selectedProjectId = shellProjectId ?? pickedProjectId;
+  const d = useLogsData(selectedProjectId, streamKey, activeLevels, setActiveLevels, getSdk, shellProjectId, searchTerm);
 
   function handleProjectChange(id: string) {
     setPickedProjectId(id);
     const url = new URL(window.location.href);
     url.searchParams.set('project', id);
     window.location.href = url.toString();
+  }
+
+  function handleDownload() {
+    const stream = streamInfoFor(streamKey);
+    downloadLogs(d.logs, { projectId: selectedProjectId, stream: stream.label, search: searchTerm });
   }
 
   if (d.loadingProjects) {
@@ -46,10 +50,6 @@ export default function LogsPage() {
     );
   }
 
-  // Only show the "create project first" empty state when the user is NOT
-  // already inside a project shell (shellProjectId is set there) — otherwise
-  // the hook skips loading projects (projects=[]) and we'd flash this empty
-  // state even inside a valid project, which the Platform Audit Guide flagged.
   if (!shellProjectId && d.projects.length === 0) {
     return (
       <div className="flex items-center justify-center min-h-96">
@@ -71,6 +71,10 @@ export default function LogsPage() {
         <div className="flex items-center gap-2">
           <Button variant="ghost" size="sm" onClick={d.loadLogs}>Refresh</Button>
           <Button variant="ghost" size="sm" onClick={d.clearLogs}>Clear</Button>
+          <Button variant="ghost" size="sm" onClick={handleDownload} disabled={d.logs.length === 0}>
+            <HugeiconsIcon icon={Download01Icon} size={13} className="mr-1.5" />
+            Download
+          </Button>
         </div>
       </div>
 
@@ -78,20 +82,22 @@ export default function LogsPage() {
         projects={d.projects}
         pickedProjectId={pickedProjectId}
         shellProjectId={shellProjectId}
-        stream={stream}
+        streamKey={streamKey}
         activeLevels={activeLevels}
         live={d.live}
+        searchTerm={searchTerm}
         onProjectChange={handleProjectChange}
-        onStreamChange={setStream}
+        onStreamChange={setStreamKey}
         onToggleLevel={d.toggleLevel}
         onLiveChange={d.setLive}
+        onSearchChange={setSearchTerm}
       />
 
       <LogList
         logs={d.logs}
         loading={d.loadingLogs}
         error={d.error}
-        autoScroll={autoScroll}
+        autoScroll
         onClear={d.clearLogs}
       />
     </div>

@@ -3,10 +3,10 @@
 import { useEffect, useState, useCallback } from 'react';
 import type { Project, LogEntry } from '@/types';
 import type { FidscriptSDK } from '@fidscript-deploy/sdk';
+import { useLiveTail } from './use-live-tail';
+import { STREAM_TAXONOMY, type StreamKey } from './stream-taxonomy';
 
-const STREAMS = ['default', 'build', 'access', 'error'] as const;
 const LEVELS = ['debug', 'info', 'warn', 'error', 'fatal'] as const;
-type Stream = typeof STREAMS[number];
 type Level = typeof LEVELS[number];
 
 interface LogsSdk {
@@ -14,10 +14,17 @@ interface LogsSdk {
   logs: FidscriptSDK['logs'];
 }
 
-const ACCESS_TOKEN_KEY = 'fidscript_access_token';
-const LEGACY_TOKEN_KEY = 'fidscript_token';
+const STREAM_KEYS = STREAM_TAXONOMY.map(s => s.key) as StreamKey[];
 
-export function useLogsData(selectedProjectId: string, stream: Stream, activeLevels: Set<Level>, setActiveLevels: (updater: (prev: Set<Level>) => Set<Level>) => void, getSdk: () => LogsSdk, shellProjectId: string | null) {
+export function useLogsData(
+  selectedProjectId: string,
+  streamKey: StreamKey,
+  activeLevels: Set<Level>,
+  setActiveLevels: (updater: (prev: Set<Level>) => Set<Level>) => void,
+  getSdk: () => LogsSdk,
+  shellProjectId: string | null,
+  searchTerm: string,
+) {
   const [projects, setProjects] = useState<Project[]>([]);
   const [logs, setLogs] = useState<LogEntry[]>([]);
   const [loadingProjects, setLoadingProjects] = useState(!shellProjectId);
@@ -43,9 +50,11 @@ export function useLogsData(selectedProjectId: string, stream: Stream, activeLev
     setError(null);
     try {
       const levelFilter = Array.from(activeLevels).join(',');
+      const streamName = STREAM_TAXONOMY.find(s => s.key === streamKey)?.name;
       const result = await getSdk().logs.getLogs(selectedProjectId, {
-        stream: stream === 'default' ? undefined : stream,
+        stream: streamKey === 'default' ? undefined : streamName,
         level: levelFilter || undefined,
+        search: searchTerm.trim() || undefined,
         limit: 100,
       });
       setLogs(result.logs);
@@ -54,83 +63,21 @@ export function useLogsData(selectedProjectId: string, stream: Stream, activeLev
     } finally {
       setLoadingLogs(false);
     }
-  }, [selectedProjectId, stream, activeLevels, getSdk]);
+  }, [selectedProjectId, streamKey, activeLevels, searchTerm, getSdk]);
 
   useEffect(() => { loadLogs(); }, [loadLogs]);
 
-  /**
-   * Live tail: opens an SSE connection to /api/v1/projects/:id/logs/stream and
-   * appends incoming LogEntry payloads to the existing logs buffer. Initial load
-   * is handled separately via loadLogs() above so the user sees recent history
-   * before tailing begins.
-   */
-  useEffect(() => {
-    if (!live || !selectedProjectId) return;
-    const token = typeof window !== 'undefined'
-      ? (window.localStorage.getItem(ACCESS_TOKEN_KEY) ?? window.localStorage.getItem(LEGACY_TOKEN_KEY))
-      : null;
-    if (!token) {
-      setError('Not authenticated — cannot start live tail');
-      return;
-    }
-    const params = new URLSearchParams();
-    if (stream !== 'default') params.set('stream', stream);
-    const levelFilter = Array.from(activeLevels).join(',');
-    if (levelFilter) params.set('level', levelFilter);
-
-    const url = `/api/v1/projects/${selectedProjectId}/logs/stream?${params.toString()}`;
-    const ctrl = new AbortController();
-
-    (async () => {
-      try {
-        const res = await fetch(url, {
-          headers: { Authorization: `Bearer ${token}` },
-          signal: ctrl.signal,
-        });
-        if (!res.ok || !res.body) {
-          setError(`Live tail failed: HTTP ${res.status}`);
-          return;
-        }
-        const reader = res.body.getReader();
-        const decoder = new TextDecoder();
-        let buffer = '';
-        // eslint-disable-next-line no-constant-condition
-        while (true) {
-          const { done, value } = await reader.read();
-          if (done) break;
-          buffer += decoder.decode(value, { stream: true });
-          // SSE frames are separated by a blank line.
-          let boundary = buffer.indexOf('\n\n');
-          while (boundary !== -1) {
-            const frame = buffer.slice(0, boundary);
-            buffer = buffer.slice(boundary + 2);
-            const dataLine = frame
-              .split('\n')
-              .filter(l => l.startsWith('data:'))
-              .map(l => l.slice(5).trim())
-              .join('\n');
-            if (dataLine) {
-              try {
-                const entries = JSON.parse(dataLine) as LogEntry[];
-                if (Array.isArray(entries) && entries.length > 0) {
-                  setLogs(prev => [...prev, ...entries]);
-                }
-              } catch {
-                // Ignore malformed frame; SSE keepalive comments may be present.
-              }
-            }
-            boundary = buffer.indexOf('\n\n');
-          }
-        }
-      } catch (err) {
-        if ((err as Error).name !== 'AbortError') {
-          setError(err instanceof Error ? err.message : 'Live tail error');
-        }
-      }
-    })();
-
-    return () => ctrl.abort();
-  }, [live, selectedProjectId, stream, activeLevels]);
+  // Live tail appends incoming entries to the existing buffer (preserving history).
+  useLiveTail({
+    projectId: selectedProjectId || undefined,
+    streamKey,
+    levelFilter: Array.from(activeLevels).join(','),
+    active: live,
+    onEntries: useCallback((entries: LogEntry[]) => {
+      setLogs(prev => [...prev, ...entries]);
+    }, []),
+    onError: useCallback((msg: string) => setError(msg), []),
+  });
 
   function toggleLevel(level: Level) {
     setActiveLevels(prev => {
@@ -142,5 +89,5 @@ export function useLogsData(selectedProjectId: string, stream: Stream, activeLev
 
   function clearLogs() { setLogs([]); }
 
-  return { projects, logs, loadingProjects, loadingLogs, error, live, setLive, toggleLevel, clearLogs, loadLogs };
+  return { projects, logs, loadingProjects, loadingLogs, error, live, setLive, toggleLevel, clearLogs, loadLogs, streamKeys: STREAM_KEYS };
 }

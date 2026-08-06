@@ -2,8 +2,8 @@
 
 import { Card } from '@fidscript/ui';
 import type { Project } from '@/types';
+import { STREAM_TAXONOMY, type StreamKey } from './stream-taxonomy';
 
-const STREAMS = ['default', 'build', 'access', 'error'] as const;
 const LEVELS = ['debug', 'info', 'warn', 'error', 'fatal'] as const;
 const LEVEL_COLORS: Record<string, string> = {
   debug: 'bg-[var(--rail)] text-[var(--text-muted)]',
@@ -12,23 +12,27 @@ const LEVEL_COLORS: Record<string, string> = {
   error: 'bg-red-900 text-[var(--danger)]',
   fatal: 'bg-red-900 text-[var(--danger)] font-bold',
 };
-type Stream = typeof STREAMS[number];
 type Level = typeof LEVELS[number];
 
 interface LogFiltersProps {
   projects: Project[];
   pickedProjectId: string;
   shellProjectId: string | null;
-  stream: Stream;
+  streamKey: StreamKey;
   activeLevels: Set<Level>;
   live: boolean;
+  searchTerm: string;
   onProjectChange: (id: string) => void;
-  onStreamChange: (s: Stream) => void;
+  onStreamChange: (s: StreamKey) => void;
   onToggleLevel: (l: Level) => void;
   onLiveChange: (v: boolean) => void;
+  onSearchChange: (v: string) => void;
 }
 
-export function LogFilters({ projects, pickedProjectId, shellProjectId, stream, activeLevels, live, onProjectChange, onStreamChange, onToggleLevel, onLiveChange }: LogFiltersProps) {
+export function LogFilters({
+  projects, pickedProjectId, shellProjectId, streamKey, activeLevels, live, searchTerm,
+  onProjectChange, onStreamChange, onToggleLevel, onLiveChange, onSearchChange,
+}: LogFiltersProps) {
   return (
     <Card className="border border-[var(--rail)] mb-6">
       <div className="flex flex-col gap-4">
@@ -43,14 +47,26 @@ export function LogFilters({ projects, pickedProjectId, shellProjectId, stream, 
         )}
 
         <div>
+          <label htmlFor="log-search" className="block text-xs text-[var(--text-muted)] mb-1">Search</label>
+          <input
+            id="log-search"
+            type="search"
+            value={searchTerm}
+            onChange={e => onSearchChange(e.target.value)}
+            placeholder="Filter messages…"
+            className="w-full max-w-md bg-[var(--surface-2)] border border-[var(--rail)] text-[var(--text)] rounded-lg px-3 py-2 text-sm placeholder:text-[var(--text-dim)]/50 focus:outline-none focus:border-[var(--accent)]/50 focus:ring-1 focus:ring-[var(--accent)]/20"
+          />
+        </div>
+
+        <div>
           <label className="block text-xs text-[var(--text-muted)] mb-2">Stream</label>
           <div className="flex gap-2 flex-wrap">
-            {STREAMS.map(s => (
-              <button key={s} onClick={() => onStreamChange(s)}
+            {STREAM_TAXONOMY.map(s => (
+              <button key={s.key} onClick={() => onStreamChange(s.key)} title={s.description}
                 className={`text-xs px-3 py-1.5 rounded-full border transition-colors ${
-                  stream === s ? 'bg-blue-900 text-[var(--accent)] border-[var(--accent)]' : 'bg-[var(--surface-2)] text-[var(--text-muted)] border-[var(--rail)] hover:border-slate-500'
+                  streamKey === s.key ? 'bg-blue-900 text-[var(--accent)] border-[var(--accent)]' : 'bg-[var(--surface-2)] text-[var(--text-muted)] border-[var(--rail)] hover:border-slate-500'
                 } bg-none cursor-pointer`}>
-                {s}
+                {s.label}
               </button>
             ))}
           </div>
