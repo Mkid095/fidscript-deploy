@@ -37,6 +37,10 @@ export function useDeploymentRealtime({
       if (cancelled) return;
       const handler = (event: { type?: string; data?: Record<string, any> }) => {
         const et = event?.type;
+        // Subscribe to all deployment events emitted by the runner. The server
+        // emits `deployments.deployment.<verb>` (queued, building, deploying,
+        // succeeded, failed, stopped, rolled_back, log, …) — the prefix
+        // `deployments.deployment.` covers all of them.
         if (!et || !et.startsWith('deployments.deployment.')) return;
         const data = event?.data ?? {};
 
@@ -44,7 +48,10 @@ export function useDeploymentRealtime({
           onLogStream(false);
           load();
         }
-        if (['deployments.deployment.building', 'deployments.deployment.deploying', 'deployments.deployment.queued'].includes(et)) {
+        // `deployments.deployment.log` and the in-progress states all imply
+        // log streaming is live — flip the indicator on so the UI shows the
+        // streaming dot the moment the first line arrives.
+        if (['deployments.deployment.building', 'deployments.deployment.deploying', 'deployments.deployment.queued', 'deployments.deployment.log'].includes(et)) {
           onLogStream(true);
         }
         // Realtime status updates must merge into the existing deployment so the
