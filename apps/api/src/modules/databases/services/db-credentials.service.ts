@@ -28,7 +28,7 @@ export class DbCredentialsService {
     });
 
     await this.injectDatabaseUrl(projectId, newCredentials);
-    return { rotated: true };
+    return { rotated: true, password };
   }
 
   async getConnectionInfo(projectId: string, databaseId: string, dto: { poolOnly?: boolean }) {

@@ -39,7 +39,7 @@ export function DataGrid({ table, state, onRefresh, isRealtime, columns: colInfo
   const primaryKey = getPrimaryKey(colInfos, state.data ?? []);
 
   const { handleInsert, handleUpdate, handleDelete } = useDataGridMutations({
-    table, insertRow, updateRow, deleteRows, onRefresh, showMsg, setMutating,
+    table, insertRow, updateRow, deleteRows, primaryKey, onRefresh, showMsg, setMutating,
   });
 
   useDataGridRealtime(table, databaseId, isRealtime, getSdk, onRefresh);

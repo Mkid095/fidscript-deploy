@@ -16,7 +16,7 @@ export function useBackups() {
   const [loading, setLoading] = useState(false);
   const [creating, setCreating] = useState(false);
   const [buckets, setBuckets] = useState<StorageBucket[]>([]);
-  const [selectedBucket, setSelectedBucket] = useState('db-backups');
+  const [selectedBucket, setSelectedBucket] = useState('');
   const [restoring, setRestoring] = useState<string | null>(null);
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
 

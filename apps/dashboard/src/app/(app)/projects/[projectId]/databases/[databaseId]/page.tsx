@@ -1,11 +1,15 @@
 'use client';
 
+import Link from 'next/link';
+import { useParams } from 'next/navigation';
 import { useDatabase } from '../database-context';
 import { formatBytes } from '@/lib/format';
 import { HugeiconsIcon } from '@hugeicons/react';
 import { CheckmarkCircle03Icon, AlertCircleIcon } from '@hugeicons/core-free-icons';
 
 export default function DatabaseOverview() {
+  const params = useParams<{ projectId: string }>();
+  const projectId = params.projectId;
   const { database, schema, loadingSchema, realtimeTables } = useDatabase();
   if (!database) {
     return (
@@ -15,6 +19,7 @@ export default function DatabaseOverview() {
     );
   }
   const statusColor = database.status === 'healthy' ? 'text-emerald-400' : 'text-rose-400';
+  const base = `/projects/${projectId}/databases/${database.id}`;
 
   return (
     <div className="p-6 space-y-5">
@@ -60,15 +65,19 @@ export default function DatabaseOverview() {
         <p className="text-xs font-semibold text-[var(--text-dim)] uppercase tracking-wider mb-2">Quick links</p>
         <div className="flex gap-2 flex-wrap">
           {[
-            { label: 'Explorer', href: `databases/${database.id}/explorer` },
-            { label: 'SQL Editor', href: `databases/${database.id}/sql` },
-            { label: 'Realtime', href: `databases/${database.id}/realtime` },
-            { label: 'Backups', href: `databases/${database.id}/backups` },
-            { label: 'Settings', href: `databases/${database.id}/settings` },
+            { label: 'Explorer',  href: `${base}/explorer` },
+            { label: 'SQL Editor', href: `${base}/sql` },
+            { label: 'Realtime',  href: `${base}/realtime` },
+            { label: 'Backups',   href: `${base}/backups` },
+            { label: 'Settings',  href: `${base}/settings` },
           ].map(link => (
-            <span key={link.href} className="text-xs px-2.5 py-1.5 rounded border border-[var(--rail)] text-[var(--text-dim)]">
+            <Link
+              key={link.href}
+              href={link.href}
+              className="text-xs px-2.5 py-1.5 rounded border border-[var(--rail)] text-[var(--text-dim)] hover:text-[var(--text)] hover:border-[var(--accent)]/40"
+            >
               {link.label}
-            </span>
+            </Link>
           ))}
         </div>
       </div>

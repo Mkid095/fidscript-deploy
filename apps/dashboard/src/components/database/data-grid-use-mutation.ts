@@ -20,12 +20,13 @@ export function useDataGridMutations(opts: {
   table: string;
   insertRow: (table: string, row: Record<string, unknown>) => Promise<{ success: boolean; error?: string }>;
   updateRow: (table: string, pkValue: unknown, patch: Record<string, unknown>) => Promise<{ success: boolean; error?: string }>;
-  deleteRows: (table: string, ids: unknown[]) => Promise<{ success: boolean; error?: string }>;
+  deleteRows: (table: string, ids: unknown[], primaryKey?: string) => Promise<{ success: boolean; error?: string }>;
+  primaryKey: string;
   onRefresh: () => void;
   showMsg: (type: 'success' | 'error', text: string) => void;
   setMutating: (v: boolean) => void;
 }) {
-  const { table, insertRow, updateRow, deleteRows, onRefresh, showMsg, setMutating } = opts;
+  const { table, insertRow, updateRow, deleteRows, primaryKey, onRefresh, showMsg, setMutating } = opts;
 
   const handleInsert = useCallback(async (row: Record<string, unknown>): Promise<boolean> => {
     setMutating(true);
@@ -55,7 +56,7 @@ export function useDataGridMutations(opts: {
 
   const handleDelete = useCallback(async (ids: unknown[]): Promise<boolean> => {
     setMutating(true);
-    const result = await deleteRows(table, ids);
+    const result = await deleteRows(table, ids, primaryKey);
     setMutating(false);
     if (result.success) {
       showMsg('success', `${ids.length} row(s) deleted.`);
@@ -64,7 +65,7 @@ export function useDataGridMutations(opts: {
     }
     showMsg('error', result.error ?? 'Delete failed.');
     return false;
-  }, [table, deleteRows, onRefresh, showMsg, setMutating]);
+  }, [table, deleteRows, primaryKey, onRefresh, showMsg, setMutating]);
 
   return { handleInsert, handleUpdate, handleDelete };
 }

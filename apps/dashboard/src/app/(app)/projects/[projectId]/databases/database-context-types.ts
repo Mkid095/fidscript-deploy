@@ -57,7 +57,7 @@ export interface DatabaseContextValue {
   fetchColumns: (table: string) => Promise<void>;
   insertRow: (table: string, row: Record<string, unknown>) => Promise<{ success: boolean; error?: string }>;
   updateRow: (table: string, pkValue: unknown, patch: Record<string, unknown>) => Promise<{ success: boolean; error?: string }>;
-  deleteRows: (table: string, ids: unknown[]) => Promise<{ success: boolean; error?: string }>;
+  deleteRows: (table: string, ids: unknown[], primaryKey?: string) => Promise<{ success: boolean; error?: string }>;
   queryResult: QueryResult | null;
   runQuery: (sql: string) => Promise<QueryResult>;
   queryRunning: boolean;

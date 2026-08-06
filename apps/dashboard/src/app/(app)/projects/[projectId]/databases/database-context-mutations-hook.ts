@@ -2,7 +2,6 @@
 
 import { useCallback } from 'react';
 import { useAuth } from '@/contexts/auth-context';
-import type { RawDataResult } from '@/lib/db-normalize';
 
 export function useDatabaseMutations(databaseId: string | null, fetchRows: (table: string) => Promise<void>) {
   const { getSdk } = useAuth();
@@ -31,11 +30,15 @@ export function useDatabaseMutations(databaseId: string | null, fetchRows: (tabl
     }
   }, [databaseId, getSdk, fetchRows]);
 
-  const deleteRows = useCallback(async (table: string, ids: unknown[]) => {
+  const deleteRows = useCallback(async (table: string, ids: unknown[], primaryKey = 'id') => {
     if (!databaseId) return { success: false, error: 'No database selected' };
+    if (ids.length === 0) return { success: false, error: 'No rows selected' };
     try {
       const sdk = getSdk();
-      await (sdk.database(databaseId).from(table).eq('id', ids[0]).delete() as Promise<number>);
+      const query = ids.length === 1
+        ? sdk.database(databaseId).from(table).eq(primaryKey, ids[0])
+        : sdk.database(databaseId).from(table).in(primaryKey, ids as unknown[]);
+      await (query.delete() as Promise<number>);
       await fetchRows(table);
       return { success: true };
     } catch (err: unknown) {
