@@ -27,9 +27,23 @@ import { DeploymentsModule } from './modules/deployments';
 import { StorageModule } from './modules/storage';
 import { DatabasesModule, DatabaseProvider } from './modules/databases';
 export { DatabaseProvider };
-export type { Database, TableInfo, ColumnInfo, RealtimeEvent, MigrationRecord, DataResult, Op, LiveQueryResult } from './modules/databases';
+export type { Database, TableInfo, ColumnInfo, RealtimeEvent, MigrationRecord, DataResult, Op, LiveQueryResult } from './modules/databases-types';
 import { DomainsModule } from './modules/domains';
-import { EmailModule, AdminMailboxModule, AdminAttachmentConfigModule, AdminMailConnectionModule, PlatformMailboxMessage, PlatformMailboxSummary, PlatformMailboxesResponse, CreatePlatformMailboxResponse, ListPlatformMessagesResponse, AdminSendMailResponse, AdminAttachmentConfig, StorageBackend, MailboxMessage, EmailDomain, Mailbox, EmailAlias, MailConnectionInfo } from './modules/email';
+import { EmailModule, AdminMailboxModule, AdminAttachmentConfigModule, AdminMailConnectionModule, MailConnectionInfo } from './modules/email';
+import type {
+  PlatformMailboxMessage,
+  PlatformMailboxSummary,
+  PlatformMailboxesResponse,
+  CreatePlatformMailboxResponse,
+  ListPlatformMessagesResponse,
+  AdminSendMailResponse,
+  AdminAttachmentConfig,
+  StorageBackend,
+  MailboxMessage,
+  EmailDomain,
+  Mailbox,
+  EmailAlias,
+} from '@fidscript-deploy/types';
 import { FunctionsModule } from './modules/functions';
 import { QueuesModule } from './modules/queues';
 import { CronModule } from './modules/cron';
@@ -52,7 +66,8 @@ export { FidscriptClient, FidscriptClientOptions };
 export { FidscriptError, AuthError, NotFoundError, ValidationError, RateLimitError };
 export { AuthModule, ProjectsModule, DeploymentsModule, StorageModule, DatabasesModule, DomainsModule, EmailModule, FunctionsModule, QueuesModule, CronModule, RealtimeModule, MonitoringModule, LoggingModule, TemplatesModule, GithubModule, InstallationModule, NotificationsModule };
 export { AdminMailboxModule, AdminAttachmentConfigModule, AdminMailConnectionModule, type PlatformMailboxMessage, type PlatformMailboxSummary, type PlatformMailboxesResponse, type CreatePlatformMailboxResponse, type ListPlatformMessagesResponse, type AdminSendMailResponse, type AdminAttachmentConfig, type StorageBackend, type MailboxMessage, type EmailDomain, type Mailbox, type EmailAlias, type MailConnectionInfo };
-export type { Domain, DnsConnection, DomainHealth, DomainHealthStatus, DnsRecord, DnsRecordCategory, DnsRecordStatus, DnsRecordsResponse, DomainSslInfo, DomainType, DomainCapabilities, DomainReconciliationStatus, DomainVerificationRun, DomainIncident, DomainHealthTimelineEntry, DomainWizardStatus, WizardStage, WizardRecord, WizardRecordStatus } from './modules/domains';
+export type { Domain, DnsConnection, DomainHealth, DomainHealthStatus, DnsRecord, DnsRecordCategory, DnsRecordStatus, DnsRecordsResponse, DomainSslInfo, DomainType, DomainCapabilities, DomainReconciliationStatus, DomainVerificationRun, DomainIncident } from './modules/domains-types';
+export type { DomainHealthTimelineEntry, DomainWizardStatus, WizardStage, WizardRecord, WizardRecordStatus } from './modules/domains-types-wizard';
 export type { UserNotification, ActivityEntry } from './modules/notifications';
 export type { RealtimeEventHandler } from './modules/realtime';
 

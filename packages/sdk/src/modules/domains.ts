@@ -30,16 +30,40 @@ import { applyDomainsAuxMethods } from './domains-templates-webhooks';
 
 export type { DomainsHost };
 
-export class DomainsModule implements DomainsHost {
+export type {
+  Domain,
+  DnsConnection,
+  DomainHealth,
+  DomainHealthStatus,
+  DnsRecord,
+  DnsRecordCategory,
+  DnsRecordStatus,
+  DnsRecordsResponse,
+  DomainSslInfo,
+  DomainType,
+  DomainCapabilities,
+  DomainReconciliationStatus,
+  DomainVerificationRun,
+  DomainIncident,
+} from './domains-types';
+export type {
+  DomainHealthTimelineEntry,
+  DomainWizardStatus,
+  WizardStage,
+  WizardRecord,
+  WizardRecordStatus,
+} from './domains-types-wizard';
+
+export class DomainsModule {
   readonly client: FidscriptClient;
 
   constructor(client: FidscriptClient) {
     this.client = client;
-    applyDnsMethods(this);
-    applyDnsOpsMethods(this);
-    applyChangeSetMethods(this);
-    applyCloudflareMethods(this);
-    applyDomainsAuxMethods(this);
+    applyDnsMethods(this as unknown as DomainsHost);
+    applyDnsOpsMethods(this as unknown as DomainsHost);
+    applyChangeSetMethods(this as unknown as DomainsHost);
+    applyCloudflareMethods(this as unknown as DomainsHost);
+    applyDomainsAuxMethods(this as unknown as DomainsHost);
   }
 
   /** List domains for a specific project */
