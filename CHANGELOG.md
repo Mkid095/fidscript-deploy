@@ -7,6 +7,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/).
 ## [Unreleased]
 
 ### Added
+- `feat(dashboard): display SMTP/IMAP ports and auth method in email settings — new GET /admin/mail/connection endpoint (api MailConnectionController) returns hostname, IMAP host/port/TLS, SMTP host/port/submissionPort, authMethod, usernameFormat, tlsVersion; SDK email.connection.get() and EmailConnectionCard render a "Connection Details" section on the platform/email/settings page so admins can configure Thunderbird/Apple Mail/Outlook against the self-hosted Stalwart server. Files: apps/api/src/modules/email/controllers/email-connection.controller.ts, apps/api/src/modules/email/email.module.ts, packages/sdk/src/modules/email.ts, packages/sdk/src/index.ts, apps/dashboard/src/app/(app)/platform/email/settings/email-connection-card.tsx, apps/dashboard/src/app/(app)/platform/email/settings/page.tsx`
 - `feat(dashboard): replace free-text functionId with dropdown in scheduler create form — JobFormModal fetches sdk.functions.list(projectId) and JobFormBody renders a <select> with function.name (runtime) labels; empty/loading states surface honest copy`
 - `feat(dashboard): add HTTP method selector and headers input to scheduler endpoint form — method dropdown (GET/POST/PUT/PATCH/DELETE, default POST) plus a key/value HttpHeadersInput with add/remove rows; values are forwarded to sdk.cron.create via the httpMethod/httpHeaders fields (added to the SDK cron.create signature)`
 - `refactor(dashboard): split scheduler form body to honor 150-line ANPAS limit — extracted schedule + cron presets into schedule-field.tsx and headers editor into http-headers-input.tsx; job-form-body.tsx reduced to 149L`
@@ -80,6 +81,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/).
 ### Fixed
 - `fix(api): add project membership check to realtime presence methods`
 - `fix(sdk): add /api/v1 prefix to template method paths`
+- `fix(dashboard): add GitHub OAuth callback route at /api/auth/github/callback — renders a postMessage bridge that forwards the code/state to window.opener (or shows a friendly close-window banner when opened in the main tab) so the dashboard's "Connect GitHub" flow still works in environments where the popup is blocked and GitHub redirects to the top-level URL. Mirrors the existing Cloudflare callback at /api/callback/cloudflare. File: apps/dashboard/src/app/api/auth/github/callback/route.ts`
 
 ### Audit findings (api-mcp-audit)
 - **`mcp-hub.tsx`**: Connect snippet hardcoded `https://api.deploy.fidscript.com/api/v1` — replaced with dynamic `window.location.origin` so it works in all environments.

@@ -6,6 +6,7 @@ import { InboxIcon, LockIcon, RefreshIcon } from '@hugeicons/core-free-icons';
 import { useAuth } from '@/contexts/auth-context';
 import { useEmailSettings } from './use-email-settings';
 import { EmailSettingsForm } from './email-settings-form';
+import { EmailConnectionCard } from './email-connection-card';
 
 export default function EmailAttachmentSettingsPage() {
   const { getSdk } = useAuth();
@@ -90,6 +91,8 @@ export default function EmailAttachmentSettingsPage() {
         onSave={handleSave}
         onTest={handleTest}
       />
+
+      <EmailConnectionCard sdk={sdk} />
 
       {/* Info card */}
       <Card className="border border-[var(--rail)] p-4">

@@ -101,15 +101,37 @@ export class AdminAttachmentConfigModule {
   }
 }
 
+/** IMAP/SMTP connection details for configuring a mail client against Stalwart. */
+export interface MailConnectionInfo {
+  hostname: string;
+  imap: { host: string; port: number; tls: boolean };
+  smtp: { host: string; port: number; secure: boolean; submissionPort: number };
+  authMethod: 'PLAIN' | 'LOGIN';
+  usernameFormat: 'full-email';
+  tlsVersion: 'TLSv1.2+';
+}
+
+/** Platform-admin mailbox connection-details (Stalwart IMAP/SMTP/submission). */
+export class AdminMailConnectionModule {
+  constructor(private client: FidscriptClient) {}
+
+  async get() {
+    return this.client.get<MailConnectionInfo>('/admin/mail/connection');
+  }
+}
+
 export class EmailModule {
   /** Platform-admin operations: mailboxes, messages, send-as-platform. */
   readonly admin: AdminMailboxModule;
   /** Platform-admin operations: attachment storage backend. */
   readonly attachmentConfig: AdminAttachmentConfigModule;
+  /** Platform-admin operations: Stalwart IMAP/SMTP connection details. */
+  readonly connection: AdminMailConnectionModule;
 
   constructor(private client: FidscriptClient) {
     this.admin = new AdminMailboxModule(client);
     this.attachmentConfig = new AdminAttachmentConfigModule(client);
+    this.connection = new AdminMailConnectionModule(client);
   }
 
   async send(projectId: string, data: { to: string; from?: string; subject: string; text?: string; html?: string; replyTo?: string; apiKeyId?: string }) {

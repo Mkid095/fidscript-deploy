@@ -16,6 +16,7 @@ import { EmailEventsController } from './controllers/email-events.controller';
 import { PlatformMailboxController } from './controllers/platform-mailbox-message.controller';
 import { PlatformAdminMailController } from './controllers/platform-admin-mail.controller';
 import { AttachmentConfigController } from './controllers/attachment-config.controller';
+import { MailConnectionController } from './controllers/email-connection.controller';
 import { EmailTrackingController } from './controllers/email-tracking.controller';
 import { EmailWebhookSubscriptionController } from './controllers/email-webhook-subscription.controller';
 import { EmailAnalyticsController } from './controllers/email-analytics.controller';
@@ -90,6 +91,7 @@ import { LegalHoldService } from './services/legal-hold.service';
     PlatformMailboxController,
     PlatformAdminMailController,
     AttachmentConfigController,
+    MailConnectionController,
     EmailTrackingController,
     EmailWebhookSubscriptionController,
     EmailAnalyticsController,
