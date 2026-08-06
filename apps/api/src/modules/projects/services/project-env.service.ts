@@ -14,21 +14,30 @@ export class ProjectEnvService {
   ) {}
 
   async getEnvVars(userId: string, projectId: string) {
-    await this.findProjectWithAccess(userId, projectId);
+    const project = await this.findProjectWithAccess(userId, projectId);
+    const member = project.ownerId === userId
+      ? null
+      : await this.prisma.projectMember.findUnique({
+        where: { projectId_userId: { projectId: project.id, userId } },
+        select: { role: true },
+      });
+    const canReveal = project.ownerId === userId || member?.role.toLowerCase() === 'admin';
 
     const rows = await this.prisma.projectEnv.findMany({
-      where: { projectId },
+      where: { projectId: project.id },
       orderBy: { key: 'asc' },
     });
 
     const envVars = rows.map(row => {
-      let value = '[encrypted]';
-      try {
-        value = this.cryptoService.decrypt(row.value);
-      } catch {
-        value = '[decrypt error]';
+      let value = '[masked]';
+      if (canReveal) {
+        try {
+          value = this.cryptoService.decrypt(row.value);
+        } catch {
+          value = '[decrypt error]';
+        }
       }
-      return { key: row.key, value };
+      return { key: row.key, value, encrypted: true };
     });
 
     return { envVars };
