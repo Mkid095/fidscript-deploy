@@ -11,6 +11,7 @@ import {
   confirmDelete,
 } from './domains-helpers';
 import { validateDomainName, validateDomainType } from './domains-validate';
+import type { DomainType } from '@fidscript-deploy/sdk';
 
 export { die, loadSdk };
 export type { CliContext };
@@ -73,7 +74,7 @@ export function registerDomainsCommands(program: Command, ctx: CliContext): void
       const type = validateDomainType(opts.type);
       try {
         const d = (await sdk.domains.create(
-          projectId, validated, 'manual', undefined, type ? [type] : undefined,
+          projectId, validated, 'manual', undefined, type ? [type] as DomainType[] : undefined,
         )) as unknown as Record<string, unknown>;
         console.log(`✓ Created domain ${String(d.id ?? '')}: ${String(d.domain ?? '')}`);
       } catch (e) { die(`Create failed: ${(e as Error).message}`); }
