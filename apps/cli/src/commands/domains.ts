@@ -29,7 +29,7 @@ export function registerDomainsCommands(program: Command, ctx: CliContext): void
       const projectId = opts.project ?? die('No project ID (--project)');
       try {
         const list = await sdk.domains.list(projectId);
-        const rows = (list as Array<Record<string, unknown>>).map((d) => ({
+        const rows = (list as unknown as Array<Record<string, unknown>>).map((d) => ({
           domain: String(d.domain ?? ''),
           type: Array.isArray(d.type) ? d.type.join(',') : (d.type ? String(d.type) : '—'),
           status: d.sslStatus ? String(d.sslStatus) : '—',
@@ -47,7 +47,7 @@ export function registerDomainsCommands(program: Command, ctx: CliContext): void
     .action(async (domainId: string, _opts: { project?: string }) => {
       const sdk = await loadSdk(ctx);
       try {
-        const d = (await sdk.domains.get(domainId)) as Record<string, unknown>;
+        const d = (await sdk.domains.get(domainId)) as unknown as Record<string, unknown>;
         const fields: Array<[string, unknown]> = [
           ['Domain', d.domain], ['ID', d.id],
           ['Type', Array.isArray(d.type) ? d.type.join(',') : d.type],
@@ -74,7 +74,7 @@ export function registerDomainsCommands(program: Command, ctx: CliContext): void
       try {
         const d = (await sdk.domains.create(
           projectId, validated, 'manual', undefined, type ? [type] : undefined,
-        )) as Record<string, unknown>;
+        )) as unknown as Record<string, unknown>;
         console.log(`✓ Created domain ${String(d.id ?? '')}: ${String(d.domain ?? '')}`);
       } catch (e) { die(`Create failed: ${(e as Error).message}`); }
     });
@@ -87,7 +87,7 @@ export function registerDomainsCommands(program: Command, ctx: CliContext): void
       const sdk = await loadSdk(ctx);
       const projectId = opts.project ?? die('No project ID (--project)');
       try {
-        const res = (await sdk.domains.getDnsRecords(projectId, domainId)) as { records?: Array<Record<string, unknown>> };
+        const res = (await sdk.domains.getDnsRecords(projectId, domainId)) as unknown as { records?: Array<Record<string, unknown>> };
         const rows = (res.records ?? []).map((r) => ({
           name: String(r.name ?? ''),
           type: String(r.type ?? ''),
@@ -107,7 +107,7 @@ export function registerDomainsCommands(program: Command, ctx: CliContext): void
       const sdk = await loadSdk(ctx);
       const projectId = opts.project ?? die('No project ID (--project)');
       try {
-        const h = (await sdk.domains.getHealth(projectId, domainId)) as Record<string, unknown> | null;
+        const h = (await sdk.domains.getHealth(projectId, domainId)) as unknown as Record<string, unknown> | null;
         if (!h) {
           console.log('No health check run yet — trigger one via the dashboard.');
           return;

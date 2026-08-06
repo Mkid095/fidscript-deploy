@@ -33,7 +33,7 @@ export function registerCronCommands(program: Command, ctx: CliContext): void {
       const sdk = await loadSdk(ctx);
       const projectId = opts.project ?? die('No project ID (--project)');
       try {
-        const jobs = (await sdk.cron.list(projectId)) as Array<Record<string, unknown>>;
+        const jobs = (await sdk.cron.list(projectId)) as unknown as Array<Record<string, unknown>>;
         const rows = jobs.map((j) => ({
           id: typeof j.id === 'string' ? j.id.slice(0, 12) : '',
           name: String(j.name ?? ''),
@@ -54,7 +54,7 @@ export function registerCronCommands(program: Command, ctx: CliContext): void {
       const sdk = await loadSdk(ctx);
       const projectId = opts.project ?? die('No project ID (--project)');
       try {
-        const j = (await sdk.cron.get(projectId, jobId)) as Record<string, unknown>;
+        const j = (await sdk.cron.get(projectId, jobId)) as unknown as Record<string, unknown>;
         const fields: Array<[string, unknown]> = [
           ['Name', j.name], ['ID', j.id], ['Schedule', j.cronExpression],
           ['Timezone', j.timezone], ['Enabled', j.enabled ? '✓' : '✗'], ['State', j.state],
@@ -83,7 +83,7 @@ export function registerCronCommands(program: Command, ctx: CliContext): void {
           cronExpression: parsed.raw,
           endpoint,
           enabled: !!opts.enabled,
-        })) as Record<string, unknown>;
+        })) as unknown as Record<string, unknown>;
         console.log(`✓ Created cron job ${String(j.id ?? '')}: ${String(j.name ?? '')} (${String(j.cronExpression ?? '')})`);
       } catch (e) { die(`Create failed: ${(e as Error).message}`); }
     });
