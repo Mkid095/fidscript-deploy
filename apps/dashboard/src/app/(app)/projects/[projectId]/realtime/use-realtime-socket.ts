@@ -1,11 +1,17 @@
 /**
- * useRealtimeSocket — owns the WebSocket lifecycle for the LiveFeed panel.
+ * useRealtimeSocket — LiveFeed's view of the project realtime event stream.
  *
- * Connects on mount, subscribes to the project event room, and appends events
- * into a bounded ring buffer. Disconnects on unmount.
+ * The socket lifecycle is owned by <RealtimeProvider> in the project shell
+ * (see src/contexts/realtime-context.tsx and the architecture doc §3 —
+ * "Realtime is background infrastructure, it must not connect only when a
+ * page is visited"). This hook only SUBSCRIBES to the existing stream and
+ * tracks connection status for the UI. It never calls connect/disconnect,
+ * so mounting/unmounting the LiveFeed cannot disrupt other pages.
  */
+'use client';
+
 import { useEffect, useRef, useState } from 'react';
-import { useAuth } from '@/contexts/auth-context';
+import { useRealtime } from '@/contexts/realtime-context';
 import { MAX_LIVE_EVENTS, type LiveEvent, type LiveFeedStatus } from './live-feed-utils';
 
 export interface RealtimeSocketState {
@@ -16,69 +22,32 @@ export interface RealtimeSocketState {
   clearEvents: () => void;
 }
 
-export function useRealtimeSocket(projectId: string): RealtimeSocketState {
-  const { getSdk } = useAuth();
+export function useRealtimeSocket(_projectId: string): RealtimeSocketState {
+  const { status, subscribe } = useRealtime();
   const [events, setEvents] = useState<LiveEvent[]>([]);
-  const [status, setStatus] = useState<LiveFeedStatus>('connecting');
   const pausedRef = useRef<boolean>(false);
   const setPausedRef = (v: boolean) => { pausedRef.current = v; };
   const clearEvents = () => setEvents([]);
+  const seqRef = useRef(0);
 
   useEffect(() => {
-    let unsub: (() => void) | undefined;
-    let cancelled = false;
-    let seq = 0;
-
-    void (async () => {
-      const sdk = getSdk() as unknown as {
-        realtime?: {
-          connect(token: string | (() => string), projectId?: string): Promise<void>;
-          subscribeProject(projectId: string, handler: (e: unknown) => void): () => void;
-          disconnect(): void;
-        };
+    const unsub = subscribe('*', (raw) => {
+      if (pausedRef.current) return;
+      const e = raw as { type?: string; timestamp?: string; data?: Record<string, unknown> };
+      if (!e?.type) return;
+      const item: LiveEvent = {
+        id: `${Date.now()}-${seqRef.current++}`,
+        type: e.type,
+        timestamp: e.timestamp ?? new Date().toISOString(),
+        data: e.data,
       };
-      const rt = sdk.realtime;
-      if (!rt) { setStatus('disconnected'); return; }
-
-      const token = (): string =>
-        (typeof window !== 'undefined'
-          ? (localStorage.getItem('fidscript_access_token') ?? localStorage.getItem('fidscript_token') ?? '')
-          : '');
-
-      try {
-        setStatus('connecting');
-        await rt.connect(token, projectId);
-        if (cancelled) { rt.disconnect(); return; }
-        setStatus('connected');
-        unsub = rt.subscribeProject(projectId, (raw) => {
-          if (pausedRef.current) return;
-          const e = raw as { type?: string; timestamp?: string; data?: Record<string, unknown> };
-          if (!e?.type) return;
-          const item: LiveEvent = {
-            id: `${Date.now()}-${seq++}`,
-            type: e.type,
-            timestamp: e.timestamp ?? new Date().toISOString(),
-            data: e.data,
-          };
-          setEvents(prev => {
-            const next = [...prev, item];
-            return next.length > MAX_LIVE_EVENTS ? next.slice(next.length - MAX_LIVE_EVENTS) : next;
-          });
-        });
-      } catch {
-        if (!cancelled) setStatus('disconnected');
-      }
-    })();
-
-    return () => {
-      cancelled = true;
-      try { unsub?.(); } catch { /* socket may already be closed */ }
-      try {
-        const rt2 = (getSdk() as unknown as { realtime?: { disconnect?: () => void } }).realtime;
-        rt2?.disconnect?.();
-      } catch { /* socket may already be closed */ }
-    };
-  }, [projectId, getSdk]);
+      setEvents(prev => {
+        const next = [...prev, item];
+        return next.length > MAX_LIVE_EVENTS ? next.slice(next.length - MAX_LIVE_EVENTS) : next;
+      });
+    });
+    return unsub;
+  }, [subscribe]);
 
   return { events, status, pausedRef, setPausedRef, clearEvents };
 }

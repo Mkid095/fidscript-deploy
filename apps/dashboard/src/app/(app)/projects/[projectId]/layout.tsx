@@ -7,6 +7,7 @@ import { Spinner } from '@fidscript/ui';
 
 import { useAuth } from '@/contexts/auth-context';
 import { ProjectProvider } from '@/contexts/project-context';
+import { RealtimeProvider } from '@/contexts/realtime-context';
 import { ProjectSidebar } from '@/components/layout/project-sidebar';
 import { MobileTabBar } from '@/components/layout/mobile-tab-bar';
 import { useLocalStorage } from './use-local-storage';
@@ -71,41 +72,43 @@ export default function ProjectLayout({ children }: { children: React.ReactNode 
 
   return (
     <ProjectProvider projectId={projectId} project={project} mode={projectMode}>
-    <div className="flex h-screen bg-[var(--surface-2)] overflow-hidden">
-      {/* Project sidebar */}
-      <ProjectSidebar
-        project={project}
-        collapsed={sidebarCollapsed}
-        onCollapse={setSidebarCollapsed}
-        mode={projectMode}
-      />
+      <RealtimeProvider>
+        <div className="flex h-screen bg-[var(--surface-2)] overflow-hidden">
+          {/* Project sidebar */}
+          <ProjectSidebar
+            project={project}
+            collapsed={sidebarCollapsed}
+            onCollapse={setSidebarCollapsed}
+            mode={projectMode}
+          />
 
-      {/* Main content */}
-      <div className="flex-1 flex flex-col overflow-hidden">
-        <ProjectHeader
-          project={project}
-          effectiveSection={effectiveSection}
-          sidebarCollapsed={sidebarCollapsed}
-          onToggleSidebar={() => setSidebarCollapsed(!sidebarCollapsed)}
-          showSwitcher={showSwitcher}
-          onShowSwitcher={setShowSwitcher}
-          allProjects={allProjects}
-          projectId={projectId}
-          mode={projectMode}
-          onModeChange={setProjectMode}
-        />
+          {/* Main content */}
+          <div className="flex-1 flex flex-col overflow-hidden">
+            <ProjectHeader
+              project={project}
+              effectiveSection={effectiveSection}
+              sidebarCollapsed={sidebarCollapsed}
+              onToggleSidebar={() => setSidebarCollapsed(!sidebarCollapsed)}
+              showSwitcher={showSwitcher}
+              onShowSwitcher={setShowSwitcher}
+              allProjects={allProjects}
+              projectId={projectId}
+              mode={projectMode}
+              onModeChange={setProjectMode}
+            />
 
-        {/* Content — padding gives breathing room between content and chrome */}
-        <main className="flex-1 overflow-hidden pb-16 md:pb-0">
-          <div className="h-full overflow-y-auto px-4 py-5 sm:px-6 sm:py-6 lg:px-8">
-            {children}
+            {/* Content — padding gives breathing room between content and chrome */}
+            <main className="flex-1 overflow-hidden pb-16 md:pb-0">
+              <div className="h-full overflow-y-auto px-4 py-5 sm:px-6 sm:py-6 lg:px-8">
+                {children}
+              </div>
+            </main>
           </div>
-        </main>
-      </div>
 
-      {/* Mobile bottom tab bar (hidden on >= md where the sidebar shows) */}
-      <MobileTabBar project={project} mode={projectMode} />
-    </div>
+          {/* Mobile bottom tab bar (hidden on >= md where the sidebar shows) */}
+          <MobileTabBar project={project} mode={projectMode} />
+        </div>
+      </RealtimeProvider>
     </ProjectProvider>
   );
 }

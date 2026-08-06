@@ -10,7 +10,7 @@ import {
   Clock01Icon, Mail01Icon, HardDriveIcon,
 } from '@hugeicons/core-free-icons';
 
-export type LiveFeedStatus = 'connecting' | 'connected' | 'disconnected';
+export type LiveFeedStatus = 'idle' | 'connecting' | 'connected' | 'disconnected';
 
 export interface LiveEvent {
   id: string;

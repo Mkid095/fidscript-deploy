@@ -11,6 +11,7 @@ import { PauseIcon, PlayCircleIcon, Delete01Icon } from '@hugeicons/core-free-ic
 import { type LiveFeedStatus } from './live-feed-utils';
 
 const STATUS_META: Record<LiveFeedStatus, { label: string; dot: string; text: string; ring: string }> = {
+  idle:         { label: 'Idle',         dot: 'bg-slate-400',   text: 'text-slate-300',   ring: '' },
   connected:    { label: 'Live',         dot: 'bg-emerald-400', text: 'text-emerald-300', ring: 'shadow-[0_0_0_3px_rgba(16,185,129,0.15)]' },
   connecting:   { label: 'Connecting',   dot: 'bg-amber-400',   text: 'text-amber-300',   ring: '' },
   disconnected: { label: 'Disconnected', dot: 'bg-rose-400',    text: 'text-rose-300',    ring: '' },

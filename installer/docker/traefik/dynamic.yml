@@ -9,6 +9,23 @@ http:
       tls:
         certResolver: letsencrypt-dns
 
+    # Socket.IO endpoint — the dashboard browser opens a WebSocket at
+    # https://deploy.fidscript.com/realtime/...  By default Traefik would send
+    # that to the dashboard container (Next.js), which has no Socket.IO server
+    # and does not proxy WebSocket upgrades. We split-prefix-route "/realtime"
+    # (and the socket.io transport fragment) to the API service so the same
+    # cookie/JWT origin the dashboard uses authenticates the connection.
+    # Priority: more specific rules FIRST so they win over the catch-all.
+    fidscript-api-realtime:
+      rule: Host(`deploy.fidscript.com`) && PathPrefix(`/realtime`, `/socket.io`)
+      service: fidscript-api
+      entryPoints:
+        - websecure
+      tls:
+        certResolver: letsencrypt-dns
+      # The Socket.IO handshake uses query strings; ignore them when matching.
+      priority: 100
+
     fidscript-dashboard:
       rule: Host(`deploy.fidscript.com`)
       service: fidscript-dashboard
