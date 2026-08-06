@@ -11,6 +11,10 @@ import { ProjectInvitationService } from '@/modules/projects/services/project-in
 import { ProjectApiKeyService } from '@/modules/projects/services/project-api-key.service';
 import { ProjectFormatService } from '@/modules/projects/services/project-format.service';
 import { ProjectCreateService } from '@/modules/projects/services/project-create.service';
+import { ProjectProvisionService } from '@/modules/projects/services/project-provision.service';
+import { StorageModule } from '@/modules/storage/storage.module';
+import { RealtimeModule } from '@/modules/realtime/realtime.module';
+import { DatabasesModule } from '@/modules/databases/databases.module';
 
 @Module({
   controllers: [
@@ -18,6 +22,7 @@ import { ProjectCreateService } from '@/modules/projects/services/project-create
     ProjectsMembersController,
     InvitationsController,
   ],
+  imports: [StorageModule, RealtimeModule, DatabasesModule],
   providers: [
     ProjectsService,
     ProjectCrudService,
@@ -28,7 +33,14 @@ import { ProjectCreateService } from '@/modules/projects/services/project-create
     ProjectApiKeyService,
     ProjectFormatService,
     ProjectCreateService,
+    ProjectProvisionService,
   ],
-  exports: [ProjectsService, ProjectApiKeyService, ProjectAccessService, ProjectMemberService],
+  exports: [
+    ProjectsService,
+    ProjectApiKeyService,
+    ProjectAccessService,
+    ProjectMemberService,
+    ProjectProvisionService,
+  ],
 })
 export class ProjectsModule {}

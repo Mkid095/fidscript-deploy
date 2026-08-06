@@ -3,6 +3,7 @@ import { PrismaService } from '@/prisma/prisma.service';
 import { EventService } from '@/modules/events/event.service';
 import { CreateProjectDto } from '@/modules/projects/dto/index';
 import { ProjectFormatService } from './project-format.service';
+import { ProjectProvisionService } from './project-provision.service';
 import * as crypto from 'crypto';
 
 @Injectable()
@@ -11,6 +12,7 @@ export class ProjectCreateService {
     private prisma: PrismaService,
     private eventService: EventService,
     private format: ProjectFormatService,
+    private provisioner: ProjectProvisionService,
   ) {}
 
   async create(userId: string, dto: CreateProjectDto) {
@@ -33,6 +35,20 @@ export class ProjectCreateService {
       name: project.name,
       slug: project.slug,
     });
+
+    // Fire-and-forget provisioning of default resources (DB, bucket, channel,
+    // API key). Errors are logged but never block the create response.
+    void this.provisioner.provisionDefaults(project.id, userId, project.name)
+      .then((resources) => {
+        this.eventService.emit('projects.project.provisioned', project.id, {
+          projectId: project.id,
+          databaseId: resources.databaseId,
+          bucketId: resources.bucketId,
+          channelId: resources.channelId,
+          apiKeyId: resources.apiKeyId,
+          errors: resources.errors,
+        });
+      });
 
     return this.format.formatProject(project);
   }

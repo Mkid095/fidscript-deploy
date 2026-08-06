@@ -71,6 +71,7 @@ export type EventType =
   | 'projects.project.archived'
   | 'projects.project.restored'
   | 'projects.project.cloned'
+  | 'projects.project.provisioned'
   | 'projects.member.added'
   | 'projects.member.removed'
   | 'projects.invitation.created'

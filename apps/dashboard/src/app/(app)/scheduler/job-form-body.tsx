@@ -1,27 +1,23 @@
 'use client';
 
 import { Button, Input } from '@fidscript/ui';
-import { CronBuilder } from './cron-builder';
+import type { Function_ } from '@/types';
+import { ScheduleField } from './schedule-field';
+import { HttpHeadersInput } from './http-headers-input';
 
 const TIMEZONES = [
   'UTC', 'America/New_York', 'America/Chicago', 'America/Denver', 'America/Los_Angeles',
   'Europe/London', 'Europe/Paris', 'Asia/Tokyo', 'Asia/Singapore', 'Australia/Sydney',
 ];
 
-const CRON_PRESETS = [
-  { label: 'Every minute', value: '* * * * *' },
-  { label: 'Every 5 minutes', value: '*/5 * * * *' },
-  { label: 'Every hour', value: '0 * * * *' },
-  { label: 'Daily at midnight', value: '0 0 * * *' },
-  { label: 'Daily at 6am', value: '0 6 * * *' },
-  { label: 'Weekly (Sunday)', value: '0 0 * * 0' },
-  { label: 'Monthly', value: '0 0 1 * *' },
-];
+const HTTP_METHODS = ['GET', 'POST', 'PUT', 'PATCH', 'DELETE'] as const;
 
 type JobForm = {
   name: string; expression: string; timezone: string;
-  targetType: 'endpoint' | 'function'; endpoint: string; functionId: string;
-  payload: string; retryAttempts: number; retryDelay: number; timeout: number;
+  targetType: 'endpoint' | 'function'; endpoint: string;
+  httpMethod: string; httpHeaders: { key: string; value: string }[];
+  functionId: string; payload: string;
+  retryAttempts: number; retryDelay: number; timeout: number;
 };
 
 interface JobFormBodyProps {
@@ -31,9 +27,11 @@ interface JobFormBodyProps {
   onCancel: () => void;
   onSubmit: () => void;
   loading: boolean;
+  functions: Function_[];
+  loadingFunctions: boolean;
 }
 
-export function JobFormBody({ form, onFieldChange, error, onCancel, onSubmit, loading }: JobFormBodyProps) {
+export function JobFormBody({ form, onFieldChange, error, onCancel, onSubmit, loading, functions, loadingFunctions }: JobFormBodyProps) {
   const set = (fields: Partial<JobForm>) => onFieldChange(fields);
 
   return (
@@ -45,18 +43,8 @@ export function JobFormBody({ form, onFieldChange, error, onCancel, onSubmit, lo
           className="bg-[var(--surface-2)] border border-[var(--rail)] text-[var(--text)] w-full" />
       </div>
 
-      <div>
-        <label className="block text-xs text-[var(--text-muted)] mb-1.5 font-medium">Schedule</label>
-        <CronBuilder value={form.expression} timezone={form.timezone} onChange={v => set({ expression: v })} />
-        <div className="flex flex-wrap gap-1.5 mt-3">
-          {CRON_PRESETS.map(p => (
-            <button key={p.value} type="button" onClick={() => set({ expression: p.value })}
-              className="text-[10px] px-2 py-0.5 rounded border border-[var(--rail)] text-[var(--text-muted)] hover:border-[var(--accent)] hover:text-[var(--accent)] transition-colors">
-              {p.label}
-            </button>
-          ))}
-        </div>
-      </div>
+      <ScheduleField expression={form.expression} timezone={form.timezone}
+        onChange={v => set({ expression: v })} />
 
       <div>
         <label className="block text-xs text-[var(--text-muted)] mb-1.5 font-medium">Timezone</label>
@@ -80,18 +68,43 @@ export function JobFormBody({ form, onFieldChange, error, onCancel, onSubmit, lo
       </div>
 
       {form.targetType === 'endpoint' ? (
-        <div>
-          <label className="block text-xs text-[var(--text-muted)] mb-1.5 font-medium">URL</label>
-          <Input value={form.endpoint} onChange={e => set({ endpoint: e.target.value })}
-            placeholder="https://api.example.com/webhook"
-            className="bg-[var(--surface-2)] border border-[var(--rail)] text-[var(--text)] w-full text-sm" />
-        </div>
+        <>
+          <div>
+            <label className="block text-xs text-[var(--text-muted)] mb-1.5 font-medium">URL</label>
+            <Input value={form.endpoint} onChange={e => set({ endpoint: e.target.value })}
+              placeholder="https://api.example.com/webhook"
+              className="bg-[var(--surface-2)] border border-[var(--rail)] text-[var(--text)] w-full text-sm" />
+          </div>
+          <div className="grid grid-cols-[120px_1fr] gap-3">
+            <div>
+              <label className="block text-xs text-[var(--text-muted)] mb-1.5 font-medium">Method</label>
+              <select value={form.httpMethod} onChange={e => set({ httpMethod: e.target.value })}
+                className="bg-[var(--surface-2)] border border-[var(--rail)] text-[var(--text)] rounded-lg px-3 py-2 text-sm w-full">
+                {HTTP_METHODS.map(m => <option key={m} value={m}>{m}</option>)}
+              </select>
+            </div>
+            <HttpHeadersInput
+              headers={form.httpHeaders}
+              onChange={headers => set({ httpHeaders: headers })}
+            />
+          </div>
+        </>
       ) : (
         <div>
-          <label className="block text-xs text-[var(--text-muted)] mb-1.5 font-medium">Function ID</label>
-          <Input value={form.functionId} onChange={e => set({ functionId: e.target.value })}
-            placeholder="func_xxxxxxxxxxxx"
-            className="bg-[var(--surface-2)] border border-[var(--rail)] text-[var(--text)] w-full" />
+          <label className="block text-xs text-[var(--text-muted)] mb-1.5 font-medium">Function</label>
+          {loadingFunctions ? (
+            <p className="text-xs text-[var(--text-muted)] italic py-2">Loading functions…</p>
+          ) : functions.length === 0 ? (
+            <p className="text-xs text-[var(--text-muted)] italic py-2">No functions in this project yet.</p>
+          ) : (
+            <select value={form.functionId} onChange={e => set({ functionId: e.target.value })}
+              className="bg-[var(--surface-2)] border border-[var(--rail)] text-[var(--text)] rounded-lg px-3 py-2 text-sm w-full">
+              <option value="">Select a function…</option>
+              {functions.map(f => (
+                <option key={f.id} value={f.id}>{f.name} ({f.runtime})</option>
+              ))}
+            </select>
+          )}
         </div>
       )}
 

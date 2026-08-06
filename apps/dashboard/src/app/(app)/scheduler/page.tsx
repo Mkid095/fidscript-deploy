@@ -30,12 +30,14 @@ export default function SchedulerPage() {
   const [showCreate, setShowCreate] = useState(false);
   const [creating, setCreating] = useState(false);
   const [createError, setCreateError] = useState<string | null>(null);
+  const [triggerError, setTriggerError] = useState<string | null>(null);
   const [togglingId, setTogglingId] = useState<string | null>(null);
 
   const [form, setForm] = useState({
     name: '', expression: '', timezone: 'UTC',
     targetType: 'endpoint' as 'endpoint' | 'function',
-    endpoint: '', functionId: '', payload: '{}',
+    endpoint: '', httpMethod: 'POST', httpHeaders: [] as { key: string; value: string }[],
+    functionId: '', payload: '{}',
     retryAttempts: 3, retryDelay: 60, timeout: 300,
   });
 
@@ -43,14 +45,16 @@ export default function SchedulerPage() {
     name: string; cronExpression: string; timezone: string;
     payload: Record<string, unknown>; retryAttempts: number;
     retryDelaySeconds: number; timeoutSeconds: number;
-    endpoint?: string; functionId?: string;
+    endpoint?: string; httpMethod?: string;
+    httpHeaders?: { key: string; value: string }[];
+    functionId?: string;
   }) {
     if (!effectiveProjectId) return;
     setCreating(true);
     setCreateError(null);
     try {
       await sdkCreate(data);
-      setForm({ name: '', expression: '', timezone: 'UTC', targetType: 'endpoint', endpoint: '', functionId: '', payload: '{}', retryAttempts: 3, retryDelay: 60, timeout: 300 });
+      setForm({ name: '', expression: '', timezone: 'UTC', targetType: 'endpoint', endpoint: '', httpMethod: 'POST', httpHeaders: [], functionId: '', payload: '{}', retryAttempts: 3, retryDelay: 60, timeout: 300 });
       setShowCreate(false);
     } catch (err) {
       setCreateError(err instanceof Error ? err.message : 'Failed to create job');
@@ -71,7 +75,12 @@ export default function SchedulerPage() {
 
   async function handleTrigger(job: CronJob) {
     if (!effectiveProjectId) return;
-    try { await sdkTrigger(job.id); } catch { /* fire and forget */ }
+    setTriggerError(null);
+    try {
+      await sdkTrigger(job.id);
+    } catch (err) {
+      setTriggerError(err instanceof Error ? err.message : 'Failed to trigger job');
+    }
   }
 
   if (loadingProjects) {
@@ -94,6 +103,12 @@ export default function SchedulerPage() {
         onNewJob={() => setShowCreate(true)}
       />
 
+      {triggerError && (
+        <div className="bg-[var(--danger)]/10 border border-[var(--danger)]/30 rounded-lg px-4 py-3 mb-6 text-sm text-[var(--danger)]">
+          {triggerError}
+        </div>
+      )}
+
       <JobListContent
         jobs={jobs}
         loading={loadingJobs}
@@ -108,7 +123,9 @@ export default function SchedulerPage() {
 
       <JobFormModal
         isOpen={showCreate}
-        onClose={() => { setShowCreate(false); setForm({ name: '', expression: '', timezone: 'UTC', targetType: 'endpoint', endpoint: '', functionId: '', payload: '{}', retryAttempts: 3, retryDelay: 60, timeout: 300 }); }}
+        sdk={sdk}
+        projectId={effectiveProjectId}
+        onClose={() => { setShowCreate(false); setForm({ name: '', expression: '', timezone: 'UTC', targetType: 'endpoint', endpoint: '', httpMethod: 'POST', httpHeaders: [], functionId: '', payload: '{}', retryAttempts: 3, retryDelay: 60, timeout: 300 }); }}
         onSubmit={handleCreate}
         loading={creating}
         error={createError}

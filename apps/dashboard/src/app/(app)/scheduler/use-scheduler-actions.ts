@@ -13,7 +13,9 @@ export function useSchedulerActions(
     name: string; cronExpression: string; timezone: string;
     payload: Record<string, unknown>; retryAttempts: number;
     retryDelaySeconds: number; timeoutSeconds: number;
-    endpoint?: string; functionId?: string;
+    endpoint?: string; httpMethod?: string;
+    httpHeaders?: { key: string; value: string }[];
+    functionId?: string;
   }) => {
     if (!projectId) return;
     await sdk.cron.create(projectId, data);

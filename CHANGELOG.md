@@ -7,6 +7,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/).
 ## [Unreleased]
 
 ### Added
+- `feat(dashboard): replace free-text functionId with dropdown in scheduler create form — JobFormModal fetches sdk.functions.list(projectId) and JobFormBody renders a <select> with function.name (runtime) labels; empty/loading states surface honest copy`
+- `feat(dashboard): add HTTP method selector and headers input to scheduler endpoint form — method dropdown (GET/POST/PUT/PATCH/DELETE, default POST) plus a key/value HttpHeadersInput with add/remove rows; values are forwarded to sdk.cron.create via the httpMethod/httpHeaders fields (added to the SDK cron.create signature)`
+- `refactor(dashboard): split scheduler form body to honor 150-line ANPAS limit — extracted schedule + cron presets into schedule-field.tsx and headers editor into http-headers-input.tsx; job-form-body.tsx reduced to 149L`
+
+### Added
 - `feat(cli): hard-error on --region for storage create-bucket — the controller ignores the --region flag, so the CLI now exits 1 with a clear message rather than silently creating a bucket in the default region. (`apps/cli/src/commands/storage-create-bucket.ts`)`
 - `feat(cli): add functions and databases CRUD commands — fidscript functions list|get|create|delete|invoke and fidscript databases list|get|create|delete, extracted to apps/cli/src/commands/{functions,databases}.ts (≤120 lines each) and registered from the bin entry`
 - `feat(cli): add cron and domains CRUD commands — fidscript cron list|get|create|update|delete|trigger and fidscript domains list|get|create|get-dns-records|check-health|delete, extracted to apps/cli/src/commands/{cron,domains}.ts and registered from the bin entry`
