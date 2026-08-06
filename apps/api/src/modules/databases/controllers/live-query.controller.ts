@@ -13,7 +13,7 @@ import { Controller, Post, Body, Param, Sse, MessageEvent, UseGuards, Req, BadRe
 import { ApiTags, ApiBearerAuth, ApiOperation } from '@nestjs/swagger';
 import { Observable, Subject, defer, from, merge, of } from 'rxjs';
 import { map, takeUntil, catchError } from 'rxjs/operators';
-import { JwtAuthGuard } from '@/modules/auth/jwt-auth.guard';
+import { ApiKeyOrJwtGuard } from '@/modules/auth/guards/api-key-or-jwt.guard';
 import { Request } from 'express';
 import { PrismaService } from '@/prisma/prisma.service';
 import { LiveQueryManager } from '../services/live-query.manager';
@@ -33,7 +33,7 @@ interface WatchRequest {
 
 @ApiTags('databases')
 @Controller('databases/:databaseId')
-@UseGuards(JwtAuthGuard)
+@UseGuards(ApiKeyOrJwtGuard)
 @ApiBearerAuth()
 export class LiveQueryController {
   constructor(
@@ -57,8 +57,8 @@ export class LiveQueryController {
   ): Observable<MessageEvent> {
     return new Observable<MessageEvent>(subscriber => {
       // Authorize
-      const userId = (req.user as any).userId;
-      this.authorize(databaseId, userId)
+      const user = (req.user as any) as { userId: string; projectId?: string; isApiKey?: boolean };
+      this.authorize(databaseId, user)
         .then(() => {
           const whereJson = (req.query as any).where;
           const where = whereJson ? JSON.parse(whereJson) : {};
@@ -105,8 +105,8 @@ export class LiveQueryController {
     @Param('databaseId') databaseId: string,
     @Body() body: WatchRequest,
   ) {
-    const userId = (req.user as any).userId;
-    await this.authorize(databaseId, userId);
+    const user = (req.user as any) as { userId: string; projectId?: string; isApiKey?: boolean };
+    await this.authorize(databaseId, user);
     const qb = this.data.from(body.table);
     if (body.where) for (const [k, v] of Object.entries(body.where)) qb.eq(k, v);
     if (body.orderBy) qb.order(body.orderBy, body.order ?? 'asc');
@@ -115,15 +115,25 @@ export class LiveQueryController {
     return this.data.select(databaseId, qb);
   }
 
-  private async authorize(databaseId: string, userId: string) {
+  private async authorize(
+    databaseId: string,
+    user: { userId: string; projectId?: string; isApiKey?: boolean },
+  ) {
     const db = await this.prisma.managedDatabase.findUnique({
       where: { id: databaseId },
       include: { project: true },
     });
     if (!db) throw new NotFoundException('Database not found');
-    if (db.project.ownerId === userId) return;
+
+    // API-key caller: authorized iff the key's project owns the database.
+    if (user.isApiKey) {
+      if (user.projectId && user.projectId === db.projectId) return;
+      throw new ForbiddenException('Access denied');
+    }
+
+    if (db.project.ownerId === user.userId) return;
     const member = await this.prisma.projectMember.findUnique({
-      where: { projectId_userId: { projectId: db.projectId, userId } },
+      where: { projectId_userId: { projectId: db.projectId, userId: user.userId } },
     });
     if (!member) throw new ForbiddenException('Access denied');
   }

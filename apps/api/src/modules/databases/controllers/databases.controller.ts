@@ -2,7 +2,7 @@ import {
   Controller, Get, Post, Patch, Delete, Body, Param, Query, UseGuards, Req,
 } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
-import { JwtAuthGuard } from '@/modules/auth/jwt-auth.guard';
+import { ApiKeyOrJwtGuard } from '@/modules/auth/guards/api-key-or-jwt.guard';
 import { CurrentUser } from '@/modules/auth/current-user.decorator';
 import { ProjectAccessService } from '@/modules/projects/services/project-access.service';
 import { DatabasesService } from '@/modules/databases/services/databases.service';
@@ -14,7 +14,7 @@ import { Request } from 'express';
 
 @ApiTags('databases')
 @Controller('projects/:projectId/databases')
-@UseGuards(JwtAuthGuard)
+@UseGuards(ApiKeyOrJwtGuard)
 @ApiBearerAuth()
 export class DatabasesController {
   constructor(
