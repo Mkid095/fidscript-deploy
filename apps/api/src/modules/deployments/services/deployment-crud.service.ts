@@ -153,25 +153,25 @@ export class DeploymentCrudService {
   }
 
   async stop(userId: string, projectId: string, deploymentId: string) {
-    await this.checkAccessOrThrow(userId, projectId);
+    await this.checkAccessOrThrow(userId, projectId, ['developer', 'admin', 'owner']);
     await this.worker.stopDeployment(deploymentId, userId);
     return this.get(userId, projectId, deploymentId);
   }
 
   async restart(userId: string, projectId: string, deploymentId: string) {
-    await this.checkAccessOrThrow(userId, projectId);
+    await this.checkAccessOrThrow(userId, projectId, ['developer', 'admin', 'owner']);
     await this.worker.restartDeployment(deploymentId, userId);
     return this.get(userId, projectId, deploymentId);
   }
 
   async destroy(userId: string, projectId: string, deploymentId: string) {
-    await this.checkAccessOrThrow(userId, projectId);
+    await this.checkAccessOrThrow(userId, projectId, ['admin', 'owner']);
     await this.worker.destroyDeployment(deploymentId, userId);
     return { success: true };
   }
 
   async rollback(userId: string, projectId: string, deploymentId: string) {
-    await this.checkAccessOrThrow(userId, projectId);
+    await this.checkAccessOrThrow(userId, projectId, ['admin', 'owner']);
     const deployment = await this.prisma.deployment.findUnique({ where: { id: deploymentId } });
     if (!deployment || deployment.projectId !== projectId) throw new NotFoundException('Deployment not found');
     if (deployment.status !== 'SUCCESS') throw new BadRequestException('Can only rollback successful deployments');
@@ -179,12 +179,20 @@ export class DeploymentCrudService {
     return this.get(userId, projectId, deploymentId);
   }
 
-  private async checkAccessOrThrow(userId: string, projectId: string) {
+  private async checkAccessOrThrow(userId: string, projectId: string, minRoles?: string[]) {
     const project = await this.prisma.project.findUnique({ where: { id: projectId } });
     if (!project) throw new NotFoundException('Project not found');
     if (project.ownerId === userId) return;
     const member = await this.prisma.projectMember.findUnique({ where: { projectId_userId: { projectId, userId } } });
     if (!member) throw new ForbiddenException('Access denied');
+    if (minRoles && minRoles.length > 0) {
+      const memberRole = (member.role ?? '').toLowerCase();
+      if (!minRoles.includes(memberRole)) {
+        throw new ForbiddenException(
+          `This action requires one of: ${minRoles.join(', ')}. Your role: ${memberRole || 'unknown'}.`,
+        );
+      }
+    }
   }
 
   private generateVersion() { return `${Date.now().toString(36)}-${Math.random().toString(36).substring(2, 6)}`; }
