@@ -13,6 +13,7 @@ import { JwtAuthGuard } from '@/modules/auth/jwt-auth.guard';
 import { LogStreamService } from '@/modules/logging/services/log-stream.service';
 import { LogWriteService } from '@/modules/logging/services/log-write.service';
 import { LogQueryService } from '@/modules/logging/services/log-query.service';
+import { LogTimelineService } from '@/modules/logging/services/log-timeline.service';
 import { CreateLogStreamDto, GetLogsDto, WriteLogDto, WriteBatchLogsDto } from '@/modules/logging/dto/index';
 
 @ApiTags('logging')
@@ -24,6 +25,7 @@ export class LoggingController {
     private logStreamService: LogStreamService,
     private logWriteService: LogWriteService,
     private logQueryService: LogQueryService,
+    private logTimelineService: LogTimelineService,
   ) {}
 
   // ===== Log Streams =====
@@ -90,7 +92,7 @@ export class LoggingController {
     @Param('streamName') streamName: string,
     @Query('interval') interval?: string,
   ) {
-    return this.logQueryService.getLogTimeline(projectId, streamName, interval);
+    return this.logTimelineService.getLogTimeline(projectId, streamName, interval);
   }
 
   @Get('stats')

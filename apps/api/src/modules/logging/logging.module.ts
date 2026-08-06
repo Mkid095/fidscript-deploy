@@ -3,6 +3,7 @@ import { LoggingController } from './controllers/logging.controller';
 import { LogStreamService } from './services/log-stream.service';
 import { LogWriteService } from './services/log-write.service';
 import { LogQueryService } from './services/log-query.service';
+import { LogTimelineService } from './services/log-timeline.service';
 import { LogRetentionService } from './services/log-retention.service';
 import { LogQuotaService } from './services/log-quota.service';
 import { LogSchedulerService } from './services/log-scheduler.service';
@@ -21,6 +22,7 @@ import { ProjectsModule } from '@/modules/projects/projects.module';
     LogStreamService,
     LogWriteService,
     LogQueryService,
+    LogTimelineService,
     LogRetentionService,
     LogQuotaService,
     LogSchedulerService,
@@ -32,6 +34,7 @@ import { ProjectsModule } from '@/modules/projects/projects.module';
     LogStreamService,
     LogWriteService,
     LogQueryService,
+    LogTimelineService,
     LogRetentionService,
     LogQuotaService,
     LogShipperService,

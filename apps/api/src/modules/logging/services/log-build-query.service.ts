@@ -1,5 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '@/prisma/prisma.service';
+import { parseLevels } from './log-query-filters';
 
 @Injectable()
 export class LogBuildQueryService {
@@ -7,7 +8,8 @@ export class LogBuildQueryService {
 
   buildWhere(streamId: string, dto: any): any {
     const where: any = { streamId };
-    if (dto.level) where.level = dto.level;
+    const levels = parseLevels(dto.level);
+    if (levels) where.level = Array.isArray(levels) ? { in: levels } : levels;
     if (dto.startTime || dto.endTime) {
       where.timestamp = {};
       if (dto.startTime) where.timestamp.gte = dto.startTime;
