@@ -1,4 +1,4 @@
-import { Module } from '@nestjs/common';
+import { Module, forwardRef } from '@nestjs/common';
 import { ProjectsCrudController } from '@/modules/projects/controllers/projects-crud.controller';
 import { ProjectsMembersController } from '@/modules/projects/controllers/projects-members.controller';
 import { InvitationsController } from '@/modules/projects/controllers/invitations.controller';
@@ -22,7 +22,7 @@ import { DatabasesModule } from '@/modules/databases/databases.module';
     ProjectsMembersController,
     InvitationsController,
   ],
-  imports: [StorageModule, RealtimeModule, DatabasesModule],
+  imports: [forwardRef(() => StorageModule), RealtimeModule, DatabasesModule],
   providers: [
     ProjectsService,
     ProjectCrudService,

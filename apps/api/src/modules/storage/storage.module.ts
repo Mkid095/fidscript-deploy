@@ -17,7 +17,7 @@ import { TelegramProvider } from '@/modules/storage/providers/telegram.provider'
 import { StorageProviderFactory } from '@/modules/storage/providers/storage-provider.factory';
 
 @Module({
-  imports: [forwardRef(() => AuthModule), ProjectsModule],
+  imports: [forwardRef(() => AuthModule), forwardRef(() => ProjectsModule)],
   controllers: [StorageController, StorageConfigController],
   providers: [
     StorageService,
