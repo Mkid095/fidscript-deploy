@@ -3,6 +3,7 @@
 import { useCallback } from 'react';
 import type { FidscriptSDK } from '@fidscript-deploy/sdk';
 import type { StorageFile } from '@/types';
+import { useConfirm } from '@/components/ui/confirm-provider';
 
 interface UseBucketFileActionsProps {
   projectId: string;
@@ -21,8 +22,16 @@ export function useBucketFileActions({
   onFilesChange,
   onBanner,
 }: UseBucketFileActionsProps) {
+  const confirmFn = useConfirm();
+
   const handleDelete = useCallback(async (fileId: string, fileName: string) => {
-    if (!confirm(`Delete "${fileName}"? This cannot be undone.`)) return;
+    const ok = await confirmFn({
+      title: 'Delete file',
+      message: `Delete "${fileName}"? This cannot be undone.`,
+      confirmLabel: 'Delete',
+      variant: 'danger',
+    });
+    if (!ok) return;
     try {
       await getSdk().storage.deleteFile(projectId, bucketId, fileId);
       onFilesChange(prev => prev.filter((f: StorageFile) => f.id !== fileId));
@@ -30,7 +39,7 @@ export function useBucketFileActions({
     } catch (err) {
       onBanner(err instanceof Error ? err.message : 'Delete failed', 'error');
     }
-  }, [projectId, bucketId, getSdk, onFilesChange, onBanner]);
+  }, [projectId, bucketId, getSdk, onFilesChange, onBanner, confirmFn]);
 
   const handleCopyUrl = useCallback(async (fileId: string, fileName: string) => {
     try {
@@ -47,8 +56,8 @@ export function useBucketFileActions({
         document.body.removeChild(ta);
       }
       onBanner(`URL for "${fileName}" copied to clipboard`, 'success');
-    } catch {
-      onBanner('Failed to get file URL', 'error');
+    } catch (err) {
+      onBanner(err instanceof Error ? err.message : 'Failed to get file URL', 'error');
     }
   }, [projectId, bucketId, getSdk, onBanner]);
 

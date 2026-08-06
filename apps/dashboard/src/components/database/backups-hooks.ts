@@ -4,6 +4,7 @@ import { useEffect, useState, useCallback } from 'react';
 import { useAuth } from '@/contexts/auth-context';
 import { useDatabase } from '@/app/(app)/projects/[projectId]/databases/database-context';
 import { normalizeBackupRecord } from '@/lib/db-normalize';
+import { useConfirm } from '@/components/ui/confirm-provider';
 import type { BackupRecord } from '@/types';
 
 interface StorageBucket { id: string; name: string; objectCount?: number; }
@@ -11,6 +12,7 @@ interface StorageBucket { id: string; name: string; objectCount?: number; }
 export function useBackups() {
   const { getSdk } = useAuth();
   const { databaseId, projectId } = useDatabase();
+  const confirmFn = useConfirm();
 
   const [backups, setBackups] = useState<BackupRecord[]>([]);
   const [loading, setLoading] = useState(false);
@@ -64,7 +66,13 @@ export function useBackups() {
 
   const handleRestore = useCallback(async (backupId: string) => {
     if (!databaseId) return;
-    if (!confirm('This will overwrite all current data. Continue?')) return;
+    const ok = await confirmFn({
+      title: 'Restore backup',
+      message: 'This will overwrite all current data. Continue?',
+      confirmLabel: 'Restore',
+      variant: 'danger',
+    });
+    if (!ok) return;
     setRestoring(backupId);
     try {
       await getSdk().databases.restore(databaseId, backupId);
@@ -72,11 +80,12 @@ export function useBackups() {
     } catch (err: unknown) {
       showMsg('error', err instanceof Error ? err.message : 'Restore failed.');
     } finally { setRestoring(null); }
-  }, [databaseId, getSdk]);
+  }, [databaseId, getSdk, confirmFn]);
 
   const handleCopyUrl = useCallback((url: string) => {
-    navigator.clipboard.writeText(url).catch(() => {});
-    showMsg('success', 'URL copied to clipboard.');
+    navigator.clipboard.writeText(url)
+      .then(() => showMsg('success', 'URL copied to clipboard.'))
+      .catch(() => showMsg('error', 'Failed to copy URL to clipboard.'));
   }, []);
 
   return {
