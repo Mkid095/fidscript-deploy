@@ -3,37 +3,17 @@
  * Mirrors sdk.domains.* methods.
  */
 import { Command } from 'commander';
-import { createInterface } from 'readline';
+import {
+  CliContext,
+  die,
+  loadSdk,
+  printTable,
+  confirmDelete,
+} from './domains-helpers';
+import { validateDomainName, validateDomainType } from './domains-validate';
 
-export interface CliContext {
-  apiUrl: string | undefined;
-  getApiKey(): string | undefined;
-  loadConfig(): { apiUrl?: string; outputFormat?: string; currentProject?: string };
-}
-
-function die(msg: string): never {
-  console.error(`Error: ${msg}`);
-  process.exit(1);
-}
-
-async function loadSdk(ctx: CliContext) {
-  if (!ctx.apiUrl) die('No API URL configured — set FIDScript_API_URL env var or run: fidscript configure');
-  const apiKey = ctx.getApiKey() ?? die('Not logged in');
-  const { createFidscript } = await import('@fidscript-deploy/sdk');
-  return createFidscript({ apiKey, baseURL: ctx.apiUrl });
-}
-
-async function confirmDelete(prompt: string): Promise<boolean> {
-  const rl = createInterface({ input: process.stdin, output: process.stdout });
-  const answer = await new Promise<string>((resolve) => rl.question(prompt, resolve));
-  rl.close();
-  return answer.toLowerCase() === 'y';
-}
-
-async function printTable(rows: Record<string, unknown>[], fmt: string): Promise<void> {
-  const { print } = await import('../utils/output');
-  print(rows, fmt as 'table' | 'json' | 'raw');
-}
+export { die, loadSdk };
+export type { CliContext };
 
 export function registerDomainsCommands(program: Command, ctx: CliContext): void {
   const domainsCmd = new Command('domains');
@@ -49,58 +29,54 @@ export function registerDomainsCommands(program: Command, ctx: CliContext): void
       const projectId = opts.project ?? die('No project ID (--project)');
       try {
         const list = await sdk.domains.list(projectId);
-        const rows = list.map((d: any) => ({
-          domain: d.domain,
-          type: Array.isArray(d.type) ? d.type.join(',') : (d.type ?? '—'),
-          status: d.sslStatus ?? '—',
-          registered: d.dnsStatus ?? '—',
-          expires: d.sslExpiresAt ? new Date(d.sslExpiresAt).toLocaleDateString() : '—',
+        const rows = (list as Array<Record<string, unknown>>).map((d) => ({
+          domain: String(d.domain ?? ''),
+          type: Array.isArray(d.type) ? d.type.join(',') : (d.type ? String(d.type) : '—'),
+          status: d.sslStatus ? String(d.sslStatus) : '—',
+          registered: d.dnsStatus ? String(d.dnsStatus) : '—',
+          expires: d.sslExpiresAt ? new Date(String(d.sslExpiresAt)).toLocaleDateString() : '—',
         }));
         await printTable(rows, output);
-      } catch (e) {
-        die(`List failed: ${(e as Error).message}`);
-      }
+      } catch (e) { die(`List failed: ${(e as Error).message}`); }
     });
 
   domainsCmd
     .command('get <domainId>')
     .description('Get a domain by ID')
     .option('-p, --project <id>', 'Project ID', cfg.currentProject ?? '')
-    .action(async (domainId: string, opts: { project?: string }) => {
+    .action(async (domainId: string, _opts: { project?: string }) => {
       const sdk = await loadSdk(ctx);
       try {
-        const d = await sdk.domains.get(domainId) as any;
-        console.log(`Domain:      ${d.domain}`);
-        console.log(`ID:          ${d.id}`);
-        console.log(`Type:        ${Array.isArray(d.type) ? d.type.join(',') : d.type}`);
-        console.log(`DNS status:  ${d.dnsStatus}`);
-        console.log(`SSL status:  ${d.sslStatus}`);
-        console.log(`SSL enabled: ${d.sslEnabled ? '✓' : '✗'}`);
-        console.log(`SSL expires: ${d.sslExpiresAt ?? '—'}`);
-        console.log(`DNS mode:    ${d.dnsMode}`);
-        console.log(`Custom:      ${d.isCustom ? '✓' : '✗'}`);
-        console.log(`Primary:     ${d.isPrimary ? '✓' : '✗'}`);
-        console.log(`Apex:        ${d.apexDomain ? '✓' : '✗'}`);
-      } catch (e) {
-        die(`Get failed: ${(e as Error).message}`);
-      }
+        const d = (await sdk.domains.get(domainId)) as Record<string, unknown>;
+        const fields: Array<[string, unknown]> = [
+          ['Domain', d.domain], ['ID', d.id],
+          ['Type', Array.isArray(d.type) ? d.type.join(',') : d.type],
+          ['DNS status', d.dnsStatus], ['SSL status', d.sslStatus],
+          ['SSL enabled', d.sslEnabled ? '✓' : '✗'], ['SSL expires', d.sslExpiresAt ?? '—'],
+          ['DNS mode', d.dnsMode],
+          ['Custom', d.isCustom ? '✓' : '✗'], ['Primary', d.isPrimary ? '✓' : '✗'],
+          ['Apex', d.apexDomain ? '✓' : '✗'],
+        ];
+        for (const [k, v] of fields) console.log(`${k.padEnd(13)} ${String(v ?? '')}`);
+      } catch (e) { die(`Get failed: ${(e as Error).message}`); }
     });
 
   domainsCmd
     .command('create <domain>')
     .description('Add a domain to a project')
     .option('-p, --project <id>', 'Project ID', cfg.currentProject ?? '')
-    .option('--type <type>', 'Domain type (DEPLOYMENT, EMAIL, ...)')
+    .option('--type <type>', 'Domain type (DEPLOYMENT, EMAIL, API, BOTH)')
     .action(async (domain: string, opts: { project?: string; type?: string }) => {
       const sdk = await loadSdk(ctx);
       const projectId = opts.project ?? die('No project ID (--project)');
+      const validated = validateDomainName(domain);
+      const type = validateDomainType(opts.type);
       try {
-        const type = opts.type ? [opts.type as any] : undefined;
-        const d = await sdk.domains.create(projectId, domain, 'manual', undefined, type) as any;
-        console.log(`✓ Created domain ${d.id}: ${d.domain}`);
-      } catch (e) {
-        die(`Create failed: ${(e as Error).message}`);
-      }
+        const d = (await sdk.domains.create(
+          projectId, validated, 'manual', undefined, type ? [type] : undefined,
+        )) as Record<string, unknown>;
+        console.log(`✓ Created domain ${String(d.id ?? '')}: ${String(d.domain ?? '')}`);
+      } catch (e) { die(`Create failed: ${(e as Error).message}`); }
     });
 
   domainsCmd
@@ -111,18 +87,16 @@ export function registerDomainsCommands(program: Command, ctx: CliContext): void
       const sdk = await loadSdk(ctx);
       const projectId = opts.project ?? die('No project ID (--project)');
       try {
-        const res = await sdk.domains.getDnsRecords(projectId, domainId);
-        const rows = (res.records ?? []).map((r: any) => ({
-          name: r.name,
-          type: r.type,
+        const res = (await sdk.domains.getDnsRecords(projectId, domainId)) as { records?: Array<Record<string, unknown>> };
+        const rows = (res.records ?? []).map((r) => ({
+          name: String(r.name ?? ''),
+          type: String(r.type ?? ''),
           value: String(r.value ?? '').slice(0, 60),
-          ttl: r.ttl ?? '—',
-          category: r.category,
+          ttl: r.ttl ? String(r.ttl) : '—',
+          category: String(r.category ?? ''),
         }));
         await printTable(rows, output);
-      } catch (e) {
-        die(`DNS records failed: ${(e as Error).message}`);
-      }
+      } catch (e) { die(`DNS records failed: ${(e as Error).message}`); }
     });
 
   domainsCmd
@@ -133,23 +107,21 @@ export function registerDomainsCommands(program: Command, ctx: CliContext): void
       const sdk = await loadSdk(ctx);
       const projectId = opts.project ?? die('No project ID (--project)');
       try {
-        const h = await sdk.domains.getHealth(projectId, domainId);
+        const h = (await sdk.domains.getHealth(projectId, domainId)) as Record<string, unknown> | null;
         if (!h) {
           console.log('No health check run yet — trigger one via the dashboard.');
           return;
         }
-        console.log(`Status:        ${h.status ?? '—'}`);
-        console.log(`Score:         ${h.score ?? '—'}/100`);
-        console.log(`DNS:           ${h.dnsOk ? '✓' : '✗'}`);
-        console.log(`Routing:       ${h.routingOk ? '✓' : '✗'}`);
-        console.log(`SSL:           ${h.sslOk ? '✓' : '✗'}`);
-        console.log(`Email:         ${h.emailOk ? '✓' : '✗'}`);
-        console.log(`Latency:       ${h.responseTimeMs ?? '—'}ms`);
-        console.log(`SSL expires in: ${h.sslExpiresInDays ?? '—'} days`);
-        if (h.errorMessage) console.log(`Error:         ${h.errorMessage}`);
-      } catch (e) {
-        die(`Health check failed: ${(e as Error).message}`);
-      }
+        const fields: Array<[string, unknown]> = [
+          ['Status', h.status ?? '—'], ['Score', h.score ? `${h.score}/100` : '—'],
+          ['DNS', h.dnsOk ? '✓' : '✗'], ['Routing', h.routingOk ? '✓' : '✗'],
+          ['SSL', h.sslOk ? '✓' : '✗'], ['Email', h.emailOk ? '✓' : '✗'],
+          ['Latency', h.responseTimeMs ? `${String(h.responseTimeMs)}ms` : '—'],
+          ['SSL expires in', h.sslExpiresInDays ? `${String(h.sslExpiresInDays)} days` : '—'],
+        ];
+        for (const [k, v] of fields) console.log(`${k.padEnd(15)} ${String(v ?? '')}`);
+        if (h.errorMessage) console.log(`Error:         ${String(h.errorMessage)}`);
+      } catch (e) { die(`Health check failed: ${(e as Error).message}`); }
     });
 
   domainsCmd
@@ -166,9 +138,7 @@ export function registerDomainsCommands(program: Command, ctx: CliContext): void
       try {
         await sdk.domains.delete(domainId);
         console.log(`✓ Deleted domain ${domainId}`);
-      } catch (e) {
-        die(`Delete failed: ${(e as Error).message}`);
-      }
+      } catch (e) { die(`Delete failed: ${(e as Error).message}`); }
     });
 
   program.addCommand(domainsCmd);
