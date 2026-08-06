@@ -2030,6 +2030,13 @@ model CronJob {
   timezone          String    @default("UTC") @db.VarChar(50)
   endpoint          String?   @db.VarChar(500)
   functionId        String?   @map("function_id") @db.VarChar(255)
+  /// Target type — inferred from endpoint/functionId/emailConfig/queueConfig if not set explicitly.
+  /// http | function | email | queue
+  actionType        String?   @map("action_type") @db.VarChar(20)
+  /// Email action config: { to, subject, text | html, from? } (project-scoped sender)
+  emailConfig       Json?     @map("email_config")
+  /// Queue action config: { queueId, body, headers?, delaySeconds? }
+  queueConfig       Json?     @map("queue_config")
   payload           Json      @default("{}")
   enabled           Boolean   @default(true)
   retryAttempts     Int       @default(3)

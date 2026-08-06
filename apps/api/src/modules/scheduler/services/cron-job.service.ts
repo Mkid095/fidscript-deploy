@@ -28,16 +28,21 @@ export class CronJobService {
   async createCronJob(projectId: string, dto: any) {
     try { new cron.CronTime(dto.cronExpression); } catch { throw new Error('Invalid cron expression'); }
     const nextRunAt = computeNextRunAt(dto.cronExpression, dto.timezone || 'UTC');
+    const actionType = dto.actionType ?? this.inferActionType(dto);
 
     const job = await this.prisma.cronJob.create({
       data: {
         projectId, name: dto.name, cronExpression: dto.cronExpression,
-        timezone: dto.timezone || 'UTC', endpoint: dto.endpoint, functionId: dto.functionId,
+        timezone: dto.timezone || 'UTC',
+        actionType,
+        endpoint: dto.endpoint, functionId: dto.functionId,
+        emailConfig: dto.emailConfig as any,
+        queueConfig: dto.queueConfig as any,
         payload: (dto.payload || {}) as any, enabled: dto.enabled ?? true,
         retryAttempts: dto.retryAttempts || 3, retryDelaySeconds: dto.retryDelaySeconds || 60,
         timeoutSeconds: dto.timeoutSeconds || 300, nextRunAt,
         state: 'scheduled',
-      },
+      } as any,
     });
 
     await this.eventService.emit('cron.job_created', projectId, { jobId: job.id, name: dto.name });
@@ -56,11 +61,23 @@ export class CronJobService {
     return this.withTargetType(job);
   }
 
-  /** Derive targetType from endpoint/functionId and attach as a virtual field. */
+  /**
+   * Derive actionType from which config field is populated.
+   * functionId → emailConfig → queueConfig → endpoint (legacy http).
+   */
+  private inferActionType(dto: any): 'function' | 'email' | 'queue' | 'http' {
+    if (dto.functionId) return 'function';
+    if (dto.emailConfig) return 'email';
+    if (dto.queueConfig) return 'queue';
+    return 'http';
+  }
+
+  /** Attach a virtual targetType derived from actionType/config. */
   private withTargetType(job: any) {
+    const t = job.actionType ?? (job.functionId ? 'function' : 'endpoint');
     return {
       ...job,
-      targetType: job.functionId ? 'function' : 'endpoint',
+      targetType: t,
     };
   }
 

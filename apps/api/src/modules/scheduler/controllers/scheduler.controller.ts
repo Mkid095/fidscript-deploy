@@ -13,6 +13,7 @@ import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { ApiKeyOrJwtGuard } from '@/modules/auth/guards/api-key-or-jwt.guard';
 import { CronJobService } from '@/modules/scheduler/services/cron-job.service';
 import { CronJobExecutionService } from '@/modules/scheduler/services/cron-job-execution.service';
+import { CronJobQueryService } from '@/modules/scheduler/services/cron-job-query.service';
 import { SchedulerQueueService } from '@/modules/scheduler/services/scheduler-queue.service';
 import { PrismaService } from '@/prisma/prisma.service';
 import { CreateCronJobDto, UpdateCronJobDto, TriggerCronJobDto } from '@/modules/scheduler/dto/index';
@@ -25,6 +26,7 @@ export class SchedulerController {
   constructor(
     private cronJobService: CronJobService,
     private cronJobExecutionService: CronJobExecutionService,
+    private cronJobQueryService: CronJobQueryService,
     private schedulerQueueService: SchedulerQueueService,
     private prisma: PrismaService,
   ) {}
@@ -77,7 +79,7 @@ export class SchedulerController {
   @Get(':jobId/next-run')
   @ApiOperation({ summary: 'Get next run time' })
   async getCronJobNextRun(@Param('projectId') projectId: string, @Param('jobId') jobId: string) {
-    return this.cronJobExecutionService.getCronJobNextRun(projectId, jobId);
+    return this.cronJobQueryService.getCronJobNextRun(projectId, jobId);
   }
 
   @Get(':jobId/runs')
@@ -87,7 +89,7 @@ export class SchedulerController {
     @Param('jobId') jobId: string,
     @Query() query: { limit?: number; cursor?: string; status?: string },
   ) {
-    return this.cronJobExecutionService.getCronJobRuns(projectId, jobId, query.limit, query.cursor, query.status);
+    return this.cronJobQueryService.getCronJobRuns(projectId, jobId, query.limit, query.cursor, query.status);
   }
 
   @Get(':jobId/simulate')
@@ -97,7 +99,7 @@ export class SchedulerController {
     @Param('jobId') jobId: string,
     @Query('count') count?: string,
   ) {
-    return this.cronJobExecutionService.simulateRuns(projectId, jobId, count ? parseInt(count) : 5);
+    return this.cronJobQueryService.simulateRuns(projectId, jobId, count ? parseInt(count) : 5);
   }
 
   @Post('simulate-expression')
@@ -105,7 +107,7 @@ export class SchedulerController {
   async simulateExpression(
     @Body() body: { cronExpression: string; timezone?: string; count?: number },
   ) {
-    return this.cronJobExecutionService.simulateExpression(
+    return this.cronJobQueryService.simulateExpression(
       body.cronExpression,
       body.timezone ?? 'UTC',
       body.count ?? 5,
@@ -119,7 +121,7 @@ export class SchedulerController {
     @Param('jobId') jobId: string,
     @Query('window') window?: string,
   ) {
-    return this.cronJobExecutionService.getCronJobStats(projectId, jobId, window ? parseInt(window) : 50);
+    return this.cronJobQueryService.getCronJobStats(projectId, jobId, window ? parseInt(window) : 50);
   }
 
   @Post(':jobId/runs/:runId/replay')

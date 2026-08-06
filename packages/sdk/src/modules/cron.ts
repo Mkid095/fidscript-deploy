@@ -101,10 +101,13 @@ export class CronModule {
     data: {
       name: string;
       cronExpression: string;
+      actionType?: CronJobActionType;
       endpoint?: string;
       httpMethod?: string;
       httpHeaders?: { key: string; value: string }[];
       functionId?: string;
+      emailConfig?: CronJobEmailConfig;
+      queueConfig?: CronJobQueueConfig;
       timezone?: string;
       payload?: Record<string, unknown>;
       enabled?: boolean;
@@ -178,5 +181,46 @@ export class CronModule {
       `/api/v1/projects/${projectId}/cron/${jobId}/runs/${runId}/replay`,
       {},
     );
+  }
+
+  /**
+   * Create a cron job that sends an email on schedule.
+   * Requires the project to have at least one ACTIVE sender domain.
+   */
+  async createEmailJob(
+    projectId: string,
+    data: {
+      name: string;
+      cronExpression: string;
+      emailConfig: CronJobEmailConfig;
+      timezone?: string;
+      payload?: Record<string, unknown>;
+      enabled?: boolean;
+      retryAttempts?: number;
+      retryDelaySeconds?: number;
+      timeoutSeconds?: number;
+    },
+  ) {
+    return this.create(projectId, { ...data, actionType: CronActionType.Email });
+  }
+
+  /**
+   * Create a cron job that publishes a queue message on schedule.
+   */
+  async createQueueJob(
+    projectId: string,
+    data: {
+      name: string;
+      cronExpression: string;
+      queueConfig: CronJobQueueConfig;
+      timezone?: string;
+      payload?: Record<string, unknown>;
+      enabled?: boolean;
+      retryAttempts?: number;
+      retryDelaySeconds?: number;
+      timeoutSeconds?: number;
+    },
+  ) {
+    return this.create(projectId, { ...data, actionType: CronActionType.Queue });
   }
 }
