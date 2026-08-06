@@ -2,8 +2,10 @@
 
 import { Badge, Spinner } from '@fidscript/ui';
 
+export type BadgeVariant = 'default' | 'success' | 'warning' | 'danger' | 'info' | 'accent';
+
 interface StatusBadgeProps {
-  meta: { label: string; variant: string };
+  meta: { label: string; variant: BadgeVariant };
   acting: string | null;
   logStream: boolean;
 }
@@ -11,7 +13,7 @@ interface StatusBadgeProps {
 export function StatusBadge({ meta, acting, logStream }: StatusBadgeProps) {
   return (
     <div className="flex items-center gap-2.5 flex-wrap">
-      <Badge variant={meta.variant as any} className="text-sm">{meta.label}</Badge>
+      <Badge variant={meta.variant} className="text-sm">{meta.label}</Badge>
       {acting && <Spinner size="sm" />}
       {logStream && (
         <span className="flex items-center gap-1.5 text-xs text-[var(--accent)]">

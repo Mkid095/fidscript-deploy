@@ -5,7 +5,7 @@ import { HugeiconsIcon } from '@hugeicons/react';
 import { Clock02Icon } from '@hugeicons/core-free-icons';
 
 import type { Deployment } from '@/types';
-import { StatusBadge } from './status-badge';
+import { StatusBadge, type BadgeVariant } from './status-badge';
 import { ActionButtons } from './action-buttons';
 import { DeploymentUrl } from './deployment-url';
 
@@ -13,7 +13,7 @@ type ToastType = 'success' | 'error' | 'warning' | 'info';
 
 interface DeploymentHeaderProps {
   deployment: Deployment;
-  meta: { label: string; variant: string };
+  meta: { label: string; variant: BadgeVariant };
   acting: string | null;
   logStream: boolean;
   inFlight: boolean;
