@@ -1,33 +1,7 @@
 import { FidscriptClient } from '../client';
+import type { Project, ProjectMember, EnvVar } from './projects-types';
 
-export interface Project {
-  id: string;
-  name: string;
-  slug: string;
-  type: string;
-  status: string;
-  ownerId: string;
-  role?: string;
-  description?: string;
-  lastActivityAt?: string;
-  lastDeployAt?: string;
-  region?: string;
-  createdAt: string;
-  updatedAt: string;
-}
-
-export interface ProjectMember {
-  userId: string;
-  email: string;
-  role: string;
-  joinedAt: string;
-}
-
-export interface EnvVar {
-  key: string;
-  value: string;
-  encrypted: boolean;
-}
+export type { Project, ProjectMember, Organization, EnvVar } from './projects-types';
 
 /** Async iterator for cursor-paginated list endpoints */
 export async function* paginate<T>(
@@ -114,10 +88,7 @@ export class ProjectsModule {
     return res.envVars;
   }
 
-  /**
-   * Upsert env vars. The controller DTO expects an array of {key, value}
-   * items (UpdateEnvVarsDto), so we convert the Record to that shape here.
-   */
+  /** Upsert env vars. The controller DTO expects an array of {key, value} items. */
   async setEnvVars(projectId: string, envVars: Record<string, string>) {
     const items = Object.entries(envVars).map(([key, value]) => ({ key, value }));
     return this.client.put(`/api/v1/projects/${projectId}/env-vars`, { envVars: items });
