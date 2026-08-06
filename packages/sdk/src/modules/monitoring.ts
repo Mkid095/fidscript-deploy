@@ -1,43 +1,7 @@
 import { FidscriptClient } from '../client';
+import type { Metric, AlertRule, Alert, NotificationChannel, AlertEvaluation } from './monitoring-types';
 
-export interface Metric {
-  id: string;
-  metric: string;
-  value: number;
-  labels?: Record<string, string>;
-  timestamp: string;
-}
-
-export interface AlertRule {
-  id: string;
-  name: string;
-  metric: string;
-  condition: string;
-  threshold: number;
-  durationSeconds: number;
-  severity: string;
-  channels: string[];
-  enabled: boolean;
-}
-
-export interface Alert {
-  id: string;
-  ruleId: string;
-  severity: string;
-  status: 'pending' | 'firing' | 'acknowledged' | 'resolved';
-  message: string;
-  firstTriggeredAt?: string;
-  firedAt?: string;
-  acknowledgedAt?: string;
-  resolvedAt?: string;
-}
-
-export interface NotificationChannel {
-  id: string;
-  name: string;
-  type: 'email' | 'webhook' | 'slack';
-  config: Record<string, string>;
-}
+export type { Metric, AlertRule, Alert, NotificationChannel, AlertEvaluation } from './monitoring-types';
 
 export class MonitoringModule {
   constructor(private client: FidscriptClient) {}
@@ -78,44 +42,6 @@ export class MonitoringModule {
     return res.rules;
   }
 
-  // Alerts
-  async getAlerts(projectId: string, status?: string) {
-    const res = await this.client.get<{ alerts: Alert[] }>(
-      `/api/v1/projects/${projectId}/monitoring/alerts`,
-      { status },
-    );
-    return res.alerts;
-  }
-
-  async acknowledgeAlert(projectId: string, alertId: string): Promise<Alert> {
-    return this.client.post<Alert>(`/api/v1/projects/${projectId}/monitoring/alerts/${alertId}/acknowledge`) as Promise<Alert>;
-  }
-
-  async resolveAlert(projectId: string, alertId: string): Promise<Alert> {
-    return this.client.post<Alert>(`/api/v1/projects/${projectId}/monitoring/alerts/${alertId}/resolve`) as Promise<Alert>;
-  }
-
-  // Notification Channels
-  async createNotificationChannel(projectId: string, name: string, type: string, config: Record<string, string>) {
-    return this.client.post<NotificationChannel>(`/api/v1/projects/${projectId}/monitoring/channels`, {
-      name,
-      type,
-      config,
-    });
-  }
-
-  async listNotificationChannels(projectId: string) {
-    const res = await this.client.get<{ channels: NotificationChannel[] }>(
-      `/api/v1/projects/${projectId}/monitoring/channels`,
-    );
-    return res.channels;
-  }
-
-  async testNotificationChannel(projectId: string, channelId: string) {
-    return this.client.post(`/api/v1/projects/${projectId}/monitoring/channels/${channelId}/test`);
-  }
-
-  // Alert Rule by ID
   async getAlertRule(projectId: string, ruleId: string) {
     return this.client.get<AlertRule>(`/api/v1/projects/${projectId}/monitoring/alerts/rules/${ruleId}`);
   }
@@ -150,7 +76,39 @@ export class MonitoringModule {
     return res.evaluations;
   }
 
-  // Notification Channel by ID
+  // Alerts
+  async getAlerts(projectId: string, status?: string) {
+    const res = await this.client.get<{ alerts: Alert[] }>(
+      `/api/v1/projects/${projectId}/monitoring/alerts`,
+      { status },
+    );
+    return res.alerts;
+  }
+
+  async acknowledgeAlert(projectId: string, alertId: string): Promise<Alert> {
+    return this.client.post<Alert>(`/api/v1/projects/${projectId}/monitoring/alerts/${alertId}/acknowledge`) as Promise<Alert>;
+  }
+
+  async resolveAlert(projectId: string, alertId: string): Promise<Alert> {
+    return this.client.post<Alert>(`/api/v1/projects/${projectId}/monitoring/alerts/${alertId}/resolve`) as Promise<Alert>;
+  }
+
+  // Notification Channels
+  async createNotificationChannel(projectId: string, name: string, type: string, config: Record<string, string>) {
+    return this.client.post<NotificationChannel>(`/api/v1/projects/${projectId}/monitoring/channels`, {
+      name,
+      type,
+      config,
+    });
+  }
+
+  async listNotificationChannels(projectId: string) {
+    const res = await this.client.get<{ channels: NotificationChannel[] }>(
+      `/api/v1/projects/${projectId}/monitoring/channels`,
+    );
+    return res.channels;
+  }
+
   async getNotificationChannel(projectId: string, channelId: string) {
     return this.client.get<NotificationChannel>(`/api/v1/projects/${projectId}/monitoring/channels/${channelId}`);
   }
@@ -166,13 +124,8 @@ export class MonitoringModule {
   async deleteNotificationChannel(projectId: string, channelId: string) {
     return this.client.delete(`/api/v1/projects/${projectId}/monitoring/channels/${channelId}`);
   }
-}
 
-export interface AlertEvaluation {
-  id: string;
-  ruleId: string;
-  timestamp: string;
-  value: number;
-  fired: boolean;
-  message?: string;
+  async testNotificationChannel(projectId: string, channelId: string) {
+    return this.client.post(`/api/v1/projects/${projectId}/monitoring/channels/${channelId}/test`);
+  }
 }
