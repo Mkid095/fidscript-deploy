@@ -34,6 +34,18 @@ export async function GET(
     const res = await fetch(`${API_BASE}/${path.join('/')}${query}`, {
       headers: proxyHeaders(request),
     });
+    // Streaming responses (e.g. SSE) must be passed through without buffering —
+    // awaiting res.text() would force the client to wait until the upstream
+    // closes, which never happens for an Observable<MessageEvent>.
+    if (res.body) {
+      const headers: Record<string, string> = responseHeaders(res.headers.get('Content-Type'));
+      // Preserve SSE-aware headers
+      const cache = res.headers.get('Cache-Control');
+      if (cache) headers['Cache-Control'] = cache;
+      const conn = res.headers.get('Connection');
+      if (conn) headers['Connection'] = conn;
+      return new Response(res.body, { status: res.status, headers });
+    }
     const text = await res.text();
     return new Response(text, { status: res.status, headers: responseHeaders(res.headers.get('Content-Type')) });
   } catch {

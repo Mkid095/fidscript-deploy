@@ -37,7 +37,7 @@ export class GetAlertsDto {
 
 export class CreateNotificationChannelDto {
   @IsString() name!: string;
-  @IsEnum(['email', 'slack', 'webhook', 'pagerduty']) type!: 'email' | 'slack' | 'webhook' | 'pagerduty';
+  @IsEnum(['email', 'slack', 'webhook']) type!: 'email' | 'slack' | 'webhook';
   @IsObject() config!: Record<string, string>;
 }
 
