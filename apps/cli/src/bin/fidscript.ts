@@ -22,6 +22,7 @@ import { registerCronCommands } from '../commands/cron';
 import { registerDomainsCommands } from '../commands/domains';
 import { registerStorageCommands } from '../commands/storage';
 import { registerQueuesCommands } from '../commands/queues';
+import { registerEnvCommands } from '../commands/env';
 
 function getApiKey(): string | undefined {
   return loadCredentials().apiKey;
@@ -195,6 +196,7 @@ async function run(argv: string[]): Promise<void> {
   registerDomainsCommands(program, { apiUrl: cfg.apiUrl, getApiKey, loadConfig });
   registerStorageCommands(program, { apiUrl: cfg.apiUrl, getApiKey, loadConfig });
   registerQueuesCommands(program, { apiUrl: cfg.apiUrl, getApiKey, loadConfig });
+  registerEnvCommands(program, { apiUrl: cfg.apiUrl, getApiKey, loadConfig });
 
   // ── EMAIL COMMANDS ──────────────────────────────────────────────────
   const emailCmd = new Command('email');
