@@ -1,4 +1,4 @@
-export type ActionType = 'endpoint' | 'function' | 'email' | 'queue';
+export type ActionType = 'http' | 'function' | 'email' | 'queue';
 
 export type JobEditForm = {
   name: string;
@@ -28,7 +28,7 @@ export const EMPTY_EDIT_FORM: JobEditForm = {
   name: '',
   expression: '',
   timezone: 'UTC',
-  actionType: 'endpoint',
+  actionType: 'http',
   endpoint: '',
   functionId: '',
   emailFrom: '',

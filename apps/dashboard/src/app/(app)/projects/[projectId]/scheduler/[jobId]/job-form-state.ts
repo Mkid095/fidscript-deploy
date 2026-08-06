@@ -8,7 +8,7 @@ export function useJobFormState(getSdk: () => FidscriptSDK, projectId: string, j
   const [formName, setFormName] = useState('');
   const [formExpression, setFormExpression] = useState('');
   const [formTimezone, setFormTimezone] = useState('UTC');
-  const [formTargetType, setFormTargetType] = useState<'endpoint' | 'function'>('endpoint');
+  const [formTargetType, setFormTargetType] = useState<'http' | 'function'>('http');
   const [formEndpoint, setFormEndpoint] = useState('');
   const [formFunctionId, setFormFunctionId] = useState('');
   const [formPayload, setFormPayload] = useState('{}');
@@ -22,7 +22,7 @@ export function useJobFormState(getSdk: () => FidscriptSDK, projectId: string, j
     setFormName(j.name);
     setFormExpression(j.cronExpression);
     setFormTimezone(j.timezone ?? 'UTC');
-    setFormTargetType((j.targetType as 'endpoint' | 'function') ?? 'endpoint');
+    setFormTargetType((j.targetType as 'http' | 'function') ?? 'http');
     setFormEndpoint(j.endpoint ?? '');
     setFormFunctionId(j.functionId ?? '');
     setFormPayload(JSON.stringify(j.payload ?? {}, null, 2));
@@ -46,7 +46,7 @@ export function useJobFormState(getSdk: () => FidscriptSDK, projectId: string, j
         name: formName.trim(),
         cronExpression: formExpression.trim(),
         timezone: formTimezone,
-        ...(formTargetType === 'endpoint'
+        ...(formTargetType === 'http'
           ? { endpoint: formEndpoint }
           : { functionId: formFunctionId }),
         payload: parsedPayload,

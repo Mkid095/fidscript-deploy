@@ -74,7 +74,7 @@ export function JobFormModal({
       actionType: form.actionType,
     };
 
-    if (form.actionType === 'endpoint') {
+    if (form.actionType === 'http') {
       base.endpoint = form.endpoint;
       base.httpMethod = form.httpMethod;
       base.httpHeaders = form.httpHeaders;

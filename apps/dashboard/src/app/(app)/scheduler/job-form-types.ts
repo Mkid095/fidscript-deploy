@@ -1,4 +1,4 @@
-export type ActionType = 'endpoint' | 'function' | 'email' | 'queue';
+export type ActionType = 'http' | 'function' | 'email' | 'queue';
 
 export type JobForm = {
   name: string;
@@ -30,7 +30,7 @@ export const TIMEZONES = [
 export const HTTP_METHODS = ['GET', 'POST', 'PUT', 'PATCH', 'DELETE'] as const;
 
 export const ACTION_OPTIONS: { value: ActionType; label: string }[] = [
-  { value: 'endpoint', label: 'HTTP Request' },
+  { value: 'http', label: 'HTTP Request' },
   { value: 'function', label: 'Function' },
   { value: 'email', label: 'Email' },
   { value: 'queue', label: 'Queue Job' },
@@ -38,7 +38,7 @@ export const ACTION_OPTIONS: { value: ActionType; label: string }[] = [
 
 export const EMPTY_JOB_FORM: JobForm = {
   name: '', expression: '', timezone: 'UTC',
-  actionType: 'endpoint',
+  actionType: 'http',
   endpoint: '', httpMethod: 'POST', httpHeaders: [],
   functionId: '',
   emailFrom: '', emailTo: '', emailSubject: '', emailBody: '',

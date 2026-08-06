@@ -2,7 +2,7 @@
 
 import { Card, Button, Input } from '@fidscript/ui';
 import { HugeiconsIcon } from '@hugeicons/react';
-import { CloudIcon, CheckmarkCircle01Icon, CancelCircle01Icon, InformationCircleIcon } from '@hugeicons/core-free-icons';
+import { CloudIcon, CheckmarkCircle01Icon, CancelCircleIcon, InformationCircleIcon } from '@hugeicons/core-free-icons';
 
 interface Props {
   cloudinaryCredsSet: boolean;
@@ -79,7 +79,7 @@ export function StorageSettingsCloudinary({
               ? 'bg-emerald-500/10 border-emerald-500/20 text-emerald-400'
               : 'bg-rose-500/10 border-rose-500/20 text-rose-400'
           }`}>
-            <HugeiconsIcon icon={testResult.ok ? CheckmarkCircle01Icon : CancelCircle01Icon} size={12} className="flex-shrink-0 mt-0.5" />
+            <HugeiconsIcon icon={testResult.ok ? CheckmarkCircle01Icon : CancelCircleIcon} size={12} className="flex-shrink-0 mt-0.5" />
             <span>{testResult.ok ? testResult.detail : testResult.error}</span>
           </div>
         )}

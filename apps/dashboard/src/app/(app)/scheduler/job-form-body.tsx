@@ -53,7 +53,7 @@ export function JobFormBody({
 
       <ActionTypePicker value={form.actionType} onChange={v => set({ actionType: v })} />
 
-      {form.actionType === 'endpoint' && (
+      {form.actionType === 'http' && (
         <HttpEndpointFields
           endpoint={form.endpoint} httpMethod={form.httpMethod} httpHeaders={form.httpHeaders}
           onEndpointChange={v => set({ endpoint: v })}

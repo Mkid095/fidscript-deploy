@@ -22,9 +22,9 @@ export function buildJobUpdatePayload(form: JobEditForm): Record<string, unknown
     targetType: undefined,
   };
 
-  if (form.actionType === 'endpoint') {
+  if (form.actionType === 'http') {
     update.endpoint = form.endpoint;
-    update.targetType = 'endpoint';
+    update.targetType = 'http';
   } else if (form.actionType === 'function') {
     update.functionId = form.functionId;
     update.targetType = 'function';
@@ -52,7 +52,7 @@ export function detectActionType(j: CronJob): JobEditForm['actionType'] {
   if (j.actionType === 'email' || j.emailConfig) return 'email';
   if (j.actionType === 'queue' || j.queueConfig) return 'queue';
   if (j.actionType === 'function' || j.functionId) return 'function';
-  return 'endpoint';
+  return 'http';
 }
 
 export async function persistJobUpdate(
