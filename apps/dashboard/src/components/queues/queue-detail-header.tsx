@@ -12,11 +12,11 @@ const TYPE_LABELS: Record<string, string> = {
 };
 
 const STATUS_COLORS: Record<string, string> = {
-  pending:    'text-amber-400 bg-amber-500/10 border-amber-500/20',
-  delivered:  'text-emerald-400 bg-emerald-500/10 border-emerald-500/20',
-  'dead-letter': 'text-rose-400 bg-rose-500/10 border-rose-500/20',
-  active:     'text-emerald-400 bg-emerald-500/10 border-emerald-500/20',
-  paused:     'text-amber-400 bg-amber-500/10 border-amber-500/20',
+  pending:    'text-[var(--warning)] bg-[var(--warning)]/10 border-[var(--warning)]/20',
+  delivered:  'text-[var(--success)] bg-[var(--success)]/10 border-[var(--success)]/20',
+  'dead-letter': 'text-[var(--danger)] bg-[var(--danger)]/10 border-[var(--danger)]/20',
+  active:     'text-[var(--success)] bg-[var(--success)]/10 border-[var(--success)]/20',
+  paused:     'text-[var(--warning)] bg-[var(--warning)]/10 border-[var(--warning)]/20',
 };
 
 interface QueueDetailHeaderProps {

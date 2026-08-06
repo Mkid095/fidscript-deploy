@@ -68,7 +68,7 @@ export function QueueCard({ queue, stats, projectId, onDelete }: QueueCardProps)
                 <div className="flex items-center gap-2 flex-wrap mb-1">
                   <h3 className="text-sm font-semibold text-[var(--text)] truncate">{queue.name}</h3>
                   {isPaused && (
-                    <span className="text-[9px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded bg-amber-500/10 text-amber-400 border border-amber-500/20">
+                    <span className="text-[9px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded bg-[var(--warning)]/10 text-[var(--warning)] border border-[var(--warning)]/20">
                       Paused
                     </span>
                   )}
@@ -99,29 +99,29 @@ export function QueueCard({ queue, stats, projectId, onDelete }: QueueCardProps)
                       </span>
                     </div>
                     <div className="flex items-center gap-1.5">
-                      <HugeiconsIcon icon={Database01Icon} size={10} className="text-sky-400" />
+                      <HugeiconsIcon icon={Database01Icon} size={10} className="text-[var(--info)]" />
                       <span className="text-[10px] text-[var(--text-dim)]">
                         <span className="text-[var(--text)] font-medium">{stats.delivered}</span> processing
                       </span>
                     </div>
                     <div className="flex items-center gap-1.5">
-                      <HugeiconsIcon icon={CheckmarkCircle01Icon} size={10} className="text-emerald-400" />
+                      <HugeiconsIcon icon={CheckmarkCircle01Icon} size={10} className="text-[var(--success)]" />
                       <span className="text-[10px] text-[var(--text-dim)]">
                         <span className="text-[var(--text)] font-medium">{stats.acknowledged}</span> completed
                       </span>
                     </div>
                     {stats.failed > 0 && (
                       <div className="flex items-center gap-1.5">
-                        <HugeiconsIcon icon={Cancel01Icon} size={10} className="text-amber-400" />
-                        <span className="text-[10px] text-amber-400">
+                        <HugeiconsIcon icon={Cancel01Icon} size={10} className="text-[var(--warning)]" />
+                        <span className="text-[10px] text-[var(--warning)]">
                           <span className="font-medium">{stats.failed}</span> failed
                         </span>
                       </div>
                     )}
                     {stats.deadLettered > 0 && (
                       <div className="flex items-center gap-1.5">
-                        <HugeiconsIcon icon={Cancel01Icon} size={10} className="text-rose-400" />
-                        <span className="text-[10px] text-rose-400">
+                        <HugeiconsIcon icon={Cancel01Icon} size={10} className="text-[var(--danger)]" />
+                        <span className="text-[10px] text-[var(--danger)]">
                           <span className="font-medium">{stats.deadLettered}</span> dead-letter
                         </span>
                       </div>
@@ -143,7 +143,7 @@ export function QueueCard({ queue, stats, projectId, onDelete }: QueueCardProps)
       {/* Delete button */}
       <button
         onClick={(e) => { e.stopPropagation(); onDelete(queue); }}
-        className="absolute top-3 right-3 p-1.5 rounded-lg text-[var(--text-dim)] hover:text-rose-400 hover:bg-rose-500/10 opacity-0 group-hover:opacity-100 transition-all"
+        className="absolute top-3 right-3 p-1.5 rounded-lg text-[var(--text-dim)] hover:text-[var(--danger)] hover:bg-[var(--danger)]/10 opacity-0 group-hover:opacity-100 transition-all"
         title="Delete queue"
       >
         <HugeiconsIcon icon={Delete02Icon} size={13} />
