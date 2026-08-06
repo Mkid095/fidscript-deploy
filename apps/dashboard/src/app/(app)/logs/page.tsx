@@ -46,7 +46,11 @@ export default function LogsPage() {
     );
   }
 
-  if (d.projects.length === 0) {
+  // Only show the "create project first" empty state when the user is NOT
+  // already inside a project shell (shellProjectId is set there) — otherwise
+  // the hook skips loading projects (projects=[]) and we'd flash this empty
+  // state even inside a valid project, which the Platform Audit Guide flagged.
+  if (!shellProjectId && d.projects.length === 0) {
     return (
       <div className="flex items-center justify-center min-h-96">
         <div className="text-center">
