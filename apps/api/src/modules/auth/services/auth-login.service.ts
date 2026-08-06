@@ -2,6 +2,7 @@ import { Injectable, UnauthorizedException, HttpException, HttpStatus } from '@n
 import { PrismaService } from '@/prisma/prisma.service';
 import { EventService } from '@/modules/events/event.service';
 import { AuthRateLimiter } from '@/common/auth-rate-limiter.service';
+import { JwtBlocklistService } from '@/common/jwt-blocklist.service';
 import { MfaService } from '@/modules/auth/mfa/mfa.service';
 import * as bcrypt from 'bcrypt';
 import * as crypto from 'crypto';
@@ -11,6 +12,9 @@ const BCRYPT_ROUNDS = 12;
 const LOGIN_IP_LIMIT = 100; // max attempts per IP within the window
 const LOGIN_ACCT_LIMIT = 20; // max failed attempts per account within the window
 const LOGIN_WINDOW_SEC = 5 * 60; // 5 minutes (was 15 — too long for dev)
+// Access JWT TTL — must match JwtModule.signOptions.expiresIn in auth.module.ts.
+// Used to set the blocklist tombstone so it expires when the token would have.
+const ACCESS_TOKEN_TTL_SEC = 15 * 60;
 
 interface LoginResult {
   user: { id: string; email: string; name: string | null; role: string };
@@ -25,6 +29,7 @@ export class AuthLoginService {
     private eventService: EventService,
     private rateLimiter: AuthRateLimiter,
     private mfaService: MfaService,
+    private jwtBlocklist: JwtBlocklistService,
   ) {}
 
   async login(dto: { email: string; password: string }, ipAddress?: string, userAgent?: string): Promise<LoginResult> {
@@ -123,6 +128,12 @@ export class AuthLoginService {
       where: { id: sessionId },
       data: { expiresAt: new Date(0) },
     }).catch(() => {});
+
+    // Revoke the in-flight access JWT. The blocklist TTL is bounded by the
+    // JWT's max lifetime — if the token is older, the JWT signature/expiry
+    // check already rejects it; if newer, the tombstone lives just past the
+    // token's natural expiry. Either way the token can no longer be replayed.
+    await this.jwtBlocklist.revoke(sessionId, ACCESS_TOKEN_TTL_SEC);
 
     await this.eventService.emit(
       'identity.user.logged_out', null, {},
