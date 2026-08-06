@@ -103,6 +103,7 @@ export type EventType =
   | 'deployments.deployment.stopped'
   | 'deployments.deployment.blocked'
   | 'deployments.deployment.rolled_back'
+  | 'deployments.deployment.log'
   // Legacy aliases (backwards-compat)
   | 'deployment.started'
   | 'deployment.building'

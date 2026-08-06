@@ -125,6 +125,10 @@ export class DeploymentStateService implements OnModuleInit {
     };
     const onLog = (line: string) => {
       logs.push(line);
+      // Realtime: fan out each build log line to project:<id> so the deployment
+      // LogViewer can subscribe via socket instead of polling GET /deployments/:id/logs.
+      // Fire-and-forget — emit() returns void; failures must not block the build.
+      void this.emit(deploymentId, projectId, userId, 'deployments.deployment.log', { line, index: logs.length - 1 });
       // Debounce: schedule a flush 3s from now, or reset if one is pending
       if (flushTimer) clearTimeout(flushTimer);
       flushTimer = setTimeout(() => { flushLogs().catch(() => {}); }, 3000);
