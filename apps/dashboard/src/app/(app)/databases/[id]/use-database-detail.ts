@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useCallback } from 'react';
 import type { Database, FidscriptSDK } from '@fidscript-deploy/sdk';
+import { useConfirm } from '@/components/ui/confirm-provider';
 
 interface DatabaseBackup {
   id: string;
@@ -16,6 +17,7 @@ interface UseDatabaseDetailOptions {
 }
 
 export function useDatabaseDetail({ id, getSdk }: UseDatabaseDetailOptions) {
+  const confirmFn = useConfirm();
   const [db, setDb] = useState<Database | null>(null);
   const [backups, setBackups] = useState<DatabaseBackup[]>([]);
   const [loading, setLoading] = useState(true);
@@ -80,7 +82,13 @@ export function useDatabaseDetail({ id, getSdk }: UseDatabaseDetailOptions) {
   }, [id, getSdk]);
 
   const handleDelete = useCallback(async () => {
-    if (!window.confirm('Are you sure you want to delete this database? This action cannot be undone.')) return;
+    const ok = await confirmFn({
+      title: 'Delete database',
+      message: 'Are you sure you want to delete this database? This action cannot be undone.',
+      confirmLabel: 'Delete',
+      variant: 'danger',
+    });
+    if (!ok) return;
     setDeleting(true);
     setToast(null);
     try {

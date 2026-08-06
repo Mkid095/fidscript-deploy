@@ -3,6 +3,8 @@
 import { useState } from 'react';
 import { Button, Card, Spinner } from '@fidscript/ui';
 import { useSecuritySettings } from './use-security-settings';
+import { useConfirm } from '@/components/ui/confirm-provider';
+import { useToast } from '@/components/toast-provider';
 
 interface ApiKey {
   id: string;
@@ -18,11 +20,25 @@ interface SecuritySettingsProps {
 
 export function SecuritySettings({ onRevoke, revoking, revokeError }: SecuritySettingsProps) {
   const { apiKeys, loadingKeys } = useSecuritySettings();
+  const confirmFn = useConfirm();
+  const { showToast } = useToast();
 
   async function handleDeleteAccount() {
-    if (!confirm('Permanently delete your account? This cannot be undone.')) return;
-    if (!confirm('Are you absolutely sure? All your projects, data, and deployments will be deleted.')) return;
-    alert('Please contact support to delete your account.');
+    const first = await confirmFn({
+      title: 'Delete account',
+      message: 'Permanently delete your account? This cannot be undone.',
+      confirmLabel: 'Continue',
+      variant: 'danger',
+    });
+    if (!first) return;
+    const second = await confirmFn({
+      title: 'Final confirmation',
+      message: 'Are you absolutely sure? All your projects, data, and deployments will be deleted.',
+      confirmLabel: 'Delete everything',
+      variant: 'danger',
+    });
+    if (!second) return;
+    showToast({ type: 'info', message: 'Please contact support to delete your account.' });
   }
 
   return (

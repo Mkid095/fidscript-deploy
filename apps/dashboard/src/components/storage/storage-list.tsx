@@ -11,6 +11,7 @@ import { BucketCard } from './bucket-card';
 import { CreateBucketForm } from './create-bucket-form';
 import { useStorageRealtime } from './use-storage-realtime';
 import { useStorageList } from './storage-list.use';
+import { useConfirm } from '@/components/ui/confirm-provider';
 import type { Bucket } from './bucket';
 
 interface StorageListProps {
@@ -19,6 +20,7 @@ interface StorageListProps {
 
 export function StorageList({ projectId }: StorageListProps) {
   const { getSdk, getToken } = useAuth();
+  const confirmFn = useConfirm();
   const [banner, setBanner] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
   const [showCreate, setShowCreate] = useState(false);
 
@@ -39,11 +41,17 @@ export function StorageList({ projectId }: StorageListProps) {
   });
 
   const handleDeleteBucket = useCallback(async (bucket: Bucket) => {
-    if (!confirm(`Delete bucket "${bucket.name}"? All files inside will be permanently deleted.`)) return;
+    const okConfirm = await confirmFn({
+      title: 'Delete bucket',
+      message: `Delete bucket "${bucket.name}"? All files inside will be permanently deleted.`,
+      confirmLabel: 'Delete bucket',
+      variant: 'danger',
+    });
+    if (!okConfirm) return;
     const ok = await deleteBucket(bucket);
     if (ok) showBanner(`Bucket "${bucket.name}" deleted`, 'success');
     else showBanner('Delete failed', 'error');
-  }, [deleteBucket, showBanner]);
+  }, [deleteBucket, showBanner, confirmFn]);
 
   return (
     <div className="p-6 lg:p-8 max-w-5xl space-y-6">

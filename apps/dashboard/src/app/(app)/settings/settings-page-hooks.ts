@@ -2,6 +2,8 @@
 
 import { useState, useCallback } from 'react';
 import { useAuth } from '@/contexts/auth-context';
+import { useToast } from '@/components/toast-provider';
+import { useConfirm } from '@/components/ui/confirm-provider';
 
 export interface UseSettingsPageReturn {
   revoking: string | null;
@@ -17,6 +19,8 @@ export interface UseSettingsPageReturn {
 
 export function useSettingsPage(): UseSettingsPageReturn {
   const { getSdk } = useAuth();
+  const confirmFn = useConfirm();
+  const { showToast } = useToast();
   const [revoking, setRevoking] = useState<string | null>(null);
   const [revokeError, setRevokeError] = useState<string | null>(null);
   const [testingId, setTestingId] = useState<string | null>(null);
@@ -24,7 +28,13 @@ export function useSettingsPage(): UseSettingsPageReturn {
   const [channelError, setChannelError] = useState<string | null>(null);
 
   const handleRevoke = useCallback(async (keyId: string) => {
-    if (!confirm('Revoke this API key? This cannot be undone.')) return;
+    const ok = await confirmFn({
+      title: 'Revoke API key',
+      message: 'Revoke this API key? This cannot be undone.',
+      confirmLabel: 'Revoke',
+      variant: 'danger',
+    });
+    if (!ok) return;
     setRevoking(keyId);
     setRevokeError(null);
     try {
@@ -44,16 +54,22 @@ export function useSettingsPage(): UseSettingsPageReturn {
       const sdk = getSdk();
       const { projects } = await sdk.projects.list();
       if (projects.length > 0) await sdk.monitoring.testNotificationChannel(projects[0].id, channelId);
-      alert('Test notification sent!');
+      showToast({ type: 'success', message: 'Test notification sent!' });
     } catch (err) {
-      alert(`Test failed: ${err instanceof Error ? err.message : 'Unknown error'}`);
+      showToast({ type: 'error', message: `Test failed: ${err instanceof Error ? err.message : 'Unknown error'}` });
     } finally {
       setTestingId(null);
     }
-  }, [getSdk]);
+  }, [getSdk, showToast]);
 
   const handleDeleteChannel = useCallback(async (channelId: string) => {
-    if (!confirm('Delete this notification channel?')) return;
+    const ok = await confirmFn({
+      title: 'Delete channel',
+      message: 'Delete this notification channel?',
+      confirmLabel: 'Delete',
+      variant: 'danger',
+    });
+    if (!ok) return;
     setDeletingId(channelId);
     try {
       const sdk = getSdk();
@@ -62,7 +78,7 @@ export function useSettingsPage(): UseSettingsPageReturn {
     } finally {
       setDeletingId(null);
     }
-  }, [getSdk]);
+  }, [getSdk, confirmFn]);
 
   const handleAddChannel = useCallback(async (name: string, type: 'email' | 'slack', config: Record<string, string>) => {
     setChannelError(null);

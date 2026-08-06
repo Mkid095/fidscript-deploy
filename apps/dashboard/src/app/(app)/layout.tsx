@@ -10,6 +10,7 @@ import { ArrowTurnBackwardIcon } from '@hugeicons/core-free-icons';
 import { AuthGuard } from '@/components/auth-guard';
 import { AvatarDropdown } from '@/components/layout/avatar-dropdown';
 import { ThemeToggle } from '@/components/theme/theme-toggle';
+import { ConfirmProvider } from '@/components/ui/confirm-provider';
 
 /**
  * Top-level layout for the (app) route group.
@@ -35,9 +36,10 @@ export default function AppLayout({ children }: { children: ReactNode }) {
 
   return (
     <AuthGuard>
-      {isProjectRoute ? (
-        <>{children}</>
-      ) : (
+      <ConfirmProvider>
+        {isProjectRoute ? (
+          <>{children}</>
+        ) : (
         <div className="min-h-screen flex flex-col bg-[var(--surface-2)]">
           <header className="h-14 bg-[var(--surface-2)] border-b border-[var(--rail)] flex items-center px-6 gap-4 flex-shrink-0">
             {/* Logo — links home */}
@@ -82,7 +84,8 @@ export default function AppLayout({ children }: { children: ReactNode }) {
 
           <main className="flex-1 overflow-y-auto p-6">{children}</main>
         </div>
-      )}
+        )}
+      </ConfirmProvider>
     </AuthGuard>
   );
 }
