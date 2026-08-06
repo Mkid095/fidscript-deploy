@@ -1,10 +1,11 @@
 'use client';
 
-import { useState } from 'react';
-import type { DomainHealth, DnsRecord } from '@fidscript-deploy/sdk';
+import { useEffect, useState } from 'react';
+import type { DomainHealth } from '@fidscript-deploy/sdk';
 import { Card, Spinner, Stepper } from '@fidscript/ui';
 import { useAuth } from '@/contexts/auth-context';
 import { useDomainWizard } from '../domain-tab-hooks';
+import { useDomainWizardPoll } from './use-domain-wizard-poll';
 import { WizardRecordsStage } from './wizard-records-stage';
 import { WizardVerifyStage } from './wizard-verify-stage';
 
@@ -84,13 +85,31 @@ export default function WizardTab({ projectId, domainId }: Props) {
     return 'records';
   });
 
+  // Auto-poll the domain record while we're on the records stage. The server
+  // returns the new domain in PENDING state until DNS propagates — once it
+  // flips to ACTIVE the user shouldn't have to click anything to advance.
+  const poll = useDomainWizardPoll({
+    active: stage === 'records',
+    domainId,
+    getSdk,
+  });
+
+  useEffect(() => {
+    if (stage === 'records' && poll.reachedActive) setStage('verify');
+  }, [stage, poll.reachedActive]);
+
   if (loading) return <div className="flex justify-center py-12"><Spinner size="md" /></div>;
 
   return (
     <div className="space-y-6">
       <Stepper steps={STAGES} current={stageIndex(stage)} className="mb-2" />
       {stage === 'records' && (
-        <WizardRecordsStage records={records} onProceed={() => setStage('verify')} />
+        <WizardRecordsStage
+          records={records}
+          autoPolling={poll.polling}
+          autoPollError={poll.error}
+          onProceed={() => setStage('verify')}
+        />
       )}
       {stage === 'verify' && (
         <WizardVerifyStage projectId={projectId} domainId={domainId} getSdk={getSdk} />

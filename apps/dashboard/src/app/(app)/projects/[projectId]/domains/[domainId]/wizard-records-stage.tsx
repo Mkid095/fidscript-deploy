@@ -6,6 +6,8 @@ import { Button, Badge } from '@fidscript/ui';
 
 interface Props {
   records: DnsRecord[];
+  autoPolling?: boolean;
+  autoPollError?: string | null;
   onProceed: () => void;
 }
 
@@ -39,18 +41,24 @@ function RecordRow({ rec }: { rec: DnsRecord }) {
   );
 }
 
-export function WizardRecordsStage({ records, onProceed }: Props) {
+export function WizardRecordsStage({ records, autoPolling, autoPollError, onProceed }: Props) {
   const categories = ['deployment', 'email', 'verification'] as const;
   const allOk = records.length > 0 && records.every(r => r.status === 'ok');
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
         <p className="text-sm text-[var(--text-muted)]">
-          Add these records at your DNS provider, then verify propagation.
-          {allOk && ' All records look configured — you can proceed to verify.'}
+          Add these records at your DNS provider.
+          {autoPolling && ' Auto-verifying…'}
+          {allOk && ' All records look configured — proceeding to verify.'}
         </p>
         {allOk && <Button size="sm" onClick={onProceed}>Proceed to Verify</Button>}
       </div>
+      {autoPollError && (
+        <div className="rounded border border-[var(--danger)]/30 bg-[var(--danger)]/10 px-3 py-2 text-xs text-[var(--danger)]">
+          {autoPollError}
+        </div>
+      )}
       {categories.map(cat => {
         const catRecords = records.filter(r => r.category === cat);
         if (!catRecords.length) return null;
