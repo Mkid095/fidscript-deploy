@@ -1,6 +1,6 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '@/prisma/prisma.service';
-import { parseLevels, resolveStreamId } from './log-query-filters';
+import { parseLevels, resolveStreamId, UUID_RE } from './log-query-filters';
 
 @Injectable()
 export class LogQueryService {

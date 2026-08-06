@@ -24,6 +24,7 @@ import {
 } from '@nestjs/common';
 import { Request } from 'express';
 import { PrismaService } from '@/prisma/prisma.service';
+import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { McpPermissionService, TOOL_PERMISSIONS, Permission } from './mcp-permission.service';
 
 interface AuthRequest extends Request {
@@ -31,6 +32,7 @@ interface AuthRequest extends Request {
 }
 
 @Controller('api/v1/mcp')
+@UseGuards(JwtAuthGuard)
 export class McpController {
   constructor(
     private prisma: PrismaService,

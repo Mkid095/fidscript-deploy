@@ -47,27 +47,29 @@ export async function GET(request: NextRequest) {
       }
 
       try {
-        // POST the code to our API to complete the OAuth flow
-        const res = await fetch('/api/v1/domains/connect-cloudflare/callback', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ code, state, projectId }),
-        });
-
-        const data = await res.json();
-
-        if (!res.ok) throw new Error(data.message || 'Connection failed');
-
-        // Send success to opener
+        // Forward the OAuth code to the opener. The parent window exchanges
+        // the code via the backend (see startCloudflareOAuth → completeCloudflareOAuth).
         if (window.opener) {
-          window.opener.postMessage({ type: 'cloudflare-oauth-callback', success: true, connection: data.connection }, window.location.origin);
+          window.opener.postMessage(
+            {
+              type: 'cloudflare-oauth-callback',
+              success: true,
+              code,
+              state,
+              projectId,
+            },
+            window.location.origin,
+          );
         }
         window.close();
       } catch (err) {
         document.getElementById('error').style.display = 'block';
         document.getElementById('error').textContent = err.message || 'Failed to connect. Please try again.';
         if (window.opener) {
-          window.opener.postMessage({ type: 'cloudflare-oauth-callback', success: false, error: err.message }, window.location.origin);
+          window.opener.postMessage(
+            { type: 'cloudflare-oauth-callback', success: false, error: err.message },
+            window.location.origin,
+          );
         }
       }
     })();

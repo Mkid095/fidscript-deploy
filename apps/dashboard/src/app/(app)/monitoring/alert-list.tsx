@@ -74,7 +74,7 @@ export function AlertList({ rules, alerts, selectedProjectId, onCreateClick }: P
               </td>
               <td className="px-4 py-3">
                 {(() => {
-                  const isFiring = alerts[rule.severity]?.status === 'firing';
+                  const isFiring = alerts[rule.id]?.status === 'firing';
                   if (isFiring) return <span className="text-xs px-2 py-0.5 rounded bg-[var(--danger)]/10 text-[var(--danger)]">FIRING</span>;
                   if (!rule.enabled) return <span className="text-xs px-2 py-0.5 rounded bg-[var(--rail)] text-[var(--text-muted)]">PAUSED</span>;
                   return <span className="text-xs px-2 py-0.5 rounded bg-[var(--success)]/10 text-[var(--success)]">ACTIVE</span>;

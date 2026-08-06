@@ -46,9 +46,12 @@ export function useDeploymentRealtime({
         }
         if (['deployments.deployment.building', 'deployments.deployment.deploying', 'deployments.deployment.queued'].includes(et)) {
           onLogStream(true);
-          if (data.status) {
-            onUpdate(data.status as Deployment['status']);
-          }
+        }
+        // Realtime status updates must merge into the existing deployment so the
+        // header/buttons re-render immediately. onUpdate receives the merged
+        // object and must assign it via setState — see DeploymentDetailInner.
+        if (data?.status && deployment) {
+          onUpdate(data.status as Deployment['status']);
         }
       };
       const unsub = rt.subscribeDeployments(projectId, handler);

@@ -139,7 +139,16 @@ export function useProjectsPage(getSdk: () => FidscriptSDK) {
     finally { setPurgeVerifying(false); }
   }
 
-  async function handleRestore(p: Project) { try { await getSdk().projects.restore(p.id); await load(); } catch {} }
+  async function handleRestore(p: Project) {
+    try {
+      await getSdk().projects.restore(p.id);
+      await load();
+    } catch (err) {
+      if (err instanceof AuthError) { router.replace('/login'); return; }
+      if (err instanceof RateLimitError) { return; }
+      setLoadError(err instanceof Error ? err.message : 'Failed to restore project');
+    }
+  }
 
   function handleEditOpen(p: Project) {
     setEditing(p); setEditName(p.name); setEditType(p.type as ProjectType); setEditDescription(p.description ?? ''); setEditError(null); setActivePanel('edit');

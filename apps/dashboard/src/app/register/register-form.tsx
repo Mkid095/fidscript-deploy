@@ -9,7 +9,11 @@ import { MagicCodeRegistrationStep } from './components/magic-code-registration-
 
 type AuthMethod = 'PASSWORD' | 'MAGIC_CODE';
 
-const INVITE_HASH = '9fc2e2e280a6d492808614f00435b100270fff7b54a6fbac9154adf63cb6a47c';
+// Pre-submit invite hash check. Read from NEXT_PUBLIC_INVITE_HASH so each
+// installation can use its own per-deploy invite. The API is the source of
+// truth (see apps/api/src/modules/auth/services/auth-register.service.ts:
+// SIGNUP_INVITE_KEYWORD) — this gate exists only to fail fast in the UI.
+const INVITE_HASH = process.env.NEXT_PUBLIC_INVITE_HASH ?? '';
 
 async function hashKeyword(kw: string): Promise<string> {
   const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(kw.toLowerCase()));
@@ -29,7 +33,18 @@ export function RegisterForm() {
   const [backendError, setBackendError] = useState('');
   const [loading, setLoading] = useState(false);
 
-  async function handleInviteChange(val: string) {
+  async function validateInviteClientSide(): Promise<boolean> {
+    if (!inviteKeyword.trim()) { setInviteError('Invite keyword is required'); return false; }
+    // If the env var isn't configured, the client has nothing to compare
+    // against — defer to the server (which always validates against
+    // SIGNUP_INVITE_KEYWORD).
+    if (!INVITE_HASH) return true;
+    const hashed = await hashKeyword(inviteKeyword);
+    if (hashed !== INVITE_HASH) { setInviteError('Invalid invite keyword'); return false; }
+    return true;
+  }
+
+  function handleInviteChange(val: string) {
     setInviteKeyword(val);
     setInviteError('');
   }
@@ -50,9 +65,7 @@ export function RegisterForm() {
     e.preventDefault();
     setValidationError('');
     setBackendError('');
-    if (!inviteKeyword.trim()) { setInviteError('Invite keyword is required'); return; }
-    const hashed = await hashKeyword(inviteKeyword);
-    if (hashed !== INVITE_HASH) { setInviteError('Invalid invite keyword'); return; }
+    if (!(await validateInviteClientSide())) return;
     if (!validatePassword()) return;
     setLoading(true);
     try {
@@ -67,9 +80,7 @@ export function RegisterForm() {
   async function handleMagicCodeSubmit() {
     setValidationError('');
     setBackendError('');
-    if (!inviteKeyword.trim()) { setInviteError('Invite keyword is required'); return; }
-    const hashed = await hashKeyword(inviteKeyword);
-    if (hashed !== INVITE_HASH) { setInviteError('Invalid invite keyword'); return; }
+    if (!(await validateInviteClientSide())) return;
     if (!name.trim()) { setValidationError('Name is required'); return; }
     if (!email.trim()) { setValidationError('Email is required'); return; }
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) { setValidationError('Enter a valid email address'); return; }
