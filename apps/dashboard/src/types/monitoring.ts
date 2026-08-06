@@ -14,8 +14,9 @@ export interface AlertRule {
 
 export interface Alert {
   id: string;
+  ruleId?: string;
   severity: string;
-  status: 'pending' | 'firing' | 'resolved';
+  status: 'pending' | 'firing' | 'acknowledged' | 'resolved';
   message: string;
   firstTriggeredAt?: string;
   firedAt?: string;

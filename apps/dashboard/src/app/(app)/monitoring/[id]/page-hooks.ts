@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import type { AlertRule, NotificationChannel } from '@/types';
+import type { AlertRule, Alert, NotificationChannel } from '@/types';
 import { useAuth } from '@/contexts/auth-context';
 
 interface AlertEvaluation {
@@ -20,8 +20,10 @@ interface UseAlertDetailReturn {
   rule: AlertRule | null;
   channels: NotificationChannel[];
   evaluations: AlertEvaluation[];
+  firingAlert: Alert | null;
   loading: boolean;
   error: string | null;
+  refetch: () => Promise<void>;
 }
 
 export function useAlertDetail({
@@ -32,32 +34,37 @@ export function useAlertDetail({
   const [rule, setRule] = useState<AlertRule | null>(null);
   const [channels, setChannels] = useState<NotificationChannel[]>([]);
   const [evaluations, setEvaluations] = useState<AlertEvaluation[]>([]);
+  const [firingAlert, setFiringAlert] = useState<Alert | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
+  const load = useCallback(async () => {
     if (!projectId || !ruleId) return;
-    async function load() {
-      setLoading(true);
-      setError(null);
-      try {
-        const sdk = getSdk();
-        const [ruleData, chData, evals] = await Promise.all([
-          sdk.monitoring.getAlertRule(projectId, ruleId),
-          sdk.monitoring.listNotificationChannels(projectId),
-          sdk.monitoring.getAlertEvaluations(projectId, ruleId, 10),
-        ]);
-        setRule(ruleData);
-        setChannels(chData);
-        setEvaluations(evals);
-      } catch (err) {
-        setError(err instanceof Error ? err.message : 'Failed to load alert rule');
-      } finally {
-        setLoading(false);
-      }
+    setLoading(true);
+    setError(null);
+    try {
+      const sdk = getSdk();
+      const [ruleData, chData, evals, alertsData] = await Promise.all([
+        sdk.monitoring.getAlertRule(projectId, ruleId),
+        sdk.monitoring.listNotificationChannels(projectId),
+        sdk.monitoring.getAlertEvaluations(projectId, ruleId, 10),
+        sdk.monitoring.getAlerts(projectId),
+      ]);
+      setRule(ruleData);
+      setChannels(chData);
+      setEvaluations(evals);
+      const open = alertsData
+        .filter((a: Alert) => a.ruleId === ruleId && (a.status === 'firing' || a.status === 'acknowledged'))
+        .sort((a: Alert, b: Alert) => (b.firedAt ?? '').localeCompare(a.firedAt ?? ''))[0] ?? null;
+      setFiringAlert(open);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to load alert rule');
+    } finally {
+      setLoading(false);
     }
-    load();
   }, [projectId, ruleId, getSdk]);
 
-  return { rule, channels, evaluations, loading, error };
+  useEffect(() => { void load(); }, [load]);
+
+  return { rule, channels, evaluations, firingAlert, loading, error, refetch: load };
 }

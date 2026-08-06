@@ -76,10 +76,10 @@ export function useMonitoringData({ selectedProjectId, shellProjectId, getSdk }:
         setRules(rulesData);
         const alertMap: Record<string, Alert> = {};
         for (const alert of alertsData) {
-          if (alert.status === 'firing') {
-            const key = `${alert.severity}`;
-            if (!alertMap[key] || alert.firedAt! > alertMap[key].firedAt!) {
-              alertMap[key] = alert;
+          if (alert.status === 'firing' && alert.ruleId) {
+            const current = alertMap[alert.ruleId];
+            if (!current || (alert.firedAt ?? '') > (current.firedAt ?? '')) {
+              alertMap[alert.ruleId] = alert;
             }
           }
         }

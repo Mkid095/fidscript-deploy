@@ -1,5 +1,6 @@
 'use client';
 
+import { useState } from 'react';
 import { useParams, useSearchParams } from 'next/navigation';
 import { Button, Spinner } from '@fidscript/ui';
 import { useAuth } from '@/contexts/auth-context';
@@ -8,6 +9,7 @@ import { AlertRuleConfig } from './alert-rule-config';
 import { AlertChannels } from './alert-channels';
 import { AlertHistory } from './alert-history';
 import { AlertActions } from './alert-actions';
+import type { Alert, AlertRule } from '@/types';
 
 export default function AlertDetailPage() {
   const { getSdk } = useAuth();
@@ -15,8 +17,9 @@ export default function AlertDetailPage() {
   const searchParams = useSearchParams();
   const ruleId = params.id as string;
   const projectId = searchParams.get('project') ?? '';
+  const [actionError, setActionError] = useState<string | null>(null);
 
-  const { rule, channels, evaluations, loading, error } = useAlertDetail({ ruleId, projectId });
+  const { rule, channels, evaluations, firingAlert, loading, error, refetch } = useAlertDetail({ ruleId, projectId });
 
   if (loading) {
     return <div className="flex items-center justify-center min-h-96"><Spinner size="lg" /></div>;
@@ -33,9 +36,16 @@ export default function AlertDetailPage() {
 
   if (!rule) return null;
 
+  function handleToggle(_updated: AlertRule) {
+    void refetch();
+  }
+
+  function handleAlertUpdated(_updated: Alert) {
+    void refetch();
+  }
+
   return (
     <div>
-      {/* Header */}
       <div className="flex items-center justify-between mb-6">
         <div>
           <div className="flex items-center gap-3 mb-1">
@@ -47,19 +57,22 @@ export default function AlertDetailPage() {
               {rule.enabled ? 'ACTIVE' : 'PAUSED'}
             </span>
           </div>
-          <p className="text-sm text-[var(--text-muted)] font-mono">
-            {rule.metric} {rule.condition} {rule.threshold}
-          </p>
+          <p className="text-sm text-[var(--text-muted)] font-mono">{rule.metric} {rule.condition} {rule.threshold}</p>
         </div>
-        <AlertActions rule={rule} projectId={projectId} getSdk={getSdk} onToggle={(r) => {}} onError={(e) => {}} />
+        <AlertActions
+          rule={rule}
+          projectId={projectId}
+          firingAlert={firingAlert ?? undefined}
+          getSdk={getSdk}
+          onToggle={handleToggle}
+          onAlertUpdated={handleAlertUpdated}
+          onError={setActionError}
+        />
       </div>
 
-      {error && <p className="text-[var(--danger)] text-sm mb-4">{error}</p>}
-
+      {(error || actionError) && <p className="text-[var(--danger)] text-sm mb-4">{actionError ?? error}</p>}
       <AlertRuleConfig rule={rule} />
-
       <AlertChannels channels={rule.channels} allChannels={channels} />
-
       <div>
         <h2 className="text-sm font-semibold text-[var(--text)] mb-3">Recent Evaluations</h2>
         <AlertHistory evaluations={evaluations} />

@@ -22,8 +22,9 @@ export interface AlertRule {
 
 export interface Alert {
   id: string;
+  ruleId: string;
   severity: string;
-  status: 'pending' | 'firing' | 'resolved';
+  status: 'pending' | 'firing' | 'acknowledged' | 'resolved';
   message: string;
   firstTriggeredAt?: string;
   firedAt?: string;
@@ -86,12 +87,12 @@ export class MonitoringModule {
     return res.alerts;
   }
 
-  async acknowledgeAlert(projectId: string, alertId: string) {
-    return this.client.post(`/api/v1/projects/${projectId}/monitoring/alerts/${alertId}/acknowledge`);
+  async acknowledgeAlert(projectId: string, alertId: string): Promise<Alert> {
+    return this.client.post<Alert>(`/api/v1/projects/${projectId}/monitoring/alerts/${alertId}/acknowledge`) as Promise<Alert>;
   }
 
-  async resolveAlert(projectId: string, alertId: string) {
-    return this.client.post(`/api/v1/projects/${projectId}/monitoring/alerts/${alertId}/resolve`);
+  async resolveAlert(projectId: string, alertId: string): Promise<Alert> {
+    return this.client.post<Alert>(`/api/v1/projects/${projectId}/monitoring/alerts/${alertId}/resolve`) as Promise<Alert>;
   }
 
   // Notification Channels
