@@ -2,7 +2,7 @@ import { createParamDecorator, ExecutionContext } from '@nestjs/common';
 
 /**
  * The authenticated platform user attached by `JwtAuthGuard` / `JwtStrategy`.
- * Mirrors what `JwtStrategy.validate()` returns: `{ userId, email, role, sessionId }`.
+ * Mirrors what `JwtStrategy.validate()` returns: `{ userId, email, role, sessionId, emailVerifiedAt }`.
  */
 export interface AuthUser {
   userId: string;
@@ -10,6 +10,8 @@ export interface AuthUser {
   role: string;
   /** Active session id (carried in the access JWT) — used by logout. */
   sessionId?: string;
+  /** When the user confirmed their email. `null` means unverified. */
+  emailVerifiedAt?: Date | null;
 }
 
 /**

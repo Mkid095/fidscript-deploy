@@ -1,5 +1,6 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
+import { APP_GUARD } from '@nestjs/core';
 import { PrismaModule } from './prisma/prisma.module';
 import { RegistryModule } from './modules/registry/registry.module';
 import { EventsModule } from './modules/events/events.module';
@@ -9,6 +10,7 @@ import { HealthModule } from './modules/health/health.module';
 import { VerificationModule } from './modules/verification/verification.module';
 import { StorageModule } from './modules/storage/storage.module';
 import { AuthModule } from './modules/auth/auth.module';
+import { EmailVerifiedGuard } from './modules/auth/guards/email-verified.guard';
 import { AppAuthModule } from './modules/app-auth/app-auth.module';
 import { ProjectsModule } from './modules/projects/projects.module';
 import { DeploymentsModule } from './modules/deployments/deployments.module';
@@ -58,6 +60,13 @@ import { McpModule } from './modules/mcp/mcp.module';
     AIModule,
     MarketplaceModule,
     InstallationModule,
+  ],
+  providers: [
+    // Global guard: every authenticated request must have a verified email
+    // unless the route is on the AuthController (verification/recovery flow).
+    // Registered here rather than in AuthModule so the guard is wired up
+    // before AppModule is fully constructed.
+    { provide: APP_GUARD, useClass: EmailVerifiedGuard },
   ],
 })
 export class AppModule {}
