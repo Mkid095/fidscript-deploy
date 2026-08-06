@@ -1,32 +1,7 @@
 import { FidscriptClient } from '../client';
+import type { Bucket, StorageFile, ProjectStorageConfig, StorageProvider } from './storage-types';
 
-export interface Bucket {
-  id: string;
-  name: string;
-  provider: string;
-  status: string;
-  createdAt: string;
-}
-
-export interface StorageFile {
-  id: string;
-  key: string;
-  originalName?: string;
-  mimeType?: string;
-  sizeBytes: number;
-  etag: string;
-  createdAt: string;
-}
-
-export interface ProjectStorageConfig {
-  id: string;
-  projectId: string;
-  defaultProvider: string;
-  cloudinaryCredsSet: boolean;
-  telegramCredsSet: boolean;
-  createdAt: string;
-  updatedAt: string;
-}
+export type { Bucket, StorageFile, ProjectStorageConfig, StorageProvider } from './storage-types';
 
 export class StorageModule {
   constructor(private client: FidscriptClient) {}
@@ -53,11 +28,7 @@ export class StorageModule {
     );
   }
 
-  /**
-   * Test Cloudinary credentials without saving them. Returns
-   * `{ ok: true, detail }` on success or `{ ok: false, error }` with a
-   * human-readable reason on failure (e.g. "Invalid credentials").
-   */
+  /** Test Cloudinary credentials without saving them. */
   async testCloudinaryCredentials(
     projectId: string,
     creds: { cloudName: string; apiKey: string; apiSecret: string },
@@ -78,10 +49,7 @@ export class StorageModule {
     );
   }
 
-  /**
-   * Test Telegram credentials (bot token + chat ID) without saving them.
-   * Confirms the bot token is valid AND the bot can access the chat.
-   */
+  /** Test Telegram credentials (bot token + chat ID) without saving them. */
   async testTelegramCredentials(
     projectId: string,
     creds: { botToken: string; chatId: string },
@@ -92,7 +60,7 @@ export class StorageModule {
     );
   }
 
-  async deleteCredentials(projectId: string, provider: 'cloudinary' | 'telegram'): Promise<ProjectStorageConfig> {
+  async deleteCredentials(projectId: string, provider: StorageProvider): Promise<ProjectStorageConfig> {
     return this.client.delete<ProjectStorageConfig>(
       `/api/v1/projects/${projectId}/storage/credentials/${provider}`,
     );
@@ -105,7 +73,7 @@ export class StorageModule {
     return res.buckets;
   }
 
-  async createBucket(projectId: string, name: string, provider = 'internal') {
+  async createBucket(projectId: string, name: string, provider: StorageProvider = 'internal') {
     return this.client.post<Bucket>(`/api/v1/projects/${projectId}/storage/buckets`, { name, provider });
   }
 
