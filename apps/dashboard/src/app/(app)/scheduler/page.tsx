@@ -10,7 +10,10 @@ import { useSchedulerData } from './use-scheduler-data';
 import { useSchedulerActions } from './use-scheduler-actions';
 import { JobListHeader } from './job-list-header';
 import { JobListContent } from './job-list-content';
-import { JobFormModal } from './job-form-modal';
+import { JobFormModal, type JobFormSubmitData } from './job-form-modal';
+import { EMPTY_JOB_FORM, type JobForm } from './job-form-types';
+
+const EMPTY_FORM: JobForm = EMPTY_JOB_FORM;
 
 export default function SchedulerPage() {
   const { getSdk } = useAuth();
@@ -33,28 +36,15 @@ export default function SchedulerPage() {
   const [triggerError, setTriggerError] = useState<string | null>(null);
   const [togglingId, setTogglingId] = useState<string | null>(null);
 
-  const [form, setForm] = useState({
-    name: '', expression: '', timezone: 'UTC',
-    targetType: 'endpoint' as 'endpoint' | 'function',
-    endpoint: '', httpMethod: 'POST', httpHeaders: [] as { key: string; value: string }[],
-    functionId: '', payload: '{}',
-    retryAttempts: 3, retryDelay: 60, timeout: 300,
-  });
+  const [form, setForm] = useState(EMPTY_FORM);
 
-  async function handleCreate(data: {
-    name: string; cronExpression: string; timezone: string;
-    payload: Record<string, unknown>; retryAttempts: number;
-    retryDelaySeconds: number; timeoutSeconds: number;
-    endpoint?: string; httpMethod?: string;
-    httpHeaders?: { key: string; value: string }[];
-    functionId?: string;
-  }) {
+  async function handleCreate(data: JobFormSubmitData) {
     if (!effectiveProjectId) return;
     setCreating(true);
     setCreateError(null);
     try {
       await sdkCreate(data);
-      setForm({ name: '', expression: '', timezone: 'UTC', targetType: 'endpoint', endpoint: '', httpMethod: 'POST', httpHeaders: [], functionId: '', payload: '{}', retryAttempts: 3, retryDelay: 60, timeout: 300 });
+      setForm(EMPTY_FORM);
       setShowCreate(false);
     } catch (err) {
       setCreateError(err instanceof Error ? err.message : 'Failed to create job');
@@ -125,7 +115,7 @@ export default function SchedulerPage() {
         isOpen={showCreate}
         sdk={sdk}
         projectId={effectiveProjectId}
-        onClose={() => { setShowCreate(false); setForm({ name: '', expression: '', timezone: 'UTC', targetType: 'endpoint', endpoint: '', httpMethod: 'POST', httpHeaders: [], functionId: '', payload: '{}', retryAttempts: 3, retryDelay: 60, timeout: 300 }); }}
+        onClose={() => { setShowCreate(false); setForm(EMPTY_FORM); }}
         onSubmit={handleCreate}
         loading={creating}
         error={createError}

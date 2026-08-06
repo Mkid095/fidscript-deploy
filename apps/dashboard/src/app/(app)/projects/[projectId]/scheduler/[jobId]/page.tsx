@@ -19,35 +19,13 @@ export default function ProjectSchedulerJobDetailPage() {
   const jobId = params.jobId as string;
 
   const {
-    job,
-    loading,
-    error,
-    triggering,
-    showEdit,
-    setShowEdit,
-    saving,
-    saveError,
-    selectedRun,
-    setSelectedRun,
-    runsPage,
-    setRunsPage,
-    hasMoreRuns,
-    recentRuns,
-    successRate,
-    runs,
-    handleTrigger,
-    handleSave,
-    populateForm,
-    formName, setFormName,
-    formExpression, setFormExpression,
-    formTimezone, setFormTimezone,
-    formTargetType, setFormTargetType,
-    formEndpoint, setFormEndpoint,
-    formFunctionId, setFormFunctionId,
-    formPayload, setFormPayload,
-    formRetryAttempts, setFormRetryAttempts,
-    formRetryDelay, setFormRetryDelay,
-    formTimeout, setFormTimeout,
+    job, loading, error,
+    triggering, showEdit, setShowEdit,
+    saving, saveError,
+    selectedRun, setSelectedRun,
+    runsPage, setRunsPage, hasMoreRuns, recentRuns, successRate, runs,
+    form, setForm,
+    handleTrigger, handleSave, populateForm,
   } = useJobDetail({ projectId, jobId, getSdk });
 
   if (loading) {
@@ -109,16 +87,8 @@ export default function ProjectSchedulerJobDetailPage() {
         saveError={saveError}
         onSave={handleSave}
         onClose={() => setShowEdit(false)}
-        formName={formName} setFormName={setFormName}
-        formExpression={formExpression} setFormExpression={setFormExpression}
-        formTimezone={formTimezone} setFormTimezone={setFormTimezone}
-        formTargetType={formTargetType} setFormTargetType={setFormTargetType}
-        formEndpoint={formEndpoint} setFormEndpoint={setFormEndpoint}
-        formFunctionId={formFunctionId} setFormFunctionId={setFormFunctionId}
-        formPayload={formPayload} setFormPayload={setFormPayload}
-        formRetryAttempts={formRetryAttempts} setFormRetryAttempts={setFormRetryAttempts}
-        formRetryDelay={formRetryDelay} setFormRetryDelay={setFormRetryDelay}
-        formTimeout={formTimeout} setFormTimeout={setFormTimeout}
+        form={form}
+        setForm={setForm}
       />
 
       {/* Run detail modal */}

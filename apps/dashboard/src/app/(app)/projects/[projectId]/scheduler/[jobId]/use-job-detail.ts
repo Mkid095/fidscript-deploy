@@ -2,7 +2,10 @@ import type { FidscriptSDK } from '@fidscript-deploy/sdk';
 'use client';
 
 import { useEffect, useState, useCallback } from 'react';
-import type { CronJob, CronJobRun } from '@/types';
+import type { CronJob, CronJobRun, Function_, Queue } from '@/types';
+import { detectActionType, persistJobUpdate } from './job-edit-save';
+import { EMPTY_EDIT_FORM } from './job-edit-types';
+import type { JobEditForm } from './job-edit-types';
 
 interface UseJobDetailOptions {
   projectId: string;
@@ -22,19 +25,11 @@ export function useJobDetail({ projectId, jobId, getSdk }: UseJobDetailOptions) 
   const [saveError, setSaveError] = useState<string | null>(null);
   const [runsPage, setRunsPage] = useState(1);
   const [selectedRun, setSelectedRun] = useState<CronJobRun | null>(null);
+  const [functions, setFunctions] = useState<Function_[]>([]);
+  const [queues, setQueues] = useState<Queue[]>([]);
   const RUNS_PER_PAGE = 20;
 
-  // Form state
-  const [formName, setFormName] = useState('');
-  const [formExpression, setFormExpression] = useState('');
-  const [formTimezone, setFormTimezone] = useState('UTC');
-  const [formTargetType, setFormTargetType] = useState<'endpoint' | 'function'>('endpoint');
-  const [formEndpoint, setFormEndpoint] = useState('');
-  const [formFunctionId, setFormFunctionId] = useState('');
-  const [formPayload, setFormPayload] = useState('{}');
-  const [formRetryAttempts, setFormRetryAttempts] = useState(3);
-  const [formRetryDelay, setFormRetryDelay] = useState(60);
-  const [formTimeout, setFormTimeout] = useState(300);
+  const [form, setForm] = useState<JobEditForm>(EMPTY_EDIT_FORM);
 
   const load = useCallback(async () => {
     if (!projectId || !jobId) return;
@@ -42,14 +37,18 @@ export function useJobDetail({ projectId, jobId, getSdk }: UseJobDetailOptions) 
     setError(null);
     try {
       const sdk = getSdk();
-      const [jobData, runsData, simData] = await Promise.all([
+      const [jobData, runsData, simData, fnData, qData] = await Promise.all([
         sdk.cron.get(projectId, jobId),
         sdk.cron.getRuns(projectId, jobId, 100),
         sdk.cron.simulate(projectId, jobId, 5),
+        sdk.functions.list(projectId).catch(() => [] as Function_[]),
+        sdk.queues.list(projectId).catch(() => [] as Queue[]),
       ]);
       setJob(jobData);
       setRuns(runsData);
       setSimulatedRuns(simData);
+      setFunctions(fnData as Function_[]);
+      setQueues(qData as Queue[]);
       populateForm(jobData);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to load job');
@@ -61,16 +60,26 @@ export function useJobDetail({ projectId, jobId, getSdk }: UseJobDetailOptions) 
   useEffect(() => { load(); }, [load]);
 
   function populateForm(j: CronJob) {
-    setFormName(j.name);
-    setFormExpression(j.cronExpression);
-    setFormTimezone(j.timezone ?? 'UTC');
-    setFormTargetType((j.targetType as 'endpoint' | 'function') ?? 'endpoint');
-    setFormEndpoint(j.endpoint ?? '');
-    setFormFunctionId(j.functionId ?? '');
-    setFormPayload(JSON.stringify(j.payload ?? {}, null, 2));
-    setFormRetryAttempts(j.retryAttempts ?? 3);
-    setFormRetryDelay(j.retryDelaySeconds ?? 60);
-    setFormTimeout(j.timeoutSeconds ?? 300);
+    setForm({
+      ...EMPTY_EDIT_FORM,
+      name: j.name,
+      expression: j.cronExpression,
+      timezone: j.timezone ?? 'UTC',
+      actionType: detectActionType(j),
+      endpoint: j.endpoint ?? '',
+      functionId: j.functionId ?? '',
+      emailFrom: j.emailConfig?.from ?? '',
+      emailTo: j.emailConfig?.to ?? '',
+      emailSubject: j.emailConfig?.subject ?? '',
+      emailBody: j.emailConfig?.text ?? j.emailConfig?.html ?? '',
+      queueId: j.queueConfig?.queueId ?? '',
+      queueBody: j.queueConfig?.body != null ? JSON.stringify(j.queueConfig.body, null, 2) : '',
+      queueDelaySeconds: j.queueConfig?.delaySeconds ?? 0,
+      payload: JSON.stringify(j.payload ?? {}, null, 2),
+      retryAttempts: j.retryAttempts ?? 3,
+      retryDelay: j.retryDelaySeconds ?? 60,
+      timeout: j.timeoutSeconds ?? 300,
+    });
   }
 
   const handleTrigger = useCallback(async () => {
@@ -88,26 +97,12 @@ export function useJobDetail({ projectId, jobId, getSdk }: UseJobDetailOptions) 
 
   const handleSave = useCallback(async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!projectId || !jobId || !formName.trim() || !formExpression.trim()) return;
+    if (!projectId || !jobId || !form.name.trim() || !form.expression.trim()) return;
     setSaving(true);
     setSaveError(null);
     try {
       const sdk = getSdk();
-      let parsedPayload = {};
-      try { parsedPayload = JSON.parse(formPayload); } catch { /* ignore */ }
-      const updated = await sdk.cron.update(projectId, jobId, {
-        name: formName.trim(),
-        cronExpression: formExpression.trim(),
-        timezone: formTimezone,
-        targetType: formTargetType,
-        ...(formTargetType === 'endpoint'
-          ? { endpoint: formEndpoint }
-          : { functionId: formFunctionId }),
-        payload: parsedPayload,
-        retryAttempts: formRetryAttempts,
-        retryDelaySeconds: formRetryDelay,
-        timeoutSeconds: formTimeout,
-      } as any);
+      const updated = await persistJobUpdate(sdk, projectId, jobId, form);
       setJob(updated);
       setShowEdit(false);
       const simData = await sdk.cron.simulate(projectId, jobId, 5);
@@ -117,45 +112,23 @@ export function useJobDetail({ projectId, jobId, getSdk }: UseJobDetailOptions) 
     } finally {
       setSaving(false);
     }
-  }, [projectId, jobId, getSdk, formName, formExpression, formTimezone, formTargetType, formEndpoint, formFunctionId, formPayload, formRetryAttempts, formRetryDelay, formTimeout]);
+  }, [projectId, jobId, getSdk, form]);
 
   const recentRuns = runs.slice(0, runsPage * RUNS_PER_PAGE);
   const hasMoreRuns = runs.length > recentRuns.length;
-
   const successRate = runs.length > 0
     ? Math.round((runs.filter(r => r.status === 'completed').length / runs.length) * 100)
     : null;
 
   return {
-    job,
-    runs,
-    simulatedRuns,
-    loading,
-    error,
-    triggering,
-    showEdit,
-    setShowEdit,
-    saving,
-    saveError,
-    selectedRun,
-    setSelectedRun,
-    runsPage,
-    setRunsPage,
-    hasMoreRuns,
-    recentRuns,
-    successRate,
-    formName, setFormName,
-    formExpression, setFormExpression,
-    formTimezone, setFormTimezone,
-    formTargetType, setFormTargetType,
-    formEndpoint, setFormEndpoint,
-    formFunctionId, setFormFunctionId,
-    formPayload, setFormPayload,
-    formRetryAttempts, setFormRetryAttempts,
-    formRetryDelay, setFormRetryDelay,
-    formTimeout, setFormTimeout,
-    handleTrigger,
-    handleSave,
+    job, runs, simulatedRuns, loading, error,
+    triggering, showEdit, setShowEdit,
+    saving, saveError,
+    selectedRun, setSelectedRun,
+    runsPage, setRunsPage, hasMoreRuns, recentRuns, successRate,
+    form, setForm,
+    functions, queues,
+    handleTrigger, handleSave,
     populateForm,
   };
 }

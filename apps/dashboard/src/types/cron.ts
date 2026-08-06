@@ -1,5 +1,22 @@
 // Cron types
 
+export type CronJobActionType = 'http' | 'function' | 'email' | 'queue';
+
+export interface CronJobEmailConfig {
+  to: string;
+  subject: string;
+  text?: string;
+  html?: string;
+  from?: string;
+}
+
+export interface CronJobQueueConfig {
+  queueId: string;
+  body?: unknown;
+  headers?: Record<string, string>;
+  delaySeconds?: number;
+}
+
 export interface CronJob {
   id: string;
   projectId: string;
@@ -7,8 +24,13 @@ export interface CronJob {
   cronExpression: string;
   timezone: string;
   targetType?: string;
+  actionType?: CronJobActionType;
   endpoint?: string;
+  httpMethod?: string;
+  httpHeaders?: { key: string; value: string }[];
   functionId?: string;
+  emailConfig?: CronJobEmailConfig;
+  queueConfig?: CronJobQueueConfig;
   payload?: Record<string, unknown>;
   enabled: boolean;
   retryAttempts: number;

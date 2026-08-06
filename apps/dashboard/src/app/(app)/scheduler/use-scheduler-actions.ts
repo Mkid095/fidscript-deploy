@@ -3,20 +3,14 @@
 import { useCallback } from 'react';
 import type { FidscriptSDK } from '@fidscript-deploy/sdk';
 import type { CronJob } from '@/types';
+import type { JobFormSubmitData } from './job-form-modal';
 
 export function useSchedulerActions(
   sdk: FidscriptSDK,
   projectId: string,
   setJobs: (jobs: CronJob[] | ((prev: CronJob[]) => CronJob[])) => void,
 ) {
-  const handleCreate = useCallback(async (data: {
-    name: string; cronExpression: string; timezone: string;
-    payload: Record<string, unknown>; retryAttempts: number;
-    retryDelaySeconds: number; timeoutSeconds: number;
-    endpoint?: string; httpMethod?: string;
-    httpHeaders?: { key: string; value: string }[];
-    functionId?: string;
-  }) => {
+  const handleCreate = useCallback(async (data: JobFormSubmitData) => {
     if (!projectId) return;
     await sdk.cron.create(projectId, data);
     const updated = await sdk.cron.list(projectId);
@@ -26,7 +20,7 @@ export function useSchedulerActions(
   const handleToggle = useCallback(async (job: CronJob) => {
     if (!projectId) return;
     await sdk.cron.update(projectId, job.id, { enabled: !job.enabled });
-    setJobs(prev => prev.map(j => j.id === job.id ? { ...j, enabled: !j.enabled } : j));
+    setJobs(prev => prev.map(j => j.id === job.id ? { ...j, enabled: !job.enabled } : j));
   }, [sdk, projectId, setJobs]);
 
   const handleTrigger = useCallback(async (jobId: string) => {

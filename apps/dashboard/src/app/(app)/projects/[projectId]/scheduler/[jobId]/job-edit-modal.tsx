@@ -2,7 +2,7 @@
 
 import { Modal } from '@fidscript/ui';
 import type { CronJob } from '@/types';
-import { JobEditFormBody } from './job-edit-form-body';
+import { JobEditFormBody, type JobEditForm } from './job-edit-form-body';
 
 interface Props {
   job: CronJob;
@@ -10,22 +10,23 @@ interface Props {
   saveError: string | null;
   onSave: (e: React.FormEvent) => void;
   onClose: () => void;
-  formName: string; setFormName: (v: string) => void;
-  formExpression: string; setFormExpression: (v: string) => void;
-  formTimezone: string; setFormTimezone: (v: string) => void;
-  formTargetType: 'endpoint' | 'function'; setFormTargetType: (v: 'endpoint' | 'function') => void;
-  formEndpoint: string; setFormEndpoint: (v: string) => void;
-  formFunctionId: string; setFormFunctionId: (v: string) => void;
-  formPayload: string; setFormPayload: (v: string) => void;
-  formRetryAttempts: number; setFormRetryAttempts: (v: number) => void;
-  formRetryDelay: number; setFormRetryDelay: (v: number) => void;
-  formTimeout: number; setFormTimeout: (v: number) => void;
+  form: JobEditForm;
+  setForm: (updater: (prev: JobEditForm) => JobEditForm) => void;
 }
 
-export function JobEditModal(props: Props) {
+export function JobEditModal({ job, saving, saveError, onSave, onClose, form, setForm }: Props) {
   return (
-    <Modal isOpen onClose={props.onClose} title="Edit Cron Job" size="lg">
-      <JobEditFormBody {...props} />
+    <Modal isOpen onClose={onClose} title={`Edit Cron Job — ${job.name}`} size="lg">
+      <form onSubmit={onSave} noValidate>
+        <JobEditFormBody
+          saving={saving}
+          saveError={saveError}
+          onSave={onSave}
+          onClose={onClose}
+          form={form}
+          setForm={setForm}
+        />
+      </form>
     </Modal>
   );
 }
