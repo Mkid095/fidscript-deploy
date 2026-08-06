@@ -81,6 +81,43 @@ STORAGE_PATH=/data/fidscript
 AUTO_SSL=true
 ```
 
+## Secrets Management
+
+All credentials are **server-side only** — they are NEVER committed to the
+repo. The Docker compose wires them through two mechanisms:
+
+| Mechanism | Where | Used by |
+|-----------|-------|---------|
+| `env_file: ./secrets/api.env` (gitignored) | `installer/docker/secrets/api.env` | api + whatsapp-api containers |
+| Docker `secrets:` block + `*_FILE` env vars pointing at `/run/secrets/<name>` (gitignored `installer/docker/secrets/*.txt`) | compose-managed per-service secrets | postgres, redis, minio, traefik, api, stalwart |
+
+To populate secrets on a fresh server:
+
+```bash
+# Generated automatically by setup-wizard.sh — or run manually:
+cd /opt/fidscript/docker
+for s in postgres_password redis_password minio_access_key minio_secret_key \
+         jwt_secret encryption_key stalwart_admin_token stalwart_webhook_secret \
+         stalwart_credentials cf_api_token; do
+  if [ ! -f "secrets/${s}.txt" ]; then
+    openssl rand -hex 32 > "secrets/${s}.txt"
+    chmod 600 "secrets/${s}.txt"
+  fi
+done
+
+# Copy the template + fill in real values
+cp .env.example .env
+cp secrets/api.env.example secrets/api.env
+$EDITOR .env secrets/api.env
+chmod 600 .env secrets/api.env
+```
+
+**Never commit `.env`, `secrets/*.txt`, or `secrets/api.env`** — they are
+in `.gitignore`. The commit-safe templates are `.env.example` and
+`secrets/api.env.example`. To rotate a secret: edit the value on disk and
+`docker compose up -d`; the running services pick up the new credential.
+
+
 ## Health Check
 
 Check service status:
