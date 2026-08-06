@@ -5,6 +5,7 @@ import {
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { Request } from 'express';
 import { ApiKeyOrJwtGuard } from '@/modules/auth/guards/api-key-or-jwt.guard';
+import { ProjectMemberGuard } from '@/modules/auth/guards/project-member.guard';
 import { EmailMessageService } from '@/modules/email/services/message.service';
 import { EmailIdempotencyService } from '@/modules/email/services/idempotency.service';
 import { SendEmailDto } from '@/modules/email/dto/send-email.dto';
@@ -23,7 +24,7 @@ import { DeleteMessagesDto } from '@/modules/email/dto/delete-messages.dto';
  */
 @ApiTags('email-messages')
 @Controller('projects/:projectId/email')
-@UseGuards(ApiKeyOrJwtGuard)
+@UseGuards(ApiKeyOrJwtGuard, ProjectMemberGuard)
 @ApiBearerAuth()
 export class EmailMessageController {
   constructor(

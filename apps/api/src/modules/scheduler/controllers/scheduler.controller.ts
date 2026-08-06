@@ -11,6 +11,7 @@ import {
 } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { ApiKeyOrJwtGuard } from '@/modules/auth/guards/api-key-or-jwt.guard';
+import { ProjectMemberGuard } from '@/modules/auth/guards/project-member.guard';
 import { CronJobService } from '@/modules/scheduler/services/cron-job.service';
 import { CronJobExecutionService } from '@/modules/scheduler/services/cron-job-execution.service';
 import { CronJobQueryService } from '@/modules/scheduler/services/cron-job-query.service';
@@ -20,7 +21,7 @@ import { CreateCronJobDto, UpdateCronJobDto, TriggerCronJobDto } from '@/modules
 
 @ApiTags('scheduler')
 @Controller('projects/:projectId/cron')
-@UseGuards(ApiKeyOrJwtGuard)
+@UseGuards(ApiKeyOrJwtGuard, ProjectMemberGuard)
 @ApiBearerAuth()
 export class SchedulerController {
   constructor(

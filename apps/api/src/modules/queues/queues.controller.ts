@@ -3,6 +3,7 @@ import {
 } from '@nestjs/common';
 import { ApiTags, ApiBearerAuth } from '@nestjs/swagger';
 import { ApiKeyOrJwtGuard } from '@/modules/auth/guards/api-key-or-jwt.guard';
+import { ProjectMemberGuard } from '@/modules/auth/guards/project-member.guard';
 import { QueuesService } from '@/modules/queues/queues.service';
 import {
   CreateQueueDto, UpdateQueueDto, PublishMessageDto, PublishBatchDto,
@@ -12,7 +13,7 @@ import {
 
 @ApiTags('queues')
 @Controller('projects/:projectId/queues')
-@UseGuards(ApiKeyOrJwtGuard)
+@UseGuards(ApiKeyOrJwtGuard, ProjectMemberGuard)
 @ApiBearerAuth()
 export class QueuesController {
   constructor(private queues: QueuesService) {}

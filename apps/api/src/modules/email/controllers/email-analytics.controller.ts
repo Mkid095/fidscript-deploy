@@ -8,13 +8,14 @@ import {
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { Request } from 'express';
 import { ApiKeyOrJwtGuard } from '@/modules/auth/guards/api-key-or-jwt.guard';
+import { ProjectMemberGuard } from '@/modules/auth/guards/project-member.guard';
 import { EmailMetricsService } from '@/modules/email/services/email-metrics.service';
 import { BounceParserService } from '@/modules/email/services/bounce-parser.service';
 import { PrismaService } from '@/prisma/prisma.service';
 
 @ApiTags('email-analytics')
 @Controller('projects/:projectId/email')
-@UseGuards(ApiKeyOrJwtGuard)
+@UseGuards(ApiKeyOrJwtGuard, ProjectMemberGuard)
 @ApiBearerAuth()
 export class EmailAnalyticsController {
   constructor(

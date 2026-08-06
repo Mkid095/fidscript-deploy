@@ -1,12 +1,13 @@
 import { Controller, Get, Post, Delete, Body, Param, UseGuards } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { JwtAuthGuard } from '@/modules/auth/jwt-auth.guard';
+import { ProjectMemberGuard } from '@/modules/auth/guards/project-member.guard';
 import { EmailApiKeyService } from '@/modules/email/services/api-key.service';
 import { CreateEmailApiKeyDto } from '@/modules/email/dto/create-email-api-key.dto';
 
 @ApiTags('email-api-keys')
 @Controller('projects/:projectId/email/api-keys')
-@UseGuards(JwtAuthGuard)
+@UseGuards(JwtAuthGuard, ProjectMemberGuard)
 @ApiBearerAuth()
 export class EmailApiKeyController {
   constructor(private apiKeyService: EmailApiKeyService) {}

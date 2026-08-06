@@ -14,13 +14,14 @@ import {
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { Request } from 'express';
 import { ApiKeyOrJwtGuard } from '@/modules/auth/guards/api-key-or-jwt.guard';
+import { ProjectMemberGuard } from '@/modules/auth/guards/project-member.guard';
 import { EmailTemplateService } from '@/modules/email/services/email-template.service';
 import { SmtpSendService } from '@/modules/email/smtp/smtp-send.service';
 import { PrismaService } from '@/prisma/prisma.service';
 
 @ApiTags('email-templates')
 @Controller('projects/:projectId/email/templates')
-@UseGuards(ApiKeyOrJwtGuard)
+@UseGuards(ApiKeyOrJwtGuard, ProjectMemberGuard)
 @ApiBearerAuth()
 export class EmailTemplateController {
   constructor(

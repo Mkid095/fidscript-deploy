@@ -13,12 +13,13 @@ import {
 } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { ApiKeyOrJwtGuard } from '@/modules/auth/guards/api-key-or-jwt.guard';
+import { ProjectMemberGuard } from '@/modules/auth/guards/project-member.guard';
 import { StorageService } from '@/modules/storage/services/storage.service';
 import { Request } from 'express';
 
 @ApiTags('storage')
 @Controller('projects/:projectId/storage')
-@UseGuards(ApiKeyOrJwtGuard)
+@UseGuards(ApiKeyOrJwtGuard, ProjectMemberGuard)
 @ApiBearerAuth()
 export class StorageController {
   constructor(private storageService: StorageService) {}

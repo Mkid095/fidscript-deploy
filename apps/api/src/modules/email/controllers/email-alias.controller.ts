@@ -3,13 +3,14 @@ import {
 } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { JwtAuthGuard } from '@/modules/auth/jwt-auth.guard';
+import { ProjectMemberGuard } from '@/modules/auth/guards/project-member.guard';
 import { EmailAliasService } from '@/modules/email/services/alias.service';
 import { CreateAliasDto } from '@/modules/email/dto/create-alias.dto';
 import { UpdateAliasDto } from '@/modules/email/dto/update-alias.dto';
 
 @ApiTags('email-aliases')
 @Controller('projects/:projectId/email/aliases')
-@UseGuards(JwtAuthGuard)
+@UseGuards(JwtAuthGuard, ProjectMemberGuard)
 @ApiBearerAuth()
 export class EmailAliasController {
   constructor(private aliasService: EmailAliasService) {}

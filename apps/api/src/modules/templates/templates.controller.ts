@@ -5,12 +5,13 @@ import {
 import { Request } from 'express';
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
+import { ProjectMemberGuard } from '../auth/guards/project-member.guard';
 import { TemplatesService } from './templates.service';
 import { CreateTemplateDto, UpdateTemplateDto, GenerateProjectDto, GenerateAndDeployDto } from './dto/index';
 
 @ApiTags('templates')
 @Controller('projects/:projectId/templates')
-@UseGuards(JwtAuthGuard)
+@UseGuards(JwtAuthGuard, ProjectMemberGuard)
 @ApiBearerAuth()
 export class TemplatesController {
   constructor(private templatesService: TemplatesService) {}

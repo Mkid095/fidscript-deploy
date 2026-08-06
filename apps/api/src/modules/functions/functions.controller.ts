@@ -10,7 +10,8 @@ import {
   UseGuards,
 } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
-import { JwtAuthGuard } from '../auth/jwt-auth.guard';
+import { ApiKeyOrJwtGuard } from '@/modules/auth/guards/api-key-or-jwt.guard';
+import { ProjectMemberGuard } from '@/modules/auth/guards/project-member.guard';
 import { FunctionsService } from './functions.service';
 import {
   CreateFunctionDto,
@@ -22,7 +23,7 @@ import {
 
 @ApiTags('functions')
 @Controller('projects/:projectId/functions')
-@UseGuards(JwtAuthGuard)
+@UseGuards(ApiKeyOrJwtGuard, ProjectMemberGuard)
 @ApiBearerAuth()
 export class FunctionsController {
   constructor(private functionsService: FunctionsService) {}
