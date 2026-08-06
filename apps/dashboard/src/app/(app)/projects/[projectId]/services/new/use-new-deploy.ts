@@ -6,6 +6,7 @@ import type { Project } from '@/types';
 import type { BuildPlan } from './new-deploy-types';
 import type { SourceType } from './new-deploy-utils';
 import { parseEnvText, extractRepoInfo } from './new-deploy-utils';
+import { linkSubdomainDomain } from './link-subdomain-domain';
 
 interface UseNewDeployOptions {
   project: Project;
@@ -113,6 +114,24 @@ export function useNewDeploy({ project, getSdk, onShowToast, onDeploySuccess }: 
           ...(assignedDomainId && { domainId: assignedDomainId }),
         });
         deploymentId = (created as { id?: string }).id;
+      }
+      // Subdomain deployments reach the user at {subdomain}.apps.{platformDomain}.
+      // The platform already wires Traefik for that hostname, but the Domain
+      // record is what backs the DNS section, the health checks, and the
+      // operator console — so we create it here, pointing at the new deployment.
+      if (deploymentId && subdomain.trim() && !assignedDomainId) {
+        const linkResult = await linkSubdomainDomain({
+          sdk,
+          projectId: project.id,
+          subdomain: subdomain.trim(),
+          deploymentId,
+        });
+        if (!linkResult.ok) {
+          onShowToast({
+            type: 'warning',
+            message: `Deployment created, but the domain could not be registered automatically: ${linkResult.error}`,
+          });
+        }
       }
       onShowToast({ type: 'success', message: 'Deployment queued — building now.' });
       onDeploySuccess(deploymentId);
