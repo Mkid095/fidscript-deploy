@@ -43,6 +43,7 @@ import { createFidscript } from '@fidscript-deploy/sdk';
 import { emailTools, handleEmailTool } from './tools/email.js';
 import { domainTools, handleDomainTool } from './tools/domains.js';
 import { projectTools, handleProjectTool } from './tools/projects.js';
+import { envVarTools, handleEnvVarTool } from './tools/env-vars.js';
 import { authTools, handleAuthTool } from './tools/auth.js';
 import { deploymentTools, handleDeploymentTool } from './tools/deployments.js';
 import { functionTools, handleFunctionTool } from './tools/functions.js';
@@ -70,6 +71,7 @@ const allTools = [
   ...emailTools,
   ...domainTools,
   ...projectTools,
+  ...envVarTools,
   ...authTools,
   ...deploymentTools,
   ...functionTools,
@@ -137,6 +139,8 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
       result = await handleDomainTool(name, args ?? {}, sdk);
     } else if (name.startsWith('project_')) {
       result = await handleProjectTool(name, args ?? {}, sdk);
+    } else if (name.startsWith('env_var_')) {
+      result = await handleEnvVarTool(name, args ?? {}, sdk);
     } else if (name.startsWith('auth_')) {
       result = await handleAuthTool(name, args ?? {}, sdk);
     } else if (name.startsWith('deployments_')) {
