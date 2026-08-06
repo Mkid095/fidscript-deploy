@@ -10,6 +10,7 @@ import { DatabaseProvider, DATABASE_PROVIDER } from '@/modules/databases/provide
 
 const BCRYPT_ROUNDS = 12;
 const PROJECT_API_KEY_BYTES = 24;
+const PROJECT_API_KEY_PREFIX_LEN = 8;
 
 export interface ProvisionedResources {
   databaseId?: string;
@@ -101,14 +102,17 @@ export class ProjectProvisionService {
 
   private async provisionApiKey(projectId: string): Promise<{ id: string; key: string }> {
     const key = `fpk_${crypto.randomBytes(PROJECT_API_KEY_BYTES).toString('base64url')}`;
+    const body = key.slice(4);
     // Use bcrypt to match validateProjectApiKey (which does bcrypt.compare
     // against the stored hash).  See project-api-key.service.ts.
-    const keyHash = await bcrypt.hash(key.slice(4), BCRYPT_ROUNDS);
+    const keyHash = await bcrypt.hash(body, BCRYPT_ROUNDS);
+    const keyPrefix = body.slice(0, PROJECT_API_KEY_PREFIX_LEN);
     const apiKey = await this.prisma.projectApiKey.create({
       data: {
         projectId,
         name: 'Default API Key',
         keyHash,
+        keyPrefix,
         permissions: ['read', 'write'],
       },
     });

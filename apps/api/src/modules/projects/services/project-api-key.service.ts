@@ -6,6 +6,9 @@ import * as crypto from 'crypto';
 
 const BCRYPT_ROUNDS = 12;
 const PROJECT_API_KEY_BYTES = 24;
+// Lookup-table prefix length. The prefix is NOT a secret — it is only used
+// to narrow the candidate set for bcrypt.compare from O(n) to O(1).
+const PROJECT_API_KEY_PREFIX_LEN = 8;
 
 @Injectable()
 export class ProjectApiKeyService {
@@ -26,13 +29,19 @@ export class ProjectApiKeyService {
     // the prefix with rawKey.slice(4) before bcrypt.compare, so both sides must
     // agree on whether the prefix is included — previously they disagreed and no
     // API key ever validated.
-    const keyHash = await bcrypt.hash(key.slice(4), BCRYPT_ROUNDS);
+    const body = key.slice(4);
+    // Store the first N chars of the body as a non-secret index key so
+    // validateProjectApiKey can find candidate rows in O(log n) instead of
+    // scanning every key and running bcrypt on each.
+    const keyPrefix = body.slice(0, PROJECT_API_KEY_PREFIX_LEN);
+    const keyHash = await bcrypt.hash(body, BCRYPT_ROUNDS);
 
     const apiKey = await this.prisma.projectApiKey.create({
       data: {
         projectId,
         name: dto.name,
         keyHash,
+        keyPrefix,
         permissions: dto.permissions || [],
         expiresAt: dto.expiresAt ? new Date(dto.expiresAt) : null,
       },
@@ -83,14 +92,19 @@ export class ProjectApiKeyService {
    */
   async validateProjectApiKey(rawKey: string): Promise<{ projectId: string; name: string } | null> {
     if (!rawKey.startsWith('fpk_')) return null;
-    const keys = await this.prisma.projectApiKey.findMany({
+    const body = rawKey.slice(4);
+    const prefix = body.slice(0, PROJECT_API_KEY_PREFIX_LEN);
+    // Indexed lookup narrows to a handful of rows sharing this prefix.
+    // bcrypt.compare then runs only on those candidates, not on every key.
+    const candidates = await this.prisma.projectApiKey.findMany({
       where: {
+        keyPrefix: prefix,
         OR: [{ expiresAt: null }, { expiresAt: { gt: new Date() } }],
       },
       select: { id: true, projectId: true, name: true, keyHash: true },
     });
-    for (const key of keys) {
-      const valid = await bcrypt.compare(rawKey.slice(4), key.keyHash).catch(() => false);
+    for (const key of candidates) {
+      const valid = await bcrypt.compare(body, key.keyHash).catch(() => false);
       if (valid) {
         await this.prisma.projectApiKey.update({
           where: { id: key.id },
