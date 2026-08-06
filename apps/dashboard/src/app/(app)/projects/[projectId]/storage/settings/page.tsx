@@ -32,9 +32,11 @@ export default function StorageSettingsPage() {
     cloudApiKey, setCloudApiKey,
     cloudApiSecret, setCloudApiSecret,
     savingCloud,
+    cloudTestResult, testingCloud, handleTestCloudinary,
     tgBotToken, setTgBotToken,
     tgChatId, setTgChatId,
     savingTg,
+    tgTestResult, testingTg, handleTestTelegram,
     handleProviderChange,
     handleSaveCloudinary,
     handleSaveTelegram,
@@ -79,6 +81,9 @@ export default function StorageSettingsPage() {
         cloudApiSecret={cloudApiSecret} setCloudApiSecret={setCloudApiSecret}
         onSave={handleSaveCloudinary}
         onDelete={handleDeleteCloudinary}
+        onTest={handleTestCloudinary}
+        testResult={cloudTestResult}
+        testing={testingCloud}
       />
 
       <StorageSettingsTelegram
@@ -88,6 +93,9 @@ export default function StorageSettingsPage() {
         tgChatId={tgChatId} setTgChatId={setTgChatId}
         onSave={handleSaveTelegram}
         onDelete={handleDeleteTelegram}
+        onTest={handleTestTelegram}
+        testResult={tgTestResult}
+        testing={testingTg}
       />
     </div>
   );

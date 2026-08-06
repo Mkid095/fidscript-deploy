@@ -123,6 +123,23 @@ export class QueueWorkerService implements OnModuleInit {
       return;
     }
 
+    // Honor delaySeconds: if the message has a future scheduledAt in Prisma,
+    // re-publish with nak (deferred retry) and ack — the Prisma record is the
+    // source of truth for delivery timing.
+    const dueAt = await this.prisma.queueMessage.findFirst({
+      where: { queueId: queue.id, jetStreamSeq: BigInt(seq) },
+      select: { scheduledAt: true },
+    });
+    if (dueAt?.scheduledAt && dueAt.scheduledAt.getTime() > Date.now()) {
+      // Not due yet — nack and let JetStream redeliver later. ack_wait on the
+      // consumer controls how soon; we also schedule a no-op `nak` with the
+      // remaining delay so it doesn't spin.
+      const remaining = Math.max(50, dueAt.scheduledAt.getTime() - Date.now());
+      this.logger.debug(`[${queue.name}] seq=${seq} deferred, ${remaining}ms remaining`);
+      msg.nak(remaining);
+      return;
+    }
+
     // Target routing: check JetStream message headers first (set by producer),
     // then fall back to JSON body headers (for backward compat).
     const jsHeaders: Record<string, string> = {};

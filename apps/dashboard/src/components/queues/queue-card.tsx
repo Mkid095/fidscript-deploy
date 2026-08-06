@@ -16,6 +16,8 @@ export interface Queue {
 interface QueueStats {
   pending: number;
   delivered: number;
+  acknowledged: number;
+  failed: number;
   deadLettered: number;
   jsDepth: number;
 }
@@ -89,19 +91,33 @@ export function QueueCard({ queue, stats, projectId, onDelete }: QueueCardProps)
                 </div>
 
                 {stats && (
-                  <div className="flex items-center gap-4">
+                  <div className="flex items-center gap-4 flex-wrap">
                     <div className="flex items-center gap-1.5">
                       <HugeiconsIcon icon={Task01Icon} size={10} className="text-[var(--text-dim)]" />
                       <span className="text-[10px] text-[var(--text-dim)]">
-                        <span className="text-[var(--text)] font-medium">{stats.pending}</span> pending
+                        <span className="text-[var(--text)] font-medium">{stats.pending}</span> waiting
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-1.5">
+                      <HugeiconsIcon icon={Database01Icon} size={10} className="text-sky-400" />
+                      <span className="text-[10px] text-[var(--text-dim)]">
+                        <span className="text-[var(--text)] font-medium">{stats.delivered}</span> processing
                       </span>
                     </div>
                     <div className="flex items-center gap-1.5">
                       <HugeiconsIcon icon={CheckmarkCircle01Icon} size={10} className="text-emerald-400" />
                       <span className="text-[10px] text-[var(--text-dim)]">
-                        <span className="text-[var(--text)] font-medium">{stats.delivered}</span> delivered
+                        <span className="text-[var(--text)] font-medium">{stats.acknowledged}</span> completed
                       </span>
                     </div>
+                    {stats.failed > 0 && (
+                      <div className="flex items-center gap-1.5">
+                        <HugeiconsIcon icon={Cancel01Icon} size={10} className="text-amber-400" />
+                        <span className="text-[10px] text-amber-400">
+                          <span className="font-medium">{stats.failed}</span> failed
+                        </span>
+                      </div>
+                    )}
                     {stats.deadLettered > 0 && (
                       <div className="flex items-center gap-1.5">
                         <HugeiconsIcon icon={Cancel01Icon} size={10} className="text-rose-400" />

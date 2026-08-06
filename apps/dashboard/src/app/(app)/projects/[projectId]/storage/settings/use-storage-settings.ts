@@ -4,6 +4,8 @@ import { useEffect, useState, useCallback } from 'react';
 import type { FidscriptSDK } from '@fidscript-deploy/sdk';
 import type { ProjectStorageConfig } from '@/types';
 
+export type TestResult = { ok: boolean; detail?: string; error?: string };
+
 interface UseStorageSettingsOptions {
   projectId: string;
   getSdk: () => FidscriptSDK;
@@ -19,11 +21,15 @@ export function useStorageSettings({ projectId, getSdk }: UseStorageSettingsOpti
   const [cloudApiKey, setCloudApiKey] = useState('');
   const [cloudApiSecret, setCloudApiSecret] = useState('');
   const [savingCloud, setSavingCloud] = useState(false);
+  const [cloudTestResult, setCloudTestResult] = useState<TestResult | null>(null);
+  const [testingCloud, setTestingCloud] = useState(false);
 
   // Telegram fields
   const [tgBotToken, setTgBotToken] = useState('');
   const [tgChatId, setTgChatId] = useState('');
   const [savingTg, setSavingTg] = useState(false);
+  const [tgTestResult, setTgTestResult] = useState<TestResult | null>(null);
+  const [testingTg, setTestingTg] = useState(false);
 
   const showBanner = useCallback((message: string, type: 'success' | 'error') => {
     setBanner({ message, type });
@@ -62,6 +68,7 @@ export function useStorageSettings({ projectId, getSdk }: UseStorageSettingsOpti
     e.preventDefault();
     if (!projectId) return;
     setSavingCloud(true);
+    setCloudTestResult(null);
     try {
       const sdk = getSdk();
       const updated = await sdk.storage.setCloudinaryCredentials(projectId, {
@@ -83,6 +90,7 @@ export function useStorageSettings({ projectId, getSdk }: UseStorageSettingsOpti
     e.preventDefault();
     if (!projectId) return;
     setSavingTg(true);
+    setTgTestResult(null);
     try {
       const sdk = getSdk();
       const updated = await sdk.storage.setTelegramCredentials(projectId, {
@@ -99,6 +107,43 @@ export function useStorageSettings({ projectId, getSdk }: UseStorageSettingsOpti
     }
   }, [projectId, getSdk, tgBotToken, tgChatId, showBanner]);
 
+  const handleTestCloudinary = useCallback(async () => {
+    if (!projectId) return;
+    setTestingCloud(true);
+    setCloudTestResult(null);
+    try {
+      const sdk = getSdk();
+      const result = await sdk.storage.testCloudinaryCredentials(projectId, {
+        cloudName: cloudName.trim(),
+        apiKey: cloudApiKey.trim(),
+        apiSecret: cloudApiSecret.trim(),
+      });
+      setCloudTestResult(result);
+    } catch (err) {
+      setCloudTestResult({ ok: false, error: err instanceof Error ? err.message : 'Test failed' });
+    } finally {
+      setTestingCloud(false);
+    }
+  }, [projectId, getSdk, cloudName, cloudApiKey, cloudApiSecret]);
+
+  const handleTestTelegram = useCallback(async () => {
+    if (!projectId) return;
+    setTestingTg(true);
+    setTgTestResult(null);
+    try {
+      const sdk = getSdk();
+      const result = await sdk.storage.testTelegramCredentials(projectId, {
+        botToken: tgBotToken.trim(),
+        chatId: tgChatId.trim(),
+      });
+      setTgTestResult(result);
+    } catch (err) {
+      setTgTestResult({ ok: false, error: err instanceof Error ? err.message : 'Test failed' });
+    } finally {
+      setTestingTg(false);
+    }
+  }, [projectId, getSdk, tgBotToken, tgChatId]);
+
   const handleDeleteCloudinary = useCallback(async () => {
     if (!projectId) return;
     if (!confirm('Remove Cloudinary credentials? This will disable Cloudinary storage for this project.')) return;
@@ -106,6 +151,7 @@ export function useStorageSettings({ projectId, getSdk }: UseStorageSettingsOpti
       const sdk = getSdk();
       const updated = await sdk.storage.deleteCredentials(projectId, 'cloudinary');
       setConfig(updated);
+      setCloudTestResult(null);
       showBanner('Cloudinary credentials removed', 'success');
     } catch (err) {
       showBanner(err instanceof Error ? err.message : 'Failed to remove credentials', 'error');
@@ -119,6 +165,7 @@ export function useStorageSettings({ projectId, getSdk }: UseStorageSettingsOpti
       const sdk = getSdk();
       const updated = await sdk.storage.deleteCredentials(projectId, 'telegram');
       setConfig(updated);
+      setTgTestResult(null);
       showBanner('Telegram credentials removed', 'success');
     } catch (err) {
       showBanner(err instanceof Error ? err.message : 'Failed to remove credentials', 'error');
@@ -131,9 +178,11 @@ export function useStorageSettings({ projectId, getSdk }: UseStorageSettingsOpti
     cloudApiKey, setCloudApiKey,
     cloudApiSecret, setCloudApiSecret,
     savingCloud,
+    cloudTestResult, testingCloud, handleTestCloudinary,
     tgBotToken, setTgBotToken,
     tgChatId, setTgChatId,
     savingTg,
+    tgTestResult, testingTg, handleTestTelegram,
     handleProviderChange,
     handleSaveCloudinary,
     handleSaveTelegram,

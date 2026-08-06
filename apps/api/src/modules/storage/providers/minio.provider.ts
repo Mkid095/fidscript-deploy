@@ -1,6 +1,6 @@
 import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { StorageProvider, UploadResult } from './storage-provider.interface';
+import { StorageProvider, UploadResult, ConnectionTestResult } from './storage-provider.interface';
 import { MinioBucketService } from './minio-bucket.service';
 
 @Injectable()
@@ -35,6 +35,25 @@ export class MinioProvider implements StorageProvider, OnModuleInit {
 
   private async ensureClient() {
     if (!this.client) { await new Promise(r => setTimeout(r, 500)); if (!this.client) throw new Error('MinIO client not initialized'); }
+  }
+
+  async testConnection(): Promise<ConnectionTestResult> {
+    await this.ensureClient();
+    try {
+      // listBuckets is the cheapest authenticated probe — returns [] when healthy.
+      await this.client.listBuckets();
+      return { ok: true, detail: `MinIO reachable at ${this.internalEndpoint}.` };
+    } catch (err: unknown) {
+      const message = (err as Error).message ?? String(err);
+      this.logger.warn(`MinIO testConnection failed: ${message}`);
+      if (/Access Denied|InvalidAccessKeyId/i.test(message)) {
+        return { ok: false, error: 'MinIO access key/secret was rejected. Check MINIO_ACCESS_KEY / MINIO_SECRET_KEY.' };
+      }
+      if (/ECONNREFUSED|ENOTFOUND|ETIMEDOUT/i.test(message)) {
+        return { ok: false, error: `Cannot reach MinIO at ${this.internalEndpoint}.` };
+      }
+      return { ok: false, error: message };
+    }
   }
 
   async makeBucket(bucketName: string, projectSlug?: string, _bucketDisplayName?: string): Promise<void> {

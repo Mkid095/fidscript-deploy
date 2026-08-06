@@ -14,6 +14,8 @@ import {
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { ApiKeyOrJwtGuard } from '@/modules/auth/guards/api-key-or-jwt.guard';
 import { StorageConfigService } from '@/modules/storage/services/storage-config.service';
+import { StorageCredentialsService } from '@/modules/storage/services/storage-credentials.service';
+import { StorageProviderFactory } from '@/modules/storage/providers/storage-provider.factory';
 import { Request } from 'express';
 
 @ApiTags('storage-config')
@@ -21,7 +23,11 @@ import { Request } from 'express';
 @UseGuards(ApiKeyOrJwtGuard)
 @ApiBearerAuth()
 export class StorageConfigController {
-  constructor(private configService: StorageConfigService) {}
+  constructor(
+    private configService: StorageConfigService,
+    private credentials: StorageCredentialsService,
+    private providers: StorageProviderFactory,
+  ) {}
 
   @Get('config')
   @ApiOperation({ summary: 'Get project storage configuration' })
@@ -56,6 +62,37 @@ export class StorageConfigController {
     @Body() body: { botToken: string; chatId: string },
   ) {
     return this.configService.setCredentials(projectId, 'telegram', body);
+  }
+
+  @Post('credentials/cloudinary/test')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Test Cloudinary credentials without saving' })
+  async testCloudinaryCredentials(
+    @Param('projectId') projectId: string,
+    @Body() body: { cloudName: string; apiKey: string; apiSecret: string },
+  ) {
+    const provider = this.providers.get('cloudinary');
+    const result = await provider.testConnection({
+      cloudName: body.cloudName,
+      apiKey: body.apiKey,
+      apiSecret: body.apiSecret,
+    });
+    return result;
+  }
+
+  @Post('credentials/telegram/test')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Test Telegram credentials without saving' })
+  async testTelegramCredentials(
+    @Param('projectId') projectId: string,
+    @Body() body: { botToken: string; chatId: string },
+  ) {
+    const provider = this.providers.get('telegram');
+    const result = await provider.testConnection({
+      botToken: body.botToken,
+      chatId: body.chatId,
+    });
+    return result;
   }
 
   @Delete('credentials/:provider')

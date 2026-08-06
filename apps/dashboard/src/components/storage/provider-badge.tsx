@@ -2,17 +2,18 @@
 
 import { HugeiconsIcon } from '@hugeicons/react';
 import {
-  ArrowRight01Icon,
   Database01Icon,
-  HddIcon,
+  CloudIcon,
+  TelegramIcon,
+  HardDriveIcon,
 } from '@hugeicons/core-free-icons';
 import type { StorageProviderType } from '@/types';
 
-const PROVIDERS: { value: StorageProviderType; label: string; icon: typeof HddIcon }[] = [
+const PROVIDERS: { value: StorageProviderType; label: string; icon: typeof HardDriveIcon }[] = [
   { value: 'internal',   label: 'Internal',   icon: Database01Icon },
-  { value: 'cloudinary', label: 'Cloudinary', icon: Database01Icon },
-  { value: 'telegram',   label: 'Telegram',   icon: ArrowRight01Icon },
-  { value: 's3',         label: 'AWS S3',     icon: HddIcon },
+  { value: 'cloudinary', label: 'Cloudinary', icon: CloudIcon },
+  { value: 'telegram',   label: 'Telegram',   icon: TelegramIcon },
+  { value: 's3',         label: 'AWS S3',     icon: HardDriveIcon },
 ];
 
 interface ProviderBadgeProps {

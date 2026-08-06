@@ -6,6 +6,8 @@ import type { FidscriptSDK, RealtimeEventHandler } from '@fidscript-deploy/sdk';
 export interface QueueStats {
   pending: number;
   delivered: number;
+  acknowledged: number;
+  failed: number;
   deadLettered: number;
   jsDepth: number;
 }
@@ -111,6 +113,8 @@ export function useQueuesRealtime(
                   .then(s => optsRef.current.onStatsUpdated?.(qId, {
                     pending: s.pending,
                     delivered: s.delivered,
+                    acknowledged: s.acknowledged,
+                    failed: s.failed,
                     deadLettered: s.deadLettered,
                     jsDepth: s.jsDepth,
                   }))

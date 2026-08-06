@@ -40,14 +40,16 @@ export function useQueuesListHandlers({
           try {
             const s = await sdk.queues.getStats(projectId, q.id);
             stats[q.id] = {
-              pending: s.pending,
-              delivered: s.delivered,
-              deadLettered: s.deadLettered,
-              jsDepth: s.jsDepth,
-            };
-          } catch {
-            stats[q.id] = { pending: 0, delivered: 0, deadLettered: 0, jsDepth: 0 };
-          }
+            pending: s.pending,
+            delivered: s.delivered,
+            acknowledged: s.acknowledged,
+            failed: s.failed,
+            deadLettered: s.deadLettered,
+            jsDepth: s.jsDepth,
+          };
+        } catch {
+          stats[q.id] = { pending: 0, delivered: 0, acknowledged: 0, failed: 0, deadLettered: 0, jsDepth: 0 };
+        }
         }),
       );
       setQueueStats(stats);

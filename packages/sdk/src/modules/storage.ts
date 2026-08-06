@@ -53,12 +53,41 @@ export class StorageModule {
     );
   }
 
+  /**
+   * Test Cloudinary credentials without saving them. Returns
+   * `{ ok: true, detail }` on success or `{ ok: false, error }` with a
+   * human-readable reason on failure (e.g. "Invalid credentials").
+   */
+  async testCloudinaryCredentials(
+    projectId: string,
+    creds: { cloudName: string; apiKey: string; apiSecret: string },
+  ): Promise<{ ok: boolean; detail?: string; error?: string }> {
+    return this.client.post(
+      `/api/v1/projects/${projectId}/storage/credentials/cloudinary/test`,
+      creds,
+    );
+  }
+
   async setTelegramCredentials(
     projectId: string,
     creds: { botToken: string; chatId: string },
   ): Promise<ProjectStorageConfig> {
     return this.client.post<ProjectStorageConfig>(
       `/api/v1/projects/${projectId}/storage/credentials/telegram`,
+      creds,
+    );
+  }
+
+  /**
+   * Test Telegram credentials (bot token + chat ID) without saving them.
+   * Confirms the bot token is valid AND the bot can access the chat.
+   */
+  async testTelegramCredentials(
+    projectId: string,
+    creds: { botToken: string; chatId: string },
+  ): Promise<{ ok: boolean; detail?: string; error?: string }> {
+    return this.client.post(
+      `/api/v1/projects/${projectId}/storage/credentials/telegram/test`,
       creds,
     );
   }

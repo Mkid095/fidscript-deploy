@@ -1,5 +1,5 @@
 import { Injectable, Logger } from '@nestjs/common';
-import { StorageProvider, UploadResult, ProviderCredentials } from './storage-provider.interface';
+import { StorageProvider, UploadResult, ProviderCredentials, ConnectionTestResult } from './storage-provider.interface';
 
 export interface TelegramCredentials {
   botToken: string;
@@ -10,6 +10,52 @@ export interface TelegramCredentials {
 export class TelegramProvider implements StorageProvider {
   name = 'telegram';
   private readonly logger = new Logger(TelegramProvider.name);
+
+  async testConnection(credentials: ProviderCredentials): Promise<ConnectionTestResult> {
+    const creds = credentials as TelegramCredentials | undefined;
+    if (!creds || !creds.botToken || !creds.chatId) {
+      return { ok: false, error: 'Bot token and chat ID are both required.' };
+    }
+    // Step 1: getMe — confirms the bot token is valid and returns the bot's name.
+    let botName = 'bot';
+    try {
+      const meResp = await fetch(`https://api.telegram.org/bot${creds.botToken}/getMe`);
+      const meResult: any = await meResp.json();
+      if (!meResult.ok) {
+        return { ok: false, error: this.translateBotError(meResult.description ?? 'Unknown error') };
+      }
+      botName = meResult.result?.username ?? botName;
+    } catch (err: unknown) {
+      return { ok: false, error: `Cannot reach Telegram (network error: ${(err as Error).message}).` };
+    }
+
+    // Step 2: getChat — confirms the chat ID is reachable AND the bot has access.
+    try {
+      const chatResp = await fetch(`https://api.telegram.org/bot${creds.botToken}/getChat?chat_id=${encodeURIComponent(creds.chatId)}`);
+      const chatResult: any = await chatResp.json();
+      if (!chatResult.ok) {
+        return { ok: false, error: this.translateChatError(chatResult.description ?? 'Unknown error') };
+      }
+      const title = chatResult.result?.title ?? chatResult.result?.username ?? chatResult.result?.first_name ?? 'chat';
+      return { ok: true, detail: `Bot @${botName} connected to "${title}".` };
+    } catch (err: unknown) {
+      return { ok: false, error: `Cannot reach Telegram (network error: ${(err as Error).message}).` };
+    }
+  }
+
+  private translateBotError(message: string): string {
+    if (/invalid token/i.test(message)) return 'Bot token is invalid. Get a fresh one from @BotFather.';
+    if (/unauthorized/i.test(message)) return 'Bot token was revoked. Generate a new one from @BotFather.';
+    return message;
+  }
+
+  private translateChatError(message: string): string {
+    if (/chat not found/i.test(message)) return 'Chat not found. For private chats, the user must message the bot first. For groups, the bot must be added.';
+    if (/bot was blocked/i.test(message)) return 'Bot was blocked by the user. Ask them to unblock and message it.';
+    if (/not enough rights/i.test(message) || /admin/i.test(message)) return 'Bot lacks permission to read the chat. Make the bot an admin in groups/channels.';
+    if (/chat_id is empty/i.test(message)) return 'Chat ID is empty or invalid.';
+    return message;
+  }
 
   async makeBucket(_bucketName: string): Promise<void> {}
   async removeBucket(_bucketName: string): Promise<void> {}

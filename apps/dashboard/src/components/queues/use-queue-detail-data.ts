@@ -26,7 +26,14 @@ export function useQueueDetailData({ projectId, queueId, getSdk }: UseQueueDetai
         sdk.queues.getMessages(projectId, queueId, { limit: 50 }),
       ]);
       setQueue(q);
-      setStats({ pending: s.pending, delivered: s.delivered, deadLettered: s.deadLettered, jsDepth: s.jsDepth });
+      setStats({
+        pending: s.pending,
+        delivered: s.delivered,
+        acknowledged: s.acknowledged,
+        failed: s.failed,
+        deadLettered: s.deadLettered,
+        jsDepth: s.jsDepth,
+      });
       setMessages(msgResult.messages);
     } catch (err) {
       console.error('Failed to load queue', err);

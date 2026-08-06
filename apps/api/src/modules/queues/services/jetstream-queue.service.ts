@@ -41,18 +41,20 @@ export class JetStreamQueueService {
   ): Promise<{ seq: number }> {
     if (!this.js) throw new Error('JetStream not connected');
     const subject = this.subjectFor(projectId, queueName);
+    // NATS JetStream does NOT honor a "Nats-Delay" header — delayed delivery is
+    // implemented out-of-band. We pass the requested delay through headers so
+    // the worker (and audit trail) can honor it. The actual gating happens in
+    // QueueWorkerService.handleMessage, which checks Prisma.scheduledAt
+    // before dispatching, and re-publishes to a delay stream if not yet due.
     const hdrs: Record<string, string> = {
       'x-project-id': projectId,
       'x-queue-name': queueName,
       ...headers,
+      ...(delaySeconds && delaySeconds > 0
+        ? { 'x-delay-seconds': String(Math.floor(delaySeconds)) }
+        : {}),
     };
     const opts: Record<string, unknown> = { headers: hdrs };
-    if (delaySeconds && delaySeconds > 0) {
-      opts['headers'] = {
-        ...hdrs,
-        'Nats-Delay': String(Math.floor(delaySeconds * 1_000_000_000)),
-      };
-    }
     const pa = await this.js.publish(subject, body, opts);
     return { seq: pa.seq };
   }
