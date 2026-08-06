@@ -7,8 +7,12 @@ import {
   Param,
   Query,
   UseGuards,
+  Sse,
+  MessageEvent,
 } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
+import { Observable } from 'rxjs';
+
 import { JwtAuthGuard } from '@/modules/auth/jwt-auth.guard';
 import { LogStreamService } from '@/modules/logging/services/log-stream.service';
 import { LogWriteService } from '@/modules/logging/services/log-write.service';
@@ -99,5 +103,46 @@ export class LoggingController {
   @ApiOperation({ summary: 'Get log stats' })
   async getLogStats(@Param('projectId') projectId: string, @Query('stream') stream?: string) {
     return this.logQueryService.getLogStats(projectId, stream);
+  }
+
+  /**
+   * Live-tail SSE endpoint: GET /projects/:id/logs/stream?stream=default&level=info
+   *
+   * Streams new log entries as Server-Sent Events. Each event's `data` field is a
+   * JSON-serialized LogEntry. Polls the database every 1s for new entries written
+   * since the last poll (uses an in-memory cursor per connection).
+   *
+   * This is intentionally lightweight (no Postgres LISTEN/NOTIFY); for higher
+   * throughput upgrade to event-bus-driven delivery.
+   */
+  @Sse('stream')
+  @ApiOperation({ summary: 'Live-tail log entries (Server-Sent Events)' })
+  streamLogs(
+    @Param('projectId') projectId: string,
+    @Query('stream') stream?: string,
+    @Query('level') level?: string,
+  ): Observable<MessageEvent> {
+    let cursor: Date | null = null;
+    return new Observable<MessageEvent>((subscriber) => {
+      const tick = async () => {
+        try {
+          const entries = await this.logQueryService.getLogs(projectId, {
+            stream,
+            level,
+            startTime: cursor ?? undefined,
+            limit: 100,
+          });
+          if (entries.logs.length > 0) {
+            cursor = new Date(entries.logs[entries.logs.length - 1]!.timestamp);
+            subscriber.next({ data: entries.logs as unknown as MessageEvent['data'] });
+          }
+        } catch (err) {
+          subscriber.error(err);
+        }
+      };
+      void tick();
+      const handle = setInterval(() => { void tick(); }, 1000);
+      return () => clearInterval(handle);
+    });
   }
 }
