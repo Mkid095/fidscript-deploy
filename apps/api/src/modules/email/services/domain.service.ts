@@ -53,7 +53,7 @@ export class EmailDomainService {
 
     if (domain.status === 'PENDING') {
       const ownershipVerified = await this.mailDnsService.verifyOwnership(
-        domain.domain, domain.ownershipToken!,
+        projectId, domain.domain, domain.ownershipToken!,
       );
       if (!ownershipVerified) {
         throw new BadRequestException(
@@ -61,7 +61,7 @@ export class EmailDomainService {
           `${domain.ownershipToken}._email.${domain.domain}`,
         );
       }
-      const dnsResult = await this.mailDnsService.setupEmailDns(domain.domain);
+      const dnsResult = await this.mailDnsService.setupEmailDns(projectId, domain.domain);
       await this.prisma.emailDomain.update({
         where: { id: domainId },
         data: { status: 'VERIFIED', ownershipToken: null, dkimPublicKey: dnsResult.dkimPublicKey },
@@ -72,7 +72,7 @@ export class EmailDomainService {
     }
 
     if (domain.status === 'VERIFIED') {
-      const result = await this.mailDnsService.verifyEmailDns(domain.domain);
+      const result = await this.mailDnsService.verifyEmailDns(projectId, domain.domain);
       const allVerified = result.dkim && result.spf && result.dmarc && result.mx;
 
       await this.prisma.emailDomain.update({

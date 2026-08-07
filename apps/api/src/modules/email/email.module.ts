@@ -20,6 +20,7 @@ import { MailConnectionController } from './controllers/email-connection.control
 import { EmailTrackingController } from './controllers/email-tracking.controller';
 import { EmailWebhookSubscriptionController } from './controllers/email-webhook-subscription.controller';
 import { EmailAnalyticsController } from './controllers/email-analytics.controller';
+import { EmailStatusController } from './controllers/email-status.controller';
 import { EmailDomainService } from './services/domain.service';
 import { EmailMailboxService } from './services/mailbox.service';
 import { EmailAliasService } from './services/alias.service';
@@ -50,6 +51,7 @@ import { EmailBootstrapService } from './services/email-bootstrap.service';
 import { DomainsModule } from '@/modules/domains/domains.module';
 import { QueuesModule } from '@/modules/queues/queues.module';
 import { StorageModule } from '@/modules/storage/storage.module';
+import { InfrastructureModule } from '@/modules/infrastructure/infrastructure.module';
 import { IEmailProvider, EMAIL_PROVIDER } from './providers/i-email-provider';
 import { StalwartEmailProvider } from './providers/stalwart-email.provider';
 import { PlatformMailboxMessageService } from './services/platform-mailbox-message.service';
@@ -72,6 +74,7 @@ import { LegalHoldService } from './services/legal-hold.service';
     DomainsModule,
     forwardRef(() => QueuesModule),
     forwardRef(() => StorageModule),
+    InfrastructureModule,
     forwardRef(() => AuthModule),
     ProjectsModule,
     RealtimeModule,
@@ -95,6 +98,7 @@ import { LegalHoldService } from './services/legal-hold.service';
     EmailTrackingController,
     EmailWebhookSubscriptionController,
     EmailAnalyticsController,
+    EmailStatusController,
   ],
   providers: [
     EmailDomainService,

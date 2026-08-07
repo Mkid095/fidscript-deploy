@@ -383,6 +383,7 @@ model Project {
   envVars              ProjectEnv[]
   invitations          ProjectInvitation[]
   apiKeys              ProjectApiKey[]
+  credentials          Credential[]
   storageConfig        ProjectStorageConfig?
 
   @@map("projects")
@@ -441,6 +442,72 @@ model ProjectApiKey {
   @@index([keyPrefix])
   @@map("api_keys")
   @@schema("projects")
+}
+
+/// Unified project-scoped secret. Replaces ad-hoc encrypted fields
+/// (`DomainConnection.encryptedToken`, `EncryptionSecret`, `EmailApiKey.keyHash`,
+/// `SmtpCredential`, etc.) and adds typed metadata for provider integrations.
+///
+/// Encryption: AES-256-GCM with `ENCRYPTION_KEY` / `ENCRYPTION_KEY_FILE` — same
+/// scheme the existing `common/encryption.ts` uses. The encrypted payload
+/// (nonce || ciphertext || tag) is stored as `Bytes`.
+///
+/// Migration: existing rows in `DomainConnection`, `EmailApiKey`, and
+/// `InstallationSettings.encrypted*` are read by their original tables during
+/// the migration window. New writes go to `Secret`.
+model Secret {
+  id             String   @id @default(uuid())
+  projectId      String?  @map("project_id") // null for platform-level secrets
+  key            String   @db.VarChar(255) // e.g. 'CLOUDFLARE_OAUTH_TOKEN', 'SMTP_PASSWORD'
+  encryptedValue Bytes    @map("encrypted_value")
+  // Provider classification for UI + scope enforcement. Examples:
+  // 'cloudflare' | 'stripe' | 'github' | 'telegram' | 'openai' | 'anthropic'
+  // | 'aws' | 'azure' | 'smtp' | 's3' | 'minio' | 'cloudinary' | 'twilio' | 'stalwart'
+  provider       String?  @db.VarChar(64)
+  // Provider-specific structured metadata. For AWS: {accessKeyId, region};
+  // for SMTP: {host, port, user}; for webhook secrets: {url}.
+  metadata       Json     @default("{}")
+  lastUsedAt     DateTime? @map("last_used_at") @db.Timestamptz
+  createdAt      DateTime  @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt      DateTime  @updatedAt @map("updated_at") @db.Timestamptz
+
+  @@unique([projectId, key])
+  @@index([projectId, provider])
+  @@map("secrets")
+  @@schema("infrastructure")
+}
+
+/// Unified project credential. Replaces per-service `*ApiKey` tables
+/// (EmailApiKey, SmtpCredential) and complements `ProjectApiKey` (which stays
+/// for the existing `fpk_` validator path during the migration window).
+///
+/// One model covers: API keys, PATs, OAuth tokens, CLI tokens, MCP tokens,
+/// webhook secrets. The `scopes` field is a string array — Supabase-style —
+/// so the same credential can be used across services.
+model Credential {
+  id         String    @id @default(uuid())
+  projectId  String    @map("project_id")
+  // Type discriminator. Examples: 'api_key' | 'pat' | 'oauth' | 'cli' | 'mcp' | 'webhook_secret' | 'jwt'
+  type       String    @db.VarChar(64)
+  name       String    @db.VarChar(255)
+  // bcrypt of the secret portion (after the public prefix is stripped)
+  keyHash    String    @map("key_hash") @db.VarChar(255)
+  // First N chars of the secret body — non-secret index for O(log n) lookup
+  keyPrefix  String    @map("key_prefix") @db.VarChar(16)
+  // Supabase-style scopes: ['email.send', 'storage.write', 'auth.users', ...]
+  scopes     String[]  @default([])
+  // Provider-specific structured metadata. Same shape as Secret.metadata.
+  metadata   Json      @default("{}")
+  lastUsedAt DateTime? @map("last_used_at") @db.Timestamptz
+  expiresAt  DateTime? @map("expires_at") @db.Timestamptz
+  createdAt  DateTime  @default(now()) @map("created_at") @db.Timestamptz
+
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@index([projectId, type])
+  @@index([keyPrefix])
+  @@map("credentials")
+  @@schema("infrastructure")
 }
 
 enum ProjectType {

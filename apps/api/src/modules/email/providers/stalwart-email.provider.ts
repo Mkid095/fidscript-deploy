@@ -28,6 +28,7 @@
 import { Injectable, Logger, InternalServerErrorException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { AxiosInstance } from 'axios';
+import { SecretsService } from '@/modules/infrastructure/secrets/secrets.service';
 import {
   IEmailProvider,
   ProviderDomain,
@@ -50,7 +51,6 @@ export class StalwartEmailProvider implements IEmailProvider {
   private readonly client: AxiosInstance;
   private readonly tokenUrl: string;
   private readonly tokenUser: string;
-  private readonly tokenPass: string;
   private readonly tokenClientId: string;
   /** Cached bearer token + expiry. */
   private cachedToken: string | null = null;
@@ -58,15 +58,16 @@ export class StalwartEmailProvider implements IEmailProvider {
   /** Cached admin accountId — first JMAP call reveals it via `accountId` in responses. */
   private adminAccountId: string | null = null;
 
-  constructor(private config: ConfigService) {
+  constructor(private config: ConfigService, private secrets: SecretsService) {
     // STALWART_JMAP_URL is the HTTP listener root. We append `/jmap` for JMAP calls
     // and `/auth/token` for OAuth2 token exchange.
     const rawUrl = this.config.get<string>('STALWART_JMAP_URL', 'http://fidscript_stalwart:8080');
     const baseURL = rawUrl.replace(/\/+$/, '');
     this.tokenUrl = baseURL + '/auth/token';
     this.tokenUser = this.config.get<string>('STALWART_JMAP_USER', 'admin');
-    this.tokenPass = this.config.get<string>('STALWART_JMAP_PASSWORD', this.config.get<string>('STALWART_ADMIN_TOKEN', 'stalwartadmintoken2024'));
     this.tokenClientId = this.config.get<string>('STALWART_OAUTH_CLIENT_ID', this.tokenUser);
+    // The OAuth2 client secret is read lazily inside getAccessToken() so
+    // platform-level secrets stored in the Secret table are honored.
 
     const axios = require('axios');
     this.client = axios.create({
@@ -89,6 +90,10 @@ export class StalwartEmailProvider implements IEmailProvider {
       return this.cachedToken;
     }
     try {
+      // Resolve the OAuth client secret from the Infrastructure secrets
+      // store, with env-var fallback for boot/dev. Per the Infrastructure
+      // refactor, the secret key is 'STALWART_OAUTH_CLIENT_SECRET'.
+      const secret = await this.resolveStalwartClientSecret();
       const axios = require('axios');
       const params = new URLSearchParams();
       // Stalwart v0.16 supports client_credentials for known OAuth clients
@@ -96,7 +101,7 @@ export class StalwartEmailProvider implements IEmailProvider {
       // (works for static admin clients) and fall back to password.
       params.set('grant_type', 'client_credentials');
       params.set('client_id', this.tokenClientId);
-      params.set('client_secret', this.tokenPass);
+      params.set('client_secret', secret);
       const response = await axios.post(this.tokenUrl, params, {
         headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
         timeout: 15000,
@@ -108,12 +113,39 @@ export class StalwartEmailProvider implements IEmailProvider {
       }
       this.cachedToken = token;
       this.tokenExpiresAt = Date.now() + expiresIn * 1000;
+      this.logger.log(`Stalwart OAuth2 token acquired (expires in ${expiresIn}s).`);
       return token;
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
       this.logger.error(`Stalwart OAuth2 token exchange failed: ${msg}`);
       throw err;
     }
+  }
+
+  /**
+   * Resolve the Stalwart OAuth client secret. Priority:
+   *   1. Secret table (platform-level, key 'STALWART_OAUTH_CLIENT_SECRET')
+   *   2. env var STALWART_OAUTH_CLIENT_SECRET
+   *   3. env var STALWART_OAUTH_CLIENT_SECRET_FILE
+   *   4. legacy env var STALWART_JMAP_PASSWORD
+   *   5. legacy env var STALWART_ADMIN_TOKEN
+   */
+  private async resolveStalwartClientSecret(): Promise<string> {
+    const fromSecret = await this.secrets.tryGet(null, 'STALWART_OAUTH_CLIENT_SECRET');
+    if (fromSecret) return fromSecret;
+    if (process.env.STALWART_OAUTH_CLIENT_SECRET) {
+      return process.env.STALWART_OAUTH_CLIENT_SECRET;
+    }
+    if (process.env.STALWART_OAUTH_CLIENT_SECRET_FILE) {
+      try {
+        return require('fs').readFileSync(process.env.STALWART_OAUTH_CLIENT_SECRET_FILE, 'utf8').trim();
+      } catch (err) {
+        this.logger.warn(`Could not read STALWART_OAUTH_CLIENT_SECRET_FILE: ${(err as Error).message}`);
+      }
+    }
+    if (process.env.STALWART_JMAP_PASSWORD) return process.env.STALWART_JMAP_PASSWORD;
+    if (process.env.STALWART_ADMIN_TOKEN) return process.env.STALWART_ADMIN_TOKEN;
+    return 'stalwartadmintoken2024';
   }
 
   /**
