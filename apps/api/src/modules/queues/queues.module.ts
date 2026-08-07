@@ -1,4 +1,7 @@
-import { Module, Logger, OnModuleInit, OnModuleDestroy } from '@nestjs/common';
+import { Module, Logger, OnModuleInit, OnModuleDestroy, forwardRef } from '@nestjs/common';
+import { JwtModule } from '@nestjs/jwt';
+import { AuthModule } from '@/modules/auth/auth.module';
+import { ProjectsModule } from '@/modules/projects/projects.module';
 import { QueuesController } from './queues.controller';
 import { QueuesService } from './queues.service';
 import { QueueCrudService } from '@/modules/queues/services/queue-crud.service';
@@ -9,6 +12,11 @@ import { QueueWorkerService } from './services/queue-worker.service';
 import { EventService } from '@/modules/events/event.service';
 
 @Module({
+  imports: [
+    JwtModule.register({ secret: process.env.JWT_SECRET || 'fidscript', signOptions: { expiresIn: '15m' } }),
+    forwardRef(() => AuthModule),
+    forwardRef(() => ProjectsModule),
+  ],
   controllers: [QueuesController],
   providers: [
     Logger,

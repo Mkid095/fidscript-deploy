@@ -22,7 +22,7 @@ import { DatabasesModule } from '@/modules/databases/databases.module';
     ProjectsMembersController,
     InvitationsController,
   ],
-  imports: [forwardRef(() => StorageModule), RealtimeModule, DatabasesModule],
+  imports: [forwardRef(() => StorageModule), forwardRef(() => RealtimeModule), forwardRef(() => DatabasesModule)],
   providers: [
     ProjectsService,
     ProjectCrudService,

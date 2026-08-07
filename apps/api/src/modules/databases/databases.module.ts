@@ -1,4 +1,4 @@
-import { Module } from '@nestjs/common';
+import { Module, forwardRef } from '@nestjs/common';
 import { DatabasesController } from '@/modules/databases/controllers/databases.controller';
 import { DatabaseDataController } from '@/modules/databases/controllers/database-data.controller';
 import { LiveQueryController } from '@/modules/databases/controllers/live-query.controller';
@@ -29,7 +29,7 @@ import { AuthModule } from '@/modules/auth/auth.module';
 @Module({
   // AuthModule provides ApiKeyOrJwtGuard so the BaaS data routes accept both
   // JWT (dashboard) and project API keys (external apps via X-API-Key).
-  imports: [StorageModule, ProjectsModule, EventsModule, AuthModule],
+  imports: [StorageModule, forwardRef(() => ProjectsModule), EventsModule, forwardRef(() => AuthModule)],
   controllers: [DatabasesController, DatabaseDataController, LiveQueryController],
   providers: [
     DatabasesService,
@@ -59,6 +59,8 @@ import { AuthModule } from '@/modules/auth/auth.module';
     DbQueryService,
     DbDataService,
     DbRealtimeService,
+    DbCrudService,
+    DATABASE_PROVIDER,
     NotifyRealtimeProvider,
     SchemaCacheService,
     LiveQueryManager,

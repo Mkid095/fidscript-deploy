@@ -70,7 +70,7 @@ import { LegalHoldService } from './services/legal-hold.service';
 @Module({
   imports: [
     DomainsModule,
-    QueuesModule,
+    forwardRef(() => QueuesModule),
     forwardRef(() => StorageModule),
     forwardRef(() => AuthModule),
     ProjectsModule,

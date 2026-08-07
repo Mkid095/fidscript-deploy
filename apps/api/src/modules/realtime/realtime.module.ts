@@ -1,4 +1,4 @@
-import { Module } from '@nestjs/common';
+import { Module, forwardRef } from '@nestjs/common';
 import { RealtimeController } from './realtime.controller';
 import { RealtimeService } from './realtime.service';
 import { RealtimeGateway } from './gateways/realtime.gateway';
@@ -17,7 +17,7 @@ import { ProjectsModule } from '@/modules/projects/projects.module';
 @Module({
   // ProjectsModule provides ProjectApiKeyService so the WS gateway can accept
   // project API keys (X-API-Key / fpk_ token) for BaaS realtime subscriptions.
-  imports: [RedisModule, ProjectsModule],
+  imports: [RedisModule, forwardRef(() => ProjectsModule)],
   controllers: [RealtimeController],
   providers: [
     RealtimeService,

@@ -1,4 +1,4 @@
-import { Module } from '@nestjs/common';
+import { Module, forwardRef } from '@nestjs/common';
 import { SchedulerController } from './controllers/scheduler.controller';
 import { CronJobService } from './services/cron-job.service';
 import { CronJobExecutionService } from './services/cron-job-execution.service';
@@ -15,7 +15,7 @@ import { EmailModule } from '@/modules/email/email.module';
 import { QueuesModule } from '@/modules/queues/queues.module';
 
 @Module({
-  imports: [FunctionsModule, AuthModule, ProjectsModule, EmailModule, QueuesModule],
+  imports: [FunctionsModule, AuthModule, ProjectsModule, EmailModule, forwardRef(() => QueuesModule)],
   controllers: [SchedulerController],
   providers: [
     CronJobService,

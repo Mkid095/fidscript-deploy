@@ -1,4 +1,4 @@
-import { Injectable, Inject, Logger } from '@nestjs/common';
+import { Injectable, Inject, Logger, forwardRef } from '@nestjs/common';
 import * as bcrypt from 'bcrypt';
 import * as crypto from 'crypto';
 import { PrismaService } from '@/prisma/prisma.service';
@@ -30,7 +30,7 @@ export class ProjectProvisionService {
     private eventService: EventService,
     private storage: StorageService,
     private realtime: RealtimeService,
-    private dbCrud: DbCrudService,
+    @Inject(forwardRef(() => DbCrudService)) private dbCrud: DbCrudService,
     @Inject(DATABASE_PROVIDER) private dbProvider: DatabaseProvider,
   ) {}
 
