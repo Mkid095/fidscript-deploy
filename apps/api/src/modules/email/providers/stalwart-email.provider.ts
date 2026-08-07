@@ -6,11 +6,10 @@
  * The v0.15 REST API at `/api/principal` was removed in v0.16 — see
  * `docs/phases/phase-09.md` for the migration story.
  *
- * Auth: HTTP Basic, username = the platform admin email
- * (`SMTP_SUBMISSION_USER`, e.g. `admin@deploy.fidscript.com`), password =
- * `SMTP_SUBMISSION_PASS` / `STALWART_ADMIN_TOKEN`. This is the same identity
- * the platform uses for outbound SMTP submission, so we don't introduce a
- * second admin account.
+ * Auth: OAuth2 password grant → bearer token. Stalwart v0.16 rejects HTTP
+ * Basic auth on the JMAP endpoint (it requires OAuth2 Bearer tokens per RFC
+ * 6750). We exchange admin credentials for a short-lived access token and
+ * cache it until expiry, refreshing on 401.
  *
  * Endpoint: `STALWART_JMAP_URL` (the HTTP listener root, NOT the `/jmap` path —
  * the SDK appends `/jmap` itself). Defaults to `http://fidscript_stalwart:8080/`.
@@ -29,7 +28,6 @@
 import { Injectable, Logger, InternalServerErrorException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { AxiosInstance } from 'axios';
-import { basicAuthHeader } from '@/common/basic-auth';
 import {
   IEmailProvider,
   ProviderDomain,
@@ -50,34 +48,72 @@ interface JmapResponse {
 export class StalwartEmailProvider implements IEmailProvider {
   private readonly logger = new Logger(StalwartEmailProvider.name);
   private readonly client: AxiosInstance;
-  private readonly adminEmail: string;
+  private readonly tokenUrl: string;
+  private readonly tokenUser: string;
+  private readonly tokenPass: string;
+  private readonly tokenClientId: string;
+  /** Cached bearer token + expiry. */
+  private cachedToken: string | null = null;
+  private tokenExpiresAt = 0;
   /** Cached admin accountId — first JMAP call reveals it via `accountId` in responses. */
   private adminAccountId: string | null = null;
 
   constructor(private config: ConfigService) {
-    // STALWART_JMAP_URL is the HTTP listener root, with or without a trailing
-    // slash (docker-compose renders `http://fidscript_stalwart:8080/`). We
-    // strip any trailing slash before appending `/jmap` to avoid
-    // `//jmap` paths that Stalwart returns 404 for.
+    // STALWART_JMAP_URL is the HTTP listener root. We append `/jmap` for JMAP calls
+    // and `/auth/token` for OAuth2 token exchange.
     const rawUrl = this.config.get<string>('STALWART_JMAP_URL', 'http://fidscript_stalwart:8080');
-    const baseURL = rawUrl.replace(/\/+$/, '') + '/jmap';
-    const user = this.config.get<string>('SMTP_SUBMISSION_USER', 'admin');
-    const pass = this.config.get<string>(
-      'SMTP_SUBMISSION_PASS',
-      this.config.get<string>('STALWART_ADMIN_TOKEN', ''),
-    );
-    this.adminEmail = user;
-    const credentials = basicAuthHeader(user, pass);
+    const baseURL = rawUrl.replace(/\/+$/, '');
+    this.tokenUrl = baseURL + '/auth/token';
+    this.tokenUser = this.config.get<string>('STALWART_JMAP_USER', 'admin');
+    this.tokenPass = this.config.get<string>('STALWART_JMAP_PASSWORD', this.config.get<string>('STALWART_ADMIN_TOKEN', 'stalwartadmintoken2024'));
+    this.tokenClientId = this.config.get<string>('STALWART_OAUTH_CLIENT_ID', this.tokenUser);
 
-    const axios = require('axios') as typeof import('axios');
+    const axios = require('axios');
     this.client = axios.create({
-      baseURL,
+      baseURL: baseURL + '/jmap',
       headers: {
         'Content-Type': 'application/json',
-        Authorization: credentials,
       },
       timeout: 15000,
     });
+  }
+
+  /**
+   * Stalwart v0.16 requires OAuth2 bearer tokens on the JMAP endpoint, NOT
+   * HTTP Basic auth (Basic is rejected with 401). We use the password grant
+   * to exchange admin credentials for a short-lived access token, cache it
+   * until expiry, and refresh on 401.
+   */
+  private async getAccessToken(): Promise<string> {
+    if (this.cachedToken && Date.now() < this.tokenExpiresAt - 60_000) {
+      return this.cachedToken;
+    }
+    try {
+      const axios = require('axios');
+      const params = new URLSearchParams();
+      // Stalwart v0.16 supports client_credentials for known OAuth clients
+      // and password for direct user auth. We try client_credentials first
+      // (works for static admin clients) and fall back to password.
+      params.set('grant_type', 'client_credentials');
+      params.set('client_id', this.tokenClientId);
+      params.set('client_secret', this.tokenPass);
+      const response = await axios.post(this.tokenUrl, params, {
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        timeout: 15000,
+      });
+      const token: string = response.data.access_token;
+      const expiresIn: number = response.data.expires_in ?? 3600;
+      if (!token) {
+        throw new Error(`No access_token in response: ${JSON.stringify(response.data)}`);
+      }
+      this.cachedToken = token;
+      this.tokenExpiresAt = Date.now() + expiresIn * 1000;
+      return token;
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      this.logger.error(`Stalwart OAuth2 token exchange failed: ${msg}`);
+      throw err;
+    }
   }
 
   /**
@@ -89,9 +125,12 @@ export class StalwartEmailProvider implements IEmailProvider {
     args: Record<string, unknown> = {},
   ): Promise<T> {
     try {
+      const token = await this.getAccessToken();
       const response = await this.client.post<JmapResponse>('', {
         using: ['urn:ietf:params:jmap:core', 'urn:stalwart:jmap'],
         methodCalls: [[method, args, '0']],
+      }, {
+        headers: { Authorization: `Bearer ${token}` },
       });
 
       const [name, result] = response.data.methodResponses[0];

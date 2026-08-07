@@ -18,7 +18,7 @@
   "Authentication": {
     "fallback-admin": {
       "user": "admin",
-      "secret": "$2b$12$CwO2G5zD5Q8tOKPlm6sOcuJMVsw1LxzFvI2Dp43v/udnET2i0UViK"
+      "secret": "$2b$12$NrdmK.byGOtCg5hscMVlVO2bccAXDRTgeWgHUMv4i7jePqUuCOmuK"
     }
   },
   "server": {
@@ -42,7 +42,7 @@
       },
       "http": {
         "protocol": "http",
-        "bind": "[::]:8080"
+        "bind": "0.0.0.0"
       }
     }
   }
