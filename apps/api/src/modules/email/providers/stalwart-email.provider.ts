@@ -3,27 +3,25 @@
  *
  * Implements the full `IEmailProvider` interface using Stalwart's JMAP
  * admin protocol (the `urn:stalwart:jmap` capability, methods prefixed `x:`).
- * The v0.15 REST API at `/api/principal` was removed in v0.16 — see
- * `docs/phases/phase-09.md` for the migration story.
  *
- * Auth: OAuth2 password grant → bearer token. Stalwart v0.16 rejects HTTP
- * Basic auth on the JMAP endpoint (it requires OAuth2 Bearer tokens per RFC
- * 6750). We exchange admin credentials for a short-lived access token and
- * cache it until expiry, refreshing on 401.
+ * Auth: HTTP Basic Auth on the JMAP endpoint. Stalwart v0.16 accepts
+ * Basic Auth credentials (username + password) directly on the /jmap endpoint.
+ * The password is the SHA-256 hash of the admin password stored in the
+ * STALWART_RECOVERY_ADMIN secret (format: "admin:<sha256>").
+ *
+ * Resolution order for JMAP credentials:
+ *   password
+ *     1. Secret table (key 'STALWART_JMAP_PASSWORD')
+ *     2. env var STALWART_JMAP_PASSWORD
+ *     3. env var STALWART_ADMIN_TOKEN (the raw secret file content)
+ *     4. env var STALWART_RECOVERY_ADMIN_HASH (the sha256 portion)
+ *     5. dev fallback '7230f0d00120951ccadfa869b54fb642a3f97fd10da166a6cb8ff892e63275a4'
+ *
+ * The SMTP submission transport uses a separate credential:
+ *   env STALWART_ADMIN_TOKEN or the file at STALWART_ADMIN_TOKEN_FILE (raw secret).
  *
  * Endpoint: `STALWART_JMAP_URL` (the HTTP listener root, NOT the `/jmap` path —
  * the SDK appends `/jmap` itself). Defaults to `http://fidscript_stalwart:8080/`.
- *
- * Wire format the SDK uses:
- *   POST /jmap
- *   {
- *     "using":  ["urn:ietf:params:jmap:core", "urn:stalwart:jmap"],
- *     "methodCalls": [[ "x:Account/set", { create: { "k": { ... } } }, "tag" ]]
- *   }
- *   → { "methodResponses": [[ "x:Account/set", { created: { k: "id" } }, "tag" ]] }
- *
- * The `accountId` is implied (the admin account's), not specified in the
- * method args — that's a quirk of the admin JMAP namespace.
  */
 import { Injectable, Logger, InternalServerErrorException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
@@ -45,107 +43,54 @@ interface JmapResponse {
   methodResponses: Array<[string, Record<string, unknown>, string]>;
 }
 
+/** Resolved basic-auth credentials for the admin JMAP session. */
+interface StalwartJmapCredentials {
+  user: string;
+  pass: string;
+}
+
 @Injectable()
 export class StalwartEmailProvider implements IEmailProvider {
   private readonly logger = new Logger(StalwartEmailProvider.name);
   private readonly client: AxiosInstance;
-  private readonly tokenUrl: string;
-  private readonly tokenUser: string;
-  private readonly tokenClientId: string;
-  /** Cached bearer token + expiry. */
-  private cachedToken: string | null = null;
-  private tokenExpiresAt = 0;
-  /** Cached admin accountId — first JMAP call reveals it via `accountId` in responses. */
-  private adminAccountId: string | null = null;
+  private readonly baseURL: string;
+  private jmapCreds: StalwartJmapCredentials | null = null;
 
   constructor(private config: ConfigService, private secrets: SecretsService) {
-    // STALWART_JMAP_URL is the HTTP listener root. We append `/jmap` for JMAP calls
-    // and `/auth/token` for OAuth2 token exchange.
     const rawUrl = this.config.get<string>('STALWART_JMAP_URL', 'http://fidscript_stalwart:8080');
-    const baseURL = rawUrl.replace(/\/+$/, '');
-    this.tokenUrl = baseURL + '/auth/token';
-    this.tokenUser = this.config.get<string>('STALWART_JMAP_USER', 'admin');
-    this.tokenClientId = this.config.get<string>('STALWART_OAUTH_CLIENT_ID', this.tokenUser);
-    // The OAuth2 client secret is read lazily inside getAccessToken() so
-    // platform-level secrets stored in the Secret table are honored.
+    this.baseURL = rawUrl.replace(/\/+$/, '');
 
     const axios = require('axios');
     this.client = axios.create({
-      baseURL: baseURL + '/jmap',
-      headers: {
-        'Content-Type': 'application/json',
-      },
+      baseURL: this.baseURL + '/jmap',
+      headers: { 'Content-Type': 'application/json' },
       timeout: 15000,
     });
   }
 
-  /**
-   * Stalwart v0.16 requires OAuth2 bearer tokens on the JMAP endpoint, NOT
-   * HTTP Basic auth (Basic is rejected with 401). We use the password grant
-   * to exchange admin credentials for a short-lived access token, cache it
-   * until expiry, and refresh on 401.
-   */
-  private async getAccessToken(): Promise<string> {
-    if (this.cachedToken && Date.now() < this.tokenExpiresAt - 60_000) {
-      return this.cachedToken;
-    }
-    try {
-      // Resolve the OAuth client secret from the Infrastructure secrets
-      // store, with env-var fallback for boot/dev. Per the Infrastructure
-      // refactor, the secret key is 'STALWART_OAUTH_CLIENT_SECRET'.
-      const secret = await this.resolveStalwartClientSecret();
-      const axios = require('axios');
-      const params = new URLSearchParams();
-      // Stalwart v0.16 supports client_credentials for known OAuth clients
-      // and password for direct user auth. We try client_credentials first
-      // (works for static admin clients) and fall back to password.
-      params.set('grant_type', 'client_credentials');
-      params.set('client_id', this.tokenClientId);
-      params.set('client_secret', secret);
-      const response = await axios.post(this.tokenUrl, params, {
-        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-        timeout: 15000,
-      });
-      const token: string = response.data.access_token;
-      const expiresIn: number = response.data.expires_in ?? 3600;
-      if (!token) {
-        throw new Error(`No access_token in response: ${JSON.stringify(response.data)}`);
-      }
-      this.cachedToken = token;
-      this.tokenExpiresAt = Date.now() + expiresIn * 1000;
-      this.logger.log(`Stalwart OAuth2 token acquired (expires in ${expiresIn}s).`);
-      return token;
-    } catch (err) {
-      const msg = err instanceof Error ? err.message : String(err);
-      this.logger.error(`Stalwart OAuth2 token exchange failed: ${msg}`);
-      throw err;
-    }
+  /** Resolve JMAP basic-auth credentials lazily. */
+  private async resolveJmapCredentials(): Promise<StalwartJmapCredentials> {
+    if (this.jmapCreds) return this.jmapCreds;
+
+    const user = this.config.get<string>('STALWART_JMAP_USER', 'admin');
+    const pass = await this.resolveJmapPassword();
+
+    this.jmapCreds = { user, pass };
+    return this.jmapCreds;
   }
 
-  /**
-   * Resolve the Stalwart OAuth client secret. Priority:
-   *   1. Secret table (platform-level, key 'STALWART_OAUTH_CLIENT_SECRET')
-   *   2. env var STALWART_OAUTH_CLIENT_SECRET
-   *   3. env var STALWART_OAUTH_CLIENT_SECRET_FILE
-   *   4. legacy env var STALWART_JMAP_PASSWORD
-   *   5. legacy env var STALWART_ADMIN_TOKEN
-   */
-  private async resolveStalwartClientSecret(): Promise<string> {
-    const fromSecret = await this.secrets.tryGet(null, 'STALWART_OAUTH_CLIENT_SECRET');
+  private async resolveJmapPassword(): Promise<string> {
+    // 1. Secret table
+    const fromSecret = await this.secrets.tryGet(null, 'STALWART_JMAP_PASSWORD');
     if (fromSecret) return fromSecret;
-    if (process.env.STALWART_OAUTH_CLIENT_SECRET) {
-      return process.env.STALWART_OAUTH_CLIENT_SECRET;
-    }
-    if (process.env.STALWART_OAUTH_CLIENT_SECRET_FILE) {
-      try {
-        return require('fs').readFileSync(process.env.STALWART_OAUTH_CLIENT_SECRET_FILE, 'utf8').trim();
-      } catch (err) {
-        this.logger.warn(`Could not read STALWART_OAUTH_CLIENT_SECRET_FILE: ${(err as Error).message}`);
-      }
-    }
+    // 2. env var
     if (process.env.STALWART_JMAP_PASSWORD) return process.env.STALWART_JMAP_PASSWORD;
+    // 3. raw admin token (the actual secret, not the SHA256)
     if (process.env.STALWART_ADMIN_TOKEN) return process.env.STALWART_ADMIN_TOKEN;
-    return 'stalwartadmintoken2024';
+    // 4. env var containing the SHA256 hash (from docker-compose STALWART_RECOVERY_ADMIN)
+    if (process.env.STALWART_RECOVERY_ADMIN_HASH) return process.env.STALWART_RECOVERY_ADMIN_HASH;
+    // 5. dev fallback — the SHA-256 hash of 'FidscriptAdmin2024!'
+    return '7230f0d00120951ccadfa869b54fb642a3f97fd10da166a6cb8ff892e63275a4';
   }
 
   /**
@@ -157,21 +102,19 @@ export class StalwartEmailProvider implements IEmailProvider {
     args: Record<string, unknown> = {},
   ): Promise<T> {
     try {
-      const token = await this.getAccessToken();
+      const creds = await this.resolveJmapCredentials();
+      const credentials = Buffer.from(`${creds.user}:${creds.pass}`).toString('base64');
       const response = await this.client.post<JmapResponse>('', {
         using: ['urn:ietf:params:jmap:core', 'urn:stalwart:jmap'],
         methodCalls: [[method, args, '0']],
       }, {
-        headers: { Authorization: `Bearer ${token}` },
+        headers: { Authorization: `Basic ${credentials}` },
       });
 
       const [name, result] = response.data.methodResponses[0];
       if (name !== method) {
         throw new Error(`JMAP response method mismatch: expected ${method}, got ${name}`);
       }
-      // Cache the admin accountId from the first response (all responses echo it).
-      const acctId = (result as { accountId?: string }).accountId;
-      if (acctId) this.adminAccountId = acctId;
 
       // Per-call error envelope: { type: 'error', description, ... }
       if ((result as { type?: string }).type === 'error') {

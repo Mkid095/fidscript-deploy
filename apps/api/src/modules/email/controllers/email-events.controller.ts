@@ -15,8 +15,8 @@ export class EmailEventsController {
   ) {}
 
   private verifySignature(body: string, signature: string): boolean {
-    const secret = this.configService.get('STALWART_WEBHOOK_SECRET', '');
-    if (!secret) return true;
+    const secret = this.configService.get<string>('STALWART_WEBHOOK_SECRET');
+    if (!secret) return false;
     const expected = 'sha256=' + crypto.createHmac('sha256', secret).update(body, 'utf8').digest('hex');
     return crypto.timingSafeEqual(Buffer.from(signature), Buffer.from(expected));
   }
