@@ -67,15 +67,6 @@ export class MonitoringModule {
     return this.client.delete(`/api/v1/projects/${projectId}/monitoring/alerts/rules/${ruleId}`);
   }
 
-  // Alert evaluations (history)
-  async getAlertEvaluations(projectId: string, ruleId: string, limit = 10) {
-    const res = await this.client.get<{ evaluations: AlertEvaluation[] }>(
-      `/api/v1/projects/${projectId}/monitoring/alerts/rules/${ruleId}/evaluations`,
-      { limit },
-    );
-    return res.evaluations;
-  }
-
   // Alerts
   async getAlerts(projectId: string, status?: string) {
     const res = await this.client.get<{ alerts: Alert[] }>(

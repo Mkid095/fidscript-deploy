@@ -1,6 +1,6 @@
-import type { FidscriptSDK } from '@fidscript-deploy/sdk';
 'use client';
 
+import type { FidscriptSDK } from '@fidscript-deploy/sdk';
 import { Button, Modal } from '@fidscript/ui';
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';

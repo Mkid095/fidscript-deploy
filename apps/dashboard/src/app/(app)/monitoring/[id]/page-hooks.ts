@@ -2,15 +2,6 @@ import { useState, useEffect, useCallback } from 'react';
 import type { AlertRule, Alert, NotificationChannel } from '@/types';
 import { useAuth } from '@/contexts/auth-context';
 
-interface AlertEvaluation {
-  id: string;
-  ruleId: string;
-  timestamp: string;
-  value: number;
-  fired: boolean;
-  message?: string;
-}
-
 interface UseAlertDetailOptions {
   ruleId: string;
   projectId: string;
@@ -19,7 +10,7 @@ interface UseAlertDetailOptions {
 interface UseAlertDetailReturn {
   rule: AlertRule | null;
   channels: NotificationChannel[];
-  evaluations: AlertEvaluation[];
+  evaluations: never[];
   firingAlert: Alert | null;
   loading: boolean;
   error: string | null;
@@ -33,7 +24,7 @@ export function useAlertDetail({
   const { getSdk } = useAuth();
   const [rule, setRule] = useState<AlertRule | null>(null);
   const [channels, setChannels] = useState<NotificationChannel[]>([]);
-  const [evaluations, setEvaluations] = useState<AlertEvaluation[]>([]);
+  const [evaluations, setEvaluations] = useState<never[]>([]);
   const [firingAlert, setFiringAlert] = useState<Alert | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -44,15 +35,13 @@ export function useAlertDetail({
     setError(null);
     try {
       const sdk = getSdk();
-      const [ruleData, chData, evals, alertsData] = await Promise.all([
+      const [ruleData, chData, alertsData] = await Promise.all([
         sdk.monitoring.getAlertRule(projectId, ruleId),
         sdk.monitoring.listNotificationChannels(projectId),
-        sdk.monitoring.getAlertEvaluations(projectId, ruleId, 10),
         sdk.monitoring.getAlerts(projectId),
       ]);
       setRule(ruleData);
       setChannels(chData);
-      setEvaluations(evals);
       const open = alertsData
         .filter((a: Alert) => a.ruleId === ruleId && (a.status === 'firing' || a.status === 'acknowledged'))
         .sort((a: Alert, b: Alert) => (b.firedAt ?? '').localeCompare(a.firedAt ?? ''))[0] ?? null;

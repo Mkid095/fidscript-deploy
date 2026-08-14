@@ -1,6 +1,6 @@
-import type { FidscriptSDK } from '@fidscript-deploy/sdk';
 'use client';
 
+import type { FidscriptSDK } from '@fidscript-deploy/sdk';
 import { useEffect, useState, useCallback } from 'react';
 import type { Project, AlertRule, Alert, NotificationChannel } from '@/types';
 
