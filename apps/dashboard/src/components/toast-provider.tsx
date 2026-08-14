@@ -110,9 +110,9 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
   return (
     <ToastContext.Provider value={{ showToast }}>
       {children}
-      {/* Toast portal — fixed bottom-right */}
+      {/* Toast portal — responsive: full-width on mobile above tab bar, fixed bottom-right on sm+ */}
       <div
-        className="fixed bottom-5 right-5 z-50 flex flex-col gap-2 w-80"
+        className="fixed bottom-20 left-4 right-4 z-50 flex flex-col gap-2 sm:bottom-5 sm:right-5 sm:left-auto sm:w-80"
         aria-label="Notifications"
       >
         {toasts.map(t => (

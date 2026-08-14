@@ -13,6 +13,8 @@ export function NotificationItem({ notification: n, onMarkAsRead }: Props) {
   const isUnread = !n.readAt;
   return (
     <div
+      // Note: if notifications ever contain clickable links, stop propagation on the link
+      // so markAsRead only fires when clicking the notification background, not links
       onClick={() => isUnread && onMarkAsRead(n.id)}
       className={`px-4 py-3 border-b border-[var(--rail)]/50 hover:bg-[var(--rail)]/50 transition-colors cursor-pointer ${isUnread ? 'bg-[var(--accent)]/5' : ''}`}
     >

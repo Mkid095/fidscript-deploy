@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { Button, Spinner } from '@fidscript/ui';
+import { Button } from '@fidscript/ui';
 import { HugeiconsIcon } from '@hugeicons/react';
 import { AlertCircleIcon } from '@hugeicons/core-free-icons';
 
@@ -9,14 +9,13 @@ interface ConfirmDialogProps {
   title: string;
   message: string;
   confirmLabel: string;
+  confirmWord?: string; // word the user must type for danger-variant confirmation
   variant: 'danger' | 'warning';
   onConfirm: () => void;
   onClose: () => void;
-  loading?: boolean;
-  confirmWord?: string;
 }
 
-export function ConfirmDialog({ title, message, confirmLabel, variant, onConfirm, onClose, loading, confirmWord = 'delete' }: ConfirmDialogProps) {
+export function ConfirmDialog({ title, message, confirmLabel, confirmWord = 'delete', variant, onConfirm, onClose }: ConfirmDialogProps) {
   const [confirmText, setConfirmText] = useState('');
 
   const isDanger = variant === 'danger';
@@ -28,7 +27,7 @@ export function ConfirmDialog({ title, message, confirmLabel, variant, onConfirm
       <div className="relative bg-[var(--surface)] border border-[var(--rail)] rounded-2xl shadow-2xl w-full max-w-md p-6 space-y-4">
         <DialogHeader title={title} message={message} variant={variant} />
         {isDanger && (
-          <DangerConfirmInput confirmText={confirmText} onChange={setConfirmText} confirmWord={confirmWord} />
+          <DangerConfirmInput confirmWord={confirmWord} confirmText={confirmText} onChange={setConfirmText} />
         )}
         <DialogActions
           variant={variant}
@@ -36,7 +35,6 @@ export function ConfirmDialog({ title, message, confirmLabel, variant, onConfirm
           isConfirmed={isConfirmed}
           onConfirm={onConfirm}
           onClose={onClose}
-          loading={loading}
         />
       </div>
     </div>
@@ -64,7 +62,7 @@ function DialogHeader({ title, message, variant }: { title: string; message: str
   );
 }
 
-function DangerConfirmInput({ confirmText, onChange, confirmWord }: { confirmText: string; onChange: (v: string) => void; confirmWord: string }) {
+function DangerConfirmInput({ confirmWord, confirmText, onChange }: { confirmWord: string; confirmText: string; onChange: (v: string) => void }) {
   return (
     <input
       value={confirmText}
@@ -82,25 +80,23 @@ function DialogActions({
   isConfirmed,
   onConfirm,
   onClose,
-  loading,
 }: {
   variant: 'danger' | 'warning';
   confirmLabel: string;
   isConfirmed: boolean;
   onConfirm: () => void;
   onClose: () => void;
-  loading?: boolean;
 }) {
   return (
     <div className="flex flex-col-reverse sm:flex-row justify-end gap-2">
-      <Button variant="ghost" size="sm" onClick={onClose} disabled={loading}>Cancel</Button>
+      <Button variant="ghost" size="sm" onClick={onClose}>Cancel</Button>
       <Button
         variant={variant === 'danger' ? 'danger' : 'primary'}
         size="sm"
-        disabled={variant === 'danger' && !isConfirmed || loading}
+        disabled={variant === 'danger' && !isConfirmed}
         onClick={onConfirm}
       >
-        {loading ? <Spinner size="sm" /> : confirmLabel}
+        {confirmLabel}
       </Button>
     </div>
   );
