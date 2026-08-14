@@ -24,10 +24,10 @@ export function ConnectionPanel() {
         </div>
         <div className="p-4">
           {newPassword ? (
-            <div className="rounded bg-emerald-500/10 border border-emerald-500/30 p-3">
-              <p className="text-xs font-semibold text-emerald-400 mb-1">New password generated!</p>
-              <code className="text-xs font-mono text-emerald-300 break-all">{newPassword}</code>
-              <p className="text-[10px] text-emerald-400/70 mt-2">Copy this now — it will not be shown again.</p>
+            <div className="rounded bg-[var(--success)]/10 border border-[var(--success)]/30 p-3">
+              <p className="text-xs font-semibold text-[var(--success)] mb-1">New password generated!</p>
+              <code className="text-xs font-mono text-[var(--success)] break-all">{newPassword}</code>
+              <p className="text-[10px] text-[var(--success)]/70 mt-2">Copy this now — it will not be shown again.</p>
             </div>
           ) : (
             <div>
@@ -37,7 +37,7 @@ export function ConnectionPanel() {
               <button
                 onClick={handleRotatePassword}
                 disabled={rotating}
-                className="text-xs px-3 py-1.5 rounded bg-rose-500/10 border border-rose-500/30 text-rose-400 hover:bg-rose-500/20 disabled:opacity-50"
+                className="text-xs px-3 py-1.5 rounded bg-[var(--danger)]/10 border border-[var(--danger)]/30 text-[var(--danger)] hover:bg-[var(--danger)]/20 disabled:opacity-50"
               >
                 {rotating ? 'Rotating…' : 'Rotate password'}
               </button>

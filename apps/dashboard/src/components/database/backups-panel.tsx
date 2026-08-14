@@ -32,8 +32,8 @@ export function BackupsPanel() {
       {message && (
         <div className={`flex items-center gap-2 px-4 py-2.5 rounded border text-xs ${
           message.type === 'success'
-            ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-400'
-            : 'bg-rose-500/10 border-rose-500/30 text-rose-400'
+            ? 'bg-[var(--success)]/10 border-[var(--success)]/30 text-[var(--success)]'
+            : 'bg-[var(--danger)]/10 border-[var(--danger)]/30 text-[var(--danger)]'
         }`}>
           <HugeiconsIcon icon={message.type === 'success' ? CheckmarkCircle03Icon : AlertCircleIcon} size={14} />
           {message.text}
@@ -65,7 +65,7 @@ export function BackupsPanel() {
       </div>
 
       {buckets.length === 0 && (
-        <div className="flex items-center gap-3 p-4 rounded-lg border border-yellow-500/20 bg-yellow-500/5 text-xs text-yellow-400">
+        <div className="flex items-center gap-3 p-4 rounded-lg border border-[var(--warning)]/20 bg-[var(--warning)]/5 text-xs text-[var(--warning)]">
           <HugeiconsIcon icon={AlertCircleIcon} size={14} />
           No storage buckets found. Create a storage bucket first to enable backups.
         </div>

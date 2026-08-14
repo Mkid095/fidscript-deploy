@@ -84,29 +84,29 @@ export function FunctionInvoke({ projectId, functionId, getSdk }: FunctionInvoke
       </div>
 
       {error && (
-        <Card className="border border-rose-500/30 bg-rose-500/5 p-4">
+        <Card className="border border-[var(--danger)]/30 bg-[var(--danger)]/5 p-4">
           <div className="flex items-start gap-2">
-            <HugeiconsIcon icon={AlertCircleIcon} size={16} className="text-rose-400 mt-0.5" />
+            <HugeiconsIcon icon={AlertCircleIcon} size={16} className="text-[var(--danger)] mt-0.5" />
             <div>
-              <p className="text-sm text-rose-400 font-medium">Error</p>
-              <p className="text-xs text-rose-400/70 mt-0.5 font-mono">{error}</p>
+              <p className="text-sm text-[var(--danger)] font-medium">Error</p>
+              <p className="text-xs text-[var(--danger)]/70 mt-0.5 font-mono">{error}</p>
             </div>
           </div>
         </Card>
       )}
 
       {result && (
-        <Card className="border border-emerald-500/30 bg-emerald-500/5 p-4">
+        <Card className="border border-[var(--success)]/30 bg-[var(--success)]/5 p-4">
           <div className="flex items-start gap-2">
-            <HugeiconsIcon icon={CheckmarkCircle03Icon} size={16} className="text-emerald-400 mt-0.5" />
+            <HugeiconsIcon icon={CheckmarkCircle03Icon} size={16} className="text-[var(--success)] mt-0.5" />
             <div className="flex-1">
               <div className="flex items-center justify-between mb-1">
-                <p className="text-sm text-emerald-400 font-medium">Response</p>
+                <p className="text-sm text-[var(--success)] font-medium">Response</p>
                 {duration !== null && (
-                  <span className="text-[10px] text-emerald-400/60">{duration}ms</span>
+                  <span className="text-[10px] text-[var(--success)]/60">{duration}ms</span>
                 )}
               </div>
-              <pre className="text-xs font-mono text-emerald-400/80 overflow-auto max-h-64">
+              <pre className="text-xs font-mono text-[var(--success)]/80 overflow-auto max-h-64">
                 {result}
               </pre>
             </div>
