@@ -49,7 +49,9 @@ export function useFunctionRealtime({
           };
           const newStatus = statusMap[et];
           if (newStatus) onStatusUpdate(newStatus);
-          if (et === 'function.deployed' || et === 'function.error') {
+          // Reload after deploy/error to get updated version; reload after invoke
+          // to refresh invocation metrics (invokedCount, lastInvokedAt).
+          if (et === 'function.deployed' || et === 'function.error' || et === 'function.invoked') {
             setTimeout(() => { if (!cancelled) onReload(); }, 800);
           }
         });

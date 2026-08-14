@@ -15,6 +15,15 @@ const STATUS_VARIANT: Record<string, 'success' | 'warning' | 'danger' | 'info' |
   PENDING: 'info',
   FAILED: 'danger',
   INACTIVE: 'default',
+  CREATED: 'info',
+  // Lowercase variants from backend
+  active: 'success',
+  created: 'info',
+  deployed: 'success',
+  failed: 'danger',
+  building: 'warning',
+  deploying: 'warning',
+  inactive: 'default',
 };
 
 const STATUS_LABEL: Record<string, string> = {
@@ -24,6 +33,15 @@ const STATUS_LABEL: Record<string, string> = {
   PENDING: 'Pending',
   FAILED: 'Failed',
   INACTIVE: 'Inactive',
+  CREATED: 'Created',
+  // Lowercase variants from backend
+  active: 'Active',
+  created: 'Created',
+  deployed: 'Deployed',
+  failed: 'Failed',
+  building: 'Building',
+  deploying: 'Deploying',
+  inactive: 'Inactive',
 };
 
 export function FunctionStatusBadge({ status, acting, logStream }: FunctionStatusBadgeProps) {
