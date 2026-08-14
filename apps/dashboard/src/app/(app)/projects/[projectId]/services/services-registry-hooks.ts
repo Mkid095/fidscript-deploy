@@ -56,7 +56,7 @@ export function useServicesRegistry({
       .catch(() => setGithubConnected(false));
   }, [getSdk]);
 
-  useServicesRealtime({ projectId, getSdk, onDeploymentsChange: setDeployments, onReload: load });
+  useServicesRealtime({ projectId, onDeploymentsChange: setDeployments, onReload: load });
 
   const handleConnectGithub = useCallback(async () => {
     setConnecting(true);
