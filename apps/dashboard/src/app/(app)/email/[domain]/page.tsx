@@ -74,7 +74,6 @@ export default function DomainPage() {
           domainName={domainName}
           projectId={projectId ?? ''}
           mailboxes={mailboxes}
-          onDelete={reload}
           getSdk={getSdk}
           reload={reload}
         />
@@ -87,7 +86,6 @@ export default function DomainPage() {
           projectId={projectId ?? ''}
           aliases={aliases}
           mailboxes={mailboxes}
-          onDelete={reload}
           getSdk={getSdk}
           reload={reload}
         />

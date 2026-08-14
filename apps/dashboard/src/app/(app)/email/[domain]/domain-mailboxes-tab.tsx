@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useCallback, useState } from 'react';
 import type { FidscriptSDK, Mailbox } from '@fidscript-deploy/sdk';
 import { Button } from '@fidscript/ui';
 import { MailboxList } from './mailbox-list';
@@ -11,13 +11,23 @@ interface Props {
   domainName: string;
   projectId: string | undefined;
   mailboxes: Mailbox[];
-  onDelete: (id: string) => void;
   getSdk: () => FidscriptSDK;
   reload: () => void;
 }
 
-export function DomainMailboxesTab({ domainId, domainName, projectId, mailboxes, onDelete, getSdk, reload }: Props) {
+export function DomainMailboxesTab({ domainId, domainName, projectId, mailboxes, getSdk, reload }: Props) {
   const [showCreate, setShowCreate] = useState(false);
+
+  const handleDelete = useCallback(async (mailboxId: string) => {
+    if (!projectId) return;
+    if (!confirm('Delete this mailbox? This cannot be undone.')) return;
+    try {
+      await getSdk().email.deleteMailbox(projectId, mailboxId);
+      reload();
+    } catch (err) {
+      alert(err instanceof Error ? err.message : 'Failed to delete mailbox');
+    }
+  }, [projectId, getSdk, reload]);
 
   return (
     <div>
@@ -28,7 +38,7 @@ export function DomainMailboxesTab({ domainId, domainName, projectId, mailboxes,
         </Button>
       </div>
 
-      <MailboxList domainId={domainId} mailboxes={mailboxes} onDelete={onDelete} />
+      <MailboxList domainId={domainId} mailboxes={mailboxes} onDelete={handleDelete} />
 
       <MailboxCreateModal
         isOpen={showCreate}
