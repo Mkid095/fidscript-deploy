@@ -7,6 +7,14 @@ import { Button, Card, Spinner } from '@fidscript/ui';
 
 import type { FidscriptSDK } from '@fidscript-deploy/sdk';
 
+interface InvokeResult {
+  result?: unknown;
+  output?: unknown;
+  statusCode?: number;
+  body?: unknown;
+  durationMs?: number;
+}
+
 interface FunctionInvokeProps {
   projectId: string;
   functionId: string;
@@ -37,7 +45,7 @@ export function FunctionInvoke({ projectId, functionId, getSdk }: FunctionInvoke
       }
 
       const start = Date.now();
-      const res = await getSdk().functions.invoke(projectId, functionId, payload) as any;
+      const res = await getSdk().functions.invoke(projectId, functionId, payload) as InvokeResult;
       setDuration(Date.now() - start);
       setResult(JSON.stringify(res.result ?? res, null, 2));
     } catch (err) {

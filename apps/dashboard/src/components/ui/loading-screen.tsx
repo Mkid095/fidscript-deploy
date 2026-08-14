@@ -1,5 +1,6 @@
 'use client';
 
+import { useMemo } from 'react';
 import { HugeiconsIcon } from '@hugeicons/react';
 import { Loading04Icon } from '@hugeicons/core-free-icons';
 
@@ -57,6 +58,7 @@ interface LoadingCardProps {
 }
 
 export function LoadingCard({ rows = 3 }: LoadingCardProps) {
+  const widths = useMemo(() => Array.from({ length: rows }, (_, i) => 40 + (i * 17) % 50), [rows]);
   return (
     <div className="border border-[var(--rail)] rounded-xl p-4 sm:p-5 space-y-4 animate-pulse">
       {/* Header skeleton */}
@@ -72,7 +74,7 @@ export function LoadingCard({ rows = 3 }: LoadingCardProps) {
       {Array.from({ length: rows }).map((_, i) => (
         <div key={i} className="flex items-center gap-2">
           <div className="w-4 h-4 rounded bg-[var(--rail)]" />
-          <div className="flex-1 h-3 rounded bg-[var(--rail)]" style={{ width: `${60 + Math.random() * 30}%` }} />
+          <div className="flex-1 h-3 rounded bg-[var(--rail)]" style={{ width: `${widths[i]}%` }} />
         </div>
       ))}
     </div>
@@ -85,6 +87,7 @@ interface LoadingTableProps {
 }
 
 export function LoadingTable({ columns, rows = 5 }: LoadingTableProps) {
+  const widths = useMemo(() => Array.from({ length: columns }, (_, i) => 40 + (i * 13) % 50), [columns]);
   return (
     <div className="border border-[var(--rail)] rounded-xl overflow-hidden animate-pulse">
       {/* Header */}
@@ -98,7 +101,7 @@ export function LoadingTable({ columns, rows = 5 }: LoadingTableProps) {
       {Array.from({ length: rows }).map((_, rowIdx) => (
         <div key={rowIdx} className="flex items-center gap-4 px-4 py-3 border-b border-[var(--rail)] last:border-0">
           {Array.from({ length: columns }).map((_, colIdx) => (
-            <div key={colIdx} className="flex-1 h-3 rounded bg-[var(--rail)]" style={{ width: `${40 + Math.random() * 50}%` }} />
+            <div key={colIdx} className="flex-1 h-3 rounded bg-[var(--rail)]" style={{ width: `${widths[colIdx]}%` }} />
           ))}
         </div>
       ))}

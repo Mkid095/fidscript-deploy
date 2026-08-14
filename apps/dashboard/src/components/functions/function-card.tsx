@@ -90,6 +90,7 @@ export function FunctionCard({ fn, projectId, onDeleted, onDelete }: FunctionCar
           variant="danger"
           onConfirm={handleDelete}
           onClose={() => setShowDelete(false)}
+          loading={deleting}
         />
       )}
     </>
