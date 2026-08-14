@@ -22,18 +22,6 @@ interface QueueStats {
   jsDepth: number;
 }
 
-const TYPE_ICONS: Record<string, typeof Share01Icon> = {
-  stream:    Share01Icon,
-  queue:     Database01Icon,
-  workqueue: Share01Icon,
-};
-
-const TYPE_LABELS: Record<string, string> = {
-  stream:    'NATS JetStream',
-  queue:     'Redis Queue',
-  workqueue: 'Work Queue',
-};
-
 interface QueueCardProps {
   queue: Queue;
   stats?: QueueStats;
@@ -41,11 +29,15 @@ interface QueueCardProps {
   onDelete: (queue: Queue) => void;
 }
 
+const QUEUE_TYPE_CONFIG: Record<string, { icon: typeof Share01Icon; label: string }> = {
+  stream:    { icon: Share01Icon, label: 'NATS JetStream' },
+  queue:     { icon: Database01Icon, label: 'Redis Queue' },
+  workqueue: { icon: Share01Icon, label: 'Work Queue' },
+};
+
 export function QueueCard({ queue, stats, projectId, onDelete }: QueueCardProps) {
   const router = useRouter();
-
-  const typeIcon = TYPE_ICONS[queue.type] ?? Share01Icon;
-  const typeLabel = TYPE_LABELS[queue.type] ?? queue.type;
+  const typeConfig = QUEUE_TYPE_CONFIG[queue.type] ?? { icon: Share01Icon, label: queue.type };
   const isPaused = queue.status === 'paused';
   const hasPending = (stats?.pending ?? 0) > 0;
 
@@ -62,7 +54,7 @@ export function QueueCard({ queue, stats, projectId, onDelete }: QueueCardProps)
           <div className="flex items-start justify-between gap-4">
             <div className="flex items-start gap-3 min-w-0 flex-1">
               <div className="w-9 h-9 rounded-lg bg-[var(--rail)] flex items-center justify-center flex-shrink-0 mt-0.5">
-                <HugeiconsIcon icon={typeIcon} size={15} className="text-[var(--text-dim)]" />
+                <HugeiconsIcon icon={typeConfig.icon} size={15} className="text-[var(--text-dim)]" />
               </div>
               <div className="min-w-0 flex-1">
                 <div className="flex items-center gap-2 flex-wrap mb-1">
@@ -82,7 +74,7 @@ export function QueueCard({ queue, stats, projectId, onDelete }: QueueCardProps)
                 <div className="flex items-center gap-3 text-[10px] text-[var(--text-dim)] mb-2">
                   <span className="flex items-center gap-1">
                     <HugeiconsIcon icon={Share01Icon} size={10} />
-                    {typeLabel}
+                    {typeConfig.label}
                   </span>
                   <span>·</span>
                   <span>ID: {queue.id}</span>
@@ -140,7 +132,6 @@ export function QueueCard({ queue, stats, projectId, onDelete }: QueueCardProps)
         </Card>
       </button>
 
-      {/* Delete button */}
       <button
         onClick={(e) => { e.stopPropagation(); onDelete(queue); }}
         className="absolute top-3 right-3 p-1.5 rounded-lg text-[var(--text-dim)] hover:text-[var(--danger)] hover:bg-[var(--danger)]/10 opacity-0 group-hover:opacity-100 transition-all"

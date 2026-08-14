@@ -16,6 +16,7 @@ interface UseQueueDetailHandlersOptions {
   setActiveTab: React.Dispatch<React.SetStateAction<MessageTab>>;
   setConsuming: React.Dispatch<React.SetStateAction<boolean>>;
   setActionLoading: React.Dispatch<React.SetStateAction<boolean>>;
+  handleDeadLetter: (reason?: string) => Promise<void>;
 }
 
 export function useQueueDetailHandlers({
@@ -93,6 +94,22 @@ export function useQueueDetailHandlers({
     }
   }, [getSdk, projectId, queueId, selected, setActionLoading, setMessages, setSelected, loadQueue]);
 
+  const handleDeadLetter = useCallback(async (reason?: string) => {
+    if (!projectId || selected.size === 0) return;
+    const sdk = getSdk();
+    setActionLoading(true);
+    try {
+      await sdk.queues.deadLetter(projectId, queueId, Array.from(selected), reason);
+      setMessages((prev) => prev.filter((m) => !selected.has(m.id)));
+      setSelected(new Set());
+      await loadQueue();
+    } catch (err) {
+      console.error('Failed to dead-letter messages', err);
+    } finally {
+      setActionLoading(false);
+    }
+  }, [getSdk, projectId, queueId, selected, setActionLoading, setMessages, setSelected, loadQueue]);
+
   const toggleSelect = useCallback((id: string) => {
     setSelected((prev) => {
       const next = new Set(prev);
@@ -107,5 +124,5 @@ export function useQueueDetailHandlers({
     );
   }, [setSelected]);
 
-  return { handleTabChange, handleConsume, handleAck, handleRetry, toggleSelect, toggleSelectAll };
+  return { handleTabChange, handleConsume, handleAck, handleRetry, handleDeadLetter, toggleSelect, toggleSelectAll };
 }

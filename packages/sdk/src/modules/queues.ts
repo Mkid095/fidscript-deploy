@@ -78,6 +78,18 @@ export class QueuesModule {
     return this.client.post(`/api/v1/projects/${projectId}/queues/${queueId}/retry`, { messageIds });
   }
 
+  async deadLetter(
+    projectId: string,
+    queueId: string,
+    messageIds: string[],
+    reason?: string,
+  ) {
+    return this.client.post<{ moved: number; dlqId: string }>(
+      `/api/v1/projects/${projectId}/queues/${queueId}/dead-letter`,
+      { messageIds, reason },
+    );
+  }
+
   async getMessages(projectId: string, queueId: string, opts?: { status?: string; limit?: number; cursor?: string }) {
     const res = await this.client.get<{ messages: QueueMessage[]; nextCursor: string | null }>(
       `/api/v1/projects/${projectId}/queues/${queueId}/messages`,
