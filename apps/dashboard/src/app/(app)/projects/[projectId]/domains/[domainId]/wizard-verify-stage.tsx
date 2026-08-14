@@ -3,14 +3,15 @@
 import { useEffect, useState } from 'react';
 import type { DomainHealth } from '@fidscript-deploy/sdk';
 import { Button, Card, Toast } from '@fidscript/ui';
+import { useAuth } from '@/contexts/auth-context';
 
 interface Props {
   projectId: string;
   domainId: string;
-  getSdk: () => { domains: { getHealth: (p: string, d: string) => Promise<DomainHealth | null>; verify: (d: string) => Promise<unknown>; triggerHealthCheck: (p: string, d: string) => Promise<{ status: string; message: string }> } };
 }
 
-export function WizardVerifyStage({ projectId, domainId, getSdk }: Props) {
+export function WizardVerifyStage({ projectId, domainId }: Props) {
+  const { getSdk } = useAuth();
   const [verifying, setVerifying] = useState(false);
   const [health, setHealth] = useState<DomainHealth | null>(null);
   const [polling, setPolling] = useState(false);
@@ -19,7 +20,7 @@ export function WizardVerifyStage({ projectId, domainId, getSdk }: Props) {
   async function handleVerify() {
     setVerifying(true);
     try {
-      await getSdk().domains.verify(domainId);
+      await getSdk().domains.verify(projectId, domainId);
       setToast({ message: 'Verification started — checking DNS propagation…', type: 'success' });
       startPoll();
     } catch (err) {
