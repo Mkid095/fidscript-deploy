@@ -1,3 +1,5 @@
+import { useMemo } from 'react';
+
 interface DataGridBodyProps {
   columns: string[];
   primaryKey: string;
@@ -5,6 +7,14 @@ interface DataGridBodyProps {
   selectedIds: Set<unknown>;
   onToggleSelect: (id: unknown) => void;
   onEdit: (row: Record<string, unknown>) => void;
+}
+
+function CellContent({ value }: { value: unknown }) {
+  return useMemo(() => {
+    if (value === null) return <span className="text-[var(--text-dim)] italic">NULL</span>;
+    if (typeof value === 'object') return <span className="font-mono text-[var(--text-muted)]">{JSON.stringify(value)}</span>;
+    return String(value);
+  }, [value]);
 }
 
 export function DataGridBody({
@@ -31,10 +41,7 @@ export function DataGridBody({
               className="px-3 py-1.5 font-mono text-[var(--text-muted)] max-w-48 truncate"
               title={String(row[c] ?? 'NULL')}
             >
-              {row[c] === null
-                ? <span className="text-[var(--text-dim)] italic">NULL</span>
-                : typeof row[c] === 'object' ? JSON.stringify(row[c])
-                : String(row[c])}
+              <CellContent value={row[c]} />
             </td>
           ))}
           <td className="px-3 py-1.5">

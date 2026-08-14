@@ -9,16 +9,17 @@ interface ConfirmDialogProps {
   title: string;
   message: string;
   confirmLabel: string;
+  confirmWord?: string; // word the user must type for danger-variant confirmation
   variant: 'danger' | 'warning';
   onConfirm: () => void;
   onClose: () => void;
 }
 
-export function ConfirmDialog({ title, message, confirmLabel, variant, onConfirm, onClose }: ConfirmDialogProps) {
+export function ConfirmDialog({ title, message, confirmLabel, confirmWord = 'delete', variant, onConfirm, onClose }: ConfirmDialogProps) {
   const [confirmText, setConfirmText] = useState('');
 
   const isDanger = variant === 'danger';
-  const isConfirmed = isDanger ? confirmText === 'delete' : true;
+  const isConfirmed = isDanger ? confirmText === confirmWord : true;
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
@@ -26,7 +27,7 @@ export function ConfirmDialog({ title, message, confirmLabel, variant, onConfirm
       <div className="relative bg-[var(--surface)] border border-[var(--rail)] rounded-2xl shadow-2xl w-full max-w-md p-6 space-y-4">
         <DialogHeader title={title} message={message} variant={variant} />
         {isDanger && (
-          <DangerConfirmInput confirmText={confirmText} onChange={setConfirmText} />
+          <DangerConfirmInput confirmWord={confirmWord} confirmText={confirmText} onChange={setConfirmText} />
         )}
         <DialogActions
           variant={variant}
@@ -61,12 +62,12 @@ function DialogHeader({ title, message, variant }: { title: string; message: str
   );
 }
 
-function DangerConfirmInput({ confirmText, onChange }: { confirmText: string; onChange: (v: string) => void }) {
+function DangerConfirmInput({ confirmWord, confirmText, onChange }: { confirmWord: string; confirmText: string; onChange: (v: string) => void }) {
   return (
     <input
       value={confirmText}
       onChange={e => onChange(e.target.value)}
-      placeholder='Type "delete" to confirm'
+      placeholder={`Type "${confirmWord}" to confirm`}
       className="w-full px-3 py-2.5 rounded-lg bg-[var(--surface-2)] border border-[var(--rail)] text-sm text-[var(--text)] placeholder:text-[var(--text-dim)] focus:outline-none focus:border-[var(--danger)] transition-colors"
       autoFocus
     />

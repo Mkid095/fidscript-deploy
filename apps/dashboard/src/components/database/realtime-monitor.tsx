@@ -7,17 +7,33 @@ import { HugeiconsIcon } from '@hugeicons/react';
 import { PodcastIcon, BoltIcon } from '@hugeicons/core-free-icons';
 import { useRealtimeMonitorSubscribe } from './use-realtime-monitor-subscribe';
 
+const EVENT_COLOR: Record<string, string> = {
+  INSERT: 'text-[var(--success)]', UPDATE: 'text-[var(--info)]', DELETE: 'text-[var(--danger)]',
+};
+const EVENT_BG: Record<string, string> = {
+  INSERT: 'bg-[var(--success)]/10', UPDATE: 'bg-[var(--info)]/10', DELETE: 'bg-[var(--danger)]/10',
+};
+
 export function RealtimeMonitor() {
   const { getSdk } = useAuth();
   const { databaseId, realtimeTables, refreshRealtimeTables } = useDatabase();
   const [subscribedTables, setSubscribedTables] = useState<Set<string>>(new Set());
-  const [realtimeEvents, setRealtimeEvents] = useState<Array<{
-    table: string; eventType: string; old: Record<string, unknown>; new: Record<string, unknown>; timestamp: string
-  }>>([]);
+  const [realtimeEvents, setRealtimeEvents] = useState<Array<{table: string; eventType: string; old: Record<string, unknown>; new: Record<string, unknown>; timestamp: string}>>([]);
   const [autoScroll, setAutoScroll] = useState(true);
   const bottomRef = useRef<HTMLDivElement>(null);
-
+  const tableRef = useRef<string>('');
   const { subscribe, unsubscribe, unsubscribeAll } = useRealtimeMonitorSubscribe(databaseId, getSdk);
+
+  // Stable callback — reads table from ref (written before subscribe call)
+  const handleEvent = useCallback((e: unknown) => {
+    setRealtimeEvents(prev => [{
+      table: tableRef.current,
+      eventType: (e as {eventType: string}).eventType,
+      old: ((e as {old?: Record<string, unknown>}).old ?? {}) as Record<string, unknown>,
+      new: ((e as {new?: Record<string, unknown>}).new ?? {}) as Record<string, unknown>,
+      timestamp: (e as {timestamp?: string}).timestamp ?? new Date().toISOString(),
+    }, ...prev].slice(0, 200));
+  }, []);
 
   // Subscribe/unsubscribe a table
   const toggleTable = useCallback((table: string) => {
@@ -26,15 +42,11 @@ export function RealtimeMonitor() {
       unsubscribe(table);
       setSubscribedTables(prev => { const n = new Set(prev); n.delete(table); return n; });
     } else {
-      subscribe(table, (e) => {
-        setRealtimeEvents(prev => [
-          { table, eventType: e.eventType, old: (e.old ?? {}) as Record<string, unknown>, new: (e.new ?? {}) as Record<string, unknown>, timestamp: e.timestamp ?? new Date().toISOString() },
-          ...prev,
-        ].slice(0, 200));
-      });
+      tableRef.current = table;
+      subscribe(table, handleEvent);
       setSubscribedTables(prev => new Set(prev).add(table));
     }
-  }, [databaseId, subscribedTables, subscribe, unsubscribe]);
+  }, [databaseId, subscribedTables, subscribe, unsubscribe, handleEvent]);
 
   // Auto-scroll
   useEffect(() => {
@@ -47,17 +59,6 @@ export function RealtimeMonitor() {
   useEffect(() => {
     return () => { unsubscribeAll(); };
   }, [unsubscribeAll]);
-
-  const eventColor: Record<string, string> = {
-    INSERT: 'text-[var(--success)]',
-    UPDATE: 'text-[var(--info)]',
-    DELETE: 'text-[var(--danger)]',
-  };
-  const eventBg: Record<string, string> = {
-    INSERT: 'bg-[var(--success)]/10',
-    UPDATE: 'bg-[var(--info)]/10',
-    DELETE: 'bg-[var(--danger)]/10',
-  };
 
   return (
     <div className="flex h-full min-h-0">
@@ -122,9 +123,9 @@ export function RealtimeMonitor() {
             </div>
           ) : (
             realtimeEvents.map((event, i) => (
-              <div key={i} className={`flex flex-col gap-1 px-3 py-2 rounded border border-[var(--rail)] ${eventBg[event.eventType] ?? ''}`}>
+              <div key={i} className={`flex flex-col gap-1 px-3 py-2 rounded border border-[var(--rail)] ${EVENT_BG[event.eventType] ?? ''}`}>
                 <div className="flex items-center gap-2">
-                  <span className={`text-[10px] font-bold font-mono px-1.5 py-0.5 rounded ${eventBg[event.eventType] ?? ''} ${eventColor[event.eventType] ?? ''}`}>
+                  <span className={`text-[10px] font-bold font-mono px-1.5 py-0.5 rounded ${EVENT_BG[event.eventType] ?? ''} ${EVENT_COLOR[event.eventType] ?? ''}`}>
                     {event.eventType}
                   </span>
                   <span className="font-mono text-xs text-[var(--text-muted)]">{event.table}</span>
