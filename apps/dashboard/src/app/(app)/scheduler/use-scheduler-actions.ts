@@ -28,5 +28,11 @@ export function useSchedulerActions(
     await sdk.cron.trigger(projectId, jobId);
   }, [sdk, projectId]);
 
-  return { handleCreate, handleToggle, handleTrigger };
+  const handleDelete = useCallback(async (jobId: string) => {
+    if (!projectId) return;
+    await sdk.cron.delete(projectId, jobId);
+    setJobs(prev => prev.filter(j => j.id !== jobId));
+  }, [sdk, projectId, setJobs]);
+
+  return { handleCreate, handleToggle, handleTrigger, handleDelete };
 }

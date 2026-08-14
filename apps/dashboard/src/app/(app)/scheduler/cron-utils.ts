@@ -1,5 +1,30 @@
 const DOW_LABELS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
+export function formatNextRun(ts: string | undefined | null): string {
+  if (!ts) return 'Not scheduled';
+  try {
+    const d = new Date(ts);
+    const now = Date.now();
+    const diff = d.getTime() - now;
+    if (diff < 0) return 'Overdue';
+    if (diff < 60_000) return 'Less than a minute';
+    if (diff < 3_600_000) return `${Math.floor(diff / 60_000)} min`;
+    if (diff < 86_400_000) return `${Math.floor(diff / 3_600_000)} hr`;
+    return d.toLocaleDateString() + ' ' + d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+  } catch { return '—'; }
+}
+
+export function formatRelative(ts: string | undefined | null): string {
+  if (!ts) return 'Never';
+  try {
+    const diff = Date.now() - new Date(ts).getTime();
+    if (diff < 60_000) return 'Just now';
+    if (diff < 3_600_000) return `${Math.floor(diff / 60_000)}m ago`;
+    if (diff < 86_400_000) return `${Math.floor(diff / 3_600_000)}h ago`;
+    return `${Math.floor(diff / 86_400_000)}d ago`;
+  } catch { return '—'; }
+}
+
 export function describeCron(expr: string): string {
   const parts = expr.trim().split(/\s+/);
   if (parts.length < 5) return expr;

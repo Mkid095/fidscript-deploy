@@ -5,6 +5,7 @@ import { HugeiconsIcon } from '@hugeicons/react';
 import { ArrowRight01Icon, AlertCircleIcon } from '@hugeicons/core-free-icons';
 import type { CronJob } from '@/types';
 import { Sparkline } from './job-stats';
+import { formatNextRun, formatRelative } from './cron-utils';
 
 interface JobCardProps {
   job: CronJob;
@@ -17,35 +18,21 @@ interface JobCardProps {
   };
   onToggle: () => void;
   onTrigger: () => void;
+  onDelete: () => void;
+  deleting?: boolean;
 }
 
-function formatNextRun(ts: string | undefined | null): string {
-  if (!ts) return 'Not scheduled';
-  try {
-    const d = new Date(ts);
-    const now = Date.now();
-    const diff = d.getTime() - now;
-    if (diff < 0) return 'Overdue';
-    if (diff < 60_000) return 'Less than a minute';
-    if (diff < 3_600_000) return `${Math.floor(diff / 60_000)} min`;
-    if (diff < 86_400_000) return `${Math.floor(diff / 3_600_000)} hr`;
-    return d.toLocaleDateString() + ' ' + d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-  } catch { return '—'; }
-}
-
-function formatRelative(ts: string | undefined | null): string {
-  if (!ts) return 'Never';
-  try {
-    const diff = Date.now() - new Date(ts).getTime();
-    if (diff < 60_000) return 'Just now';
-    if (diff < 3_600_000) return `${Math.floor(diff / 60_000)}m ago`;
-    if (diff < 86_400_000) return `${Math.floor(diff / 3_600_000)}h ago`;
-    return `${Math.floor(diff / 86_400_000)}d ago`;
-  } catch { return '—'; }
-}
-
-export function JobCard({ job, selectedProjectId, toggling, stats, onToggle, onTrigger }: JobCardProps) {
+export function JobCard({ job, selectedProjectId, toggling, stats, onToggle, onTrigger, onDelete, deleting }: JobCardProps) {
   const router = useRouter();
+
+  const stateLabel: Record<string, string> = {
+    idling: 'Idle',
+    scheduled: 'Scheduled',
+    running: 'Running',
+    completed: 'Done',
+    failed: 'Failed',
+    dead: 'Dead',
+  };
 
   return (
     <div className="group rounded-xl border border-[var(--rail)] bg-[var(--surface-2)] hover:border-[var(--accent)]/40 transition-all duration-150 overflow-hidden">
@@ -67,7 +54,7 @@ export function JobCard({ job, selectedProjectId, toggling, stats, onToggle, onT
               ? 'bg-[var(--success)]/10 text-[var(--success)] border-[var(--success)]/20'
               : 'bg-[var(--rail)] text-[var(--text-muted)] border-[var(--rail-light)]'
           }`}>
-            {job.enabled ? 'Active' : 'Paused'}
+            {job.enabled ? 'Active' : 'Paused'}{job.state && job.state !== 'idling' ? ` · ${stateLabel[job.state] ?? job.state}` : ''}
           </span>
         </div>
 
@@ -97,14 +84,19 @@ export function JobCard({ job, selectedProjectId, toggling, stats, onToggle, onT
           {stats && stats.sparkline.length > 0 && (
             <Sparkline sparkline={stats.sparkline} />
           )}
-          <div className="flex items-center gap-1.5">
+          <div className="flex items-center gap-1.5 min-w-0">
             <HugeiconsIcon
-              icon={job.targetType === 'function' ? ArrowRight01Icon : AlertCircleIcon}
+              icon={job.actionType === 'function' ? ArrowRight01Icon : AlertCircleIcon}
               size={11}
               className="text-[var(--text-dim)] flex-shrink-0"
             />
             <p className="text-[10px] text-[var(--text-dim)] truncate font-mono">
-              {job.targetType === 'function' ? `fn:${job.functionId}` : (job.endpoint ?? '—')}
+              {job.actionType === 'function' && job.functionId ? `fn:${job.functionId}`
+                : job.actionType === 'http' && job.endpoint ? job.endpoint
+                : job.actionType === 'email' && job.emailConfig?.to ? `to: ${job.emailConfig.to}`
+                : job.actionType === 'queue' && job.queueConfig?.queueId ? `queue:${job.queueConfig.queueId}`
+                : job.functionId ? `fn:${job.functionId}`
+                : job.endpoint ?? '—'}
             </p>
           </div>
         </div>
@@ -135,6 +127,15 @@ export function JobCard({ job, selectedProjectId, toggling, stats, onToggle, onT
           }`}
         >
           {toggling ? '…' : job.enabled ? 'Pause' : 'Enable'}
+        </button>
+        <div className="w-px h-3 bg-[var(--rail)]" />
+        <button
+          onClick={e => { e.stopPropagation(); onDelete(); }}
+          disabled={deleting}
+          className="flex-1 text-[10px] text-[var(--danger)] hover:text-[var(--danger)]/80 py-1 text-center transition-colors disabled:opacity-50"
+          title="Delete job"
+        >
+          {deleting ? '…' : 'Delete'}
         </button>
         <div className="w-px h-3 bg-[var(--rail)]" />
         <button

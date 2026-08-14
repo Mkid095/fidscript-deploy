@@ -12,6 +12,7 @@ interface JobListContentProps {
   error: string | null;
   selectedProjectId: string;
   togglingId: string | null;
+  deletingId: string | null;
   jobStats: Record<string, {
     total: number; completed: number; failed: number;
     successRate: number | null; avgDurationMs: number | null;
@@ -19,6 +20,7 @@ interface JobListContentProps {
   }>;
   onToggle: (job: CronJob) => void;
   onTrigger: (job: CronJob) => void;
+  onDelete: (job: CronJob) => void;
   onNewJob: () => void;
 }
 
@@ -28,9 +30,11 @@ export function JobListContent({
   error,
   selectedProjectId,
   togglingId,
+  deletingId,
   jobStats,
   onToggle,
   onTrigger,
+  onDelete,
   onNewJob,
 }: JobListContentProps) {
   if (loading) {
@@ -75,7 +79,9 @@ export function JobListContent({
           selectedProjectId={selectedProjectId}
           onToggle={() => onToggle(job)}
           onTrigger={() => onTrigger(job)}
+          onDelete={() => onDelete(job)}
           toggling={togglingId === job.id}
+          deleting={deletingId === job.id}
           stats={jobStats[job.id]}
         />
       ))}

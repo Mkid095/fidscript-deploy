@@ -1,5 +1,6 @@
 'use client';
 
+import { useState } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import { Button, Spinner } from '@fidscript/ui';
 import { AlarmClockIcon, CheckmarkCircle02Icon, AlertCircleIcon } from '@hugeicons/core-free-icons';
@@ -10,6 +11,7 @@ import { JobEditModal } from './job-edit-modal';
 import { JobRunsList } from './job-runs-list';
 import { StatCard } from './stat-card';
 import { JobDetailHeader } from './job-detail-header';
+import { JobDeleteConfirm } from './job-delete-confirm';
 
 export default function ProjectSchedulerJobDetailPage() {
   const { getSdk } = useAuth();
@@ -17,15 +19,18 @@ export default function ProjectSchedulerJobDetailPage() {
   const params = useParams();
   const projectId = params.projectId as string;
   const jobId = params.jobId as string;
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
 
   const {
     job, loading, error,
     triggering, showEdit, setShowEdit,
     saving, saveError,
+    deleting, deleteError,
     selectedRun, setSelectedRun,
     runsPage, setRunsPage, hasMoreRuns, recentRuns, successRate, runs,
     form, setForm,
-    handleTrigger, handleSave, populateForm,
+    functions, queues,
+    handleTrigger, handleSave, handleDelete, populateForm,
   } = useJobDetail({ projectId, jobId, getSdk });
 
   if (loading) {
@@ -47,6 +52,13 @@ export default function ProjectSchedulerJobDetailPage() {
     );
   }
 
+  async function confirmDelete() {
+    const deleted = await handleDelete();
+    if (deleted) {
+      router.push(`/projects/${projectId}/scheduler`);
+    }
+  }
+
   return (
     <div className="max-w-5xl mx-auto space-y-6">
       <JobDetailHeader
@@ -57,6 +69,37 @@ export default function ProjectSchedulerJobDetailPage() {
         onEdit={() => { populateForm(job!); setShowEdit(true); }}
         onTrigger={handleTrigger}
       />
+
+      {deleteError && (
+        <div className="bg-[var(--danger)]/10 border border-[var(--danger)]/30 rounded-lg px-4 py-3 text-sm text-[var(--danger)]">
+          {deleteError}
+        </div>
+      )}
+
+      {/* Delete zone */}
+      <div className="flex items-center justify-between rounded-lg border border-[var(--rail)] bg-[var(--surface-2)] px-4 py-3">
+        <div>
+          <p className="text-sm font-medium text-[var(--text)]">Delete this job</p>
+          <p className="text-xs text-[var(--text-muted)]">This action cannot be undone. All execution history will be lost.</p>
+        </div>
+        <Button
+          variant="danger"
+          size="sm"
+          loading={deleting}
+          onClick={() => setShowDeleteConfirm(true)}
+        >
+          Delete job
+        </Button>
+      </div>
+
+      {showDeleteConfirm && (
+        <JobDeleteConfirm
+          job={job}
+          deleting={deleting}
+          onConfirm={confirmDelete}
+          onCancel={() => setShowDeleteConfirm(false)}
+        />
+      )}
 
       {/* Stats grid */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
@@ -82,6 +125,7 @@ export default function ProjectSchedulerJobDetailPage() {
 
       {/* Edit Modal */}
       <JobEditModal
+        isOpen={showEdit}
         job={job}
         saving={saving}
         saveError={saveError}
@@ -89,6 +133,8 @@ export default function ProjectSchedulerJobDetailPage() {
         onClose={() => setShowEdit(false)}
         form={form}
         setForm={setForm}
+        functions={functions}
+        queues={queues}
       />
 
       {/* Run detail modal */}

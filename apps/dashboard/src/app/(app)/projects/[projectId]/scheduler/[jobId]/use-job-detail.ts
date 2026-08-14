@@ -23,12 +23,12 @@ export function useJobDetail({ projectId, jobId, getSdk }: UseJobDetailOptions) 
   const [showEdit, setShowEdit] = useState(false);
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
+  const [deleting, setDeleting] = useState(false);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
   const [runsPage, setRunsPage] = useState(1);
   const [selectedRun, setSelectedRun] = useState<CronJobRun | null>(null);
   const [functions, setFunctions] = useState<Function_[]>([]);
   const [queues, setQueues] = useState<Queue[]>([]);
-  const RUNS_PER_PAGE = 20;
-
   const [form, setForm] = useState<JobEditForm>(EMPTY_EDIT_FORM);
 
   const load = useCallback(async () => {
@@ -114,7 +114,23 @@ export function useJobDetail({ projectId, jobId, getSdk }: UseJobDetailOptions) 
     }
   }, [projectId, jobId, getSdk, form]);
 
-  const recentRuns = runs.slice(0, runsPage * RUNS_PER_PAGE);
+  const handleDelete = useCallback(async (): Promise<boolean> => {
+    if (!projectId || !jobId) return false;
+    setDeleting(true);
+    setDeleteError(null);
+    try {
+      const sdk = getSdk();
+      await sdk.cron.delete(projectId, jobId);
+      return true;
+    } catch (err) {
+      setDeleteError(err instanceof Error ? err.message : 'Failed to delete job');
+      return false;
+    } finally {
+      setDeleting(false);
+    }
+  }, [projectId, jobId, getSdk]);
+
+  const recentRuns = runs.slice(0, runsPage * 20);
   const hasMoreRuns = runs.length > recentRuns.length;
   const successRate = runs.length > 0
     ? Math.round((runs.filter(r => r.status === 'completed').length / runs.length) * 100)
@@ -124,11 +140,12 @@ export function useJobDetail({ projectId, jobId, getSdk }: UseJobDetailOptions) 
     job, runs, simulatedRuns, loading, error,
     triggering, showEdit, setShowEdit,
     saving, saveError,
+    deleting, deleteError,
     selectedRun, setSelectedRun,
     runsPage, setRunsPage, hasMoreRuns, recentRuns, successRate,
     form, setForm,
     functions, queues,
-    handleTrigger, handleSave,
+    handleTrigger, handleSave, handleDelete,
     populateForm,
   };
 }
