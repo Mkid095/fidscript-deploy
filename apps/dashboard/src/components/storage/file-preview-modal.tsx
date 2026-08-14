@@ -19,7 +19,7 @@ interface FilePreviewModalProps {
   url: string | null;
   loading: boolean;
   onClose: () => void;
-  onCopyUrl: (fileId: string, name: string) => void;
+  onCopyUrl: (fileId: string, name: string, key?: string) => void;
   onDelete: (fileId: string, name: string) => void;
 }
 
@@ -49,7 +49,7 @@ export function FilePreviewModal({
           </div>
           <div className="flex items-center gap-1 flex-shrink-0">
             <button
-              onClick={() => onCopyUrl(file.id, file.originalName ?? file.key)}
+              onClick={() => onCopyUrl(file.id, file.originalName ?? file.key, file.key)}
               className="p-1.5 rounded text-[var(--text-dim)] hover:text-[var(--text)] hover:bg-[var(--rail)] transition-colors"
               title="Copy URL"
             >

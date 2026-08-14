@@ -123,11 +123,25 @@ export class StorageModule {
     return this.client.delete(`/api/v1/projects/${projectId}/storage/buckets/${bucketId}/files/${fileId}`);
   }
 
-  async getSignedUrl(projectId: string, bucketId: string, fileId: string, expiresIn = 3600) {
-    const res = await this.client.get<{ url: string }>(
-      `/api/v1/projects/${projectId}/storage/buckets/${bucketId}/files/${fileId}/url`,
-      { expiresIn },
+  /**
+   * Generate a presigned URL for a file key (STOR-07).
+   * The key is the StorageFile.key field returned by listFiles/getFile.
+   */
+  async getPresignedUrl(projectId: string, bucketId: string, key: string, expiresIn = 3600) {
+    const res = await this.client.post<{ url: string }>(
+      `/api/v1/projects/${projectId}/storage/buckets/${bucketId}/presign`,
+      { key, expiresIn },
     );
     return res.url;
+  }
+
+  /**
+   * Get a signed URL for a file by its ID (requires two calls: getFile to resolve key, then presign).
+   * For single-call access, use getPresignedUrl with the file's key instead.
+   * @deprecated Use getPresignedUrl(projectId, bucketId, key, expiresIn) directly when you have the file key.
+   */
+  async getSignedUrl(projectId: string, bucketId: string, fileId: string, expiresIn = 3600) {
+    const file = await this.getFile(projectId, bucketId, fileId);
+    return this.getPresignedUrl(projectId, bucketId, file.key, expiresIn);
   }
 }
