@@ -10,7 +10,7 @@ import { CheckmarkCircle03Icon, AlertCircleIcon } from '@hugeicons/core-free-ico
 export default function DatabaseOverview() {
   const params = useParams<{ projectId: string }>();
   const projectId = params.projectId;
-  const { database, schema, loadingSchema, realtimeTables } = useDatabase();
+  const { database, dbStatus, schema, loadingSchema, realtimeTables } = useDatabase();
   if (!database) {
     return (
       <div className="flex items-center justify-center h-64 text-xs text-[var(--text-dim)]">
@@ -33,14 +33,12 @@ export default function DatabaseOverview() {
             {database.status}
           </span>
           <span>·</span>
-          <span>{database.region}</span>
-          <span>·</span>
-          <span>{database.mode} mode</span>
+          <span>{dbStatus?.region ?? database.environment}</span>
         </p>
       </div>
 
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-        <Stat label="Disk size" value={formatBytes(database.diskSizeMb * 1024 * 1024)} />
+        <Stat label="Disk size" value={formatBytes(database.sizeBytes)} />
         <Stat label="Max conns" value={String(database.maxConnections)} />
         <Stat label="Objects" value={String(schema.length)} />
         <Stat label="Realtime" value={String(realtimeTables.length)} />
@@ -49,15 +47,15 @@ export default function DatabaseOverview() {
       <div className="grid grid-cols-2 gap-3">
         <div className="rounded-lg border border-[var(--rail)] bg-[var(--surface)] p-4">
           <p className="text-[10px] uppercase tracking-wider text-[var(--text-dim)] font-semibold mb-2">Current connections</p>
-          <p className="text-2xl font-mono font-bold text-[var(--text)]">{database.currentConnections}</p>
+          <p className="text-2xl font-mono font-bold text-[var(--text)]">{dbStatus?.currentConnections ?? 0}</p>
           <p className="text-[10px] text-[var(--text-dim)] mt-0.5">of {database.maxConnections} max</p>
         </div>
         <div className="rounded-lg border border-[var(--rail)] bg-[var(--surface)] p-4">
-          <p className="text-[10px] uppercase tracking-wider text-[var(--text-dim)] font-semibold mb-2">Password rotated</p>
+          <p className="text-[10px] uppercase tracking-wider text-[var(--text-dim)] font-semibold mb-2">Uptime</p>
           <p className="text-sm font-mono text-[var(--text)]">
-            {database.passwordLastRotatedAt ? new Date(database.passwordLastRotatedAt).toLocaleDateString() : 'Never'}
+            {dbStatus?.uptimeSeconds ? `${Math.floor(dbStatus.uptimeSeconds / 3600)}h ${Math.floor((dbStatus.uptimeSeconds % 3600) / 60)}m` : '—'}
           </p>
-          <p className="text-[10px] text-[var(--text-dim)] mt-0.5">See Settings to rotate</p>
+          <p className="text-[10px] text-[var(--text-dim)] mt-0.5">See Settings to rotate credentials</p>
         </div>
       </div>
 
@@ -65,9 +63,8 @@ export default function DatabaseOverview() {
         <p className="text-xs font-semibold text-[var(--text-dim)] uppercase tracking-wider mb-2">Quick links</p>
         <div className="flex gap-2 flex-wrap">
           {[
-            { label: 'Explorer',  href: `${base}/explorer` },
+            { label: 'Explorer',   href: `${base}/explorer` },
             { label: 'SQL Editor', href: `${base}/sql` },
-            { label: 'Realtime',  href: `${base}/realtime` },
             { label: 'Backups',   href: `${base}/backups` },
             { label: 'Settings',  href: `${base}/settings` },
           ].map(link => (
