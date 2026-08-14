@@ -5,6 +5,7 @@ import { Spinner } from '@fidscript/ui';
 
 import { LogViewer } from '@/components/deployments/log-viewer';
 import type { FidscriptSDK } from '@fidscript-deploy/sdk';
+import type { PlatformEvent } from '@fidscript-deploy/events';
 
 interface FunctionLogsProps {
   projectId: string;
@@ -64,9 +65,9 @@ export function FunctionLogs({ projectId, functionId, getSdk, inFlight }: Functi
       .connect(() => token, projectId)
       .then(() => {
         unsubRef.current = (rt as {
-          subscribeFunctions: (p: string, cb: (e: unknown) => void) => () => void
-        }).subscribeFunctions(projectId, (event: unknown) => {
-          const et = (event as { type?: string })?.type;
+          subscribeFunctions: (p: string, cb: (e: PlatformEvent) => void) => () => void
+        }).subscribeFunctions(projectId, (event: PlatformEvent) => {
+          const et = event?.type;
           if (et === 'function.deployed' || et === 'function.invoked' || et === 'function.error') {
             loadLogs();
           }
