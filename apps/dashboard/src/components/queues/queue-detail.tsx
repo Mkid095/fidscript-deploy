@@ -44,6 +44,7 @@ export function QueueDetail({ queueId }: { queueId: string }) {
     handleConsume,
     handleAck,
     handleRetry,
+    handleDeadLetter,
     toggleSelect,
     toggleSelectAll,
   } = useQueueDetailHandlers({
@@ -76,6 +77,7 @@ export function QueueDetail({ queueId }: { queueId: string }) {
         onPurge={() => setShowPurge(true)}
         onAck={handleAck}
         onRetry={handleRetry}
+        onDeadLetter={handleDeadLetter}
       />
       <QueueMessagesTable
         messages={messages}

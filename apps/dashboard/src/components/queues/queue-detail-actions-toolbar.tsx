@@ -1,7 +1,7 @@
 'use client';
 
 import { HugeiconsIcon } from '@hugeicons/react';
-import { Share01Icon, Download01Icon, Delete02Icon, CheckmarkCircle01Icon, RefreshIcon } from '@hugeicons/core-free-icons';
+import { Share01Icon, Download01Icon, Delete02Icon, CheckmarkCircle01Icon, RefreshIcon, AlertCircleIcon } from '@hugeicons/core-free-icons';
 import { Button } from '@fidscript/ui';
 
 interface QueueDetailActionsToolbarProps {
@@ -13,6 +13,7 @@ interface QueueDetailActionsToolbarProps {
   onPurge: () => void;
   onAck: () => void;
   onRetry: () => void;
+  onDeadLetter: () => void;
 }
 
 export function QueueDetailActionsToolbar({
@@ -24,6 +25,7 @@ export function QueueDetailActionsToolbar({
   onPurge,
   onAck,
   onRetry,
+  onDeadLetter,
 }: QueueDetailActionsToolbarProps) {
   return (
     <div className="flex items-center justify-between gap-3 flex-wrap">
@@ -51,6 +53,10 @@ export function QueueDetailActionsToolbar({
           <Button size="sm" variant="secondary" onClick={onRetry} disabled={actionLoading} className="gap-1.5">
             <HugeiconsIcon icon={RefreshIcon} size={13} />
             Retry
+          </Button>
+          <Button size="sm" variant="secondary" onClick={onDeadLetter} disabled={actionLoading} className="gap-1.5 text-rose-400 hover:bg-rose-500/10">
+            <HugeiconsIcon icon={AlertCircleIcon} size={13} />
+            Dead Letter
           </Button>
         </div>
       )}
