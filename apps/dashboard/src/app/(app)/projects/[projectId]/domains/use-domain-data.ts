@@ -71,7 +71,7 @@ export function useDomainData(projectId: string, getSdk: () => any) {
     setVerifyingId(domain.id);
     try {
       const sdk = getSdk();
-      const updated = await sdk.domains.verify(domain.id) as Domain;
+      const updated = await sdk.domains.verify(projectId, domain.id) as Domain;
       setDomains(prev => prev.map(d => d.id === updated.id ? updated : d));
       setToast({ message: `Verification complete for ${domain.domain}`, type: 'success' });
     } catch (err) {
@@ -85,7 +85,7 @@ export function useDomainData(projectId: string, getSdk: () => any) {
     if (!confirm(`Remove "${domain.domain}" from this project? This cannot be undone.`)) return;
     try {
       const sdk = getSdk();
-      await sdk.domains.delete(domain.id);
+      await sdk.domains.delete(projectId, domain.id);
       setDomains(prev => prev.filter(d => d.id !== domain.id));
       if (selectedDomain?.id === domain.id) setSelectedDomain(null);
       setToast({ message: `Domain "${domain.domain}" removed`, type: 'success' });

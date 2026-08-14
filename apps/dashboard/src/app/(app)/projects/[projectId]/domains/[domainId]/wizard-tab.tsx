@@ -112,7 +112,7 @@ export default function WizardTab({ projectId, domainId }: Props) {
         />
       )}
       {stage === 'verify' && (
-        <WizardVerifyStage projectId={projectId} domainId={domainId} getSdk={getSdk} />
+        <WizardVerifyStage projectId={projectId} domainId={domainId} />
       )}
       {stage === 'active' && (
         <ActiveStage health={health} onVerify={() => setStage('verify')} onRecords={() => setStage('records')} />

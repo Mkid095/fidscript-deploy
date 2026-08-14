@@ -91,17 +91,17 @@ export class DomainsModule {
     deploymentId?: string,
     type?: DomainType[],
   ) {
-    const payload: Record<string, unknown> = { projectId, name, dnsMode };
+    const payload: Record<string, unknown> = { projectId, domain: name, dnsMode };
     if (deploymentId) payload.deploymentId = deploymentId;
     if (type?.length) payload.type = type;
     return this.client.post<Domain>(`/api/v1/projects/${projectId}/domains`, payload);
   }
 
-  async verify(id: string): Promise<Domain> {
-    return this.client.post<Domain>(`/api/v1/domains/${id}/verify`);
+  async verify(projectId: string, id: string): Promise<Domain> {
+    return this.client.post<Domain>(`/api/v1/projects/${projectId}/domains/${id}/verify`);
   }
 
-  async delete(id: string): Promise<void> {
-    return this.client.delete(`/api/v1/domains/${id}`);
+  async delete(projectId: string, id: string): Promise<void> {
+    return this.client.delete(`/api/v1/projects/${projectId}/domains/${id}`);
   }
 }
