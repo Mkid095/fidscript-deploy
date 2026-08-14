@@ -16,6 +16,8 @@ export default function AlertDetailPage() {
   const params = useParams();
   const searchParams = useSearchParams();
   const ruleId = params.id as string;
+  // projectId from searchParams is the fallback; inside a project shell the hook
+  // will be called with shellProjectId instead.
   const projectId = searchParams.get('project') ?? '';
   const [actionError, setActionError] = useState<string | null>(null);
 

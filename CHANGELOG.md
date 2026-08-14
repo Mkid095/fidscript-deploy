@@ -6,6 +6,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
 ## [Unreleased]
 
+### Added
+- `feat(dashboard): add project-scoped alert detail page — created \`/projects/[projectId]/monitoring/[id]/page.tsx\` to mirror the global \`/monitoring/[id]/page.tsx\` but uses \`useParams\` to get both \`projectId\` and \`ruleId\` directly, eliminating reliance on searchParams. Updated \`useAlertDetail\` hook (\`page-hooks.ts\`) to export the \`AlertEvaluation\` interface, export the hook return type, and add a defensive Array.isArray check for the channels response (SDK can return \`{ channels: [...] }\` or a plain array). Fixed comment on global \`AlertDetailPage\` (\`monitoring/[id]/page.tsx\`) clarifying the searchParams projectId is a fallback when not inside a project shell. All alert detail pages now wire to MON-07 (getAlertRule), MON-10 (getAlerts for firing status), and MON-15 (listNotificationChannels). Files: \`apps/dashboard/src/app/(app)/projects/[projectId]/monitoring/[id]/page.tsx\` (new), \`apps/dashboard/src/app/(app)/monitoring/[id]/page-hooks.ts\`, \`apps/dashboard/src/app/(app)/monitoring/[id]/page.tsx\`.
+
 ### Security
 - `fix(email): close open webhook endpoint when STALWART_WEBHOOK_SECRET is unset (GAP-1)` — `EmailInboundController.verifySignature()` and `EmailEventsController.verifySignature()` both returned `true` when `STALWART_WEBHOOK_SECRET` was unset, making inbound email webhooks fully open to anyone. Both methods now return `false` when the secret is absent (fail-closed). Additionally, `ConfigService.get<string>('STALWART_WEBHOOK_SECRET')` was changed from the generic overload to the typed `get<string>` call, eliminating an implicit `any` cast. `tsc --noEmit` passes. Files: `apps/api/src/modules/email/controllers/email-inbound.controller.ts`, `apps/api/src/modules/email/controllers/email-events.controller.ts`.
 

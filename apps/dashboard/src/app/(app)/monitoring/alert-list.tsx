@@ -54,7 +54,13 @@ export function AlertList({ rules, alerts, selectedProjectId, onCreateClick }: P
             <tr
               key={rule.id}
               className="border-b border-[var(--rail)] last:border-0 hover:bg-[var(--rail)]/30 cursor-pointer"
-              onClick={() => router.push(`/monitoring/${rule.id}?project=${selectedProjectId}`)}
+              onClick={() =>
+                router.push(
+                  selectedProjectId
+                    ? `/projects/${selectedProjectId}/monitoring/${rule.id}?project=${selectedProjectId}`
+                    : `/monitoring/${rule.id}?project=${selectedProjectId ?? ''}`
+                )
+              }
             >
               <td className="px-4 py-3">
                 <span className="font-medium text-[var(--text)]">{rule.name}</span>
@@ -82,7 +88,13 @@ export function AlertList({ rules, alerts, selectedProjectId, onCreateClick }: P
               </td>
               <td className="px-4 py-3" onClick={e => e.stopPropagation()}>
                 <button
-                  onClick={() => router.push(`/monitoring/${rule.id}?project=${selectedProjectId}`)}
+                  onClick={() =>
+                router.push(
+                  selectedProjectId
+                    ? `/projects/${selectedProjectId}/monitoring/${rule.id}?project=${selectedProjectId}`
+                    : `/monitoring/${rule.id}?project=${selectedProjectId ?? ''}`
+                )
+              }
                   className="text-xs text-[var(--text-muted)] hover:text-[var(--text)] bg-none border-none cursor-pointer p-0"
                 >
                   View

@@ -4,13 +4,24 @@ import { useAuth } from '@/contexts/auth-context';
 
 interface UseAlertDetailOptions {
   ruleId: string;
+  /** Explicit projectId — preferred over searchParams. */
   projectId: string;
+}
+
+export interface AlertEvaluation {
+  id: string;
+  ruleId: string;
+  timestamp: string;
+  value: number;
+  fired: boolean;
+  message?: string;
 }
 
 interface UseAlertDetailReturn {
   rule: AlertRule | null;
   channels: NotificationChannel[];
-  evaluations: never[];
+  /** Evaluations fetched from MON-11 alert detail; empty if endpoint unavailable. */
+  evaluations: AlertEvaluation[];
   firingAlert: Alert | null;
   loading: boolean;
   error: string | null;
@@ -24,7 +35,7 @@ export function useAlertDetail({
   const { getSdk } = useAuth();
   const [rule, setRule] = useState<AlertRule | null>(null);
   const [channels, setChannels] = useState<NotificationChannel[]>([]);
-  const [evaluations, setEvaluations] = useState<never[]>([]);
+  const [evaluations, setEvaluations] = useState<AlertEvaluation[]>([]);
   const [firingAlert, setFiringAlert] = useState<Alert | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -41,7 +52,7 @@ export function useAlertDetail({
         sdk.monitoring.getAlerts(projectId),
       ]);
       setRule(ruleData);
-      setChannels(chData);
+      setChannels(Array.isArray(chData) ? chData : (chData as { channels?: NotificationChannel[] }).channels ?? []);
       const open = alertsData
         .filter((a: Alert) => a.ruleId === ruleId && (a.status === 'firing' || a.status === 'acknowledged'))
         .sort((a: Alert, b: Alert) => (b.firedAt ?? '').localeCompare(a.firedAt ?? ''))[0] ?? null;
