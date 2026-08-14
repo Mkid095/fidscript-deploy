@@ -7,10 +7,13 @@ import {
   Query,
   Body,
   UseGuards,
+  UseInterceptors,
+  UploadedFile,
   Req,
   HttpCode,
   HttpStatus,
 } from '@nestjs/common';
+import { FileInterceptor } from '@nestjs/platform-express';
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { ApiKeyOrJwtGuard } from '@/modules/auth/guards/api-key-or-jwt.guard';
 import { ProjectMemberGuard } from '@/modules/auth/guards/project-member.guard';
@@ -82,24 +85,23 @@ export class StorageController {
 
   @Post('buckets/:bucketId/files')
   @HttpCode(HttpStatus.OK)
+  @UseInterceptors(FileInterceptor('file'))
   @ApiOperation({ summary: 'Upload a file (multipart/form-data)' })
   async uploadFile(
     @Req() req: Request,
     @Param('projectId') projectId: string,
     @Param('bucketId') bucketId: string,
+    @UploadedFile() file: Express.Multer.File,
     @Body() body: { key?: string; originalName?: string; mimeType?: string },
   ) {
     const user = req.user as { userId: string };
-    // Body contains base64-encoded file data: { data: "<base64>", key: "...", originalName: "...", mimeType: "..." }
-    const payload = body as { data?: string; key?: string; originalName?: string; mimeType?: string };
-    const data = Buffer.from(payload.data || '', 'base64');
-    const key = payload.key || `file-${Date.now()}`;
+    const key = body.key || `file-${Date.now()}`;
     return this.storageService.uploadFile(
       user.userId, projectId, bucketId,
       key,
-      body.originalName || key,
-      body.mimeType || 'application/octet-stream',
-      data,
+      body.originalName || file.originalname,
+      body.mimeType || file.mimetype,
+      file.buffer,
     );
   }
 

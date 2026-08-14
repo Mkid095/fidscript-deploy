@@ -16,7 +16,7 @@ interface FileGridProps {
   previewUrls: Record<string, string>;
   deletingId: string | null;
   onPreview: (file: StorageFile) => void;
-  onCopyUrl: (fileId: string, name: string) => void;
+  onCopyUrl: (fileId: string, name: string, key?: string) => void;
   onDelete: (fileId: string, name: string) => void;
 }
 
@@ -79,7 +79,7 @@ export function FileGrid({
                 </button>
               )}
               <button
-                onClick={(e) => { e.stopPropagation(); onCopyUrl(file.id, file.originalName ?? file.key); }}
+                onClick={(e) => { e.stopPropagation(); onCopyUrl(file.id, file.originalName ?? file.key, file.key); }}
                 className="w-6 h-6 rounded bg-black/60 flex items-center justify-center hover:bg-black/80 transition-colors"
                 title="Copy URL"
               >

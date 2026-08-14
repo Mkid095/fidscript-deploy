@@ -41,9 +41,11 @@ export function useBucketFileActions({
     }
   }, [projectId, bucketId, getSdk, onFilesChange, onBanner, confirmFn]);
 
-  const handleCopyUrl = useCallback(async (fileId: string, fileName: string) => {
+  const handleCopyUrl = useCallback(async (fileId: string, fileName: string, key?: string) => {
     try {
-      const url = await getSdk().storage.getSignedUrl(projectId, bucketId, fileId);
+      const url = key
+        ? await getSdk().storage.getPresignedUrl(projectId, bucketId, key)
+        : await getSdk().storage.getSignedUrl(projectId, bucketId, fileId);
       if (navigator.clipboard && window.isSecureContext) {
         await navigator.clipboard.writeText(url);
       } else {

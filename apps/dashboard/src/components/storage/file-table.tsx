@@ -13,7 +13,7 @@ interface FileTableProps {
   files: StorageFile[];
   deletingId: string | null;
   onPreview: (file: StorageFile) => void;
-  onCopyUrl: (fileId: string, name: string) => void;
+  onCopyUrl: (fileId: string, name: string, key?: string) => void;
   onDelete: (fileId: string, name: string) => void;
 }
 
@@ -75,7 +75,7 @@ export function FileTable({ files, deletingId, onPreview, onCopyUrl, onDelete }:
                       </button>
                     )}
                     <button
-                      onClick={() => onCopyUrl(file.id, file.originalName ?? file.key)}
+                      onClick={() => onCopyUrl(file.id, file.originalName ?? file.key, file.key)}
                       className="p-1.5 rounded text-[var(--text-dim)] hover:text-[var(--text)] hover:bg-[var(--rail)] transition-colors"
                       title="Copy URL"
                     >

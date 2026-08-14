@@ -16,7 +16,7 @@ interface BucketContentProps {
   viewMode: ViewMode;
   prefix: string;
   onPreview: (file: StorageFile) => void;
-  onCopyUrl: (fileId: string, fileName: string) => void;
+  onCopyUrl: (fileId: string, fileName: string, key?: string) => void;
   onDelete: (fileId: string, fileName: string) => void;
   onUploadInputChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
 }

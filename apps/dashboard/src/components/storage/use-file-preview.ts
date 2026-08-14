@@ -21,7 +21,7 @@ export function useFilePreview({ projectId, bucketId, getSdk, onPreviewUrlCached
     setUrl(null);
     setLoading(true);
     try {
-      const signed = await getSdk().storage.getSignedUrl(projectId, bucketId, next.id);
+      const signed = await getSdk().storage.getPresignedUrl(projectId, bucketId, next.key);
       setUrl(signed);
       if (next.mimeType?.startsWith('image/') && onPreviewUrlCached) {
         onPreviewUrlCached(next.id, signed);

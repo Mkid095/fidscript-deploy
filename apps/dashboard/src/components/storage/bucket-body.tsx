@@ -24,7 +24,7 @@ interface BucketBodyProps {
   onOpenNewFolderModal: () => void;
   onUploadInputChange: () => void;
   onPreview: (file: StorageFile) => void;
-  onCopyUrl: (fileId: string, fileName: string) => void;
+  onCopyUrl: (fileId: string, fileName: string, key?: string) => void;
   onDelete: (fileId: string, fileName: string) => void;
   onDrop: (e: React.DragEvent) => void;
   onPreviewClose: () => void;
