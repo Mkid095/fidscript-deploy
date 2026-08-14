@@ -9,14 +9,14 @@ import { BackupActions } from './backup-actions';
 import type { BackupRecord } from '@/types';
 
 const statusColor: Record<string, string> = {
-  completed:   'text-emerald-400',
-  in_progress: 'text-yellow-400',
-  failed:      'text-rose-400',
+  completed:   'text-[var(--success)]',
+  in_progress: 'text-[var(--warning)]',
+  failed:      'text-[var(--danger)]',
 };
 const statusBg: Record<string, string> = {
-  completed:   'bg-emerald-500/10',
-  in_progress: 'bg-yellow-500/10',
-  failed:      'bg-rose-500/10',
+  completed:   'bg-[var(--success)]/10',
+  in_progress: 'bg-[var(--warning)]/10',
+  failed:      'bg-[var(--danger)]/10',
 };
 
 interface BackupsTableProps {
