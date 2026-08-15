@@ -21,8 +21,26 @@ import type { DatabasesHost } from './databases-host';
 import { applyBackupsMethods } from './databases-backups';
 import { DatabaseProviderWithMigrations } from './databases-migrations';
 
-export class DatabasesModule {
+export class DatabasesModule implements DatabasesHost {
   readonly client: FidscriptClient;
+
+  // Backups (mixed in)
+  backup!: (databaseId: string) => Promise<{ backupId: string }>;
+  listBackups!: (databaseId: string) => Promise<unknown[]>;
+  restore!: (databaseId: string, backupId: string) => Promise<unknown>;
+
+  // Credentials (mixed in)
+  rotatePassword!: <T = unknown>(databaseId: string) => Promise<T>;
+  getConnection!: (databaseId: string, poolOnly?: boolean) => Promise<{
+    host: string; port: number; database: string; username: string; connectionString: string;
+    pgbouncerHost?: string; pgbouncerPort?: number;
+  }>;
+  updateSsl!: (databaseId: string, ssl: boolean) => Promise<unknown>;
+
+  // Backup scheduling (mixed in)
+  getBackupSchedule!: (databaseId: string) => Promise<import('./databases-types').BackupSchedule | null>;
+  updateBackupSchedule!: (databaseId: string, schedule: Partial<import('./databases-types').BackupSchedule>) => Promise<import('./databases-types').BackupSchedule>;
+  getBackupSettings!: (databaseId: string) => Promise<import('./databases-types').BackupSettings>;
 
   constructor(client: FidscriptClient) {
     this.client = client;

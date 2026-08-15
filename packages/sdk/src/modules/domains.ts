@@ -54,8 +54,59 @@ export type {
   WizardRecordStatus,
 } from './domains-types-wizard';
 
-export class DomainsModule {
+export class DomainsModule implements DomainsHost {
   readonly client: FidscriptClient;
+
+  // DNS basics (applyDnsMethods)
+  getInstructions!: (projectId: string, domainId: string) => Promise<{ instructions: Array<{ type: string; name: string; value: string; ttl?: number; notes?: string }> }>;
+  detectDnsProvider!: (projectId: string, domain: string) => Promise<{ provider: 'cloudflare' | 'route53' | 'godaddy' | 'namecheap' | 'unknown'; nameservers: string[]; autoConfigurationAvailable: boolean; suggestedMode: 'cloudflare_auto' | 'manual' }>;
+  getConnection!: (projectId: string) => Promise<import('./domains-types').DnsConnection | null>;
+  getHealth!: (projectId: string, domainId: string) => Promise<import('./domains-types').DomainHealth | null>;
+  triggerHealthCheck!: (projectId: string, domainId: string) => Promise<{ status: string; message: string }>;
+  getDnsRecords!: (projectId: string, domainId: string) => Promise<import('./domains-types').DnsRecordsResponse>;
+  getSsl!: (projectId: string, domainId: string) => Promise<import('./domains-types').DomainSslInfo>;
+  renewSsl!: (projectId: string, domainId: string) => Promise<{ status: string; message: string }>;
+  reissueSsl!: (projectId: string, domainId: string) => Promise<{ status: string; message: string }>;
+  getHistory!: (projectId: string, domainId: string) => Promise<import('./domains-types').DomainVerificationRun[]>;
+  getIncidents!: (projectId: string, domainId: string) => Promise<import('./domains-types').DomainIncident[]>;
+  getHealthTimeline!: (projectId: string, domainId: string, days?: number) => Promise<import('./domains-types-wizard').DomainHealthTimelineEntry[]>;
+  getWizard!: (projectId: string, domainId: string) => Promise<import('./domains-types-wizard').DomainWizardStatus>;
+
+  // DNS ops (applyDnsOpsMethods)
+  autoConfigureDnsRecords!: (projectId: string, domainId: string) => Promise<{ success: boolean }>;
+  autoConfigureEmailRecords!: (projectId: string, domainId: string) => Promise<{ mx: number; spf: boolean; dkim: boolean; dmarc: boolean; records: Array<{ type: string; name: string; content: string }> }>;
+  getEmailRecordsStatus!: (projectId: string, domainId: string) => Promise<{ mx: boolean; spf: boolean; dkim: boolean; dmarc: boolean; details: Array<{ type: string; name: string; status: 'ok' | 'missing' }> }>;
+  rotateDkim!: (projectId: string, domainId: string) => Promise<{ selector: string; publicKey: string; dnsName: string; dnsContent: string }>;
+  importZone!: (projectId: string, domainId: string) => Promise<{ domain: string; zoneImported: number; warnings: string[]; records: Array<{ id: string; type: string; name: string; content: string; ttl?: number }> }>;
+  syncZone!: (projectId: string, domainId: string) => Promise<{ created: number; updated: number; deleted: number; warnings: string[] }>;
+  exportZone!: (projectId: string, domainId: string) => Promise<{ domain: string; zoneId: string; zoneName: string; provider: string; exportedAt: string; recordCount: number; records: Array<{ id: string; type: string; name: string; content: string; ttl?: number }> }>;
+  getDnsPlan!: (projectId: string, domainId: string) => Promise<{ create: Array<{ type: string; name: string; content: string }>; update: Array<{ type: string; name: string; content: string }>; delete: Array<{ type: string; name: string; content: string }>; warnings: string[] }>;
+
+  // Change sets (applyChangeSetMethods)
+  listChangeSets!: (projectId: string, domainId: string, options?: { limit?: number }) => Promise<{ changeSets: Array<{ id: string; status: 'pending' | 'applied' | 'failed' | 'rolled_back'; operations: Array<Record<string, unknown>>; appliedAt?: string; result?: { created: number; updated: number; deleted: number; errors: string[] } }>; total: number }>;
+  getManagedRecords!: (projectId: string, domainId: string) => Promise<{ records: Array<{ id: string; type: string; name: string; value: string; ttl: number; priority?: number; managedBy: 'platform' | 'user' | 'imported'; source: string; lastSyncedAt?: string }> }>;
+  importManagedRecords!: (projectId: string, domainId: string) => Promise<{ imported: number; total: number }>;
+  createChangeSet!: (projectId: string, domainId: string, operations: Array<{ action: 'create' | 'update' | 'delete'; recordId?: string; type?: string; name?: string; value?: string; ttl?: number; priority?: number; source?: string }>) => Promise<{ id: string; status: 'pending' }>;
+  applyChangeSet!: (projectId: string, changeSetId: string) => Promise<{ id: string; status: 'applied' | 'failed'; result: { created: number; updated: number; deleted: number; errors: string[] } }>;
+  rollbackChangeSet!: (projectId: string, changeSetId: string) => Promise<{ id: string; status: 'rolled_back'; result: { created: number; updated: number; deleted: number; errors: string[] } }>;
+  checkPropagation!: (projectId: string, domainId: string, options?: { type?: string; name?: string; expected?: string }) => Promise<{ domain: string; records?: Array<{ domain: string; recordType: string; expectedValue: string; checks: Array<{ resolver: string; location: string; server: string; status: 'propagated' | 'pending' | 'failed'; value: string | null; responseTimeMs: number }>; propagated: number; total: number; percentage: number; fullyPropagated: boolean }>; overallPercentage?: number }>;
+
+  // Cloudflare (applyCloudflareMethods)
+  connectCloudflare!: (projectId: string, apiToken: string) => Promise<import('./domains-types').DnsConnection>;
+  getCloudflareOAuthUrl!: (projectId: string) => Promise<{ url: string; state: string; projectId: string }>;
+  completeCloudflareOAuth!: (code: string, state: string, projectId: string) => Promise<{ success: boolean; connection: import('./domains-types').DnsConnection; message: string }>;
+  listCloudflareZones!: (projectId: string) => Promise<{ zones: Array<{ id: string; name: string; status: string }> }>;
+  testCloudflareConnection!: (clientId: string, clientSecret: string) => Promise<{ valid: boolean }>;
+  getCloudflareOAuthStatus!: () => Promise<{ enabled: boolean }>;
+
+  // Templates + webhooks (applyDomainsAuxMethods)
+  listTemplates!: (options?: { category?: string; popularOnly?: boolean }) => Promise<{ templates: Array<{ id: string; name: string; description: string; icon: string; category: string; capabilities: Record<string, boolean>; types: string[]; records: Array<{ type: string; name: string; valueTemplate: string; ttl: number; priority?: number }>; sslEnabled: boolean; wildcardEnabled: boolean; popular: boolean }> }>;
+  getTemplate!: (id: string) => Promise<{ id: string; name: string; description: string; icon: string; category: string; capabilities: Record<string, boolean>; types: string[]; records: Array<{ type: string; name: string; valueTemplate: string; ttl: number; priority?: number }>; sslEnabled: boolean; wildcardEnabled: boolean }>;
+  listWebhooks!: (projectId: string, domainId: string) => Promise<{ webhooks: Array<{ id: string; url: string; events: string[]; enabled: boolean; lastDeliveryAt: string | null; lastDeliveryOk: boolean | null; deliveryCount: number; failureCount: number }> }>;
+  createWebhook!: (projectId: string, domainId: string, options: { url: string; secret?: string; events?: string[]; enabled?: boolean }) => Promise<{ id: string; url: string; enabled: boolean }>;
+  updateWebhook!: (projectId: string, domainId: string, webhookId: string, updates: { url?: string; events?: string[]; enabled?: boolean; secret?: string }) => Promise<{ success: boolean }>;
+  deleteWebhook!: (projectId: string, domainId: string, webhookId: string) => Promise<{ success: boolean }>;
+  testWebhook!: (projectId: string, domainId: string, webhookId: string) => Promise<{ success: boolean; error?: string; deliveredAt: string }>;
 
   constructor(client: FidscriptClient) {
     this.client = client;
