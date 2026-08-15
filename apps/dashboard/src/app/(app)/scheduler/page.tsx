@@ -27,7 +27,7 @@ export default function SchedulerPage() {
     jobs, setJobs, jobStats, loadingProjects, loadingJobs, error,
   } = useSchedulerData(sdk, initialProjectId, shellProjectId);
 
-  const { handleCreate: sdkCreate, handleToggle: sdkToggle, handleTrigger: sdkTrigger } =
+  const { handleCreate: sdkCreate, handleToggle: sdkToggle, handleTrigger: sdkTrigger, handleDelete: sdkDelete } =
     useSchedulerActions(sdk, effectiveProjectId, setJobs);
 
   const [showCreate, setShowCreate] = useState(false);
@@ -35,6 +35,7 @@ export default function SchedulerPage() {
   const [createError, setCreateError] = useState<string | null>(null);
   const [triggerError, setTriggerError] = useState<string | null>(null);
   const [togglingId, setTogglingId] = useState<string | null>(null);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
 
   const [form, setForm] = useState(EMPTY_FORM);
 
@@ -73,6 +74,17 @@ export default function SchedulerPage() {
     }
   }
 
+  async function handleDelete(job: CronJob) {
+    if (!effectiveProjectId) return;
+    if (!confirm(`Delete cron job "${job.name}"? This cannot be undone.`)) return;
+    setDeletingId(job.id);
+    try {
+      await sdkDelete(job.id);
+    } finally {
+      setDeletingId(null);
+    }
+  }
+
   if (loadingProjects) {
     return (
       <div className="flex items-center justify-center min-h-96">
@@ -105,9 +117,11 @@ export default function SchedulerPage() {
         error={error}
         selectedProjectId={effectiveProjectId}
         togglingId={togglingId}
+        deletingId={deletingId}
         jobStats={jobStats}
         onToggle={handleToggle}
         onTrigger={handleTrigger}
+        onDelete={handleDelete}
         onNewJob={() => setShowCreate(true)}
       />
 
