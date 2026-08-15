@@ -16,7 +16,6 @@ interface UseQueueDetailHandlersOptions {
   setActiveTab: React.Dispatch<React.SetStateAction<MessageTab>>;
   setConsuming: React.Dispatch<React.SetStateAction<boolean>>;
   setActionLoading: React.Dispatch<React.SetStateAction<boolean>>;
-  handleDeadLetter: (reason?: string) => Promise<void>;
 }
 
 export function useQueueDetailHandlers({

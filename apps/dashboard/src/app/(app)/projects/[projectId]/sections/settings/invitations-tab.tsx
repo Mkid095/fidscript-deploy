@@ -47,7 +47,7 @@ export function InvitationsTab({ project }: Props) {
     if (!confirm('Revoke this invitation?')) return;
     setRevokingId(invitationId);
     try {
-      await getSdk().delete<void>(`/api/v1/projects/${project.id}/invitations/${invitationId}`);
+      await getSdk().projects.revokeInvitation(project.id, invitationId);
       setInvitations(prev => prev.filter(i => i.id !== invitationId));
       showToast({ type: 'success', message: 'Invitation revoked.' });
     } catch (err) {

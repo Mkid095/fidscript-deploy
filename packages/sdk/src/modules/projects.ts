@@ -82,6 +82,11 @@ export class ProjectsModule {
     return this.client.delete(`/api/v1/projects/${projectId}/members/${userId}`);
   }
 
+  /** Change a member's role. Owner-only. */
+  async updateMemberRole(projectId: string, userId: string, role: 'admin' | 'developer' | 'viewer') {
+    return this.client.patch<ProjectMember>(`/api/v1/projects/${projectId}/members/${userId}`, { role });
+  }
+
   // Env vars — endpoint path is /env-vars (controller route), NOT /env.
   async getEnvVars(projectId: string) {
     const res = await this.client.get<{ envVars: EnvVar[] }>(`/api/v1/projects/${projectId}/env-vars`);
@@ -129,6 +134,10 @@ export class ProjectsModule {
 
   async acceptInvitation(token: string) {
     return this.client.post(`/api/v1/projects/invitations/accept`, { token });
+  }
+
+  async revokeInvitation(projectId: string, invitationId: string) {
+    return this.client.delete<void>(`/api/v1/projects/${projectId}/invitations/${invitationId}`);
   }
 
   // Events (PREREQ-PROJ-3)

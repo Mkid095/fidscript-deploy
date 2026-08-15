@@ -13,9 +13,10 @@ interface ConfirmDialogProps {
   variant: 'danger' | 'warning';
   onConfirm: () => void;
   onClose: () => void;
+  loading?: boolean;
 }
 
-export function ConfirmDialog({ title, message, confirmLabel, confirmWord = 'delete', variant, onConfirm, onClose }: ConfirmDialogProps) {
+export function ConfirmDialog({ title, message, confirmLabel, confirmWord = 'delete', variant, onConfirm, onClose, loading = false }: ConfirmDialogProps) {
   const [confirmText, setConfirmText] = useState('');
 
   const isDanger = variant === 'danger';
@@ -35,6 +36,7 @@ export function ConfirmDialog({ title, message, confirmLabel, confirmWord = 'del
           isConfirmed={isConfirmed}
           onConfirm={onConfirm}
           onClose={onClose}
+          loading={loading}
         />
       </div>
     </div>
@@ -80,12 +82,14 @@ function DialogActions({
   isConfirmed,
   onConfirm,
   onClose,
+  loading,
 }: {
   variant: 'danger' | 'warning';
   confirmLabel: string;
   isConfirmed: boolean;
   onConfirm: () => void;
   onClose: () => void;
+  loading?: boolean;
 }) {
   return (
     <div className="flex flex-col-reverse sm:flex-row justify-end gap-2">
@@ -93,7 +97,8 @@ function DialogActions({
       <Button
         variant={variant === 'danger' ? 'danger' : 'primary'}
         size="sm"
-        disabled={variant === 'danger' && !isConfirmed}
+        disabled={(variant === 'danger' && !isConfirmed) || loading}
+        loading={loading}
         onClick={onConfirm}
       >
         {confirmLabel}
