@@ -2,24 +2,27 @@ import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import axios from 'axios';
 import { basicAuthHeader } from '@/common/basic-auth';
-import { SecretsService } from '@/modules/infrastructure/secrets/secrets.service';
-import { CloudflarePrimitive } from '@/modules/infrastructure/primitives/cloudflare.primitive';
 
 /**
- * DKIM key management — refactored to consume the Infrastructure layer.
+ * DKIM key management — Stalwart side only.
+ *
+ * The DKIM private key lives in Stalwart's internal RocksDB store (it
+ * never leaves Stalwart). This service:
+ *   1. Creates the key in Stalwart (idempotent — `fieldAlreadyExists` is OK).
+ *   2. Reads the public key back so another service (`MailDnsService`)
+ *      can publish it as a TXT record in the per-project Cloudflare zone.
  *
  * Per the Infrastructure-first architecture:
- *   - Stalwart admin token: read from `SecretsService.get(null, 'STALWART_ADMIN_TOKEN')`
- *     (platform-level secret, not per-project). The DKIM key lives in Stalwart's
- *     internal store, which is platform-wide.
- *   - DNS provider: per-project. `CloudflarePrimitive.getDnsProvider(projectId)`
- *     returns a `DnsProvider` bound to the customer's Cloudflare OAuth token.
- *     This is what writes the DKIM TXT to the customer's zone — not the
- *     platform's.
+ *   - Stalwart admin token: read from `process.env.STALWART_ADMIN_TOKEN`
+ *     (platform-level secret). The DKIM key store is platform-wide.
+ *   - DNS publishing: lives in `MailDnsService.setupEmailDns` because it
+ *     needs the per-project `CloudflareDnsProvider`. Keeping that out of
+ *     this service avoids the temptation to call the platform's Cloudflare
+ *     token by mistake.
  *
- * Stalwart v0.15.5 stores DKIM signing keys in its INTERNAL RocksDB store.
- * The private key never leaves Stalwart; this service only reads the public
- * key back and publishes it as a DNS TXT record.
+ * Selector: `default` (Stalwart's default DKIM selector). Ed25519 only
+ * for now; RSA keys would be a separate Stalwart key id with a different
+ * selector (e.g. `v1-rsa`) — added when an RSA key is needed.
  */
 @Injectable()
 export class DkimService {
@@ -28,14 +31,10 @@ export class DkimService {
   private readonly baseURL: string;
   private readonly adminToken: string;
 
-  constructor(
-    private secrets: SecretsService,
-    private cloudflare: CloudflarePrimitive,
-    private configService: ConfigService,
-  ) {
+  constructor(private configService: ConfigService) {
     this.baseURL = this.configService.get('STALWART_JMAP_URL', 'http://fidscript_stalwart:8080');
-    // Platform-level secret. Read once at construction. If missing,
-    // every DKIM call will throw — better than silent failure.
+    // Platform-level secret. If missing, every DKIM call will throw —
+    // better than silent failure.
     this.adminToken = process.env.STALWART_ADMIN_TOKEN ?? '';
   }
 
@@ -78,34 +77,8 @@ export class DkimService {
     return data.data;
   }
 
-  /**
-   * Publish the DKIM public key as a DNS TXT record. Uses the
-   * per-project Cloudflare DNS provider — the TXT goes into the
-   * customer's zone, not the platform's.
-   *
-   * `projectId` is required so the Infrastructure layer can resolve
-   * the right Cloudflare OAuth token.
-   */
-  async publishDns(projectId: string, domain: string, publicKeyB64: string): Promise<void> {
-    const dns = await this.cloudflare.getDnsProvider(projectId);
-    if (!dns) throw new Error(`No Cloudflare connection for project ${projectId}.`);
-    const zoneId = await dns.getZoneId(domain);
-    if (!zoneId) throw new Error(`DNS zone for ${domain} not found.`);
-    const recordName = `${this.dkimSelector}._domainkey.${domain}`;
-    const txt = `v=DKIM1; k=ed25519; p=${publicKeyB64}`;
-    await dns.createRecord({ zoneId, type: 'TXT', name: recordName, content: txt, ttl: 3600 });
-    this.logger.log(`DKIM TXT record published: ${recordName}`);
-  }
-
   get selector(): string {
     return this.dkimSelector;
   }
-
-  async getZoneId(projectId: string, domain: string): Promise<string> {
-    const dns = await this.cloudflare.getDnsProvider(projectId);
-    if (!dns) throw new Error(`No Cloudflare connection for project ${projectId}.`);
-    const zoneId = await dns.getZoneId(domain);
-    if (!zoneId) throw new Error(`DNS zone for ${domain} not found.`);
-    return zoneId;
-  }
 }
+

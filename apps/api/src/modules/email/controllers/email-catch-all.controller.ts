@@ -2,14 +2,14 @@ import { Controller, Get, Post, Delete, Body, Param, UseGuards } from '@nestjs/c
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { JwtAuthGuard } from '@/modules/auth/jwt-auth.guard';
 import { ProjectMemberGuard } from '@/modules/auth/guards/project-member.guard';
-import { EmailInboundService } from '@/modules/email/services/inbound.service';
+import { EmailCatchallCrudService } from '@/modules/email/services/email-catchall-crud.service';
 
 @ApiTags('email-catch-all')
 @Controller('projects/:projectId/email/domains')
 @UseGuards(JwtAuthGuard, ProjectMemberGuard)
 @ApiBearerAuth()
 export class EmailCatchAllController {
-  constructor(private inboundService: EmailInboundService) {}
+  constructor(private crud: EmailCatchallCrudService) {}
 
   @Get(':domainId/catch-all')
   @ApiOperation({ summary: 'Get the catch-all rule for a domain' })
@@ -17,7 +17,7 @@ export class EmailCatchAllController {
     @Param('projectId') projectId: string,
     @Param('domainId') domainId: string,
   ) {
-    return this.inboundService.getCatchAll(projectId, domainId);
+    return this.crud.getCatchAll(projectId, domainId);
   }
 
   @Post(':domainId/catch-all')
@@ -25,14 +25,19 @@ export class EmailCatchAllController {
   setCatchAll(
     @Param('projectId') projectId: string,
     @Param('domainId') domainId: string,
-    @Body() dto: { targetType: 'mailbox' | 'external'; targetId?: string; targetAddress?: string },
+    @Body() dto: {
+      targetType: 'mailbox' | 'external' | 'webhook';
+      targetId?: string;
+      targetAddress?: string;
+      webhookUrl?: string;
+    },
   ) {
-    return this.inboundService.setCatchAll(projectId, domainId, dto);
+    return this.crud.setCatchAll(projectId, domainId, dto);
   }
 
   @Delete(':domainId/catch-all')
   @ApiOperation({ summary: 'Delete catch-all rule for a domain' })
   deleteCatchAll(@Param('projectId') projectId: string, @Param('domainId') domainId: string) {
-    return this.inboundService.deleteCatchAll(projectId, domainId);
+    return this.crud.deleteCatchAll(projectId, domainId);
   }
 }

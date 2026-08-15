@@ -1,13 +1,16 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 import { PrismaService } from '@/prisma/prisma.service';
 import { EventService } from '@/modules/events/event.service';
 import { WebhookService } from '@/modules/email/services/webhook.service';
 import { BounceHandlerService } from '@/modules/email/services/bounce-handler.service';
+import { EmailCatchallDeliveryService } from '@/modules/email/services/email-catchall-delivery.service';
 
 /**
  * Inbound email ingestion: receives mail from Stalwart webhook,
- * creates metadata rows, fires webhooks, manages catch-all rules.
+ * creates metadata rows, fires webhooks, dispatches catch-all rules.
  * Bounce/complaint handling is delegated to BounceHandlerService.
+ * Catch-all delivery is delegated to EmailCatchallDeliveryService.
+ * Catch-all CRUD lives in EmailCatchallCrudService.
  */
 @Injectable()
 export class EmailInboundService {
@@ -16,6 +19,7 @@ export class EmailInboundService {
     private eventService: EventService,
     private webhookService: WebhookService,
     private bounceHandler: BounceHandlerService,
+    private catchallDelivery: EmailCatchallDeliveryService,
   ) {}
 
   async handleInboundEmail(payload: {
@@ -39,54 +43,73 @@ export class EmailInboundService {
       data: {
         mailboxId: mailbox?.id,
         projectId: domain.projectId,
-        from: payload.from,
-        to: payload.to,
-        subject: payload.subject,
+        from: payload.from, to: payload.to, subject: payload.subject,
         sizeBytes: BigInt(payload.sizeBytes),
-        spamScore: payload.spamScore ?? null,
-        status: 'RECEIVED',
+        spamScore: payload.spamScore ?? null, status: 'RECEIVED',
       },
     });
 
     await this.eventService.emit('email.received', domain.projectId, {
       messageId: emailMessage.id,
-      // jmapMessageId may be populated by the Stalwart Sieve notify payload
-      // when the JMAP Message-Id is available. Inbound attachment extraction
-      // guards on its presence (attachmentStorageService).
+      // jmapMessageId may be populated by the Stalwart Sieve notify payload;
+      // inbound attachment extraction guards on its presence.
       jmapMessageId: undefined as string | undefined,
       mailboxId: mailbox?.id,
-      // Mailbox localPart is needed by the listener to resolve JMAP credentials
+      // Mailbox localPart is needed by the listener to resolve JMAP credentials.
       mailboxLocal: mailbox?.localPart ?? localPart,
-      from: payload.from,
-      to: payload.to,
-      subject: payload.subject,
+      from: payload.from, to: payload.to, subject: payload.subject,
     }, {});
 
-    if (alias) {
-      const webhookTargets = (alias.targets as Array<{ type: string; url?: string }>)
-        .filter(t => t.type === 'webhook' && t.url);
-      for (const target of webhookTargets) {
-        const result = await this.webhookService.deliver(target.url!, {
-          event: 'received',
-          messageId: emailMessage.id,
-          projectId: domain.projectId,
-          mailboxId: mailbox?.id,
-          to: payload.to,
-          from: payload.from,
-          subject: payload.subject,
-          timestamp: new Date().toISOString(),
-        });
-        if (result.delivered) {
-          await this.eventService.emit('email.webhook_triggered', domain.projectId, {
-            messageId: emailMessage.id,
-            url: target.url,
-            attempts: result.attempts,
-          }, {});
-        }
-      }
+    if (alias) await this.deliverAliasWebhooks(alias, emailMessage.id, domain.projectId, mailbox?.id, payload);
+
+    if (!mailbox && !alias) {
+      await this.deliverCatchAllIfAny(domain.id, emailMessage.id, domain.projectId, payload);
     }
 
     return { success: true, messageId: emailMessage.id };
+  }
+
+  private async deliverAliasWebhooks(
+    alias: { targets: unknown },
+    emailMessageId: string,
+    projectId: string,
+    mailboxId: string | undefined,
+    payload: { from: string; to: string; subject: string },
+  ): Promise<void> {
+    const targets = (alias.targets as Array<{ type: string; url?: string }>)
+      .filter(t => t.type === 'webhook' && t.url);
+    for (const target of targets) {
+      const result = await this.webhookService.deliver(target.url!, {
+        event: 'received', messageId: emailMessageId, projectId,
+        mailboxId, to: payload.to, from: payload.from, subject: payload.subject,
+        timestamp: new Date().toISOString(),
+      });
+      if (result.delivered) {
+        await this.eventService.emit('email.webhook_triggered', projectId, {
+          messageId: emailMessageId, url: target.url, attempts: result.attempts,
+        }, {});
+      }
+    }
+  }
+
+  private async deliverCatchAllIfAny(
+    domainId: string,
+    emailMessageId: string,
+    projectId: string,
+    payload: { from: string; to: string; subject: string },
+  ): Promise<void> {
+    const catchAll = await this.prisma.catchAllRule.findUnique({ where: { domainId } });
+    if (!catchAll) return;
+    const raw = catchAll.target as unknown as {
+      type?: string; mailboxId?: string; address?: string; url?: string;
+    } | null;
+    if (!raw?.type) return;
+    const target = { type: raw.type, mailboxId: raw.mailboxId, address: raw.address, url: raw.url };
+    if (!this.catchallDelivery.isActive(target)) return;
+    await this.catchallDelivery.deliver(target, {
+      messageId: emailMessageId, projectId,
+      from: payload.from, to: payload.to, subject: payload.subject,
+    });
   }
 
   handleBounce(payload: { messageId: string; to: string; error: string; code?: string }) {
@@ -95,38 +118,5 @@ export class EmailInboundService {
 
   handleComplaint(payload: { email: string; userAgent?: string }) {
     return this.bounceHandler.handleComplaint(payload);
-  }
-
-  async getCatchAll(projectId: string, domainId: string) {
-    const domain = await this.prisma.emailDomain.findFirst({ where: { id: domainId, projectId } });
-    if (!domain) throw new NotFoundException('Domain not found');
-    const rule = await this.prisma.catchAllRule.findUnique({ where: { domainId } });
-    return rule ?? null;
-  }
-
-  async setCatchAll(projectId: string, domainId: string, dto: {
-    targetType: 'mailbox' | 'external' | 'webhook';
-    targetId?: string; targetAddress?: string; webhookUrl?: string;
-  }) {
-    const domain = await this.prisma.emailDomain.findFirst({ where: { id: domainId, projectId } });
-    if (!domain) throw new NotFoundException('Domain not found');
-
-    const target: Record<string, unknown> = { type: dto.targetType };
-    if (dto.targetType === 'mailbox') target.mailboxId = dto.targetId;
-    else if (dto.targetType === 'external') target.address = dto.targetAddress;
-    else if (dto.targetType === 'webhook') target.url = dto.webhookUrl;
-
-    return this.prisma.catchAllRule.upsert({
-      where: { domainId },
-      create: { domainId, target: target as unknown as object },
-      update: { target: target as unknown as object },
-    });
-  }
-
-  async deleteCatchAll(projectId: string, domainId: string) {
-    const domain = await this.prisma.emailDomain.findFirst({ where: { id: domainId, projectId } });
-    if (!domain) throw new NotFoundException('Domain not found');
-    await this.prisma.catchAllRule.deleteMany({ where: { domainId } });
-    return { deleted: true };
   }
 }

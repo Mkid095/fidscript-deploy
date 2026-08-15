@@ -33,6 +33,9 @@ export class ProjectsService {
   listMembers(userId: string, projectId: string) { return this.members.listMembers(userId, projectId); }
   addMember(userId: string, projectId: string, dto: any) { return this.members.addMember(userId, projectId, dto); }
   removeMember(userId: string, projectId: string, memberUserId: string) { return this.members.removeMember(userId, projectId, memberUserId); }
+  updateMemberRole(userId: string, projectId: string, memberUserId: string, role: 'admin' | 'developer' | 'viewer') {
+    return this.members.updateMemberRole(userId, projectId, memberUserId, role);
+  }
 
   // Env vars
   getEnvVars(userId: string, projectId: string) { return this.env.getEnvVars(userId, projectId); }

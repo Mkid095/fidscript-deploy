@@ -1,5 +1,5 @@
 import {
-  Controller, Get, Post, Put, Delete, Body, Param, UseGuards, Req, HttpCode, HttpStatus,
+  Controller, Get, Post, Put, Patch, Delete, Body, Param, UseGuards, Req, HttpCode, HttpStatus,
 } from '@nestjs/common';
 import { ApiTags, ApiBearerAuth } from '@nestjs/swagger';
 import { JwtAuthGuard } from '@/modules/auth/jwt-auth.guard';
@@ -31,6 +31,18 @@ export class ProjectsMembersController {
   async removeMember(@Req() req: Request, @Param('id') id: string, @Param('userId') userId: string) {
     const currentUser = req.user as { userId: string };
     return this.projects.removeMember(currentUser.userId, id, userId);
+  }
+
+  @Patch(':id/members/:userId')
+  @HttpCode(HttpStatus.OK)
+  async updateMemberRole(
+    @Req() req: Request,
+    @Param('id') id: string,
+    @Param('userId') userId: string,
+    @Body() dto: { role: 'admin' | 'developer' | 'viewer' },
+  ) {
+    const currentUser = req.user as { userId: string };
+    return this.projects.updateMemberRole(currentUser.userId, id, userId, dto.role);
   }
 
   @Get(':id/invitations')

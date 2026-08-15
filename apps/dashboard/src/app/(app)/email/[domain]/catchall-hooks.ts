@@ -1,10 +1,15 @@
 import type { FidscriptSDK } from '@fidscript-deploy/sdk';
 
+export type CatchAllTarget =
+  | { type: 'mailbox'; mailboxId: string }
+  | { type: 'external'; address: string }
+  | { type: 'webhook'; url: string };
+
 export async function saveCatchAll(
   sdk: FidscriptSDK,
   projectId: string,
   domainId: string,
-  target: { type: 'mailbox'; mailboxId: string } | { type: 'external'; address: string },
+  target: CatchAllTarget,
 ): Promise<void> {
   await sdk.email.setCatchAll(projectId, domainId, target);
 }
