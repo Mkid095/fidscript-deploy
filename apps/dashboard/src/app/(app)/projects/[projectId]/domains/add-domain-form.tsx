@@ -1,4 +1,5 @@
-'use client';
+'use client'
+import type { ChangeEvent } from 'react';;
 
 import { Button, Input } from '@fidscript/ui';
 import type { DomainType } from '@fidscript-deploy/sdk';
@@ -28,7 +29,7 @@ export function AddDomainForm({ newDomain, dnsMode, newDomainTypes, dnsDetection
     <>
       <div className="mb-4">
         <label className="block text-xs text-[var(--text-muted)] mb-1.5">Domain name</label>
-        <Input value={newDomain} onChange={e => onDomainChange(e.target.value)} placeholder="example.com"
+        <Input value={newDomain} onChange={(e: ChangeEvent<HTMLInputElement>) => onDomainChange(e.target.value)} placeholder="example.com"
           className="bg-[var(--surface-2)] border border-[var(--rail)] text-[var(--text)] placeholder:text-[var(--text-dim)] w-full" />
         {detecting && <p className="text-xs text-[var(--text-dim)] mt-1">Detecting DNS provider...</p>}
       </div>

@@ -1,5 +1,6 @@
 'use client';
 
+import type { ChangeEvent } from 'react';
 import { useRef } from 'react';
 import { HugeiconsIcon } from '@hugeicons/react';
 import { Attachment01Icon } from '@hugeicons/core-free-icons';
@@ -44,7 +45,7 @@ export function ComposeForm({
         <label className="block text-xs text-[var(--text-muted)] mb-1">To</label>
         <Input
           value={to}
-          onChange={e => onToChange(e.target.value)}
+          onChange={(e: ChangeEvent<HTMLInputElement>) => onToChange(e.target.value)}
           placeholder="user@example.com"
           required
           className="bg-[var(--surface-2)] border border-[var(--rail)] text-[var(--text)] placeholder:text-[var(--text-dim)] w-full"
@@ -55,7 +56,7 @@ export function ComposeForm({
         <label className="block text-xs text-[var(--text-muted)] mb-1">Subject</label>
         <Input
           value={subject}
-          onChange={e => onSubjectChange(e.target.value)}
+          onChange={(e: ChangeEvent<HTMLInputElement>) => onSubjectChange(e.target.value)}
           placeholder="Subject"
           className="bg-[var(--surface-2)] border border-[var(--rail)] text-[var(--text)] placeholder:text-[var(--text-dim)] w-full"
         />
@@ -65,7 +66,7 @@ export function ComposeForm({
         <label className="block text-xs text-[var(--text-muted)] mb-1">Body</label>
         <textarea
           value={body}
-          onChange={e => onBodyChange(e.target.value)}
+          onChange={(e: ChangeEvent<HTMLTextAreaElement>) => onBodyChange(e.target.value)}
           placeholder="Write your message…"
           rows={8}
           className="bg-[var(--surface-2)] border border-[var(--rail)] text-[var(--text)] placeholder:text-[var(--text-dim)] w-full rounded-lg px-3 py-2 text-sm font-sans"
@@ -80,7 +81,7 @@ export function ComposeForm({
           multiple
           id="compose-attachments"
           className="hidden"
-          onChange={e => {
+          onChange={(e: ChangeEvent<HTMLInputElement>) => {
             const f = Array.from(e.target.files ?? []);
             onFilesChange([...files, ...f]);
             e.target.value = '';
@@ -108,7 +109,7 @@ export function ComposeForm({
         <label className="block text-xs text-[var(--text-muted)] mb-1">Attachment storage</label>
         <select
           value={storageBackend}
-          onChange={e => onStorageChange(e.target.value as StorageBackend)}
+          onChange={(e: ChangeEvent<HTMLSelectElement>) => onStorageChange(e.target.value as StorageBackend)}
           className="bg-[var(--surface-2)] border border-[var(--rail)] text-[var(--text)] rounded-lg px-3 py-2 text-sm w-full"
         >
           <option value="internal">Internal (VPS)</option>

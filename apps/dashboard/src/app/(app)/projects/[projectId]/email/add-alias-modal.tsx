@@ -1,4 +1,5 @@
-'use client';
+'use client'
+import type { ChangeEvent } from 'react';;
 
 import { useEffect, useState } from 'react';
 import type { EmailAlias, EmailDomain } from '@fidscript-deploy/sdk';
@@ -71,7 +72,7 @@ export function AddAliasModal({ onClose, onCreated }: Props) {
           <label className="block text-xs text-[var(--text-dim)] mb-1">Domain</label>
           <select
             value={domainId}
-            onChange={e => setDomainId(e.target.value)}
+            onChange={(e: ChangeEvent<HTMLSelectElement>) => setDomainId(e.target.value)}
             className="w-full px-3 py-2 text-sm bg-[var(--surface-2)] border border-[var(--rail)] rounded text-[var(--text)]"
           >
             {domains.map(d => <option key={d.id} value={d.id}>{d.domain}</option>)}
@@ -79,14 +80,14 @@ export function AddAliasModal({ onClose, onCreated }: Props) {
         </div>
         <div>
           <label className="block text-xs text-[var(--text-dim)] mb-1">Local part</label>
-          <Input value={localPart} onChange={e => setLocalPart(e.target.value)} placeholder="hello" autoFocus />
+          <Input value={localPart} onChange={(e: ChangeEvent<HTMLInputElement>) => setLocalPart(e.target.value)} placeholder="hello" autoFocus />
         </div>
         <div className="grid grid-cols-2 gap-2">
           <div>
             <label className="block text-xs text-[var(--text-dim)] mb-1">Target type</label>
             <select
               value={targetType}
-              onChange={e => setTargetType(e.target.value as 'external' | 'webhook')}
+              onChange={(e: ChangeEvent<HTMLSelectElement>) => setTargetType(e.target.value as 'external' | 'webhook')}
               className="w-full px-3 py-2 text-sm bg-[var(--surface-2)] border border-[var(--rail)] rounded text-[var(--text)]"
             >
               <option value="external">External address</option>
@@ -99,14 +100,14 @@ export function AddAliasModal({ onClose, onCreated }: Props) {
             </label>
             <Input
               value={target}
-              onChange={e => setTarget(e.target.value)}
+              onChange={(e: ChangeEvent<HTMLInputElement>) => setTarget(e.target.value)}
               placeholder={targetType === 'webhook' ? 'https://example.com/hook' : 'alice@example.com'}
             />
           </div>
         </div>
         <div>
           <label className="block text-xs text-[var(--text-dim)] mb-1">Description (optional)</label>
-          <Input value={description} onChange={e => setDescription(e.target.value)} placeholder="Support inbox" />
+          <Input value={description} onChange={(e: ChangeEvent<HTMLInputElement>) => setDescription(e.target.value)} placeholder="Support inbox" />
         </div>
         {error && <p className="text-xs text-[var(--danger)]">{error}</p>}
         <div className="flex justify-end gap-2">

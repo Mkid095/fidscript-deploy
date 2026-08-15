@@ -1,5 +1,6 @@
 'use client';
 
+import type { ChangeEvent } from 'react';
 import { useState } from 'react';
 import type { FidscriptSDK } from '@fidscript-deploy/sdk';
 import { Button, Input, Modal } from '@fidscript/ui';
@@ -43,7 +44,7 @@ export function CreateWebhookModal({ projectId, getSdk, onClose, onCreated }: Cr
       <form onSubmit={handleSave} noValidate className="space-y-4">
         <div>
           <label className="block text-xs text-[var(--text-muted)] mb-1">Webhook URL *</label>
-          <Input type="url" value={url} onChange={e => setUrl(e.target.value)}
+          <Input type="url" value={url} onChange={(e: ChangeEvent<HTMLInputElement>) => setUrl(e.target.value)}
             placeholder="https://your-app.com/hooks/email"
             className="bg-[var(--surface-2)] border border-[var(--rail)] w-full" />
         </div>

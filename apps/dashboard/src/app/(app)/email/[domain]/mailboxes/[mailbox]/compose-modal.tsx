@@ -1,5 +1,6 @@
 'use client';
 
+import type { ChangeEvent } from 'react';
 import type { FidscriptSDK } from '@fidscript-deploy/sdk';
 import { useState } from 'react';
 import { Button, Input, Modal } from '@fidscript/ui';
@@ -49,7 +50,7 @@ export function ComposeModal({ projectId, getSdk, folder, onSent, onClose }: Com
           <label className="block text-xs text-[var(--text-muted)] mb-1">To</label>
           <Input
             value={to}
-            onChange={e => setTo(e.target.value)}
+            onChange={(e: ChangeEvent<HTMLInputElement>) => setTo(e.target.value)}
             placeholder="recipient@example.com"
             className="bg-[var(--surface-2)] border border-[var(--rail)] text-[var(--text)] placeholder:text-[var(--text-dim)] w-full"
           />
@@ -58,7 +59,7 @@ export function ComposeModal({ projectId, getSdk, folder, onSent, onClose }: Com
           <label className="block text-xs text-[var(--text-muted)] mb-1">Subject</label>
           <Input
             value={subject}
-            onChange={e => setSubject(e.target.value)}
+            onChange={(e: ChangeEvent<HTMLInputElement>) => setSubject(e.target.value)}
             placeholder="Hello"
             className="bg-[var(--surface-2)] border border-[var(--rail)] text-[var(--text)] placeholder:text-[var(--text-dim)] w-full"
           />
@@ -67,7 +68,7 @@ export function ComposeModal({ projectId, getSdk, folder, onSent, onClose }: Com
           <label className="block text-xs text-[var(--text-muted)] mb-1">Body</label>
           <textarea
             value={body}
-            onChange={e => setBody(e.target.value)}
+            onChange={(e: ChangeEvent<HTMLTextAreaElement>) => setBody(e.target.value)}
             placeholder="Write your message..." rows={6}
             className="w-full bg-[var(--surface-2)] border border-[var(--rail)] text-[var(--text)] placeholder:text-[var(--text-dim)] rounded-lg px-3 py-2 text-sm resize-none"
           />

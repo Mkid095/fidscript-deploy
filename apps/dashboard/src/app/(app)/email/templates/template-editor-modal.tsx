@@ -1,5 +1,6 @@
 'use client';
 
+import type { ChangeEvent } from 'react';
 import { useState } from 'react';
 import { Button, Input, Modal } from '@fidscript/ui';
 import { useTemplateEditor } from './template-editor-modal-hooks';
@@ -57,32 +58,32 @@ export function TemplateEditor({ template, projectId, getSdk, onClose, onSaved }
         <div className="grid grid-cols-2 gap-3">
           <div>
             <label className="block text-xs text-[var(--text-muted)] mb-1">Name *</label>
-            <Input value={name} onChange={e => setName(e.target.value)} placeholder="welcome" disabled={!!template} className="bg-[var(--surface-2)] border border-[var(--rail)] w-full" />
+            <Input value={name} onChange={(e: ChangeEvent<HTMLInputElement>) => setName(e.target.value)} placeholder="welcome" disabled={!!template} className="bg-[var(--surface-2)] border border-[var(--rail)] w-full" />
           </div>
           <div>
             <label className="block text-xs text-[var(--text-muted)] mb-1">From Address</label>
-            <Input value={fromAddress} onChange={e => setFromAddress(e.target.value)} placeholder="noreply@example.com" className="bg-[var(--surface-2)] border border-[var(--rail)] w-full" />
+            <Input value={fromAddress} onChange={(e: ChangeEvent<HTMLInputElement>) => setFromAddress(e.target.value)} placeholder="noreply@example.com" className="bg-[var(--surface-2)] border border-[var(--rail)] w-full" />
           </div>
         </div>
         <div>
           <label className="block text-xs text-[var(--text-muted)] mb-1">Description</label>
-          <Input value={description} onChange={e => setDescription(e.target.value)} placeholder="Sent after user signup" className="bg-[var(--surface-2)] border border-[var(--rail)] w-full" />
+          <Input value={description} onChange={(e: ChangeEvent<HTMLInputElement>) => setDescription(e.target.value)} placeholder="Sent after user signup" className="bg-[var(--surface-2)] border border-[var(--rail)] w-full" />
         </div>
         <div>
           <label className="block text-xs text-[var(--text-muted)] mb-1">Subject * <span className="text-[var(--text-dim)]">(supports {'{{variables}}'})</span></label>
-          <Input value={subject} onChange={e => setSubject(e.target.value)} placeholder="Welcome to {{appName}}!" className="bg-[var(--surface-2)] border border-[var(--rail)] w-full" />
+          <Input value={subject} onChange={(e: ChangeEvent<HTMLInputElement>) => setSubject(e.target.value)} placeholder="Welcome to {{appName}}!" className="bg-[var(--surface-2)] border border-[var(--rail)] w-full" />
         </div>
         <div>
           <label className="block text-xs text-[var(--text-muted)] mb-1">HTML Body <span className="text-[var(--text-dim)]">(supports {'{{variables}}'})</span></label>
-          <textarea value={htmlBody} onChange={e => setHtmlBody(e.target.value)} rows={5} placeholder={'<h1>Welcome, {{name}}!</h1>'} className="bg-[var(--surface-2)] border border-[var(--rail)] text-[var(--text)] rounded-lg px-3 py-2 text-sm w-full font-mono" />
+          <textarea value={htmlBody} onChange={(e: ChangeEvent<HTMLTextAreaElement>) => setHtmlBody(e.target.value)} rows={5} placeholder={'<h1>Welcome, {{name}}!</h1>'} className="bg-[var(--surface-2)] border border-[var(--rail)] text-[var(--text)] rounded-lg px-3 py-2 text-sm w-full font-mono" />
         </div>
         <div>
           <label className="block text-xs text-[var(--text-muted)] mb-1">Plain Text Body</label>
-          <textarea value={textBody} onChange={e => setTextBody(e.target.value)} rows={3} placeholder="Welcome, {{name}}!" className="bg-[var(--surface-2)] border border-[var(--rail)] text-[var(--text)] rounded-lg px-3 py-2 text-sm w-full font-mono" />
+          <textarea value={textBody} onChange={(e: ChangeEvent<HTMLTextAreaElement>) => setTextBody(e.target.value)} rows={3} placeholder="Welcome, {{name}}!" className="bg-[var(--surface-2)] border border-[var(--rail)] text-[var(--text)] rounded-lg px-3 py-2 text-sm w-full font-mono" />
         </div>
         <div>
           <label className="block text-xs text-[var(--text-muted)] mb-1">Variables <span className="text-[var(--text-dim)]">(comma-separated)</span></label>
-          <Input value={vars} onChange={e => setVars(e.target.value)} placeholder="name, appName, actionUrl" className="bg-[var(--surface-2)] border border-[var(--rail)] w-full" />
+          <Input value={vars} onChange={(e: ChangeEvent<HTMLInputElement>) => setVars(e.target.value)} placeholder="name, appName, actionUrl" className="bg-[var(--surface-2)] border border-[var(--rail)] w-full" />
         </div>
         {error && <p className="text-[var(--danger)] text-xs">{error}</p>}
         <div className="flex justify-end gap-3 pt-2">

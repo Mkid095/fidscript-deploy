@@ -1,5 +1,6 @@
 'use client';
 
+import type { ChangeEvent } from 'react';
 import { Button, Input, Modal } from '@fidscript/ui';
 import type { NotificationChannel } from '@/types';
 
@@ -49,7 +50,7 @@ export function AlertCreateModal({
             <label className="block text-xs text-[var(--text-muted)] mb-1">Rule name</label>
             <Input
               value={formName}
-              onChange={e => setFormName(e.target.value)}
+              onChange={(e: ChangeEvent<HTMLInputElement>) => setFormName(e.target.value)}
               placeholder="High CPU usage"
               className="bg-[var(--surface-2)] border border-[var(--rail)] text-[var(--text)] placeholder:text-[var(--text-dim)] w-full"
             />
@@ -58,7 +59,7 @@ export function AlertCreateModal({
             <label className="block text-xs text-[var(--text-muted)] mb-1">Metric</label>
             <select
               value={formMetric}
-              onChange={e => setFormMetric(e.target.value)}
+              onChange={(e: ChangeEvent<HTMLSelectElement>) => setFormMetric(e.target.value)}
               className="bg-[var(--surface-2)] border border-[var(--rail)] text-[var(--text)] rounded-lg px-3 py-2 text-sm w-full"
             >
               <option value="">Select a metric...</option>
@@ -72,7 +73,7 @@ export function AlertCreateModal({
               <label className="block text-xs text-[var(--text-muted)] mb-1">Condition</label>
               <select
                 value={formCondition}
-                onChange={e => setFormCondition(e.target.value)}
+                onChange={(e: ChangeEvent<HTMLSelectElement>) => setFormCondition(e.target.value)}
                 className="bg-[var(--surface-2)] border border-[var(--rail)] text-[var(--text)] rounded-lg px-3 py-2 text-sm w-full"
               >
                 <option value="above">Above</option>
@@ -84,7 +85,7 @@ export function AlertCreateModal({
               <label className="block text-xs text-[var(--text-muted)] mb-1">Threshold</label>
               <Input
                 value={formThreshold}
-                onChange={e => setFormThreshold(e.target.value)}
+                onChange={(e: ChangeEvent<HTMLInputElement>) => setFormThreshold(e.target.value)}
                 placeholder="80"
                 type="number"
                 step="any"
@@ -97,7 +98,7 @@ export function AlertCreateModal({
               <label className="block text-xs text-[var(--text-muted)] mb-1">Severity</label>
               <select
                 value={formSeverity}
-                onChange={e => setFormSeverity(e.target.value)}
+                onChange={(e: ChangeEvent<HTMLSelectElement>) => setFormSeverity(e.target.value)}
                 className="bg-[var(--surface-2)] border border-[var(--rail)] text-[var(--text)] rounded-lg px-3 py-2 text-sm w-full"
               >
                 <option value="info">Info</option>
@@ -109,7 +110,7 @@ export function AlertCreateModal({
               <label className="block text-xs text-[var(--text-muted)] mb-1">Interval</label>
               <select
                 value={formDuration}
-                onChange={e => setFormDuration(e.target.value)}
+                onChange={(e: ChangeEvent<HTMLSelectElement>) => setFormDuration(e.target.value)}
                 className="bg-[var(--surface-2)] border border-[var(--rail)] text-[var(--text)] rounded-lg px-3 py-2 text-sm w-full"
               >
                 {INTERVALS.map(i => (
@@ -123,7 +124,7 @@ export function AlertCreateModal({
             <label className="block text-xs text-[var(--text-muted)] mb-1">Notification Channel</label>
             <select
               value={formChannel}
-              onChange={e => setFormChannel(e.target.value)}
+              onChange={(e: ChangeEvent<HTMLSelectElement>) => setFormChannel(e.target.value)}
               className="bg-[var(--surface-2)] border border-[var(--rail)] text-[var(--text)] rounded-lg px-3 py-2 text-sm w-full"
             >
               <option value="">No channel (alerts logged only)</option>

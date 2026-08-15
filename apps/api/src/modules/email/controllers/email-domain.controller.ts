@@ -43,4 +43,10 @@ export class EmailDomainController {
   verifyDomain(@Param('projectId') projectId: string, @Param('domainId') domainId: string) {
     return this.domainService.verifyDomain(projectId, domainId);
   }
+
+  @Post(':domainId/retry')
+  @ApiOperation({ summary: 'Retry a FAILED or SUSPENDED domain (re-mints ownership token, resets to PENDING)' })
+  retryDomain(@Param('projectId') projectId: string, @Param('domainId') domainId: string) {
+    return this.domainService.retryDomain(projectId, domainId);
+  }
 }

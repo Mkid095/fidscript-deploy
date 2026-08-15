@@ -1,4 +1,5 @@
-'use client';
+'use client'
+import type { ChangeEvent } from 'react';;
 
 import { useEffect, useState } from 'react';
 import type { EmailDomain, Mailbox } from '@fidscript-deploy/sdk';
@@ -87,7 +88,7 @@ export function AddMailboxModal({ onClose, onCreated }: Props) {
           <label className="block text-xs text-[var(--text-dim)] mb-1">Domain</label>
           <select
             value={domainId}
-            onChange={e => setDomainId(e.target.value)}
+            onChange={(e: ChangeEvent<HTMLSelectElement>) => setDomainId(e.target.value)}
             className="w-full px-3 py-2 text-sm bg-[var(--surface-2)] border border-[var(--rail)] rounded text-[var(--text)]"
           >
             {domains.map(d => (
@@ -99,14 +100,14 @@ export function AddMailboxModal({ onClose, onCreated }: Props) {
           <label className="block text-xs text-[var(--text-dim)] mb-1">Local part</label>
           <Input
             value={localPart}
-            onChange={e => setLocalPart(e.target.value)}
+            onChange={(e: ChangeEvent<HTMLInputElement>) => setLocalPart(e.target.value)}
             placeholder="alice"
             autoFocus
           />
         </div>
         <div>
           <label className="block text-xs text-[var(--text-dim)] mb-1">Display name (optional)</label>
-          <Input value={name} onChange={e => setName(e.target.value)} placeholder="Alice Adams" />
+          <Input value={name} onChange={(e: ChangeEvent<HTMLInputElement>) => setName(e.target.value)} placeholder="Alice Adams" />
         </div>
         {error && <p className="text-xs text-[var(--danger)]">{error}</p>}
         <div className="flex justify-end gap-2">

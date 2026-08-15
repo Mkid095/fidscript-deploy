@@ -1,4 +1,5 @@
-'use client';
+'use client'
+import type { ChangeEvent } from 'react';;
 
 import { useState } from 'react';
 import { HugeiconsIcon } from '@hugeicons/react';
@@ -39,7 +40,7 @@ export function CloudflareOAuthForm({
       </p>
       <div className="flex flex-col gap-3">
         <Input label="Client ID" type="text" value={clientId}
-          onChange={e => { onClientIdChange(e.target.value); }}
+          onChange={(e: ChangeEvent<HTMLInputElement>) => { onClientIdChange(e.target.value); }}
           placeholder="e.g. 4bc8f2a9b3c7d6e1..."
           className="bg-[var(--surface-2)] border border-[var(--rail)] text-[var(--text)] placeholder:text-[var(--text-dim)]" />
         <div>
@@ -52,7 +53,7 @@ export function CloudflareOAuthForm({
             </button>
           </div>
           <Input type={showSecret ? 'text' : 'password'} value={clientSecret}
-            onChange={e => { onClientSecretChange(e.target.value); }}
+            onChange={(e: ChangeEvent<HTMLInputElement>) => { onClientSecretChange(e.target.value); }}
             placeholder="OAuth client secret"
             className="bg-[var(--surface-2)] border border-[var(--rail)] text-[var(--text)] placeholder:text-[var(--text-dim)]" />
         </div>

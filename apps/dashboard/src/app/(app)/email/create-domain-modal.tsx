@@ -1,5 +1,6 @@
 import type { FidscriptSDK } from '@fidscript-deploy/sdk';
 'use client';
+import type { ChangeEvent } from 'react';
 
 import { useState } from 'react';
 import { Button, Input, Modal } from '@fidscript/ui';
@@ -40,7 +41,7 @@ export function CreateDomainModal({ projectId, getSdk, onCreated, onClose }: Cre
           <label className="block text-xs text-[var(--text-muted)] mb-1">Domain name</label>
           <Input
             value={domain}
-            onChange={e => setDomain(e.target.value)}
+            onChange={(e: ChangeEvent<HTMLInputElement>) => setDomain(e.target.value)}
             placeholder="mail.example.com"
             className="bg-[var(--surface-2)] border border-[var(--rail)] text-[var(--text)] placeholder:text-[var(--text-dim)] w-full"
           />

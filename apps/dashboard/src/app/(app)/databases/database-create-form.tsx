@@ -1,5 +1,6 @@
 'use client';
 
+import type { ChangeEvent } from 'react';
 import { Button, Card, Input } from '@fidscript/ui';
 
 interface Props {
@@ -25,7 +26,7 @@ export function DatabaseCreateForm({
             <label className="block text-xs text-[var(--text-muted)] mb-1">Database name</label>
             <Input
               value={name}
-              onChange={e => onNameChange(e.target.value)}
+              onChange={(e: ChangeEvent<HTMLInputElement>) => onNameChange(e.target.value)}
               placeholder="my-database"
               className="bg-[var(--surface-2)] border border-[var(--rail)] text-[var(--text)] placeholder:text-[var(--text-dim)]"
             />
@@ -34,7 +35,7 @@ export function DatabaseCreateForm({
             <label className="block text-xs text-[var(--text-muted)] mb-1">Type</label>
             <select
               value={type}
-              onChange={e => onTypeChange(e.target.value as 'postgres' | 'redis')}
+              onChange={(e: ChangeEvent<HTMLSelectElement>) => onTypeChange(e.target.value as 'postgres' | 'redis')}
               className="bg-[var(--surface-2)] border border-[var(--rail)] text-[var(--text)] rounded-lg px-3 py-2 text-sm"
             >
               <option value="postgres">PostgreSQL</option>

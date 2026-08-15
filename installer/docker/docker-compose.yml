@@ -46,6 +46,7 @@ services:
       - fidscript-deployment
       - fidscript-whatsapp
       - fidscript-app
+      - fidscript-mail
       - soostori-prod-net
     logging:
       driver: json-file
@@ -233,6 +234,7 @@ services:
       - "465:465"   # SMTPS — implicit-TLS submission
       - "993:993"   # IMAPS — implicit-TLS
       - "127.0.0.1:8090:8080"  # Admin UI / JMAP (local only; routed via Traefik)
+      - "127.0.0.1:8091:8080"  # Traefik → stalwart via host loopback
     # Stalwart reads its config from /etc/stalwart/config.json,
     # which the image's entrypoint creates on first start if absent.
     # By pre-mounting our rendered config.toml to the same path, the
@@ -251,7 +253,14 @@ services:
       - ./secrets/stalwart_credentials.txt:/run/secrets/stalwart_credentials:ro
     command: --config /etc/stalwart/config.json
     networks:
-      - fidscript-deployment
+      # fidscript-deployment: primary network for SMTP/IMAP/JMAP services
+      # reachable from other core services.
+      # fidscript-mail: dedicated network for Traefik → Stalwart HTTP.
+      # Static IP ensures Docker DNS always resolves to the fidscript-mail
+      # address (10.0.8.2), not the fidscript-deployment address.
+      fidscript-deployment:
+      fidscript-mail:
+        ipv4_address: 10.0.8.2
     # NOTE: no depends_on — Stalwart uses RocksDB on its own volume
     # and doesn't need postgres. Keeping it in the depends_on chain
     # would block Stalwart start if postgres is slow to come up, even
@@ -341,6 +350,9 @@ services:
       # so the base must be the HTTP listener root (port 8080),
       # NOT the /jmap path. The trailing slash is required.
       STALWART_JMAP_URL: http://fidscript_stalwart:8080/
+      # JMAP auth: the SHA-256 hash of the admin password (from STALWART_RECOVERY_ADMIN).
+      # The API sends this as Basic Auth password on the /jmap endpoint.
+      STALWART_JMAP_PASSWORD: ${STALWART_RECOVERY_ADMIN_SHA256:-7230f0d00120951ccadfa869b54fb642a3f97fd10da166a6cb8ff892e63275a4}
       STALWART_ADMIN_TOKEN_FILE: /run/secrets/stalwart_admin_token
       STALWART_SMTP_HOST: fidscript_stalwart
       STALWART_SMTP_PORT: "465"
@@ -667,6 +679,13 @@ networks:
     driver: bridge
   soostori-prod-net:
     external: true
+  # Dedicated network for Traefik → Stalwart HTTP routing.
+  # Stalwart is NOT on fidscript-app to force Docker DNS to resolve
+  # fidscript_stalwart to this network's IP, avoiding the kernel-level
+  # RST that Stalwart sends to Traefik's multi-homed connections.
+  fidscript-mail:
+    name: fidscript-mail
+    driver: bridge
 
 volumes:
   fidscript_postgres:
