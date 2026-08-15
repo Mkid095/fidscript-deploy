@@ -1,13 +1,14 @@
 'use client';
 
 import { useState } from 'react';
+import type { FidscriptSDK } from '@fidscript-deploy/sdk';
 import { Button, Input, Modal } from '@fidscript/ui';
 
 const ALL_EVENTS = ['sent', 'delivered', 'opened', 'clicked', 'bounced', 'complained', 'failed'];
 
 interface CreateWebhookModalProps {
   projectId: string;
-  getSdk: () => any;
+  getSdk: () => FidscriptSDK;
   onClose: () => void;
   onCreated: () => void;
 }

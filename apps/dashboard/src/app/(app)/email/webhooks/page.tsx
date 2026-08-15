@@ -77,6 +77,11 @@ export default function WebhooksPage() {
         <Button variant="primary" size="sm" onClick={() => setShowCreate(true)}>Add Webhook</Button>
       </div>
 
+      <div className="rounded-lg border border-[var(--warning)]/30 bg-[var(--warning)]/10 px-4 py-3 text-xs text-[var(--warning)] mb-4">
+        Webhook payloads are signed with HMAC-SHA256 only when <code className="font-mono">STALWART_WEBHOOK_SECRET</code> is configured on the server.
+        If unset, webhook deliveries are unauthenticated — any party who knows your endpoint URL can post events.
+      </div>
+
       {loading ? (
         <div className="flex items-center justify-center min-h-48"><Spinner size="lg" /></div>
       ) : webhooks.length === 0 ? (

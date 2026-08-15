@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useCallback, useState } from 'react';
 import type { EmailAlias, FidscriptSDK, Mailbox } from '@fidscript-deploy/sdk';
 import { Button } from '@fidscript/ui';
 import { AliasList } from './alias-list';
@@ -12,13 +12,23 @@ interface Props {
   projectId: string | undefined;
   aliases: EmailAlias[];
   mailboxes: Mailbox[];
-  onDelete: (id: string) => void;
   getSdk: () => FidscriptSDK;
   reload: () => void;
 }
 
-export function DomainAliasesTab({ domainId, domainName, projectId, aliases, mailboxes, onDelete, getSdk, reload }: Props) {
+export function DomainAliasesTab({ domainId, domainName, projectId, aliases, mailboxes, getSdk, reload }: Props) {
   const [showCreate, setShowCreate] = useState(false);
+
+  const handleDelete = useCallback(async (aliasId: string) => {
+    if (!projectId) return;
+    if (!confirm('Delete this alias? This cannot be undone.')) return;
+    try {
+      await getSdk().email.deleteAlias(projectId, aliasId);
+      reload();
+    } catch (err) {
+      alert(err instanceof Error ? err.message : 'Failed to delete alias');
+    }
+  }, [projectId, getSdk, reload]);
 
   return (
     <div>
@@ -29,7 +39,7 @@ export function DomainAliasesTab({ domainId, domainName, projectId, aliases, mai
         </Button>
       </div>
 
-      <AliasList aliases={aliases} onDelete={onDelete} />
+      <AliasList aliases={aliases} onDelete={handleDelete} />
 
       <AliasCreateModal
         isOpen={showCreate}

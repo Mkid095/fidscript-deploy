@@ -62,6 +62,7 @@ export function CatchAllConfigModal({ isOpen, onClose, domainId, projectId, init
           >
             <option value="mailbox">Internal Mailbox</option>
             <option value="external">External Email Address</option>
+            <option value="webhook" disabled>Webhook (not yet available)</option>
           </select>
         </div>
         {targetType === 'mailbox' ? (
