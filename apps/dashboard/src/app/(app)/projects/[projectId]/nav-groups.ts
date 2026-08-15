@@ -13,6 +13,7 @@ import {
   Analytics01Icon,
   Note01Icon,
   Settings01Icon,
+  Layers01Icon,
   InternetIcon,
   ArrowRight01Icon,
 } from '@hugeicons/core-free-icons';
@@ -74,6 +75,7 @@ export const BAAS_NAV_GROUPS: { label: string; items: NavItem[] }[] = [
   {
     label: 'Platform',
     items: [
+      { id: 'mcp',      label: 'API & MCP',  href: '/mcp',        icon: Layers01Icon  },
       { id: 'databases',label: 'Databases',  href: '/databases',  icon: Database01Icon },
       { id: 'storage',  label: 'Storage',    href: '/storage',    icon: HardDriveIcon  },
       { id: 'queues',   label: 'Queues',     href: '/queues',     icon: Share08Icon    },
