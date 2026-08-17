@@ -289,9 +289,7 @@ services:
         max-file: '3'
 
   api:
-    build:
-      context: ../..
-      dockerfile: apps/api/Dockerfile
+    image: fidscript-api:latest
     container_name: fidscript_api
     restart: unless-stopped
     # Read *_FILE env vars and materialize them before starting node
