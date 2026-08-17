@@ -3,13 +3,14 @@ import {
 } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { JwtAuthGuard } from '@/modules/auth/jwt-auth.guard';
+import { ApiKeyOrJwtGuard } from '@/modules/auth/guards/api-key-or-jwt.guard';
 import { ProjectMemberGuard } from '@/modules/auth/guards/project-member.guard';
 import { EmailSenderIdentityService } from '@/modules/email/services/sender-identity.service';
 import { CreateSenderIdentityDto } from '@/modules/email/dto/create-sender-identity.dto';
 
 @ApiTags('email-sender-identities')
 @Controller('projects/:projectId/email/sender-identities')
-@UseGuards(JwtAuthGuard, ProjectMemberGuard)
+@UseGuards(ApiKeyOrJwtGuard, ProjectMemberGuard)
 @ApiBearerAuth()
 export class EmailSenderIdentityController {
   constructor(private senderIdentityService: EmailSenderIdentityService) {}

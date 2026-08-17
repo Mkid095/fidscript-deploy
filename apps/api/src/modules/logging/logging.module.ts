@@ -1,4 +1,4 @@
-import { Module } from '@nestjs/common';
+import { Module, forwardRef } from '@nestjs/common';
 import { LoggingController } from './controllers/logging.controller';
 import { LogStreamService } from './services/log-stream.service';
 import { LogWriteService } from './services/log-write.service';
@@ -14,9 +14,10 @@ import { LogIngestController } from './controllers/log-ingest.controller';
 import { StorageModule } from '@/modules/storage/storage.module';
 import { MonitoringModule } from '@/modules/monitoring/monitoring.module';
 import { ProjectsModule } from '@/modules/projects/projects.module';
+import { AuthModule } from '@/modules/auth/auth.module';
 
 @Module({
-  imports: [StorageModule, MonitoringModule, ProjectsModule],
+  imports: [StorageModule, MonitoringModule, ProjectsModule, forwardRef(() => AuthModule)],
   controllers: [LoggingController, LogIngestController],
   providers: [
     LogStreamService,

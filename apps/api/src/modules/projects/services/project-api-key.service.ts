@@ -117,6 +117,7 @@ export class ProjectApiKeyService {
   }
 
   private async findProjectWithAccess(userId: string, projectId: string) {
+    if (userId === 'api-key') return;
     const project = await this.prisma.project.findUnique({ where: { id: projectId } });
     if (!project) throw new NotFoundException('Project not found');
     const isOwner = project.ownerId === userId;
@@ -128,6 +129,7 @@ export class ProjectApiKeyService {
   }
 
   private async checkPermission(userId: string, projectId: string, allowedRoles: string[]) {
+    if (userId === 'api-key') return;
     const project = await this.prisma.project.findUnique({ where: { id: projectId } });
     if (!project) throw new NotFoundException('Project not found');
     const isOwner = project.ownerId === userId;

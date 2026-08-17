@@ -1,4 +1,4 @@
-import { Module } from '@nestjs/common';
+import { Module, forwardRef } from '@nestjs/common';
 import { DeploymentsController } from './deployments.controller';
 import { GithubWebhookController } from './controllers/github-webhook.controller';
 import { DeploymentsService } from './deployments.service';
@@ -20,11 +20,12 @@ import { BuildProviderFactory } from './providers/build-provider.factory';
 import { DockerBuildWorkspaceService } from './providers/docker-build-workspace.service';
 import { StorageModule } from '@/modules/storage/storage.module';
 import { AppAuthModule } from '@/modules/app-auth/app-auth.module';
+import { AuthModule } from '@/modules/auth/auth.module';
 
 @Module({
   // AppAuthModule gives us UserGithubService so the build pipeline can inject
   // the connected GitHub token when cloning private repos (detect + deploy).
-  imports: [StorageModule, AppAuthModule],
+  imports: [StorageModule, AppAuthModule, forwardRef(() => AuthModule)],
   controllers: [DeploymentsController, GithubWebhookController],
   providers: [
     DeploymentsService,

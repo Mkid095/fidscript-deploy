@@ -3,6 +3,7 @@ import {
 } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { JwtAuthGuard } from '@/modules/auth/jwt-auth.guard';
+import { ApiKeyOrJwtGuard } from '@/modules/auth/guards/api-key-or-jwt.guard';
 import { ProjectMemberGuard } from '@/modules/auth/guards/project-member.guard';
 import { EmailMailboxService } from '@/modules/email/services/mailbox.service';
 import { CreateMailboxDto } from '@/modules/email/dto/create-mailbox.dto';
@@ -12,7 +13,7 @@ import { AddMailboxMemberDto, UpdateMailboxMemberDto } from '@/modules/email/dto
 
 @ApiTags('email-mailboxes')
 @Controller('projects/:projectId/email/mailboxes')
-@UseGuards(JwtAuthGuard, ProjectMemberGuard)
+@UseGuards(ApiKeyOrJwtGuard, ProjectMemberGuard)
 @ApiBearerAuth()
 export class EmailMailboxController {
   constructor(private mailboxService: EmailMailboxService) {}

@@ -2,14 +2,15 @@ import {
   Controller, Get, Post, Put, Patch, Delete, Body, Param, UseGuards, Req, HttpCode, HttpStatus,
 } from '@nestjs/common';
 import { ApiTags, ApiBearerAuth } from '@nestjs/swagger';
-import { JwtAuthGuard } from '@/modules/auth/jwt-auth.guard';
+import { ApiKeyOrJwtGuard } from '@/modules/auth/guards/api-key-or-jwt.guard';
+import { ProjectMemberGuard } from '@/modules/auth/guards/project-member.guard';
 import { ProjectsService } from '@/modules/projects/services/projects.service';
 import { AddMemberDto, UpdateEnvVarsDto, CreateInvitationDto } from '@/modules/projects/dto/index';
 import { Request } from 'express';
 
 @ApiTags('projects/members')
 @Controller('projects')
-@UseGuards(JwtAuthGuard)
+@UseGuards(ApiKeyOrJwtGuard, ProjectMemberGuard)
 @ApiBearerAuth()
 export class ProjectsMembersController {
   constructor(private projects: ProjectsService) {}

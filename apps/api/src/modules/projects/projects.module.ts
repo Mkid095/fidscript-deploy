@@ -15,6 +15,7 @@ import { ProjectProvisionService } from '@/modules/projects/services/project-pro
 import { StorageModule } from '@/modules/storage/storage.module';
 import { RealtimeModule } from '@/modules/realtime/realtime.module';
 import { DatabasesModule } from '@/modules/databases/databases.module';
+import { AuthModule } from '@/modules/auth/auth.module';
 
 @Module({
   controllers: [
@@ -22,7 +23,7 @@ import { DatabasesModule } from '@/modules/databases/databases.module';
     ProjectsMembersController,
     InvitationsController,
   ],
-  imports: [forwardRef(() => StorageModule), forwardRef(() => RealtimeModule), forwardRef(() => DatabasesModule)],
+  imports: [forwardRef(() => StorageModule), forwardRef(() => RealtimeModule), forwardRef(() => DatabasesModule), forwardRef(() => AuthModule)],
   providers: [
     ProjectsService,
     ProjectCrudService,

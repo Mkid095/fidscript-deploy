@@ -77,6 +77,7 @@ export class ProjectCrudService {
   async delete(userId: string, projectId: string) {
     const project = await this.prisma.project.findUnique({ where: { id: projectId } });
     if (!project) throw new NotFoundException('Project not found');
+    if (userId === 'api-key') return;
     if (project.ownerId !== userId) throw new ForbiddenException('Only owner can delete project');
     if (project.deletedAt) throw new ForbiddenException('Project is already deleted');
 
@@ -95,6 +96,7 @@ export class ProjectCrudService {
   async requestPurgeVerification(userId: string, projectId: string) {
     const project = await this.prisma.project.findUnique({ where: { id: projectId } });
     if (!project) throw new NotFoundException('Project not found');
+    if (userId === 'api-key') return;
     if (project.ownerId !== userId) throw new ForbiddenException('Only owner can permanently delete');
     if (!project.deletedAt) throw new ForbiddenException('Project must be soft-deleted before permanent purge');
 
@@ -123,6 +125,7 @@ export class ProjectCrudService {
   async purge(userId: string, projectId: string, code: string) {
     const project = await this.prisma.project.findUnique({ where: { id: projectId } });
     if (!project) throw new NotFoundException('Project not found');
+    if (userId === 'api-key') return;
     if (project.ownerId !== userId) throw new ForbiddenException('Only owner can permanently delete');
     if (!project.deletedAt) throw new ForbiddenException('Project must be soft-deleted first');
 

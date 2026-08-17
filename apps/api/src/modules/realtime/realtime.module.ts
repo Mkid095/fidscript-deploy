@@ -13,11 +13,12 @@ import { RealtimeBridgeService } from './services/realtime-bridge.service';
 import { RealtimeSubscriptionService } from './services/realtime-subscription.service';
 import { RedisModule } from '../redis/redis.module';
 import { ProjectsModule } from '@/modules/projects/projects.module';
+import { AuthModule } from '@/modules/auth/auth.module';
 
 @Module({
   // ProjectsModule provides ProjectApiKeyService so the WS gateway can accept
   // project API keys (X-API-Key / fpk_ token) for BaaS realtime subscriptions.
-  imports: [RedisModule, forwardRef(() => ProjectsModule)],
+  imports: [RedisModule, forwardRef(() => ProjectsModule), forwardRef(() => AuthModule)],
   controllers: [RealtimeController],
   providers: [
     RealtimeService,

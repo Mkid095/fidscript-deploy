@@ -16,6 +16,8 @@ import {
 } from '@nestjs/common';
 import { ApiTags, ApiBearerAuth } from '@nestjs/swagger';
 import { JwtAuthGuard } from '@/modules/auth/jwt-auth.guard';
+import { ApiKeyOrJwtGuard } from '@/modules/auth/guards/api-key-or-jwt.guard';
+import { ProjectMemberGuard } from '@/modules/auth/guards/project-member.guard';
 import { PlatformAdminGuard } from '@/modules/auth/guards/platform-admin.guard';
 import { Roles } from '@/modules/auth/guards/roles.decorator';
 import { Role } from '@prisma/client';
@@ -51,7 +53,7 @@ class TestConfigDto {
 
 @ApiTags('admin-attachment-config')
 @ApiBearerAuth()
-@UseGuards(JwtAuthGuard, PlatformAdminGuard)
+@UseGuards(ApiKeyOrJwtGuard, PlatformAdminGuard)
 @Roles(Role.ADMIN, Role.OWNER)
 @Controller('admin/attachment-config')
 export class AttachmentConfigController {

@@ -5,7 +5,6 @@ import { HugeiconsIcon } from '@hugeicons/react';
 import {
   Key01Icon,
   CheckmarkCircle01Icon,
-  Plug01Icon,
   ComputerTerminal01Icon,
   CodeIcon,
   Rocket01Icon,
@@ -38,20 +37,7 @@ interface McpHubProps {
 }
 
 const API_BASE =
-  typeof window !== 'undefined' ? `${window.location.origin}/api/v1` : '';
-
-const MCP_CONFIG_TEMPLATE = (apiKey: string) =>
-  `{
-  "mcpServers": {
-    "fidscript": {
-      "command": "fidscript-mcp",
-      "env": {
-        "FIDSCRIPT_API_KEY": "${apiKey}",
-        "FIDSCRIPT_API_URL": "${API_BASE}"
-      }
-    }
-  }
-}`;
+  typeof window !== 'undefined' ? 'https://api.deploy.fidscript.com' : '';
 
 // ─── Sub-components ──────────────────────────────────────────────────────────
 
@@ -143,9 +129,7 @@ function WhenToUse() {
 
 export function McpHub({ project }: McpHubProps) {
   const { showToast } = useToast();
-  const { apiKey, loading, showKey, setShowKey, generateKey } = useMcpHub({ project, showToast });
-
-  const mcpConfig = apiKey?.key ? MCP_CONFIG_TEMPLATE(apiKey.key) : '';
+  const { apiKey, loading, generateKey } = useMcpHub({ project, showToast });
 
   return (
     <div className="max-w-3xl space-y-8">
@@ -159,11 +143,9 @@ export function McpHub({ project }: McpHubProps) {
       <McpHubApiCredentials
         project={project}
         apiKey={apiKey}
-        showKey={showKey}
         loading={loading}
         apiBase={API_BASE}
         onGenerate={generateKey}
-        onToggleShow={() => setShowKey(false)}
       />
 
       <section className="space-y-3">
@@ -171,51 +153,42 @@ export function McpHub({ project }: McpHubProps) {
         <WhenToUse />
       </section>
 
-      <section className="border border-[var(--rail)] rounded-lg p-5 bg-[var(--surface)] space-y-5">
+      <section className="border border-[var(--rail)] rounded-lg p-5 bg-[var(--surface)] space-y-4">
         <div className="flex items-center gap-2">
-          <HugeiconsIcon icon={Plug01Icon} size={18} className="text-[var(--text-muted)]" />
-          <h2 className="text-sm font-semibold text-[var(--text)]">MCP for AI Agents</h2>
+          <HugeiconsIcon icon={Robot02Icon} size={18} className="text-[var(--text-muted)]" />
+          <h2 className="text-sm font-semibold text-[var(--text)]">Quick Reference</h2>
         </div>
-        <p className="text-xs text-[var(--text-muted)] leading-relaxed">
-          The Model Context Protocol lets AI agents like Claude Code, Cursor, or Windsurf use
-          FIDScript tools directly. Ask natural language and the agent calls the right tool.
-        </p>
-        <div className="space-y-4">
-          <div>
-            <p className="text-[var(--text-dim)] text-xs mb-1 font-medium">Step 1 &mdash; Install</p>
-            <div className="flex items-center justify-between gap-2 bg-[var(--surface-2)] border border-[var(--rail)] rounded-md px-3 py-2">
-              <code className="text-xs font-mono text-[var(--text)]">npm install -g @fidscript-deploy/mcp-server</code>
-              <McpHubCopyButton text="npm install -g @fidscript-deploy/mcp-server" />
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+          <div className="border border-[var(--rail)] rounded-lg p-4 bg-[var(--surface-2)] space-y-2">
+            <div className="flex items-center gap-2">
+              <HugeiconsIcon icon={Robot02Icon} size={14} className="text-violet-400" />
+              <p className="text-xs font-semibold text-[var(--text)]">AI Agents (MCP)</p>
             </div>
-          </div>
-          <div>
-            <p className="text-[var(--text-dim)] text-xs mb-1 font-medium">Step 2 &mdash; Claude Desktop config</p>
-            <p className="text-xs text-[var(--text-muted)] mb-2">
-              Add to <code className="font-mono">~/.claude/settings.json</code>:
+            <p className="text-xs text-[var(--text-muted)] leading-relaxed">
+              Install the MCP server and configure your AI client. The full setup guide above
+              contains everything your agent needs.
             </p>
-            <div className="relative">
-              <pre className="text-xs font-mono bg-[var(--surface-2)] border border-[var(--rail)] rounded-md px-3 py-3 whitespace-pre-wrap text-[var(--text)] overflow-x-auto">
-                {mcpConfig || '  // Generate an API key below first'}
-              </pre>
-              {apiKey?.key && (
-                <div className="absolute top-2 right-2">
-                  <McpHubCopyButton text={mcpConfig} label="Copy JSON" />
-                </div>
-              )}
+            <p className="text-xs text-[var(--text-dim)] font-mono">npm install -g @fidscript-deploy/mcp-server</p>
+          </div>
+          <div className="border border-[var(--rail)] rounded-lg p-4 bg-[var(--surface-2)] space-y-2">
+            <div className="flex items-center gap-2">
+              <HugeiconsIcon icon={ComputerTerminal01Icon} size={14} className="text-green-400" />
+              <p className="text-xs font-semibold text-[var(--text)]">Terminal (CLI)</p>
             </div>
-          </div>
-          <div>
-            <p className="text-[var(--text-dim)] text-xs mb-1 font-medium">Step 2b &mdash; Cursor</p>
-            <p className="text-xs text-[var(--text-muted)] mb-2">
-              Settings &rarr; AI &rarr; MCP Servers &rarr; Add (same JSON config above).
+            <p className="text-xs text-[var(--text-muted)] leading-relaxed">
+              Scripts, CI/CD, and one-off operations. Authenticate once and run any command.
             </p>
+            <p className="text-xs text-[var(--text-dim)] font-mono">npm install -g @fidscript-deploy/cli</p>
           </div>
-          <div className="flex items-start gap-2 text-xs text-[var(--text-muted)]">
-            <HugeiconsIcon icon={Key01Icon} size={12} className="mt-0.5 shrink-0" />
-            <span>
-              Generate an API key below and paste <code className="font-mono">FIDSCRIPT_API_KEY</code>{' '}
-              into the config. The MCP binary is <code className="font-mono">fidscript-mcp</code>.
-            </span>
+          <div className="border border-[var(--rail)] rounded-lg p-4 bg-[var(--surface-2)] space-y-2">
+            <div className="flex items-center gap-2">
+              <HugeiconsIcon icon={CodeIcon} size={14} className="text-blue-400" />
+              <p className="text-xs font-semibold text-[var(--text)]">Code (SDK)</p>
+            </div>
+            <p className="text-xs text-[var(--text-muted)] leading-relaxed">
+              Programmatic access from Node.js. Full type safety, all 100+ tools available.
+            </p>
+            <p className="text-xs text-[var(--text-dim)] font-mono">npm install @fidscript-deploy/sdk</p>
           </div>
         </div>
       </section>

@@ -4,6 +4,8 @@ import {
 } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { JwtAuthGuard } from '@/modules/auth/jwt-auth.guard';
+import { ApiKeyOrJwtGuard } from '@/modules/auth/guards/api-key-or-jwt.guard';
+import { ProjectMemberGuard } from '@/modules/auth/guards/project-member.guard';
 import { PrismaService } from '@/prisma/prisma.service';
 import { DomainsService } from '@/modules/domains/services/domains.service';
 import { DomainReconciliationService } from '@/modules/domains/services/domain-reconciliation.service';
@@ -20,7 +22,7 @@ import { Request } from 'express';
 
 @ApiTags('domains')
 @Controller('projects/:projectId/domains')
-@UseGuards(JwtAuthGuard)
+@UseGuards(ApiKeyOrJwtGuard, ProjectMemberGuard)
 @ApiBearerAuth()
 export class DomainsController {
   constructor(

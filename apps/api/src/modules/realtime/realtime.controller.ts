@@ -10,6 +10,7 @@ import {
 } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
+import { ApiKeyOrJwtGuard } from '../auth/guards/api-key-or-jwt.guard';
 import { ProjectMemberGuard } from '../auth/guards/project-member.guard';
 import { CurrentUser } from '../auth/current-user.decorator';
 import { RealtimeService } from './realtime.service';
@@ -22,7 +23,7 @@ import {
 
 @ApiTags('realtime')
 @Controller('projects/:projectId/realtime')
-@UseGuards(JwtAuthGuard, ProjectMemberGuard)
+@UseGuards(ApiKeyOrJwtGuard, ProjectMemberGuard)
 @ApiBearerAuth()
 export class RealtimeController {
   constructor(private realtimeService: RealtimeService) {}
