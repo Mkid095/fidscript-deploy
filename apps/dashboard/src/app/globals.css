@@ -1,6 +1,129 @@
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=DM+Serif+Display&family=JetBrains+Mono:wght@400;500;600&display=swap');
 @import "tailwindcss";
-@plugin "@tailwindcss/typography";
+/* Docs / prose styles — custom, works with any Tailwind version */
+.docs-content {
+  color: var(--text-muted);
+  line-height: 1.75;
+  font-size: 15px;
+}
+.docs-content h1 {
+  font-size: 2rem;
+  font-weight: 700;
+  letter-spacing: -0.025em;
+  color: var(--text);
+  margin: 0 0 1.5rem;
+  line-height: 1.2;
+}
+.docs-content h1:first-child { margin-top: 0; }
+.docs-content h2 {
+  font-size: 1.35rem;
+  font-weight: 600;
+  letter-spacing: -0.015em;
+  color: var(--text);
+  margin: 2.5rem 0 1rem;
+  padding-top: 2rem;
+  border-top: 1px solid var(--rail);
+}
+.docs-content h3 {
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: var(--text);
+  margin: 1.75rem 0 0.75rem;
+}
+.docs-content p { margin: 0 0 1rem; }
+.docs-content p.lead {
+  font-size: 1.05rem;
+  color: var(--text-muted);
+  margin-bottom: 1.5rem;
+}
+.docs-content a {
+  color: var(--accent);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+.docs-content a:hover { color: var(--text); }
+.docs-content ul, .docs-content ol {
+  margin: 0 0 1rem 1.5rem;
+  padding: 0;
+}
+.docs-content ul { list-style: disc; }
+.docs-content ol { list-style: decimal; }
+.docs-content li { margin-bottom: 0.4rem; }
+.docs-content li strong { color: var(--text); }
+.docs-content pre {
+  background: var(--surface-2);
+  border: 1px solid var(--rail);
+  border-radius: 8px;
+  padding: 1rem 1.25rem;
+  overflow-x: auto;
+  margin: 1rem 0 1.5rem;
+  font-size: 13px;
+  line-height: 1.6;
+}
+.docs-content code {
+  font-family: var(--font-mono);
+  font-size: 0.85em;
+  background: var(--surface-2);
+  border: 1px solid var(--rail);
+  border-radius: 4px;
+  padding: 0.15em 0.4em;
+  color: var(--accent);
+}
+.docs-content pre code {
+  background: none;
+  border: none;
+  border-radius: 0;
+  padding: 0;
+  color: var(--text-muted);
+  font-size: inherit;
+}
+.docs-content blockquote {
+  border-left: 3px solid var(--accent);
+  margin: 1rem 0 1.5rem;
+  padding: 0.5rem 1rem;
+  background: var(--surface-2);
+  border-radius: 0 6px 6px 0;
+  color: var(--text-muted);
+  font-style: italic;
+}
+.docs-content table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 1rem 0 1.5rem;
+  font-size: 14px;
+}
+.docs-content th {
+  text-align: left;
+  font-weight: 600;
+  color: var(--text);
+  background: var(--surface-2);
+  border: 1px solid var(--rail);
+  padding: 0.6rem 0.9rem;
+}
+.docs-content td {
+  border: 1px solid var(--rail);
+  padding: 0.6rem 0.9rem;
+  vertical-align: top;
+}
+.docs-content tr:hover td { background: var(--hover); }
+.docs-content hr {
+  border: none;
+  border-top: 1px solid var(--rail);
+  margin: 2rem 0;
+}
+
+/* Light theme overrides */
+[data-theme="light"] .docs-content h1,
+[data-theme="light"] .docs-content h2,
+[data-theme="light"] .docs-content h3 { color: #1a1a1a; }
+[data-theme="light"] .docs-content code { color: #c2410c; background: #f0f0f0; border-color: #d0d0d0; }
+[data-theme="light"] .docs-content pre { background: #f5f6f8; border-color: #d0d0d0; }
+[data-theme="light"] .docs-content pre code { color: #1a1a1a; }
+[data-theme="light"] .docs-content blockquote { background: #f0f0f0; }
+[data-theme="light"] .docs-content th { background: #f0f0f0; border-color: #d0d0d0; }
+[data-theme="light"] .docs-content td { border-color: #e0e0e0; }
+[data-theme="light"] .docs-content a { color: #c2410c; }
+[data-theme="light"] .docs-content a:hover { color: #1a1a1a; }
 
 /* ============================================================
    FIDScript Design System — Theme-aware

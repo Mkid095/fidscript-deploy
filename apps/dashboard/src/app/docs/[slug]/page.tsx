@@ -32,7 +32,7 @@ export default async function DocPage({ params }: { params: Promise<{ slug: stri
         <CopyPage />
       </header>
 
-      <div data-doc-content className="prose-invert max-w-none text-[var(--text-muted)]">
+      <div data-doc-content className="docs-content max-w-none">
         <DocsContent doc={doc} />
       </div>
     </article>
