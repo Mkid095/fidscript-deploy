@@ -37,7 +37,7 @@ interface McpHubProps {
 }
 
 const API_BASE =
-  typeof window !== 'undefined' ? 'https://api.deploy.fidscript.com' : '';
+  typeof window !== 'undefined' ? 'https://deploy.fidscript.com' : '';
 
 // ─── Sub-components ──────────────────────────────────────────────────────────
 

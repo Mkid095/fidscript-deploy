@@ -26,7 +26,7 @@ export type Doc = {
   contentHtml: string;
 };
 
-const API = 'https://api.deploy.fidscript.com';
+const API = 'https://deploy.fidscript.com';
 const PLATFORM = 'https://deploy.fidscript.com';
 
 export const DOCS: Doc[] = [
