@@ -13,15 +13,22 @@
  *      picks their own host via FIDScript_API_URL or ~/.fidscript/config.json.
  */
 import { Command } from 'commander';
-import { writeFileSync, chmodSync, existsSync } from 'fs';
-import { resolve } from 'path';
+import { writeFileSync, chmodSync, existsSync, readFileSync } from 'fs';
+import { resolve, dirname } from 'path';
+import { fileURLToPath } from 'url';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
 
 const CLI_VERSION = (() => {
   // Try to read version from package.json adjacent to this file
   // (works in both dev via ts-node and after pnpm build)
-  const pkg = resolve(__dirname, '../../package.json');
   try {
-    return require(pkg).version ?? '1.1.1';
+    const pkgPath = resolve(__dirname, '../../package.json');
+    const content = existsSync(pkgPath)
+      ? JSON.parse(readFileSync(pkgPath, 'utf8'))
+      : { version: '1.1.1' };
+    return content.version ?? '1.1.1';
   } catch {
     return '1.1.1';
   }
@@ -78,15 +85,35 @@ async function run(argv: string[]): Promise<void> {
   });
 
   // whoami
-  program.command('whoami').description('Show current user').action(async () => {
+  program.command('whoami').description('Show current identity and project memberships').action(async () => {
     const cfgInner = loadConfig();
     const ctx = { apiUrl: cfgInner.apiUrl, getApiKey, loadConfig };
-    const sdk = await loadSdk(ctx);
-    try {
-      const user = await sdk.auth.me();
-      console.log(`Logged in as ${user.email} (role: ${user.role})`);
-    } catch (e) {
-      die(`Authentication failed: ${(e as Error).message}`);
+    const apiKey = ctx.getApiKey();
+    if (apiKey) {
+      console.log(`Authenticated via API key`);
+      const sdk = await loadSdk(ctx);
+      try {
+        const res = await sdk.projects.list() as any;
+        const projects: any[] = res?.projects ?? [];
+        if (projects.length > 0) {
+          console.log(`Projects (${projects.length}):`);
+          for (const p of projects) {
+            console.log(`  - ${p.name} (${p.role ?? 'member'}) [${p.id}]`);
+          }
+        } else {
+          console.log(`No project memberships found.`);
+        }
+      } catch (e) {
+        die(`Authentication failed: ${(e as Error).message}`);
+      }
+    } else {
+      const sdk = await loadSdk(ctx);
+      try {
+        const user = await sdk.auth.me();
+        console.log(`Logged in as ${user.email} (role: ${user.role})`);
+      } catch (e) {
+        die(`Authentication failed: ${(e as Error).message}`);
+      }
     }
   });
 

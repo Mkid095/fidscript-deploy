@@ -52,6 +52,15 @@ export class ProjectCrudService {
 
   async get(userId: string, projectId: string) {
     const project = await this.access.findProjectWithAccess(userId, projectId);
+    // For API-key callers, findProjectWithAccess returns only { id } — fetch full data.
+    if (userId === 'api-key' || !('ownerId' in project)) {
+      const full = await this.prisma.project.findUnique({
+        where: { id: projectId },
+        include: { owner: { select: { id: true, email: true, name: true } } },
+      });
+      if (!full) throw new NotFoundException('Project not found');
+      return this.format.formatProject(full, { role: 'viewer' });
+    }
     const role = project.ownerId === userId ? 'owner' : (
       await this.prisma.projectMember.findUnique({
         where: { projectId_userId: { projectId, userId } },

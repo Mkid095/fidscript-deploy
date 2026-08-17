@@ -23,7 +23,8 @@ export function registerFunctionsCommands(program: Command, ctx: CliContext): vo
       const sdk = await loadSdk(ctx);
       const projectId = opts.project ?? die('No project ID (--project or set currentProject)');
       try {
-        const items = await sdk.functions.list(projectId);
+        const raw = await sdk.functions.list(projectId);
+        const items: any[] = Array.isArray(raw) ? raw : [];
         const rows = items.map((f: any) => ({
           id: f.id?.slice(0, 12), name: f.name, runtime: f.runtime,
           status: f.status, created: new Date(f.createdAt).toLocaleDateString(),

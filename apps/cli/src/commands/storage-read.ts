@@ -19,11 +19,13 @@ export function addStorageReadCommands(
 ): void {
   storage
     .command('list-buckets')
+    .alias('buckets')
     .description('List storage buckets in a project')
-    .option('-p, --project <id>', 'Project ID', cfg.currentProject ?? '')
-    .action(async (opts: { project?: string }) => {
+    .option('-p, --project <id>', 'Project ID')
+    .action(async function (this: Command, opts: { project?: string }) {
       const sdk = await loadSdk(ctx);
-      const projectId = opts.project ?? die('No project ID (--project)');
+      const parentProject = this.parent?.opts()?.project;
+      const projectId = (opts.project || parentProject) || die('No project ID (--project)');
       try {
         const buckets = (await sdk.storage.listBuckets(projectId)) as unknown as BucketRow[];
         const rows = buckets.map(b => ({
@@ -40,11 +42,11 @@ export function addStorageReadCommands(
   storage
     .command('list-files <bucketName>')
     .description('List files in a bucket')
-    .option('-p, --project <id>', 'Project ID', cfg.currentProject ?? '')
+    .option('-p, --project <id>', 'Project ID')
     .option('--prefix <prefix>', 'Key prefix filter')
-    .action(async (bucketName: string, opts: { project?: string; prefix?: string }) => {
+    .action(async function (this: Command, bucketName: string, opts: { project?: string; prefix?: string }) {
       const sdk = await loadSdk(ctx);
-      const projectId = opts.project ?? die('No project ID (--project)');
+      const projectId = opts.project ?? this.parent?.opts()?.project ?? die('No project ID (--project)');
       try {
         const bucketId = await findBucketId(sdk, projectId, bucketName);
         const res = await sdk.storage.listFiles(projectId, bucketId, { prefix: opts.prefix }) as unknown as { files: Array<{ key: string; sizeBytes: number; createdAt: string }> };
