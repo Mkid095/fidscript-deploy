@@ -54,7 +54,7 @@ export async function handleDomainTool(
       return sdk.domains.create(args.projectId as string, args.domain as string);
 
     case 'domain_verify':
-      return sdk.domains.verify(args.domainId as string);
+      return sdk.domains.verify(args.projectId as string, args.domainId as string);
 
     default:
       throw new Error(`Unknown domain tool: ${name}`);

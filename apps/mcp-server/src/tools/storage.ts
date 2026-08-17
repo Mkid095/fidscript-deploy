@@ -114,7 +114,7 @@ export async function handleStorageTool(
       return sdk.storage.createBucket(
         args.projectId as string,
         args.name as string,
-        args.provider as string | undefined,
+        args.provider as 'cloudinary' | 'telegram' | 'internal' | undefined,
       );
 
     case 'storage_deleteBucket':

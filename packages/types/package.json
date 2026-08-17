@@ -1,6 +1,6 @@
 {
   "name": "@fidscript-deploy/types",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Shared TypeScript types for FIDScript platform — single source of truth for SDK, MCP, and API contracts",
   "type": "module",
   "main": "./dist/index.js",

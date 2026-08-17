@@ -27,6 +27,7 @@ export function LandingHero() {
         </h1>
         <p className="mx-auto mt-6 max-w-2xl text-center text-base leading-relaxed text-[var(--text-muted)]">
           Deploy applications, run realtime databases, fire edge functions, process queues, schedule cron, and serve mail — all on your own private hardware. Open source, fully independent, zero vendor lock-in.
+          Manage everything from the dashboard, CLI, or AI agents via MCP.
         </p>
         <div className="mt-8"><CopyCommand /></div>
         <p className="mx-auto mt-3 flex max-w-xl items-center justify-center gap-1.5 text-center text-[13px] text-[var(--text-dim)]">

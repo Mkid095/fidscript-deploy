@@ -76,19 +76,6 @@ export const alertRuleTools: Tool[] = [
       required: ['projectId', 'ruleId'],
     },
   },
-  {
-    name: 'monitoring_getAlertRuleEvaluations',
-    description: 'Get recent evaluation history for an alert rule.',
-    inputSchema: {
-      type: 'object',
-      properties: {
-        projectId: { type: 'string', description: 'Project ID' },
-        ruleId: { type: 'string', description: 'Alert rule ID' },
-        limit: { type: 'number', description: 'Max evaluations to return (default 10)' },
-      },
-      required: ['projectId', 'ruleId'],
-    },
-  },
 ];
 
 export async function handleAlertRuleTool(
@@ -124,12 +111,6 @@ export async function handleAlertRuleTool(
       });
     case 'monitoring_deleteAlertRule':
       return sdk.monitoring.deleteAlertRule(args['projectId'] as string, args['ruleId'] as string);
-    case 'monitoring_getAlertRuleEvaluations':
-      return sdk.monitoring.getAlertEvaluations(
-        args['projectId'] as string,
-        args['ruleId'] as string,
-        args['limit'] as number | undefined,
-      );
     default:
       throw new Error(`Unknown monitoring alert rule tool: ${name}`);
   }

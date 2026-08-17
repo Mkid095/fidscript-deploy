@@ -1,6 +1,6 @@
 {
   "name": "@fidscript-deploy/events",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "type": "commonjs",
   "main": "./dist/events/src/index.js",
   "types": "./dist/events/src/index.d.ts",
@@ -15,7 +15,7 @@
     "clean": "rm -rf dist"
   },
   "dependencies": {
-    "@fidscript-deploy/types": "workspace:*"
+    "@fidscript-deploy/types": "^1.0.0"
   },
   "devDependencies": {
     "@types/node": "^20.0.0",

@@ -48,7 +48,7 @@ export function addEmailListCommands(emailCmd: Command, ctx: CliContext, output:
       const sdk = await loadSdk(ctx);
       const projectId = opts.project ?? die('No project ID (--project)');
       try {
-        const status = await sdk.email.getMessageStatus(projectId, messageId);
+        const status = await sdk.email.getMessageStatus(projectId, messageId) as { status: string; failureType?: string; retryCount?: number; attempts?: Array<{ attempt: number; status: string; durationMs: number; failureType?: string }> };
         console.log(`Status: ${status.status}`);
         if (status.failureType) console.log(`Failure: ${status.failureType}`);
         console.log(`Attempts: ${status.retryCount}`);
