@@ -30,12 +30,13 @@ export class EmailMessageService {
     }
     if (dto.unread !== undefined) where.isRead = !dto.unread;
 
-    return this.prisma.emailMessage.findMany({
+    const messages = await this.prisma.emailMessage.findMany({
       where,
       orderBy: { createdAt: 'desc' },
       take: dto.limit ?? 50,
       skip: dto.offset ?? 0,
     });
+    return messages.map(m => ({ ...m, sizeBytes: Number(m.sizeBytes) }));
   }
 
   async getMessage(projectId: string, messageId: string) {
@@ -43,7 +44,7 @@ export class EmailMessageService {
       where: { id: messageId, projectId },
     });
     if (!message) throw new NotFoundException('Message not found');
-    return message;
+    return { ...message, sizeBytes: Number(message.sizeBytes) };
   }
 
   /**
