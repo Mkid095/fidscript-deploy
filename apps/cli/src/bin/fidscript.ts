@@ -13,7 +13,19 @@
  *      picks their own host via FIDScript_API_URL or ~/.fidscript/config.json.
  */
 import { Command } from 'commander';
-import { writeFileSync, chmodSync } from 'fs';
+import { writeFileSync, chmodSync, existsSync } from 'fs';
+import { resolve } from 'path';
+
+const CLI_VERSION = (() => {
+  // Try to read version from package.json adjacent to this file
+  // (works in both dev via ts-node and after pnpm build)
+  const pkg = resolve(__dirname, '../../package.json');
+  try {
+    return require(pkg).version ?? '1.1.1';
+  } catch {
+    return '1.1.1';
+  }
+})();
 import {
   ensureDir,
   CREDENTIALS_FILE,
@@ -43,7 +55,7 @@ async function run(argv: string[]): Promise<void> {
   const program = new Command();
   program
     .name('fidscript')
-    .version('1.0.0')
+    .version(CLI_VERSION)
     .option('-o, --output <fmt>', 'Output format: table|json|raw', cfg.outputFormat ?? 'table');
 
   // login <key>
