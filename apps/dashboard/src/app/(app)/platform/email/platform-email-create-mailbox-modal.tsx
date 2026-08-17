@@ -1,5 +1,6 @@
 'use client';
 
+import type { ChangeEvent } from 'react';
 import { useState } from 'react';
 import { Button, Input, Modal } from '@fidscript/ui';
 
@@ -45,7 +46,7 @@ export function PlatformEmailCreateMailboxModal({ isOpen, onClose, onCreated, on
           <label className="block text-xs text-[var(--text-muted)] mb-1">Local part (before @)</label>
           <Input
             value={local}
-            onChange={e => setLocal(e.target.value)}
+            onChange={(e: ChangeEvent<HTMLInputElement>) => setLocal(e.target.value)}
             placeholder="ops"
             className="bg-[var(--surface-2)] border border-[var(--rail)] text-[var(--text)] placeholder:text-[var(--text-dim)] w-full"
           />
@@ -54,7 +55,7 @@ export function PlatformEmailCreateMailboxModal({ isOpen, onClose, onCreated, on
           <label className="block text-xs text-[var(--text-muted)] mb-1">Display name (optional)</label>
           <Input
             value={display}
-            onChange={e => setDisplay(e.target.value)}
+            onChange={(e: ChangeEvent<HTMLInputElement>) => setDisplay(e.target.value)}
             placeholder="Operations Team"
             className="bg-[var(--surface-2)] border border-[var(--rail)] text-[var(--text)] placeholder:text-[var(--text-dim)] w-full"
           />

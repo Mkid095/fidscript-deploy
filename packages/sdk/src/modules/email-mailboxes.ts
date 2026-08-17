@@ -52,7 +52,14 @@ export interface EmailMailboxesHost {
   verifyDomain(projectId: string, domainId: string): Promise<unknown>;
   deleteDomain(projectId: string, domainId: string): Promise<void>;
   getCatchAll(projectId: string, domainId: string): Promise<unknown>;
-  setCatchAll(projectId: string, domainId: string, target: unknown): Promise<{ ok: boolean }>;
+  setCatchAll(
+    projectId: string,
+    domainId: string,
+    target:
+      | { type: 'mailbox'; mailboxId: string }
+      | { type: 'external'; address: string }
+      | { type: 'webhook'; url: string },
+  ): Promise<{ ok: boolean }>;
   deleteCatchAll(projectId: string, domainId: string): Promise<{ deleted: boolean }>;
   getMessageStatus(projectId: string, messageId: string): Promise<unknown>;
 }

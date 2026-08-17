@@ -69,6 +69,48 @@ export class ProjectMemberService {
     return { success: true };
   }
 
+  /**
+   * Change a member's role. Owner-only. The 'owner' role is reserved for the
+   * project owner (the user identified by Project.ownerId); demoting yourself
+   * to a non-owner role is allowed ONLY if there is another owner to take over.
+   * For now, we don't allow promoting anyone to 'owner' via this endpoint —
+   * ownership transfer is a separate workflow.
+   */
+  async updateMemberRole(
+    userId: string,
+    projectId: string,
+    memberUserId: string,
+    role: 'admin' | 'developer' | 'viewer',
+  ) {
+    await this.checkPermission(userId, projectId, ['owner']);
+
+    const member = await this.prisma.projectMember.findUnique({
+      where: { projectId_userId: { projectId, userId: memberUserId } },
+    });
+    if (!member) throw new NotFoundException('Member not found');
+    if (member.role === role) return member;
+
+    const updated = await this.prisma.projectMember.update({
+      where: { projectId_userId: { projectId, userId: memberUserId } },
+      data: { role },
+      include: { user: { select: { id: true, email: true, name: true } } },
+    });
+
+    await this.eventService.emit('projects.member.role_changed', projectId, {
+      memberUserId,
+      oldRole: member.role,
+      newRole: role,
+      changedBy: userId,
+    });
+
+    return {
+      id: updated.id,
+      role: updated.role,
+      user: updated.user,
+      createdAt: updated.createdAt,
+    };
+  }
+
   private async findProjectWithAccess(userId: string, projectId: string) {
     const project = await this.prisma.project.findUnique({ where: { id: projectId } });
     if (!project) throw new NotFoundException('Project not found');

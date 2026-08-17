@@ -2,28 +2,13 @@
 
 import { useEffect, useState, useCallback } from 'react';
 import { Card, Button, Spinner, EmptyState } from '@fidscript/ui';
-import { HugeiconsIcon } from '@hugeicons/react';
-import { UserGroupIcon } from '@hugeicons/core-free-icons';
 
 import { useAuth } from '@/contexts/auth-context';
 import { useToast } from '@/components/toast-provider';
 import { InviteMemberModal } from './invite-member-modal';
+import { MemberRow, ASSIGNABLE_ROLES } from './member-row';
+import type { AssignableRole, Member } from './member-row';
 import type { Project } from '@/types';
-
-interface Member {
-  id: string;
-  userId: string;
-  email: string;
-  role: string;
-  joinedAt: string;
-}
-
-const ROLE_COLORS: Record<string, string> = {
-  owner: 'bg-amber-900/60 text-[var(--warning)] border-[var(--warning)]/30',
-  admin: 'bg-blue-900/60 text-[var(--accent)] border-blue-800',
-  developer: 'bg-green-900/60 text-green-400 border-green-800',
-  viewer: 'bg-[var(--rail)] text-[var(--text-muted)] border-[var(--rail-light)]',
-};
 
 interface Props {
   project: Project;
@@ -37,13 +22,14 @@ export function MembersTab({ project, currentUserId }: Props) {
   const [loading, setLoading] = useState(true);
   const [showInvite, setShowInvite] = useState(false);
   const [removingId, setRemovingId] = useState<string | null>(null);
+  const [changingRoleId, setChangingRoleId] = useState<string | null>(null);
 
   const isOwner = project.ownerId === currentUserId;
 
   const load = useCallback(async () => {
     try {
-      const data = await getSdk().projects.listMembers(project.id);
-      const list = Array.isArray(data) ? data : (data as { members?: Member[] }).members ?? [];
+      const res = await getSdk().projects.listMembers(project.id) as unknown as { members: Array<{ userId: string; email: string; role: string; joinedAt: string }> };
+      const list: Member[] = res.members.map(m => ({ id: m.userId, ...m }));
       setMembers(list);
     } catch {
       showToast({ type: 'error', message: 'Failed to load members' });
@@ -68,6 +54,19 @@ export function MembersTab({ project, currentUserId }: Props) {
     }
   }
 
+  async function handleChangeRole(userId: string, role: AssignableRole) {
+    setChangingRoleId(userId);
+    try {
+      await getSdk().projects.updateMemberRole(project.id, userId, role);
+      setMembers(prev => prev.map(m => m.userId === userId ? { ...m, role } : m));
+      showToast({ type: 'success', message: `Role updated to ${role}.` });
+    } catch (err) {
+      showToast({ type: 'error', message: err instanceof Error ? err.message : 'Failed to change role' });
+    } finally {
+      setChangingRoleId(null);
+    }
+  }
+
   if (loading) return <div className="flex justify-center py-8"><Spinner /></div>;
 
   return (
@@ -88,25 +87,15 @@ export function MembersTab({ project, currentUserId }: Props) {
         ) : (
           <div className="space-y-1.5">
             {members.map(member => (
-              <div key={member.userId} className="flex items-center gap-3 px-3 py-2.5 bg-[var(--surface-2)] border border-[var(--rail)] rounded-md">
-                <HugeiconsIcon icon={UserGroupIcon} size={14} className="text-[var(--text-muted)] flex-shrink-0" />
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm text-[var(--text)] truncate">{member.email}</p>
-                  <p className="text-[10px] text-[var(--text-dim)]">Joined {new Date(member.joinedAt).toLocaleDateString()}</p>
-                </div>
-                <span className={`text-xs px-2 py-0.5 rounded-full border capitalize flex-shrink-0 ${ROLE_COLORS[member.role] ?? ROLE_COLORS.viewer}`}>
-                  {member.role}
-                </span>
-                {isOwner && member.role !== 'owner' && currentUserId !== member.userId && (
-                  <button
-                    onClick={() => handleRemove(member.userId)}
-                    disabled={removingId === member.userId}
-                    className="text-xs text-[var(--danger)] hover:text-[var(--danger)] px-1 flex-shrink-0 disabled:opacity-50"
-                  >
-                    {removingId === member.userId ? 'Removing…' : 'Remove'}
-                  </button>
-                )}
-              </div>
+              <MemberRow
+                key={member.userId}
+                member={member}
+                canManage={isOwner && member.role !== 'owner' && currentUserId !== member.userId}
+                isChangingRole={changingRoleId === member.userId}
+                isRemoving={removingId === member.userId}
+                onChangeRole={handleChangeRole}
+                onRemove={handleRemove}
+              />
             ))}
           </div>
         )}
@@ -122,3 +111,7 @@ export function MembersTab({ project, currentUserId }: Props) {
     </div>
   );
 }
+
+// Re-export the type so other consumers (e.g. tests) can import from one place.
+export type { Member } from './member-row';
+export { ASSIGNABLE_ROLES };

@@ -55,7 +55,7 @@ export function DomainsTab() {
   async function handleVerify(id: string) {
     if (!projectId) return;
     try {
-      const updated = await getSdk().email.verifyDomain(projectId, id);
+      const updated = await getSdk().email.verifyDomain(projectId, id) as Partial<EmailDomain>;
       setDomains(prev => prev.map(d => (d.id === id ? { ...d, ...updated } : d)));
       setFlash({ type: 'success', message: 'Re-verified (DNS may take a minute to propagate)' });
     } catch (err) {

@@ -39,7 +39,7 @@ export function useDatabaseDetail({ id, getSdk }: UseDatabaseDetailOptions) {
       const sdk = getSdk();
       const [dbData, backupData] = await Promise.all([
         sdk.databases.get(id),
-        sdk.databases.listBackups(id),
+        sdk.databases.listBackups(id) as Promise<DatabaseBackup[]>,
       ]);
       setDb(dbData);
       setBackups(backupData);
@@ -117,7 +117,7 @@ export function useDatabaseDetail({ id, getSdk }: UseDatabaseDetailOptions) {
     try {
       const sdk = getSdk();
       await sdk.databases.backup(id);
-      const updated = await sdk.databases.listBackups(id);
+      const updated = (await sdk.databases.listBackups(id)) as DatabaseBackup[];
       setBackups(updated);
       setToast({ message: 'Backup started', type: 'success' });
     } catch (err) {

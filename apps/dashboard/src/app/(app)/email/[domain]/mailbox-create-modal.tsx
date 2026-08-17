@@ -1,5 +1,6 @@
 'use client';
 
+import type { ChangeEvent } from 'react';
 import { useState } from 'react';
 import type { FidscriptSDK, Mailbox } from '@fidscript-deploy/sdk';
 import { Button, Input, Modal } from '@fidscript/ui';
@@ -59,7 +60,7 @@ export function MailboxCreateModal({ isOpen, domainName, projectId, getSdk, onCl
           </label>
           <Input
             value={form.localPart}
-            onChange={e => setForm(f => ({ ...f, localPart: e.target.value }))}
+            onChange={(e: ChangeEvent<HTMLInputElement>) => setForm(f => ({ ...f, localPart: e.target.value }))}
             placeholder="alice"
             className="bg-[var(--surface-2)] border border-[var(--rail)] text-[var(--text)] placeholder:text-[var(--text-dim)] w-full"
           />
@@ -68,7 +69,7 @@ export function MailboxCreateModal({ isOpen, domainName, projectId, getSdk, onCl
           <label className="block text-xs text-[var(--text-muted)] mb-1">Display name (optional)</label>
           <Input
             value={form.displayName}
-            onChange={e => setForm(f => ({ ...f, displayName: e.target.value }))}
+            onChange={(e: ChangeEvent<HTMLInputElement>) => setForm(f => ({ ...f, displayName: e.target.value }))}
             placeholder="Alice Smith"
             className="bg-[var(--surface-2)] border border-[var(--rail)] text-[var(--text)] placeholder:text-[var(--text-dim)] w-full"
           />

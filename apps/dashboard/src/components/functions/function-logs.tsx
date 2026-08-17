@@ -5,7 +5,12 @@ import { Spinner } from '@fidscript/ui';
 
 import { LogViewer } from '@/components/deployments/log-viewer';
 import type { FidscriptSDK } from '@fidscript-deploy/sdk';
-import type { PlatformEvent } from '@fidscript-deploy/events';
+
+/** Minimal event shape used by the realtime subscription — avoid coupling to @fidscript-deploy/events */
+interface PlatformEvent {
+  type: string;
+  [key: string]: unknown;
+}
 
 interface FunctionLogsProps {
   projectId: string;

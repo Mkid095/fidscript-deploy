@@ -136,8 +136,9 @@ export function registerDomainsCommands(program: Command, ctx: CliContext): void
         return;
       }
       const sdk = await loadSdk(ctx);
+      const projectId = opts.project ?? die('No project ID (--project)');
       try {
-        await sdk.domains.delete(domainId);
+        await sdk.domains.delete(projectId, domainId);
         console.log(`✓ Deleted domain ${domainId}`);
       } catch (e) { die(`Delete failed: ${(e as Error).message}`); }
     });

@@ -1,5 +1,6 @@
 'use client';
 
+import type { ChangeEvent } from 'react';
 import { useState } from 'react';
 import { Button, Card, EmptyState, Input, Modal, Spinner } from '@fidscript/ui';
 
@@ -94,7 +95,7 @@ export default function SuppressionsPage() {
             <Input
               type="email"
               value={newEmail}
-              onChange={e => setNewEmail(e.target.value)}
+              onChange={(e: ChangeEvent<HTMLInputElement>) => setNewEmail(e.target.value)}
               placeholder="spam@example.com"
               className="bg-[var(--surface-2)] border border-[var(--rail)] w-full"
             />

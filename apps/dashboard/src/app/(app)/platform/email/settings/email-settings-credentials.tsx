@@ -1,5 +1,6 @@
 'use client';
 
+import type { ChangeEvent } from 'react';
 import { Input } from '@fidscript/ui';
 import { HugeiconsIcon } from '@hugeicons/react';
 import { ViewIcon, ViewOffIcon } from '@hugeicons/core-free-icons';
@@ -31,18 +32,18 @@ export function CredentialsPanel({
         <h3 className="text-xs font-semibold text-[var(--text-muted)] uppercase tracking-wider mb-3">Cloudinary Credentials</h3>
         <div>
           <label className="block text-xs text-[var(--text-muted)] mb-1">Cloud Name</label>
-          <Input value={cloudName} onChange={e => setCloudName(e.target.value)} placeholder="my-cloud"
+          <Input value={cloudName} onChange={(e: ChangeEvent<HTMLInputElement>) => setCloudName(e.target.value)} placeholder="my-cloud"
             className="bg-[var(--surface-2)] border border-[var(--rail)] text-[var(--text)] placeholder:text-[var(--text-dim)] w-full" />
         </div>
         <div>
           <label className="block text-xs text-[var(--text-muted)] mb-1">API Key</label>
-          <Input value={apiKey} onChange={e => setApiKey(e.target.value)} placeholder="123456789012345"
+          <Input value={apiKey} onChange={(e: ChangeEvent<HTMLInputElement>) => setApiKey(e.target.value)} placeholder="123456789012345"
             className="bg-[var(--surface-2)] border border-[var(--rail)] text-[var(--text)] placeholder:text-[var(--text-dim)] w-full" />
         </div>
         <div>
           <label className="block text-xs text-[var(--text-muted)] mb-1">API Secret</label>
           <div className="relative">
-            <Input type={showCloudinarySecret ? 'text' : 'password'} value={apiSecret} onChange={e => setApiSecret(e.target.value)} placeholder=".............."
+            <Input type={showCloudinarySecret ? 'text' : 'password'} value={apiSecret} onChange={(e: ChangeEvent<HTMLInputElement>) => setApiSecret(e.target.value)} placeholder=".............."
               className="bg-[var(--surface-2)] border border-[var(--rail)] text-[var(--text)] placeholder:text-[var(--text-dim)] w-full pr-10" />
             <button type="button" onClick={() => setShowCloudinarySecret(v => !v)}
               className="absolute right-2 top-1/2 -translate-y-1/2 text-xs text-[var(--text-muted)] hover:text-[var(--text-muted)]">
@@ -61,7 +62,7 @@ export function CredentialsPanel({
         <div>
           <label className="block text-xs text-[var(--text-muted)] mb-1">Bot Token</label>
           <div className="relative">
-            <Input type={showBotToken ? 'text' : 'password'} value={botToken} onChange={e => setBotToken(e.target.value)}
+            <Input type={showBotToken ? 'text' : 'password'} value={botToken} onChange={(e: ChangeEvent<HTMLInputElement>) => setBotToken(e.target.value)}
               placeholder="123456789:ABCdefGHIjklMNOpqrsTUVwxyz"
               className="bg-[var(--surface-2)] border border-[var(--rail)] text-[var(--text)] placeholder:text-[var(--text-dim)] w-full pr-10" />
             <button type="button" onClick={() => setShowBotToken(v => !v)}
@@ -72,7 +73,7 @@ export function CredentialsPanel({
         </div>
         <div>
           <label className="block text-xs text-[var(--text-muted)] mb-1">Chat / Channel ID</label>
-          <Input value={chatId} onChange={e => setChatId(e.target.value)} placeholder="-1001234567890"
+          <Input value={chatId} onChange={(e: ChangeEvent<HTMLInputElement>) => setChatId(e.target.value)} placeholder="-1001234567890"
             className="bg-[var(--surface-2)] border border-[var(--rail)] text-[var(--text)] placeholder:text-[var(--text-dim)] w-full" />
         </div>
       </div>

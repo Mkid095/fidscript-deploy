@@ -1,5 +1,6 @@
 import {
   Rocket01Icon, ComputerTerminal01Icon, CpuIcon, Database01Icon, BookOpen01Icon, Settings01Icon,
+  AiBrain01Icon,
 } from '@hugeicons/core-free-icons';
 
 /* ─── Doc type + registry (pure data — no JSX) ───────────────────────────── */
@@ -148,6 +149,97 @@ export const DOCS: Doc[] = [
       <pre>cd /opt/fidscript/docker\ngit -C /opt/fidscript-deploy pull\ndocker compose up -d --build</pre>
       <h2>Logs &amp; status</h2>
       <pre>docker compose -f /opt/fidscript/docker/docker-compose.yml logs -f\n/opt/fidscript/scripts/health-check.sh</pre>
+    `,
+  },
+  {
+    slug: 'ai-mcp',
+    title: 'AI & MCP',
+    category: 'Reference',
+    icon: AiBrain01Icon,
+    contentHtml: `
+      <h2>AI Agents + MCP</h2>
+      <p>
+        Connect FIDScript to AI agents like Claude Desktop or Cursor via the Model Context Protocol.
+        The MCP server exposes 100+ platform tools — create deployments, manage databases,
+        send emails, inspect queues, and more, all through natural language.
+      </p>
+
+      <h2>Quick Setup</h2>
+      <pre>npm install -g @fidscript-deploy/mcp-server</pre>
+      <p>Generate an API key at <a href="/mcp">deploy.fidscript.com/mcp</a>, then add to your AI client config.</p>
+
+      <h2>Claude Desktop</h2>
+      <p>Add to <code>~/.claude/settings.json</code>:</p>
+      <pre>{
+  "mcpServers": {
+    "fidscript": {
+      "command": "fidscript-mcp",
+      "env": {
+        "FIDSCRIPT_API_KEY": "fpk_xxx",
+        "FIDSCRIPT_API_URL": "https://deploy.fidscript.com/api/v1"
+      }
+    }
+  }
+}</pre>
+
+      <h2>Cursor</h2>
+      <p>Settings → AI → MCP Servers → Add (same JSON config as above).</p>
+
+      <h2>CLI</h2>
+      <pre>npm install -g @fidscript-deploy/cli
+fidscript login &lt;your-api-key&gt;
+fidscript --help</pre>
+
+      <h2>Available MCP Tools</h2>
+      <p>100+ tools across 15 categories:</p>
+
+      <h3>Projects</h3>
+      <p><code>project_list</code> · <code>project_create</code></p>
+
+      <h3>Deployments</h3>
+      <p><code>deployments_list</code> · <code>deployments_get</code> · <code>deployments_getLogs</code> · <code>deployments_create</code> · <code>deployments_stop</code> · <code>deployments_restart</code> · <code>deployments_rollback</code> · <code>deployments_destroy</code></p>
+
+      <h3>Functions</h3>
+      <p><code>functions_list</code> · <code>functions_get</code> · <code>functions_create</code> · <code>functions_deploy</code> · <code>functions_update</code> · <code>functions_delete</code> · <code>functions_invoke</code></p>
+
+      <h3>Databases</h3>
+      <p><code>databases_list</code> · <code>databases_get</code> · <code>databases_create</code> · <code>databases_delete</code> · <code>databases_backup</code> · <code>databases_listBackups</code> · <code>databases_restore</code></p>
+
+      <h3>Storage</h3>
+      <p><code>storage_listBuckets</code> · <code>storage_createBucket</code> · <code>storage_deleteBucket</code> · <code>storage_listFiles</code> · <code>storage_uploadFile</code> · <code>storage_deleteFile</code> · <code>storage_getSignedUrl</code></p>
+
+      <h3>Queues</h3>
+      <p><code>queues_list</code> · <code>queues_get</code> · <code>queues_create</code> · <code>queues_delete</code> · <code>queues_publish</code> · <code>queues_getMessages</code></p>
+
+      <h3>Scheduler</h3>
+      <p><code>cron_list</code> · <code>cron_get</code> · <code>cron_create</code> · <code>cron_update</code> · <code>cron_delete</code> · <code>cron_trigger</code> · <code>cron_getNextRun</code></p>
+
+      <h3>Email</h3>
+      <p><code>email_status</code> · <code>email_domains</code> · <code>email_send</code> · <code>email_send_template</code> · <code>email_templates</code> · <code>email_inbox</code> · <code>email_analytics</code> · <code>email_suppressions</code></p>
+
+      <h3>Domains</h3>
+      <p><code>domain_list</code> · <code>domain_add</code> · <code>domain_verify</code></p>
+
+      <h3>Realtime</h3>
+      <p><code>realtime_listChannels</code> · <code>realtime_createChannel</code> · <code>realtime_deleteChannel</code> · <code>realtime_setPresence</code></p>
+
+      <h3>Monitoring</h3>
+      <p><code>monitoring_getActiveAlerts</code> · <code>monitoring_listAlertRules</code> · <code>monitoring_getAlertRule</code> · <code>monitoring_createAlertRule</code> · <code>monitoring_updateAlertRule</code> · <code>monitoring_deleteAlertRule</code> · <code>monitoring_acknowledgeAlert</code> · <code>monitoring_resolveAlert</code> · <code>monitoring_getMetrics</code> · <code>monitoring_getMetricSeries</code> · <code>monitoring_getMetricsStats</code> · <code>monitoring_listDashboards</code> · <code>monitoring_createDashboard</code> · <code>monitoring_getUptime</code> · <code>monitoring_listNotificationChannels</code> · <code>monitoring_createNotificationChannel</code> · <code>monitoring_getNotificationChannel</code> · <code>monitoring_updateNotificationChannel</code> · <code>monitoring_deleteNotificationChannel</code> · <code>monitoring_testNotificationChannel</code> · <code>monitoring_listIntegrationConfigs</code> · <code>monitoring_updateIntegrationConfig</code> · <code>monitoring_getIncident</code> · <code>monitoring_recordMetric</code></p>
+
+      <h3>Logging</h3>
+      <p><code>logging_listLogStreams</code> · <code>logging_getLogStream</code> · <code>logging_createLogStream</code> · <code>logging_deleteLogStream</code> · <code>logging_getLogEvents</code> · <code>logging_queryLogs</code> · <code>logging_tailLogs</code> · <code>logging_getLogStats</code> · <code>logging_getLogTimeline</code> · <code>logging_ingestLogs</code> · <code>logging_createLogIngester</code> · <code>logging_updateLogIngester</code> · <code>logging_deleteLogIngester</code></p>
+
+      <h3>AI</h3>
+      <p><code>ai_assistDeployment</code> · <code>ai_diagnoseIssue</code> · <code>ai_explainError</code> · <code>ai_generateTemplate</code> · <code>ai_listConversations</code> · <code>ai_getConversation</code> · <code>ai_createConversation</code> · <code>ai_sendChatMessage</code> · <code>ai_recommendSolution</code> · <code>ai_suggestFix</code></p>
+
+      <h3>Marketplace</h3>
+      <p><code>marketplace_browse</code> · <code>marketplace_search</code> · <code>marketplace_getTemplateDetails</code> · <code>marketplace_getFeatured</code> · <code>marketplace_listCategories</code> · <code>marketplace_listMySubmissions</code> · <code>marketplace_getSubmissionStatus</code> · <code>marketplace_submitItem</code> · <code>marketplace_updateSubmission</code> · <code>marketplace_submitReview</code> · <code>marketplace_approveSubmission</code> · <code>marketplace_rejectSubmission</code> · <code>marketplace_featureTemplate</code></p>
+
+      <h3>Auth</h3>
+      <p><code>auth_verify_email</code> · <code>auth_send_verification</code> · <code>auth_reset_password</code> · <code>auth_list_sessions</code> · <code>auth_revoke_session</code> · <code>auth_revoke_all_sessions</code> · <code>auth_list_organizations</code> · <code>auth_create_organization</code> · <code>auth_get_organization</code> · <code>auth_list_org_members</code> · <code>auth_list_org_teams</code> · <code>auth_create_team</code> · <code>auth_invite_user</code> · <code>auth_accept_invitation</code></p>
+
+      <h3>Environment Variables</h3>
+      <p><code>env_var_list</code> · <code>env_var_set</code> · <code>env_var_delete</code></p>
     `,
   },
 ];

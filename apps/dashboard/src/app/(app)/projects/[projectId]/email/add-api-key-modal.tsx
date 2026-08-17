@@ -1,4 +1,5 @@
-'use client';
+'use client'
+import type { ChangeEvent } from 'react';;
 
 import { useState } from 'react';
 
@@ -100,16 +101,16 @@ export function AddApiKeyModal({ onClose, onCreated }: Props) {
       <form onSubmit={submit} className="space-y-3">
         <div>
           <label className="block text-xs text-[var(--text-dim)] mb-1">Name</label>
-          <Input value={name} onChange={e => setName(e.target.value)} placeholder="Production" autoFocus />
+          <Input value={name} onChange={(e: ChangeEvent<HTMLInputElement>) => setName(e.target.value)} placeholder="Production" autoFocus />
         </div>
         <div className="grid grid-cols-2 gap-2">
           <div>
             <label className="block text-xs text-[var(--text-dim)] mb-1">Daily limit</label>
-            <Input value={dailyLimit} onChange={e => setDailyLimit(e.target.value)} type="number" />
+            <Input value={dailyLimit} onChange={(e: ChangeEvent<HTMLInputElement>) => setDailyLimit(e.target.value)} type="number" />
           </div>
           <div>
             <label className="block text-xs text-[var(--text-dim)] mb-1">Monthly limit</label>
-            <Input value={monthlyLimit} onChange={e => setMonthlyLimit(e.target.value)} type="number" />
+            <Input value={monthlyLimit} onChange={(e: ChangeEvent<HTMLInputElement>) => setMonthlyLimit(e.target.value)} type="number" />
           </div>
         </div>
         {error && <p className="text-xs text-[var(--danger)]">{error}</p>}

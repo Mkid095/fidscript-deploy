@@ -38,7 +38,10 @@ http:
       entryPoints:
         - websecure
       tls:
-        certResolver: letsencrypt-dns
+        certResolver: letsencrypt-http
+      priority: 50
+      middlewares:
+        - stalwart-host-rewrite
 
     fidscript-jmap:
       rule: Host(`jmap.deploy.fidscript.com`)
@@ -46,7 +49,16 @@ http:
       entryPoints:
         - websecure
       tls:
-        certResolver: letsencrypt-dns
+        certResolver: letsencrypt-http
+      priority: 50
+      middlewares:
+        - stalwart-host-rewrite
+
+  middlewares:
+    stalwart-host-rewrite:
+      headers:
+        customRequestHeaders:
+          Host: mail.deploy.fidscript.com
 
   services:
     fidscript-api:
@@ -62,15 +74,5 @@ http:
     fidscript-stalwart:
       loadBalancer:
         servers:
-          - url: http://fidscript_stalwart:8080
+          - url: http://10.0.8.2:8080
 
-certificatesResolvers:
-  myresolver:
-    acme:
-      email: admin@deploy.fidscript.com
-      storage: /acme-dns/acme.json
-      dnsChallenge:
-        provider: cloudflare
-        resolvers:
-          - 1.1.1.1
-          - 1.0.0.1

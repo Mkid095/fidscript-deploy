@@ -1,5 +1,6 @@
 'use client';
 
+import type { ChangeEvent } from 'react';
 import { HugeiconsIcon } from '@hugeicons/react';
 import { Search01Icon, Mail01Icon, Refresh01Icon } from '@hugeicons/core-free-icons';
 import { Button, Input } from '@fidscript/ui';
@@ -24,7 +25,7 @@ export function MailboxToolbar({ folder, search, onFolderChange, onSearchChange,
           <HugeiconsIcon icon={Search01Icon} size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--text-dim)]" />
           <Input
             value={search}
-            onChange={e => onSearchChange(e.target.value)}
+            onChange={(e: ChangeEvent<HTMLInputElement>) => onSearchChange(e.target.value)}
             placeholder="Search subject, from, to…"
             className="pl-9 bg-[var(--surface-2)] border border-[var(--rail)] text-[var(--text)] placeholder:text-[var(--text-dim)]"
           />

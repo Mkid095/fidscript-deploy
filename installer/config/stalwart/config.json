@@ -15,35 +15,163 @@
   "Directory": {
     "@type": "Internal"
   },
-  "Authentication": {
+  "data": "rocksdb",
+  "fts": "rocksdb",
+  "blob": "rocksdb",
+  "lookup": "rocksdb",
+  "directory": "internal",
+  "store": {
+    "rocksdb": {
+      "type": "rocksdb",
+      "path": "/opt/stalwart/data",
+      "compression": "lz4"
+    }
+  },
+  "directory.internal": {
+    "type": "internal",
+    "store": "rocksdb"
+  },
+  "authentication": {
     "fallback-admin": {
       "user": "admin",
-      "secret": "$2b$12$NrdmK.byGOtCg5hscMVlVO2bccAXDRTgeWgHUMv4i7jePqUuCOmuK"
+      "secret": "$2b$12$RViFRpV1taNExu9FOj72juMwylqJVlyXHWqCW7PswOLdhrfRYf9RK"
     }
   },
   "server": {
-    "hostname": "deploy.fidscript.com",
+    "hostname": "mail.deploy.fidscript.com",
     "listener": {
       "smtp": {
-        "bind": "[::]:25",
+        "bind": [
+          "[::]:25"
+        ],
+        "protocol": "smtp"
+      },
+      "submission": {
+        "bind": [
+          "[::]:587"
+        ],
         "protocol": "smtp"
       },
       "submissions": {
-        "bind": "[::]:465",
+        "bind": [
+          "[::]:465"
+        ],
         "protocol": "smtp",
-        "useTls": true,
         "tlsImplicit": true
       },
+      "imap": {
+        "bind": [
+          "[::]:143"
+        ],
+        "protocol": "imap"
+      },
       "imaptls": {
-        "bind": "[::]:993",
+        "bind": [
+          "[::]:993"
+        ],
         "protocol": "imap",
-        "useTls": true,
         "tlsImplicit": true
+      },
+      "pop3": {
+        "bind": [
+          "[::]:110"
+        ],
+        "protocol": "pop3"
+      },
+      "pop3s": {
+        "bind": [
+          "[::]:995"
+        ],
+        "protocol": "pop3",
+        "tlsImplicit": true
+      },
+      "sieve": {
+        "bind": [
+          "[::]:4190"
+        ],
+        "protocol": "managesieve"
       },
       "http": {
         "protocol": "http",
-        "bind": "0.0.0.0"
+        "bind": [
+          "[::]:8080"
+        ]
+      },
+      "https": {
+        "protocol": "http",
+        "bind": [
+          "[::]:8443"
+        ],
+        "tlsImplicit": true
       }
     }
+  },
+  "imap.auth": {
+    "max-failures": 3,
+    "allow-plain-text": true
+  },
+  "session.auth": {
+    "mechanisms": {
+      "match": [
+        {
+          "if": "local_port != 25 && is_tls",
+          "then": "[plain, login]"
+        }
+      ],
+      "else": false
+    },
+    "directory": "internal",
+    "require": true,
+    "must-match-sender": false,
+    "allow-plain-text": true
+  },
+  "session.rcpt": {
+    "directory": "internal"
+  },
+  "session.auth.errors": {
+    "total": 3,
+    "wait": "5s"
+  },
+  "tracer.log": {
+    "@type": "Log",
+    "path": "/opt/stalwart/logs",
+    "prefix": "stalwart.log",
+    "rotate": "daily",
+    "ansi": false,
+    "enable": true,
+    "level": "info"
+  },
+  "auth.dkim": {
+    "sign": {
+      "match": [
+        {
+          "if": "is_local_domain('', sender_domain)",
+          "then": "sender_domain"
+        }
+      ],
+      "else": false
+    }
+  },
+  "outbound": {
+    "default": "remote"
+  },
+  "outbound.queue": {
+    "retry": [
+      {
+        "code": "4.0.0",
+        "at": "15m"
+      },
+      {
+        "code": "4.0.0",
+        "at": "1h"
+      },
+      {
+        "code": "4.0.0",
+        "at": "6h"
+      }
+    ],
+    "maxTempFailures": 25,
+    "tempFailures": "retry",
+    "maxRetries": 7
   }
 }

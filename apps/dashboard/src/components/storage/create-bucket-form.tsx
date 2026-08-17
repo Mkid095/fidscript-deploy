@@ -6,7 +6,8 @@ import { Add01Icon, Cancel01Icon } from '@hugeicons/core-free-icons';
 import { Card, Button, Input } from '@fidscript/ui';
 import type { FidscriptSDK } from '@fidscript-deploy/sdk';
 import type { Bucket } from './bucket';
-import type { StorageProviderType } from '@/types';
+
+type StorageProvider = 'cloudinary' | 'telegram' | 'internal';
 
 interface CreateBucketFormProps {
   projectId: string;
@@ -15,27 +16,21 @@ interface CreateBucketFormProps {
   getSdk: () => FidscriptSDK;
 }
 
-const PROVIDERS: { value: StorageProviderType; label: string; comingSoon?: boolean }[] = [
+const PROVIDERS: { value: StorageProvider; label: string }[] = [
   { value: 'internal',   label: 'Internal' },
   { value: 'cloudinary', label: 'Cloudinary' },
   { value: 'telegram',   label: 'Telegram' },
-  { value: 's3',         label: 'AWS S3 (not yet available)', comingSoon: true },
 ];
 
 export function CreateBucketForm({ projectId, onCreated, onError, getSdk }: CreateBucketFormProps) {
   const [show, setShow] = useState(false);
   const [name, setName] = useState('');
-  const [provider, setProvider] = useState<StorageProviderType>('internal');
+  const [provider, setProvider] = useState<StorageProvider>('internal');
   const [loading, setLoading] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!name.trim()) return;
-    const selected = PROVIDERS.find(p => p.value === provider);
-    if (selected?.comingSoon) {
-      onError('AWS S3 provider is not yet available. Use Internal, Cloudinary, or Telegram.');
-      return;
-    }
     setLoading(true);
     try {
       const created = await getSdk().storage.createBucket(projectId, name.trim(), provider);
@@ -71,11 +66,11 @@ export function CreateBucketForm({ projectId, onCreated, onError, getSdk }: Crea
             </label>
             <select
               value={provider}
-              onChange={e => setProvider(e.target.value as StorageProviderType)}
+              onChange={e => setProvider(e.target.value as StorageProvider)}
               className="w-full bg-[var(--surface-2)] border border-[var(--rail)] text-[var(--text)] rounded-lg px-3 py-2 text-xs h-[36px]"
             >
               {PROVIDERS.map(p => (
-                <option key={p.value} value={p.value} disabled={p.comingSoon ?? false}>{p.label}</option>
+                <option key={p.value} value={p.value}>{p.label}</option>
               ))}
             </select>
           </div>

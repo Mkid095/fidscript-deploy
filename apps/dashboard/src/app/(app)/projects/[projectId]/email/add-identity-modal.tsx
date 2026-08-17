@@ -1,4 +1,5 @@
-'use client';
+'use client'
+import type { ChangeEvent } from 'react';;
 
 import { useEffect, useState } from 'react';
 import type { EmailDomain } from '@fidscript-deploy/sdk';
@@ -89,7 +90,7 @@ export function AddIdentityModal({ onClose, onCreated }: Props) {
           <label className="block text-xs text-[var(--text-dim)] mb-1">Verified domain</label>
           <select
             value={domainId}
-            onChange={e => setDomainId(e.target.value)}
+            onChange={(e: ChangeEvent<HTMLSelectElement>) => setDomainId(e.target.value)}
             className="w-full px-3 py-2 text-sm bg-[var(--surface-2)] border border-[var(--rail)] rounded text-[var(--text)]"
           >
             {domains.length === 0 && <option value="">No ACTIVE domains</option>}
@@ -103,14 +104,14 @@ export function AddIdentityModal({ onClose, onCreated }: Props) {
           <label className="block text-xs text-[var(--text-dim)] mb-1">From address</label>
           <Input
             value={email}
-            onChange={e => setEmail(e.target.value)}
+            onChange={(e: ChangeEvent<HTMLInputElement>) => setEmail(e.target.value)}
             placeholder="noreply@example.com"
             autoFocus
           />
         </div>
         <div>
           <label className="block text-xs text-[var(--text-dim)] mb-1">Display name (optional)</label>
-          <Input value={name} onChange={e => setName(e.target.value)} placeholder="FIDScript Notifications" />
+          <Input value={name} onChange={(e: ChangeEvent<HTMLInputElement>) => setName(e.target.value)} placeholder="FIDScript Notifications" />
         </div>
         {error && <p className="text-xs text-[var(--danger)]">{error}</p>}
         <div className="flex justify-end gap-2">

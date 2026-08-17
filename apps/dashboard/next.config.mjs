@@ -7,6 +7,14 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const nextConfig = {
   eslint: { ignoreDuringBuilds: true },
   reactStrictMode: true,
+  transpilePackages: ['@fidscript/ui', '@fidscript-deploy/ui'],
+  webpack: (config) => {
+    config.resolve.alias = {
+      ...config.resolve.alias,
+      '@fidscript/ui': '@fidscript-deploy/ui',
+    };
+    return config;
+  },
   output: 'standalone',
   outputFileTracingRoot: path.resolve(__dirname, '../..'),
   images: {

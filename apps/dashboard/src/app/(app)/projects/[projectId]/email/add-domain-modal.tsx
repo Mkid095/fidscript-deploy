@@ -1,4 +1,5 @@
-'use client';
+'use client'
+import type { ChangeEvent } from 'react';;
 
 import { useState } from 'react';
 import type { EmailDomain } from '@fidscript-deploy/sdk';
@@ -26,7 +27,7 @@ export function AddDomainModal({ onClose, onAdded }: Props) {
     setBusy(true);
     setError(null);
     try {
-      const created = await getSdk().email.createDomain(projectId, domain.trim());
+      const created = await getSdk().email.createDomain(projectId, domain.trim()) as EmailDomain;
       onAdded(created);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to add domain');
@@ -42,7 +43,7 @@ export function AddDomainModal({ onClose, onAdded }: Props) {
           <label className="block text-xs text-[var(--text-dim)] mb-1">Domain</label>
           <Input
             value={domain}
-            onChange={e => setDomain(e.target.value)}
+            onChange={(e: ChangeEvent<HTMLInputElement>) => setDomain(e.target.value)}
             placeholder="mail.example.com"
             autoFocus
           />

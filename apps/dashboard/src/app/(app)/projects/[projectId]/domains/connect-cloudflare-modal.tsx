@@ -1,4 +1,5 @@
-'use client';
+'use client'
+import type { ChangeEvent } from 'react';;
 
 import { useState } from 'react';
 import { Button, Input, Modal } from '@fidscript/ui';
@@ -94,7 +95,7 @@ export function ConnectCloudflareModal({ isOpen, onClose, onOAuth, onToken }: Co
           </p>
           <div className="mb-4">
             <label className="block text-xs text-[var(--text-muted)] mb-1.5">API Token</label>
-            <Input type="password" value={cfToken} onChange={e => setCfToken(e.target.value)}
+            <Input type="password" value={cfToken} onChange={(e: ChangeEvent<HTMLInputElement>) => setCfToken(e.target.value)}
               placeholder="cfut_..."
               className="bg-[var(--surface-2)] border border-[var(--rail)] text-[var(--text)] placeholder:text-[var(--text-dim)] w-full font-mono" />
           </div>

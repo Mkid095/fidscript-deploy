@@ -27,7 +27,7 @@ export function addStorageWriteCommands(storage: Command, ctx: CliContext): void
       const sdk = await loadSdk(ctx);
       const projectId = opts.project ?? die('No project ID (--project)');
       try {
-        const b = await sdk.storage.createBucket(projectId, name, opts.provider ?? 'internal') as unknown as BucketRow;
+        const b = await sdk.storage.createBucket(projectId, name, (opts.provider ?? 'internal') as 'cloudinary' | 'telegram' | 'internal') as unknown as BucketRow;
         console.log(`✓ Created bucket ${b.id}: ${b.name} (provider: ${b.provider}, public: ${b.isPublic ? 'yes' : 'no'})`);
       } catch (e) { die(`Create failed: ${(e as Error).message}`); }
     });
