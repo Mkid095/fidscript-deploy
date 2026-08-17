@@ -54,11 +54,60 @@ http:
       middlewares:
         - stalwart-host-rewrite
 
+    whatsapp-api:
+      rule: Host(`whatsappapi.fidscript.com`)
+      service: whatsapp-api
+      entryPoints:
+        - websecure
+      tls:
+        certResolver: letsencrypt-dns
+
+    whatsapp-docs:
+      rule: Host(`whatsappdocs.fidscript.com`)
+      service: whatsapp-docs
+      entryPoints:
+        - websecure
+      tls:
+        certResolver: letsencrypt-dns
+
+    # WhatsApp auth route — higher priority, bypasses frontend nginx
+    whatsapp-frontend-auth:
+      rule: Host(`whatsapp.fidscript.com`) && PathPrefix(`/api/auth`)
+      service: whatsapp-auth-api
+      entryPoints:
+        - websecure
+      tls:
+        certResolver: letsencrypt-dns
+      priority: 100
+      middlewares:
+        - whatsapp-auth-path-rewrite
+
+    whatsapp-frontend:
+      rule: Host(`whatsapp.fidscript.com`)
+      service: whatsapp-frontend
+      entryPoints:
+        - websecure
+      tls:
+        certResolver: letsencrypt-dns
+
+    whatsapp-automation:
+      rule: Host(`automations.fidscript.com`)
+      service: whatsapp-automation
+      entryPoints:
+        - websecure
+      tls:
+        certResolver: letsencrypt-dns
+
   middlewares:
     stalwart-host-rewrite:
       headers:
         customRequestHeaders:
           Host: mail.deploy.fidscript.com
+
+    whatsapp-auth-path-rewrite:
+      replacePathRegex:
+        regex: "^/api(/.*)"
+        replacement: "/api/v1/api${1}"
 
   services:
     fidscript-api:
@@ -75,4 +124,29 @@ http:
       loadBalancer:
         servers:
           - url: http://10.0.8.2:8080
+
+    whatsapp-api:
+      loadBalancer:
+        servers:
+          - url: http://fidscript_whatsapp_api:3099
+
+    whatsapp-docs:
+      loadBalancer:
+        servers:
+          - url: http://fidscript-docs-server:80
+
+    whatsapp-frontend:
+      loadBalancer:
+        servers:
+          - url: http://fidscript_whatsapp_frontend:80
+
+    whatsapp-auth-api:
+      loadBalancer:
+        servers:
+          - url: http://fidscript_api:3001
+
+    whatsapp-automation:
+      loadBalancer:
+        servers:
+          - url: http://fidscript_whatsapp_automation:80
 

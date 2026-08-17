@@ -10,6 +10,7 @@ import {
   UnauthorizedException,
 } from '@nestjs/common';
 import { ApiTags, ApiOperation } from '@nestjs/swagger';
+import { IsEmail, IsOptional, IsString, IsNotEmpty } from 'class-validator';
 import { MagicCodeService } from '@/modules/app-auth/services/magic-code.service';
 import { AppAuthTokenService } from '@/modules/app-auth/services/app-auth-token.service';
 import { AppAuthUserService } from '@/modules/app-auth/services/app-auth-user.service';
@@ -21,17 +22,18 @@ import { Request } from 'express';
 /** WhatsApp Console uses a single fixed project for all WhatsApp clients. */
 const WHATSAPP_PROJECT_ID = '00000000-0000-0000-0000-000000000001';
 
-class RequestCodeDto {
+export class RequestCodeDto {
+  @IsEmail()
   email!: string;
-  name?: string;
-  phone?: string;
 }
 
-class VerifyCodeDto {
+export class VerifyCodeDto {
+  @IsEmail()
   email!: string;
+
+  @IsString()
+  @IsNotEmpty()
   code!: string;
-  name?: string;
-  phone?: string;
 }
 
 /**
