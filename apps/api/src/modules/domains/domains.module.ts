@@ -1,4 +1,4 @@
-import { Module } from '@nestjs/common';
+import { Module, forwardRef } from '@nestjs/common';
 import { DomainsController } from '@/modules/domains/controllers/domains.controller';
 import { DomainsZoneController } from '@/modules/domains/controllers/domains-zone.controller';
 import { NotificationsController } from '@/modules/domains/controllers/notifications.controller';
@@ -45,9 +45,10 @@ import { CloudflareOAuthService } from '@/modules/domains/services/cloudflare-oa
 import { CloudflareOAuthController } from '@/modules/domains/controllers/cloudflare-oauth.controller';
 import { EventsModule } from '@/modules/events/events.module';
 import { RedisModule } from '@/modules/redis/redis.module';
+import { AuthModule } from '@/modules/auth/auth.module';
 
 @Module({
-  imports: [EventsModule, RedisModule],
+  imports: [EventsModule, RedisModule, forwardRef(() => AuthModule)],
   controllers: [DomainsController, DomainsZoneController, NotificationsController, DomainTemplatesController, CloudflareOAuthController],
   providers: [
     CloudflareZoneService,

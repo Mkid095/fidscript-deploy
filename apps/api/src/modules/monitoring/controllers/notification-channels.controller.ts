@@ -1,13 +1,14 @@
 import { Controller, Get, Post, Patch, Delete, Param, Body, UseGuards } from '@nestjs/common';
 import { ApiTags, ApiBearerAuth } from '@nestjs/swagger';
 import { JwtAuthGuard } from '@/modules/auth/jwt-auth.guard';
+import { ApiKeyOrJwtGuard } from '@/modules/auth/guards/api-key-or-jwt.guard';
 import { ProjectMemberGuard } from '@/modules/auth/guards/project-member.guard';
 import { NotificationChannelService } from '@/modules/monitoring/services/notification-channel.service';
 import { CreateNotificationChannelDto, UpdateNotificationChannelDto } from '@/modules/monitoring/dto/index';
 
 @ApiTags('monitoring/channels')
 @Controller('projects/:projectId/monitoring/channels')
-@UseGuards(JwtAuthGuard, ProjectMemberGuard)
+@UseGuards(ApiKeyOrJwtGuard, ProjectMemberGuard)
 @ApiBearerAuth()
 export class NotificationChannelsController {
   constructor(private channels: NotificationChannelService) {}

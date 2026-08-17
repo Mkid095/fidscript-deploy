@@ -23,6 +23,8 @@ export class DomainConnectionService {
   }
 
   private async ensureAccess(userId: string, projectId: string): Promise<void> {
+    // API-key callers already passed ProjectMemberGuard — allow through.
+    if (userId === 'api-key') return;
     const project = await this.prisma.project.findUnique({ where: { id: projectId } });
     if (!project) throw new ForbiddenException('Access denied');
     if (project.ownerId === userId) return;

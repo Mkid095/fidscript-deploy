@@ -1,4 +1,4 @@
-import { Module } from '@nestjs/common';
+import { Module, forwardRef } from '@nestjs/common';
 import { MetricsController } from './controllers/metrics.controller';
 import { AlertsController } from './controllers/alerts.controller';
 import { NotificationChannelsController } from './controllers/notification-channels.controller';
@@ -14,9 +14,10 @@ import { EmailNotifier } from './notifiers/email.notifier';
 import { WebhookNotifier } from './notifiers/webhook.notifier';
 import { SlackNotifier } from './notifiers/slack.notifier';
 import { EmailModule } from '@/modules/email/email.module';
+import { AuthModule } from '@/modules/auth/auth.module';
 
 @Module({
-  imports: [EmailModule],
+  imports: [EmailModule, forwardRef(() => AuthModule)],
   controllers: [
     MetricsController,
     AlertsController,

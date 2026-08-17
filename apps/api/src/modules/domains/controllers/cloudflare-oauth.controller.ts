@@ -4,6 +4,7 @@ import {
 } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { JwtAuthGuard } from '@/modules/auth/jwt-auth.guard';
+import { ApiKeyOrJwtGuard } from '@/modules/auth/guards/api-key-or-jwt.guard';
 import { CloudflareOAuthService } from '@/modules/domains/services/cloudflare-oauth.service';
 import { PrismaService } from '@/prisma/prisma.service';
 import { Request } from 'express';
@@ -22,7 +23,7 @@ export class CloudflareOAuthController {
    * Redirect the user to the returned URL to initiate the OAuth flow.
    */
   @Get('api/v1/projects/:projectId/domains/connect-cloudflare/oauth')
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(ApiKeyOrJwtGuard)
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Get Cloudflare OAuth authorization URL' })
   async getOAuthUrl(@Param('projectId') projectId: string, @Req() req: Request) {
@@ -68,7 +69,7 @@ export class CloudflareOAuthController {
    * List Cloudflare zones accessible with the connected account.
    */
   @Get('api/v1/projects/:projectId/domains/connect-cloudflare/zones')
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(ApiKeyOrJwtGuard)
   @ApiBearerAuth()
   @ApiOperation({ summary: 'List Cloudflare zones accessible by the connected account' })
   async listZones(@Param('projectId') projectId: string) {

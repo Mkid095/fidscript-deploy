@@ -4,6 +4,7 @@ import {
 } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { JwtAuthGuard } from '@/modules/auth/jwt-auth.guard';
+import { ApiKeyOrJwtGuard } from '@/modules/auth/guards/api-key-or-jwt.guard';
 import { PrismaService } from '@/prisma/prisma.service';
 import { DomainActivityService } from '@/modules/domains/services/domain-activity.service';
 import { Request } from 'express';
@@ -20,7 +21,7 @@ import { Request } from 'express';
  */
 @ApiTags('notifications')
 @Controller()
-@UseGuards(JwtAuthGuard)
+@UseGuards(ApiKeyOrJwtGuard)
 @ApiBearerAuth()
 export class NotificationsController {
   constructor(

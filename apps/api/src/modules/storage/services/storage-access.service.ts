@@ -6,6 +6,11 @@ export class StorageAccessService {
   constructor(private prisma: PrismaService) {}
 
   async checkProjectAccess(userId: string, projectId: string) {
+    if (userId === 'api-key') {
+      return { id: projectId, slug: projectId, ownerId: projectId } as {
+        id: string; slug: string; ownerId: string;
+      };
+    }
     const project = await this.prisma.project.findUnique({
       where: { id: projectId },
       select: { id: true, slug: true, ownerId: true },

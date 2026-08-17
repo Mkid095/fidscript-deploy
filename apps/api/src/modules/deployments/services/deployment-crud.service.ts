@@ -180,6 +180,8 @@ export class DeploymentCrudService {
   }
 
   private async checkAccessOrThrow(userId: string, projectId: string, minRoles?: string[]) {
+    // API-key callers already passed ProjectMemberGuard — allow through.
+    if (userId === 'api-key') return;
     const project = await this.prisma.project.findUnique({ where: { id: projectId } });
     if (!project) throw new NotFoundException('Project not found');
     if (project.ownerId === userId) return;

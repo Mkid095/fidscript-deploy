@@ -1,6 +1,7 @@
 import { Controller, Get, Post, Patch, Delete, Param, Query, Body, UseGuards, HttpCode } from '@nestjs/common';
 import { ApiTags, ApiBearerAuth } from '@nestjs/swagger';
 import { JwtAuthGuard } from '@/modules/auth/jwt-auth.guard';
+import { ApiKeyOrJwtGuard } from '@/modules/auth/guards/api-key-or-jwt.guard';
 import { ProjectMemberGuard } from '@/modules/auth/guards/project-member.guard';
 import { AlertRuleService } from '@/modules/monitoring/services/alert-rule.service';
 import { AlertService } from '@/modules/monitoring/services/alert.service';
@@ -8,7 +9,7 @@ import { CreateAlertRuleDto, UpdateAlertRuleDto, GetAlertsDto } from '@/modules/
 
 @ApiTags('monitoring/alerts')
 @Controller('projects/:projectId/monitoring/alerts')
-@UseGuards(JwtAuthGuard, ProjectMemberGuard)
+@UseGuards(ApiKeyOrJwtGuard, ProjectMemberGuard)
 @ApiBearerAuth()
 export class AlertsController {
   constructor(
