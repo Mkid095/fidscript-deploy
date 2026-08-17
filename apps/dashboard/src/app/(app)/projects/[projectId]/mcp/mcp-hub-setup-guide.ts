@@ -25,14 +25,9 @@ npm install -g @fidscript-deploy/cli
 fidscript login ${apiKey.key}
 \`\`\`
 
-## Step 3 — Set Project Context
+## Step 3 — Verify Auth
 \`\`\`bash
-fidscript config set project ${project.slug || project.id}
-\`\`\`
-
-Verify it worked:
-\`\`\`bash
-fidscript whoami
+fidscript whoami -p ${project.id}
 \`\`\`
 
 ---
@@ -71,7 +66,7 @@ import { FidscriptClient } from '@fidscript-deploy/sdk';
 
 const sdk = new FidscriptClient({
   apiKey: '${apiKey.key}',
-  apiBase: '${apiBase}',
+  baseURL: '${apiBase}',
 });
 
 const projects = await sdk.projects.list();
@@ -81,15 +76,20 @@ const deployments = await sdk.deployments.list('${project.id}');
 ---
 
 ## Working with Projects
+
+Most CLI commands accept \`-p <project-id>\` to scope to a project:
+
 \`\`\`bash
 # List all projects
 fidscript projects list
 
-# Switch to a different project
-fidscript config set project <project-id-or-slug>
+# Get your current project
+fidscript whoami -p ${project.id}
 
-# Create a new project
-fidscript projects create my-new-app
+# Target a specific project for all commands
+fidscript deployments list -p ${project.id}
+fidscript databases list -p ${project.id}
+fidscript cron list -p ${project.id}
 \`\`\`
 
 ---
@@ -253,17 +253,14 @@ fidscript projects create my-new-app
 ## Example: Full Deployment Flow
 \`\`\`bash
 fidscript projects list
-fidscript projects create my-app
-fidscript domains create my-app.com
-fidscript deployments create --branch main
-fidscript deployments logs <deployment-id>
-fidscript deployments list
+fidscript deployments list -p ${project.id}
+fidscript deployments create -p ${project.id} --branch main
+fidscript deployments logs <deployment-id> -p ${project.id}
 \`\`\`
 
 ---
 
 **Your API key is scoped to project "${project.name}" (${project.id}).**
-All operations use this project context unless you switch with:
-\`fidscript config set project <id>\`
+All operations target this project automatically. To switch projects, pass \`-p <project-id>\` to any command.
 `;
 }
