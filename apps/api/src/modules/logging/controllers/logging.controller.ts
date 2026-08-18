@@ -16,6 +16,8 @@ import { Observable } from 'rxjs';
 import { JwtAuthGuard } from '@/modules/auth/jwt-auth.guard';
 import { ApiKeyOrJwtGuard } from '@/modules/auth/guards/api-key-or-jwt.guard';
 import { ProjectMemberGuard } from '@/modules/auth/guards/project-member.guard';
+import { ScopeGuard } from '@/modules/auth/guards/scope-guard';
+import { RequireScope } from '@/modules/auth/decorators/require-scope.decorator';
 import { LogStreamService } from '@/modules/logging/services/log-stream.service';
 import { LogWriteService } from '@/modules/logging/services/log-write.service';
 import { LogQueryService } from '@/modules/logging/services/log-query.service';
@@ -24,7 +26,7 @@ import { CreateLogStreamDto, GetLogsDto, WriteLogDto, WriteBatchLogsDto } from '
 
 @ApiTags('logging')
 @Controller('projects/:projectId/logs')
-@UseGuards(ApiKeyOrJwtGuard, ProjectMemberGuard)
+@UseGuards(ApiKeyOrJwtGuard, ScopeGuard, ProjectMemberGuard)
 @ApiBearerAuth()
 export class LoggingController {
   constructor(
@@ -37,12 +39,14 @@ export class LoggingController {
   // ===== Log Streams =====
 
   @Post('streams')
+  @RequireScope('logs:write')
   @ApiOperation({ summary: 'Create log stream' })
   async createLogStream(@Param('projectId') projectId: string, @Body() dto: CreateLogStreamDto) {
     return this.logStreamService.createLogStream(projectId, dto);
   }
 
   @Get('streams')
+  @RequireScope('logs:read')
   @ApiOperation({ summary: 'List log streams' })
   async listLogStreams(@Param('projectId') projectId: string) {
     const streams = await this.logStreamService.listLogStreams(projectId);
@@ -50,12 +54,14 @@ export class LoggingController {
   }
 
   @Get('streams/:streamId')
+  @RequireScope('logs:read')
   @ApiOperation({ summary: 'Get log stream' })
   async getLogStream(@Param('projectId') projectId: string, @Param('streamId') streamId: string) {
     return this.logStreamService.getLogStream(projectId, streamId);
   }
 
   @Delete('streams/:streamId')
+  @RequireScope('logs:write')
   @ApiOperation({ summary: 'Delete log stream' })
   async deleteLogStream(@Param('projectId') projectId: string, @Param('streamId') streamId: string) {
     return this.logStreamService.deleteLogStream(projectId, streamId);
@@ -64,24 +70,28 @@ export class LoggingController {
   // ===== Log Entries =====
 
   @Post()
+  @RequireScope('logs:write')
   @ApiOperation({ summary: 'Write log entry' })
   async writeLog(@Param('projectId') projectId: string, @Body() dto: WriteLogDto) {
     return this.logWriteService.writeLog(projectId, dto);
   }
 
   @Post('batch')
+  @RequireScope('logs:write')
   @ApiOperation({ summary: 'Write batch logs' })
   async writeBatchLogs(@Param('projectId') projectId: string, @Body() dto: WriteBatchLogsDto) {
     return this.logWriteService.writeBatchLogs(projectId, dto);
   }
 
   @Get()
+  @RequireScope('logs:read')
   @ApiOperation({ summary: 'Get logs' })
   async getLogs(@Param('projectId') projectId: string, @Query() dto: GetLogsDto) {
     return this.logQueryService.getLogs(projectId, dto);
   }
 
   @Get('streams/:streamName')
+  @RequireScope('logs:read')
   @ApiOperation({ summary: 'Get logs by stream' })
   async getLogsByStream(
     @Param('projectId') projectId: string,
@@ -92,6 +102,7 @@ export class LoggingController {
   }
 
   @Get('streams/:streamName/timeline')
+  @RequireScope('logs:read')
   @ApiOperation({ summary: 'Get log timeline' })
   async getLogTimeline(
     @Param('projectId') projectId: string,
@@ -102,6 +113,7 @@ export class LoggingController {
   }
 
   @Get('stats')
+  @RequireScope('logs:read')
   @ApiOperation({ summary: 'Get log stats' })
   async getLogStats(@Param('projectId') projectId: string, @Query('stream') stream?: string) {
     return this.logQueryService.getLogStats(projectId, stream);
@@ -118,6 +130,7 @@ export class LoggingController {
    * throughput upgrade to event-bus-driven delivery.
    */
   @Sse('stream')
+  @RequireScope('logs:read')
   @ApiOperation({ summary: 'Live-tail log entries (Server-Sent Events)' })
   streamLogs(
     @Param('projectId') projectId: string,

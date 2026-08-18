@@ -4,6 +4,9 @@ import {
 import { ApiTags, ApiBearerAuth } from '@nestjs/swagger';
 import { ApiKeyOrJwtGuard } from '@/modules/auth/guards/api-key-or-jwt.guard';
 import { ProjectMemberGuard } from '@/modules/auth/guards/project-member.guard';
+import { ScopeGuard } from '@/modules/auth/guards/scope-guard';
+import { ProjectApiKeyMintGuard } from '@/modules/auth/guards/project-api-key-mint.guard';
+import { RequireScope } from '@/modules/auth/decorators/require-scope.decorator';
 import { ProjectsService } from '@/modules/projects/services/projects.service';
 import { AddMemberDto, UpdateEnvVarsDto, CreateInvitationDto } from '@/modules/projects/dto/index';
 import { Request } from 'express';
@@ -92,6 +95,8 @@ export class ProjectsMembersController {
   }
 
   @Post(':id/api-keys')
+  @UseGuards(ScopeGuard, ProjectApiKeyMintGuard)
+  @RequireScope('projects:write')
   async createProjectApiKey(@Req() req: Request, @Param('id') id: string, @Body() dto: any) {
     const user = req.user as { userId: string };
     return this.projects.createProjectApiKey(user.userId, id, dto);

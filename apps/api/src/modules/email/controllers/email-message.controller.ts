@@ -13,6 +13,8 @@ import {
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { Request } from 'express';
 import { ApiKeyOrJwtGuard } from '@/modules/auth/guards/api-key-or-jwt.guard';
+import { ScopeGuard } from '@/modules/auth/guards/scope-guard';
+import { RequireScope } from '@/modules/auth/decorators/require-scope.decorator';
 import { ProjectMemberGuard } from '@/modules/auth/guards/project-member.guard';
 import { EmailMessageService } from '@/modules/email/services/message.service';
 import { EmailIdempotencyService } from '@/modules/email/services/idempotency.service';
@@ -22,7 +24,7 @@ import { DeleteMessagesDto } from '@/modules/email/dto/delete-messages.dto';
 
 @ApiTags('email-messages')
 @Controller('projects/:projectId/email')
-@UseGuards(ApiKeyOrJwtGuard, ProjectMemberGuard)
+@UseGuards(ApiKeyOrJwtGuard, ScopeGuard, ProjectMemberGuard)
 @ApiBearerAuth()
 export class EmailMessageController {
   constructor(
@@ -32,6 +34,7 @@ export class EmailMessageController {
 
   @Post('send')
   @HttpCode(HttpStatus.OK)
+  @RequireScope('email:send')
   @ApiOperation({ summary: 'Send an email (via Stalwart SMTP submission). BaaS: API-key authenticated.' })
   async sendEmail(
     @Req() req: Request,
@@ -67,6 +70,7 @@ export class EmailMessageController {
 
   @Patch('messages/read')
   @HttpCode(HttpStatus.OK)
+  @RequireScope('email:write')
   @ApiOperation({ summary: 'Mark messages as read/unread. BaaS: API-key authenticated.' })
   markMessagesRead(
     @Req() req: Request,
@@ -78,6 +82,7 @@ export class EmailMessageController {
   }
 
   @Patch('messages/:messageId/star')
+  @RequireScope('email:write')
   @ApiOperation({ summary: 'Star or unstar a message. BaaS: API-key authenticated.' })
   markMessageStarred(
     @Req() req: Request,
@@ -91,6 +96,7 @@ export class EmailMessageController {
 
   @Delete('messages')
   @HttpCode(HttpStatus.OK)
+  @RequireScope('email:write')
   @ApiOperation({ summary: 'Delete message metadata rows. BaaS: API-key authenticated.' })
   deleteMessages(
     @Req() req: Request,

@@ -7,6 +7,7 @@ import { ProjectsListHeader } from './projects-list-header';
 import { ProjectsListBody } from './projects-list-body';
 import { ProjectsPanels } from './projects-panels';
 import { useProjectsPage } from './use-projects-page';
+import { AIControlCenter } from './ai-control-center';
 
 export default function ProjectsPage() {
   const { user, getSdk } = useAuth();
@@ -26,6 +27,8 @@ export default function ProjectsPage() {
         onToggleDeleted={() => p.setShowDeleted(v => !v)}
         onCreate={p.handleCreateOpen}
       />
+
+      <AIControlCenter />
 
       <ProjectsListBody
         userRole={user?.role} projects={p.projects} deletedProjects={p.deletedProjects}

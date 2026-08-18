@@ -6,6 +6,8 @@ import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { JwtAuthGuard } from '@/modules/auth/jwt-auth.guard';
 import { ApiKeyOrJwtGuard } from '@/modules/auth/guards/api-key-or-jwt.guard';
 import { ProjectMemberGuard } from '@/modules/auth/guards/project-member.guard';
+import { ScopeGuard } from '@/modules/auth/guards/scope-guard';
+import { RequireScope } from '@/modules/auth/decorators/require-scope.decorator';
 import { PrismaService } from '@/prisma/prisma.service';
 import { DomainAccessService } from '@/modules/domains/services/domain-access.service';
 import { DnsProviderFactory } from '@/modules/domains/providers/dns-provider-factory';
@@ -31,7 +33,7 @@ import { Request } from 'express';
  */
 @ApiTags('domains-zone')
 @Controller('projects/:projectId/domains')
-@UseGuards(ApiKeyOrJwtGuard, ProjectMemberGuard)
+@UseGuards(ApiKeyOrJwtGuard, ScopeGuard, ProjectMemberGuard)
 @ApiBearerAuth()
 export class DomainsZoneController {
   private readonly logger = new Logger(DomainsZoneController.name);
@@ -51,6 +53,7 @@ export class DomainsZoneController {
    * Call this BEFORE auto-configuration to see what already exists.
    */
   @Post(':id/import-zone')
+  @RequireScope('domains:write')
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Import existing DNS records from provider zone' })
   async importZone(
@@ -86,6 +89,7 @@ export class DomainsZoneController {
    * Never deletes records the platform didn't create.
    */
   @Post(':id/sync-zone')
+  @RequireScope('domains:write')
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Sync platform DNS records with provider' })
   async syncZone(
@@ -122,6 +126,7 @@ export class DomainsZoneController {
    * Read-only — useful for backups and migrations.
    */
   @Get(':id/export-zone')
+  @RequireScope('domains:read')
   @ApiOperation({ summary: 'Export DNS zone records as JSON' })
   async exportZone(
     @Param('projectId') projectId: string,
@@ -166,6 +171,7 @@ export class DomainsZoneController {
    * This is the "dry run" — always call before destructive operations.
    */
   @Post(':id/dns-plan')
+  @RequireScope('domains:write')
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Preview DNS changes before applying (dry run)' })
   async planZone(
@@ -200,6 +206,7 @@ export class DomainsZoneController {
    * List change sets for a domain (audit trail).
    */
   @Get(':id/change-sets')
+  @RequireScope('domains:read')
   @ApiOperation({ summary: 'List DNS change sets for a domain' })
   async listChangeSets(
     @Param('projectId') projectId: string,
@@ -218,6 +225,7 @@ export class DomainsZoneController {
    * Get managed DNS records for a domain (ownership inventory).
    */
   @Get(':id/managed-records')
+  @RequireScope('domains:read')
   @ApiOperation({ summary: 'Get managed DNS records for a domain' })
   async getManagedRecords(
     @Param('projectId') projectId: string,
@@ -235,6 +243,7 @@ export class DomainsZoneController {
    * Records not already tracked are marked as 'imported' (never auto-deleted).
    */
   @Post(':id/import-managed-records')
+  @RequireScope('domains:write')
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Import provider records into managed records table' })
   async importManagedRecords(
@@ -252,6 +261,7 @@ export class DomainsZoneController {
    * Does NOT apply — use POST /change-sets/:id/apply to execute.
    */
   @Post(':id/change-sets')
+  @RequireScope('domains:write')
   @HttpCode(HttpStatus.CREATED)
   @ApiOperation({ summary: 'Create a DNS change set (pending — not yet applied)' })
   async createChangeSet(
@@ -269,6 +279,7 @@ export class DomainsZoneController {
    * Apply a change set — executes all planned operations atomically.
    */
   @Post('change-sets/:changeSetId/apply')
+  @RequireScope('domains:write')
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Apply a DNS change set' })
   async applyChangeSet(
@@ -285,6 +296,7 @@ export class DomainsZoneController {
    * Rollback a change set — reverses all applied operations.
    */
   @Post('change-sets/:changeSetId/rollback')
+  @RequireScope('domains:write')
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Rollback a DNS change set' })
   async rollbackChangeSet(
@@ -303,6 +315,7 @@ export class DomainsZoneController {
    * List all webhooks for a domain.
    */
   @Get(':id/webhooks')
+  @RequireScope('domains:read')
   @ApiOperation({ summary: 'List domain webhooks' })
   async listWebhooks(
     @Param('projectId') projectId: string,
@@ -318,6 +331,7 @@ export class DomainsZoneController {
    * Create a webhook for a domain.
    */
   @Post(':id/webhooks')
+  @RequireScope('domains:write')
   @HttpCode(HttpStatus.CREATED)
   @ApiOperation({ summary: 'Create a domain webhook' })
   async createWebhook(
@@ -335,6 +349,7 @@ export class DomainsZoneController {
    * Update a webhook.
    */
   @Patch(':id/webhooks/:webhookId')
+  @RequireScope('domains:write')
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Update a domain webhook' })
   async updateWebhook(
@@ -353,6 +368,7 @@ export class DomainsZoneController {
    * Delete a webhook.
    */
   @Delete(':id/webhooks/:webhookId')
+  @RequireScope('domains:delete')
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Delete a domain webhook' })
   async deleteWebhook(
@@ -370,6 +386,7 @@ export class DomainsZoneController {
    * Test a webhook by sending a test event.
    */
   @Post(':id/webhooks/:webhookId/test')
+  @RequireScope('domains:write')
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Test a domain webhook delivery' })
   async testWebhook(
