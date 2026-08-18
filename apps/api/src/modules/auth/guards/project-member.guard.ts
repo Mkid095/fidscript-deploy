@@ -43,7 +43,9 @@ export class ProjectMemberGuard implements CanActivate {
       return true;
     }
 
-    const rawId = request.params?.projectId;
+    // Support both :projectId and :id route parameter names — ProjectsMembersController
+    // uses :id while other controllers use :projectId.
+    const rawId = request.params?.projectId ?? request.params?.id;
     if (!rawId) {
       throw new ForbiddenException('Missing projectId in route');
     }

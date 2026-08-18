@@ -6,6 +6,8 @@ import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { JwtAuthGuard } from '@/modules/auth/jwt-auth.guard';
 import { ApiKeyOrJwtGuard } from '@/modules/auth/guards/api-key-or-jwt.guard';
 import { ProjectMemberGuard } from '@/modules/auth/guards/project-member.guard';
+import { ScopeGuard } from '@/modules/auth/guards/scope-guard';
+import { RequireScope } from '@/modules/auth/decorators/require-scope.decorator';
 import { PrismaService } from '@/prisma/prisma.service';
 import { DomainsService } from '@/modules/domains/services/domains.service';
 import { DomainReconciliationService } from '@/modules/domains/services/domain-reconciliation.service';
@@ -22,7 +24,7 @@ import { Request } from 'express';
 
 @ApiTags('domains')
 @Controller('projects/:projectId/domains')
-@UseGuards(ApiKeyOrJwtGuard, ProjectMemberGuard)
+@UseGuards(ApiKeyOrJwtGuard, ScopeGuard, ProjectMemberGuard)
 @ApiBearerAuth()
 export class DomainsController {
   constructor(
@@ -39,6 +41,7 @@ export class DomainsController {
   ) {}
 
   @Get()
+  @RequireScope('domains:read')
   @ApiOperation({ summary: 'List project domains' })
   async list(@Req() req: Request, @Param('projectId') projectId: string) {
     const user = req.user as { userId: string };
@@ -46,12 +49,14 @@ export class DomainsController {
   }
 
   @Get('detect')
+  @RequireScope('domains:read')
   @ApiOperation({ summary: 'Detect DNS provider for a domain by querying its nameservers' })
   async detectDnsProvider(@Query('domain') domain: string) {
     return this.dnsDetection.detect(domain);
   }
 
   @Post()
+  @RequireScope('domains:write')
   @HttpCode(HttpStatus.CREATED)
   @ApiOperation({ summary: 'Add a domain to a deployment (Mode A: manual DNS or Mode B: Cloudflare auto)' })
   async add(@Req() req: Request, @Param('projectId') projectId: string, @Body() dto: AddDomainDto) {
@@ -60,6 +65,7 @@ export class DomainsController {
   }
 
   @Get(':id/instructions')
+  @RequireScope('domains:read')
   @ApiOperation({ summary: 'Get DNS instructions for a domain (Mode A)' })
   async getInstructions(@Req() req: Request, @Param('projectId') projectId: string, @Param('id') domainId: string) {
     const user = req.user as { userId: string };
@@ -67,6 +73,7 @@ export class DomainsController {
   }
 
   @Post(':id/verify')
+  @RequireScope('domains:write')
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Verify domain: DNS resolution + HTTP routing check' })
   async verify(@Req() req: Request, @Param('projectId') projectId: string, @Param('id') domainId: string) {
@@ -75,6 +82,7 @@ export class DomainsController {
   }
 
   @Post('connect-cloudflare')
+  @RequireScope('domains:write')
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Connect Cloudflare account for Mode B auto-DNS' })
   async connectCloudflare(@Req() req: Request, @Param('projectId') projectId: string, @Body() body: { apiToken: string }) {
@@ -83,6 +91,7 @@ export class DomainsController {
   }
 
   @Get('connection')
+  @RequireScope('domains:read')
   @ApiOperation({ summary: 'Get the active DNS connection for this project' })
   async getConnection(@Req() req: Request, @Param('projectId') projectId: string) {
     const user = req.user as { userId: string };
@@ -90,6 +99,7 @@ export class DomainsController {
   }
 
   @Delete(':id')
+  @RequireScope('domains:delete')
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Delete a domain and clean up DNS records' })
   async delete(@Req() req: Request, @Param('projectId') projectId: string, @Param('id') domainId: string) {
@@ -98,6 +108,7 @@ export class DomainsController {
   }
 
   @Get(':id/health')
+  @RequireScope('domains:read')
   @ApiOperation({ summary: 'Get the latest health check result for a domain' })
   async getHealth(@Req() req: Request, @Param('projectId') projectId: string, @Param('id') domainId: string) {
     const user = req.user as { userId: string };
@@ -105,6 +116,7 @@ export class DomainsController {
   }
 
   @Post(':id/health')
+  @RequireScope('domains:write')
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Trigger a new health check for a domain' })
   async triggerHealthCheck(@Req() req: Request, @Param('projectId') projectId: string, @Param('id') domainId: string) {
@@ -113,6 +125,7 @@ export class DomainsController {
   }
 
   @Get(':id/dns-records')
+  @RequireScope('domains:read')
   @ApiOperation({ summary: 'Get all required DNS records for a domain (deployment + email)' })
   async getDnsRecords(@Req() req: Request, @Param('projectId') projectId: string, @Param('id') domainId: string) {
     const user = req.user as { userId: string };
@@ -120,6 +133,7 @@ export class DomainsController {
   }
 
   @Post(':id/dns-records/auto-configure')
+  @RequireScope('domains:write')
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Auto-configure DNS records via Cloudflare (Mode B)' })
   async autoConfigureDnsRecords(@Req() req: Request, @Param('projectId') projectId: string, @Param('id') domainId: string) {
@@ -128,6 +142,7 @@ export class DomainsController {
   }
 
   @Post(':id/email-records/auto-configure')
+  @RequireScope('domains:write')
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Auto-configure email DNS records (MX, SPF, DKIM, DMARC)' })
   async autoConfigureEmailRecords(@Req() req: Request, @Param('projectId') projectId: string, @Param('id') domainId: string) {
@@ -139,6 +154,7 @@ export class DomainsController {
   }
 
   @Get(':id/email-records/status')
+  @RequireScope('domains:read')
   @ApiOperation({ summary: 'Check status of email DNS records (MX, SPF, DKIM, DMARC)' })
   async getEmailRecordsStatus(@Req() req: Request, @Param('projectId') projectId: string, @Param('id') domainId: string) {
     const user = req.user as { userId: string };
@@ -149,6 +165,7 @@ export class DomainsController {
   }
 
   @Post(':id/dkim/rotate')
+  @RequireScope('domains:write')
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Rotate DKIM key for a domain (generates new key + selector)' })
   async rotateDkim(@Req() req: Request, @Param('projectId') projectId: string, @Param('id') domainId: string) {
@@ -160,6 +177,7 @@ export class DomainsController {
   }
 
   @Get(':id/ssl')
+  @RequireScope('domains:read')
   @ApiOperation({ summary: 'Get SSL certificate info for a domain' })
   async getSsl(@Req() req: Request, @Param('projectId') projectId: string, @Param('id') domainId: string) {
     const user = req.user as { userId: string };
@@ -167,6 +185,7 @@ export class DomainsController {
   }
 
   @Post(':id/ssl/renew')
+  @RequireScope('domains:write')
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Renew SSL certificate for a domain' })
   async renewSsl(@Req() req: Request, @Param('projectId') projectId: string, @Param('id') domainId: string) {
@@ -175,6 +194,7 @@ export class DomainsController {
   }
 
   @Post(':id/ssl/reissue')
+  @RequireScope('domains:write')
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Reissue SSL certificate for a domain (force new cert)' })
   async reissueSsl(@Req() req: Request, @Param('projectId') projectId: string, @Param('id') domainId: string) {
@@ -183,6 +203,7 @@ export class DomainsController {
   }
 
   @Get(':id/history')
+  @RequireScope('domains:read')
   @ApiOperation({ summary: 'Get verification run history for a domain' })
   async getHistory(@Req() req: Request, @Param('projectId') projectId: string, @Param('id') domainId: string) {
     const user = req.user as { userId: string };
@@ -191,6 +212,7 @@ export class DomainsController {
   }
 
   @Get(':id/incidents')
+  @RequireScope('domains:read')
   @ApiOperation({ summary: 'Get incidents for a domain' })
   async getIncidents(@Req() req: Request, @Param('projectId') projectId: string, @Param('id') domainId: string) {
     const user = req.user as { userId: string };
@@ -199,6 +221,7 @@ export class DomainsController {
   }
 
   @Get(':id/health-timeline')
+  @RequireScope('domains:read')
   @ApiOperation({ summary: 'Get health score timeline for a domain' })
   async getHealthTimeline(
     @Req() req: Request,
@@ -211,6 +234,7 @@ export class DomainsController {
   }
 
   @Get('wizard/:id')
+  @RequireScope('domains:read')
   @ApiOperation({ summary: 'Get DNS Wizard status for a domain — required records, propagation status, and step progress' })
   async getWizardStatus(@Req() req: Request, @Param('projectId') projectId: string, @Param('id') domainId: string) {
     const user = req.user as { userId: string };
@@ -223,6 +247,7 @@ export class DomainsController {
   // ── Repair ──────────────────────────────────────────────────────────────────
 
   @Get(':id/repair-policy')
+  @RequireScope('domains:read')
   @ApiOperation({ summary: 'Get the repair policy for a domain' })
   async getRepairPolicy(@Req() req: Request, @Param('projectId') projectId: string, @Param('id') domainId: string) {
     const user = req.user as { userId: string };
@@ -231,6 +256,7 @@ export class DomainsController {
   }
 
   @Patch(':id/repair-policy')
+  @RequireScope('domains:write')
   @ApiOperation({ summary: 'Update the repair policy for a domain — controls which repairs run automatically' })
   async updateRepairPolicy(
     @Req() req: Request,
@@ -244,6 +270,7 @@ export class DomainsController {
   }
 
   @Get(':id/repairs')
+  @RequireScope('domains:read')
   @ApiOperation({ summary: 'Get recent repair runs for a domain' })
   async listRepairs(@Req() req: Request, @Param('projectId') projectId: string, @Param('id') domainId: string) {
     const user = req.user as { userId: string };
@@ -252,6 +279,7 @@ export class DomainsController {
   }
 
   @Get(':id/repair-plan')
+  @RequireScope('domains:read')
   @ApiOperation({ summary: 'Get the repair plan for a domain or incident — shows what would be repaired' })
   async getRepairPlan(
     @Req() req: Request,
@@ -264,6 +292,7 @@ export class DomainsController {
   }
 
   @Post(':id/repair')
+  @RequireScope('domains:write')
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Trigger a repair for a domain — queues or executes based on policy' })
   async triggerRepair(
@@ -278,6 +307,7 @@ export class DomainsController {
   }
 
   @Get(':id/propagation')
+  @RequireScope('domains:read')
   @ApiOperation({ summary: 'Check DNS propagation across major resolvers' })
   async checkPropagation(
     @Req() req: Request,

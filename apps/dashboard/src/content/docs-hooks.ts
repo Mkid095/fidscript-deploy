@@ -26,7 +26,7 @@ export type Doc = {
   contentHtml: string;
 };
 
-const API = 'https://api.deploy.fidscript.com';
+const API = 'https://deploy.fidscript.com';
 const PLATFORM = 'https://deploy.fidscript.com';
 
 export const DOCS: Doc[] = [
@@ -732,7 +732,7 @@ curl -X POST ${API}/api/v1/projects/${'<project-id}'}/email/send-template \\
 
 <pre><code>import { FidscriptClient } from '@fidscript-deploy/sdk';
 
-const sdk = new FidscriptClient({ apiKey, apiBase: '${API}' });
+const sdk = new FidscriptClient({ apiKey, baseURL: '${API}' });
 
 // Upload
 await sdk.storage.uploadFile(projectId, bucketId, 'uploads/avatar.png', fileBuffer);

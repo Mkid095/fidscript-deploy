@@ -15,23 +15,11 @@ import {
 import { Button, Spinner, Card } from '@fidscript/ui';
 
 import { useAuth } from '@/contexts/auth-context';
-import { usePlatformMcpHub } from './mcp-platform-hooks';
+import { useAccountCredentials } from '@/hooks/use-account-credentials';
+import { getMcpConfig, getCliLoginCommand, getSdkInitCode } from '../projects/ai-control-center-data';
 
 const API_BASE =
   typeof window !== 'undefined' ? `${window.location.origin}/api/v1` : '';
-
-const MCP_CONFIG_TEMPLATE = (apiKey: string) =>
-  `{
-  "mcpServers": {
-    "fidscript": {
-      "command": "fidscript-mcp",
-      "env": {
-        "FIDSCRIPT_API_KEY": "${apiKey}",
-        "FIDSCRIPT_API_URL": "${API_BASE}"
-      }
-    }
-  }
-}`;
 
 function CopyButton({ text, label = 'Copy' }: { text: string; label?: string }) {
   const [copied, setCopied] = useState(false);
@@ -85,18 +73,17 @@ const CLI_COMMANDS = [
 export default function McpPage() {
   const { getSdk } = useAuth();
   const {
-    projects,
-    selectedProject,
-    apiKey,
-    loadingProjects,
-    loadingKey,
+    keys,
+    selectedKey,
     showKey,
-    setSelectedProject,
-    setShowKey,
-    generateKey,
-  } = usePlatformMcpHub();
+    loading: loadingKey,
+    revokeKey,
+    clearShowKey,
+  } = useAccountCredentials(getSdk);
 
-  const mcpConfig = apiKey ? MCP_CONFIG_TEMPLATE(apiKey.key) : '';
+  const mcpConfig = selectedKey && showKey ? getMcpConfig(showKey, API_BASE) : '';
+  const cliCmd = selectedKey && showKey ? getCliLoginCommand(showKey) : '';
+  const sdkCode = selectedKey && showKey ? getSdkInitCode(showKey, API_BASE) : '';
 
   return (
     <div className="max-w-3xl mx-auto space-y-8">
@@ -108,76 +95,58 @@ export default function McpPage() {
         </p>
       </div>
 
-      {/* Project selector */}
-      <Card className="border border-[var(--rail)]" padding="lg">
-        <div className="flex items-center gap-2 mb-4">
-          <HugeiconsIcon icon={Rocket01Icon} size={18} className="text-[var(--text-muted)]" />
-          <h2 className="text-sm font-semibold text-[var(--text)]">Select Project</h2>
-        </div>
-        {loadingProjects ? (
-          <div className="flex justify-center py-4"><Spinner size="sm" /></div>
-        ) : projects.length === 0 ? (
-          <p className="text-xs text-[var(--text-muted)]">No projects found. Create one first.</p>
-        ) : (
-          <select
-            value={selectedProject?.id ?? ''}
-            onChange={e =>
-              setSelectedProject(projects.find(p => p.id === e.target.value) ?? projects[0])
-            }
-            className="w-full bg-[var(--surface-2)] border border-[var(--rail)] text-[var(--text)] rounded-lg px-3 py-2 text-sm"
-          >
-            {projects.map(p => (
-              <option key={p.id} value={p.id}>{p.name}</option>
-            ))}
-          </select>
-        )}
-      </Card>
-
-      {/* API Credentials */}
+      {/* AI Control Center (key management) */}
       <section className="border border-[var(--rail)] rounded-lg p-5 bg-[var(--surface)] space-y-4">
         <div className="flex items-center gap-2">
-          <HugeiconsIcon icon={Key01Icon} size={18} className="text-[var(--text-muted)]" />
-          <h2 className="text-sm font-semibold text-[var(--text)]">API Credentials</h2>
+          <HugeiconsIcon icon={AiBrain01Icon} size={18} className="text-[var(--text-muted)]" />
+          <h2 className="text-sm font-semibold text-[var(--text)]">AI Control Center</h2>
         </div>
+        <p className="text-xs text-[var(--text-muted)]">
+          Generate an Account API Key (fsk_) for use with MCP and CLI tools.
+          Project-scoped keys (fpk_) for individual projects are managed per-project.
+        </p>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm">
           <div>
             <p className="text-[var(--text-dim)] text-xs mb-1">API Base URL</p>
             <CodeBlock code={API_BASE} />
           </div>
-          <div>
-            <p className="text-[var(--text-dim)] text-xs mb-1">Project ID</p>
-            <CodeBlock code={selectedProject?.id ?? ''} />
-          </div>
+          {selectedKey && (
+            <div>
+              <p className="text-[var(--text-dim)] text-xs mb-1">Account Key Prefix</p>
+              <CodeBlock code={selectedKey.keyPrefix + '…'} />
+            </div>
+          )}
         </div>
 
-        {!apiKey ? (
-          <Button
-            variant="primary"
-            size="sm"
-            onClick={generateKey}
-            disabled={!selectedProject || loadingKey}
-          >
-            {loadingKey ? <><Spinner size="sm" /> Generating…</> : <><HugeiconsIcon icon={Key01Icon} size={13} /> Generate API Key</>}
-          </Button>
-        ) : showKey ? (
+        {showKey ? (
           <div className="space-y-2">
             <div className="flex items-center gap-2">
               <p className="text-xs text-[var(--warning)]">Copy this key — you won&apos;t see it again.</p>
-              <button onClick={() => setShowKey(false)} type="button" className="text-xs text-[var(--text-dim)] hover:text-[var(--text)]">
+              <button onClick={clearShowKey} type="button" className="text-xs text-[var(--text-dim)] hover:text-[var(--text)]">
                 Hide
               </button>
             </div>
             <div className="flex items-center gap-2 bg-[var(--surface-2)] border border-[var(--rail)] rounded-lg px-4 py-3">
-              <code className="flex-1 text-sm font-mono text-[var(--text)] break-all">{apiKey.key}</code>
-              <CopyButton text={apiKey.key} label="Copy key" />
+              <code className="flex-1 text-sm font-mono text-[var(--text)] break-all">{showKey}</code>
+              <CopyButton text={showKey} label="Copy key" />
             </div>
           </div>
-        ) : (
+        ) : keys.length > 0 ? (
           <div className="flex items-center gap-2 text-xs text-[var(--text-dim)]">
             <HugeiconsIcon icon={CheckmarkCircle01Icon} size={13} className="text-[var(--success)]" />
             API key generated (hidden for security — regenerate if lost)
+            {selectedKey && (
+              <button onClick={() => revokeKey(selectedKey.id)} type="button"
+                className="ml-2 text-[var(--error)] hover:underline">
+                Revoke
+              </button>
+            )}
           </div>
+        ) : (
+          <p className="text-xs text-[var(--text-muted)]">
+            Generate a key below using the AI Control Center on the Projects page.
+          </p>
         )}
       </section>
 
@@ -193,21 +162,19 @@ export default function McpPage() {
         </p>
 
         <div className="space-y-4">
-          {/* Step 1: Install */}
           <div>
             <p className="text-[var(--text-dim)] text-xs mb-1 font-medium">Step 1 — Install</p>
             <CodeBlock code="npm install -g @fidscript-deploy/mcp-server" />
           </div>
 
-          {/* Step 2: Claude Desktop */}
           <div>
             <p className="text-[var(--text-dim)] text-xs mb-1 font-medium">Step 2 — Claude Desktop</p>
             <p className="text-xs text-[var(--text-muted)] mb-2">Add to <code className="font-mono">~/.claude/settings.json</code>:</p>
             <div className="relative">
               <pre className="text-xs font-mono bg-[var(--surface-2)] border border-[var(--rail)] rounded-md px-3 py-3 whitespace-pre-wrap text-[var(--text)] overflow-x-auto">
-                {mcpConfig || '  // Generate an API key above to see your config'}
+                {mcpConfig || '  // Generate an API key from the Projects page to see your config'}
               </pre>
-              {apiKey && (
+              {mcpConfig && (
                 <div className="absolute top-2 right-2">
                   <CopyButton text={mcpConfig} label="Copy JSON" />
                 </div>
@@ -215,15 +182,14 @@ export default function McpPage() {
             </div>
           </div>
 
-          {/* Step 2b: Cursor */}
           <div>
             <p className="text-[var(--text-dim)] text-xs mb-1 font-medium">Step 2b — Cursor</p>
             <p className="text-xs text-[var(--text-muted)] mb-2">Open Cursor Settings → AI → MCP Servers → Add:</p>
             <div className="relative">
               <pre className="text-xs font-mono bg-[var(--surface-2)] border border-[var(--rail)] rounded-md px-3 py-3 whitespace-pre-wrap text-[var(--text)] overflow-x-auto">
-                {mcpConfig || '  // Generate an API key above to see your config'}
+                {mcpConfig || '  // Generate an API key from the Projects page to see your config'}
               </pre>
-              {apiKey && (
+              {mcpConfig && (
                 <div className="absolute top-2 right-2">
                   <CopyButton text={mcpConfig} label="Copy JSON" />
                 </div>
@@ -231,7 +197,6 @@ export default function McpPage() {
             </div>
           </div>
 
-          {/* Step 3: Verify */}
           <div>
             <p className="text-[var(--text-dim)] text-xs mb-1 font-medium">Step 3 — Verify</p>
             <div className="space-y-1 text-xs text-[var(--text-muted)]">
@@ -250,12 +215,11 @@ export default function McpPage() {
             </div>
           </div>
 
-          {/* Environment variables */}
           <div>
             <p className="text-[var(--text-dim)] text-xs mb-1 font-medium">Environment Variables</p>
             <div className="space-y-1">
               {[
-                { key: 'FIDSCRIPT_API_KEY', desc: 'Your project API key (required)' },
+                { key: 'FIDSCRIPT_API_KEY', desc: 'Your account API key (fsk_...)' },
                 { key: 'FIDSCRIPT_API_URL', desc: 'API base URL (default: http://localhost:3001)' },
               ].map(({ key, desc }) => (
                 <div key={key} className="flex items-center gap-3 text-xs">
@@ -285,15 +249,14 @@ export default function McpPage() {
           </div>
           <div>
             <p className="text-[var(--text-dim)] text-xs mb-1 font-medium">Step 2 — Authenticate</p>
-            <CodeBlock code="fidscript login <your-api-key>" />
-            <p className="text-xs text-[var(--text-dim)] mt-1">Generate an API key from the section above.</p>
+            <CodeBlock code={cliCmd || 'fidscript login <your-account-api-key>'} />
+            <p className="text-xs text-[var(--text-dim)] mt-1">Generate an API key from the Projects page.</p>
           </div>
           <div>
             <p className="text-[var(--text-dim)] text-xs mb-1 font-medium">Step 3 — Use</p>
             <CodeBlock code="fidscript --help" />
           </div>
 
-          {/* CLI command reference */}
           <div>
             <p className="text-[var(--text-dim)] text-xs mb-2 font-medium">Command Reference</p>
             <div className="space-y-3">

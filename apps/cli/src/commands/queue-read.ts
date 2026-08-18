@@ -20,10 +20,9 @@ export function addQueueReadCommands(
   queues
     .command('list')
     .description('List queues in a project')
-    .option('-p, --project <id>', 'Project ID', cfg.currentProject ?? '')
-    .action(async (opts: { project?: string }) => {
+    .action(async function (this: Command, opts: { project?: string }) {
       const sdk = await loadSdk(ctx);
-      const projectId = opts.project ?? die('No project ID (--project)');
+      const projectId = opts.project ?? this.parent?.opts()?.project ?? die('No project ID (--project)');
       try {
         const items = (await sdk.queues.list(projectId)) as unknown as QueueRow[];
         let depth: Record<string, number> = {};
@@ -45,10 +44,9 @@ export function addQueueReadCommands(
   queues
     .command('get <queueId>')
     .description('Get a queue by ID (with current stats)')
-    .option('-p, --project <id>', 'Project ID', cfg.currentProject ?? '')
-    .action(async (queueId: string, opts: { project?: string }) => {
+    .action(async function (this: Command, queueId: string, opts: { project?: string }) {
       const sdk = await loadSdk(ctx);
-      const projectId = opts.project ?? die('No project ID (--project)');
+      const projectId = opts.project ?? this.parent?.opts()?.project ?? die('No project ID (--project)');
       try {
         const q = await sdk.queues.get(projectId, queueId) as unknown as QueueRow;
         const s = await sdk.queues.getStats(projectId, queueId) as unknown as QueueStats;

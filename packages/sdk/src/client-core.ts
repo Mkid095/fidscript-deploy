@@ -10,11 +10,12 @@ export interface FidscriptClientOptions {
    *
    * Two shapes are supported:
    *   - `{ type: 'jwt', token }`   → sent as `Authorization: Bearer <jwt>`
-   *   - `{ type: 'apiKey', key }`  → sent as `X-API-Key: fpk_...`
+   *   - `{ type: 'apiKey', key }`  → sent as `X-API-Key: fpk_... or fsk_...`
    *
    * A shorthand `apiKey` string is also accepted: values starting with `fpk_`
-   * are routed to the X-API-Key header; anything else (e.g. a JWT) is sent as
-   * a Bearer token. This keeps callers from having to know which header applies.
+   * or `fsk_` are routed to the X-API-Key header; anything else (e.g. a JWT)
+   * is sent as a Bearer token. This keeps callers from having to know which
+   * header applies.
    */
   apiKey?: string | ApiCredential;
   baseURL: string;
@@ -40,10 +41,10 @@ export type ApiCredential =
   | { type: 'apiKey'; key: string };
 
 /**
- * Pick the right auth header for a credential. API keys (fpk_*) travel in
- * X-API-Key; JWTs travel in Authorization: Bearer. Anything else defaults to
+ * Pick the right auth header for a credential. API keys (fpk_* / fsk_*) travel
+ * in X-API-Key; JWTs travel in Authorization: Bearer. Anything else defaults to
  * Bearer — the SDK can't tell a JWT from a random opaque token, but Bearer is
- * the convention for non-fpk_ secrets.
+ * the convention for non-API-key secrets.
  */
 function credentialHeaders(cred: ApiCredential): Record<string, string> {
   if (cred.type === 'apiKey') return { 'X-API-Key': cred.key };
@@ -52,14 +53,14 @@ function credentialHeaders(cred: ApiCredential): Record<string, string> {
 
 /**
  * Normalize the loose `apiKey?: string` input into a discriminated credential.
- * Strings starting with `fpk_` are project API keys; everything else is treated
- * as a Bearer token (the typical case being a dashboard JWT, but the API will
- * decide on its end).
+ * Strings starting with `fpk_` (project API keys) or `fsk_` (account API keys)
+ * are routed as API key credentials; everything else is treated as a Bearer
+ * token (the typical case being a dashboard JWT, but the API will decide).
  */
 function normalizeCredential(input: string | ApiCredential | undefined): ApiCredential | undefined {
   if (!input) return undefined;
   if (typeof input !== 'string') return input;
-  if (input.startsWith('fpk_')) return { type: 'apiKey', key: input };
+  if (input.startsWith('fpk_') || input.startsWith('fsk_')) return { type: 'apiKey', key: input };
   return { type: 'jwt', token: input };
 }
 
@@ -163,8 +164,8 @@ export class FidscriptClient {
         url.searchParams.set(k, String(v));
       }
     }
-    // Build the auth header directly so fpk_ keys go to X-API-Key and JWTs to
-    // Authorization: Bearer. The axios default headers would otherwise send
+    // Build the auth header directly so fpk_/fsk_ keys go to X-API-Key and JWTs
+    // to Authorization: Bearer. The axios default headers would otherwise send
     // everything as Bearer, which the API rejects for API keys.
     const headers: Record<string, string> = {};
     if (this.credential) Object.assign(headers, credentialHeaders(this.credential));

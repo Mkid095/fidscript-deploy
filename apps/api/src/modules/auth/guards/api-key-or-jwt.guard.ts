@@ -7,6 +7,10 @@
  *   2. A project API key (X-API-Key: fpk_...) — validated via
  *      ProjectApiKeyService, which resolves the projectId and attaches it
  *      to req.user as { userId: 'api-key', projectId, apiKeyName }.
+ *   3. An account API key (X-API-Key: fsk_...) — validated via
+ *      AuthApiKeyService, which resolves the userId and attaches it
+ *      to req.user as { userId, isApiKey: true, keyType: 'account',
+ *      keyPermissions: [...] }.
  *
  * This lets external applications consume project-scoped services (storage,
  * databases, logs, etc.) with a single API key, while the dashboard still
@@ -25,12 +29,15 @@ import { Reflector } from '@nestjs/core';
 import { JwtService } from '@nestjs/jwt';
 import type { Request } from 'express';
 import { ProjectApiKeyService } from '@/modules/projects/services/project-api-key.service';
+import { AuthApiKeyService } from '@/modules/auth/services/auth-api-key.service';
 
 export interface ApiKeyUser {
   userId: string;
   projectId?: string;
   apiKeyName?: string;
   isApiKey?: boolean;
+  keyType?: 'account' | 'project';
+  keyPermissions?: string[];
 }
 
 @Injectable()
@@ -39,28 +46,51 @@ export class ApiKeyOrJwtGuard {
 
   constructor(
     private jwtService: JwtService,
-    private apiKeyService: ProjectApiKeyService,
+    private projectApiKeyService: ProjectApiKeyService,
+    private authApiKeyService: AuthApiKeyService,
     private reflector: Reflector,
   ) {}
 
   async canActivate(context: ExecutionContext): Promise<boolean> {
     const request = context.switchToHttp().getRequest<Request>();
 
-    // Check for API key header first (X-API-Key: fpk_...)
+    // Check for API key header first (X-API-Key: fpk_... or fsk_...)
     const apiKey = request.headers['x-api-key'] as string | undefined;
     if (apiKey) {
-      const result = await this.apiKeyService.validateProjectApiKey(apiKey);
-      if (!result) {
-        throw new UnauthorizedException('Invalid or expired API key');
+      const prefix = apiKey.slice(0, 4);
+
+      // fpk_ — project API key
+      if (prefix === 'fpk_') {
+        const result = await this.projectApiKeyService.validateProjectApiKey(apiKey);
+        if (!result) {
+          throw new UnauthorizedException('Invalid or expired API key');
+        }
+        (request as any).user = {
+          userId: 'api-key',
+          projectId: result.projectId,
+          apiKeyName: result.name,
+          isApiKey: true,
+          keyType: 'project',
+        } satisfies ApiKeyUser;
+        return true;
       }
-      // Attach the resolved identity to the request
-      (request as any).user = {
-        userId: 'api-key',
-        projectId: result.projectId,
-        apiKeyName: result.name,
-        isApiKey: true,
-      } satisfies ApiKeyUser;
-      return true;
+
+      // fsk_ — account API key
+      if (prefix === 'fsk_') {
+        const result = await this.authApiKeyService.validateApiKey(apiKey);
+        if (!result) {
+          throw new UnauthorizedException('Invalid or expired Account API Key');
+        }
+        (request as any).user = {
+          userId: result.userId,
+          isApiKey: true,
+          keyType: 'account',
+          keyPermissions: result.permissions ?? [],
+        } satisfies ApiKeyUser;
+        return true;
+      }
+
+      // Unknown prefix — fall through to JWT
     }
 
     // Fall back to JWT Bearer token

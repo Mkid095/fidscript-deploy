@@ -5,6 +5,7 @@ import { ConfigModule, ConfigService } from '@nestjs/config';
 import { resolveJwtSecret } from '@/common/secrets';
 import { AuthController } from '@/modules/auth/controllers/auth.controller';
 import { OrganizationController, InvitationAcceptController } from '@/modules/auth/controllers/organization.controller';
+import { AuthApiKeysController } from '@/modules/auth/controllers/auth-api-keys.controller';
 import { AuthService } from '@/modules/auth/services/auth.service';
 import { AuthSessionService } from '@/modules/auth/services/auth-session.service';
 import { AuthRegisterService } from '@/modules/auth/services/auth-register.service';
@@ -26,6 +27,8 @@ import { JwtAuthGuard } from '@/modules/auth/jwt-auth.guard';
 import { PlatformAdminGuard } from '@/modules/auth/guards/platform-admin.guard';
 import { InstallationGuard } from '@/modules/auth/guards/installation.guard';
 import { ApiKeyOrJwtGuard } from '@/modules/auth/guards/api-key-or-jwt.guard';
+import { ScopeGuard } from '@/modules/auth/guards/scope-guard';
+import { ProjectApiKeyMintGuard } from '@/modules/auth/guards/project-api-key-mint.guard';
 import { ProjectMemberGuard } from '@/modules/auth/guards/project-member.guard';
 import { EmailVerifiedGuard } from '@/modules/auth/guards/email-verified.guard';
 import { InstallationModule } from '@/modules/installation/installation.module';
@@ -46,7 +49,7 @@ import { ProjectsModule } from '@/modules/projects/projects.module';
       inject: [ConfigService],
     }),
   ],
-  controllers: [AuthController, OrganizationController, InvitationAcceptController],
+  controllers: [AuthController, OrganizationController, InvitationAcceptController, AuthApiKeysController],
   providers: [
     AuthService,
     AuthSessionService,
@@ -66,11 +69,12 @@ import { ProjectsModule } from '@/modules/projects/projects.module';
     MfaService,
     JwtAuthGuard,
     ApiKeyOrJwtGuard,
+    ScopeGuard,
     PlatformAdminGuard,
     InstallationGuard,
     ProjectMemberGuard,
     EmailVerifiedGuard,
   ],
-  exports: [AuthService, OrganizationService, TeamService, JwtAuthGuard, ApiKeyOrJwtGuard, PlatformAdminGuard, InstallationGuard, ProjectMemberGuard, EmailVerifiedGuard, JwtModule, forwardRef(() => ProjectsModule)],
+  exports: [AuthService, OrganizationService, TeamService, JwtAuthGuard, ApiKeyOrJwtGuard, ScopeGuard, ProjectApiKeyMintGuard, PlatformAdminGuard, InstallationGuard, ProjectMemberGuard, EmailVerifiedGuard, JwtModule, forwardRef(() => ProjectsModule)],
 })
 export class AuthModule {}

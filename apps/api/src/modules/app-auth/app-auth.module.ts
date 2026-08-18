@@ -50,6 +50,6 @@ import { ProjectsModule } from '@/modules/projects/projects.module';
     AppJwtStrategy,
     AppJwtGuard,
   ],
-  exports: [AppAuthUserService, AppAuthRoleService, AppJwtGuard, AppAuthTokenService, AppAuthManagementService, UserGithubService],
+  exports: [AppAuthUserService, AppAuthRoleService, AppJwtGuard, AppAuthTokenService, AppAuthManagementService, UserGithubService, MagicCodeService],
 })
 export class AppAuthModule {}

@@ -1,3 +1,4 @@
+import { Type } from 'class-transformer';
 import { IsString, IsOptional, IsBoolean, IsNumber, IsIn } from 'class-validator';
 
 export class ListMessagesDto {
@@ -14,10 +15,12 @@ export class ListMessagesDto {
   unread?: boolean;
 
   @IsOptional()
+  @Type(() => Number)
   @IsNumber()
   limit?: number;
 
   @IsOptional()
+  @Type(() => Number)
   @IsNumber()
   offset?: number;
 }

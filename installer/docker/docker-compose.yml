@@ -289,9 +289,7 @@ services:
         max-file: '3'
 
   api:
-    build:
-      context: ../..
-      dockerfile: apps/api/Dockerfile
+    image: fidscript-api:latest
     container_name: fidscript_api
     restart: unless-stopped
     # Read *_FILE env vars and materialize them before starting node
@@ -478,6 +476,32 @@ services:
     volumes:
       - ./whatsapp-frontend.dist:/usr/share/nginx/html:ro
       - ./whatsapp-frontend.conf:/etc/nginx/conf.d/default.conf:ro
+    networks:
+      - fidscript-whatsapp
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://127.0.0.1/ || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+    logging:
+      driver: json-file
+      options:
+        max-size: '10m'
+        max-file: '3'
+
+  # WhatsApp Automation Frontend — serves fidscript-whatsapp project
+  whatsapp-automation:
+    image: nginx:alpine
+    container_name: fidscript_whatsapp_automation
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          cpus: '0.1'
+          memory: 128M
+    volumes:
+      - ./whatsapp-automation.dist:/usr/share/nginx/html:ro
+      - ./whatsapp-automation.conf:/etc/nginx/conf.d/default.conf:ro
     networks:
       - fidscript-whatsapp
     healthcheck:

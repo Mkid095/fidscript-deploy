@@ -15,6 +15,8 @@ import {
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { JwtAuthGuard } from '@/modules/auth/jwt-auth.guard';
 import { ApiKeyOrJwtGuard } from '@/modules/auth/guards/api-key-or-jwt.guard';
+import { ScopeGuard } from '@/modules/auth/guards/scope-guard';
+import { RequireScope } from '@/modules/auth/decorators/require-scope.decorator';
 import { ProjectMemberGuard } from '@/modules/auth/guards/project-member.guard';
 import { DeploymentsService } from './deployments.service';
 import { GithubWebhookService } from './services/github-webhook.service';
@@ -25,7 +27,7 @@ import { Request } from 'express';
 
 @ApiTags('deployments')
 @Controller('projects/:projectId')
-@UseGuards(ApiKeyOrJwtGuard, ProjectMemberGuard)
+@UseGuards(ApiKeyOrJwtGuard, ScopeGuard, ProjectMemberGuard)
 @ApiBearerAuth()
 export class DeploymentsController {
   constructor(
@@ -36,6 +38,7 @@ export class DeploymentsController {
   ) {}
 
   @Get('deployments')
+  @RequireScope('deployments:read')
   @ApiOperation({ summary: 'List deployments' })
   async list(
     @Req() req: Request,
@@ -53,6 +56,7 @@ export class DeploymentsController {
   }
 
   @Post('deployments')
+  @RequireScope('deployments:write')
   @HttpCode(HttpStatus.ACCEPTED)
   @ApiOperation({ summary: 'Create a new deployment (async — polls status for result)' })
   async create(
@@ -94,6 +98,7 @@ export class DeploymentsController {
   }
 
   @Post('deployments/detect')
+  @RequireScope('deployments:read')
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Detect framework and build plan for a repository (no deploy)' })
   async detect(
@@ -106,6 +111,7 @@ export class DeploymentsController {
   }
 
   @Get('deployments/:id')
+  @RequireScope('deployments:read')
   @ApiOperation({ summary: 'Get deployment details' })
   async get(
     @Req() req: Request,
@@ -117,6 +123,7 @@ export class DeploymentsController {
   }
 
   @Get('deployments/:id/logs')
+  @RequireScope('deployments:read')
   @ApiOperation({ summary: 'Get deployment build logs' })
   async getLogs(
     @Req() req: Request,
@@ -128,6 +135,7 @@ export class DeploymentsController {
   }
 
   @Post('deployments/:id/stop')
+  @RequireScope('deployments:write')
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Stop a running deployment' })
   async stop(
@@ -140,6 +148,7 @@ export class DeploymentsController {
   }
 
   @Post('deployments/:id/restart')
+  @RequireScope('deployments:write')
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Restart a stopped deployment' })
   async restart(
@@ -152,6 +161,7 @@ export class DeploymentsController {
   }
 
   @Delete('deployments/:id')
+  @RequireScope('deployments:delete')
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Destroy a deployment (remove container, image, and record)' })
   async destroy(
@@ -164,6 +174,7 @@ export class DeploymentsController {
   }
 
   @Post('deployments/:id/rollback')
+  @RequireScope('deployments:write')
   @HttpCode(HttpStatus.ACCEPTED)
   @ApiOperation({ summary: 'Rollback to a previous successful deployment' })
   async rollback(
@@ -176,6 +187,7 @@ export class DeploymentsController {
   }
 
   @Get('build-config')
+  @RequireScope('deployments:read')
   @ApiOperation({ summary: 'Get build configuration' })
   async getBuildConfig(@Req() req: Request, @Param('projectId') projectId: string) {
     const user = req.user as { userId: string };
@@ -183,6 +195,7 @@ export class DeploymentsController {
   }
 
   @Patch('build-config')
+  @RequireScope('deployments:write')
   @ApiOperation({ summary: 'Update build configuration' })
   async updateBuildConfig(
     @Req() req: Request,
@@ -199,6 +212,7 @@ export class DeploymentsController {
    * webhook receiver.
    */
   @Patch('auto-deploy')
+  @RequireScope('deployments:write')
   @ApiOperation({ summary: 'Toggle auto-deploy on push' })
   async toggleAutoDeploy(
     @Req() req: Request,

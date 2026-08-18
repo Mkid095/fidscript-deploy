@@ -31,7 +31,7 @@ export default function ProjectPage() {
   useEffect(() => {
     const match = pathname?.match(/\/projects\/[^/]+\/([^/]+)/);
     const pathSection = match ? match[1] : null;
-    if (!searchParams.get('section') && !pathSection) {
+    if (!searchParams.get('section') && !pathSection && projectId) {
       router.replace(`/projects/${projectId}/services`);
     }
   }, [projectId, router, searchParams, pathname]);
