@@ -4,81 +4,81 @@
 # Build context MUST be the monorepo root:
 #   docker build -f apps/api/Dockerfile -t fidscript-api .
 #
-# Build strategy: builds happen LOCALLY (api `pnpm --filter @fidscript/api exec nest build`
-# + dashboard `next build` with NODE_OPTIONS=--max-old-space-size=4096). The Docker image
-# does NOT rebuild — it just installs OS packages, runs `prisma generate` against the
-# pre-built client schema, and COPYs the pre-built dist + node_modules from the build
-# context. This avoids in-container OOM on 8GB hosts when building Next.js.
+# Architecture:
+#   build stage  — pnpm install, prisma generate, tsc, pnpm deploy
+#   runtime stage — self-contained deployment from pnpm deploy output
 #
-# Multi-stage: a thin build stage that ONLY runs prisma generate (needs node_modules),
-# then a slim non-root runtime carrying pre-built dist + prisma + node_modules.
+# Why pnpm deploy?
+#   The monorepo uses pnpm workspaces with workspace:* dependencies.
+#   Copying the build-stage node_modules (pnpm symlinks) to a runtime stage
+#   breaks relative symlinks for private-hoisted packages (@nestjs/*).
+#   pnpm deploy creates a flat, self-contained tree with all packages at
+#   top-level — no pnpm symlinks, no relative path breakage.
 
 FROM node:20-bookworm-slim AS build
+RUN apt-get update -y && apt-get install -y openssl libssl-dev curl git
 RUN corepack enable && corepack prepare pnpm@9.0.0 --activate
 WORKDIR /app
 
-# node_modules must be in the build context for prisma generate to resolve.
-# .dockerignore no longer excludes **/node_modules or **/dist (see top-of-file).
+# Layer 1: manifests (cached longest)
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml .npmrc* ./
-COPY apps/api/package.json ./apps/api/package.json
-COPY packages ./packages
-COPY apps/api/prisma ./apps/api/prisma
-COPY apps/api/dist ./apps/api/dist
-COPY node_modules ./node_modules
-COPY apps/api/node_modules ./apps/api/node_modules
-COPY installer ./installer
-# prisma generate writes to node_modules/@prisma/client and apps/api/node_modules/.prisma.
-RUN pnpm --filter @fidscript/api exec prisma generate
+COPY apps/api/package.json ./apps/api/
+
+# Layer 2: workspace packages source
+COPY packages/ ./packages/
+
+# Layer 3: API source, schema, and TypeScript config
+COPY apps/api/src/ ./apps/api/src/
+COPY apps/api/prisma/ ./apps/api/prisma/
+COPY apps/api/tsconfig.json ./apps/api/
+COPY tsconfig.base.json ./
+
+# Layer 4: install dependencies
+RUN pnpm install --frozen-lockfile
+
+# Layer 5: generate Prisma Client
+RUN cd apps/api && pnpm exec prisma generate
+
+# Layer 6: compile TypeScript + resolve @/ path aliases
+RUN pnpm exec tsc -p apps/api/tsconfig.json
+RUN cd apps/api && pnpm exec tsc-alias -p tsconfig.json
+
+# Layer 7: compile the seed script (plain JS, no decorators)
+RUN cd apps/api && pnpm exec tsc -p tsconfig.json --outDir . prisma/seed.ts 2>/dev/null || \
+    cp prisma/seed.ts prisma/seed.js
+
+# Layer 8: create self-contained production deployment
+# pnpm deploy produces /app/deploy with a flat node_modules/ (no relative symlinks)
+RUN cd /app && pnpm deploy --filter @fidscript/api --prod /app/deploy
 
 FROM node:20-bookworm-slim AS runtime
-ENV NODE_ENV=production
+
+# Install Docker CLI for deployment worker (docker build, buildx via docker.sock)
+RUN apt-get update -y && apt-get install -y ca-certificates curl gnupg && \
+    install -m 0755 -d /etc/apt/keyrings && \
+    curl -fsSL https://download.docker.com/linux/debian/gpg | gpg --dearmor -o /etc/apt/keyrings/docker.gpg && \
+    chmod a+r /etc/apt/keyrings/docker.gpg && \
+    echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.gpg] https://download.docker.com/linux/debian $(. /etc/os-release && echo "$VERSION_CODENAME") stable" > /etc/apt/sources.list.d/docker.list && \
+    apt-get update -y && apt-get install -y openssl curl docker-ce-cli docker-buildx-plugin && \
+    apt-get clean && rm -rf /var/lib/apt/lists/*
+
+# Install Prisma CLI globally — used at container startup for migrate + db seed + generate.
+RUN npm install -g prisma@5.22.0
+
 WORKDIR /app
 
-# Prisma's native engine binaries (libquery-engine, schema-engine) link against
-# OpenSSL. The slim base image doesn't ship libssl, so without this install
-# the engine fails to initialize and `prisma migrate deploy` reports a
-# blank "Error: Schema engine error:" with no further detail. curl is
-# also installed for the runtime healthcheck (compose's "test" command)
-# and for the api's Stalwart JMAP connectivity probe (see
-# email/stalwart/stalwart-core.service.ts). git lets the deployment worker
-# clone user source repos. docker-ce-cli + docker-buildx-plugin let the
-# deployment worker run `docker build`/`docker run` against the host daemon
-# (socket mounted in docker-compose); buildx is required because the worker
-# sets DOCKER_BUILDKIT=1 and uses `--secret` (a BuildKit feature). Only the
-# CLI + plugin are installed (no daemon), from Docker's
-# official apt repo since Debian's default repos don't carry it. The host
-# docker socket's group GID is granted to the non-root `node` user at
-# runtime via compose `group_add` (DOCKER_GID). Install as root (before
-# USER node) and clean the apt cache.
-RUN apt-get update -y \
-    && apt-get install -y --no-install-recommends openssl ca-certificates curl git gnupg \
-    && install -m 0755 -d /etc/apt/keyrings \
-    && curl -fsSL https://download.docker.com/linux/debian/gpg -o /etc/apt/keyrings/docker.asc \
-    && chmod a+r /etc/apt/keyrings/docker.asc \
-    && echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.asc] https://download.docker.com/linux/debian $(. /etc/os-release && echo "$VERSION_CODENAME") stable" \
-        > /etc/apt/sources.list.d/docker.list \
-    && apt-get update -y \
-    && apt-get install -y --no-install-recommends docker-ce-cli docker-buildx-plugin \
-    && rm -rf /var/lib/apt/lists/*
+# Copy the self-contained deployment produced by pnpm deploy
+COPY --from=build /app/deploy/ ./
 
-# pnpm's node_modules (root + per-package) carry the resolved dependency graph;
-# packages/ holds the built @fidscript/* workspace libs the API requires.
-COPY --from=build /app/node_modules ./node_modules
-COPY --from=build /app/apps/api/node_modules ./apps/api/node_modules
-COPY --from=build /app/packages ./packages
-COPY --from=build /app/apps/api/dist ./apps/api/dist
-COPY --from=build /app/apps/api/prisma ./apps/api/prisma
-# Remove the no-op installation_lifecycle_failed migration — its objects were
-# created manually via SQL. Keeping the dir causes Prisma to detect a "failed
-# migration" marker and block all subsequent migrate deploy runs.
-RUN rm -rf ./apps/api/prisma/migrations/20260622000000_installation_lifecycle_failed
-COPY apps/api/package.json ./apps/api/package.json
+# Generate Prisma Client runtime artifacts in the deployment directory.
+# pnpm deploy copies @prisma/client as a stub (no .prisma/client/ inside), but
+# the compiled app imports Role from '@prisma/client'. Running 'prisma generate'
+# here (after the schema is copied) writes the real .prisma/client/ to
+# /app/node_modules/@prisma/client/ — replacing the stub with a working copy.
+RUN prisma generate --schema=prisma/schema.prisma
 
-# Entrypoint reads *_FILE env vars, runs migrations, then starts the API.
-# Copy from monorepo root (build context) so the script is available.
-COPY --from=build /app/installer/docker/api-entrypoint.sh /usr/local/bin/api-entrypoint.sh
-RUN chown -R node:node /app && chmod +x /usr/local/bin/api-entrypoint.sh
-USER node
+# Copy entrypoint from installer (DO NOT copy entire installer directory)
+COPY installer/docker/api-entrypoint.sh /usr/local/bin/api-entrypoint.sh
+RUN chmod +x /usr/local/bin/api-entrypoint.sh
 
-EXPOSE 3001
 ENTRYPOINT ["/usr/local/bin/api-entrypoint.sh"]

@@ -6,7 +6,6 @@ import { CreateDeploymentDto, UpdateBuildConfigDto } from '@/modules/deployments
 import { NodeBuildpackProvider } from '@/modules/deployments/providers/node-buildpack.provider';
 import { DockerBuildWorkspaceService } from '@/modules/deployments/providers/docker-build-workspace.service';
 import { UserGithubService } from '@/modules/app-auth/services/user-github.service';
-import * as crypto from 'crypto';
 
 @Injectable()
 export class DeploymentCrudService {
