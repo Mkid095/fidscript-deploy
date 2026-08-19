@@ -13,6 +13,7 @@ export class MinioBucketService {
 
   resolveBucket(projectSlug?: string, bucketDisplayName?: string): string {
     if (projectSlug && bucketDisplayName) return this.buildBucketName(projectSlug, bucketDisplayName);
+    if (bucketDisplayName) return bucketDisplayName; // raw bucket name — used for platform-level buckets
     return this.config.get<string>('MINIO_BUCKET', 'fidscript');
   }
 }

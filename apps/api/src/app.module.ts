@@ -30,6 +30,7 @@ import { CryptoModule } from './modules/crypto/crypto.module';
 import { InstallationModule } from './modules/installation/installation.module';
 import { McpModule } from './modules/mcp/mcp.module';
 import { WhatsappAuthModule } from './modules/whatsapp-auth/whatsapp-auth.module';
+import { InfrastructureModule } from './modules/infrastructure/infrastructure.module';
 
 @Module({
   imports: [
@@ -62,6 +63,7 @@ import { WhatsappAuthModule } from './modules/whatsapp-auth/whatsapp-auth.module
     MarketplaceModule,
     InstallationModule,
     WhatsappAuthModule,
+    InfrastructureModule,
   ],
   providers: [
     // Global guard: every authenticated request must have a verified email
