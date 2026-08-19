@@ -42,15 +42,19 @@ export function ProjectsListHeader({
   return (
     <div className="flex items-center justify-between gap-4 mb-6">
       <div>
-        <h1 className="text-xl font-bold text-[var(--text)] mb-1">
-          {userName ? `Welcome back, ${userName}` : 'Projects'}
-        </h1>
+        <h1 className="text-xl font-bold text-[var(--text)] mb-1">Projects</h1>
         <p className="text-sm text-[var(--text-muted)]" aria-live="polite">
           {loading
             ? 'Loading…'
             : search
               ? `${filteredCount} of ${totalCount} project${totalCount !== 1 ? 's' : ''}`
               : `${totalCount} project${totalCount !== 1 ? 's' : ''}`}
+          {!search && <span className="ml-2 text-[var(--text-dim)]">·</span>}
+          {!search && (
+            <span className="ml-2 text-[var(--text-dim)]">
+              Deploy applications, databases, domains, and automation
+            </span>
+          )}
         </p>
       </div>
 

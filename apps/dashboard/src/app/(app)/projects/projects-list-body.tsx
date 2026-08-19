@@ -52,20 +52,52 @@ export function ProjectsListBody({
           <h2 className="text-lg font-semibold text-[var(--text)] mb-2" aria-live="polite">
             {editable ? 'No projects yet' : 'No projects'}
           </h2>
-          <p className="text-sm text-[var(--text-muted)] max-w-md mb-8" aria-live="polite">
+          <p className="text-sm text-[var(--text-muted)] max-w-lg mb-6" aria-live="polite">
             {editable
-              ? 'Create your first project to get started deploying apps, databases, and more.'
+              ? 'A project groups your application, deployment, database, domain, and automation settings together. Create your first project to get started.'
               : 'No projects have been created yet.'}
           </p>
           {editable && (
-            <Button
-              variant="primary"
-              onClick={onCreate}
-              className="bg-[var(--accent)] text-[var(--text)] hover:opacity-90"
-            >
-              <HugeiconsIcon icon={Add01Icon} size={16} />
-              New project
-            </Button>
+            <>
+              <Button
+                variant="primary"
+                onClick={onCreate}
+                className="bg-[var(--accent)] text-[var(--text)] hover:opacity-90 mb-6"
+              >
+                <HugeiconsIcon icon={Add01Icon} size={16} />
+                Create your first project
+              </Button>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-left max-w-lg w-full">
+                <div className="flex items-start gap-2 p-3 rounded-lg bg-[var(--surface-2)] border border-[var(--rail)]">
+                  <span className="text-[var(--text-dim)] text-xs mt-0.5">1</span>
+                  <div>
+                    <p className="text-xs font-medium text-[var(--text)]">Deploy applications</p>
+                    <p className="text-xs text-[var(--text-dim)]">Connect a repository and deploy to your server</p>
+                  </div>
+                </div>
+                <div className="flex items-start gap-2 p-3 rounded-lg bg-[var(--surface-2)] border border-[var(--rail)]">
+                  <span className="text-[var(--text-dim)] text-xs mt-0.5">2</span>
+                  <div>
+                    <p className="text-xs font-medium text-[var(--text)]">Add a database</p>
+                    <p className="text-xs text-[var(--text-dim)]">Provision PostgreSQL for your app</p>
+                  </div>
+                </div>
+                <div className="flex items-start gap-2 p-3 rounded-lg bg-[var(--surface-2)] border border-[var(--rail)]">
+                  <span className="text-[var(--text-dim)] text-xs mt-0.5">3</span>
+                  <div>
+                    <p className="text-xs font-medium text-[var(--text)]">Connect a domain</p>
+                    <p className="text-xs text-[var(--text-dim)]">Point your domain at your deployment</p>
+                  </div>
+                </div>
+                <div className="flex items-start gap-2 p-3 rounded-lg bg-[var(--surface-2)] border border-[var(--rail)]">
+                  <span className="text-[var(--text-dim)] text-xs mt-0.5">4</span>
+                  <div>
+                    <p className="text-xs font-medium text-[var(--text)]">Set up automation</p>
+                    <p className="text-xs text-[var(--text-dim)]">Create cron jobs and queued tasks</p>
+                  </div>
+                </div>
+              </div>
+            </>
           )}
         </div>
       </Card>
