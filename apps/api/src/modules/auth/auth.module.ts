@@ -74,6 +74,7 @@ import { ProjectsModule } from '@/modules/projects/projects.module';
     InstallationGuard,
     ProjectMemberGuard,
     EmailVerifiedGuard,
+    ProjectApiKeyMintGuard,
   ],
   exports: [AuthService, OrganizationService, TeamService, JwtAuthGuard, ApiKeyOrJwtGuard, ScopeGuard, ProjectApiKeyMintGuard, PlatformAdminGuard, InstallationGuard, ProjectMemberGuard, EmailVerifiedGuard, JwtModule, forwardRef(() => ProjectsModule)],
 })

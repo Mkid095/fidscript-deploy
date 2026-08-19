@@ -25,7 +25,7 @@ import {
   UnauthorizedException,
   Logger,
 } from '@nestjs/common';
-import { Reflector } from '@nestjs/core';
+import { Reflector, ModuleRef } from '@nestjs/core';
 import { JwtService } from '@nestjs/jwt';
 import type { Request } from 'express';
 import { ProjectApiKeyService } from '@/modules/projects/services/project-api-key.service';
@@ -46,9 +46,8 @@ export class ApiKeyOrJwtGuard {
 
   constructor(
     private jwtService: JwtService,
-    private projectApiKeyService: ProjectApiKeyService,
-    private authApiKeyService: AuthApiKeyService,
     private reflector: Reflector,
+    private moduleRef: ModuleRef,
   ) {}
 
   async canActivate(context: ExecutionContext): Promise<boolean> {
@@ -61,7 +60,8 @@ export class ApiKeyOrJwtGuard {
 
       // fpk_ — project API key
       if (prefix === 'fpk_') {
-        const result = await this.projectApiKeyService.validateProjectApiKey(apiKey);
+        const projectApiKeyService = this.moduleRef.get(ProjectApiKeyService, { strict: false });
+        const result = await projectApiKeyService.validateProjectApiKey(apiKey);
         if (!result) {
           throw new UnauthorizedException('Invalid or expired API key');
         }
@@ -77,7 +77,8 @@ export class ApiKeyOrJwtGuard {
 
       // fsk_ — account API key
       if (prefix === 'fsk_') {
-        const result = await this.authApiKeyService.validateApiKey(apiKey);
+        const authApiKeyService = this.moduleRef.get(AuthApiKeyService, { strict: false });
+        const result = await authApiKeyService.validateApiKey(apiKey);
         if (!result) {
           throw new UnauthorizedException('Invalid or expired Account API Key');
         }
