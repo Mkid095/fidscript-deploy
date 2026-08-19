@@ -27,25 +27,30 @@ COPY apps/api/package.json ./apps/api/
 # Layer 2: workspace packages source
 COPY packages/ ./packages/
 
-# Layer 3: API source, schema, and TypeScript config
+# Layer 3: API source, schema, TypeScript config, and build helpers
 COPY apps/api/src/ ./apps/api/src/
 COPY apps/api/prisma/ ./apps/api/prisma/
 COPY apps/api/tsconfig.json ./apps/api/
+COPY apps/api/resolve-aliases.js ./apps/api/resolve-aliases.js
 COPY tsconfig.base.json ./
 
 # Layer 4: install dependencies
-RUN pnpm install --frozen-lockfile
+RUN pnpm install --no-frozen-lockfile
 
 # Layer 5: generate Prisma Client
 RUN cd apps/api && pnpm exec prisma generate
 
-# Layer 6: compile TypeScript + resolve @/ path aliases
+# Layer 6: compile TypeScript
 RUN pnpm exec tsc -p apps/api/tsconfig.json
-RUN cd apps/api && pnpm exec tsc-alias -p tsconfig.json
 
-# Layer 7: compile the seed script (plain JS, no decorators)
-RUN cd apps/api && pnpm exec tsc -p tsconfig.json --outDir . prisma/seed.ts 2>/dev/null || \
-    cp prisma/seed.ts prisma/seed.js
+# Layer 6b: resolve @/ path aliases in compiled output using tsc-alias
+RUN cd /app && node node_modules/.pnpm/tsc-alias@1.9.2/node_modules/tsc-alias/dist/bin/index.js -p apps/api/tsconfig.json
+
+# Layer 7: seed.ts is NOT in tsc's include (apps/api/src/**), so it never gets compiled.
+# The entrypoint runs "tsx prisma/seed.ts" from /app, so we copy seed.ts there.
+# Also copy the schema so "prisma generate" works at runtime.
+COPY apps/api/prisma/schema.prisma ./prisma/schema.prisma
+COPY apps/api/prisma/seed.ts ./prisma/seed.ts
 
 # Layer 8: create self-contained production deployment
 # pnpm deploy produces /app/deploy with a flat node_modules/ (no relative symlinks)
@@ -63,7 +68,8 @@ RUN apt-get update -y && apt-get install -y ca-certificates curl gnupg && \
     apt-get clean && rm -rf /var/lib/apt/lists/*
 
 # Install Prisma CLI globally — used at container startup for migrate + db seed + generate.
-RUN npm install -g prisma@5.22.0
+# Install tsx globally to run seed.ts (TypeScript seed file, not compiled to JS).
+RUN npm install -g prisma@5.22.0 tsx@4.21.0
 
 WORKDIR /app
 

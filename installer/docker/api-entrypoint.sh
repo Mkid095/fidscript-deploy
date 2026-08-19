@@ -67,7 +67,7 @@ echo "[entrypoint] Seeding database..."
 if [ "$SKIP_SEED" = "1" ]; then
     echo "[entrypoint] SKIP_SEED=1 — bypassing db seed"
 else
-    node prisma/seed.js || echo "[entrypoint] Seed skipped (admin may already exist)"
+    tsx prisma/seed.ts || echo "[entrypoint] Seed skipped (admin may already exist)"
 fi
 
 # Restore DATABASE_URL to the pgbouncer-pooled one for runtime queries.
