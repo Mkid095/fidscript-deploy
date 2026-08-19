@@ -1,5 +1,7 @@
 import { Module, Logger, OnModuleInit, OnModuleDestroy, forwardRef } from '@nestjs/common';
 import { JwtModule } from '@nestjs/jwt';
+import { ConfigModule, ConfigService } from '@nestjs/config';
+import { resolveJwtSecret } from '@/common/secrets';
 import { AuthModule } from '@/modules/auth/auth.module';
 import { ProjectsModule } from '@/modules/projects/projects.module';
 import { QueuesController } from './queues.controller';
@@ -13,7 +15,15 @@ import { EventService } from '@/modules/events/event.service';
 
 @Module({
   imports: [
-    JwtModule.register({ secret: process.env.JWT_SECRET || 'fidscript', signOptions: { expiresIn: '15m' } }),
+    ConfigModule,
+    JwtModule.registerAsync({
+      imports: [ConfigModule],
+      useFactory: (config: ConfigService) => ({
+        secret: resolveJwtSecret(config),
+        signOptions: { expiresIn: '15m' },
+      }),
+      inject: [ConfigService],
+    }),
     forwardRef(() => AuthModule),
     forwardRef(() => ProjectsModule),
   ],

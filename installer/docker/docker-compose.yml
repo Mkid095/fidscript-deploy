@@ -482,8 +482,9 @@ services:
       - ./whatsapp-frontend.conf:/etc/nginx/conf.d/default.conf:ro
     networks:
       - fidscript-whatsapp
+      - fidscript-deployment
     healthcheck:
-      test: ["CMD-SHELL", "wget -qO- http://127.0.0.1/ || exit 1"]
+      test: ["CMD-SHELL", "curl -sf http://127.0.0.1/ || exit 1"]
       interval: 10s
       timeout: 5s
       retries: 3
@@ -509,7 +510,7 @@ services:
     networks:
       - fidscript-whatsapp
     healthcheck:
-      test: ["CMD-SHELL", "wget -qO- http://127.0.0.1/ || exit 1"]
+      test: ["CMD-SHELL", "curl -sf http://127.0.0.1/ || exit 1"]
       interval: 10s
       timeout: 5s
       retries: 3
@@ -552,7 +553,7 @@ services:
       fidscript-deployment:
     healthcheck:
       # Container exposes PORT (3099), not 8080 — healthcheck must match
-      test: ["CMD-SHELL", "wget -qO- http://localhost:3099/health || exit 1"]
+      test: ["CMD-SHELL", "curl -sf http://localhost:3099/health || exit 1"]
       interval: 10s
       timeout: 5s
       retries: 3
@@ -591,7 +592,7 @@ services:
     depends_on:
       - whatsapp-api
     healthcheck:
-      test: ["CMD-SHELL", "wget -qO- http://localhost:3099/health || exit 1"]
+      test: ["CMD-SHELL", "curl -sf http://localhost:3099/health || exit 1"]
       interval: 15s
       timeout: 5s
       retries: 3
