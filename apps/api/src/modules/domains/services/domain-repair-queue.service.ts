@@ -1,5 +1,5 @@
 import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
-import { NatsConnection, JetStreamClient, JetStreamManager, AckPolicy } from 'nats';
+import { NatsConnection, JetStreamClient, JetStreamManager, AckPolicy, headers } from 'nats';
 import { EventService } from '@/modules/events/event.service';
 
 const DOMAIN_REPAIR_STREAM = 'DOMAIN_REPAIR';
@@ -85,13 +85,14 @@ export class DomainRepairQueueService implements OnModuleInit {
     if (!this.js) throw new Error('JetStream not connected');
     const job: RepairJob = { domainId, incidentId, repairType, reason, enqueuedAt: new Date().toISOString(), attempt: 1 };
     const body = JSON.stringify(job);
-    const opts: Record<string, unknown> = {
-      headers: { 'x-domain-id': domainId, 'x-incident-id': incidentId ?? '', 'x-reason': reason },
-    };
+    const h = headers();
+    h.set('x-domain-id', domainId);
+    h.set('x-incident-id', incidentId ?? '');
+    h.set('x-reason', reason);
     if (delaySeconds && delaySeconds > 0) {
-      (opts.headers as Record<string, string>)['Nats-Delay'] = String(Math.floor(delaySeconds * 1_000_000_000));
+      h.set('Nats-Delay', String(Math.floor(delaySeconds * 1_000_000_000)));
     }
-    const pa = await this.js.publish(`${DOMAIN_REPAIR_SUBJECT}.${domainId}`, body, opts);
+    const pa = await this.js.publish(`${DOMAIN_REPAIR_SUBJECT}.${domainId}`, body, { headers: h });
     this.logger.debug(`[repair-queue] enqueued domainId=${domainId} incidentId=${incidentId} seq=${pa.seq}`);
     return { seq: pa.seq };
   }

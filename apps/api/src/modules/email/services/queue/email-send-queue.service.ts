@@ -18,7 +18,7 @@
  * State machine: QUEUED → PROCESSING → SENT/DELIVERED/OPENED/CLICKED/BOUNCED/SOFT_BOUNCE → DEAD
  */
 import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
-import { NatsConnection, JetStreamClient, JetStreamManager, AckPolicy } from 'nats';
+import { NatsConnection, JetStreamClient, JetStreamManager, AckPolicy, headers } from 'nats';
 import { randomUUID } from 'crypto';
 import { EventService } from '@/modules/events/event.service';
 
@@ -118,18 +118,16 @@ export class EmailSendQueueService implements OnModuleInit {
     const traceId = randomUUID().replace(/-/g, '').slice(0, 32);
     const spanId = randomUUID().replace(/-/g, '').slice(0, 16);
     const traceparent = `00-${traceId}-${spanId}-01`;
-    const headers: Record<string, string> = {
-      'x-message-id': job.messageId,
-      'x-project-id': job.projectId,
-      'x-attempt': String(job.attempt),
-      'traceparent': traceparent,
-    };
-    const opts: Record<string, unknown> = { headers };
+    const h = headers();
+    h.set('x-message-id', job.messageId);
+    h.set('x-project-id', job.projectId);
+    h.set('x-attempt', String(job.attempt));
+    h.set('traceparent', traceparent);
     if (delaySeconds && delaySeconds > 0) {
       // JetStream delay: Nats-Delay header in nanoseconds
-      headers['Nats-Delay'] = String(Math.floor(delaySeconds * 1_000_000_000));
+      h.set('Nats-Delay', String(Math.floor(delaySeconds * 1_000_000_000)));
     }
-    const pa = await this.js.publish(EMAIL_SEND_SUBJECT, body, opts);
+    const pa = await this.js.publish(EMAIL_SEND_SUBJECT, body, { headers: h });
     this.logger.debug(
       `[email-queue] enqueued message=${job.messageId} attempt=${job.attempt}${delaySeconds ? ` delay=${delaySeconds}s` : ''} seq=${pa.seq}`,
     );

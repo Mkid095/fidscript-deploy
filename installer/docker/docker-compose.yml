@@ -244,7 +244,7 @@ services:
     environment:
       # Bootstrap mode recovery admin — use the token from secrets as password.
       # Format: username:password (password is the raw token, not hashed).
-      - STALWART_RECOVERY_ADMIN=admin:7230f0d00120951ccadfa869b54fb642a3f97fd10da166a6cb8ff892e63275a4
+      - STALWART_RECOVERY_ADMIN=${STALWART_RECOVERY_ADMIN}
     volumes:
       # Mount config file for SMTP/JMAP/HTTP services.
       - ../config/stalwart/config.json:/etc/stalwart/config.json:ro
@@ -292,6 +292,10 @@ services:
     image: fidscript-api:latest
     container_name: fidscript_api
     restart: unless-stopped
+    # Expose API port on host for direct debugging and healthcheck curl.
+    # Traefik routes api.${PLATFORM_DOMAIN} -> api:3001 via fidscript-app network.
+    ports:
+      - "3001:3001"
     # Read *_FILE env vars and materialize them before starting node
     env_file:
       - ./secrets/api.env
@@ -350,7 +354,7 @@ services:
       STALWART_JMAP_URL: http://fidscript_stalwart:8080/
       # JMAP auth: the SHA-256 hash of the admin password (from STALWART_RECOVERY_ADMIN).
       # The API sends this as Basic Auth password on the /jmap endpoint.
-      STALWART_JMAP_PASSWORD: ${STALWART_RECOVERY_ADMIN_SHA256:-7230f0d00120951ccadfa869b54fb642a3f97fd10da166a6cb8ff892e63275a4}
+      STALWART_JMAP_PASSWORD: ${STALWART_RECOVERY_ADMIN}
       STALWART_ADMIN_TOKEN_FILE: /run/secrets/stalwart_admin_token
       STALWART_SMTP_HOST: fidscript_stalwart
       STALWART_SMTP_PORT: "465"
@@ -400,7 +404,7 @@ services:
     healthcheck:
       # curl is installed in the runtime stage (see apps/api/Dockerfile).
       # The health route is /api/v1/health (NestJS global prefix).
-      test: ["CMD-SHELL", "curl -fsS http://localhost:3001/api/v1/health > /dev/null || exit 1"]
+      test: ["CMD-SHELL", "curl -fsS http://localhost:3001/api/v1/health/live > /dev/null || exit 1"]
       interval: 15s
       timeout: 5s
       retries: 5
@@ -599,7 +603,7 @@ services:
 
   # cAdvisor — container metric exporter for Prometheus
   cadvisor:
-    image: gcr.io/cadvisor/cadvisor:v0.49.0
+    image: gcr.io/cadvisor/cadvisor:v0.51.0
     container_name: fidscript_cadvisor
     restart: unless-stopped
     deploy:
@@ -710,6 +714,9 @@ networks:
   fidscript-mail:
     name: fidscript-mail
     driver: bridge
+    ipam:
+      config:
+        - subnet: 10.0.8.0/24
 
 volumes:
   fidscript_postgres:

@@ -1,9 +1,9 @@
 import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
-import { NatsConnection, JetStreamClient, JetStreamManager, AckPolicy } from 'nats';
+import { NatsConnection, JetStreamClient, JetStreamManager, AckPolicy, headers } from 'nats';
 import { EventService } from '@/modules/events/event.service';
 
 const SCHEDULER_STREAM = 'SCHEDULER';
-const SCHEDULER_SUBJECT = 'scheduler.jobs';
+const SCHEDULER_SUBJECT = 'scheduler.jobs.execute';
 const SCHEDULER_DURABLE = 'scheduler-worker';
 
 export interface SchedulerExecutionRequest {
@@ -52,7 +52,7 @@ export class SchedulerQueueService implements OnModuleInit {
     try {
       await this.jsm.streams.add({
         name: SCHEDULER_STREAM,
-        subjects: [`${SCHEDULER_SUBJECT}.>`],
+        subjects: ['scheduler.jobs.*'],
         max_bytes: 1 * 1024 * 1024 * 1024, // 1 GB
         max_age: 7 * 24 * 60 * 60 * 1_000_000_000, // 7 days
         storage: 'file' as any,
@@ -97,19 +97,14 @@ export class SchedulerQueueService implements OnModuleInit {
   ): Promise<{ seq: number }> {
     if (!this.js) throw new Error('JetStream not connected');
     const body = JSON.stringify(request);
-    const opts: Record<string, unknown> = {
-      headers: {
-        'x-job-id': request.jobId,
-        'x-run-id': request.runId,
-        'x-project-id': request.projectId,
-      },
-    };
+    const h = headers();
+    h.set('x-job-id', request.jobId);
+    h.set('x-run-id', request.runId);
+    h.set('x-project-id', request.projectId);
     if (delaySeconds && delaySeconds > 0) {
-      (opts.headers as Record<string, string>)['Nats-Delay'] = String(
-        Math.floor(delaySeconds * 1_000_000_000),
-      );
+      h.set('Nats-Delay', String(Math.floor(delaySeconds * 1_000_000_000)));
     }
-    const pa = await this.js.publish(SCHEDULER_SUBJECT, body, opts);
+    const pa = await this.js.publish(SCHEDULER_SUBJECT, body, { headers: h });
     this.logger.debug(
       `[scheduler] enqueued job=${request.jobId} run=${request.runId} attempt=${request.attempt}${delaySeconds ? ` delay=${delaySeconds}s` : ''} seq=${pa.seq}`,
     );

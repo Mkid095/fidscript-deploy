@@ -1,5 +1,5 @@
 import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
-import { NatsConnection, JetStreamClient, JetStreamManager, AckPolicy } from 'nats';
+import { NatsConnection, JetStreamClient, JetStreamManager, AckPolicy, headers } from 'nats';
 import { EventService } from '@/modules/events/event.service';
 
 const DOMAIN_RECON_STREAM = 'DOMAIN_RECON';
@@ -94,18 +94,13 @@ export class DomainReconciliationQueueService implements OnModuleInit {
       attempt: 1,
     };
     const body = JSON.stringify(job);
-    const opts: Record<string, unknown> = {
-      headers: {
-        'x-domain-id': domainId,
-        'x-reason': reason,
-      },
-    };
+    const h = headers();
+    h.set('x-domain-id', domainId);
+    h.set('x-reason', reason);
     if (delaySeconds && delaySeconds > 0) {
-      (opts.headers as Record<string, string>)['Nats-Delay'] = String(
-        Math.floor(delaySeconds * 1_000_000_000),
-      );
+      h.set('Nats-Delay', String(Math.floor(delaySeconds * 1_000_000_000)));
     }
-    const pa = await this.js.publish(`${DOMAIN_RECON_SUBJECT}.${domainId}`, body, opts);
+    const pa = await this.js.publish(`${DOMAIN_RECON_SUBJECT}.${domainId}`, body, { headers: h });
     this.logger.debug(`[domain-recon] enqueued domainId=${domainId} reason=${reason} seq=${pa.seq}`);
     return { seq: pa.seq };
   }

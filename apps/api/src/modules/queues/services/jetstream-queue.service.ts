@@ -1,5 +1,5 @@
 import { Injectable, Logger } from '@nestjs/common';
-import { JetStreamClient, NatsConnection, JetStreamManager } from 'nats';
+import { JetStreamClient, NatsConnection, JetStreamManager, headers as createMsgHdrs } from 'nats';
 
 const QUEUES_STREAM = 'QUEUES';
 
@@ -46,16 +46,16 @@ export class JetStreamQueueService {
     // the worker (and audit trail) can honor it. The actual gating happens in
     // QueueWorkerService.handleMessage, which checks Prisma.scheduledAt
     // before dispatching, and re-publishes to a delay stream if not yet due.
-    const hdrs: Record<string, string> = {
-      'x-project-id': projectId,
-      'x-queue-name': queueName,
-      ...headers,
-      ...(delaySeconds && delaySeconds > 0
-        ? { 'x-delay-seconds': String(Math.floor(delaySeconds)) }
-        : {}),
-    };
-    const opts: Record<string, unknown> = { headers: hdrs };
-    const pa = await this.js.publish(subject, body, opts);
+    const h = createMsgHdrs();
+    h.set('x-project-id', projectId);
+    h.set('x-queue-name', queueName);
+    for (const [k, v] of Object.entries(headers)) {
+      h.set(k, v);
+    }
+    if (delaySeconds && delaySeconds > 0) {
+      h.set('x-delay-seconds', String(Math.floor(delaySeconds)));
+    }
+    const pa = await this.js.publish(subject, body, { headers: h });
     return { seq: pa.seq };
   }
 
