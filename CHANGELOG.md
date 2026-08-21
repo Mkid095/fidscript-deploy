@@ -10,6 +10,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/).
 - `fix(dashboard): redesign Projects page — move AI Control Center below project grid (secondary position), rename to 'Developer & AI Access', add page description, improve empty state with 4-step onboarding guide, friendly error messages for Bad Request/401/403, collapsed by default to prevent unnecessary API calls, usage context chips after key creation`
 
 ### Fixed
+- `fix(sdk): createApiKey sends scopes field rejected by ValidationPipe whitelist` — `auth-sessions.ts` now sends `{ name }` (without `scopes`) when scopes is undefined, since the API DTO only accepts `permissions`. Previously the SDK sent `{ name, scopes: [] }` which the ValidationPipe rejected with `property scopes should not exist`. Also fixed `use-account-credentials.ts` to handle the API's `{ apiKey: {...}, key: "fsk_..." }` response shape. Files: `packages/sdk/src/modules/auth-sessions.ts`, `apps/dashboard/src/hooks/use-account-credentials.ts`
+
+### Added
+- `feat(docs): comprehensive frontend rebuild blueprint` — created `docs/product/FRONTEND_REBUILD_BLUEPRINT.md` covering the full frontend specification: landing page, auth flows, all 13 service pages (Projects, Deployments, Functions, Databases, Storage, Queues, Scheduler, Email, Domains, Monitoring, Logs, Realtime, MCP), design system, component catalog, API integration contract, and file naming conventions. This doc serves as the blueprint for a complete frontend rewrite.
+
+### Fixed
 - `fix(api): tsc-alias path resolution + tsx for TypeScript seed` — tsc-alias was running with wrong working directory causing @/ aliases to resolve to `../../../../src/` instead of `../../../modules/`. Added `apps/api/resolve-aliases.js` as a custom Node.js alias resolver. Also added `tsx` to runtime image so `prisma/seed.ts` (TypeScript) can be executed directly. Files: `apps/api/Dockerfile`, `apps/api/resolve-aliases.js`, `apps/api/package.json`, `installer/docker/api-entrypoint.sh`
 - `fix(api): remove hardcoded JWT fallback secret — queues/functions modules now use ConfigModule + resolveJwtSecret (fails closed if JWT_SECRET missing or 'change-me')` — `queues.module.ts`, `functions.module.ts`
 - `fix(docker): WhatsApp frontend network fix + wget→curl healthchecks` — `whatsapp-frontend` added to `fidscript-deployment` network (was only on `fipscript-whatsapp` causing nginx to fail with 'host not found: fidscript_dashboard'); all WhatsApp healthchecks (`wget`) replaced with `curl` for Debian-based images

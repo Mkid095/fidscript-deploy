@@ -90,16 +90,18 @@ export function useAccountCredentials(getSdk: SdkGetter): UseAccountCredentialsR
     try {
       const sdk = getSdk();
       const expiresAt = expiryDate(expiryOption);
-      const result = await sdk.auth.createApiKey(name, []);
-      const raw: string = result.key as string;
-      const prefix = raw.slice(0, 8);
+      const result: any = await sdk.auth.createApiKey(name);
+      // API returns { apiKey: {...}, key: "fsk_..." }
+      const apiKey = result.apiKey ?? result;
+      const raw: string = (result.key ?? result.apiKey?.id) as string;
+      const prefix = raw.startsWith('fsk_') ? raw.slice(0, 8) : 'fsk_??????';
       const newKey: AccountKey = {
-        id: result.id as string,
-        name: result.name ?? name,
+        id: apiKey.id as string,
+        name: apiKey.name ?? name,
         keyPrefix: prefix,
-        permissions: (result.permissions ?? []) as string[],
-        expiresAt: result.expiresAt ?? null,
-        createdAt: result.createdAt as string,
+        permissions: (apiKey.permissions ?? []) as string[],
+        expiresAt: apiKey.expiresAt ?? null,
+        createdAt: apiKey.createdAt as string,
       };
       setKeys(prev => [newKey, ...prev]);
       setSelectedKey(newKey);
