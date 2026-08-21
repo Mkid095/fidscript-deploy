@@ -1,5 +1,7 @@
 import { Module, forwardRef } from '@nestjs/common';
 import { JwtModule } from '@nestjs/jwt';
+import { ConfigModule, ConfigService } from '@nestjs/config';
+import { resolveJwtSecret } from '@/common/secrets';
 import { FunctionsController } from './functions.controller';
 import { FunctionsService } from './functions.service';
 import { FunctionsCrudService } from './services/functions-crud.service';
@@ -12,7 +14,15 @@ import { ProjectsModule } from '@/modules/projects/projects.module';
 
 @Module({
   imports: [
-    JwtModule.register({ secret: process.env.JWT_SECRET || 'fidscript', signOptions: { expiresIn: '15m' } }),
+    ConfigModule,
+    JwtModule.registerAsync({
+      imports: [ConfigModule],
+      useFactory: (config: ConfigService) => ({
+        secret: resolveJwtSecret(config),
+        signOptions: { expiresIn: '15m' },
+      }),
+      inject: [ConfigService],
+    }),
     forwardRef(() => AuthModule),
     forwardRef(() => ProjectsModule),
   ],

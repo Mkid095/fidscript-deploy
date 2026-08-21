@@ -60,6 +60,7 @@ import { AuthModule } from '@/modules/auth/auth.module';
     DbDataService,
     DbRealtimeService,
     DbCrudService,
+    PostgresAdminService,
     DATABASE_PROVIDER,
     NotifyRealtimeProvider,
     SchemaCacheService,

@@ -21,6 +21,19 @@ process.on('uncaughtException', (err) => {
 });
 
 async function bootstrap() {
+  // Fail fast on missing critical environment variables
+  const requiredEnvVars = [
+    'DATABASE_URL',
+    'DIRECT_URL',
+    'JWT_SECRET',
+    'ENCRYPTION_KEY',
+  ];
+  const missing = requiredEnvVars.filter((key) => !process.env[key]);
+  if (missing.length > 0) {
+    console.error(`[FATAL] Missing required environment variables: ${missing.join(', ')}`);
+    process.exit(1);
+  }
+
   const app = await NestFactory.create(AppModule);
 
   // Serve the one-line installer at the root so `curl …/install.sh` works
@@ -81,6 +94,9 @@ async function bootstrap() {
   const redisAdapter = new RedisIoAdapter(app, process.env.REDIS_URL);
   await redisAdapter.connectToRedis();
   app.useWebSocketAdapter(redisAdapter);
+
+  // Graceful shutdown: allow in-flight requests to complete before exiting
+  app.enableShutdownHooks();
 
   console.log('[bootstrap] Before listen()');
   try {

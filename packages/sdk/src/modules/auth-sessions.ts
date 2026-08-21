@@ -22,7 +22,8 @@ export function applyAuthSessionsMethods(host: AuthSessionsHost): void {
     client.get<{ apiKeys: ApiKeyInfo[] }>('/api/v1/auth/api-keys');
 
   host.createApiKey = (name, scopes) =>
-    client.post<ApiKeyInfo & { key: string }>(`/api/v1/auth/api-keys`, { name, scopes });
+    client.post<ApiKeyInfo & { key: string }>(`/api/v1/auth/api-keys`,
+      scopes !== undefined ? { name, scopes } : { name });
 
   host.revokeApiKey = (keyId) =>
     client.delete(`/api/v1/auth/api-keys/${keyId}`);

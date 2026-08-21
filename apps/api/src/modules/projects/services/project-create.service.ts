@@ -89,6 +89,6 @@ export class ProjectCreateService {
 
   private generateSlug(name: string): string {
     const base = name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').substring(0, 50);
-    return `${base}-${Math.random().toString(36).substring(2, 8)}`;
+    return `${base}-${crypto.randomBytes(4).toString('hex')}`;
   }
 }

@@ -109,7 +109,7 @@ export class ProjectCrudService {
     if (project.ownerId !== userId) throw new ForbiddenException('Only owner can permanently delete');
     if (!project.deletedAt) throw new ForbiddenException('Project must be soft-deleted before permanent purge');
 
-    const code = Math.floor(100000 + Math.random() * 900000).toString();
+    const code = crypto.randomInt(100000, 999999).toString();
     const hashedCode = crypto.createHash('sha256').update(code).digest('hex');
     const expiresAt = new Date(Date.now() + 10 * 60 * 1000); // 10 minutes
 

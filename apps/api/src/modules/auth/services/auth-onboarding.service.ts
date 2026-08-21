@@ -1,6 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { PrismaService } from '@/prisma/prisma.service';
 import { EventService } from '@/modules/events/event.service';
+import * as crypto from 'crypto';
 
 const ORG_OWNER_PERMISSIONS = JSON.stringify(['*']);
 
@@ -129,7 +130,8 @@ export class AuthOnboardingService {
 
   private async uniqueOrgSlug(base: string): Promise<string> {
     for (let attempt = 0; attempt < 5; attempt++) {
-      const candidate = attempt === 0 ? base : `${base}-${Math.random().toString(36).substring(2, 8)}`;
+      const suffix = attempt === 0 ? '' : `-${crypto.randomBytes(4).toString('hex')}`;
+      const candidate = `${base}${suffix}`;
       const taken = await this.prisma.organization.findUnique({ where: { slug: candidate } });
       if (!taken) return candidate;
     }
@@ -138,7 +140,8 @@ export class AuthOnboardingService {
 
   private async uniqueProjectSlug(base: string): Promise<string> {
     for (let attempt = 0; attempt < 5; attempt++) {
-      const candidate = attempt === 0 ? base : `${base}-${Math.random().toString(36).substring(2, 8)}`;
+      const suffix = attempt === 0 ? '' : `-${crypto.randomBytes(4).toString('hex')}`;
+      const candidate = `${base}${suffix}`;
       const taken = await this.prisma.project.findUnique({ where: { slug: candidate } });
       if (!taken) return candidate;
     }

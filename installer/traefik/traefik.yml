@@ -38,10 +38,8 @@ certificatesResolvers:
         resolvers:
           - "1.1.1.1"
           - "1.0.0.1"
-      # Use staging while iterating to avoid rate limits
-      # TODO: flip to production after initial verification:
-      #   https://acme-v02.api.letsencrypt.org/directory
-      caServer: https://acme-staging-v02.api.letsencrypt.org/directory
+      # Production Let's Encrypt CA
+      caServer: https://acme-v02.api.letsencrypt.org/directory
 
   letsencrypt-http:
     acme:
@@ -49,7 +47,7 @@ certificatesResolvers:
       storage: /acme-http/acme-http.json
       httpChallenge:
         entryPoint: web
-      caServer: https://acme-staging-v02.api.letsencrypt.org/directory
+      caServer: https://acme-v02.api.letsencrypt.org/directory
 
 providers:
   docker:

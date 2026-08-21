@@ -28,8 +28,6 @@ export default function ProjectsPage() {
         onCreate={p.handleCreateOpen}
       />
 
-      <AIControlCenter />
-
       <ProjectsListBody
         userRole={user?.role} projects={p.projects} deletedProjects={p.deletedProjects}
         loading={p.loading} showDeleted={p.showDeleted} search={p.search}
@@ -39,6 +37,9 @@ export default function ProjectsPage() {
         onClearSearch={p.handleClearSearch}
         onCreate={p.handleCreateOpen}
       />
+
+      {/* AI/Developer Access — shown below the project grid, not above it */}
+      <AIControlCenter />
 
       <ProjectsPanels
         activePanel={p.activePanel} editing={p.editing} deleting={p.deleting} purgeProject={p.purgeProject}
