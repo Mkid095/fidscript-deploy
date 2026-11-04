@@ -2,3 +2,14 @@ packages:
   - "apps/*"
   - "packages/*"
   - "scripts/*"
+  # apps/whatsapp-api is the Viventure WhatsApp platform — a separate
+  # product with its own npm lockfile, its own GitHub Actions workflows
+  # (apps/whatsapp-api/.github/workflows/) and its own image publishing.
+  # It is excluded from the FIDScript workspace so that:
+  #   - it is installed and built by npm in its own repository, not by pnpm;
+  #   - its failures cannot break FIDScript's CI (it imports
+  #     @api/integrations/chatbot/* sources that live in the Viventure
+  #     repository, not here);
+  #   - FIDScript does not have to carry a second lockfile for one app.
+  # The FIDScript side of WhatsApp lives in installer/addons/whatsapp/.
+  - "!apps/whatsapp-api"
