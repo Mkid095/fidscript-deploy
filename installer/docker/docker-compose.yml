@@ -55,6 +55,11 @@ services:
       # server fail to come up.
       fidscript-mail:
         ipv4_address: 10.0.8.3
+    healthcheck:
+      test: ["CMD", "traefik", "healthcheck", "--ping"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
     logging:
       driver: json-file
       options:
@@ -471,6 +476,17 @@ services:
       - fidscript-deployment
     depends_on:
       - api
+    healthcheck:
+      # The image is node:20-bookworm-slim — it has node but no wget.
+      test:
+        - CMD
+        - node
+        - -e
+        - "require('http').get('http://127.0.0.1:3001/',r=>process.exit(r.statusCode<500?0:1)).on('error',()=>process.exit(1))"
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
     logging:
       driver: json-file
       options:

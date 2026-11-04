@@ -3,6 +3,11 @@ api:
   insecure: true
 
 entryPoints:
+  # The internal entrypoint Traefik's own /ping endpoint binds to. It is
+  # NOT published to the host — it exists so the healthcheck has something
+  # to probe.
+  traefik:
+    address: ":8080"
   web:
     address: ":80"
     http:
@@ -13,6 +18,13 @@ entryPoints:
 
   websecure:
     address: ":443"
+
+# The ping endpoint the healthcheck probes. It is enabled here rather than
+# with a --ping flag: the image's entrypoint rewrites a flag-only command
+# line into `traefik traefik --ping=true`, and the flag is then swallowed
+# as an argument instead of being applied.
+ping:
+  entryPoint: traefik
 
 certificatesResolvers:
   letsencrypt-dns:

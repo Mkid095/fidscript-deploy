@@ -1,0 +1,11 @@
+id: whatsapp
+title: WhatsApp platform
+summary: The WhatsApp Business platform — the Evolution API for channels, its own database and cache, and the web console.
+requires: []
+conflicts: []
+host_ports:
+  - 8080
+  - 8090
+secrets:
+  postgres_password: {bytes: 32, uid: 999}
+  redis_password: {bytes: 32}

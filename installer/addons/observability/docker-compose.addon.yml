@@ -1,0 +1,184 @@
+# Observability add-on — metrics, dashboards and logs.
+#
+# Relative paths resolve against the CORE compose file's directory
+# (installer/docker/), so a config that lives next to this fragment is
+# mounted as ../addons/observability/<path>.
+#
+# Ports are overridable so the stack can be moved off a port the host
+# already uses: put OBSERVABILITY_GRAFANA_PORT=3002 in installer/docker/.env.
+
+services:
+  prometheus:
+    image: prom/prometheus:v2.53.0
+    container_name: fidscript_prometheus
+    restart: unless-stopped
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--storage.tsdb.retention.time=${OBSERVABILITY_RETENTION:-30d}'
+      - '--web.enable-lifecycle'
+      - '--web.enable-admin-api'
+    volumes:
+      - ../addons/observability/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - fidscript_prometheus_data:/prometheus
+    ports:
+      - "${OBSERVABILITY_PROMETHEUS_PORT:-9090}:9090"
+    networks:
+      - fidscript-deployment
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:9090/-/healthy"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+    logging:
+      driver: json-file
+      options:
+        max-size: '10m'
+        max-file: '3'
+
+  cadvisor:
+    image: gcr.io/cadvisor/cadvisor:v0.51.0
+    container_name: fidscript_cadvisor
+    restart: unless-stopped
+    ports:
+      - "${OBSERVABILITY_CADVISOR_PORT:-8081}:8080"
+    volumes:
+      - /:/rootfs:ro
+      - /var/run:/var/run:ro
+      - /sys:/sys:ro
+      - /var/lib/docker/:/var/lib/docker:ro
+      - /dev/disk/:/dev/disk:ro
+    networks:
+      - fidscript-deployment
+    command:
+      - --housekeeping_interval=15s
+      - --docker_only=true
+      - --store_container_labels=false
+      - --allow_dynamic_housekeeping=true
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:8080/healthz"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+    logging:
+      driver: json-file
+      options:
+        max-size: '10m'
+        max-file: '3'
+
+  postgres-exporter:
+    image: prometheuscommunity/postgres-exporter:latest
+    container_name: fidscript_postgres_exporter
+    restart: unless-stopped
+    environment:
+      # This exporter version takes the whole DSN in DATA_SOURCE_NAME;
+      # the split DATA_SOURCE_URI/USER/PASSWORD form is ignored, and
+      # --pg.conn-string is not a flag.
+      DATA_SOURCE_NAME: "postgresql://fidscript:${POSTGRES_PASSWORD}@postgres:5432/fidscript?sslmode=disable"
+    networks:
+      - fidscript-deployment
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:9187/metrics"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+    logging:
+      driver: json-file
+      options:
+        max-size: '10m'
+        max-file: '3'
+
+  loki:
+    image: grafana/loki:3.1.1
+    container_name: fidscript_loki
+    restart: unless-stopped
+    command: -config.file=/etc/loki/loki-config.yml
+    volumes:
+      - ../addons/observability/loki/loki-config.yml:/etc/loki/loki-config.yml:ro
+      - fidscript_loki_data:/loki
+    ports:
+      - "${OBSERVABILITY_LOKI_PORT:-3100}:3100"
+    networks:
+      - fidscript-deployment
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:3100/ready"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+    logging:
+      driver: json-file
+      options:
+        max-size: '10m'
+        max-file: '3'
+
+  promtail:
+    image: grafana/promtail:3.1.1
+    container_name: fidscript_promtail
+    restart: unless-stopped
+    command: -config.file=/etc/promtail/promtail-config.yml
+    volumes:
+      - ../addons/observability/promtail/promtail-config.yml:/etc/promtail/promtail-config.yml:ro
+      - /var/lib/docker/containers:/var/lib/docker/containers:ro
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    networks:
+      - fidscript-deployment
+    depends_on:
+      - loki
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://127.0.0.1:9080/ready >/dev/null || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+    logging:
+      driver: json-file
+      options:
+        max-size: '10m'
+        max-file: '3'
+
+  grafana:
+    image: grafana/grafana:11.4.0
+    container_name: fidscript_grafana
+    restart: unless-stopped
+    environment:
+      GF_SECURITY_ADMIN_USER: admin
+      GF_SECURITY_ADMIN_PASSWORD__FILE: /run/secrets/observability_grafana_password
+      GF_USERS_ALLOW_SIGN_UP: "false"
+      GF_FEATURE_TOGGLES_ENABLE: publicDashboards
+      # The dashboard and the Prometheus datasource are provisioned from
+      # files, so there is nothing to click through on first boot.
+      GF_DASHBOARDS_DEFAULT_HOME_DASHBOARD_PATH: /var/lib/grafana/dashboards/platform-overview.json
+    volumes:
+      - ../addons/observability/grafana/provisioning:/etc/grafana/provisioning:ro
+      - ../addons/observability/grafana/dashboards:/var/lib/grafana/dashboards:ro
+      - fidscript_grafana_data:/var/lib/grafana
+    secrets:
+      - observability_grafana_password
+    ports:
+      - "${OBSERVABILITY_GRAFANA_PORT:-3000}:3000"
+    networks:
+      - fidscript-deployment
+    depends_on:
+      - prometheus
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://127.0.0.1:3000/api/health >/dev/null || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+    logging:
+      driver: json-file
+      options:
+        max-size: '10m'
+        max-file: '3'
+
+volumes:
+  fidscript_prometheus_data:
+    name: fidscript_prometheus_data
+  fidscript_grafana_data:
+    name: fidscript_grafana_data
+  fidscript_loki_data:
+    name: fidscript_loki_data
+
+secrets:
+  observability_grafana_password:
+    file: ./secrets/observability_grafana_password.txt

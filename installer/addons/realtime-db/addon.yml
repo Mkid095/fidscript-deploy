@@ -1,0 +1,12 @@
+id: realtime-db
+title: Realtime database (InstantDB-compatible)
+summary: A self-hosted InstantDB-compatible realtime backend — its own Postgres with logical replication, the Instant server, and S3-compatible storage for backups.
+requires: []
+conflicts: []
+host_ports:
+  - 8888
+  - 5433
+secrets:
+  postgres_password: {bytes: 32, uid: 999}
+  minio_access_key: {bytes: 32}
+  minio_secret_key: {bytes: 32}

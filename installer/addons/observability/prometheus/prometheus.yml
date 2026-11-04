@@ -1,0 +1,39 @@
+# Prometheus scrape configuration for the FIDScript platform.
+#
+# Targets are container names on the platform's shared network, so no host
+# ports or credentials are involved.
+
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+  external_labels:
+    platform: fidscript
+
+scrape_configs:
+  - job_name: prometheus
+    static_configs:
+      - targets: ["localhost:9090"]
+
+  # The platform API exposes Prometheus-format metrics at /metrics, outside
+  # the /api/v1 prefix. It currently exports the platform's own metric
+  # table and alert state — per-deployment CPU/memory and request-rate
+  # metrics need the collectors that are not implemented yet.
+  - job_name: fidscript-api
+    metrics_path: /metrics
+    static_configs:
+      - targets: ["fidscript_api:3001"]
+
+  # Container CPU / memory / disk / network for every container on the host.
+  - job_name: cadvisor
+    static_configs:
+      - targets: ["fidscript_cadvisor:8080"]
+
+  # The platform database.
+  - job_name: postgres
+    static_configs:
+      - targets: ["fidscript_postgres_exporter:9187"]
+
+  # Loki's own metrics, so the log pipeline is visible in the same place.
+  - job_name: loki
+    static_configs:
+      - targets: ["fidscript_loki:3100"]

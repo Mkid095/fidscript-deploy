@@ -29,6 +29,7 @@ divider() { echo -e "${DIM}$(printf '  ─%.0s' {1..64})${NC}"; }
 DOMAIN=""; ADMIN_EMAIL=""; ADMIN_PASSWORD=""
 CLOUDFLARE_API_TOKEN=""; DNS_ZONE_ID=""
 SERVER_IP=""; DETECTED_IP=""; DOCKER_GID="0"
+SELECTED_ADDONS=()
 
 # ── Detect environment ─────────────────────────────────────────────────────────
 detect_env() {
@@ -57,7 +58,7 @@ detect_env() {
 
 # ── Step 1: Domain ───────────────────────────────────────────────────────────
 step_domain() {
-  title "Step 1 / 5 — Platform Domain"
+  title "Step 1 / 6 — Platform Domain"
   divider
   echo "  The domain where this platform will live. DNS A records will be"
   echo "  created automatically if using Cloudflare (Step 4)."
@@ -71,7 +72,7 @@ step_domain() {
 
 # ── Step 2: Admin email ──────────────────────────────────────────────────────
 step_email() {
-  title "Step 2 / 5 — Administrator Account"
+  title "Step 2 / 6 — Administrator Account"
   divider
   echo "  Platform alerts and login username."
   echo ""
@@ -88,7 +89,7 @@ step_email() {
 
 # ── Step 3: Password ─────────────────────────────────────────────────────────
 step_password() {
-  title "Step 3 / 5 — Admin Password"
+  title "Step 3 / 6 — Admin Password"
   divider
   echo "  Minimum 12 characters. Shown as dots."
   echo ""
@@ -112,7 +113,7 @@ step_password() {
 
 # ── Step 4: DNS provider ─────────────────────────────────────────────────────
 step_dns() {
-  title "Step 4 / 5 — DNS Provider  (optional)"
+  title "Step 4 / 6 — DNS Provider  (optional)"
   divider
   echo "  Cloudflare is optional. Without it, SSL certificates use HTTP-01"
   echo "  challenge — you must create DNS A records manually before running."
@@ -144,9 +145,64 @@ step_dns() {
   info "Token validated."
 }
 
-# ── Step 5: Review ───────────────────────────────────────────────────────────
+# ── Step 5: Optional components ──────────────────────────────────────────────
+step_addons() {
+  local ADDONS_ROOT
+  ADDONS_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../addons" 2>/dev/null && pwd)" || ADDONS_ROOT=""
+  title "Step 5 / 6 — Optional components"
+  divider
+  echo "  These install alongside the platform. They are optional — the"
+  echo "  core platform does not need them."
+  echo ""
+
+  local ids=() id title summary n=1 choice
+  while read -r id; do
+    [[ -z "$id" ]] && continue
+    ids+=("$id")
+    title="$(awk -v k="^title:" '$0 ~ k { sub(/^title:[[:space:]]*/, ""); print; exit }' \
+      "${ADDONS_ROOT}/${id}/addon.yml" 2>/dev/null)"
+    summary="$(awk -v k="^summary:" '$0 ~ k { sub(/^summary:[[:space:]]*/, ""); print; exit }' \
+      "${ADDONS_ROOT}/${id}/addon.yml" 2>/dev/null)"
+    echo "  ${n}) ${title}"
+    echo "     ${summary}"
+    n=$((n + 1))
+  done < <(find "${ADDONS_ROOT}" -mindepth 2 -maxdepth 2 -name addon.yml 2>/dev/null \
+           | xargs -r -n1 dirname | xargs -r -n1 basename | sort)
+
+  if [[ ${#ids[@]} -eq 0 ]]; then
+    info "No add-ons are available in this install."
+    return
+  fi
+
+  echo ""
+  prompt "Add-ons to install (numbers, comma separated, empty for none): "
+  read -r choice
+
+  local selected=() i
+  for i in $(echo "$choice" | tr ',' ' '); do
+    [[ "$i" =~ ^[0-9]+$ ]] || continue
+    local idx=$((i - 1))
+    if [[ $idx -ge 0 && $idx -lt ${#ids[@]} ]]; then
+      selected+=("${ids[$idx]}")
+    else
+      warn "No add-on number ${i}"
+    fi
+  done
+
+  if [[ ${#selected[@]} -eq 0 ]]; then
+    info "Skipped — no optional components."
+    return
+  fi
+
+  # The selection is applied after .env has been written: addons.sh records
+  # it in .env, and the wizard writes .env itself further down — which would
+  # otherwise overwrite the record.
+  SELECTED_ADDONS=("${selected[@]}")
+}
+
+# ── Step 6: Review ───────────────────────────────────────────────────────────
 step_review() {
-  title "Step 5 / 5 — Review"
+  title "Step 6 / 6 — Review"
   divider
   echo "  Domain:       $DOMAIN"
   echo "  Admin:       $ADMIN_EMAIL"
@@ -156,6 +212,11 @@ step_review() {
     echo -e "  DNS:         ${YELLOW}Manual (HTTP-01 SSL)${NC}"
   fi
   echo "  Server IP:   ${DETECTED_IP:-[unknown]}"
+  local chosen=""
+  if [[ ${#SELECTED_ADDONS[@]} -gt 0 ]]; then
+    chosen="${SELECTED_ADDONS[*]}"
+  fi
+  echo "  Add-ons:     ${chosen:-none}"
   echo ""
   prompt "Deploy now? [Y/n]: "
   read -r c; c="${c:-Y}"
@@ -181,6 +242,7 @@ step_domain
 step_email
 step_password
 step_dns
+step_addons
 step_review
 
 # ── Generate secrets ────────────────────────────────────────────────────────
@@ -195,6 +257,24 @@ chmod 700 "$SECRETS_DIR"
 # Generate a secret ONLY if the file is missing or empty. Re-running this
 # wizard on an existing deployment MUST NOT rotate credentials — that would
 # invalidate all sessions, break DB connections, and lock the operator out.
+
+# A platform database volume that already exists but has no local
+# credential is a trap: generating a fresh password would lock the platform
+# out of its own database, and the failure only shows up as an
+# "authentication failed" much later. Refuse instead.
+guard_existing_volume() {
+  local volume="$1" secret_file="$2" secrets_dir="$3"
+  [[ -s "$secret_file" ]] && return 0
+  docker volume inspect "$volume" >/dev/null 2>&1 || return 0
+  error "The volume '${volume}' already exists but its credentials are missing"
+  error "from ${secrets_dir}."
+  error ""
+  error "  Restore the previous secrets/ directory, or remove the volume to"
+  error "  start over — this DESTROYS the data in it:"
+  error "    docker volume rm ${volume}"
+  exit 1
+}
+
 generate_secret() {
   local file="$1" hex_bytes="$2"
   if [[ -s "$file" ]]; then
@@ -205,6 +285,13 @@ generate_secret() {
   chmod 600 "$file"
   info "Generated $(basename "$file")"
 }
+
+# Every volume that holds state created with a credential we generate. If
+# the volume is there but the credential is not, generating a fresh one
+# breaks the service against its own data.
+guard_existing_volume "fidscript_postgres"  "$SECRETS_DIR/postgres_password.txt"     "$SECRETS_DIR"
+guard_existing_volume "fidscript_redis"    "$SECRETS_DIR/redis_password.txt"        "$SECRETS_DIR"
+guard_existing_volume "fidscript_stalwart" "$SECRETS_DIR/stalwart_admin_token.txt"  "$SECRETS_DIR"
 
 generate_secret "$SECRETS_DIR/postgres_password.txt"     32
 generate_secret "$SECRETS_DIR/redis_password.txt"        32
@@ -334,6 +421,15 @@ else
   chmod 644 "$SECRETS_DIR/pgbouncer_userlist.txt" 2>/dev/null || true
 fi
 info ".env written."
+
+# Apply the optional components chosen in step 5. This has to happen after
+# .env exists, because the selection itself is recorded there.
+if [[ ${#SELECTED_ADDONS[@]} -gt 0 ]]; then
+  step "Preparing optional components…"
+  bash "$(dirname "${BASH_SOURCE[0]}")/addons.sh" select "${SELECTED_ADDONS[@]}" || {
+    warn "Could not prepare every add-on — continuing with the core platform."
+  }
+fi
 
 # ── Cloudflare DNS ──────────────────────────────────────────────────────────
 if [[ -n "$CLOUDFLARE_API_TOKEN" && -n "$DNS_ZONE_ID" ]]; then
@@ -530,6 +626,11 @@ api:
   # still available, but the control API is not reachable.
   insecure: false
 entryPoints:
+  # The internal entrypoint Traefik's own /ping endpoint binds to. It is
+  # NOT published to the host — it exists so the healthcheck has something
+  # to probe, and so `traefik healthcheck --ping` works.
+  traefik:
+    address: ":8080"
   web:
     address: ":80"
     http:
@@ -539,6 +640,13 @@ entryPoints:
           scheme: https
   websecure:
     address: ":443"
+# The ping endpoint the healthcheck probes. It is enabled here rather than
+# with a --ping flag: the image's entrypoint rewrites a flag-only command
+# line into `traefik traefik --ping=true`, and the flag is then swallowed
+# as an argument instead of being applied.
+ping:
+  entryPoint: traefik
+
 certificatesResolvers:
   letsencrypt-dns:
     acme:

@@ -121,6 +121,25 @@ Stalwart and Traefik raced for the same static IP.
 with public DNS, so Let's Encrypt certificate issuance and the
 Cloudflare DNS path are exercised only as far as the HTTP-01 fallback.
 
+### Add-ons (2026-11-04)
+
+The core stack is one fixed compose file. Everything optional is an
+**add-on** under `installer/addons/<id>/` — a manifest, a compose
+fragment, and whatever config files it needs — merged with the core at
+`docker compose up`. `installer/scripts/addons.sh` manages them
+(`list`, `enable`, `disable`, `status`, `apply`, `select`), the setup
+wizard offers them as an optional step, and `install.sh` starts the
+enabled ones with the core.
+
+Four ship: **observability** (Prometheus, Grafana, Loki, Promtail,
+cAdvisor, a Postgres exporter — with real configs, a provisioned
+dashboard, and logs flowing), **realtime-db** (an InstantDB-compatible
+backend), **whatsapp** (the WhatsApp Business platform) and
+**app-runtime** (a local image registry).
+
+The whole platform plus all four add-ons was installed together and
+reached 25 containers, all healthy.
+
 ## Dependencies
 
 - **Phase 00** (the `apps/api` and `apps/dashboard` Dockerfiles must exist for compose to build them).

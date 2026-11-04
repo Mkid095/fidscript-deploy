@@ -26,6 +26,11 @@ installer/docker/secrets/
 installer/docker/whatsapp-api.env
 installer/docker/.env
 
+# Add-on env files — copied from the .example template on enable and then
+# edited by the operator. They hold real credentials, so never commit them.
+installer/addons/*/*.env
+!installer/addons/*/*.env.example
+
 # Stalwart config — committed, not generated. Stalwart v0.16 reads a
 # bootstrap config.json containing only the data-store location; every
 # other setting is managed through the JMAP management API.

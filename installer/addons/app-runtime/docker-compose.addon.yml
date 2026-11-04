@@ -1,0 +1,69 @@
+# App runtime add-on — a local image registry.
+#
+# The deployment engine builds application images with `docker build` inside
+# the API container today, which means the image only exists in that host's
+# Docker daemon: it is lost if the daemon's storage is pruned, and it
+# cannot be pulled by another node. This registry is where images are
+# pushed so they survive the build host and can be pulled anywhere.
+#
+# The registry is deliberately NOT published to the host — it is reachable
+# from the platform's own network only. Publish it (and turn on TLS) if you
+# add a second node.
+#
+# NOT INCLUDED YET: the durable build queue and the separate build-runner
+# worker that would move `docker build` out of the API's event loop. The
+# engine still builds in-process, so the registry is not yet written to.
+# That work is the deployment-engine slice, not the installer.
+
+services:
+  registry:
+    image: registry:2
+    container_name: fidscript_registry
+    restart: unless-stopped
+    environment:
+      REGISTRY_STORAGE_DELETE_ENABLED: "true"
+      REGISTRY_AUTH: htpasswd
+      REGISTRY_AUTH_HTPASSWD_REALM: "FIDScript Registry"
+      REGISTRY_AUTH_HTPASSWD_PATH: /auth/htpasswd
+      # Tag retention is the operator's call; 0 means keep everything.
+      REGISTRY_STORAGE_MAINTENANCE_UPLOADDISABLE: "true"
+    secrets:
+      - app_runtime_registry_password_htpasswd
+      - app_runtime_registry_password
+    volumes:
+      - fidscript_registry_data:/var/lib/registry
+      - ./secrets/app_runtime_registry_password_htpasswd.txt:/auth/htpasswd:ro
+    networks:
+      - fidscript-deployment
+    healthcheck:
+      # The registry enforces basic auth, so an unauthenticated probe gets
+      # 401 and looks like a failure. Authenticate with the same credentials
+      # the registry was given. (wget's own --user/--password — building a
+      # base64 header by hand is easy to get wrong.)
+      # BusyBox wget (the registry image) has no --user/--password, and it
+      # wraps base64 output at 76 columns — so the header is built and
+      # unwrapped by hand. The whole command has to stay on ONE line: a
+      # folded YAML scalar joins the lines with a space and puts a space
+      # inside the base64, which the server answers with 400.
+      test:
+        - CMD-SHELL
+        - >-
+          wget -qO- --header="Authorization: Basic $$(printf 'admin:%s' "$$(cat /run/secrets/app_runtime_registry_password)" | base64 | tr -d '\n')" http://127.0.0.1:5000/v2/ >/dev/null || exit 1
+      interval: 15s
+      timeout: 5s
+      retries: 5
+    logging:
+      driver: json-file
+      options:
+        max-size: '10m'
+        max-file: '3'
+
+volumes:
+  fidscript_registry_data:
+    name: fidscript_registry_data
+
+secrets:
+  app_runtime_registry_password_htpasswd:
+    file: ./secrets/app_runtime_registry_password_htpasswd.txt
+  app_runtime_registry_password:
+    file: ./secrets/app_runtime_registry_password.txt

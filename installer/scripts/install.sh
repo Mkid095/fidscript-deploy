@@ -129,7 +129,7 @@ install_docker_ubuntu_debian() {
   apt-get update -qq
   apt-get install -y -qq \
     ca-certificates curl gnupg lsb-release jq bc timeout \
-    ncurses-utils sqlite3 git 2>/dev/null
+    ncurses-utils sqlite3 git python3-bcrypt 2>/dev/null
 
   # Add Docker's GPG key
   install -m 0755 -d /etc/apt/keyrings
@@ -224,7 +224,7 @@ ln -sf "${SCRIPT_PATH}" /usr/local/bin/fidscript
 info "Symlinked: /usr/local/bin/fidscript"
 
 # Convenience symlinks for related scripts
-for prog in setup-wizard.sh health-check.sh configure-firewall.sh; do
+for prog in setup-wizard.sh health-check.sh configure-firewall.sh addons.sh; do
   SRC="${REPO_DIR}/installer/scripts/${prog}"
   DST="/usr/local/bin/fidscript-${prog%.sh}"
   [[ -f "${SRC}" ]] && ln -sf "${SRC}" "${DST}" && info "Symlinked: ${DST}"
@@ -252,6 +252,27 @@ declare -A SECRETS=(
 
 mkdir -p "${SECRETS_DIR}"
 chmod 700 "${SECRETS_DIR}"
+
+# A platform database volume that already exists but has no local
+# credential is a trap: generating a fresh password would lock the platform
+# out of its own database. Refuse instead.
+for _pair in \
+  "fidscript_postgres:postgres_password.txt" \
+  "fidscript_redis:redis_password.txt" \
+  "fidscript_stalwart:stalwart_admin_token.txt"; do
+  _vol="${_pair%%:*}"
+  _file="${_pair#*:}"
+  if [[ ! -s "${SECRETS_DIR}/${_file}" ]] && \
+     docker volume inspect "${_vol}" >/dev/null 2>&1; then
+    error "The volume '${_vol}' already exists but its credentials are"
+    error "missing from ${SECRETS_DIR}."
+    error ""
+    error "  Restore the previous secrets/ directory, or remove the volume to"
+    error "  start over — this DESTROYS the data in it:"
+    error "    docker volume rm ${_vol}"
+    exit 1
+  fi
+done
 
 # AES-256-GCM key: base64 of exactly 32 random bytes.
 if [[ ! -s "${SECRETS_DIR}/encryption_key.txt" ]]; then
@@ -452,6 +473,15 @@ if ! docker compose up -d --build 2>&1 | tail -20; then
 fi
 
 sleep 5
+
+# Bring up any optional components the operator selected. They are merged
+# with the core compose file, so this starts the core and the add-ons
+# together.
+if grep -q '^FIDScript_ADDONS=' "${COMPOSE_DIR}/.env" 2>/dev/null; then
+  step "Starting optional components…"
+  "${INSTALLER_DIR}/scripts/addons.sh" apply \
+    || warn "An optional component failed to start — the core platform is unaffected."
+fi
 
 RUNNING=$(docker compose -f "${COMPOSE_DIR}/docker-compose.yml" \
   ps --services --filter "status=running" 2>/dev/null | wc -l || echo "0")

@@ -1,0 +1,16 @@
+id: observability
+title: Observability stack
+summary: Prometheus for metrics, Grafana for dashboards, Loki for logs, plus cAdvisor and a Postgres exporter.
+requires: []
+conflicts: []
+host_ports:
+  - 9090
+  - 3000
+  - 3100
+  - 8081
+secrets:
+  # Grafana runs as uid 472 and reads the password from the mounted secret,
+  # so the file has to be owned by that uid — Docker preserves the host
+  # file's mode and owner on the mount.
+  #   name: {bytes: <hex bytes>, uid: <owner uid, 0 = leave alone>}
+  grafana_password: {bytes: 32, uid: 472}

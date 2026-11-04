@@ -149,6 +149,34 @@ in `.gitignore`. The commit-safe templates are `.env.example` and
 `secrets/api.env.example`. To rotate a secret: edit the value on disk and
 `docker compose up -d`; the running services pick up the new credential.
 
+## Optional components
+
+The core platform is Traefik, Postgres, PgBouncer, Redis, NATS, object storage,
+mail, the API and the dashboard. Everything else is an **add-on** — installed
+on request, merged with the core at `docker compose up`.
+
+```bash
+fidscript-addons list                 # what is available
+fidscript-addons enable observability # install one
+fidscript-addons disable observability
+fidscript-addons status               # enabled + container state
+```
+
+The setup wizard offers them as an optional step too. What ships:
+
+| id | What it adds |
+|----|--------------|
+| `observability` | Prometheus, Grafana, Loki, Promtail, cAdvisor, a Postgres exporter |
+| `realtime-db` | An InstantDB-compatible realtime backend (its own Postgres + server + storage) |
+| `whatsapp` | The WhatsApp Business platform — Evolution API, database, cache, web console |
+| `app-runtime` | A local image registry for built application images |
+
+Published ports can be moved with environment variables in
+`installer/docker/.env` — for example `OBSERVABILITY_GRAFANA_PORT=3002`.
+
+The contract for writing a new add-on is in
+[`installer/addons/README.md`](./addons/README.md).
+
 ## Health Check
 
 Check service status:
