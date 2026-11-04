@@ -6,7 +6,6 @@
 CREATE SCHEMA IF NOT EXISTS "infrastructure";
 
 -- Add credentials inverse relation to projects
-ALTER TABLE projects.projects ADD COLUMN IF NOT EXISTS "credentials" TEXT[] DEFAULT ARRAY[]::TEXT[];
 
 -- Secret
 CREATE TABLE IF NOT EXISTS "infrastructure"."secrets" (
@@ -18,7 +17,7 @@ CREATE TABLE IF NOT EXISTS "infrastructure"."secrets" (
     "metadata" JSONB NOT NULL DEFAULT '{}',
     "last_used_at" TIMESTAMPTZ,
     "created_at" TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    "updated_at" TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updated_at" TIMESTAMPTZ NOT NULL,
     CONSTRAINT "secrets_pkey" PRIMARY KEY ("id")
 );
 
@@ -49,12 +48,17 @@ CREATE INDEX IF NOT EXISTS "credentials_key_prefix_idx" ON "infrastructure"."cre
 -- Foreign keys
 -- (Cascade on project delete for credentials; null for secrets so platform-level
 -- secrets survive project deletion.)
-DO $$
+    DO $$
 BEGIN
-  IF NOT EXISTS (SELECT 1 FROM information_schema.table_constraints
-                 WHERE constraint_name = 'credentials_project_id_fkey') THEN
-    ALTER TABLE "infrastructure"."credentials"
-      ADD CONSTRAINT "credentials_project_id_fkey"
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_constraint c
+        JOIN pg_class t ON t.oid = c.conrelid
+        JOIN pg_namespace n ON n.oid = t.relnamespace
+        WHERE c.conname = 'credentials_project_id_fkey'
+          AND n.nspname = 'infrastructure'
+          AND t.relname = 'credentials'
+    ) THEN
+        ALTER TABLE "infrastructure"."credentials" ADD CONSTRAINT "credentials_project_id_fkey"
       FOREIGN KEY ("project_id") REFERENCES "projects"."projects"("id")
       ON DELETE CASCADE ON UPDATE CASCADE;
   END IF;

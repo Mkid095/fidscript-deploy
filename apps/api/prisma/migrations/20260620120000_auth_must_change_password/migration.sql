@@ -12,4 +12,4 @@
 -- (PREREQ-AUTH-4). See docs/phases/frontend/f02-auth.md.
 
 -- RedefineTables
-ALTER TABLE "identity.users" ADD COLUMN "must_change_password" BOOLEAN NOT NULL DEFAULT false;
+ALTER TABLE "identity"."users" ADD COLUMN IF NOT EXISTS "must_change_password" BOOLEAN NOT NULL DEFAULT false;

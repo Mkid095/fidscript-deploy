@@ -202,10 +202,14 @@ docker compose logs
 
 ### The mail server will not start
 
-Stalwart is configured from `installer/config/stalwart/config.toml`,
-which the setup wizard renders (it needs `python3-bcrypt` to hash the admin
-token). If that file is missing, Compose fails fast rather than starting
-Stalwart with an empty config. Re-run the wizard to regenerate it.
+Stalwart v0.16 reads a bootstrap `config.json` containing only the
+data-store location; every other setting (listeners, hostname, directory,
+authentication, DKIM) is managed through the JMAP management API by the
+platform's email-bootstrap service. That file is committed at
+`installer/config/stalwart/config.json` — if you see
+`Failed to parse data store settings`, a stale `config.toml` is being
+mounted instead. Check the `stalwart` service's `volumes:` in
+`installer/docker/docker-compose.yml`.
 
 ### SSL certificate issues
 

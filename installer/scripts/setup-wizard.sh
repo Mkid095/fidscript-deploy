@@ -190,6 +190,7 @@ SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 DOCKER_DIR="$(dirname "$SCRIPT_DIR")/docker"
 SECRETS_DIR="$DOCKER_DIR/secrets"
 mkdir -p "$SECRETS_DIR"
+chmod 700 "$SECRETS_DIR"
 
 # Generate a secret ONLY if the file is missing or empty. Re-running this
 # wizard on an existing deployment MUST NOT rotate credentials — that would
@@ -210,9 +211,21 @@ generate_secret "$SECRETS_DIR/redis_password.txt"        32
 generate_secret "$SECRETS_DIR/minio_access_key.txt"      32
 generate_secret "$SECRETS_DIR/minio_secret_key.txt"      32
 generate_secret "$SECRETS_DIR/jwt_secret.txt"            64
-generate_secret "$SECRETS_DIR/encryption_key.txt"        32
 generate_secret "$SECRETS_DIR/stalwart_admin_token.txt"  32
 generate_secret "$SECRETS_DIR/stalwart_webhook_secret.txt" 32
+
+# The AES-256-GCM key is NOT a hex secret. CryptoService does
+# Buffer.from(value, 'base64') and rejects anything that is not exactly
+# 32 bytes, so the value has to be base64 of 32 random bytes (44 chars).
+# A hex string of the same entropy decodes to 48 bytes and the API
+# crash-loops at bootstrap with "ENCRYPTION_KEY must be 32 bytes".
+if [[ -s "$SECRETS_DIR/encryption_key.txt" ]]; then
+  info "Keeping existing encryption_key.txt"
+else
+  openssl rand -base64 32 > "$SECRETS_DIR/encryption_key.txt"
+  chmod 600 "$SECRETS_DIR/encryption_key.txt"
+  info "Generated encryption_key.txt"
+fi
 
 STALWART_ADMIN_TOKEN="$(cat "$SECRETS_DIR/stalwart_admin_token.txt")"
 if [[ ! -s "$SECRETS_DIR/system_mailbox_password.txt" ]]; then
@@ -232,6 +245,19 @@ echo "admin $STALWART_ADMIN_TOKEN" > "$SECRETS_DIR/stalwart_credentials.txt"
 chmod 600 "$SECRETS_DIR"/smtp_submission_user.txt \
           "$SECRETS_DIR"/smtp_submission_pass.txt \
           "$SECRETS_DIR"/stalwart_credentials.txt
+
+# Docker's `secrets:` block and the API's *_FILE convention both point at
+# the secret name WITHOUT the .txt extension (e.g. /run/secrets/jwt_secret),
+# while the generated files are .txt. Create a relative symlink for each so
+# both spellings resolve. Without this the API's entrypoint cannot find
+# JWT_SECRET / ENCRYPTION_KEY / DB_ADMIN_PASSWORD and the container
+# crash-loops on startup.
+for _txt in "$SECRETS_DIR"/*.txt; do
+  [[ -f "$_txt" ]] || continue
+  _base="$(basename "$_txt" .txt)"
+  [[ -L "$SECRETS_DIR/$_base" ]] && continue
+  ln -sf "$(basename "$_txt")" "$SECRETS_DIR/$_base"
+done
 info "Secrets ensured."
 
 # ── Load values ─────────────────────────────────────────────────────────────
@@ -285,11 +311,28 @@ else
   info "Keeping existing api.env — OAuth credentials preserved."
 fi
 
-# ── pgbouncer userlist ─────────────────────────────────────────────────────
-cat > "$DOCKER_DIR/userlist.txt" << EOF
+# ── pgbouncer auth file ────────────────────────────────────────────────────
+# pgbouncer runs as uid 70 (postgres) in the official image and reads this
+# file directly. Docker preserves the host file's mode on a bind mount, so a
+# 0600 root-owned file is unreadable inside the container and every
+# connection fails with 'no such user: fidscript'.
+#
+# It lives in secrets/ (mode 700 on the host, so it is not readable by other
+# local users) and is mounted into the container as a Docker secret.
+PGBOUNCER_UID=70
+PGBOUNCER_GID=70
+cat > "$SECRETS_DIR/pgbouncer_userlist.txt" << EOF
 "fidscript" "${POSTGRES_PASSWORD}"
 EOF
-chmod 600 "$DOCKER_DIR/userlist.txt"
+chmod 640 "$SECRETS_DIR/pgbouncer_userlist.txt"
+if [[ $EUID -eq 0 ]]; then
+  chown "${PGBOUNCER_UID}:${PGBOUNCER_GID}" "$SECRETS_DIR/pgbouncer_userlist.txt" 2>/dev/null || true
+else
+  # Not root — cannot change ownership, so fall back to a mode pgbouncer
+  # can read. The secrets/ directory is 0700, which keeps it off other
+  # local users' eyes on the host.
+  chmod 644 "$SECRETS_DIR/pgbouncer_userlist.txt" 2>/dev/null || true
+fi
 info ".env written."
 
 # ── Cloudflare DNS ──────────────────────────────────────────────────────────
@@ -347,7 +390,16 @@ else
   CERT_RESOLVER="letsencrypt-http"
 fi
 
-cat > "$TRAEFIK_DIR/dynamic.yml" << HEREDOC
+# NOTE: the heredoc is QUOTED (<< 'HEREDOC') on purpose. Traefik rules are
+# delimited by backticks — `Host(`app.example.com`)` — and in an unquoted
+# heredoc the shell treats those backticks as COMMAND SUBSTITUTION and
+# replaces the rule argument with the (empty) output of the command. That
+# produced rules like `Host()`, which Traefik rejects with "no args for
+# matcher Host" and every route 404s.
+#
+# The quoted heredoc leaves the backticks alone; the domain and the
+# certificate resolver are substituted afterwards with placeholders.
+cat > "$TRAEFIK_DIR/dynamic.yml" << 'HEREDOC'
 http:
   middlewares:
     security-headers:
@@ -364,77 +416,77 @@ http:
   routers:
     # ── Dashboard (app subdomain) — must come BEFORE wildcard ─────────────────
     dashboard-app:
-      rule: "Host(\`app.${DOMAIN}\`)"
+      rule: 'Host(`app.__DOMAIN__`)'
       service: dashboard
       middlewares:
         - security-headers
         - compress
       tls:
-        certResolver: ${CERT_RESOLVER}
+        certResolver: __CERT_RESOLVER__
       priority: 20
     # ── Landing / marketing (root domain) ────────────────────────────────────
     dashboard-root:
-      rule: "Host(\`${DOMAIN}\`)"
+      rule: 'Host(`__DOMAIN__`)'
       service: dashboard
       middlewares:
         - security-headers
         - compress
       tls:
-        certResolver: ${CERT_RESOLVER}
+        certResolver: __CERT_RESOLVER__
       priority: 10
     # ── Per-deployment subdomains: 2+ label subdomain → API ──────────────────
     # Matches: foo.${DOMAIN}, bar.${DOMAIN} etc. (NOT: app.${DOMAIN}, api.${DOMAIN})
     deployments-wildcard:
-      rule: "HostRegexp(\`^[^.]+\\.[^.]+\\.${DOMAIN}$\`)"
+      rule: 'HostRegexp(`^[^.]+\.[^.]+\.__DOMAIN__$`)'
       service: api
       middlewares:
         - security-headers
         - compress
       tls:
-        certResolver: ${CERT_RESOLVER}
+        certResolver: __CERT_RESOLVER__
       priority: 5
     # ── API path prefix → API backend ─────────────────────────────────────────
     api:
-      rule: "PathPrefix(\`/api\`) && !Path(\`/install.sh\`)"
+      rule: 'PathPrefix(`/api`) && !Path(`/install.sh`)'
       service: api
       middlewares:
         - security-headers
         - compress
       tls:
-        certResolver: ${CERT_RESOLVER}
+        certResolver: __CERT_RESOLVER__
     # ── Install script endpoint ─────────────────────────────────────────────────
     install-sh:
-      rule: "Path(\`/install.sh\`)"
+      rule: 'Path(`/install.sh`)'
       service: api
       priority: 200
     # ── Metrics endpoint ──────────────────────────────────────────────────────
     metrics:
-      rule: "Host(\`${DOMAIN}\`) && PathPrefix(\`/metrics\`)"
+      rule: 'Host(`__DOMAIN__`) && PathPrefix(`/metrics`)'
       service: api
       middlewares:
         - security-headers
       tls:
-        certResolver: ${CERT_RESOLVER}
+        certResolver: __CERT_RESOLVER__
     # ── MinIO console ─────────────────────────────────────────────────────────
     minio-console:
-      rule: "Host(\`storage.${DOMAIN}\`)"
+      rule: 'Host(`storage.__DOMAIN__`)'
       service: minio-console
       middlewares:
         - security-headers
         - compress
       tls:
-        certResolver: ${CERT_RESOLVER}
+        certResolver: __CERT_RESOLVER__
     # ── Stalwart JMAP ────────────────────────────────────────────────────────
     jmap:
-      rule: "Host(\`jmap.${DOMAIN}\`)"
+      rule: 'Host(`jmap.__DOMAIN__`)'
       service: stalwart-jmap
       middlewares:
         - security-headers
       tls:
-        certResolver: ${CERT_RESOLVER}
+        certResolver: __CERT_RESOLVER__
     # ── ACME challenge (Let's Encrypt) ────────────────────────────────────────
     acme-challenge:
-      rule: "PathPrefix(\`/.well-known/acme-challenge/\`)"
+      rule: 'PathPrefix(`/.well-known/acme-challenge/`)'
       service: stalwart-acme
       middlewares:
         - security-headers
@@ -460,6 +512,7 @@ http:
         servers:
           - url: "http://127.0.0.1:8080"
 HEREDOC
+sed -i "s|__DOMAIN__|${DOMAIN}|g; s|__CERT_RESOLVER__|${CERT_RESOLVER}|g" "$TRAEFIK_DIR/dynamic.yml"
 info "Traefik dynamic config written (resolver: $CERT_RESOLVER)."
 
 # ── Traefik static ─────────────────────────────────────────────────────────
@@ -516,62 +569,6 @@ providers:
     exposedByDefault: false
     network: fidscript-deployment
 EOF
-
-# ── Stalwart config ─────────────────────────────────────────────────────────
-# The compose file mounts installer/config/stalwart/config.toml into the
-# Stalwart container and fails loudly if it is missing, so this render step
-# is REQUIRED, not optional. If we cannot produce a bcrypt hash of the
-# admin token we abort rather than leave a half-installed mail server.
-STALWART_CONFIG_DIR="$(dirname "$SCRIPT_DIR")/config/stalwart"
-
-render_stalwart_config() {
-  local token="$1" domain="$2" out_dir="$3"
-  local template="$out_dir/config.toml.template"
-
-  if [[ ! -f "$template" ]]; then
-    error "Stalwart config template missing: $template"
-    return 1
-  fi
-
-  # bcrypt is required to hash the admin token. Try the system module
-  # first, then pip. There is no reliable bcrypt in openssl passwd or
-  # coreutils, so without python3-bcrypt there is no way to proceed.
-  if ! python3 -c "import bcrypt" >/dev/null 2>&1; then
-    warn "python3-bcrypt not found — attempting to install it..."
-    if [[ $EUID -eq 0 ]]; then
-      apt-get install -y -qq python3-bcrypt >/dev/null 2>&1 || \
-        pip3 install --quiet --break-system-packages bcrypt >/dev/null 2>&1 || true
-    else
-      pip3 install --quiet --user bcrypt >/dev/null 2>&1 || true
-    fi
-  fi
-
-  local hash
-  hash=$(STALWART_TOKEN="$token" python3 -c "
-import os, bcrypt
-token = os.environ['STALWART_TOKEN'].encode()
-print(bcrypt.hashpw(token, bcrypt.gensalt()).decode())
-" 2>/dev/null) || hash=""
-
-  if [[ -z "$hash" ]]; then
-    error "Could not bcrypt-hash the Stalwart admin token."
-    error "Install python3-bcrypt (apt-get install python3-bcrypt) and re-run the wizard."
-    return 1
-  fi
-
-  sed "s|\${MAIL_HOSTNAME}|mail.${domain}|g; s|\${DOMAIN}|${domain}|g; s|\${STALWART_ADMIN_HASH}|${hash}|g" \
-    "$template" > "$out_dir/config.toml"
-  chmod 644 "$out_dir/config.toml"
-  return 0
-}
-
-step "Rendering Stalwart config..."
-if render_stalwart_config "$STALWART_ADMIN_TOKEN" "$DOMAIN" "$STALWART_CONFIG_DIR"; then
-  info "Stalwart config rendered (mail.${DOMAIN})."
-else
-  error "Stalwart config could not be rendered — aborting before the stack is started."
-  exit 1
-fi
 
 # ── Done ──────────────────────────────────────────────────────────────────────
 echo ""

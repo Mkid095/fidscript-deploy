@@ -25,9 +25,7 @@ installer/docker/secrets/
 # fill in CHANGE_ME values, and NEVER commit the result.
 installer/docker/whatsapp-api.env
 installer/docker/.env
-installer/docker/userlist.txt
 
-# Stalwart rendered config — contains a bcrypt hash of the platform
-# admin token. setup-wizard.sh regenerates from the .template on every
-# install; never commit the rendered version.
-installer/config/stalwart/config.toml
+# Stalwart config — committed, not generated. Stalwart v0.16 reads a
+# bootstrap config.json containing only the data-store location; every
+# other setting is managed through the JMAP management API.

@@ -13,6 +13,6 @@ BEGIN
       AND table_name = 'installation_settings'
       AND column_name = 'cloudflare_token'
   ) THEN
-    UPDATE "platform.installation_settings" SET cloudflare_token = NULL WHERE cloudflare_token IS NOT NULL;
+    UPDATE "platform"."installation_settings" SET cloudflare_token = NULL WHERE cloudflare_token IS NOT NULL;
   END IF;
 END $$;

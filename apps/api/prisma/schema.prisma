@@ -473,6 +473,7 @@ model Secret {
 
   @@unique([projectId, key])
   @@index([projectId, provider])
+  @@index([provider])
   @@map("secrets")
   @@schema("infrastructure")
 }
@@ -2602,6 +2603,7 @@ model UserCredential {
   // MagicCode rows are separate (identity.magic_codes) — they are one-time tokens, not credentials.
 
   @@unique([userId, type])
+  @@index([userId])
   @@map("user_credentials")
   @@schema("identity")
 }

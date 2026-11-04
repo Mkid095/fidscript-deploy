@@ -11,8 +11,7 @@
 #   6. Links /opt/fidscript -> the repo's installer/ directory
 #   7. Symlinks /usr/local/bin/fidscript
 #   8. Generates minimal secrets (chmod 600)
-#   9. Writes .env with all secrets + auto-detected IP, and renders the
-#      Stalwart mail config
+#   9. Writes .env with all secrets + auto-detected IP
 #  10. Writes a bare IP-based Traefik dynamic.yml (NO domain routers)
 #  11. docker compose up -d --build (from the repo — the images build
 #      from the monorepo root)
@@ -234,14 +233,16 @@ done
 # ─── 8. Generate secrets ──────────────────────────────────────────────────────
 title "8 — Generating secrets"
 
-# Secret list: filename → hex byte-length (0 = empty file)
+# Secret list: filename → hex byte-length (0 = empty file).
+# encryption_key.txt is handled separately: it must be base64 of 32 bytes,
+# not hex — CryptoService decodes it with Buffer.from(value, 'base64') and
+# rejects anything that is not exactly 32 bytes.
 declare -A SECRETS=(
   [postgres_password.txt]=64
   [redis_password.txt]=64
   [minio_access_key.txt]=32
   [minio_secret_key.txt]=64
   [jwt_secret.txt]=64
-  [encryption_key.txt]=64
   [stalwart_admin_token.txt]=64
   [stalwart_webhook_secret.txt]=64
   [system_mailbox_password.txt]=32
@@ -251,6 +252,15 @@ declare -A SECRETS=(
 
 mkdir -p "${SECRETS_DIR}"
 chmod 700 "${SECRETS_DIR}"
+
+# AES-256-GCM key: base64 of exactly 32 random bytes.
+if [[ ! -s "${SECRETS_DIR}/encryption_key.txt" ]]; then
+  openssl rand -base64 32 > "${SECRETS_DIR}/encryption_key.txt"
+  chmod 600 "${SECRETS_DIR}/encryption_key.txt"
+  info "Generated: encryption_key.txt"
+else
+  info "Keeping existing: encryption_key.txt"
+fi
 
 for secret_file in "${!SECRETS[@]}"; do
   secret_path="${SECRETS_DIR}/${secret_file}"
@@ -344,35 +354,18 @@ ENVEOF
 chmod 600 "${SECRETS_DIR}/api.env"
 info "api.env written: ${SECRETS_DIR}/api.env"
 
-# ─── 9b. Render the Stalwart config ─────────────────────────────────────────
-# Compose mounts installer/config/stalwart/config.toml into the mail
-# container and refuses to start if the file is missing, so the bootstrap
-# has to render it too — the interactive wizard does this, but this
-# path never goes through the wizard.
-STALWART_CONFIG_DIR="${REPO_DIR}/installer/config/stalwart"
-STALWART_MAIL_HOST="mail.${PUBLIC_IP:-localhost}"
-
-if ! python3 -c "import bcrypt" >/dev/null 2>&1; then
-  warn "python3-bcrypt not found — attempting to install it..."
-  apt-get install -y -qq python3-bcrypt >/dev/null 2>&1 || \
-    pip3 install --quiet --break-system-packages bcrypt >/dev/null 2>&1 || true
+# pgbouncer auth file. pgbouncer runs as uid 70 (postgres) and reads this
+# file directly; Docker preserves the host file's mode on a bind mount, so a
+# 0600 root-owned file is unreadable inside the container and every
+# connection fails with 'no such user: fidscript'.
+printf '"fidscript" "%s"\n' "${POSTGRES_PASSWORD}" > "${SECRETS_DIR}/pgbouncer_userlist.txt"
+chmod 640 "${SECRETS_DIR}/pgbouncer_userlist.txt"
+if [[ $EUID -eq 0 ]]; then
+  chown 70:70 "${SECRETS_DIR}/pgbouncer_userlist.txt" 2>/dev/null || true
+else
+  chmod 644 "${SECRETS_DIR}/pgbouncer_userlist.txt" 2>/dev/null || true
 fi
-
-STALWART_ADMIN_HASH=$(STALWART_TOKEN="$(read_secret stalwart_admin_token.txt)" python3 -c "
-import os, bcrypt
-print(bcrypt.hashpw(os.environ['STALWART_TOKEN'].encode(), bcrypt.gensalt()).decode())
-" 2>/dev/null) || STALWART_ADMIN_HASH=""
-
-if [[ -z "${STALWART_ADMIN_HASH}" ]]; then
-  error "Could not bcrypt-hash the Stalwart admin token."
-  error "Install python3-bcrypt (apt-get install python3-bcrypt) and re-run."
-  exit 1
-fi
-
-sed "s|\${MAIL_HOSTNAME}|${STALWART_MAIL_HOST}|g; s|\${DOMAIN}|${PUBLIC_IP:-localhost}|g; s|\${STALWART_ADMIN_HASH}|${STALWART_ADMIN_HASH}|g" \
-  "${STALWART_CONFIG_DIR}/config.toml.template" > "${STALWART_CONFIG_DIR}/config.toml"
-chmod 644 "${STALWART_CONFIG_DIR}/config.toml"
-info "Stalwart config rendered (${STALWART_MAIL_HOST})."
+info "pgbouncer_userlist.txt written: ${SECRETS_DIR}/pgbouncer_userlist.txt"
 
 # ─── 10. Write minimal Traefik dynamic.yml ────────────────────────────────────
 title "10 — Writing Traefik dynamic.yml (IP-fallback only)"

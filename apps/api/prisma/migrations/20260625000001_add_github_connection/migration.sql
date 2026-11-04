@@ -21,20 +21,17 @@ CREATE TABLE IF NOT EXISTS "identity"."github_connections" (
     CONSTRAINT "github_connections_user_id_key" UNIQUE ("user_id")
 );
 
-CREATE INDEX IF NOT EXISTS "identity"."github_connections_user_id_idx"
-    ON "identity"."github_connections" ("user_id");
-
 DO $$
 BEGIN
-  IF NOT EXISTS (
-    SELECT 1 FROM information_schema.table_constraints
-    WHERE constraint_name = 'github_connections_user_id_fkey'
-      AND table_schema = 'identity'
-      AND table_name = 'github_connections'
-  ) THEN
-    ALTER TABLE "identity"."github_connections"
-      ADD CONSTRAINT "github_connections_user_id_fkey"
-      FOREIGN KEY ("user_id") REFERENCES "identity"."users"("id") ON DELETE CASCADE;
-  END IF;
-END
-$$;
+IF NOT EXISTS (
+    SELECT 1 FROM pg_constraint c
+    JOIN pg_class t ON t.oid = c.conrelid
+    JOIN pg_namespace n ON n.oid = t.relnamespace
+    WHERE c.conname = 'github_connections_user_id_fkey'
+      AND n.nspname = 'identity'
+      AND t.relname = 'github_connections'
+) THEN
+    ALTER TABLE "identity"."github_connections" ADD CONSTRAINT "github_connections_user_id_fkey"
+  FOREIGN KEY ("user_id") REFERENCES "identity"."users"("id") ON DELETE CASCADE;
+END IF;
+END $$;

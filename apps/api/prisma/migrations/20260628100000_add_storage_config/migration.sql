@@ -9,4 +9,4 @@ CREATE TABLE IF NOT EXISTS "storage"."project_storage_configs" (
   "updated_at" TIMESTAMPTZ NOT NULL DEFAULT now(),
   CONSTRAINT "project_storage_configs_project_id_fkey" FOREIGN KEY ("project_id") REFERENCES "projects"."projects"("id") ON DELETE CASCADE
 );
-CREATE UNIQUE INDEX "project_storage_configs_project_id_key" ON "storage"."project_storage_configs"("project_id");
+CREATE UNIQUE INDEX IF NOT EXISTS "project_storage_configs_project_id_key" ON "storage"."project_storage_configs"("project_id");

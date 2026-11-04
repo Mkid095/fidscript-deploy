@@ -92,13 +92,34 @@ and a `whatsapp-api.env` that no script creates — Compose failed on the
 missing `env_file`. It is now an add-on under `installer/addons/whatsapp/`
 rather than part of the core install.
 
-### Still to prove
+### Proved on a clean install (2026-11-04)
 
-The rework is verified by: `bash -n` on every script, a full
-non-interactive run of the setup wizard in a sandbox, `docker compose
-config` validating, and a container build of the dashboard image
-(including a successful `next build` of every route). It has **not** been
-run end-to-end on a fresh VPS — that is the phase's exit criterion.
+The install path was exercised end to end on a clean machine: a simulated
+fresh clone (only `installer/`), the setup wizard run non-interactively,
+both images built from source, `docker compose up -d`, and then the
+stack checked. It reached:
+
+- **10 of 10 containers up**, API `healthy` with **RestartCount=0**
+- `GET /api/v1/health` → `{"status":"healthy"}` with database, redis,
+  nats and storage all `up`
+- the dashboard and the API both routed correctly through Traefik
+  (dashboard → 307 `/setup`, API → 200)
+- **all 15 migrations applied**, and `prisma migrate diff` against
+  `schema.prisma` reports an **empty migration**
+- the admin row seeded (`admin@… | ADMIN`)
+
+Getting there exposed seven more defects, all fixed in this rework:
+the migrations could not apply to an empty database at all; the
+encryption key was generated in a format the API rejects; the API
+could not read its secrets; pgbouncer could not read its auth file;
+Stalwart was configured from a pre-v0.16 TOML template; Traefik's
+static config and the wizard's dynamic config were both invalid (and
+the wizard's rules had their arguments eaten by the shell); and
+Stalwart and Traefik raced for the same static IP.
+
+**Still to prove:** the install has not been run against a real domain
+with public DNS, so Let's Encrypt certificate issuance and the
+Cloudflare DNS path are exercised only as far as the HTTP-01 fallback.
 
 ## Dependencies
 

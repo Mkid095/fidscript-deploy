@@ -78,11 +78,21 @@ export class TraefikProxyProvider implements IReverseProxyProvider {
     // `certificatesResolvers: myresolver` block was both a typo and a no-op
     // (file providers can't redefine resolvers that already exist in the
     // static config).
+    //
+    // The rules MUST be single-quoted YAML. A bare backtick is a YAML
+    // reserved indicator and `rule: `Host(...)`` is a parse error, which
+    // makes Traefik reject the whole file — every route then 404s.
+    // In a single-quoted scalar backticks need no escaping and a regex
+    // like \.[^.]+\. stays literal.
+    //
+    // The service URLs use the container names (fidscript_api /
+    // fidscript_dashboard) — the hyphenated service names are not
+    // resolvable DNS names — and the dashboard listens on 3001, not 3000.
     return `# Managed by FIDScript Platform — do not edit manually
 http:
   routers:
     fidscript-api:
-      rule: \`Host(\`api.${domain}\`)\`
+      rule: 'Host(\`api.${domain}\`)'
       service: fidscript-api
       entryPoints:
         - websecure
@@ -90,7 +100,7 @@ http:
         certResolver: letsencrypt-dns
 
     fidscript-dashboard:
-      rule: \`Host(\`${domain}\`)\`
+      rule: 'Host(\`${domain}\`)'
       service: fidscript-dashboard
       entryPoints:
         - websecure
@@ -101,12 +111,12 @@ http:
     fidscript-api:
       loadBalancer:
         servers:
-          - url: http://fidscript-api:3001
+          - url: http://fidscript_api:3001
 
     fidscript-dashboard:
       loadBalancer:
         servers:
-          - url: http://fidscript-dashboard:3000
+          - url: http://fidscript_dashboard:3001
 `;
   }
 }

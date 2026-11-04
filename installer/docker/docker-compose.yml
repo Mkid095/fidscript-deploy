@@ -43,10 +43,18 @@ services:
     environment:
       CLOUDFLARE_DNS_API_TOKEN_FILE: /run/secrets/cf_api_token
     networks:
-      - fidscript-deployment
-      - fidscript-whatsapp
-      - fidscript-app
-      - fidscript-mail
+      fidscript-deployment:
+      fidscript-whatsapp:
+      fidscript-app:
+      # Pinned to a distinct address on the mail network. Stalwart holds
+      # 10.0.8.2 there (a static address, so Docker DNS always resolves to
+      # the mail-network address rather than the deployment-network one).
+      # Without an explicit address here, Docker's IPAM hands Traefik
+      # 10.0.8.2 first and Stalwart then fails to start with
+      # "Address already in use" — a start-order race that made the mail
+      # server fail to come up.
+      fidscript-mail:
+        ipv4_address: 10.0.8.3
     logging:
       driver: json-file
       options:
@@ -108,7 +116,8 @@ services:
       - ./secrets/api.env
     volumes:
       - ./pgbouncer.ini:/etc/pgbouncer/pgbouncer.ini:ro
-      - ./userlist.txt:/etc/pgbouncer/userlist.txt:ro
+    secrets:
+      - pgbouncer_userlist
     networks:
       - fidscript-deployment
     depends_on:
@@ -244,30 +253,31 @@ services:
       - "993:993"   # IMAPS — implicit-TLS
       - "127.0.0.1:8090:8080"  # Admin UI / JMAP (local only; routed via Traefik)
       - "127.0.0.1:8091:8080"  # Traefik → stalwart via host loopback
-    # Stalwart is configured from the TOML file the setup wizard renders
-    # (installer/config/stalwart/config.toml.template → config.toml). The
-    # template substitutes the real MAIL_HOSTNAME and a bcrypt hash of the
-    # Stalwart admin token, so the hostname and admin credential are
-    # correct for the domain this VPS actually serves.
+    # Stalwart v0.16 reads a bootstrap config.json that contains ONLY the
+    # data-store location. Every other setting — listeners, hostname,
+    # directory, authentication, DKIM — lives in the data store and is
+    # managed through the JMAP management API by the platform's
+    # email-bootstrap service. The previous TOML template in this repo
+    # described the pre-0.16 format and was rejected by the binary
+    # ("Failed to parse data store settings ... expected value at line 1
+    # column 1" — it was being JSON-parsed).
     #
-    # create_host_path: false makes Compose fail loudly if the rendered file
-    # is missing, instead of silently creating a directory in its place and
-    # leaving Stalwart to die with an unreadable config.
+    # create_host_path: false makes Compose fail loudly if the config file
+    # is missing, instead of silently creating a directory in its place.
     environment:
       # Bootstrap mode recovery admin — use the token from secrets as password.
       # Format: username:password (password is the raw token, not hashed).
       - STALWART_RECOVERY_ADMIN=${STALWART_RECOVERY_ADMIN}
     volumes:
       - type: bind
-        source: ../config/stalwart/config.toml
-        target: /etc/stalwart/config.toml
+        source: ../config/stalwart/config.json
+        target: /etc/stalwart/config.json
         read_only: true
         bind:
           create_host_path: false
       - fidscript_stalwart:/var/lib/stalwart
       - ./secrets/stalwart_admin_token.txt:/run/secrets/stalwart_admin_token:ro
       - ./secrets/stalwart_credentials.txt:/run/secrets/stalwart_credentials:ro
-    command: --config /etc/stalwart/config.toml
     networks:
       # fidscript-deployment: primary network for SMTP/IMAP/JMAP services
       # reachable from other core services.
@@ -444,6 +454,10 @@ services:
       args:
         NEXT_PUBLIC_PLATFORM_DOMAIN: ${DOMAIN}
         NEXT_PUBLIC_API_URL: https://api.${DOMAIN}
+    # Explicit tag so the image has a stable name (matching the API
+    # service) instead of Compose's project-prefixed default — an
+    # operator can pre-build it and `docker compose up` will reuse it.
+    image: fidscript-dashboard:latest
     container_name: fidscript_dashboard
     restart: unless-stopped
     # NEXT_PUBLIC_* vars are read at runtime by client components (see
@@ -504,6 +518,8 @@ volumes:
     name: fidscript_acme_http
 
 secrets:
+  pgbouncer_userlist:
+    file: ./secrets/pgbouncer_userlist.txt
   postgres_password:
     file: ./secrets/postgres_password.txt
   redis_password:

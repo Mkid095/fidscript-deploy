@@ -28,7 +28,7 @@ http:
   routers:
     # API path prefix — must win over the dashboard catch-all.
     api:
-      rule: "PathPrefix(`/api`) && !Path(`/install.sh`)"
+      rule: 'PathPrefix(`/api`) && !Path(`/install.sh`)'
       service: api
       middlewares:
         - security-headers
@@ -37,13 +37,13 @@ http:
 
     # Install script endpoint.
     install-sh:
-      rule: "Path(`/install.sh`)"
+      rule: 'Path(`/install.sh`)'
       service: api
       priority: 200
 
     # Prometheus metrics.
     metrics:
-      rule: "PathPrefix(`/metrics`)"
+      rule: 'PathPrefix(`/metrics`)'
       service: api
       middlewares:
         - security-headers
@@ -51,7 +51,7 @@ http:
 
     # Everything else — the dashboard.
     dashboard:
-      rule: "PathPrefix(`/`)"
+      rule: 'PathPrefix(`/`)'
       service: dashboard
       middlewares:
         - security-headers
