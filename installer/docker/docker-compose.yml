@@ -47,7 +47,6 @@ services:
       - fidscript-whatsapp
       - fidscript-app
       - fidscript-mail
-      - soostori-prod-net
     logging:
       driver: json-file
       options:
@@ -181,10 +180,21 @@ services:
         max-size: '10m'
         max-file: '3'
 
+  # S3-compatible object storage.
+  #
+  # RustFS, not MinIO: the minio/minio and minio/mc images are no longer
+  # publicly pullable from Docker Hub (the registry now answers
+  # "denied: requested access to the resource is denied" for anonymous
+  # pulls), so a fresh install could not start its object store at all.
+  # RustFS is a drop-in S3 replacement: same S3 API on :9000, same web
+  # console on :9001, and it still answers the /minio/health/live probe
+  # the API's health check expects.
+  #
+  # The service is still NAMED "minio" on purpose — the API resolves
+  # MINIO_ENDPOINT=minio:9000 and speaks the S3 protocol, so keeping the
+  # DNS name means no application code or configuration changes.
   minio:
-    # Pinned: RELEASE.2025-09-07T16-13-09Z (Sept 2025 stable). Avoid
-    # :latest — it has been known to break MinIO client compatibility.
-    image: minio/minio:RELEASE.2025-09-07T16-13-09Z
+    image: rustfs/rustfs:1.0.4
     container_name: fidscript_minio
     restart: unless-stopped
     deploy:
@@ -192,19 +202,18 @@ services:
         limits:
           cpus: '0.25'
           memory: 512M
-    command: server /data --console-address ":9001"
     environment:
-      MINIO_ROOT_USER_FILE: /run/secrets/minio_access_key
-      MINIO_ROOT_PASSWORD_FILE: /run/secrets/minio_secret_key
-    secrets:
-      - minio_access_key
-      - minio_secret_key
+      RUSTFS_ACCESS_KEY: ${MINIO_ACCESS_KEY}
+      RUSTFS_SECRET_KEY: ${MINIO_SECRET_KEY}
+      RUSTFS_VOLUMES: /data
+      RUSTFS_ADDRESS: ":9000"
+      RUSTFS_CONSOLE_ENABLE: "true"
     volumes:
       - fidscript_minio:/data
     networks:
       - fidscript-deployment
     healthcheck:
-      test: ["CMD", "mc", "ready", "local"]
+      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -235,23 +244,30 @@ services:
       - "993:993"   # IMAPS — implicit-TLS
       - "127.0.0.1:8090:8080"  # Admin UI / JMAP (local only; routed via Traefik)
       - "127.0.0.1:8091:8080"  # Traefik → stalwart via host loopback
-    # Stalwart reads its config from /etc/stalwart/config.json,
-    # which the image's entrypoint creates on first start if absent.
-    # By pre-mounting our rendered config.toml to the same path, the
-    # entrypoint's "if not exists" check is satisfied and our file
-    # wins. This is the only way to ship a non-default config without
-    # forking the image.
+    # Stalwart is configured from the TOML file the setup wizard renders
+    # (installer/config/stalwart/config.toml.template → config.toml). The
+    # template substitutes the real MAIL_HOSTNAME and a bcrypt hash of the
+    # Stalwart admin token, so the hostname and admin credential are
+    # correct for the domain this VPS actually serves.
+    #
+    # create_host_path: false makes Compose fail loudly if the rendered file
+    # is missing, instead of silently creating a directory in its place and
+    # leaving Stalwart to die with an unreadable config.
     environment:
       # Bootstrap mode recovery admin — use the token from secrets as password.
       # Format: username:password (password is the raw token, not hashed).
       - STALWART_RECOVERY_ADMIN=${STALWART_RECOVERY_ADMIN}
     volumes:
-      # Mount config file for SMTP/JMAP/HTTP services.
-      - ../config/stalwart/config.json:/etc/stalwart/config.json:ro
+      - type: bind
+        source: ../config/stalwart/config.toml
+        target: /etc/stalwart/config.toml
+        read_only: true
+        bind:
+          create_host_path: false
       - fidscript_stalwart:/var/lib/stalwart
       - ./secrets/stalwart_admin_token.txt:/run/secrets/stalwart_admin_token:ro
       - ./secrets/stalwart_credentials.txt:/run/secrets/stalwart_credentials:ro
-    command: --config /etc/stalwart/config.json
+    command: --config /etc/stalwart/config.toml
     networks:
       # fidscript-deployment: primary network for SMTP/IMAP/JMAP services
       # reachable from other core services.
@@ -289,6 +305,13 @@ services:
         max-file: '3'
 
   api:
+    # Built from the monorepo checkout so a fresh VPS can install without
+    # a pre-built image. The Dockerfile requires the repo ROOT as build
+    # context (it copies package.json, pnpm-lock.yaml, packages/ and
+    # apps/api/), which is why the context is ../.. and not .
+    build:
+      context: ../..
+      dockerfile: apps/api/Dockerfile
     image: fidscript-api:latest
     container_name: fidscript_api
     restart: unless-stopped
@@ -379,7 +402,6 @@ services:
       - /var/run/docker.sock:/var/run/docker.sock
       - ../scripts:/usr/local/share/fidscript:ro
       - ./traefik:/etc/traefik:rw
-      - /home/ken/fidscript-whatsapp/apps/api/fidscript.db:/app/fidscript.db
     # The deployment worker runs `docker build`/`docker run` against the host
     # daemon via the mounted socket. The socket is root:docker on the host
     # (host GID in DOCKER_GID); adding that GID here grants the non-root
@@ -441,258 +463,6 @@ services:
         max-size: '10m'
         max-file: '3'
 
-  bootstrap:
-    image: alpine:3.19
-    container_name: fidscript_bootstrap
-    restart: "no"
-    volumes:
-      - ./secrets:/run/secrets:ro
-      - fidscript_secrets:/secrets
-      - fidscript_config:/config
-    networks:
-      - fidscript-deployment
-    depends_on:
-      postgres:
-        condition: service_healthy
-    entrypoint: ["/bin/sh", "-c"]
-    command:
-      - |
-        set -e
-        apk add --no-cache postgresql-client > /dev/null 2>&1
-
-        echo "Waiting for PostgreSQL..."
-        until pg_isready -h postgres -U fidscript -d fidscript > /dev/null 2>&1; do
-          sleep 1
-        done
-
-        echo "Database ready. Bootstrap complete."
-        exit 0
-
-  whatsapp-frontend:
-    image: nginx:alpine
-    container_name: fidscript_whatsapp_frontend
-    restart: unless-stopped
-    deploy:
-      resources:
-        limits:
-          cpus: '0.1'
-          memory: 128M
-    volumes:
-      - ./whatsapp-frontend.dist:/usr/share/nginx/html:ro
-      - ./whatsapp-frontend.conf:/etc/nginx/conf.d/default.conf:ro
-    networks:
-      - fidscript-whatsapp
-      - fidscript-deployment
-    healthcheck:
-      test: ["CMD-SHELL", "curl -sf http://127.0.0.1/ || exit 1"]
-      interval: 10s
-      timeout: 5s
-      retries: 3
-    logging:
-      driver: json-file
-      options:
-        max-size: '10m'
-        max-file: '3'
-
-  # WhatsApp Automation Frontend — serves fidscript-whatsapp project
-  whatsapp-automation:
-    image: nginx:alpine
-    container_name: fidscript_whatsapp_automation
-    restart: unless-stopped
-    deploy:
-      resources:
-        limits:
-          cpus: '0.1'
-          memory: 128M
-    volumes:
-      - ./whatsapp-automation.dist:/usr/share/nginx/html:ro
-      - ./whatsapp-automation.conf:/etc/nginx/conf.d/default.conf:ro
-    networks:
-      - fidscript-whatsapp
-    healthcheck:
-      test: ["CMD-SHELL", "curl -sf http://127.0.0.1/ || exit 1"]
-      interval: 10s
-      timeout: 5s
-      retries: 3
-    logging:
-      driver: json-file
-      options:
-        max-size: '10m'
-        max-file: '3'
-
-  # WhatsApp SaaS Platform API — config loaded from whatsapp-api.env
-  # Secrets (GOOGLE_*) come from host env at container start via ${VAR} substitution.
-  whatsapp-api:
-    image: fidscript-whatsapp-api:latest
-    container_name: fidscript_whatsapp_api
-    restart: unless-stopped
-    deploy:
-      resources:
-        limits:
-          cpus: '0.5'
-          memory: 1G
-    # All non-secret config from env file; secrets (GOOGLE_*) from host env via ${VAR}.
-    # env_file vars are loaded first, then environment: vars OVERRIDE matching keys.
-    env_file:
-      - ./whatsapp-api.env
-    environment:
-      NODE_ENV: production
-      PORT: "3099"
-      API_INTERNAL_URL: http://fidscript-whatsapp-api:3099
-      EVOLUTION_API_URL: http://localhost:8080
-      # Secrets from host environment — not stored in whatsapp-api.env
-      TUMA_API_KEY: ${TUMA_API_KEY}
-      RESEND_API_KEY: ${RESEND_API_KEY}
-      GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID}
-      GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET}
-    networks:
-      fidscript-whatsapp:
-        aliases:
-          - fidscript-whatsapp-api
-          - fidscript_whatsapp_api
-      fidscript-deployment:
-    healthcheck:
-      # Container exposes PORT (3099), not 8080 — healthcheck must match
-      test: ["CMD-SHELL", "curl -sf http://localhost:3099/health || exit 1"]
-      interval: 10s
-      timeout: 5s
-      retries: 3
-    logging:
-      driver: json-file
-      options:
-        max-size: '10m'
-        max-file: '3'
-
-  # Chatbot Worker — NATS subscriber for async AI chatbot processing.
-  # Shares the whatsapp-api image; overrides CMD to run the worker entrypoint.
-  chatbot-worker:
-    image: fidscript-whatsapp-api:latest
-    container_name: fidscript-chatbot-worker
-    restart: unless-stopped
-    deploy:
-      resources:
-        limits:
-          cpus: '0.3'
-          memory: 512M
-    command: ["node", "dist/chatbot-worker/index.js"]
-    env_file:
-      - ./whatsapp-api.env
-    environment:
-      NODE_ENV: production
-      NATS_URL: nats://fidscript_nats:4222
-      # WhatsApp API is at whatsapp-api:3099 inside the container network
-      EVOLUTION_API_URL: http://fidscript_whatsapp_api:3099
-      # JWT_SECRET from Docker secret (SaaS API secret, not WhatsApp API secret)
-      JWT_SECRET_FILE: /run/secrets/jwt_secret
-    volumes:
-      - ./secrets:/run/secrets:ro
-    networks:
-      - fidscript-whatsapp
-      - fidscript-deployment
-    depends_on:
-      - whatsapp-api
-    healthcheck:
-      test: ["CMD-SHELL", "curl -sf http://localhost:3099/health || exit 1"]
-      interval: 15s
-      timeout: 5s
-      retries: 3
-    logging:
-      driver: json-file
-      options:
-        max-size: '10m'
-        max-file: '3'
-
-  # cAdvisor — container metric exporter for Prometheus
-  cadvisor:
-    image: gcr.io/cadvisor/cadvisor:v0.51.0
-    container_name: fidscript_cadvisor
-    restart: unless-stopped
-    deploy:
-      resources:
-        limits:
-          cpus: '0.2'
-          memory: 256M
-    ports:
-      - "8081:8080"
-    volumes:
-      - /:/rootfs:ro
-      - /var/run:/var/run:ro
-      - /sys:/sys:ro
-      - /var/lib/docker/:/var/lib/docker:ro
-      - /dev/disk/:/dev/disk:ro
-    networks:
-      - fidscript-deployment
-    command:
-      - --housekeeping_interval=15s
-      - --docker_only=true
-      - --store_container_labels=false
-      - --allow_dynamic_housekeeping=true
-    healthcheck:
-      test: ["CMD", "wget", "-qO-", "http://localhost:8080/healthz"]
-      interval: 15s
-      timeout: 5s
-      retries: 5
-    logging:
-      driver: json-file
-      options:
-        max-size: '10m'
-        max-file: '3'
-
-  prometheus:
-    image: prom/prometheus:v2.53.0
-    container_name: fidscript_prometheus
-    restart: unless-stopped
-    command:
-      - '--config.file=/etc/prometheus/prometheus.yml'
-      - '--storage.tsdb.path=/prometheus'
-      - '--storage.tsdb.retention.time=30d'
-      - '--web.enable-lifecycle'
-    volumes:
-      - ./prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
-      - fidscript_prometheus_data:/prometheus
-    networks:
-      - fidscript-deployment
-    healthcheck:
-      test: ["CMD", "wget", "-qO-", "http://localhost:9090/-/healthy"]
-      interval: 15s
-      timeout: 5s
-      retries: 5
-    logging:
-      driver: json-file
-      options:
-        max-size: '10m'
-        max-file: '3'
-
-  grafana:
-    image: grafana/grafana:11.4.0
-    container_name: fidscript_grafana
-    restart: unless-stopped
-    environment:
-      GF_SECURITY_ADMIN_USER: admin
-      GF_SECURITY_ADMIN_PASSWORD_FILE: /run/secrets/grafana_password
-      GF_USERS_ALLOW_SIGN_UP: "false"
-      GF_FEATURE_TOGGLES_ENABLE: publicDashboards
-    volumes:
-      - ./grafana/provisioning:/etc/grafana/provisioning:ro
-      - ./grafana/dashboards:/var/lib/grafana/dashboards:ro
-      - fidscript_grafana_data:/var/lib/grafana
-    networks:
-      - fidscript-deployment
-    depends_on:
-      - prometheus
-    secrets:
-      - grafana_password
-    healthcheck:
-      test: ["CMD-SHELL", "wget -qO- http://localhost:3000/api/health || exit 1"]
-      interval: 15s
-      timeout: 5s
-      retries: 5
-    logging:
-      driver: json-file
-      options:
-        max-size: '10m'
-        max-file: '3'
-
 networks:
   # Deployment system infrastructure
   fidscript-deployment:
@@ -706,8 +476,6 @@ networks:
   fidscript-app:
     name: fidscript-app
     driver: bridge
-  soostori-prod-net:
-    external: true
   # Dedicated network for Traefik → Stalwart HTTP routing.
   # Stalwart is NOT on fidscript-app to force Docker DNS to resolve
   # fidscript_stalwart to this network's IP, avoiding the kernel-level
@@ -734,26 +502,12 @@ volumes:
     name: fidscript_acme_dns
   fidscript_acme_http:
     name: fidscript_acme_http
-  fidscript_secrets:
-    name: fidscript_secrets
-  fidscript_config:
-    name: fidscript_config
-  fidscript_prometheus_data:
-    name: fidscript_prometheus_data
-  fidscript_grafana_data:
-    name: fidscript_grafana_data
 
 secrets:
-  grafana_password:
-    file: ./secrets/grafana_password.txt
   postgres_password:
     file: ./secrets/postgres_password.txt
   redis_password:
     file: ./secrets/redis_password.txt
-  minio_access_key:
-    file: ./secrets/minio_access_key.txt
-  minio_secret_key:
-    file: ./secrets/minio_secret_key.txt
   jwt_secret:
     file: ./secrets/jwt_secret.txt
   encryption_key:

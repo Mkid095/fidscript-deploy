@@ -211,7 +211,6 @@ AUTO_SSL=true                           # Let's Encrypt via Traefik ACME
 # Token is read from secrets/cf_api_token.txt (chmod 600)
 
 # ── Storage path on host ─────────────────────────────────────────
-STORAGE_PATH=/data/fidscript            # Named volumes back this on Linux
 
 # ── Signup protection (optional) ─────────────────────────────────
 # Set SIGNUP_INVITE_KEYWORD on the API and (SHA-256) NEXT_PUBLIC_INVITE_HASH on

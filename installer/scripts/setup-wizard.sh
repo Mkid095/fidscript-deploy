@@ -27,7 +27,6 @@ divider() { echo -e "${DIM}$(printf '  ─%.0s' {1..64})${NC}"; }
 
 # ── Defaults ────────────────────────────────────────────────────────────────────
 DOMAIN=""; ADMIN_EMAIL=""; ADMIN_PASSWORD=""
-STORAGE_PATH="/data/fidscript"
 CLOUDFLARE_API_TOKEN=""; DNS_ZONE_ID=""
 SERVER_IP=""; DETECTED_IP=""; DOCKER_GID="0"
 
@@ -96,10 +95,16 @@ step_password() {
   while true; do
     prompt "Password (min 12 chars): "
     read -r -s p1; echo ""
-    [[ ${#p1} -lt 12 ]] && { error "Too short."; continue; }
+    if [[ ${#p1} -lt 12 ]]; then
+      error "Too short."
+      continue
+    fi
     prompt "Confirm: "
     read -r -s p2; echo ""
-    [[ "$p1" != "$p2" ]] && { error "Mismatch."; continue; }
+    if [[ "$p1" != "$p2" ]]; then
+      error "Mismatch."
+      continue
+    fi
     ADMIN_PASSWORD="$p1"; break
   done
   info "Password set."
@@ -145,7 +150,6 @@ step_review() {
   divider
   echo "  Domain:       $DOMAIN"
   echo "  Admin:       $ADMIN_EMAIL"
-  echo "  Storage:     $STORAGE_PATH"
   if [[ -n "$CLOUDFLARE_API_TOKEN" ]]; then
     echo -e "  DNS:         ${GREEN}Cloudflare (auto)${NC}"
   else
@@ -155,7 +159,15 @@ step_review() {
   echo ""
   prompt "Deploy now? [Y/n]: "
   read -r c; c="${c:-Y}"
-  [[ ! "$c" =~ ^[Yy]$ ]] && { echo "Cancelled."; exit 0; }
+  # NOTE: this must be an `if`, not `[[ ... ]] && { ...; }`. As the last
+  # command of a function, a false `[[ ]]` makes the FUNCTION return 1,
+  # and `set -e` then kills the script at the call site — so answering
+  # "Y" (the normal case) used to abort the wizard before it wrote a
+  # single config file.
+  if [[ ! "$c" =~ ^[Yy]$ ]]; then
+    echo "Cancelled."
+    exit 0
+  fi
 }
 
 # ── Banner ────────────────────────────────────────────────────────────────────
@@ -198,6 +210,7 @@ generate_secret "$SECRETS_DIR/redis_password.txt"        32
 generate_secret "$SECRETS_DIR/minio_access_key.txt"      32
 generate_secret "$SECRETS_DIR/minio_secret_key.txt"      32
 generate_secret "$SECRETS_DIR/jwt_secret.txt"            64
+generate_secret "$SECRETS_DIR/encryption_key.txt"        32
 generate_secret "$SECRETS_DIR/stalwart_admin_token.txt"  32
 generate_secret "$SECRETS_DIR/stalwart_webhook_secret.txt" 32
 
@@ -233,12 +246,12 @@ cat > "$DOCKER_DIR/.env" << ENVEOF
 DOMAIN=$DOMAIN
 ADMIN_EMAIL=$ADMIN_EMAIL
 ADMIN_PASSWORD=$ADMIN_PASSWORD
-STORAGE_PATH=$STORAGE_PATH
 SERVER_IP=${DETECTED_IP:-$SERVER_IP}
 PLATFORM_DOMAIN=$DOMAIN
 PLATFORM_MAIL_HOST=mail.$DOMAIN
 SMTP_SUBMISSION_USER=admin
 SMTP_SUBMISSION_PASS=$STALWART_ADMIN_TOKEN
+STALWART_RECOVERY_ADMIN=admin:$STALWART_ADMIN_TOKEN
 POSTGRES_PASSWORD=$POSTGRES_PASSWORD
 REDIS_PASSWORD=$REDIS_PASSWORD
 MINIO_ACCESS_KEY=$MINIO_ACCESS_KEY
@@ -263,8 +276,8 @@ SMTP_SUBMISSION_PASS=$STALWART_ADMIN_TOKEN
 SYSTEM_MAILBOX_PASSWORD=$SYSTEM_MAILBOX_PASSWORD
 # GitHub OAuth — replace with your real credentials from github.com/settings/developers
 # Callback URL: https://api.\${DOMAIN}/api/v1/users/me/github/callback
-GITHUB_CLIENT_ID=$GITHUB_CLIENT_ID
-GITHUB_CLIENT_SECRET=$GITHUB_CLIENT_SECRET
+GITHUB_CLIENT_ID=${GITHUB_CLIENT_ID:-REPLACE_WITH_YOUR_GITHUB_OAUTH_CLIENT_ID}
+GITHUB_CLIENT_SECRET=${GITHUB_CLIENT_SECRET:-REPLACE_WITH_YOUR_GITHUB_OAUTH_CLIENT_SECRET}
 APIENV
   chmod 600 "$SECRETS_DIR/api.env"
   info "api.env written."
@@ -450,10 +463,19 @@ HEREDOC
 info "Traefik dynamic config written (resolver: $CERT_RESOLVER)."
 
 # ── Traefik static ─────────────────────────────────────────────────────────
+# NOTE: the `docker` provider below is NOT optional. Every deployed
+# application is published by setting `traefik.enable=true` labels on its
+# container; without this provider Traefik never discovers those
+# containers and no deployment ever gets a working URL. The wizard
+# previously overwrote this file with a file-provider-only version and
+# silently broke per-deployment routing.
 cat > "$TRAEFIK_DIR/traefik.yml" << EOF
 api:
   dashboard: true
-  insecure: true
+  # The Traefik API is exposed unauthenticated on :8080 to every container
+  # on the platform networks. Keep it closed — the read-only dashboard is
+  # still available, but the control API is not reachable.
+  insecure: false
 entryPoints:
   web:
     address: ":80"
@@ -486,28 +508,69 @@ providers:
   file:
     filename: /etc/traefik/dynamic.yml
     watch: true
+  # Docker provider — via a socat TCP proxy that bridges the raw unix socket
+  # to TCP. Over TCP the Go Docker client negotiates the API version
+  # automatically (unlike the raw socket where it pins to 1.24).
+  docker:
+    endpoint: "http://fidscript_docker_tcp:2375"
+    exposedByDefault: false
+    network: fidscript-deployment
 EOF
 
 # ── Stalwart config ─────────────────────────────────────────────────────────
+# The compose file mounts installer/config/stalwart/config.toml into the
+# Stalwart container and fails loudly if it is missing, so this render step
+# is REQUIRED, not optional. If we cannot produce a bcrypt hash of the
+# admin token we abort rather than leave a half-installed mail server.
 STALWART_CONFIG_DIR="$(dirname "$SCRIPT_DIR")/config/stalwart"
-if [[ -f "$STALWART_CONFIG_DIR/config.toml.template" ]]; then
-  step "Rendering Stalwart config..."
-  STALWART_ADMIN_HASH=$(
-    python3 -c "
-import bcrypt
-token = '''${STALWART_ADMIN_TOKEN}'''.encode()
-print(bcrypt.hashpw(token, bcrypt.gensalt()).decode())
-" 2>/dev/null
-  )
-  if [[ -n "$STALWART_ADMIN_HASH" ]]; then
-    sed "s|\${MAIL_HOSTNAME}|mail.${DOMAIN}|g; s|\${DOMAIN}|${DOMAIN}|g; s|\${STALWART_ADMIN_HASH}|${STALWART_ADMIN_HASH}|g" \
-      "$STALWART_CONFIG_DIR/config.toml.template" \
-      > "$STALWART_CONFIG_DIR/config.toml"
-    chmod 644 "$STALWART_CONFIG_DIR/config.toml"
-    info "Stalwart config rendered."
-  else
-    warn "python3-bcrypt not available — Stalwart admin hash skipped."
+
+render_stalwart_config() {
+  local token="$1" domain="$2" out_dir="$3"
+  local template="$out_dir/config.toml.template"
+
+  if [[ ! -f "$template" ]]; then
+    error "Stalwart config template missing: $template"
+    return 1
   fi
+
+  # bcrypt is required to hash the admin token. Try the system module
+  # first, then pip. There is no reliable bcrypt in openssl passwd or
+  # coreutils, so without python3-bcrypt there is no way to proceed.
+  if ! python3 -c "import bcrypt" >/dev/null 2>&1; then
+    warn "python3-bcrypt not found — attempting to install it..."
+    if [[ $EUID -eq 0 ]]; then
+      apt-get install -y -qq python3-bcrypt >/dev/null 2>&1 || \
+        pip3 install --quiet --break-system-packages bcrypt >/dev/null 2>&1 || true
+    else
+      pip3 install --quiet --user bcrypt >/dev/null 2>&1 || true
+    fi
+  fi
+
+  local hash
+  hash=$(STALWART_TOKEN="$token" python3 -c "
+import os, bcrypt
+token = os.environ['STALWART_TOKEN'].encode()
+print(bcrypt.hashpw(token, bcrypt.gensalt()).decode())
+" 2>/dev/null) || hash=""
+
+  if [[ -z "$hash" ]]; then
+    error "Could not bcrypt-hash the Stalwart admin token."
+    error "Install python3-bcrypt (apt-get install python3-bcrypt) and re-run the wizard."
+    return 1
+  fi
+
+  sed "s|\${MAIL_HOSTNAME}|mail.${domain}|g; s|\${DOMAIN}|${domain}|g; s|\${STALWART_ADMIN_HASH}|${hash}|g" \
+    "$template" > "$out_dir/config.toml"
+  chmod 644 "$out_dir/config.toml"
+  return 0
+}
+
+step "Rendering Stalwart config..."
+if render_stalwart_config "$STALWART_ADMIN_TOKEN" "$DOMAIN" "$STALWART_CONFIG_DIR"; then
+  info "Stalwart config rendered (mail.${DOMAIN})."
+else
+  error "Stalwart config could not be rendered — aborting before the stack is started."
+  exit 1
 fi
 
 # ── Done ──────────────────────────────────────────────────────────────────────

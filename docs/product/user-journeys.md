@@ -28,7 +28,7 @@ The headline journey. The user has a clean Ubuntu VPS and has never seen FIDScri
    ↳ Branch — DNS not yet live:
      installer falls back to http://<VPS-IP> for the immediate dashboard URL.
 3. Setup wizard (run_setup):
-   - Prompts: domain, admin email, admin password (≥ 12 chars), storage path (default /data/fidscript),
+   - Prompts: domain, admin email, admin password (≥ 12 chars), 
      Cloudflare API token (required for DNS-01 ACME + DNS automation), server IP (auto-detected).
    - Generates secrets (Postgres, Redis, MinIO, JWT, Stalwart), writes .env, creates Cloudflare
      A records for `deploy`, `jmap`, `storage`, and wildcard `*.apps.<domain>`.

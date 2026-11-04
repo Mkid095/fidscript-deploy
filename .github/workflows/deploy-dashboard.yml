@@ -36,7 +36,7 @@ jobs:
           timeout: 2m
           command_timeout: 30m
           script: |
-            cd /data/fidscript/docker
+            cd /opt/fidscript/docker
             docker pull ghcr.io/mkid095/dashboard:${{ inputs.image_tag }}
             docker tag ghcr.io/mkid095/dashboard:${{ inputs.image_tag }} docker-dashboard:latest
             docker compose up -d dashboard --no-deps

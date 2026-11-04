@@ -1,25 +1,104 @@
 # Phase 01: Installer & Infrastructure Stack
 
-> **Status:** Planned  |  **Track:** Foundation  |  **Depends on:** Phase 00
+> **Status:** Reworked 2026-11-04 — pending fresh-VPS prove-it  |  **Track:** Foundation  |  **Depends on:** Phase 00
 
 ## Objective
 
-A single `install.sh` on a fresh VPS brings up the **entire stack** — Traefik, Postgres, Redis, NATS, MinIO, Stalwart, the API, and the dashboard — with a migrated database, a seeded admin user, and a reachable `https://deploy.fidscript.com`. This is the phase that turns "a buildable codebase" into "a running platform."
+A single `install.sh` on a fresh VPS brings up the **entire stack** — Traefik, Postgres, PgBouncer, Redis, NATS, RustFS, Stalwart, the API, and the dashboard — with a migrated database, a seeded admin user, and a reachable `https://deploy.fidscript.com`. This is the phase that turns "a buildable codebase" into "a running platform."
 
 ## Current State
 
-**FIXED (2026-06-17) — all defects resolved.** The stack now type-checks, builds, and containerizes. Remaining: VPS prove-it (run `install.sh` on a fresh VPS and verify all containers healthy, DB migrated + seeded, API and dashboard reachable).
+**Reworked 2026-11-04.** The installer previously could not complete on a
+fresh VPS. Each defect below was found by reading the scripts and
+reproducing them, not by inspection of the docs — the phase docs and
+`installer/README.md` described an installer that worked.
 
-Previously broken — all fixed:
-- `install.sh` now runs `docker compose up -d --build`, waits for healthy services, runs `prisma migrate deploy` + `pnpm db:seed`, and reloads Traefik.
-- `mkdir ".../{postgres,redis}..."` brace expansion bug fixed (separate mkdir args).
-- `download_files()` falls back to `/opt/fidscript-deploy` or `/root/fidscript-deploy` — clearly documented dev/prod paths.
-- Compose `api`/`dashboard` `build:` contexts now point at `../..` (monorepo root) with the correct Dockerfiles.
-- `$(cat /run/secrets/...)` replaced with `env_file: ./secrets/api.env` + `${VAR}` substitution; `api-entrypoint.sh` reads `*_FILE` vars and materializes them before `node`.
-- **Prisma migrations created** (`20260617015709_init`); `prisma/seed.ts` creates admin user from `ADMIN_EMAIL`/`ADMIN_PASSWORD`; `prisma.seed` wired in `package.json`.
-- `setup-wizard.sh` now generates `secrets/api.env`, `traefik/traefik.yml`, and `traefik/dynamic.yml` with the user's real domain.
-- Go-template `{{ .Domain }}` removed from `dynamic.yml` — generated with real domain at setup time.
-- `configure-firewall.sh` no longer flushes iptables chains (`-F`/`-X` removed); uses UFW or safe iptables fallback.
+### Fixed in this rework
+
+- **The setup wizard aborted before writing anything.** `setup-wizard.sh`
+  assigned `$GITHUB_CLIENT_ID` / `$GITHUB_CLIENT_SECRET`, which were never
+  assigned, under `set -euo pipefail` — the wizard died at the `api.env`
+  heredoc, before the Cloudflare DNS records, the Traefik config, and the
+  Stalwart render. It now defaults to placeholders.
+- **Answering "Y" at the confirm prompt killed the wizard.** The guard was
+  `[[ ! "$c" =~ ^[Yy]$ ]] && { echo "Cancelled."; exit 0; }` as the last
+  command of a function: a false `[[ ]]` makes the *function* return 1,
+  and `set -e` then kills the script at the call site. Now an `if`.
+- **The bootstrap installer cloned a repository that does not exist**
+  (`github.com/kennedymwangi/fidscript-deploy` → 404). It now uses
+  `Mkid095/fidscript-deploy`, overridable via `FIDSCRIPT_REPO`.
+- **The bootstrap installer reported success when the stack failed to
+  start** (`docker compose up ... || true`). Compose failures are now
+  fatal.
+- **The build context pointed at an empty directory.** The installer
+  copied only `installer/` to `/opt/fidscript`, but the API and dashboard
+  images are built from the monorepo root. The compose file now runs from
+  the git checkout (`/opt/fidscript-deploy/installer/docker`) and
+  `/opt/fidscript` is a symlink to its `installer/` directory.
+- **The dashboard image could never be built from a clone.** Its Dockerfile
+  was single-stage and copied a pre-built `.next/standalone` that only
+  existed on the original author's machine. It is now a multi-stage build
+  (`pnpm install` → `turbo build --filter=@fidscript/dashboard` →
+  standalone output), verified to compile all routes inside a 3 GB
+  container.
+- **The API image was never built by the installer** — compose referenced
+  `fidscript-api:latest` with no `build:` section, so a fresh VPS had no
+  image to run. It now builds from `apps/api/Dockerfile`.
+- **Traefik's `docker` provider was silently dropped.** The wizard
+  overwrote `traefik.yml` with a file-provider-only version, so Traefik
+  never discovered containers labelled `traefik.enable=true` and **no
+  deployment ever got a URL**. The provider is restored (and the Traefik
+  control API is now closed).
+- **Stalwart was configured from a hardcoded file.** The wizard rendered
+  `config.toml` from the template, but compose mounted `config.json` —
+  which pinned `mail.deploy.fidscript.com` and a committed bcrypt hash.
+  Compose now mounts the rendered TOML with `create_host_path: false`, so
+  a missing config fails loudly instead of starting Stalwart blind.
+- **`minio/minio` is no longer publicly pullable** (Docker Hub answers
+  "denied" for anonymous pulls). Replaced with `rustfs/rustfs:1.0.4` — a
+  drop-in S3 implementation with the same API on :9000, the same console
+  on :9001, and the same `/minio/health/live` probe. The service is still
+  *named* `minio` so `MINIO_ENDPOINT=minio:9000` needed no code change.
+- **`soostori-prod-net`** was declared `external: true` and attached to
+  Traefik, but belongs to a decommissioned app and is created by no
+  script — `docker compose up` failed on a fresh VPS. Removed.
+- **`encryption_key.txt`** was required by the compose `secrets:` block
+  but generated by neither install path; the wizard generated it now.
+- **A hardcoded developer path** (`/home/ken/fidscript-whatsapp/...`)
+  was bind-mounted into the API container. Removed.
+- The committed `installer/docker/traefik/dynamic.yml` was pinned to the
+  original operator's hostnames (`deploy.fidscript.com`,
+  `emails.fidscript.com`, `whatsappapi.fidscript.com`, …). It is now a
+  domain-neutral default.
+
+### Dead code removed
+
+`setup-wizard.sh` (orphaned second copy at the repo root),
+`installer/traefik/` (orphaned and divergent from
+`installer/docker/traefik/`), `installer/config/stalwart/config.json`
+(superseded by the template), the no-op `bootstrap` compose service
+(installed `postgresql-client`, waited for Postgres, exited 0, created
+nothing), and the `whatsapp-automation` compose service (mounted two
+files that do not exist in the repo). The `prometheus`, `grafana` and
+`cadvisor` services were declared but could not boot — their config
+directories are not in the repo, no installer script provisions them,
+`grafana_password.txt` was never generated, and neither Prometheus nor
+Grafana had a published port or a Traefik route. They are removed and
+return as a working observability add-on.
+
+The WhatsApp stack (`whatsapp-api`, `chatbot-worker`,
+`whatsapp-frontend`) required an image built from a separate repository
+and a `whatsapp-api.env` that no script creates — Compose failed on the
+missing `env_file`. It is now an add-on under `installer/addons/whatsapp/`
+rather than part of the core install.
+
+### Still to prove
+
+The rework is verified by: `bash -n` on every script, a full
+non-interactive run of the setup wizard in a sandbox, `docker compose
+config` validating, and a container build of the dashboard image
+(including a successful `next build` of every route). It has **not** been
+run end-to-end on a fresh VPS — that is the phase's exit criterion.
 
 ## Dependencies
 
@@ -87,13 +166,14 @@ docker compose exec postgres psql ... -c "select email from identity.users;"  # 
 
 ## Files you'll touch (precision map)
 
-- `installer/scripts/install.sh` — today copies `installer/` only and prints "complete" without building/starting app containers; `mkdir ".../{postgres,redis}"` brace bug.
-- `installer/docker/docker-compose.yml` — `$(cat /run/secrets/...)` inside `environment:` isn't substituted; `api`/`dashboard` `build:` must point at `apps/api` / `apps/dashboard`; fix host env wiring (`DB_HOST=postgres`, `NATS_URL=...`, `MINIO_ENDPOINT=...`).
-- `installer/traefik/traefik.yml` + `installer/docker/dynamic.yml` — Go-template `{{ .Domain }}` the file provider ignores.
-- `installer/scripts/configure-firewall.sh` — `iptables -F/-X` + `FORWARD DROP` breaks Docker networking.
-- `installer/scripts/setup-wizard.sh`, `installer/scripts/health-check.sh` — collect ADMIN creds; health verification.
-- Create: `apps/api/prisma/migrations/` (first baseline), `apps/api/prisma/seed.ts` (admin from `ADMIN_EMAIL`/`ADMIN_PASSWORD`).
-- Reference: compose builds/runs the `fidscript-api` + `fidscript-dashboard` images produced in Phase 00.
+- `installer/scripts/install.sh` — no-questions bootstrap; clones the repo, links `/opt/fidscript`, renders the Stalwart config, runs compose from the checkout.
+- `installer/scripts/setup-wizard.sh` — interactive wizard; generates secrets, `.env`, `api.env`, the Traefik static + dynamic config, and `config/stalwart/config.toml`.
+- `installer/docker/docker-compose.yml` — the core stack. Object storage is `rustfs/rustfs` behind the service name `minio`.
+- `installer/docker/traefik/traefik.yml` — must keep the `docker` provider (it is what publishes deployments).
+- `installer/docker/traefik/dynamic.yml` — domain-neutral default; both install paths overwrite it.
+- `apps/dashboard/Dockerfile` — multi-stage; builds the workspace packages and the Next.js standalone output inside the image.
+- `apps/api/Dockerfile` — multi-stage; `pnpm deploy` produces the self-contained runtime.
+- `installer/addons/` — optional components (WhatsApp today; observability and the app runtime next).
 
 ## Next Phase
 

@@ -41,12 +41,15 @@ set -euo pipefail
 [[ -f ~/fidscript-secrets.env ]] && source ~/fidscript-secrets.env
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-DEPLOYER_DIR="$(cd "${SCRIPT_DIR}/.." && pwd)"
-REPO_ROOT="${DEPLOYER_DIR}/../fidscript-whatsapp"
+ADDON_DIR="${SCRIPT_DIR}"
+INSTALLER_DIR="$(cd "${SCRIPT_DIR}/../.." && pwd)"
+REPO_ROOT="${INSTALLER_DIR}/../fidscript-whatsapp"
 
-COMPOSE_FILE="${DEPLOYER_DIR}/docker/docker-compose.yml"
-WHATSAPP_API_ENV="${DEPLOYER_DIR}/docker/whatsapp-api.env"
-WHATSAPP_API_ENV_EXAMPLE="${DEPLOYER_DIR}/docker/whatsapp-api.env.example"
+# The WhatsApp stack is an add-on, not part of the core compose file. Its
+# compose file and env template live alongside this script.
+COMPOSE_FILE="${ADDON_DIR}/docker-compose.yml"
+WHATSAPP_API_ENV="${ADDON_DIR}/whatsapp-api.env"
+WHATSAPP_API_ENV_EXAMPLE="${ADDON_DIR}/whatsapp-api.env.example"
 
 # ---- required env vars (must be set on host before running this script) ----
 REQUIRED_HOST_VARS=(
@@ -135,7 +138,7 @@ echo "  → Built in $((BUILD_END - BUILD_START))s"
 # ---- 4. Deploy containers ----
 echo ""
 echo "[4/5] Deploying whatsapp-api and chatbot-worker..."
-cd "${DEPLOYER_DIR}/docker"
+cd "${ADDON_DIR}"
 
 # Secrets (TUMA_API_KEY, etc.) come from exported HOST env vars above.
 # whatsapp-api.env is loaded via env_file in docker-compose.yml.

@@ -44,16 +44,21 @@ The setup wizard will ask for:
 - **Domain** - Your platform domain (e.g., `deploy.example.com`)
 - **Admin Email** - Platform administrator email
 - **Admin Password** - Secure password (minimum 12 characters)
-- **Storage Path** - Where to store data (default: `/data/fidscript`)
+- **Cloudflare API token** - Optional. Skipped means SSL uses the HTTP-01 challenge and you create the DNS records yourself.
 
 ## Step 4: Start Services
 
 After setup completes:
 
 ```bash
-cd /opt/fidscript/docker
-docker compose up -d
+cd /opt/fidscript-deploy/installer/docker
+docker compose up -d --build
 ```
+
+The compose file lives in the git checkout, not in a copy of it: the API
+and dashboard images are built from the monorepo root, so the build
+context has to resolve to the repository. `/opt/fidscript` is a symlink
+to the checkout's `installer/` directory.
 
 ## Step 5: Verify Installation
 
@@ -68,7 +73,7 @@ Wait 2-3 minutes for services to initialize, then:
 |---------|-----|---------|
 | Dashboard | `https://your-domain.com` | Web interface |
 | API | `https://api.your-domain.com` | REST API |
-| Storage | `https://storage.your-domain.com` | MinIO console |
+| Storage | `https://storage.your-domain.com` | Object storage console (RustFS) |
 | Traefik | `http://your-ip:8080` | Proxy dashboard |
 
 ## Default Ports
@@ -82,26 +87,27 @@ Wait 2-3 minutes for services to initialize, then:
 
 ## Data Storage
 
-All persistent data is stored in `/data/fidscript`:
+Persistent state lives in **named Docker volumes**, not in a host
+directory. List them with `docker volume ls | grep fidscript`:
 
-```
-/data/fidscript/
-├── postgres/     # Database files
-├── redis/        # Cache data
-├── nats/         # Event data
-├── minio/        # Object storage
-└── stalwart/    # Mail data
-```
+| Volume | Holds |
+|--------|-------|
+| `fidscript_postgres` | Database files |
+| `fidscript_redis` | Cache data |
+| `fidscript_nats` | Event data (JetStream) |
+| `fidscript_minio` | Object storage (RustFS) |
+| `fidscript_stalwart` | Mail data |
 
 ## Updating
 
 To update FIDScript Deploy:
 
 ```bash
-cd /opt/fidscript
+cd /opt/fidscript-deploy
 git pull
+cd installer/docker
 docker compose pull
-docker compose up -d
+docker compose up -d --build
 ```
 
 ## Backup
@@ -109,7 +115,8 @@ docker compose up -d
 Back up your data regularly:
 
 ```bash
-tar -czf fidscript-backup-$(date +%Y%m%d).tar.gz /data/fidscript
+docker run --rm -v fidscript_postgres:/data:ro -v "$PWD":/backup \
+  postgres:16-alpine pg_dumpall -U fidscript > "fidscript-backup-$(date +%Y%m%d).sql"
 ```
 
 ## Troubleshooting

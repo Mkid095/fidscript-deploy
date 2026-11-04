@@ -6,10 +6,14 @@
 
 set -Eeuo pipefail
 
-INSTALLER_VERSION="1.2.0"
+INSTALLER_VERSION="1.3.0"
 FIDSCRIPT_REPO="${FIDSCRIPT_REPO:-https://github.com/Mkid095/fidscript-deploy.git}"
+REPO_DIR="/opt/fidscript-deploy"
 INSTALL_DIR="/opt/fidscript"
-COMPOSE_DIR="$INSTALL_DIR/docker"
+# Compose runs from the repo checkout, not from a copy of installer/:
+# the API and dashboard images are built from the monorepo root, so the
+# build context has to resolve to the repo root.
+COMPOSE_DIR="$REPO_DIR/installer/docker"
 SECRETS_DIR=""
 DNS_OK=false
 PUBLIC_IP=""
@@ -122,27 +126,30 @@ step_3_clone() {
   title "Step 3 / 6 — Obtaining source files"
   divider
 
-  mkdir -p /data/fidscript
-
   local src_dir=""
-  [[ -d "/opt/fidscript-deploy/installer" ]] && src_dir="/opt/fidscript-deploy"
-  [[ -d "/root/fidscript-deploy/installer" ]]  && src_dir="/root/fidscript-deploy"
+  [[ -d "$REPO_DIR/installer" ]] && src_dir="$REPO_DIR"
+  [[ -z "$src_dir" && -d "/root/fidscript-deploy/installer" ]] && src_dir="/root/fidscript-deploy"
 
   if [[ -n "$src_dir" ]]; then
     info "Using local source: $src_dir"
-    rm -rf "$INSTALL_DIR"
-    cp -r "$src_dir/installer" "$INSTALL_DIR"
+    REPO_DIR="$src_dir"
   else
     info "Cloning $FIDSCRIPT_REPO..."
-    if ! git clone --depth 1 "$FIDSCRIPT_REPO" /opt/fidscript-deploy 2>/dev/null; then
+    if ! git clone --depth 1 "$FIDSCRIPT_REPO" "$REPO_DIR" 2>/dev/null; then
       error "Clone failed. Check your network and token."
       exit 1
     fi
-    rm -rf "$INSTALL_DIR"
-    cp -r /opt/fidscript-deploy/installer "$INSTALL_DIR"
   fi
-  ln -sfn "$INSTALL_DIR" /usr/local/bin/fidscript 2>/dev/null || true
-  info "Source files ready at $INSTALL_DIR"
+
+  # The repo checkout IS the install directory. /opt/fidscript points at
+  # installer/ so the documented paths keep working, and the compose build
+  # context resolves to the monorepo root.
+  rm -rf "$INSTALL_DIR"
+  ln -sfn "$REPO_DIR/installer" "$INSTALL_DIR"
+  COMPOSE_DIR="$REPO_DIR/installer/docker"
+
+  ln -sfn "$INSTALL_DIR/scripts/install.sh" /usr/local/bin/fidscript 2>/dev/null || true
+  info "Source files ready at $INSTALL_DIR (→ $REPO_DIR/installer)"
 }
 
 # ── Step 4: Run setup wizard ────────────────────────────────────────────────
@@ -164,7 +171,9 @@ step_5_deploy() {
   }
 
   step "Building images (this takes a few minutes)..."
-  if ! docker compose -f "$COMPOSE_DIR/docker-compose.yml" up -d --build 2>&1; then
+  # Run from the real repo path so the build context (`../..`) resolves to
+  # the monorepo root, where apps/api/Dockerfile and apps/dashboard/Dockerfile live.
+  if ! (cd "$COMPOSE_DIR" && docker compose up -d --build 2>&1); then
     error "Build failed. Logs: docker compose -f $COMPOSE_DIR/docker-compose.yml logs"
     exit 1
   fi

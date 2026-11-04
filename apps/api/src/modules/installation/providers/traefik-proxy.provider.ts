@@ -66,7 +66,7 @@ export class TraefikProxyProvider implements IReverseProxyProvider {
 
   private buildDynamicYml(domain: string): string {
     // Traefik resolves certResolver names against the resolvers defined in
-    // installer/traefik/traefik.yml. The committed traefik.yml defines two
+    // installer/docker/traefik/traefik.yml. The committed traefik.yml defines two
     // resolvers: `letsencrypt-dns` (DNS-01 via Cloudflare) and
     // `letsencrypt-http` (HTTP-01 fallback). The previous template used a
     // hardcoded `myresolver` placeholder which doesn't exist in the static
