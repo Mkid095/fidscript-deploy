@@ -1,6 +1,7 @@
 node_modules/
 dist/
 .turbo/
+*.tsbuildinfo
 .env
 .env.local
 .env.*.local
@@ -11,6 +12,9 @@ coverage/
 .next/
 out/
 build/
+
+# Agent worktrees — each one is a full duplicate of the tree. Never commit.
+.claude/worktrees/
 
 # Installer — generated secrets (never commit). The setup-wizard creates
 # these in installer/docker/secrets/ and they're root-only. Keep them out

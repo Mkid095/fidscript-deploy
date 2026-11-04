@@ -9,6 +9,7 @@
     "start": "node dist/main",
     "start:prod": "node dist/main",
     "lint": "eslint \"src/**/*.ts\" --fix",
+    "postinstall": "prisma generate",
     "typecheck": "tsc --noEmit",
     "test": "jest --passWithNoTests",
     "test:watch": "jest --watch",

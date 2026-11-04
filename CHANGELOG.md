@@ -6,6 +6,13 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
 ## [Unreleased]
 
+### Fixed
+- `fix(ci): GitHub Actions failed at pnpm/action-setup on every run since #84` — `ci.yml` passed `version: 9` to `pnpm/action-setup@v4` while `package.json` declares `packageManager: pnpm@9.0.0`. The action rejects two conflicting version sources, so the step errored before `setup-node` ever ran and every downstream job (lint/typecheck/test/build) was skipped. The `version:` input is now removed from all five `pnpm/action-setup` steps, letting the single source of truth be the `packageManager` field — the same form `build-dashboard.yml` already uses successfully. Files: `.github/workflows/ci.yml`
+- `fix(api): Prisma Client was never generated on a fresh install, breaking typecheck and build` — `apps/api/package.json` had no `postinstall` script, and the root-level `@prisma/client` postinstall could not locate the schema (`We could not find your Prisma schema in the default locations`). On any fresh clone the generated client was absent, so `pnpm typecheck` failed with `Module '"@prisma/client"' has no exported member 'NotificationChannel'` / `'QueueMessageWhereInput'` and ~30 cascading `TS7006` implicit-any errors. Added `"postinstall": "prisma generate"` to `apps/api/package.json`, which runs against `apps/api/prisma/schema.prisma` where the models actually live. Verified: wiping the generated client and re-running `pnpm install --frozen-lockfile` now regenerates it, and `pnpm typecheck` passes across all 11 workspace packages. Files: `apps/api/package.json`
+
+### Improved
+- `chore(git): ignore agent worktrees and TypeScript build info` — added `.claude/worktrees/` (each one is a full duplicate of the tree) and `*.tsbuildinfo` to `.gitignore` so they never reach the remote. Files: `.gitignore`
+
 ### Improved
 - `fix(dashboard): redesign Projects page — move AI Control Center below project grid (secondary position), rename to 'Developer & AI Access', add page description, improve empty state with 4-step onboarding guide, friendly error messages for Bad Request/401/403, collapsed by default to prevent unnecessary API calls, usage context chips after key creation`
 
