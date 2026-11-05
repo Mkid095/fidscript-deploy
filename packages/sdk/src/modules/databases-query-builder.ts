@@ -1,12 +1,15 @@
 /**
- * QueryBuilder — typed query DSL with realtime / live-query support.
- * The `watch()` method (heavy SSE implementation) lives in
- * `./databases-query-watch.ts` to keep this file under the 150-line ANPAS limit.
+ * QueryBuilder — typed query DSL for the managed Postgres.
+ *
+ * `subscribe()` is the platform's own event bus: the api publishes
+ * `database.row.changed` when a row changes in a managed database. It is
+ * NOT the same thing as Instant's realtime, which is query-scoped and
+ * permission-aware — an application's reactive data belongs in Instant,
+ * and `docs/CAPABILITY_OVERLAP.md` says why.
  */
 
 import { FidscriptClient } from '../client';
 import type { DataResult, Op, RealtimeEvent, RealtimeSubscription } from './databases-types';
-import { applyWatchMethod } from './databases-query-watch';
 
 export class QueryBuilder<T = unknown> {
   private filters: { column: string; op: Op; value: unknown }[] = [];
@@ -15,12 +18,7 @@ export class QueryBuilder<T = unknown> {
   private _orderBy?: string;
   private _order: 'asc' | 'desc' = 'asc';
 
-  constructor(private client: FidscriptClient, private databaseId: string, private table: string) {
-    applyWatchMethod(this);
-  }
-
-  /** Delegated to ./databases-query-watch.ts. Declared here so callers see it. */
-  declare watch: () => Promise<import('./databases-types').LiveQueryResult<T>>;
+  constructor(private client: FidscriptClient, private databaseId: string, private table: string) {}
 
   eq(c: string, v: unknown): this { return this.push(c, 'eq', v); }
   neq(c: string, v: unknown): this { return this.push(c, 'neq', v); }
@@ -106,16 +104,6 @@ export class QueryBuilder<T = unknown> {
       },
     };
   }
-
-  /** Internal accessors — used by ./databases-query-watch.ts. */
-  getFilters() { return this.filters; }
-  getLimit() { return this._limit; }
-  getPage() { return this._page; }
-  getOrderBy() { return this._orderBy; }
-  getOrder() { return this._order; }
-  getClient() { return this.client; }
-  getDatabaseId() { return this.databaseId; }
-  getTable() { return this.table; }
 
   private push(c: string, op: Op, v: unknown): this {
     this.filters.push({ column: c, op, value: v });

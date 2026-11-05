@@ -98,13 +98,27 @@ project management · the **operator** half of auth (`User`, `ApiKey`,
 ### Retire from the platform (the real duplication)
 
 1. **The live-query stack** — `LiveQueryManager`, `live-query.controller.ts`,
-   the per-database `LISTEN` clients in `notify-realtime.provider.ts`, and
-   `databases-query-watch.ts`'s SSE client.
-   *Cost today:* two realtime protocols to maintain; one long-lived Postgres
-   client **per provisioned database** (a connection-count problem that grows
-   with customers, not traffic); a client-side array-splice patch model with no
-   conflict handling; and **no row-level authorization** — any holder of the
-   project API key reads every row of every table.
+   and the SDK's `watch()`.
+   *Cost today:* a second realtime protocol to maintain alongside the
+   platform's own; a client-side array-splice patch model with no conflict
+   handling, where the server sends raw row patches and the client
+   reassembles them; and **no row-level authorization** — any holder of the
+   project API key read every row of every table.
+   **Retired 2026-11-05.** `POST /databases/:id/live-query`,
+   `GET /databases/:id/live-query/:table` and the SDK's `watch()` are gone.
+   Nothing called `watch()`: no dashboard screen, no MCP tool, no CLI
+   command, and the endpoints were never in the endpoint inventory.
+
+   **What stays, and why.** `notify-realtime.provider.ts` is NOT part of the
+   duplication. It captures row changes in the **managed Postgres** and
+   publishes them as `database.row.changed` on the platform's own event bus
+   — that is what the dashboard's live feed and the SDK's `subscribe()` read.
+   Instant's realtime is a different thing: query-scoped, permission-aware,
+   and over Instant's own store. (An earlier draft of this document claimed
+   the provider opened one Postgres client per provisioned database, which
+   would have scaled with the customer count. Reading the code, the client is
+   reference-counted and closed when the last subscriber leaves, so it scales
+   with *concurrent subscribers*.)
 2. **`modules/app-auth/`** — a second, weaker user system (register, login,
    password, magic code, magic link, OAuth × 3, roles, sessions).
    *Cost today:* two user tables, two JWT issuers, two magic-code flows, for
@@ -223,15 +237,15 @@ The cheapest high-value move is §4.1 + §4.2 plus retiring the live-query
 stack. It removes the two most expensive duplications without touching anything
 Instant does not already do better.
 
-| # | Step | Risk |
-|---|---|---|
-| 1 | `ProjectInstantApp` + the Instant client + provisioning endpoint | none — additive |
-| 2 | The wizard asks for the Instant PAT when the Instant add-on is on | none — additive |
-| 3 | The SDK's `instant` module | none — additive |
-| 4 | Retire the live-query half of `modules/databases/` | **medium** — the API surface disappears |
-| 5 | Retire `modules/app-auth/` as the app-facing auth | **high** — the second JWT issuer goes |
-| 6 | Drop the duplicate CLI/MCP bin names | low — the Instant fork is a separate repo |
-| 7 | The dashboard's data screens point at the Instant console | none |
+| # | Step | Risk | State |
+|---|---|---|---|
+| 1 | `ProjectInstantApp` + the Instant client + provisioning endpoint | none — additive | **done** |
+| 2 | The wizard asks for the Instant PAT when the Instant add-on is on | none — additive | **done** |
+| 3 | The SDK's `instant` module | none — additive | **done** |
+| 4 | Retire the live-query half of `modules/databases/` | **medium** — the API surface disappears | **done** |
+| 5 | Retire `modules/app-auth/` as the app-facing auth | **high** — the second JWT issuer goes | to do |
+| 6 | Drop the duplicate CLI/MCP bin names | low — the Instant fork is a separate repo | to do |
+| 7 | The dashboard's data screens point at the Instant console | none | to do |
 
 Steps 4 and 5 remove a public API surface. They are separate changes, each
 with its own decision, and neither is implied by this document alone.

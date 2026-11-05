@@ -16,7 +16,7 @@ export type {
   StorageFileRecord,
   StorageProviderType,
 } from './storage';
-export type { RealtimeTableInfo, RealtimeSubscriber, RealtimeEvent, DataResult, LiveQueryResult } from './realtime';
+export type { RealtimeTableInfo, RealtimeSubscriber, RealtimeEvent, DataResult } from './realtime';
 export type {
   Database,
   DatabaseBranch,

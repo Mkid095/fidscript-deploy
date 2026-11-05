@@ -27,7 +27,7 @@ import { DeploymentsModule } from './modules/deployments';
 import { StorageModule } from './modules/storage';
 import { DatabasesModule, DatabaseProvider } from './modules/databases';
 export { DatabaseProvider };
-export type { Database, TableInfo, ColumnInfo, RealtimeEvent, MigrationRecord, DataResult, Op, LiveQueryResult } from './modules/databases-types';
+export type { Database, TableInfo, ColumnInfo, RealtimeEvent, MigrationRecord, DataResult, Op } from './modules/databases-types';
 import { DomainsModule } from './modules/domains';
 import { EmailModule, AdminMailboxModule, AdminAttachmentConfigModule, AdminMailConnectionModule, MailConnectionInfo } from './modules/email';
 import type {

@@ -204,6 +204,15 @@ row.
 A deployed application authenticates with its own user token, and Instant
 evaluates its permission rules.
 
+**Reactive data lives in Instant.** The platform's SSE live-query is gone —
+`POST /databases/:id/live-query`, `GET /databases/:id/live-query/:table` and
+the SDK's `watch()`. An application that wants reactive data subscribes to
+**its Instant app**, using the app id from
+`GET /projects/:id/instant/config`, and Instant evaluates the permission
+rules before it sends anything. What remains on the managed Postgres is the
+platform's own row-change event (`database.row.changed`), which the
+dashboard's live feed and the SDK's `subscribe()` read.
+
 **The credential is optional.** Without it the api reports Instant as
 unavailable rather than failing to start, so a platform-only install is
 unaffected.
@@ -243,7 +252,7 @@ These are the places to work next. Each names the file to change.
 | 8 | **The `?section=` system** — only Settings is reachable, and the URL degrades from `/projects/X/settings` to `/projects/X?section=settings`. | `apps/dashboard/src/app/(app)/projects/[projectId]/` |
 | 9 | **No tests.** The suite is green because it is empty. | `apps/api`, `apps/dashboard` |
 | 10 | **The Instant app has no screen.** The API can provision a project's Instant app and the SDK can read its configuration, but the dashboard shows nothing — the operator has to open the Instant console for it. The split of ownership is decided in `docs/CAPABILITY_OVERLAP.md`; the screen is not written yet. | `apps/dashboard/src/app/(app)/projects/[projectId]/` |
-| 11 | **The duplicated halves are still duplicated.** The live-query stack and the second user system remain in place — the decision to retire them is made, but removing them takes a public API surface with it and is its own change. | `modules/databases/`, `modules/app-auth/` |
+| 11 | **The second user system is still duplicated.** The live-query half of `modules/databases/` is retired — `POST /databases/:id/live-query`, `GET /databases/:id/live-query/:table` and the SDK's `watch()` are gone. `modules/app-auth/` remains: a second, weaker user system, and retiring it takes the second JWT issuer with it. | `modules/app-auth/` |
 
 ---
 

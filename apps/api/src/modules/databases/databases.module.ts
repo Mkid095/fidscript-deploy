@@ -1,8 +1,6 @@
 import { Module, forwardRef } from '@nestjs/common';
 import { DatabasesController } from '@/modules/databases/controllers/databases.controller';
 import { DatabaseDataController } from '@/modules/databases/controllers/database-data.controller';
-import { LiveQueryController } from '@/modules/databases/controllers/live-query.controller';
-import { LiveQueryManager } from '@/modules/databases/services/live-query.manager';
 import { DatabasesService } from '@/modules/databases/services/databases.service';
 import { DbCrudService } from '@/modules/databases/services/db-crud.service';
 import { DbBackupService } from '@/modules/databases/services/db-backup.service';
@@ -30,7 +28,7 @@ import { AuthModule } from '@/modules/auth/auth.module';
   // AuthModule provides ApiKeyOrJwtGuard so the BaaS data routes accept both
   // JWT (dashboard) and project API keys (external apps via X-API-Key).
   imports: [StorageModule, forwardRef(() => ProjectsModule), EventsModule, forwardRef(() => AuthModule)],
-  controllers: [DatabasesController, DatabaseDataController, LiveQueryController],
+  controllers: [DatabasesController, DatabaseDataController],
   providers: [
     DatabasesService,
     DbCrudService,
@@ -42,7 +40,6 @@ import { AuthModule } from '@/modules/auth/auth.module';
     DbDataService,
     DbRealtimeService,
     DbMigrationService,
-    LiveQueryManager,
     SchemaCacheService,
     PostgresDatabaseProvider,
     PostgresAdminService,
@@ -64,7 +61,6 @@ import { AuthModule } from '@/modules/auth/auth.module';
     DATABASE_PROVIDER,
     NotifyRealtimeProvider,
     SchemaCacheService,
-    LiveQueryManager,
   ],
 })
 export class DatabasesModule {}

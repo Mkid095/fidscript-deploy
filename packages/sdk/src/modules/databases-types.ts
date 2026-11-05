@@ -68,13 +68,6 @@ export interface DataResult<T = unknown> {
   limit: number;
 }
 
-export interface LiveQueryResult<T = unknown> {
-  rows: T[];
-  push(rows: T[]): void;
-  subscribe(callback: (rows: T[]) => void): () => void;
-  unsubscribe(): Promise<void>;
-}
-
 export interface TableInfo {
   schema: string;
   name: string;

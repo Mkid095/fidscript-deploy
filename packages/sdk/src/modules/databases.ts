@@ -11,7 +11,6 @@
  * - databases-backups.ts          — backup + scheduling methods (legacy)
  * - databases-provider.ts         — DatabaseProvider class
  * - databases-query-builder.ts    — QueryBuilder class (filters + CRUD)
- * - databases-query-watch.ts      — watch() SSE implementation
  * - databases-migrations.ts       — DatabaseProvider + migrations extension
  */
 
@@ -91,5 +90,4 @@ export type {
   RealtimeSubscription,
   DataResult,
   Op,
-  LiveQueryResult,
 } from './databases-types';

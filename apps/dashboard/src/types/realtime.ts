@@ -26,8 +26,3 @@ export interface DataResult<T> {
   data: T[];
   count: number;
 }
-
-export interface LiveQueryResult<T> {
-  data: T[];
-  initial: boolean;
-}
