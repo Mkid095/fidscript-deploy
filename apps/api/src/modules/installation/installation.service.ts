@@ -331,6 +331,18 @@ export class InstallationOrchestratorService {
     dto: ConfigureInstallationDto,
     tx: Parameters<Parameters<typeof this.prisma.$transaction>[0]>[0] = this.prisma,
   ): Promise<void> {
+    // Check first, do not create and catch. A unique-constraint violation
+    // inside a transaction ABORTS it in Postgres — catching the error in
+    // JavaScript does not reset it, so every statement after it fails with
+    // "current transaction is aborted". The admin is seeded by the installer's
+    // wizard, so that path is the normal one, and the setup could never
+    // complete.
+    const existing = await tx.user.findFirst({ where: { email: dto.adminEmail } });
+    if (existing) {
+      this.logger.log(`Admin user ${dto.adminEmail} already exists — skipping`);
+      return;
+    }
+
     try {
       await tx.user.create({
         data: {
