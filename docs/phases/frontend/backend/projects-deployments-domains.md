@@ -9,7 +9,7 @@ role distinctions noted per route.
 | ID | Method | Path | Access | Request | Response | Events |
 |----|--------|------|--------|---------|----------|--------|
 | PROJ-01 | GET | `/projects` | auth | ?status,?page,?limit | `{projects,pagination}` | none |
-| PROJ-02 | POST | `/projects` | auth | `CreateProjectDto`{name,type(frontend\|backend\|worker\|cron\|docker\|static),description?,region?} | project | `projects.project.created` |
+| PROJ-02 | POST | `/projects` | auth | `CreateProjectDto`{name,type(frontend\|backend\|worker\|cron\|docker\|static),description?,region?,organizationId?} — `organizationId` puts the project in a team (the caller must be a member) | project | `projects.project.created` |
 | PROJ-03 | GET | `/projects/:id` | any access | — | project | none |
 | PROJ-04 | PATCH | `/projects/:id` | admin/owner | `UpdateProjectDto`{name?,description?} | project | `projects.project.updated` |
 | PROJ-05 | DELETE | `/projects/:id` | owner | — | `{success:true}` (soft→DELETED) | `projects.project.deleted` |
@@ -37,15 +37,17 @@ role distinctions noted per route.
 | ID | Method | Path | Request | Response | Events |
 |----|--------|------|---------|----------|--------|
 | DEPL-01 | GET | `/deployments` | ?page,?limit | `{deployments,pagination}` | none |
-| DEPL-02 | POST | `/deployments` | `CreateDeploymentDto`{source?:{type(git\|archive),git?:{url,credentials?,branch?,dockerfilePath?},archive?:{...}},branch?,commitSha?,strategy?,envVars?} | `{id,projectId,releaseId,status:'pending',deploymentUrl:null,...}` | `deployments.deployment.created` |
+| DEPL-02 | POST | `/deployments` | `CreateDeploymentDto`{source?:{type(git\|archive),git?:{url,credentials?,branch?,dockerfilePath?},archive?:{bucketId,objectKey}},branch?,commitSha?,envVars?,subdomain?,domainId?} — **`envVars` are saved on the project (encrypted) before the build starts** | `{id,projectId,releaseId,status:'pending',deploymentUrl:null,...}` | `deployments.deployment.created` |
 | DEPL-03 | GET | `/deployments/:id` | — | deployment | none |
 | DEPL-04 | GET | `/deployments/:id/logs` | — | `{logs: release.buildLogs}` | none |
 | DEPL-05 | POST | `/deployments/:id/stop` | — | deployment (stopped) | `.stopped` |
 | DEPL-06 | POST | `/deployments/:id/restart` | — | deployment (→SUCCESS) | `.succeeded` |
 | DEPL-07 | DELETE | `/deployments/:id` | — | `{success:true}` | `.stopped` |
 | DEPL-08 | POST | `/deployments/:id/rollback` | target must be SUCCESS | deployment | `.rolled_back`+`.succeeded` |
-| DEPL-09 | GET | `/build-config` | — | `{id,projectId,strategy,buildCommand,outputDirectory,healthCheckPath,healthCheckPort,startupTimeoutSeconds,...}` | none |
-| DEPL-10 | PATCH | `/build-config` | `UpdateBuildConfigDto`{strategy?,buildCommand?,outputDirectory?,healthCheckPath?,healthCheckPort?} | build config | none |
+| DEPL-09 | GET | `/build-config` | — | `{id,projectId,buildTarget,startupTimeoutSeconds,requiredEnvVars:[...]}` | none |
+| DEPL-10 | PATCH | `/build-config` | `UpdateBuildConfigDto`{buildTarget?,startupTimeoutSeconds?,requiredEnvVars?:string[]} — `buildTarget` is the app root in a monorepo; `requiredEnvVars` are the variables a build cannot run without | build config | none |
+| DEPL-11 | POST | `/projects/:projectId/deployments/detect` | owner-or-member | `DetectFrameworkDto`{gitUrl,branch?,credentials?} | `BuildPlan`{framework,frameworkLabel,buildCommand,port,runtime,monorepo?} — the repository is cloned and inspected; nothing is deployed | none |
+| DEPL-12 | POST | `/deployments/detect` | JWT | `DetectFrameworkDto`{gitUrl,branch?} | `BuildPlan` — the same inspection **before a project exists**, so the wizard can show the application preset while the operator is still choosing where the project lives. **github.com only**: the endpoint clones a URL the caller supplies. | none |
 
 ## Domains — `/api/v1/projects/:projectId/domains`
 

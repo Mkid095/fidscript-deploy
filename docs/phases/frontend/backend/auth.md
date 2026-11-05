@@ -26,6 +26,8 @@ See `index.md` for conventions. IDs are stable cross-reference targets for specs
 | AUTH-18 | POST | `/auth/change-password` | JWT | `ChangePasswordDto`{currentPassword,newPassword(min12,upper+lower+number)} | tokens (rotated; `mustChangePassword` cleared) | `identity.user.password_changed`, `session.created` |
 | AUTH-19 | POST | `/auth/magic-code` | public | `MagicCodeDto`{email} | `{sent:true}` (always; never reveals whether the email exists) | `identity.user.magic_code_sent` |
 | AUTH-20 | POST | `/auth/verify-magic-code` | public | `VerifyMagicCodeDto`{email,code(6)} | tokens (rotated session) | `identity.user.magic_code_verified`, `session.created` |
+| AUTH-21 | GET | `/auth/setup-password` | JWT (owner/admin) | — | `{configured:boolean}` — never the password itself | none |
+| AUTH-22 | POST | `/auth/setup-password` | JWT (owner/admin) | `SetupPasswordDto`{setupPassword(min8)} | `{configured:true}` | none |
 
 ## BaaS app-auth — `/api/v1/projects/:projectId/auth` — **RETIRED 2026-11-05**
 

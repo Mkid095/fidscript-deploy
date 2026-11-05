@@ -61,7 +61,7 @@ it is not there yet.
 | Screen | Route | Auth | Renders | Key fields | Operations | Deep spec |
 |---|---|---|---|---|---|---|
 | Login | `/login` | — | — | email, password (tab) / email + 6-digit OTP (magic tab) | `AUTH-02` · `AUTH-05/06` *(broken → use magic-code)* · **`/auth/magic-code` + `/auth/verify-magic-code` (new)** | ✅ `f02-auth.md` |
-| Register | `/register` | — | — | email, password (strength), confirm | `AUTH-01` | ✅ |
+| Register | `/register` | — | — | **first name, last name, email, password (strength), confirm, company password** | `AUTH-01` (with `setupPassword`) | ✅ |
 | Force-change password | `/force-change-password` | JWT + `mustChangePassword=true` | `User` | current, new (strength), confirm | **`/auth/change-password` (new)** | ✅ |
 | MFA challenge | `/login/mfa` | public + `mfaToken` | — | 6-digit TOTP | `AUTH-09` | — |
 | First-run onboarding | `/onboarding` | — (post-install cookie) | — | 5-row health board (Docker / DB / Domain / SSL / Email) | run/fix each + `/health` polling | _todo (F03)_ |
@@ -93,10 +93,11 @@ it is not there yet.
 | Screen | Route | Auth | Renders | Key fields | Operations | Deep spec |
 |---|---|---|---|---|---|---|
 | Deployments list | `…/deployments` | O/A/D/V | `Deployment` (+ `Release` summary) | status (state-machine color), imageTag, deploymentUrl, completedAt | tab Active / All / Logs / Build Config | — |
-| New deployment modal | overlay | O/A/D/V | — | source `{git:{url,branch,dockerfilePath?}}` (preview "what will build"), strategy override? | `DEPL-02` · realtime `deployments.deployment.created…failed/succeeded` | _todo (F06)_ |
+| **New deployment** (the wizard) | `/deployments/new` | O/A/D/V | `Project` (created on the way) · `Release` · `ProjectEnv` | **import** — GitHub connect / git URL / archive · **repository** — repo, branch · **project** — workspace (team) or own, name, root directory, the detected application preset · **variables** — key, value, required | `DEPL-12` detect (before the project exists) · `PROJ-02` create · `DEPL-10` build config · `DEPL-02` create the deployment | ✅ built 2026-11-05 |
+| New deployment modal | overlay | O/A/D/V | — | superseded by the wizard above — the modal redirects to `…/services/new` | `DEPL-02` | _deprecated_ |
 | Deployment detail | `…/deployments/:id` | O/A/D/V | `Deployment` + `Release` | state-machine timeline header · imageTag · sourceUrl · commitSha · `buildLogs` · live URL | `DEPL-05` stop · `DEPL-06` restart · `DEPL-07` delete · `DEPL-08` rollback (lists prior SUCCESS) | _todo_ |
 | Deployment logs | `…/deployments/:id/logs` | O/A/D/V | `Release.buildLogs` | streaming stdout/stderr | `DEPL-04` (poll + stream) | — |
-| Build config | `…/build-config` | A | `BuildConfig` | strategy, buildCommand, outputDirectory, healthCheckPath, healthCheckPort, startupTimeoutSeconds | `DEPL-09/10` | — |
+| Build config | `…/build-config` | A | `BuildConfig` | buildTarget (the app root in a monorepo), startupTimeoutSeconds, **requiredEnvVars** | `DEPL-09/10` | — |
 
 ---
 
