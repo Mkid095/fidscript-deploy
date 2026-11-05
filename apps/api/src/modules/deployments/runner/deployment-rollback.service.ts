@@ -16,7 +16,22 @@ export class DeploymentRollbackService {
     private cryptoService: CryptoService,
   ) {}
 
-  async rollbackToPreviousImage(targetDeploymentId: string, userId: string): Promise<void> {
+  /**
+   * Roll back to a chosen deployment, or — when no target is given — to the
+   * previous successful one.
+   *
+   * `targetDeploymentId` is the deployment being rolled back FROM (the one
+   * currently live). `rollbackToDeploymentId` is the one to roll back TO.
+   * The dashboard's rollback picker, the SDK and the MCP tool all send the
+   * target, but the endpoint used to drop it on the floor and always
+   * rolled back to "the previous SUCCESS deployment" — so picking a
+   * specific version did nothing.
+   */
+  async rollbackToPreviousImage(
+    targetDeploymentId: string,
+    userId: string,
+    rollbackToDeploymentId?: string,
+  ): Promise<void> {
     const target = await this.prisma.deployment.findUnique({
       where: { id: targetDeploymentId },
       include: { project: true, release: true },
@@ -24,12 +39,18 @@ export class DeploymentRollbackService {
     if (!target) throw new Error('Deployment not found');
     if (target.status !== 'SUCCESS') throw new Error('Can only rollback successful deployments');
 
-    const previous = await this.prisma.deployment.findFirst({
-      where: { projectId: target.projectId, status: 'SUCCESS', id: { not: targetDeploymentId }, createdAt: { lt: target.createdAt } },
-      orderBy: { createdAt: 'desc' },
-      include: { release: true },
-    });
+    const previous = rollbackToDeploymentId
+      ? await this.prisma.deployment.findUnique({
+          where: { id: rollbackToDeploymentId },
+          include: { release: true },
+        })
+      : await this.prisma.deployment.findFirst({
+          where: { projectId: target.projectId, status: 'SUCCESS', id: { not: targetDeploymentId }, createdAt: { lt: target.createdAt } },
+          orderBy: { createdAt: 'desc' },
+          include: { release: true },
+        });
     if (!previous || !previous.release) throw new Error('No previous successful deployment to rollback to');
+    if (previous.projectId !== target.projectId) throw new Error('The rollback target belongs to a different project');
 
     const projectType = target.project.type || 'DOCKER';
     const profile = getProfile(projectType);

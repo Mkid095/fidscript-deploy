@@ -18,6 +18,14 @@ export interface BuildAndDeployOptions {
   /** Monorepo app root (e.g. "apps/web") — passed to NodeBuildpackProvider for turbo monorepos */
   buildTarget?: string;
   onLog: (line: string) => void;
+  /**
+   * Called after the image is built and before the container is started,
+   * so the caller can move the deployment into its DEPLOYING state. The
+   * status existed in the enum and was read by the lifecycle service, but
+   * nothing ever wrote it — a deployment jumped straight from BUILDING to
+   * SUCCESS or FAILED.
+   */
+  onDeploy?: () => Promise<void>;
 }
 
 @Injectable()
@@ -73,8 +81,12 @@ export class BuildRunnerService {
       this.log(onLog, `[runner] Build succeeded in ${buildResult.buildDurationMs}ms`);
 
       // Deploy
+      if (opts.onDeploy) await opts.onDeploy();
       const deployResult = await this.dockerRun.deployContainer({
         imageTag: buildResult.imageTag, deploymentId, projectSlug, envVars, profile, startupTimeoutSeconds, onLog,
+        // The provider detected the port the app really listens on; the
+        // profile default is only a guess.
+        port: buildResult.port,
       });
 
       return { buildResult, deployResult };

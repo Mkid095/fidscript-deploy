@@ -149,6 +149,12 @@ export class DeploymentStateService implements OnModuleInit {
         source, envVars: runtimeEnv,
         buildTarget: buildConfig?.buildTarget || undefined,
         startupTimeoutSeconds: buildConfig?.startupTimeoutSeconds ?? 120, onLog,
+        onDeploy: async () => {
+          // The image is built; the container is about to start. This state
+          // existed in the enum but was never written.
+          await this.prisma.deployment.update({ where: { id: deploymentId }, data: { status: 'DEPLOYING' } });
+          await this.emit(deploymentId, projectId, userId, 'deployments.deployment.deploying', {});
+        },
       },
     );
 
@@ -217,11 +223,12 @@ export class DeploymentStateService implements OnModuleInit {
       // Stop + remove the old container
       await this.dockerLifecycle.teardown(oldContainerName);
 
-      // Mark the old deployment as superseded (keep the record for history)
-      await this.prisma.deployment.update({
-        where: { id: previous.id },
-        data: { status: 'ROLLED_BACK' },
-      }).catch(() => { /* ignore if already in a terminal state */ });
+      // Keep the record as SUCCESS. It DID succeed — it was simply replaced
+      // by a newer deployment, which is not the same thing as being rolled
+      // back. Marking it ROLLED_BACK also broke rollback itself: the
+      // rollback lookup filters on status SUCCESS, so the deployment a user
+      // wanted to roll back to was no longer findable.
+      // ProjectSettings.activeDeploymentId says which deployment is live.
 
       // Note: we DON'T docker rmi the old image here — the GC service handles
       // image removal based on what's still referenced. This keeps rollback

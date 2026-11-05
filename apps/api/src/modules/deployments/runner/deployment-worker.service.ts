@@ -26,7 +26,7 @@ export class DeploymentWorkerService {
     return this.lifecycle.destroyDeployment(deploymentId, userId);
   }
 
-  async rollbackToPreviousImage(targetDeploymentId: string, userId: string) {
-    return this.rollback.rollbackToPreviousImage(targetDeploymentId, userId);
+  async rollbackToPreviousImage(targetDeploymentId: string, userId: string, rollbackToDeploymentId?: string) {
+    return this.rollback.rollbackToPreviousImage(targetDeploymentId, userId, rollbackToDeploymentId);
   }
 }

@@ -169,12 +169,18 @@ export class DeploymentCrudService {
     return { success: true };
   }
 
-  async rollback(userId: string, projectId: string, deploymentId: string) {
+  async rollback(userId: string, projectId: string, deploymentId: string, targetDeploymentId?: string) {
     await this.checkAccessOrThrow(userId, projectId, ['admin', 'owner']);
     const deployment = await this.prisma.deployment.findUnique({ where: { id: deploymentId } });
     if (!deployment || deployment.projectId !== projectId) throw new NotFoundException('Deployment not found');
     if (deployment.status !== 'SUCCESS') throw new BadRequestException('Can only rollback successful deployments');
-    await this.worker.rollbackToPreviousImage(deploymentId, userId);
+    if (targetDeploymentId) {
+      const target = await this.prisma.deployment.findUnique({ where: { id: targetDeploymentId } });
+      if (!target || target.projectId !== projectId) throw new NotFoundException('Rollback target deployment not found');
+      if (target.status !== 'SUCCESS') throw new BadRequestException('Can only roll back to a successful deployment');
+      if (target.id === deploymentId) throw new BadRequestException('A deployment cannot be rolled back to itself');
+    }
+    await this.worker.rollbackToPreviousImage(deploymentId, userId, targetDeploymentId);
     return this.get(userId, projectId, deploymentId);
   }
 

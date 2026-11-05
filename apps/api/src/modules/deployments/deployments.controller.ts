@@ -181,9 +181,10 @@ export class DeploymentsController {
     @Req() req: Request,
     @Param('projectId') projectId: string,
     @Param('id') deploymentId: string,
+    @Body() body: { targetDeploymentId?: string } | undefined,
   ) {
     const user = req.user as { userId: string };
-    return this.deploymentsService.rollback(user.userId, projectId, deploymentId);
+    return this.deploymentsService.rollback(user.userId, projectId, deploymentId, body?.targetDeploymentId);
   }
 
   @Get('build-config')

@@ -173,6 +173,9 @@ export class NodeBuildpackProvider implements BuildProvider {
         buildDurationMs: Date.now() - startTime,
         buildLogs: logs.join('\n'),
         success: true,
+        // The port the app was detected to listen on. The deployment
+        // profile's default is only right for Next.js and static sites.
+        port: detected.port,
       };
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);

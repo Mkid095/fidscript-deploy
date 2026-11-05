@@ -32,8 +32,11 @@ export class DockerRunService {
     profile: DeploymentProfile;
     startupTimeoutSeconds: number;
     onLog: (line: string) => void;
+    /** The port the app listens on, when the build provider detected it. */
+    port?: number;
   }): Promise<DeployResult> {
     const { imageTag, deploymentId, projectSlug, envVars, profile, startupTimeoutSeconds, onLog } = opts;
+    const port = opts.port ?? profile.defaultPort;
     const startTime = Date.now();
     const containerName = `fidscript-${projectSlug}-${deploymentId}`;
     const platformDomain = this.configService.get<string>('PLATFORM_DOMAIN', 'apps.local');
@@ -43,9 +46,9 @@ export class DockerRunService {
 
     try {
       this.lifecycle.ensureNetwork();
-      const runArgs = this.buildArgs.buildRunArgs({ imageTag, containerName, projectSlug, envVars, profile, domain });
+      const runArgs = this.buildArgs.buildRunArgs({ imageTag, containerName, projectSlug, envVars, profile, domain, port });
       addLog(`[runner] Starting container: ${containerName}`);
-      if (profile.requiresRoute) addLog(`[runner] Route: https://${domain} → port ${profile.defaultPort}`);
+      if (profile.requiresRoute) addLog(`[runner] Route: https://${domain} → port ${port}`);
       else addLog(`[runner] No route (${profile.label} does not require HTTP routing)`);
       this.cmd.execDocker(runArgs);
       await this.assertContainerHealthy(opts, containerName, addLog);
@@ -67,8 +70,11 @@ export class DockerRunService {
     profile: DeploymentProfile;
     startupTimeoutSeconds: number;
     onLog: (line: string) => void;
+    /** The port the app listens on, when the build provider detected it. */
+    port?: number;
   }): Promise<DeployResult> {
     const { imageTag, deploymentId, projectSlug, envVars, profile, startupTimeoutSeconds, onLog } = opts;
+    const port = opts.port ?? profile.defaultPort;
     const containerName = `fidscript-${projectSlug}-${deploymentId}`;
     const platformDomain = this.configService.get<string>('PLATFORM_DOMAIN', 'apps.local');
     const domain = `${projectSlug}.apps.${platformDomain}`;
@@ -94,18 +100,19 @@ export class DockerRunService {
 
   /** Wait for health (HTTP services) or just confirm it started (workers/cron). */
   private async assertContainerHealthy(
-    opts: { profile: DeploymentProfile; startupTimeoutSeconds: number },
+    opts: { profile: DeploymentProfile; startupTimeoutSeconds: number; port?: number },
     containerName: string,
     addLog: (l: string) => void,
   ) {
     const { profile, startupTimeoutSeconds } = opts;
+    const port = opts.port ?? profile.defaultPort;
     if (profile.requiresHealthCheck) {
       addLog(`[runner] Waiting for container (timeout: ${startupTimeoutSeconds}s)…`);
-      const healthy = await this.cmd.waitForHealth(containerName, profile.healthCheckPath, profile.defaultPort, startupTimeoutSeconds * 1000);
+      const healthy = await this.cmd.waitForHealth(containerName, profile.healthCheckPath, port, startupTimeoutSeconds * 1000);
       if (!healthy) {
         let containerLogs = '';
         try { containerLogs = this.cmd.exec(`docker logs ${containerName} 2>&1 | tail -20`); } catch { /* ignore */ }
-        throw new Error(`Health check failed after ${startupTimeoutSeconds}s.\nPath: GET localhost:${profile.defaultPort}${profile.healthCheckPath}\nLogs:\n${containerLogs}`);
+        throw new Error(`Health check failed after ${startupTimeoutSeconds}s.\nPath: GET localhost:${port}${profile.healthCheckPath}\nLogs:\n${containerLogs}`);
       }
       addLog(`[runner] Container is healthy`);
       return;

@@ -14,7 +14,7 @@ export class DeploymentsService {
   stop(userId: string, projectId: string, deploymentId: string) { return this.crud.stop(userId, projectId, deploymentId); }
   restart(userId: string, projectId: string, deploymentId: string) { return this.crud.restart(userId, projectId, deploymentId); }
   destroy(userId: string, projectId: string, deploymentId: string) { return this.crud.destroy(userId, projectId, deploymentId); }
-  rollback(userId: string, projectId: string, deploymentId: string) { return this.crud.rollback(userId, projectId, deploymentId); }
+  rollback(userId: string, projectId: string, deploymentId: string, targetDeploymentId?: string) { return this.crud.rollback(userId, projectId, deploymentId, targetDeploymentId); }
   getBuildConfig(userId: string, projectId: string) { return this.crud.getBuildConfig(userId, projectId); }
   updateBuildConfig(userId: string, projectId: string, dto: any) { return this.crud.updateBuildConfig(userId, projectId, dto); }
   detectFramework(userId: string, projectId: string, dto: any) { return this.crud.detectFramework(userId, projectId, dto); }

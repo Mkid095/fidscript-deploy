@@ -9,6 +9,16 @@ export interface BuildResult {
   buildLogs: string;
   success: boolean;
   error?: string;
+  /**
+   * The port the built application listens on, when the provider knows it.
+   *
+   * The deployment profile's `defaultPort` is only a guess: a Vite app
+   * listens on 4173, Astro on 4321 and SvelteKit on 5173, but all of them
+   * were routed to the profile's 3000 and answered every request with a
+   * 404. The provider detects the real port, so it has to survive the
+   * build → deploy boundary. Undefined means "use the profile default".
+   */
+  port?: number;
 }
 
 /**
