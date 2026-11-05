@@ -12,6 +12,8 @@ export interface User {
   emailVerifiedAt: string | null;
   preferredAuthMethod: 'PASSWORD' | 'MAGIC_CODE';
   createdAt: string;
+  /** The credential types the user has — PASSWORD, MAGIC_CODE, PASSKEY. */
+  credentials?: Array<{ type: 'PASSWORD' | 'MAGIC_CODE' | 'PASSKEY' }>;
 }
 
 export interface AuthResponse {

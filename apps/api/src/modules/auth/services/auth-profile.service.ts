@@ -17,6 +17,13 @@ export class AuthProfileService {
         id: true, email: true, name: true, avatarUrl: true, role: true,
         mfaEnabled: true, mustChangePassword: true, preferredAuthMethod: true,
         lastLoginAt: true, createdAt: true,
+        // The credential TYPES, never the secrets. The dashboard needs to
+        // know whether the user has a password: a magic-code-only user
+        // creates one, and a user with a password must prove it. Without
+        // this the change-password page asked for nothing and the API
+        // refused the empty password — the first operator could not set
+        // their own.
+        credentials: { select: { type: true } },
       },
     });
     if (!user) throw new NotFoundException('User not found');
