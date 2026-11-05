@@ -54,7 +54,11 @@ http:
     # get their OWN router and their own certificate. One router covering
     # both zones asks for a single certificate, the token cannot solve the
     # other zone's challenge, and the whole request fails — taking the
-    # fidscript.com name down with it. HTTP-01 needs no API token.
+    # fidscript.com name down with it.
+    #
+    # DNS-01 rather than HTTP-01: an HTTP-01 challenge needs port 80 to be
+    # reachable from the internet, and on a host whose only public entry is
+    # a proxied HTTPS one it is not.
     whatsapp-console:
       rule: 'Host(`whatsapp.__DOMAIN__`)'
       service: whatsapp-console
@@ -64,7 +68,7 @@ http:
       rule: 'Host(`whatsapp.nextmavens.com`)'
       service: whatsapp-console
       entryPoints: [websecure]
-      tls: { certResolver: letsencrypt-http }
+      tls: { certResolver: letsencrypt-dns }
     whatsapp-api:
       rule: 'Host(`whatsappapi.__DOMAIN__`)'
       service: whatsapp-api
@@ -81,7 +85,7 @@ http:
       rule: 'Host(`registry.nextmavens.com`)'
       service: npm-registry
       entryPoints: [websecure]
-      tls: { certResolver: letsencrypt-http }
+      tls: { certResolver: letsencrypt-dns }
 
     # ── artifact storage for mobile and desktop builds ──────────────────────
     artifacts:
@@ -93,7 +97,7 @@ http:
       rule: 'Host(`storage.nextmavens.com`)'
       service: artifacts
       entryPoints: [websecure]
-      tls: { certResolver: letsencrypt-http }
+      tls: { certResolver: letsencrypt-dns }
 
   services:
     instant-console:

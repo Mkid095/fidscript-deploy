@@ -12,34 +12,37 @@ This is the plan, and the state of each step.
 
 | Compose project | Config | Services |
 |---|---|---|
-| `self-hosting` | `instant/self-hosting/docker-compose.with-caddy.yml` | Instant's Postgres, the Instant server, the www console, RustFS, the Maven repository, **and Caddy** |
+| `docker` | `/opt/fidscript-deploy/installer/docker/` | **the FIDScript platform** — Traefik, the API, the dashboard, Postgres, pgbouncer, redis, nats, MinIO, Stalwart |
+| `self-hosting` | `instant/self-hosting/docker-compose.with-caddy.yml` | Instant's Postgres, the Instant server, the www console, RustFS, the Maven repository, and Caddy (**stopped**) |
 | `next-mavens-evolution-api` | `/home/whatsapp/next-mavens-evolution-api/` | the Evolution API, its Postgres and Redis, the WhatsApp console |
 | `nextmavens-registry` | `/opt/nextmavens-registry/` | Verdaccio (the npm registry) |
-| — | the FIDScript platform | **not deployed here** |
 
-**Caddy is the only thing holding 80 and 443.** It fronts all three stacks,
-and the platform's own Traefik wants the same two ports — so the platform
-cannot be deployed on this box until Caddy steps aside.
+**The platform's Traefik holds 80 and 443.** It replaced Caddy as the edge on
+2026-11-05 (§4a). Caddy is stopped but still on disk, so the edge can be
+rolled back in one command.
 
 ## 2. The DNS is already right
 
 Every hostname below already points at this box (72.61.89.110). The DNS was
 configured for the consolidated shape before the edge was.
 
-| Hostname | Now |
-|---|---|
-| `fidscript.com` (the apex) | 525 |
-| `www.` `dash.` `mail.` `emails.` `files.` `whatsapp.` `whatsappapi.` `whatsappdocs.` `automations.` | 525 |
-| `deploy.fidscript.com`, `api.deploy.`, `app.deploy.`, `imap.deploy.`, `jmap.deploy.`, `storage.deploy.`, `stalwart-admin.deploy.` | 525 |
-| `instant.fidscript.com` | **307 ✓** |
-| `apiinstant.fidscript.com` | **200 ✓** |
-| `registry.nextmavens.com` | **200 ✓** |
-| `storage.nextmavens.com` | 502 |
-| `whatsapp.nextmavens.com` | 200 |
+| Hostname | Now (before the cutover) | Now |
+|---|---|---|
+| `fidscript.com` (the apex) | 525 | **the dashboard ✓** |
+| `app.fidscript.com` | 525 | **the dashboard ✓** |
+| `api.fidscript.com` | 525 | **the API ✓** |
+| `mail.` `imap.` `jmap.` `stalwart-admin.fidscript.com` | 525 | **the mail server ✓** |
+| `storage.fidscript.com` | 525 | **the MinIO console ✓** |
+| `*.apps.fidscript.com` | 525 | **the deployed applications ✓** |
+| `instant.fidscript.com` | 307 | 307 ✓ |
+| `apiinstant.fidscript.com` | 200 | 200 ✓ |
+| `registry.nextmavens.com` | 200 | 200 ✓ — route published; certificate pending |
+| `storage.nextmavens.com` | 502 | 502 — the host service is down |
+| `whatsapp.nextmavens.com` | 200 | 200 ✓ — route published; certificate pending |
 
-**525** means Cloudflare cannot complete TLS with the origin: Caddy has no
-site block and no certificate for those names. They are not "broken" so much
-as *unserved*.
+**525** means Cloudflare cannot complete TLS with the origin: Caddy had no
+site block and no certificate for those names. They were not "broken" so much
+as *unserved* — and they are served now.
 
 Two wildcards were added today for the platform's applications:
 
@@ -106,9 +109,75 @@ not its own.)
 | 2 | Write the static routes for the other products (`installer/config/traefik/products.yml`) | none — not deployed | **done** |
 | 3 | Have the installer publish those routes and join the other stacks' networks | none — not deployed | **done** |
 | 4 | Bring Traefik up on 8080/8443 and verify every route | none — the live edge is untouched | **done** |
-| 5 | Stop Caddy, move Traefik to 80/443, verify every hostname | a few minutes of downtime | to do |
-| 6 | Link the other products from the platform's dashboard | none | to do |
-| 7 | Re-point `registry.` / `storage.` / `whatsapp.` on `nextmavens.com` at Traefik too | none | to do |
+| 5 | Stop Caddy, move Traefik to 80/443, verify every hostname | a few minutes of downtime | **done** — 2026-11-05 |
+| 6 | Link the other products from the platform's dashboard | none | **done** — the Applications screen |
+| 7 | Re-point `registry.` / `storage.` / `whatsapp.` on `nextmavens.com` at Traefik too | none | **done** — the routes exist; their certificates are waiting on Let's Encrypt |
+
+## 4a. The cutover, as it actually happened (2026-11-05)
+
+The platform was installed on this host for the first time: the repository
+cloned to `/opt/fidscript-deploy`, the wizard run against the real
+Cloudflare account (nine DNS records created), both images built from source,
+and the core stack brought up.
+
+**The edge moved.** Caddy was stopped and the platform's Traefik took 80 and
+443. Everything that had been behind Caddy is now behind Traefik, on the
+same hostnames, with the same upstreams:
+
+| Hostname | Serves | After |
+|---|---|---|
+| `fidscript.com` | **the platform's dashboard** | 307 → `/projects` |
+| `app.fidscript.com` | the dashboard, second name | 307 |
+| `api.fidscript.com` | the API | 404 at the root (`/api/v1/…` serves) |
+| `instant.fidscript.com` | the Instant console | 307 → `/dash` |
+| `apiinstant.fidscript.com` | the Instant backend | 200 |
+| `realtime.` / `cliinstant.` | the Instant backend | 200 |
+| `instantmcp.fidscript.com` | the Instant MCP bridge | 405 — POST only, which is correct |
+| `maven.fidscript.com` | the Maven repository | 404 — the artifact directory is empty |
+| `whatsapp.fidscript.com` | the WhatsApp console | 200 |
+| `whatsappapi.fidscript.com` | the WhatsApp API | 200 |
+| `registry.fidscript.com` | the npm registry | 200 |
+| `files.fidscript.com` | the artifact store | 502 — the host service is down |
+| `storage.fidscript.com` | the MinIO console | 403 — unauthenticated, which is correct |
+| `jmap.` / `stalwart-admin.fidscript.com` | the mail server | 302 |
+
+The platform's own API answers healthy: the database, redis, nats and storage
+all report up.
+
+**The firewall moved too.** The rule that restricted the Instant MCP bridge to
+Caddy's address now names the *edge* — Traefik — and resolves its address
+from docker at apply time, so it survives either container being restarted
+and a rollback to Caddy keeps working.
+
+### Three things the cutover found that reading the code did not
+
+1. **A router across two Cloudflare zones takes both names down.** A router
+   serving `registry.fidscript.com || registry.nextmavens.com` asks for ONE
+   certificate covering both. The token holds the fidscript.com zone, so the
+   other zone's challenge could not be solved, the whole request failed, and
+   the fidscript.com name lost its certificate too. Three routers were
+   affected. Each name now has its own router.
+2. **The platform advertised an API hostname it did not serve.**
+   `api.{domain}` is what `PLATFORM_PUBLIC_URL`, the DNS record and the
+   setup summary all name — and it had no router, so it had no certificate
+   and the URL the operator was given did not work. It has one now.
+3. **The API image only built when the workspace packages happened to be
+   built.** Their `dist` is gitignored, so a fresh clone had no types for the
+   api's compiler to resolve. The image built on a developer machine and
+   failed on a clean one. The Dockerfile now builds the packages it compiles
+   against.
+
+### What the cutover could not settle
+
+**Port 80 is not reachable from the internet on this host.** An external
+fetch of `http://registry.nextmavens.com` times out. So an HTTP-01
+challenge is impossible here — every certificate has to come from DNS-01,
+which needs the token to hold the zone. The `nextmavens.com` zone is at
+Cloudflare and the token holds it, but Let's Encrypt's per-identifier limit
+(5 failed authorizations per hour) was reached during the first attempts, and
+the three `nextmavens.com` names are waiting for the window to clear. Their
+ROUTES are published and correct; their certificates are the only thing
+missing, and the registry is reachable meanwhile at `registry.fidscript.com`.
 
 ## 5. Another live bug this surfaced
 
