@@ -430,6 +430,21 @@ services:
       TRAEFIK_DYNAMIC_DIR: /etc/traefik/dynamic
       # The guided one-line installer, served at /install.sh.
       INSTALL_SCRIPT_PATH: /opt/fidscript-install/install.sh
+      # ── The image registry (the app-runtime add-on) ───────────────────────
+      # A built image lives in the host's Docker daemon and nowhere else, so
+      # a pruned daemon loses it and the deployment cannot be rolled back to
+      # it. When a registry is reachable, the deployment engine also pushes
+      # the image there, so a copy survives the build host.
+      #
+      # The address defaults to the add-on's container on the platform's own
+      # network; the platform asks the registry whether it is there rather
+      # than trusting the setting, so a platform without the add-on is not
+      # left failing a login on every build.
+      APP_RUNTIME_REGISTRY_URL: ${APP_RUNTIME_REGISTRY_URL:-}
+      APP_RUNTIME_REGISTRY_USERNAME: ${APP_RUNTIME_REGISTRY_USERNAME:-admin}
+      # The file only exists when the add-on is installed; the entrypoint
+      # skips a missing one, and the push is then simply skipped too.
+      APP_RUNTIME_REGISTRY_PASSWORD_FILE: /run/secrets/app_runtime_registry_password
       # ── Instant BaaS — the project's data plane ──────────────────────────
       # The server-side URL is the add-on's container on the shared network,
       # so the api does not bounce the request out through the edge. The

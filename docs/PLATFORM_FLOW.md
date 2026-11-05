@@ -296,7 +296,7 @@ These are the places to work next. Each names the file to change.
 | # | Seam | Where |
 |---|------|-------|
 | 1 | **The build no longer blocks the api, but there is still no concurrency cap.** `docker build` was `execSync`; it now runs asynchronously and streams its output, so the api stays responsive and the operator watches the build live. What is still missing is a cap on how many builds run at once — the queue is the next step, and the registry is what it is for. | `runner/shell-runner.service.ts`, `runner/build-runner.service.ts` |
-| 2 | **The registry is provisioned but nothing uses it.** No code path pushes an image. | `runner/*`, `services/deployment-routes.service.ts` |
+| 2 | **The registry stores the image, but the deployment still runs the local one.** A built image is pushed to the registry after every build, so it survives a pruned Docker daemon and can be pulled by another node. Running the deployment FROM the registry is the next step — it needs the registry to be reachable and authenticated at deploy time, which is a new way for a deploy to fail on a single node. | `runner/image-registry.service.ts` |
 | 3 | **No preview deployments.** Every deployment replaces the previous one at the same URL. The routing mechanism to support them now exists. | `runner/deployment-state.service.ts`, `schema.prisma` |
 | 4 | **The WhatsApp management layer needs an image the operator supplies.** The repository's copy of that app is missing files, so it cannot be built here; it sits behind a `management` compose profile. | `installer/addons/whatsapp/` |
 | 5 | **Instant's web console has no published image.** It is behind a `dashboard` compose profile for the same reason. | `installer/addons/instant/` |

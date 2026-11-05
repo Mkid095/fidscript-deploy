@@ -2,6 +2,7 @@ import { Injectable, Logger } from '@nestjs/common';
 import { BuildProvider, BuildResult } from '../providers/build-provider.interface';
 import { getProfile } from '../types/deployment-profile';
 import { DockerRunService } from './docker-run.service';
+import { ImageRegistryService } from './image-registry.service';
 import { DockerBuildWorkspaceService } from '../providers/docker-build-workspace.service';
 import { RuntimeEnv } from '../types/deployment-profile';
 export { RuntimeEnv } from '../types/deployment-profile';
@@ -35,6 +36,7 @@ export class BuildRunnerService {
   constructor(
     private dockerRun: DockerRunService,
     private workspace: DockerBuildWorkspaceService,
+    private registry: ImageRegistryService,
   ) {}
 
   async buildAndDeploy(
@@ -79,6 +81,21 @@ export class BuildRunnerService {
       }
 
       this.log(onLog, `[runner] Build succeeded in ${buildResult.buildDurationMs}ms`);
+
+      // Store the image durably. A built image lives in the host's Docker
+      // daemon and nowhere else — if that storage is pruned, the image is
+      // gone and the deployment cannot be rolled back to it. The registry
+      // is optional: without one, the deployment behaves exactly as before.
+      try {
+        const pushed = await this.registry.publish(buildResult.imageTag);
+        if (pushed) this.log(onLog, `[runner] Pushed ${pushed}`);
+      } catch (err) {
+        // The image is built and the deployment can still run. A failed
+        // push is a durability problem, not a deployment failure.
+        const msg = err instanceof Error ? err.message : String(err);
+        this.log(onLog, `[runner] Could not push the image to the registry: ${msg}`);
+        this.logger.warn(`[runner] Registry push failed: ${msg}`);
+      }
 
       // Deploy
       if (opts.onDeploy) await opts.onDeploy();
