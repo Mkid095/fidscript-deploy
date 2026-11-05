@@ -132,13 +132,14 @@ export const ADDON_APPLICATIONS: Record<string, ApplicationPresentation> = {
     mcp: null,
   },
   observability: {
-    host: null,
+    // Grafana is the stack's console, and it has its own hostname like every
+    // other application: grafana.{domain}.
+    host: 'grafana',
     path: null,
-    // Grafana is published on the host rather than routed through the edge.
-    port: 3000,
+    port: null,
     icon: 'analytics',
     installable: true,
-    apiHost: null,
+    apiHost: 'prometheus',
     mcp: null,
   },
   'app-runtime': {

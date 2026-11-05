@@ -47,5 +47,8 @@ Instant — API	apiinstant	A	IP	instant
 Instant — realtime	realtime	A	IP	instant
 Instant — CLI	cliinstant	A	IP	instant
 Instant — MCP	instantmcp	A	IP	instant
+Observability — Grafana	grafana	A	IP	observability
+Observability — Prometheus	prometheus	A	IP	observability
+Observability — Loki	loki	A	IP	observability
 Package manager — npm	registry	A	IP	package-manager
 Package manager — Maven	maven	A	IP	package-manager

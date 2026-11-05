@@ -3,11 +3,10 @@ title: Observability stack
 summary: Prometheus for metrics, Grafana for dashboards, Loki for logs, plus cAdvisor and a Postgres exporter.
 requires: []
 conflicts: []
+# Grafana, Prometheus and Loki are published by hostname through Traefik, so
+# they take no host port. Only cAdvisor does.
 host_ports:
-  - 9090
-  - 3000
-  - 3100
-  - 8081
+  - 8082
 secrets:
   # Grafana runs as uid 472 and reads the password from the mounted secret,
   # so the file has to be owned by that uid — Docker preserves the host

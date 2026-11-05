@@ -229,19 +229,35 @@ step_addons() {
   fi
 
   echo ""
-  prompt "Add-ons to install (numbers, comma separated, empty for none): "
+  echo "  The observability stack is included by default — a platform you"
+  echo "  cannot see is a platform you cannot run. Press Enter to take it,"
+  echo "  or type the numbers of the others you want as well."
+  echo ""
+  prompt "Add-ons to install (numbers, comma separated): "
   read -r choice
 
   local selected=() i
-  for i in $(echo "$choice" | tr ',' ' '); do
-    [[ "$i" =~ ^[0-9]+$ ]] || continue
-    local idx=$((i - 1))
-    if [[ $idx -ge 0 && $idx -lt ${#ids[@]} ]]; then
-      selected+=("${ids[$idx]}")
-    else
-      warn "No add-on number ${i}"
+  if [[ -z "${choice// }" ]]; then
+    # Empty means the default set: the observability stack.
+    local default_idx=""
+    for i in "${!ids[@]}"; do
+      if [[ "${ids[$i]}" == "observability" ]]; then default_idx=$((i + 1)); fi
+    done
+    if [[ -n "$default_idx" ]]; then
+      selected+=("observability")
+      info "Installing the observability stack by default."
     fi
-  done
+  else
+    for i in $(echo "$choice" | tr ',' ' '); do
+      [[ "$i" =~ ^[0-9]+$ ]] || continue
+      local idx=$((i - 1))
+      if [[ $idx -ge 0 && $idx -lt ${#ids[@]} ]]; then
+        selected+=("${ids[$idx]}")
+      else
+        warn "No add-on number ${i}"
+      fi
+    done
+  fi
 
   if [[ ${#selected[@]} -eq 0 ]]; then
     info "Skipped — no optional components."
