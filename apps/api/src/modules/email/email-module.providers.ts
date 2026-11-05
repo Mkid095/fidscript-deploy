@@ -13,6 +13,7 @@ import { StalwartJmapService } from './stalwart/stalwart-core.service';
 import { StalwartAccountService } from './stalwart/stalwart-account.service';
 import { StalwartIdentityService } from './stalwart/stalwart-identity.service';
 import { PlatformMailService } from './platform-mail.service';
+import { MailConsoleService } from './services/mail-console.service';
 
 import { EmailDomainService } from './services/domain.service';
 import { EmailMailboxService, MailboxCrudService, MailboxAccessService } from './services/mailbox-split-index';
@@ -84,7 +85,7 @@ export const emailProviders = [
   MailDnsService, DkimService,
   StalwartJmapService, StalwartAccountService, StalwartIdentityService,
   StalwartEmailProvider, { provide: EMAIL_PROVIDER, useExisting: StalwartEmailProvider },
-  WebhookService, EmailMailboxListService, EmailBootstrapService, PlatformMailService,
+  WebhookService, EmailMailboxListService, EmailBootstrapService, PlatformMailService, MailConsoleService,
   PlatformMailboxMessageService, PlatformMailboxMessageQueryService, PlatformMailboxMessageQueryHelpers,
   PlatformMailboxMessageActionService, PlatformMailboxJmapClientService,
   AttachmentConfigService, AttachmentConfigCrudService, AttachmentConfigValidationService,

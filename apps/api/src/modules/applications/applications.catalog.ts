@@ -78,8 +78,11 @@ export const CORE_APPLICATIONS: Record<string, ApplicationPresentation> = {
     mcp: null,
   },
   email: {
-    host: 'stalwart-admin',
-    path: '/admin',
+    // The application's own page in the dashboard: the console, the
+    // credential to log into it with, the client settings and the domains
+    // the platform holds. The console itself is one link away from there.
+    host: null,
+    path: '/applications/email',
     port: null,
     icon: 'mail',
     installable: false,
