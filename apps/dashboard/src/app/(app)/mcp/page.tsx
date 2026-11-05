@@ -3,16 +3,13 @@
 import { useState } from 'react';
 import { HugeiconsIcon } from '@hugeicons/react';
 import {
-  Key01Icon,
   CheckmarkCircle01Icon,
   CopyIcon,
-  Rocket01Icon,
   ComputerTerminal01Icon,
   Plug01Icon,
   AiBrain01Icon,
   CheckmarkCircle02Icon,
 } from '@hugeicons/core-free-icons';
-import { Button, Spinner, Card } from '@fidscript/ui';
 
 import { useAuth } from '@/contexts/auth-context';
 import { useAccountCredentials } from '@/hooks/use-account-credentials';
@@ -71,7 +68,7 @@ const CLI_COMMANDS = [
 ];
 
 export default function McpPage() {
-  const { getSdk } = useAuth();
+  const {getSdk} = useAuth();
   const {
     keys,
     selectedKey,
@@ -83,7 +80,6 @@ export default function McpPage() {
 
   const mcpConfig = selectedKey && showKey ? getMcpConfig(showKey, API_BASE) : '';
   const cliCmd = selectedKey && showKey ? getCliLoginCommand(showKey) : '';
-  const sdkCode = selectedKey && showKey ? getSdkInitCode(showKey, API_BASE) : '';
 
   return (
     <div className="max-w-3xl mx-auto space-y-8">

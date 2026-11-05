@@ -1,6 +1,6 @@
 'use client';
 
-import { useRef } from 'react';
+import { useEffect, useRef } from 'react';
 import { Card, EmptyState, Spinner } from '@fidscript/ui';
 import type { LogEntry } from '@/types';
 
@@ -22,6 +22,15 @@ interface LogListProps {
 
 export function LogList({ logs, loading, error, autoScroll, onClear }: LogListProps) {
   const listRef = useRef<HTMLDivElement>(null);
+
+  // Follow the tail. The prop was accepted and then ignored, so the
+  // "auto-scroll" toggle did nothing and new lines pushed the view out of
+  // sight exactly when you were watching them arrive.
+  useEffect(() => {
+    if (!autoScroll) return;
+    const el = listRef.current;
+    if (el) el.scrollTop = el.scrollHeight;
+  }, [autoScroll, logs]);
 
   return (
     <>

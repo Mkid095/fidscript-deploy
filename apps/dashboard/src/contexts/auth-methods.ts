@@ -15,7 +15,6 @@ export async function loginMethod(
   const res = await sdk.auth.login(email, password);
   storeTokens(res.accessToken, res.refreshToken);
   buildSdk(res.accessToken);
-  const user = await sdkRef.current!.auth.me();
   window.location.href = getNextRoute();
 }
 
@@ -86,7 +85,6 @@ export async function verifyMagicCodeMethod(
   const res = await sdk.auth.verifyMagicCode(email, code);
   storeTokens(res.accessToken, res.refreshToken);
   buildSdk(res.accessToken);
-  const user = await sdkRef.current!.auth.me();
   window.location.href = getNextRoute();
 }
 

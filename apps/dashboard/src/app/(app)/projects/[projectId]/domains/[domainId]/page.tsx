@@ -3,7 +3,6 @@
 import { useState } from 'react';
 import { useParams } from 'next/navigation';
 import Link from 'next/link';
-import { Badge } from '@fidscript/ui';
 
 import OverviewTab from './overview-tab';
 import DnsTab from './dns-tab';

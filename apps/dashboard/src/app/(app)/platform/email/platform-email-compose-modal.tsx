@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { Button, Modal } from '@fidscript/ui';
+import { Modal } from '@fidscript/ui';
 import type { StorageBackend } from '@fidscript-deploy/sdk';
 import { ComposeForm } from './platform-email-compose-form';
 

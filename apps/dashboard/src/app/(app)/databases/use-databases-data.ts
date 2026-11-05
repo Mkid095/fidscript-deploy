@@ -31,7 +31,12 @@ export function useDatabasesData(
   }, [sdk, shellProjectId]);
 
   useEffect(() => {
-    if (!projectId) return;
+    if (!projectId) {
+      // Nothing to load — and the loading flag has to be cleared, or the
+      // page spins forever instead of saying there is nothing here.
+      setLoadingDatabases(false);
+      return;
+    }
     async function loadDatabases() {
       setLoadingDatabases(true);
       setError(null);

@@ -14,7 +14,6 @@ import {
 } from '@hugeicons/core-free-icons';
 import { Button, Badge } from '@fidscript/ui';
 
-import type { Project, Deployment } from '@/types';
 import { statusMeta, isInFlight } from './services-utils';
 import { DeploymentRow } from './deployment-row';
 import type { ServiceGroup } from './services-utils';

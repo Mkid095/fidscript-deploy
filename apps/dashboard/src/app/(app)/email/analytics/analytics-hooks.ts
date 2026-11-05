@@ -1,4 +1,3 @@
-import type { FidscriptSDK } from '@fidscript-deploy/sdk';
 
 import { useCallback, useEffect, useState } from 'react';
 

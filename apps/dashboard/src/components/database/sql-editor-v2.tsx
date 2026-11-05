@@ -9,15 +9,7 @@ import { SqlEditorResultsPane } from './SqlEditorResultsPane';
 // ─── SqlEditorV2 ─────────────────────────────────────────────────────────────
 
 export function SqlEditorV2() {
-  const {
-    tabs, activeTabId, activeTab, setActiveTabId, updateTab, addTab, closeTab,
-    sidebarTab, setSidebarTab, tableSearch, setTableSearch,
-    expandedSchemas, toggleSchema, bySchema, filteredTables, insertTableSQL,
-    resultPaneTab, setResultPaneTab, logsEndRef,
-    ratio, containerRef, handleMouseDown,
-    handleRun, handleEditorMount, isError, result, queryRunning,
-    queryLogs, clearLogs,
-  } = useSqlEditor();
+  const {tabs, activeTabId, activeTab, setActiveTabId, updateTab, addTab, closeTab, sidebarTab, setSidebarTab, tableSearch, setTableSearch, expandedSchemas, toggleSchema, bySchema, filteredTables, insertTableSQL, resultPaneTab, setResultPaneTab, logsEndRef, ratio, containerRef, handleMouseDown, handleRun, handleEditorMount, isError, result, queryRunning, queryLogs} = useSqlEditor();
 
   return (
     <div className="flex h-full min-h-0">

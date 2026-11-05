@@ -3,25 +3,9 @@
 import { useState } from 'react';
 import { HugeiconsIcon } from '@hugeicons/react';
 import {
-  Key01Icon,
-  CheckmarkCircle01Icon,
   ComputerTerminal01Icon,
   CodeIcon,
-  Rocket01Icon,
-  FolderOpenIcon,
-  Database01Icon,
-  HardDriveIcon,
-  Share08Icon,
-  FlashIcon,
-  Clock01Icon,
-  Mail01Icon,
-  GlobalIcon,
-  Activity01Icon,
-  File01Icon,
   Robot02Icon,
-  ShoppingCart01Icon,
-  LockPasswordIcon,
-  Settings01Icon,
   SplitIcon,
 } from '@hugeicons/core-free-icons';
 import type { Project } from '@/types';

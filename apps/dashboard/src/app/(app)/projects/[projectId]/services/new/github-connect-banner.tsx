@@ -4,7 +4,7 @@ import { Card, Button, Input, Spinner } from '@fidscript/ui';
 import { HugeiconsIcon } from '@hugeicons/react';
 import { ArrowLeft01Icon, ArrowRight01Icon, GithubIcon, LockKeyIcon, GitBranchIcon } from '@hugeicons/core-free-icons';
 
-import type { GithubRepo, GithubBranch, GithubStatus } from './new-deploy-types';
+import type { GithubRepo, GithubBranch } from './new-deploy-types';
 
 interface GithubConnectBannerProps {
   onConnect: () => void;

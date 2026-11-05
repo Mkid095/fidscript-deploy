@@ -14,7 +14,7 @@ import { JobDetailHeader } from './job-detail-header';
 import { JobDeleteConfirm } from './job-delete-confirm';
 
 export default function ProjectSchedulerJobDetailPage() {
-  const { getSdk } = useAuth();
+  const {getSdk} = useAuth();
   const router = useRouter();
   const params = useParams();
   const projectId = params.projectId as string;

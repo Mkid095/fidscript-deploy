@@ -2,7 +2,6 @@
 
 import { HugeiconsIcon } from '@hugeicons/react';
 import { CheckmarkCircle01Icon } from '@hugeicons/core-free-icons';
-import { Button } from '@fidscript/ui';
 import { Card } from '@fidscript/ui';
 import { Spinner } from '@fidscript/ui';
 import { useSetupSSE } from '../hooks/use-setup-sse';

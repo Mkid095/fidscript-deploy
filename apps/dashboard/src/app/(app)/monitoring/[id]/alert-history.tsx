@@ -1,7 +1,6 @@
 'use client';
 
 import { Card, EmptyState } from '@fidscript/ui';
-import type { AlertRule } from '@/types';
 
 interface AlertEvaluation {
   id: string;

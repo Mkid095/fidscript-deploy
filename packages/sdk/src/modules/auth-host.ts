@@ -40,7 +40,7 @@ export interface AuthSessionsHost {
   revokeSession(sessionId: string): Promise<unknown>;
   revokeAllSessions(): Promise<unknown>;
   apiKeys(): Promise<{ apiKeys: ApiKeyInfo[] }>;
-  createApiKey(name: string, scopes?: string[]): Promise<ApiKeyInfo & { key: string }>;
+  createApiKey(name: string, permissions?: string[], expiresAt?: string): Promise<ApiKeyInfo & { key: string }>;
   revokeApiKey(keyId: string): Promise<unknown>;
 }
 

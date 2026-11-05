@@ -5,7 +5,7 @@ import { Card } from '@fidscript/ui';
 import { LogToolbar } from './log-toolbar';
 import { LogToggle } from './log-toggle';
 import { LogContent } from './log-content';
-import { LOG_LEVELS, LogLine } from './log-types';
+import { LOG_LEVELS } from './log-types';
 import { useLogBuffer, useLogStream, useLogFilter } from './log-viewer-hooks';
 
 interface LogViewerProps {

@@ -32,7 +32,7 @@ export function useAlertDetail({
   ruleId,
   projectId,
 }: UseAlertDetailOptions): UseAlertDetailReturn {
-  const { getSdk } = useAuth();
+  const {getSdk} = useAuth();
   const [rule, setRule] = useState<AlertRule | null>(null);
   const [channels, setChannels] = useState<NotificationChannel[]>([]);
   const [evaluations, setEvaluations] = useState<AlertEvaluation[]>([]);

@@ -35,7 +35,7 @@ const PLATFORM_API_URL =
 
 type SdkGetter = () => { auth: {
   apiKeys: () => Promise<any>;
-  createApiKey: (name: string, scopes?: string[]) => Promise<any>;
+  createApiKey: (name: string, permissions?: string[], expiresAt?: string) => Promise<any>;
   revokeApiKey: (id: string) => Promise<any>;
 } };
 
@@ -47,7 +47,7 @@ interface UseAccountCredentialsReturn {
   platformApiUrl: string;
   loading: boolean;
   error: string | null;
-  createKey: (name: string) => Promise<void>;
+  createKey: (name: string, expiry?: ExpiryOption) => Promise<void>;
   revokeKey: (id: string) => Promise<void>;
   setExpiryOption: (o: ExpiryOption) => void;
   setSelectedKey: (k: AccountKey) => void;
@@ -84,13 +84,19 @@ export function useAccountCredentials(getSdk: SdkGetter): UseAccountCredentialsR
 
   useEffect(() => { loadKeys(); }, [loadKeys]);
 
-  const createKey = useCallback(async (name: string) => {
+  const createKey = useCallback(async (name: string, expiry?: ExpiryOption) => {
     setLoading(true);
     setError(null);
     try {
       const sdk = getSdk();
-      const expiresAt = expiryDate(expiryOption);
-      const result: any = await sdk.auth.createApiKey(name);
+      // The expiry the operator picked was never sent — every key got the
+      // default. It is passed explicitly so the form's choice is honoured.
+      const option = expiry ?? expiryOption;
+      const result: any = await sdk.auth.createApiKey(
+        name,
+        undefined,
+        option === 'never' ? undefined : expiryDate(option) ?? undefined,
+      );
       // API returns { apiKey: {...}, key: "fsk_..." }
       const apiKey = result.apiKey ?? result;
       const raw: string = (result.key ?? result.apiKey?.id) as string;

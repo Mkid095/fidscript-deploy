@@ -66,7 +66,10 @@ export function AlertActions({ rule, projectId, firingAlert, getSdk, onToggle, o
     setDeleting(true);
     try {
       await getSdk().monitoring.deleteAlertRule(projectId, rule.id);
-      router.push(`/monitoring?project=${projectId}`);
+      // The flat /monitoring page ignores ?project= — it falls back to
+      // whichever project the shell happens to hold, so deleting a rule
+      // dropped the operator onto a DIFFERENT project's monitoring screen.
+      router.push(`/projects/${projectId}/monitoring`);
     } catch (err) {
       onError(err instanceof Error ? err.message : 'Failed to delete rule');
       setDeleting(false);

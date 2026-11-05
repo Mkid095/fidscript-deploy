@@ -2,7 +2,6 @@
 
 import Link from 'next/link';
 import { Card } from '@fidscript/ui';
-import { HugeiconsIcon } from '@hugeicons/react';
 
 import type { SourceType } from './new-deploy-utils';
 import { formatBytes } from './new-deploy-utils';

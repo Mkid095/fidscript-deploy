@@ -61,12 +61,11 @@ export function DomainStep({
   testingConnection,
   connectionTestResult,
 }: DomainStepProps) {
-  const { domainError, validating } = useDomainValidation(platformDomain);
+  const {domainError, validating} = useDomainValidation(platformDomain);
   const derivedRedirectUri = platformDomain
     ? `https://${platformDomain}/api/callback/cloudflare`
     : '';
 
-  const canSubmit =
     platformDomain.trim() && !domainError &&
     adminEmail.trim() && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(adminEmail) &&
     (authMethod === 'MAGIC_CODE' || (

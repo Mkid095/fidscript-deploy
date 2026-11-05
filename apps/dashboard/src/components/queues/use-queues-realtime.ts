@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useRef, useCallback } from 'react';
-import type { FidscriptSDK, RealtimeEventHandler } from '@fidscript-deploy/sdk';
+import type { FidscriptSDK } from '@fidscript-deploy/sdk';
 
 export interface QueueStats {
   pending: number;

@@ -1,7 +1,7 @@
 'use client';
 /* eslint-disable import/order */
 
-import { useEffect, useState, useCallback, type ChangeEvent, type FormEvent } from 'react';
+import { useEffect, useState, useCallback, type ChangeEvent, type FormEvent, useRef } from 'react';
 import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
 import { useAuth } from '@/contexts/auth-context';
@@ -21,6 +21,7 @@ export default function ProjectDatabasesPage() {
   const [creating, setCreating] = useState(false);
   const [newName, setNewName] = useState('');
   const [environment, setEnvironment] = useState<Environment>('production');
+  const nameInputRef = useRef<HTMLInputElement>(null);
   const [toast, setToast] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
 
   const load = useCallback(async () => {
@@ -63,6 +64,7 @@ export default function ProjectDatabasesPage() {
         </div>
         <form onSubmit={create} className="flex items-center gap-2">
           <Input
+            ref={nameInputRef}
             value={newName}
             onChange={(e: ChangeEvent<HTMLInputElement>) => setNewName(e.target.value)}
             placeholder="db-name"
@@ -91,6 +93,14 @@ export default function ProjectDatabasesPage() {
         <EmptyState
           title="No databases yet"
           description="Create your first database to get started with the SDK."
+          action={
+            // Every other list screen carries its action in the empty
+            // state. This one only had it in the header, so the screen
+            // read as unfinished exactly when the operator needs it most.
+            <Button variant="primary" size="sm" onClick={() => nameInputRef.current?.focus()}>
+              Create database
+            </Button>
+          }
         />
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-3">

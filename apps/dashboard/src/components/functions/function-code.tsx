@@ -42,15 +42,7 @@ export function FunctionCode({
   const [version, setVersion] = useState('');
   const [saveMsg, setSaveMsg] = useState<string | null>(null);
 
-  const {
-    code,
-    setCode,
-    loadingCode,
-    editorHeight,
-    containerRef,
-    handleChange,
-    handleReset,
-  } = useFunctionCodeState({ projectId, functionId, runtime, getSdk });
+  const {code, loadingCode, editorHeight, containerRef, handleChange, handleReset} = useFunctionCodeState({ projectId, functionId, runtime, getSdk });
 
   function handleSaveDraft() {
     localStorage.setItem(`fn_draft_${functionId}`, code);

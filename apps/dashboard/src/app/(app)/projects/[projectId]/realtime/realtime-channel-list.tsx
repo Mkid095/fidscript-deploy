@@ -4,9 +4,6 @@ import { HugeiconsIcon } from '@hugeicons/react';
 import { FlashIcon, Delete01Icon, LockKeyIcon, Globe02Icon, RefreshIcon, Add01Icon } from '@hugeicons/core-free-icons';
 import { Button, Card, Input, Spinner } from '@fidscript/ui';
 
-import { useAuth } from '@/contexts/auth-context';
-import { useProjectContext } from '@/contexts/project-context';
-import { useToast } from '@/components/toast-provider';
 
 interface Channel {
   id: string;

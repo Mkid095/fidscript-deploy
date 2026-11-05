@@ -46,7 +46,10 @@ function NewDeploymentPage({ project }: { project: NonNullable<ReturnType<typeof
   const archive = useArchiveUpload({ project, onShowToast: toastAdapter });
 
   function handleStepClick(i: number) {
-    if (i <= Math.max(...newDeploy.completed, newDeploy.stepIndex)) newDeploy.continueStep();
+    // Jump to the step that was clicked. It used to call continueStep()
+    // regardless of which step was clicked, so clicking step 1 while on
+    // step 3 advanced to step 4 instead of going back.
+    if (i <= Math.max(...newDeploy.completed, newDeploy.stepIndex)) newDeploy.goToStep(i);
   }
 
   return (

@@ -4,7 +4,6 @@
  * Holds the type contracts, category metadata, and small rendering helpers used
  * by both the data-fetching hook and the body component. No React, no SDK calls.
  */
-import type { ComponentType } from 'react';
 import {
   FlashIcon, Rocket01Icon, Database01Icon, SourceCodeIcon, Share08Icon,
   Clock01Icon, Mail01Icon, HardDriveIcon,

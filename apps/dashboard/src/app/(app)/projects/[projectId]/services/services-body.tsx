@@ -7,7 +7,6 @@ import { Rocket01Icon, GithubIcon } from '@hugeicons/core-free-icons';
 
 import type { ServiceGroup } from './services-utils';
 import { ServiceCard } from './service-card';
-import { ServicesSkeleton } from './services-skeleton';
 import { isInFlight } from './services-utils';
 
 interface ServicesBodyProps {
@@ -34,7 +33,6 @@ export function ServicesBody({
   onToggleService,
 }: ServicesBodyProps) {
   const router = useRouter();
-  const healthyCount = services.filter(s => s.deployments[0]?.status === 'SUCCESS').length;
   const activeCount = services.filter(s => isInFlight(s.deployments[0]?.status)).length;
 
   return (

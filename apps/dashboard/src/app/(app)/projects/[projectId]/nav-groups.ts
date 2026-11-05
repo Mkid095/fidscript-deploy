@@ -15,8 +15,7 @@ import {
   Settings01Icon,
   Layers01Icon,
   InternetIcon,
-  ArrowRight01Icon,
-} from '@hugeicons/core-free-icons';
+  } from '@hugeicons/core-free-icons';
 import type { ProjectMode } from './use-project-mode';
 
 export interface NavItem {

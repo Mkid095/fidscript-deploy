@@ -39,7 +39,6 @@ export function PasswordStrength({ password }: PasswordStrengthProps) {
   if (strength === 'none') return null;
 
   const bars = [0, 1, 2].map((i) => {
-    const level = i === 0 ? 'weak' : i === 1 ? 'fair' : 'strong';
     const active = strength === 'weak' ? i === 0 : strength === 'fair' ? i <= 1 : true;
     return (
       <div

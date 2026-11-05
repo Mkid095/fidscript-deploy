@@ -21,9 +21,15 @@ export function applyAuthSessionsMethods(host: AuthSessionsHost): void {
   host.apiKeys = () =>
     client.get<{ apiKeys: ApiKeyInfo[] }>('/api/v1/auth/api-keys');
 
-  host.createApiKey = (name, scopes) =>
-    client.post<ApiKeyInfo & { key: string }>(`/api/v1/auth/api-keys`,
-      scopes !== undefined ? { name, scopes } : { name });
+  // The API's CreateApiKeyDto declares `permissions` and `expiresAt`, and
+  // runs with forbidNonWhitelisted — so sending `scopes` was rejected
+  // outright, and the expiry the operator picked was never sent at all.
+  host.createApiKey = (name, permissions, expiresAt) =>
+    client.post<ApiKeyInfo & { key: string }>(`/api/v1/auth/api-keys`, {
+      name,
+      ...(permissions !== undefined ? { permissions } : {}),
+      ...(expiresAt ? { expiresAt } : {}),
+    });
 
   host.revokeApiKey = (keyId) =>
     client.delete(`/api/v1/auth/api-keys/${keyId}`);

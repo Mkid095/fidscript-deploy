@@ -1,4 +1,3 @@
-import type { QueueMessage } from './use-queues-realtime';
 
 export const STATUS_COLORS: Record<string, string> = {
   pending:      'text-[var(--warning)] bg-[var(--warning)]/10 border-[var(--warning)]/20',

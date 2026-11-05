@@ -1,7 +1,7 @@
 'use client';
 
 import { HugeiconsIcon } from '@hugeicons/react';
-import { CheckmarkCircle03Icon, AlertCircleIcon } from '@hugeicons/core-free-icons';
+import { AlertCircleIcon } from '@hugeicons/core-free-icons';
 
 interface FunctionCodeMetricsProps {
   invocations?: number;

@@ -18,7 +18,7 @@ import {
 type SettingsTab = 'connection' | 'migrations' | 'backups';
 
 export default function SettingsPage() {
-  const { getSdk } = useAuth();
+  const {getSdk} = useAuth();
   const { database, databaseId } = useDatabase();
   const [activeTab, setActiveTab] = useState<SettingsTab>('connection');
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);

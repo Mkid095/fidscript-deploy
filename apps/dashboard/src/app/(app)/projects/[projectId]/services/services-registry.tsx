@@ -3,7 +3,7 @@
 // Services page — registry of deployed applications for this project.
 // Renders real `Deployment` entities from DEPL-01 (list) with realtime updates.
 
-import { useMemo, useCallback, useState, useEffect } from 'react';
+import { useMemo, useCallback, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import type { Deployment } from '@/types';
 

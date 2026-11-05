@@ -1,6 +1,5 @@
 'use client';
 
-import type { DomainHealth } from '@fidscript-deploy/sdk';
 import { Button, Card, Spinner } from '@fidscript/ui';
 
 import { useAuth } from '@/contexts/auth-context';

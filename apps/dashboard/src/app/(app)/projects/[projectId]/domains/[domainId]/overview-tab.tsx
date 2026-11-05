@@ -16,14 +16,13 @@ function healthScore(health: { score?: number | null } | null): number {
 }
 
 export default function OverviewTab({ projectId, domainId }: Props) {
-  const { getSdk } = useAuth();
+  const {getSdk} = useAuth();
   const { domain, health, loading, error } = useDomainOverview(projectId, domainId, getSdk);
 
   if (loading) return <div className="flex justify-center py-12"><Spinner size="md" /></div>;
   if (error || !domain) return <p className="text-[var(--danger)] text-sm p-4">{error ?? 'Not found'}</p>;
 
   const score = healthScore(health);
-  const scoreColor = score >= 90 ? 'text-[var(--success)]' : score >= 60 ? 'text-yellow-400' : 'text-[var(--danger)]';
 
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">

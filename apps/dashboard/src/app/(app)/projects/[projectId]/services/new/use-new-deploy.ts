@@ -73,6 +73,8 @@ export function useNewDeploy({ project, getSdk, onShowToast, onDeploySuccess }: 
   }, [stepIndex]);
 
   const back = useCallback(() => setStepIndex(i => Math.max(i - 1, 0)), []);
+  /** Jump to a step. Used by the stepper, which the operator can click. */
+  const goToStep = useCallback((i: number) => setStepIndex(Math.max(0, Math.min(i, 3))), []);
 
   const runDetection = useCallback(async () => {
     if (!computedGitUrl || buildPlan || detecting) return;
@@ -137,6 +139,6 @@ export function useNewDeploy({ project, getSdk, onShowToast, onDeploySuccess }: 
     setDockerfilePath, setCredentials, setEnvText, setAutoDeploy, setBuildPlan,
     setShowAdvanced, setArchiveFile, setUploadedArchive,
     setSubdomain, setAssignedDomainId,
-    continueStep, back, runDetection, deploy,
+    continueStep, back, goToStep, runDetection, deploy,
   };
 }

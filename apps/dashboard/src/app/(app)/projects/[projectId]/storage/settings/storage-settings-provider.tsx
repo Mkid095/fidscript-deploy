@@ -1,6 +1,6 @@
 'use client';
 
-import { Card, Button, Input } from '@fidscript/ui';
+import { Card } from '@fidscript/ui';
 import { HugeiconsIcon } from '@hugeicons/react';
 import { Database01Icon, CloudIcon, TelegramIcon, HardDriveIcon, CheckmarkCircle01Icon, Cancel01Icon } from '@hugeicons/core-free-icons';
 

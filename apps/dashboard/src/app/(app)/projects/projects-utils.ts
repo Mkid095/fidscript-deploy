@@ -1,6 +1,5 @@
 // Shared utilities for the projects page
 
-import type { Project } from '@/types';
 
 // Must match the Prisma ProjectType enum exactly (API rejects anything else).
 export type ProjectType = 'frontend' | 'backend' | 'worker' | 'cron' | 'docker' | 'static';

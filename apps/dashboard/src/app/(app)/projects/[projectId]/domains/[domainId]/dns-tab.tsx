@@ -1,7 +1,6 @@
 'use client';
 
-import { useState, useCallback } from 'react';
-import type { DnsRecord } from '@fidscript-deploy/sdk';
+import { useState } from 'react';
 import { Button, Card, Badge, Spinner, Toast } from '@fidscript/ui';
 
 import { useAuth } from '@/contexts/auth-context';

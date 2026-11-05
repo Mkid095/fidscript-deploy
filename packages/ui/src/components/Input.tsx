@@ -6,14 +6,21 @@ interface InputProps extends React.InputHTMLAttributes<HTMLInputElement> {
   hint?: string;
 }
 
-export function Input({
-  label,
-  error,
-  hint,
-  className = '',
-  id,
-  ...props
-}: InputProps) {
+/**
+ * Forwards its ref to the underlying <input>, so a caller can focus it —
+ * for example from an empty state's "Create" button.
+ */
+export const Input = React.forwardRef<HTMLInputElement, InputProps>(function Input(
+  {
+    label,
+    error,
+    hint,
+    className = '',
+    id,
+    ...props
+  },
+  ref,
+) {
   const inputId = id || label?.toLowerCase().replace(/\s+/g, '-');
 
   return (
@@ -24,6 +31,7 @@ export function Input({
         </label>
       )}
       <input
+        ref={ref}
         id={inputId}
         className={`
           w-full h-11 rounded-lg px-4 py-2.5 text-sm text-[var(--text)]
@@ -41,4 +49,4 @@ export function Input({
       {hint && !error && <p className="text-xs text-[var(--text-dim)]">{hint}</p>}
     </div>
   );
-}
+});

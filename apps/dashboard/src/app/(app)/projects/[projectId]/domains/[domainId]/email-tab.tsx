@@ -1,7 +1,6 @@
 'use client';
 
 import Link from 'next/link';
-import type { Domain } from '@fidscript-deploy/sdk';
 import { Button, Card, Spinner } from '@fidscript/ui';
 
 import { useAuth } from '@/contexts/auth-context';

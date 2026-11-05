@@ -1,7 +1,6 @@
 'use client';
 /* eslint-disable import/order */
 
-import { HugeiconsIcon } from '@hugeicons/react';
 
 import { Suspense, useEffect, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
@@ -14,7 +13,7 @@ type Status = 'loading' | 'accepting' | 'success' | 'error' | 'unauthenticated';
 function AcceptInvitationInner() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const { getSdk, user } = useAuth();
+  const {getSdk, user} = useAuth();
   const token = searchParams.get('token') ?? '';
 
   const [status, setStatus] = useState<Status>('loading');

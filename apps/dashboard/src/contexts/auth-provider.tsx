@@ -1,6 +1,6 @@
 'use client';
 
-import { createContext, useCallback, useState, type ReactNode } from 'react';
+import { createContext, useCallback, type ReactNode } from 'react';
 import { useRouter } from 'next/navigation';
 import { type FidscriptSDK } from '@fidscript-deploy/sdk';
 

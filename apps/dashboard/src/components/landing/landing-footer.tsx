@@ -1,7 +1,7 @@
 import Link from 'next/link';
 import Image from 'next/image';
 import { HugeiconsIcon } from '@hugeicons/react';
-import { BoltIcon, SourceCodeIcon } from '@hugeicons/core-free-icons';
+import { SourceCodeIcon } from '@hugeicons/core-free-icons';
 
 const COLS = [
   { title: 'Platform', links: ['Deployments', 'Databases', 'Functions', 'Realtime', 'Queues', 'Storage'] },

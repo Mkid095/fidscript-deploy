@@ -4,7 +4,6 @@ import { useState } from 'react';
 import { Button, Card, Input, Spinner } from '@fidscript/ui';
 import { useAuth } from '@/contexts/auth-context';
 import { useNotificationSettings } from './notification-settings-hooks';
-import type { NotificationChannel } from '@/types';
 
 interface NotificationSettingsProps {
   onTest: (channelId: string) => void;

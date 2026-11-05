@@ -8,7 +8,6 @@ import {
   AiBrain01Icon,
   Shield01Icon,
   CloudUploadIcon,
-  DatabaseIcon,
   Mail01Icon,
   GlobeIcon,
   Clock03Icon,

@@ -4,7 +4,7 @@ import Link from 'next/link';
 import { useParams } from 'next/navigation';
 import { HugeiconsIcon } from '@hugeicons/react';
 import { ArrowLeft01Icon, ChevronRightIcon, CheckmarkCircle01Icon, CancelCircleIcon } from '@hugeicons/core-free-icons';
-import { Card, Spinner } from '@fidscript/ui';
+import { Spinner } from '@fidscript/ui';
 import { useAuth } from '@/contexts/auth-context';
 import { useStorageSettings } from './use-storage-settings';
 import { StorageSettingsProvider } from './storage-settings-provider';

@@ -1,7 +1,6 @@
 'use client';
 
 import type { CronJobRun } from '@/types';
-import { CheckmarkCircle02Icon, Cancel01Icon, AlertCircleIcon, AlarmClockIcon } from '@hugeicons/core-free-icons';
 
 function formatDuration(ms: number | undefined): string {
   if (!ms) return '—';

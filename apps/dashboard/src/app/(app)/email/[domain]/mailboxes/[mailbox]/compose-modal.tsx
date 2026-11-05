@@ -4,8 +4,6 @@ import type { ChangeEvent } from 'react';
 import type { FidscriptSDK } from '@fidscript-deploy/sdk';
 import { useState } from 'react';
 import { Button, Input, Modal } from '@fidscript/ui';
-import { HugeiconsIcon } from '@hugeicons/react';
-import { Mail01Icon } from '@hugeicons/core-free-icons';
 
 interface ComposeModalProps {
   projectId: string;

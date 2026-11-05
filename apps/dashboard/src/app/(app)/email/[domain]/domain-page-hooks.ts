@@ -1,4 +1,4 @@
-import type { EmailDomain, EmailAlias, FidscriptSDK, Mailbox } from '@fidscript-deploy/sdk';
+import type { EmailDomain, EmailAlias, Mailbox } from '@fidscript-deploy/sdk';
 
 import { useCallback, useEffect, useState } from 'react';
 

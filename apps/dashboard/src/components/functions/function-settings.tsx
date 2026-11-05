@@ -11,11 +11,7 @@ import { RUNTIME_LABELS } from './function-settings-types';
 import type { FunctionSettingsProps } from './function-settings-types';
 
 export function FunctionSettings({ fn, onUpdate, onDelete }: FunctionSettingsProps) {
-  const {
-    envVars, newKey, newVal, saving, showDelete, deleting, hasChanges,
-    setNewKey, setNewVal, setShowDelete,
-    addEnvVar, removeEnvVar, handleSaveEnvVars, handleDelete,
-  } = useFunctionSettings({ fn, onUpdate, onDelete });
+  const {envVars, newKey, newVal, saving, showDelete, hasChanges, setNewKey, setNewVal, setShowDelete, addEnvVar, removeEnvVar, handleSaveEnvVars, handleDelete} = useFunctionSettings({ fn, onUpdate, onDelete });
 
   return (
     <div className="space-y-6">

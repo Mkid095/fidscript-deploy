@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import type { Mailbox } from '@fidscript-deploy/sdk';
-import { Card, EmptyState, Button } from '@fidscript/ui';
+import { Card, EmptyState } from '@fidscript/ui';
 
 interface Props {
   domainId: string;

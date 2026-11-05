@@ -1,7 +1,6 @@
 'use client';
 
 import { useState } from 'react';
-import type { DomainIncident, DomainVerificationRun } from '@fidscript-deploy/sdk';
 import { Button, Card, Spinner, Toast } from '@fidscript/ui';
 import { useAuth } from '@/contexts/auth-context';
 import { useDomainRepairs } from '../domain-tab-hooks';

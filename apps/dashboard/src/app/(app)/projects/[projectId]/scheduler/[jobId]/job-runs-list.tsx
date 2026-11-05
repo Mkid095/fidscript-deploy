@@ -1,7 +1,6 @@
 'use client';
 
-import { useState } from 'react';
-import { Button, Card, EmptyState } from '@fidscript/ui';
+import { Card, EmptyState } from '@fidscript/ui';
 import { HugeiconsIcon } from '@hugeicons/react';
 import { Refresh01Icon, AlertCircleIcon } from '@hugeicons/core-free-icons';
 import type { CronJobRun } from '@/types';

@@ -1,7 +1,6 @@
 'use client';
 
 import { useState } from 'react';
-import type { DomainSslInfo } from '@fidscript-deploy/sdk';
 import { Button, Card, Badge, Spinner, Toast } from '@fidscript/ui';
 
 import { useAuth } from '@/contexts/auth-context';

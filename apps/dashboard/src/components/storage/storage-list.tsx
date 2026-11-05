@@ -82,6 +82,10 @@ export function StorageList({ projectId }: StorageListProps) {
       </div>
 
       {error && <Banner message={error} type="error" />}
+      {/* The banner state was set by showBanner() but never rendered, so
+          "Bucket created" and "Bucket deleted" produced no feedback at
+          all — the operation looked like it had done nothing. */}
+      {banner && <Banner message={banner.message} type={banner.type} />}
 
       {showCreate && (
         <CreateBucketForm

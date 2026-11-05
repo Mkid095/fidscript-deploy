@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState, useCallback, useRef } from 'react';
+import { useState, useCallback, useRef } from 'react';
 import { useAuth } from '@/contexts/auth-context';
 import { Banner } from './banner';
 import { BucketBody } from './bucket-body';
@@ -21,7 +21,7 @@ interface BucketDetailProps {
 }
 
 export function BucketDetail({ projectId, bucketId }: BucketDetailProps) {
-  const { getSdk, getToken } = useAuth();
+  const {getSdk, getToken} = useAuth();
 
   const [previewUrls, setPreviewUrls] = useState<Record<string, string>>({});
   const [banner, setBanner] = useState<{ message: string; type: 'success' | 'error' } | null>(null);

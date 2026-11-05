@@ -41,11 +41,7 @@ interface UseSqlEditorReturn {
 }
 
 export function useSqlEditor() {
-  const {
-    schema, queryResult, runQuery, queryRunning,
-    saveQuery, deleteSavedQuery,
-    queryLogs, clearLogs,
-  } = useDatabase();
+  const {schema, runQuery, queryRunning, saveQuery, deleteSavedQuery, queryLogs, clearLogs} = useDatabase();
 
   const { tabs, activeTabId, activeTab, setActiveTabId, updateTab, addTab, closeTab } = useSqlTabs();
   const { sidebarTab, setSidebarTab, tableSearch, setTableSearch, expandedSchemas, toggleSchema, bySchema, filteredTables } = useSqlSidebar(schema);

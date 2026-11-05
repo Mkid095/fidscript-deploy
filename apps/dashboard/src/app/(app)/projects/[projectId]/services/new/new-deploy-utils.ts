@@ -1,6 +1,5 @@
 // Shared utilities and types for the new deployment wizard
 
-import type { GithubRepo, GithubBranch, GithubStatus } from './new-deploy-types';
 
 export { type GithubRepo, type GithubBranch, type GithubStatus, type BuildPlan } from './new-deploy-types';
 

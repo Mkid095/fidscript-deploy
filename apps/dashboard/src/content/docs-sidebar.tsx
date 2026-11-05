@@ -1,5 +1,4 @@
 import { HugeiconsIcon } from '@hugeicons/react';
-import type { Doc } from './docs-hooks';
 import { DOCS } from './docs-hooks';
 
 interface Props {

@@ -1,7 +1,7 @@
 'use client';
 
 import { HugeiconsIcon } from '@hugeicons/react';
-import { Add01Icon, RefreshIcon, Cancel01Icon } from '@hugeicons/core-free-icons';
+import { Add01Icon, Cancel01Icon } from '@hugeicons/core-free-icons';
 
 interface DataGridToolbarProps {
   table: string;

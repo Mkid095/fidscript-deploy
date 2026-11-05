@@ -12,7 +12,6 @@ export { IN_FLIGHT_STATUSES, statusMeta, formatDuration, isInFlight };
 
 // Aliases for existing consumers
 export const getDeploymentStatus = (status?: string) => {
-  const meta = statusMeta(status);
   switch (status?.toUpperCase()) {
     case 'SUCCESS':     return { label: 'Live',         badge: 'bg-emerald-900/60 text-[var(--success)] border-[var(--success)]/30', dot: 'bg-[var(--success)]' };
     case 'FAILED':      return { label: 'Failed',       badge: 'bg-red-900/60 text-[var(--danger)] border-[var(--danger)]/30',           dot: 'bg-[var(--danger)]' };

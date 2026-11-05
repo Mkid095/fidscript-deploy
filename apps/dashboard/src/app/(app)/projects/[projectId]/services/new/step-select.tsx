@@ -2,7 +2,7 @@
 
 import { Card, Spinner } from '@fidscript/ui';
 import { HugeiconsIcon } from '@hugeicons/react';
-import { CheckmarkCircle02Icon, Cancel01Icon, ArrowLeft01Icon } from '@hugeicons/core-free-icons';
+import { CheckmarkCircle02Icon, Cancel01Icon } from '@hugeicons/core-free-icons';
 import { Dropzone } from '@fidscript/ui';
 
 import type { SourceType, GithubRepo, GithubBranch, GithubStatus } from './new-deploy-utils';

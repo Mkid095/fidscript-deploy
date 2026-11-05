@@ -3,8 +3,7 @@
 import { HugeiconsIcon } from '@hugeicons/react';
 import {
   HardDriveIcon, RefreshIcon, Upload01Icon,
-  AlertCircleIcon, CheckmarkCircle03Icon, Archive01Icon,
-} from '@hugeicons/core-free-icons';
+  AlertCircleIcon, CheckmarkCircle03Icon, } from '@hugeicons/core-free-icons';
 import { useBackups } from './backups-hooks';
 import { BackupsTable } from './backups-table';
 

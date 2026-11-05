@@ -8,7 +8,6 @@ import {
   Pdf01Icon,
   FileZipIcon,
 } from '@hugeicons/core-free-icons';
-import type { StorageFile } from '@/types';
 
 type FileTypeIcon = typeof File01Icon;
 

@@ -6,10 +6,7 @@ import { NextRequest, NextResponse } from 'next/server';
  * This page exchanges the code for a token and sends it to the opener via postMessage.
  */
 export async function GET(request: NextRequest) {
-  const { searchParams } = new URL(request.url);
-  const code = searchParams.get('code');
-  const state = searchParams.get('state');
-  const projectId = searchParams.get('project_id');
+  const {searchParams} = new URL(request.url);
 
   const html = `
 <!DOCTYPE html>

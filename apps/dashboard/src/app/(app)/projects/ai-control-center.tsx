@@ -11,7 +11,6 @@ import { ShowKeyBanner, KeySelector, AiPromptPanel, ConfigPanel, CliPanel, SdkPa
 import { ExpirySelector } from './ai-expiry-selector';
 import { KeyBadge } from './ai-key-badge';
 import type { ExpiryOption } from '@/hooks/use-account-credentials';
-import type { AccountKey } from './ai-prompt-generator';
 
 function friendlyError(msg: string | null): string {
   if (!msg) return '';
@@ -22,7 +21,7 @@ function friendlyError(msg: string | null): string {
   return msg;
 }
 
-function AiKeyCreateForm({ onCreate }: { onCreate: (name: string) => Promise<void> }) {
+function AiKeyCreateForm({ onCreate }: { onCreate: (name: string, expiry: ExpiryOption) => Promise<void> }) {
   const [name, setName] = useState('');
   const [expiry, setExpiry] = useState<ExpiryOption>('30d');
   const [creating, setCreating] = useState(false);
@@ -30,7 +29,9 @@ function AiKeyCreateForm({ onCreate }: { onCreate: (name: string) => Promise<voi
     e.preventDefault();
     if (!name.trim()) return;
     setCreating(true);
-    try { await onCreate(name.trim()); setName(''); } finally { setCreating(false); }
+    // The expiry is passed up. It used to stay in this component, so the
+    // key was created with the default no matter what was selected.
+    try { await onCreate(name.trim(), expiry); setName(''); } finally { setCreating(false); }
   }
   return (
     <form onSubmit={handleCreate} className="flex items-start gap-3">
@@ -48,13 +49,11 @@ function AiKeyCreateForm({ onCreate }: { onCreate: (name: string) => Promise<voi
 }
 
 export function AIControlCenter() {
-  const { getSdk } = useAuth();
+  const {getSdk} = useAuth();
   const {
     keys, selectedKey, showKey, expiryOption, platformApiUrl,
     loading, error, createKey, revokeKey, setExpiryOption, setSelectedKey, clearShowKey,
   } = useAccountCredentials(getSdk);
-  const [newKeyName, setNewKeyName] = useState('');
-  const [creating, setCreating] = useState(false);
   const [localError, setLocalError] = useState<string | null>(null);
 
   const aiPrompt = selectedKey ? getAiPrompt(selectedKey, platformApiUrl) : '';
@@ -62,12 +61,10 @@ export function AIControlCenter() {
   const cliCmd   = selectedKey && showKey ? getCliLoginCommand(showKey) : '';
   const sdkCode  = selectedKey && showKey ? getSdkInitCode(showKey, platformApiUrl) : '';
 
-  async function handleCreate(name: string) {
+  async function handleCreate(name: string, expiry: ExpiryOption) {
     setLocalError(null);
-    setCreating(true);
-    try { await createKey(name); setNewKeyName(''); }
+    try { await createKey(name, expiry); }
     catch (err: any) { setLocalError(err?.message ?? 'Failed to create key'); }
-    finally { setCreating(false); }
   }
 
   return (

@@ -76,16 +76,23 @@ export default function DeploymentsListPage() {
         <div className="flex items-center justify-center min-h-48"><Spinner size="lg" /></div>
       ) : filtered.length === 0 ? (
         <EmptyState
-          title={tab === 'active' ? 'No active deployments' : 'No deployments yet'}
-          description={tab === 'active'
-            ? 'All deployments have reached a terminal state.'
-            : 'Create your first deployment to get started.'}
+          title={deployments.length === 0
+            ? 'No deployments yet'
+            : tab === 'active' ? 'No active deployments' : 'No deployments yet'}
+          description={deployments.length === 0
+            ? 'Create your first deployment to get started.'
+            : tab === 'active'
+              ? 'All deployments have reached a terminal state.'
+              : 'Create your first deployment to get started.'}
           action={
-            tab === 'all' ? (
-              <Button variant="primary" size="sm" onClick={() => router.push(`/projects/${projectId}/services/new`)}>
-                <HugeiconsIcon icon={Add01Icon} size={13} /> New deployment
-              </Button>
-            ) : undefined
+            // The call to action is on BOTH tabs. It used to be on the "All"
+            // tab only, so a brand-new project — which has no deployments
+            // at all — opened on the "Active" tab and was told that
+            // "all deployments have reached a terminal state", with no
+            // button anywhere. Nothing had run; nothing had finished.
+            <Button variant="primary" size="sm" onClick={() => router.push(`/projects/${projectId}/services/new`)}>
+              <HugeiconsIcon icon={Add01Icon} size={13} /> New deployment
+            </Button>
           }
         />
       ) : (

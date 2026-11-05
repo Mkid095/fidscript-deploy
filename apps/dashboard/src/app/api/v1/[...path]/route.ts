@@ -1,4 +1,3 @@
-import { NextResponse } from 'next/server';
 
 const API_BASE = 'http://api:3001/api/v1';
 const ALLOWED_ORIGIN = 'https://deploy.fidscript.com';

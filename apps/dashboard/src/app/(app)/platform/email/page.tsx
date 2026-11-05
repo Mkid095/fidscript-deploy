@@ -16,19 +16,7 @@ import type { Folder } from './platform-email-page-types';
 
 export default function PlatformEmailPage() {
   const sdk = useAuth().getSdk();
-  const {
-    mailboxes, selectedLocal, setSelectedLocal,
-    activeFolder, setActiveFolder,
-    messages, total,
-    selectedMessage, setSelectedMessage,
-    loadingMailboxes, loadingMessages,
-    error, setError,
-    createResult, setCreateResult,
-    sendResult, setSendResult,
-    loadMessages,
-    openMessage, starMessage, moveMessage, deleteMessage,
-    handleCreateMailbox,
-  } = useEmailPage(sdk);
+  const {mailboxes, selectedLocal, setSelectedLocal, activeFolder, setActiveFolder, messages, total, selectedMessage, setSelectedMessage, loadingMailboxes, loadingMessages, error, createResult, setCreateResult, sendResult, setSendResult, loadMessages, openMessage, starMessage, moveMessage, deleteMessage, handleCreateMailbox} = useEmailPage(sdk);
 
   const [showCreate, setShowCreate] = useState(false);
   const [showCompose, setShowCompose] = useState(false);

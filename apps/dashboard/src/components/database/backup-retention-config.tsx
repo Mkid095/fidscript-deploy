@@ -1,6 +1,5 @@
 'use client';
 
-import type { BackupScheduleFrequency } from '@/types';
 
 interface StorageBucket { id: string; name: string; objectCount?: number; }
 

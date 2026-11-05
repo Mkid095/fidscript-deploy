@@ -1,6 +1,5 @@
 'use client';
 
-import { HugeiconsIcon } from '@hugeicons/react';
 import type { DbConnectionInfo } from './connection-panel-types';
 
 interface ConnectionStringProps {

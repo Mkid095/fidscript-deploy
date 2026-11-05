@@ -2,7 +2,6 @@
 
 import { useState } from 'react';
 import { useParams } from 'next/navigation';
-import type { EmailDomain } from '@fidscript-deploy/sdk';
 import { Spinner } from '@fidscript/ui';
 
 import { useAuth } from '@/contexts/auth-context';

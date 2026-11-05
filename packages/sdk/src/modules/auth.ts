@@ -46,7 +46,7 @@ export class AuthModule implements AuthCoreHost, AuthSessionsHost, AuthOrgsHost,
   revokeSession!: (sessionId: string) => Promise<unknown>;
   revokeAllSessions!: () => Promise<unknown>;
   apiKeys!: () => Promise<{ apiKeys: import('./auth-types').ApiKeyInfo[] }>;
-  createApiKey!: (name: string, scopes?: string[]) => Promise<import('./auth-types').ApiKeyInfo & { key: string }>;
+  createApiKey!: (name: string, permissions?: string[], expiresAt?: string) => Promise<import('./auth-types').ApiKeyInfo & { key: string }>;
   revokeApiKey!: (keyId: string) => Promise<unknown>;
 
   // AuthOrgsHost

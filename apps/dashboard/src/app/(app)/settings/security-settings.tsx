@@ -1,6 +1,5 @@
 'use client';
 
-import { useState } from 'react';
 import { Button, Card, Spinner } from '@fidscript/ui';
 import { useSecuritySettings } from './use-security-settings';
 import { useConfirm } from '@/components/ui/confirm-provider';

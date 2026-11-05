@@ -14,8 +14,16 @@ const eslintConfig = [
   {
     rules: {
       "import/order": "off",
-      "@typescript-eslint/no-unused-vars": "off",
-      "no-unused-vars": "off",
+      // Warn rather than error, so the existing code does not block the
+      // build — but an unused import or variable is now visible. These
+      // rules were off, which is how ~2,000 lines of unreachable code
+      // accumulated without anything complaining.
+      // `args: "none"` — an unused function PARAMETER is not dead code
+      // (React callbacks take signatures they do not always use), and
+      // flagging them buries the two things that matter: an unused
+      // import, and a variable that is assigned and never read.
+      "@typescript-eslint/no-unused-vars": ["warn", { args: "none", varsIgnorePattern: "^_" }],
+      "no-unused-vars": ["warn", { args: "none", varsIgnorePattern: "^_" }],
       "prefer-const": "off",
       "@typescript-eslint/no-explicit-any": "off",
       "@typescript-eslint/no-unsafe-function-type": "off",

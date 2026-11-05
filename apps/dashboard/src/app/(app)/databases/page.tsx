@@ -10,7 +10,7 @@ import { DatabaseListHeader } from './database-list-header';
 import { DatabaseCreateForm } from './database-create-form';
 
 export default function DatabasesPage() {
-  const { getSdk } = useAuth();
+  const {getSdk} = useAuth();
   const router = useRouter();
   const shellProjectId = useShellProjectId();
   const sdk = getSdk();

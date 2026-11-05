@@ -1,7 +1,6 @@
 'use client';
 
-import { useState } from 'react';
-import { useParams, useRouter } from 'next/navigation';
+import { useParams } from 'next/navigation';
 import Link from 'next/link';
 import { ToastProvider, useToast } from '@/components/toast-provider';
 import { LoadingScreen } from '@/components/ui/loading-screen';
