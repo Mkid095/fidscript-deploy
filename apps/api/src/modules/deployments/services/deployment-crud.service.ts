@@ -1,4 +1,5 @@
-import { Injectable, NotFoundException, ForbiddenException, BadRequestException } from '@nestjs/common';
+import { Injectable, NotFoundException, ForbiddenException, BadRequestException, Logger } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { PrismaService } from '@/prisma/prisma.service';
 import { EventService } from '@/modules/events/event.service';
 import { DeploymentWorkerService } from '@/modules/deployments/runner/deployment-worker.service';
@@ -9,6 +10,8 @@ import { UserGithubService } from '@/modules/app-auth/services/user-github.servi
 
 @Injectable()
 export class DeploymentCrudService {
+  private readonly logger = new Logger(DeploymentCrudService.name);
+
   constructor(
     private prisma: PrismaService,
     private eventService: EventService,
@@ -16,6 +19,7 @@ export class DeploymentCrudService {
     private buildpackProvider: NodeBuildpackProvider,
     private workspace: DockerBuildWorkspaceService,
     private github: UserGithubService,
+    private configService: ConfigService,
   ) {}
 
   // ─── Framework detection (pre-deploy) ──────────────────────────────────────
@@ -87,6 +91,20 @@ export class DeploymentCrudService {
       data: { projectId, releaseId: release.id, status: 'PENDING' },
     });
 
+    // Point the deployment at its hostname.
+    //
+    // The dashboard has always sent `subdomain` and `domainId` here, but the
+    // DTO did not declare them and the API runs with
+    // forbidNonWhitelisted — so creating a deployment with a subdomain from
+    // the dashboard failed with a 400. The subdomain case also had nowhere
+    // to live: the dashboard created the Domain row itself, separately, and
+    // only when no domain had been picked.
+    //
+    // Both are handled here so every client (dashboard, SDK, CLI, MCP)
+    // gets the same behaviour: the Domain row is what backs the DNS
+    // section, the health checks and the operator console.
+    await this.linkDeploymentDomain(projectId, deployment.id, project.slug, dto);
+
     await this.eventService.emit(
       'deployments.deployment.created',
       projectId,
@@ -97,18 +115,100 @@ export class DeploymentCrudService {
     return this.formatDeployment(deployment);
   }
 
-  async list(userId: string, projectId: string, page = 1, limit = 20) {
+  /**
+   * Attach a hostname to a deployment.
+   *
+   * `domainId` points an EXISTING Domain at the new deployment.
+   * `subdomain` creates the {subdomain}.apps.{platformDomain} Domain.
+   *
+   * The platform already serves the wildcard *.apps.{platformDomain}
+   * zone, so a subdomain needs no DNS the operator has to configure —
+   * which is why it is created in `manual` mode.
+   *
+   * A failure here must not fail the deployment: the app is still
+   * deploying, and the operator can attach the domain afterwards.
+   */
+  private async linkDeploymentDomain(
+    projectId: string,
+    deploymentId: string,
+    projectSlug: string,
+    dto: CreateDeploymentDto,
+  ): Promise<void> {
+    try {
+      if (dto.domainId) {
+        const existing = await this.prisma.domain.findFirst({
+          where: { id: dto.domainId, projectId },
+        });
+        if (!existing) throw new NotFoundException('Domain not found in this project');
+        await this.prisma.domain.update({
+          where: { id: existing.id },
+          data: { deploymentId },
+        });
+        return;
+      }
+
+      if (!dto.subdomain?.trim()) return;
+
+      const platformDomain = this.configService.get<string>('PLATFORM_DOMAIN', 'apps.local');
+      const fqdn = `${dto.subdomain.trim()}.apps.${platformDomain}`;
+
+      const already = await this.prisma.domain.findFirst({ where: { projectId, domain: fqdn } });
+      if (already) {
+        await this.prisma.domain.update({ where: { id: already.id }, data: { deploymentId } });
+        return;
+      }
+
+      await this.prisma.domain.create({
+        data: {
+          projectId,
+          domain: fqdn,
+          deploymentId,
+          // It sits under the platform's own wildcard zone, so it is not a
+          // custom domain and there is no DNS for the operator to set up.
+          isCustom: false,
+          isPrimary: true,
+          apexDomain: false,
+          type: ['DEPLOYMENT'],
+          capabilities: {
+            deployment: true,
+            email: false,
+            inboundEmail: false,
+            tracking: false,
+            api: false,
+            redirect: false,
+            sandbox: false,
+          },
+          dnsMode: 'manual',
+          redirectMode: 'none',
+          sslEnabled: true,
+          sslStatus: 'PENDING',
+          dnsStatus: 'PENDING',
+        },
+      });
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      this.logger.warn(`[deployments] Could not link the deployment to its hostname: ${msg}`);
+    }
+  }
+
+  async list(userId: string, projectId: string, page = 1, limit = 20, status?: string) {
     await this.checkAccessOrThrow(userId, projectId);
     const skip = (page - 1) * limit;
+    // The SDK and the MCP tool both send a `status` filter; it used to be
+    // accepted and then silently ignored.
+    const where: any = { projectId };
+    if (status && status.toUpperCase() !== 'ALL') {
+      where.status = status.toUpperCase();
+    }
     const [deployments, total] = await Promise.all([
       this.prisma.deployment.findMany({
-        where: { projectId },
+        where,
         orderBy: { createdAt: 'desc' },
         skip,
         take: limit,
         include: { release: true },
       }),
-      this.prisma.deployment.count({ where: { projectId } }),
+      this.prisma.deployment.count({ where }),
     ]);
     return { deployments: deployments.map(d => this.formatDeployment(d, d.release)), pagination: { page, limit, total, pages: Math.ceil(total / limit) } };
   }

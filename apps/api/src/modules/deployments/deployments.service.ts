@@ -8,7 +8,7 @@ export class DeploymentsService {
   constructor(private crud: DeploymentCrudService) {}
 
   create(userId: string, projectId: string, dto: any) { return this.crud.create(userId, projectId, dto); }
-  list(userId: string, projectId: string, page?: number, limit?: number) { return this.crud.list(userId, projectId, page, limit); }
+  list(userId: string, projectId: string, page?: number, limit?: number, status?: string) { return this.crud.list(userId, projectId, page, limit, status); }
   get(userId: string, projectId: string, deploymentId: string) { return this.crud.get(userId, projectId, deploymentId); }
   getLogs(userId: string, projectId: string, deploymentId: string) { return this.crud.getLogs(userId, projectId, deploymentId); }
   stop(userId: string, projectId: string, deploymentId: string) { return this.crud.stop(userId, projectId, deploymentId); }

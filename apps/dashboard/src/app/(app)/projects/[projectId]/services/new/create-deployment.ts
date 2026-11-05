@@ -12,7 +12,6 @@
 
 import type { FidscriptSDK } from '@fidscript-deploy/sdk';
 import type { SourceType } from './new-deploy-utils';
-import { linkSubdomainDomain } from './link-subdomain-domain';
 
 export type CreateDeploymentInput = {
   sdk: FidscriptSDK;
@@ -66,16 +65,7 @@ export async function createDeployment(input: CreateDeploymentInput): Promise<Cr
     return { ok: false, error: 'No deployment id returned from server' };
   }
 
-  let domainLinkError: string | undefined;
-  if (subdomain.trim() && !assignedDomainId) {
-    const link = await linkSubdomainDomain({
-      sdk,
-      projectId,
-      subdomain: subdomain.trim(),
-      deploymentId,
-    });
-    if (!link.ok) domainLinkError = link.error;
-  }
-
-  return { ok: true, deploymentId, ...(domainLinkError && { domainLinkError }) };
+  // The Domain record is created by the API as part of the deployment, so
+  // there is nothing left to link here.
+  return { ok: true, deploymentId };
 }

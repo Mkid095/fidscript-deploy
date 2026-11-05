@@ -77,6 +77,14 @@ export interface CreateDeploymentInput {
   commitMessage?: string;
   /** Environment variables to inject at build and runtime. Overrides project-level env vars. */
   envVars?: Record<string, string>;
+  /**
+   * Subdomain under {slug}.apps.{platformDomain} to serve this deployment
+   * from. The API creates the matching Domain record and points it at the
+   * deployment.
+   */
+  subdomain?: string;
+  /** An existing Domain in this project to point at this deployment. */
+  domainId?: string;
 }
 
 export interface DetectInput {

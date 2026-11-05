@@ -45,6 +45,7 @@ export class DeploymentsController {
     @Param('projectId') projectId: string,
     @Query('page') page?: string,
     @Query('limit') limit?: string,
+    @Query('status') status?: string,
   ) {
     const user = req.user as { userId: string };
     return this.deploymentsService.list(
@@ -52,6 +53,7 @@ export class DeploymentsController {
       projectId,
       page ? parseInt(page) : undefined,
       limit ? parseInt(limit) : undefined,
+      status,
     );
   }
 

@@ -90,4 +90,20 @@ export class CreateDeploymentDto {
   @IsObject()
   @IsOptional()
   envVars?: Record<string, string>;
+
+  @ApiPropertyOptional({
+    description:
+      'Subdomain under {slug}.apps.{platformDomain} to serve this deployment from. ' +
+      'The matching Domain record is created and pointed at the deployment.',
+  })
+  @IsString()
+  @IsOptional()
+  subdomain?: string;
+
+  @ApiPropertyOptional({
+    description: 'An existing Domain in this project to point at this deployment.',
+  })
+  @IsString()
+  @IsOptional()
+  domainId?: string;
 }
