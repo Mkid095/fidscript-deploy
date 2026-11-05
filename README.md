@@ -166,6 +166,31 @@ links, with the dashboard first, because that is the one to open:
    the setup guide walks you through the rest.
 ```
 
+### Deploying your apps — no CI pipeline required
+
+A push deploys the app. That is the whole pipeline.
+
+```
+  you push            →  GitHub sends a webhook  →  the platform clones
+                                                   the commit and builds
+                                                   it on the VPS
+```
+
+The platform builds and runs the image itself — `docker build` on the
+machine that hosts it, from the commit the webhook named. There is no
+GitHub Actions workflow in the loop, so **deploying an app costs no CI
+minutes**, on any plan, for any number of apps. The webhook is a plain
+HTTP POST with an HMAC signature the platform verifies; if auto-deploy
+is off for a project, the same deploy happens when you click Deploy.
+
+Private repositories work too: the platform clones with the repository
+owner's connected GitHub token, so it never has to prompt for
+credentials.
+
+> The repository's own CI (`ci.yml` — lint, typecheck, test, build) is a
+> separate thing: it checks the platform itself, not your apps. The
+> repository is public, so it does not consume Actions minutes either.
+
 ### Option B — Manual Install (for review / dev on this machine)
 
 ```bash
