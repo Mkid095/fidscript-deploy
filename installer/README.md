@@ -170,6 +170,7 @@ The setup wizard offers them as an optional step too. What ships:
 | `instant` | The complete Instant BaaS — realtime Postgres, the Instant server, the web console, a Maven repository for the Kotlin SDK, and object storage |
 | `whatsapp` | The WhatsApp Business platform — Evolution API, database, cache, web console |
 | `app-runtime` | A local image registry for built application images |
+| `package-manager` | A private npm registry and a Maven repository for SDKs and internal packages |
 
 Published ports can be moved with environment variables in
 `installer/docker/.env` — for example `OBSERVABILITY_GRAFANA_PORT=3002`.

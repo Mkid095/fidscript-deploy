@@ -1,0 +1,123 @@
+# Package manager add-on.
+#
+# A private npm registry (Verdaccio) and a Maven repository, so the
+# platform's SDKs and a customer's internal packages have a home that does
+# not depend on a public registry being reachable — and so a customer's
+# own build agents can publish into it.
+#
+# Both are served over the platform's edge (Traefik). The registry is
+# bound to the platform network only; publish it to the host with
+# PACKAGE_MANAGER_REGISTRY_PORT if a build agent outside Docker needs it.
+
+services:
+  # Seeds the registry's htpasswd and fixes the ownership of the two
+  # volumes. Verdaccio runs as uid 10001 and only declares /verdaccio/storage
+  # as a volume, so a named plugins volume would otherwise be root-owned and
+  # unwritable. It runs before the registry, not after — the registry needs
+  # the htpasswd to answer a login at all.
+  npm-registry-init:
+    image: alpine:3.19
+    container_name: fidscript_npm_registry_init
+    restart: "no"
+    volumes:
+      - ${PACKAGE_MANAGER_REGISTRY_STORAGE:-fidscript_npm_registry_storage}:/verdaccio/storage
+      - ${PACKAGE_MANAGER_REGISTRY_PLUGINS:-fidscript_npm_registry_plugins}:/verdaccio/plugins
+    secrets:
+      - package_manager_registry_password_htpasswd
+    entrypoint: ["/bin/sh", "-c"]
+    command:
+      - |
+        set -e
+        if [ ! -s /verdaccio/storage/htpasswd ]; then
+          cp /run/secrets/package_manager_registry_password_htpasswd /verdaccio/storage/htpasswd
+          echo "seeded the registry's htpasswd"
+        else
+          echo "keeping the existing htpasswd"
+        fi
+        # Verdaccio runs as uid 10001 and has to be able to WRITE the
+        # htpasswd (it appends when a user registers) and the plugins
+        # directory. Only those two are touched — the stored packages
+        # are never re-owned, so pointing this at an existing registry's
+        # storage directory cannot disturb the packages already in it.
+        chown 10001:10001 /verdaccio/storage/htpasswd
+        chown 10001:10001 /verdaccio/plugins
+    networks:
+      - fidscript-deployment
+    logging:
+      driver: json-file
+      options:
+        max-size: '10m'
+        max-file: '3'
+
+  npm-registry:
+    image: verdaccio/verdaccio:6.10.5
+    container_name: fidscript_npm_registry
+    restart: unless-stopped
+    environment:
+      # The URL clients see. The registry advertises this in its metadata,
+      # so it has to be the public one.
+      VERDACCIO_PUBLIC_URL: "${PACKAGE_MANAGER_REGISTRY_URL:-http://localhost:4873}"
+      # Verdaccio stays plain HTTP — TLS is terminated by the platform's
+      # proxy, the same way the rest of the stack works.
+    volumes:
+      - ../addons/package-manager/verdaccio/config.yaml:/verdaccio/conf/config.yaml:ro
+      - ${PACKAGE_MANAGER_REGISTRY_STORAGE:-fidscript_npm_registry_storage}:/verdaccio/storage
+      - ${PACKAGE_MANAGER_REGISTRY_PLUGINS:-fidscript_npm_registry_plugins}:/verdaccio/plugins
+    secrets:
+      - package_manager_registry_password_htpasswd
+    depends_on:
+      npm-registry-init:
+        condition: service_completed_successfully
+    networks:
+      - fidscript-deployment
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://127.0.0.1:4873/-/ping >/dev/null || exit 1"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 20s
+    logging:
+      driver: json-file
+      options:
+        max-size: '10m'
+        max-file: '3'
+
+  # Maven repository — serves JVM artifacts (a Kotlin or Android SDK) to
+  # Gradle builds. The artifacts themselves are published into the volume
+  # by CI; this just serves them with the CORS header Gradle needs.
+  maven-repository:
+    image: caddy:2-alpine
+    container_name: fidscript_maven_repository
+    restart: unless-stopped
+    volumes:
+      - ../addons/package-manager/maven/Caddyfile:/etc/caddy/Caddyfile:ro
+      - ${PACKAGE_MANAGER_MAVEN_STORAGE:-fidscript_maven_repository}:/srv/maven
+    ports:
+      - "${PACKAGE_MANAGER_MAVEN_PORT:-8081}:8081"
+    networks:
+      - fidscript-deployment
+    healthcheck:
+      # The Caddy admin API, not the served path: the artifact directory
+      # is empty until CI publishes into it, and a 404 from file_server
+      # would look like a dead server.
+      test: ["CMD-SHELL", "wget -qO- http://127.0.0.1:2019/config/ >/dev/null || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+    logging:
+      driver: json-file
+      options:
+        max-size: '10m'
+        max-file: '3'
+
+volumes:
+  fidscript_npm_registry_storage:
+    name: fidscript_npm_registry_storage
+  fidscript_npm_registry_plugins:
+    name: fidscript_npm_registry_plugins
+  fidscript_maven_repository:
+    name: fidscript_maven_repository
+
+secrets:
+  package_manager_registry_password_htpasswd:
+    file: ./secrets/package_manager_registry_password_htpasswd.txt

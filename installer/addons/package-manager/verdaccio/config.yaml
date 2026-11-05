@@ -1,0 +1,49 @@
+# Verdaccio configuration for the platform's private npm registry.
+#
+# The registry proxies the public npm registry for anything it does not
+# hold itself, so a build agent can `npm install` anything AND publish
+# the platform's own packages privately, without a second registry
+# configuration on the developer's machine.
+
+storage: /verdaccio/storage
+plugins: /verdaccio/plugins
+
+web:
+  title: 'FIDScript Package Manager'
+  enable: true
+
+# bcrypt htpasswd, kept in the storage directory so it survives a
+# container recreate. The installer seeds it with the `admin` user.
+auth:
+  htpasswd:
+    file: /verdaccio/storage/htpasswd
+    algorithm: bcrypt
+    rounds: 10
+
+uplinks:
+  npmjs:
+    url: https://registry.npmjs.org/
+    cache: true
+    maxage: 30m
+    timeout: 30s
+    maxfailures: 5
+    failtimeout: 5m
+
+packages:
+  # Anything not published locally falls through to npmjs. Reading is
+  # open; publishing requires an authenticated user.
+  '**':
+    access: $all
+    publish: $authenticated
+    unpublish: $authenticated
+    proxy: npmjs
+
+log:
+  type: stdout
+  format: pretty
+  level: http
+
+# The registry is reached through the platform's proxy, so the tarball
+# URLs it advertises have to point at the public one.
+server:
+  keepAliveTimeout: 60

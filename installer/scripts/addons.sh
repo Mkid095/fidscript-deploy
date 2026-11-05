@@ -200,9 +200,9 @@ generate_addon_secrets() {  # generate_addon_secrets <id>
     if [[ ! -s "$file" ]]; then
       openssl rand -hex "$bytes" > "$file"
       chmod 600 "$file"
-      info "Generated ${id}_${name}.txt"
+      info "Generated ${slug}_${name}.txt"
     else
-      info "Keeping existing ${id}_${name}.txt"
+      info "Keeping existing ${slug}_${name}.txt"
     fi
     # The value also goes into the installer's .env under
     # <ADDON>_<NAME>, because Compose interpolates ${VAR} in a compose file

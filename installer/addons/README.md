@@ -84,6 +84,28 @@ installs the ones selected there.
 | `instant` | The complete Instant BaaS — realtime Postgres, the Instant server, the web console, a Maven repository for the Kotlin/Android SDK, and object storage |
 | `whatsapp` | The WhatsApp Business platform — the Evolution API for channels, its own database and cache, and the web console |
 | `app-runtime` | A local image registry, so built application images are stored durably and can be pulled by any node |
+| `package-manager` | A private npm registry and a Maven repository, so SDKs and internal packages have a home that does not depend on a public registry |
+
+### `package-manager` — attaching to a registry that already exists
+
+The npm registry keeps its packages in a storage directory, and the
+Maven repository keeps its artifacts in another. Both are **configurable**,
+so the add-on can be pointed at directories that are already in use:
+
+```
+# in installer/docker/.env
+PACKAGE_MANAGER_REGISTRY_STORAGE=/opt/nextmavens-registry/storage
+PACKAGE_MANAGER_REGISTRY_PLUGINS=/opt/nextmavens-registry/plugins
+PACKAGE_MANAGER_MAVEN_STORAGE=/var/maven-repository
+```
+
+The add-on never re-owns the packages it finds there — it only writes the
+`htpasswd` file (and only when there is not one already) and the plugins
+directory, so an existing registry's packages and users are left alone.
+
+The registry is bound to the platform network only. Publish it to the
+host with `PACKAGE_MANAGER_REGISTRY_PORT` if a build agent outside
+Docker has to reach it.
 
 ### `instant` — a full BaaS, not just a database
 

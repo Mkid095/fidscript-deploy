@@ -237,6 +237,14 @@ services:
       - "${INSTANT_MAVEN_PORT:-8081}:8081"
     networks:
       - fidscript-instant
+    healthcheck:
+      # The Caddy admin API, not the served path: the artifact directory
+      # is empty until CI publishes into it, and a 404 from file_server
+      # would look like a dead server.
+      test: ["CMD-SHELL", "wget -qO- http://127.0.0.1:2019/config/ >/dev/null || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
     logging:
       driver: json-file
       options:
