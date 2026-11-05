@@ -55,6 +55,18 @@ export class DeploymentsModule {
     );
   }
 
+  /**
+   * Detect a repository BEFORE a project exists.
+   *
+   * The wizard shows the operator what the platform made of their code while
+   * they are still choosing where the project lives. Only a github.com
+   * repository is accepted here — any other git host is detected through the
+   * project's own endpoint, once the project exists.
+   */
+  async detectRepository(data: DetectInput) {
+    return this.client.post<BuildPlan>('/api/v1/deployments/detect', data);
+  }
+
   async getLogs(projectId: string, deploymentId: string) {
     return this.client.get<{ logs: string }>(
       `/api/v1/projects/${projectId}/deployments/${deploymentId}/logs`,

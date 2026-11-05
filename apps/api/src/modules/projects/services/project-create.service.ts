@@ -4,6 +4,7 @@ import { EventService } from '@/modules/events/event.service';
 import { CreateProjectDto } from '@/modules/projects/dto/index';
 import { ProjectFormatService } from './project-format.service';
 import { ProjectProvisionService } from './project-provision.service';
+import { ProjectWorkspaceService } from './project-workspace.service';
 import * as crypto from 'crypto';
 
 @Injectable()
@@ -13,6 +14,7 @@ export class ProjectCreateService {
     private eventService: EventService,
     private format: ProjectFormatService,
     private provisioner: ProjectProvisionService,
+    private workspace: ProjectWorkspaceService,
   ) {}
 
   async create(userId: string, dto: CreateProjectDto) {
@@ -20,13 +22,21 @@ export class ProjectCreateService {
     const existing = await this.prisma.project.findUnique({ where: { slug } });
     if (existing) throw new ConflictException('Project with this name already exists');
 
+    // A project may live in a team. The person creating it has to be one of
+    // that team's members — otherwise anyone could put a project in someone
+    // else's workspace.
+    if (dto.organizationId) {
+      await this.workspace.assertMember(userId, dto.organizationId);
+    }
+
     const project = await this.prisma.project.create({
       data: {
         name: dto.name, slug, description: dto.description,
         type: dto.type.toUpperCase() as any, ownerId: userId,
+        organizationId: dto.organizationId ?? null,
         region: dto.region, subdomain: slug,
       },
-      include: { settings: true },
+      include: { settings: true, organization: { select: { id: true, name: true, slug: true } } },
     });
 
     await this.prisma.projectSettings.create({ data: { projectId: project.id } });

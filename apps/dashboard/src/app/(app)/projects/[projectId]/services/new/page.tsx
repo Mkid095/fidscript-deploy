@@ -43,7 +43,7 @@ function NewDeploymentPage({ project }: { project: NonNullable<ReturnType<typeof
   const toastAdapter = (opts: { type: string; message: string }) => showToast({ type: opts.type as 'success' | 'error' | 'info' | 'warning', message: opts.message });
   const newDeploy = useNewDeploy({ project, getSdk, onShowToast: toastAdapter, onDeploySuccess: handleDeploySuccess });
   const github = useGithubRepos({ getSdk, sourceType: newDeploy.sourceType, onShowToast: toastAdapter });
-  const archive = useArchiveUpload({ project, onShowToast: toastAdapter });
+  const archive = useArchiveUpload({ project, getSdk, onShowToast: toastAdapter });
 
   function handleStepClick(i: number) {
     // Jump to the step that was clicked. It used to call continueStep()

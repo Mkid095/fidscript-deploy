@@ -1,4 +1,4 @@
-import { IsString, IsOptional, IsNumber } from 'class-validator';
+import { IsString, IsOptional, IsNumber, IsArray } from 'class-validator';
 import { ApiPropertyOptional } from '@nestjs/swagger';
 
 /**
@@ -19,4 +19,15 @@ export class UpdateBuildConfigDto {
   @IsNumber()
   @IsOptional()
   startupTimeoutSeconds?: number;
+
+  @ApiPropertyOptional({
+    description:
+      'The variables the build cannot run without. A deployment that is missing ' +
+      'one of them fails before the build starts, naming the variable.',
+    type: [String],
+  })
+  @IsArray()
+  @IsString({ each: true })
+  @IsOptional()
+  requiredEnvVars?: string[];
 }

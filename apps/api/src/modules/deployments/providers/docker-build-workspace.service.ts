@@ -3,12 +3,14 @@ import { existsSync, writeFileSync, mkdirSync, rmSync } from 'fs';
 import { join } from 'path';
 import { ConfigService } from '@nestjs/config';
 import { ShellRunnerService } from '../runner/shell-runner.service';
+import { StorageService } from '@/modules/storage/services/storage.service';
 
 @Injectable()
 export class DockerBuildWorkspaceService {
   constructor(
     private config: ConfigService,
     private shell: ShellRunnerService,
+    private storage: StorageService,
   ) {}
 
   prepareWorkspace(): string {
@@ -57,19 +59,19 @@ export class DockerBuildWorkspaceService {
 
   /**
    * Download an archive (zip/tar.gz) from object storage and extract it into
-   * the build workspace. Uses the `mc` (MinIO client) CLI if available, falling
-   * back to `curl` against the MinIO HTTP endpoint with path-style addressing.
+   * the build workspace.
    *
    * The archive is extracted with strip-components=0 (preserving the archive's
    * internal layout). A nested top-level directory is NOT created — the
    * workspace itself becomes the build context root.
    */
   async fetchArchiveSource(opts: {
+    projectId: string;
     bucketId: string;
     objectKey: string;
     workspace: string;
   }): Promise<void> {
-    const { bucketId, objectKey, workspace } = opts;
+    const { projectId, bucketId, objectKey, workspace } = opts;
 
     // Resolve the archive format from the object key extension.
     const ext = objectKey.toLowerCase();
@@ -82,26 +84,15 @@ export class DockerBuildWorkspaceService {
     const archivePath = join(workspace, `source-${Date.now()}${isZip ? '.zip' : '.tar.gz'}`);
 
     try {
-      // The bucket ID is the actual bucket name in MinIO. Download via HTTP
-      // (path-style) using the configured internal endpoint + credentials.
-      // This avoids a hard dependency on the `mc` CLI being installed.
-      const endpoint = this.config.get<string>('MINIO_ENDPOINT', 'minio:9000');
-      const accessKey = this.config.get<string>('MINIO_ACCESS_KEY', 'minioadmin');
-      const secretKey = this.config.get<string>('MINIO_SECRET_KEY', 'minioadmin');
-      const scheme = 'http';
-      const [host, port = '9000'] = endpoint.replace(/^https?:\/\//, '').split(':');
-      const downloadUrl = `${scheme}://${host}:${port}/${bucketId}/${objectKey}`;
-
-      // Use curl with HTTP basic auth (MinIO accepts basic auth for reads).
-      await this.shell.runStreaming(
-        `curl -fsS -u "${accessKey}:${secretKey}" -o "${archivePath}" "${downloadUrl}"`,
-        () => {},
-        { timeout: 300_000 },
-      );
-
-      if (!existsSync(archivePath)) {
-        throw new Error(`Archive download produced no file at ${archivePath}`);
-      }
+      // The archive is fetched through the platform's own storage service,
+      // which signs the request the way the object store expects.
+      //
+      // It used to be fetched with `curl -u user:pass`, and the object store
+      // answers that with "invalid header: authorization": it speaks AWS
+      // signature V4, not HTTP basic auth. Every archive deployment failed
+      // at the download.
+      const data = await this.storage.downloadFile(projectId, bucketId, objectKey);
+      writeFileSync(archivePath, data);
 
       // Extract into the workspace root.
       if (isZip) {

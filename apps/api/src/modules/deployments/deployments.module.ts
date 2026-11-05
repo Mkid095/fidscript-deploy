@@ -4,6 +4,9 @@ import { GithubWebhookController } from './controllers/github-webhook.controller
 import { DeploymentsService } from './deployments.service';
 import { DeploymentCrudService } from './services/deployment-crud.service';
 import { DeploymentRoutesService } from './services/deployment-routes.service';
+import { DeploymentDetectService } from './services/deployment-detect.service';
+import { DeploymentDetectController } from './controllers/deployment-detect.controller';
+import { ProjectEnvVarsService } from './services/project-env-vars.service';
 import { GithubWebhookService } from './services/github-webhook.service';
 import { BuildRunnerService } from './runner/build-runner.service';
 import { DockerRunService } from './runner/docker-run.service';
@@ -33,11 +36,13 @@ import { AuthModule } from '@/modules/auth/auth.module';
   // The Instant module links a deployment to the project's data plane: the
   // application gets its Instant app id and hosts in its environment.
   imports: [InstantModule, StorageModule, AppAuthModule, forwardRef(() => AuthModule)],
-  controllers: [DeploymentsController, GithubWebhookController],
+  controllers: [DeploymentsController, GithubWebhookController, DeploymentDetectController],
   providers: [
     DeploymentsService,
     DeploymentCrudService,
     DeploymentRoutesService,
+    ProjectEnvVarsService,
+    DeploymentDetectService,
     GithubWebhookService,
     BuildRunnerService,
     DockerRunService,

@@ -57,11 +57,20 @@ export async function POST(
   { params }: { params: Promise<{ path: string[] }> }
 ) {
   const { path } = await params;
-  const body = await request.text();
+  // A file upload is multipart, and multipart is not text: reading it as a
+  // string corrupts the bytes, and forcing the content type to JSON means
+  // the API's parser never sees a file at all. Such a request is forwarded
+  // with its own content type — boundary included — and its raw bytes.
+  const contentType = request.headers.get('content-type') ?? '';
+  const isMultipart = contentType.startsWith('multipart/form-data');
+  const body = isMultipart ? await request.arrayBuffer() : await request.text();
   try {
     const res = await fetch(`${API_BASE}/${path.join('/')}`, {
       method: 'POST',
-      headers: { ...proxyHeaders(request), 'Content-Type': 'application/json' },
+      headers: {
+        ...proxyHeaders(request),
+        'Content-Type': isMultipart ? contentType : 'application/json',
+      },
       body,
     });
     const text = await res.text();

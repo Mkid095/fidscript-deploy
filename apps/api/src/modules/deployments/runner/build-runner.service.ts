@@ -58,7 +58,7 @@ export class BuildRunnerService {
     // source into it, share it between validate() and build(), and clean up.
     const ws = this.workspace.prepareWorkspace();
     try {
-      await this.fetchSource(source, ws);
+      await this.fetchSource(source, ws, opts.projectId);
 
       // Validate
       this.log(onLog, `[runner] Validating source with ${provider.name} provider…`);
@@ -120,6 +120,7 @@ export class BuildRunnerService {
   private async fetchSource(
     source: BuildAndDeployOptions['source'],
     workspace: string,
+    projectId: string,
   ): Promise<void> {
     if (source.type === 'git') {
       await this.workspace.fetchGitSource({
@@ -135,6 +136,7 @@ export class BuildRunnerService {
         throw new Error('Archive source requires bucketId and objectKey.');
       }
       await this.workspace.fetchArchiveSource({
+        projectId,
         bucketId: source.archiveBucketId,
         objectKey: source.archiveObjectKey,
         workspace,

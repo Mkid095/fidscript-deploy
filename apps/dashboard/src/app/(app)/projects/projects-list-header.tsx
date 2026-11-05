@@ -7,8 +7,10 @@ import {
   Refresh01Icon,
   EyeIcon,
   EyeOffIcon,
+  Rocket01Icon,
 } from '@hugeicons/core-free-icons';
 import { Button, Input } from '@fidscript/ui';
+import Link from 'next/link';
 
 export interface ProjectsListHeaderProps {
   userName?: string;
@@ -87,6 +89,15 @@ export function ProjectsListHeader({
             <HugeiconsIcon icon={showDeleted ? EyeOffIcon : EyeIcon} size={14} />
             <span className="ml-1 text-xs text-[var(--text-muted)]">{deletedCount}</span>
           </Button>
+        )}
+        {canCreate && (
+          <Link
+            href="/deployments/new"
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-[var(--rail)] text-xs font-medium text-[var(--text-muted)] hover:text-[var(--text)] hover:border-[var(--rail-light)] transition-colors"
+          >
+            <HugeiconsIcon icon={Rocket01Icon} size={14} />
+            New deployment
+          </Link>
         )}
         {canCreate && (
           <Button

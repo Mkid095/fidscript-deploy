@@ -112,6 +112,8 @@ model Organization {
   teams       Team[]
   invitations Invitation[]
   roles      OrgRole[]
+  /// The projects that live in this workspace.
+  projects   Project[]
 
   @@map("organizations")
   @@schema("identity")
@@ -335,6 +337,10 @@ model Project {
   type               ProjectType   @default(FRONTEND)
   status             ProjectStatus @default(CREATING)
   ownerId            String        @map("owner_id")
+  /// The workspace this project belongs to. Null means the owner's own
+  /// workspace; set, it means a team (an organization) owns it, and the
+  /// organization's members are the project's members.
+  organizationId     String?       @map("organization_id") @db.VarChar(36)
   region             String?       @db.VarChar(100)
   subdomain          String?       @db.VarChar(255)
   customDomains      Json          @default("[]") @map("custom_domains")
@@ -352,6 +358,7 @@ model Project {
   updatedAt          DateTime      @updatedAt @map("updated_at") @db.Timestamptz
 
   owner                User                  @relation("ProjectOwner", fields: [ownerId], references: [id], onDelete: Cascade)
+  organization         Organization?         @relation(fields: [organizationId], references: [id], onDelete: SetNull)
   members              ProjectMember[]
   settings             ProjectSettings?
   buckets              Bucket[]
@@ -713,6 +720,10 @@ model BuildConfig {
   /// Monorepo app root for turbo/nx monorepos (e.g. "apps/web", "packages/frontend")
   buildTarget           String?  @map("build_target") @db.VarChar(255)
   startupTimeoutSeconds Int      @default(120) @map("startup_timeout_seconds")
+  /// The variables the build cannot run without. A deployment that is missing
+  /// one of these fails BEFORE the build starts, naming the variable — so a
+  /// half-configured application never reaches the build stage.
+  requiredEnvVars       String[] @default([]) @map("required_env_vars")
   createdAt             DateTime @default(now()) @map("created_at") @db.Timestamptz
   updatedAt             DateTime @updatedAt @map("updated_at") @db.Timestamptz
 

@@ -4,6 +4,7 @@ import { EventService } from '@/modules/events/event.service';
 import { ProjectAccessService } from './project-access.service';
 import { ProjectFormatService } from './project-format.service';
 import { ProjectCreateService } from './project-create.service';
+import { ProjectWorkspaceService } from './project-workspace.service';
 import * as crypto from 'crypto';
 
 @Injectable()
@@ -14,6 +15,7 @@ export class ProjectCrudService {
     private access: ProjectAccessService,
     private format: ProjectFormatService,
     private createService: ProjectCreateService,
+    private workspace: ProjectWorkspaceService,
   ) {}
 
   async create(userId: string, dto: any) {
@@ -23,8 +25,16 @@ export class ProjectCrudService {
   async list(userId: string, options: { status?: string; page?: number; limit?: number; includeDeleted?: boolean } = {}) {
     const { status, page = 1, limit = 20, includeDeleted = false } = options;
     const skip = (page - 1) * limit;
+    // A project in a team the person belongs to is theirs to work in, even
+    // though they did not create it — so the list has to reach into the
+    // workspaces, not just the projects they own.
+    const workspaceIds = await this.workspace.workspaceIds(userId);
     const where: any = {
-      OR: [{ ownerId: userId }, { members: { some: { userId } } }],
+      OR: [
+        { ownerId: userId },
+        { members: { some: { userId } } },
+        ...(workspaceIds.length ? [{ organizationId: { in: workspaceIds } }] : []),
+      ],
       ...(status ? { status: status.toUpperCase() } : {}),
       ...(includeDeleted ? {} : { deletedAt: null }),
     };
@@ -35,6 +45,7 @@ export class ProjectCrudService {
         include: {
           owner: { select: { id: true, email: true, name: true } },
           members: { where: { userId }, select: { role: true } },
+          organization: { select: { id: true, name: true, slug: true } },
         },
         orderBy: { updatedAt: 'desc' }, skip, take: limit,
       }),

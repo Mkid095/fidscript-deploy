@@ -1,10 +1,17 @@
+// Shared utilities and types for the new deployment wizard.
+//
+// The parts two wizards share live in `@/lib/deployment-source` — this file
+// keeps the old import path working.
 
-import { formatBytes } from '@/lib/format';// Shared utilities and types for the new deployment wizard
-
+export {
+  type SourceType,
+  MAX_ARCHIVE_BYTES,
+  extractRepoInfo,
+  getAccessToken,
+  parseEnvText,
+} from '@/lib/deployment-source';
 
 export { type GithubRepo, type GithubBranch, type GithubStatus, type BuildPlan } from './new-deploy-types';
-
-export type SourceType = 'git' | 'archive';
 
 export const STEPS = [
   { label: 'Source' },
@@ -12,36 +19,3 @@ export const STEPS = [
   { label: 'Configuration' },
   { label: 'Review' },
 ] as const;
-
-export const MAX_ARCHIVE_BYTES = 500 * 1024 * 1024; // 500 MB
-
-export function extractRepoInfo(url: string): { repo: string; owner: string } {
-  const sshMatch = url.match(/git@[^:]+:([^/]+)\/([^/]+?)(?:\.git)?$/);
-  const httpsMatch = url.match(/https?:\/\/[^/]+\/([^/]+)\/([^/]+?)(?:\.git)?$/);
-  if (sshMatch) return { owner: sshMatch[1], repo: `${sshMatch[1]}/${sshMatch[2]}` };
-  if (httpsMatch) return { owner: httpsMatch[1], repo: `${httpsMatch[1]}/${httpsMatch[2]}` };
-  return { owner: '', repo: url };
-}
-
-export function getAccessToken(): string {
-  if (typeof window === 'undefined') return '';
-  return localStorage.getItem('fidscript_access_token') ?? localStorage.getItem('fidscript_token') ?? '';
-}
-
-// Parse a .env-style textarea into a Record<string, string>.
-export function parseEnvText(text: string): Record<string, string> {
-  const env: Record<string, string> = {};
-  for (const rawLine of text.split('\n')) {
-    const line = rawLine.trim();
-    if (!line || line.startsWith('#')) continue;
-    const eqIdx = line.indexOf('=');
-    if (eqIdx === -1) continue;
-    let key = line.slice(0, eqIdx).trim();
-    let value = line.slice(eqIdx + 1).trim();
-    if ((value.startsWith('"') && value.endsWith('"')) || (value.startsWith("'") && value.endsWith("'"))) {
-      value = value.slice(1, -1);
-    }
-    if (key) env[key] = value;
-  }
-  return env;
-}

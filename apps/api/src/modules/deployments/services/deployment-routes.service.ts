@@ -111,7 +111,14 @@ export class DeploymentRoutesService {
 
     const yaml = this.render(routers, services);
     try {
-      await fs.writeFile(file, yaml, 'utf8');
+      // Written atomically: Traefik watches the directory and reads the
+      // file the moment it changes. A plain write leaves a window in which
+      // the file is half-written, and Traefik rejects the half — with
+      // "routers cannot be a standalone element" — which takes the whole
+      // file down, routes and all.
+      const tmp = `${file}.tmp`;
+      await fs.writeFile(tmp, yaml, 'utf8');
+      await fs.rename(tmp, file);
       const count = Object.keys(routers).length;
       this.logger.log(`[deployments] Traefik deployment routes written (${count} custom domain${count === 1 ? '' : 's'})`);
     } catch (err) {

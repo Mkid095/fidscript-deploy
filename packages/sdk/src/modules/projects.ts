@@ -41,7 +41,14 @@ export class ProjectsModule {
     return this.client.get<Project>(`/api/v1/projects/${id}`);
   }
 
-  async create(data: { name: string; type?: string; slug?: string; description?: string }) {
+  async create(data: {
+    name: string;
+    type?: string;
+    slug?: string;
+    description?: string;
+    /** The workspace (organization / team) the project belongs to. */
+    organizationId?: string;
+  }) {
     return this.client.post<Project>('/api/v1/projects', data);
   }
 

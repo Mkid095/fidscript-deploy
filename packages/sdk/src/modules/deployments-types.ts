@@ -37,6 +37,8 @@ export interface DeploymentListResult {
 export interface BuildConfig {
   buildTarget?: string;
   startupTimeoutSeconds?: number;
+  /** The variables a build cannot run without. A deployment missing one fails. */
+  requiredEnvVars?: string[];
 }
 
 /**

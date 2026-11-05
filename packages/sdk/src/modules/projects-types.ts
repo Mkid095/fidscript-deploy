@@ -6,6 +6,9 @@ export interface Project {
   status: string;
   ownerId: string;
   role?: string;
+  /** The workspace (organization / team) the project lives in. */
+  organizationId?: string | null;
+  organization?: { id: string; name: string; slug: string } | null;
   description?: string;
   lastActivityAt?: string;
   lastDeployAt?: string;

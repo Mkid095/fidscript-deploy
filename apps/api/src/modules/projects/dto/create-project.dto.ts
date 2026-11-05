@@ -30,4 +30,13 @@ export class CreateProjectDto {
   @IsString()
   @IsOptional()
   region?: string;
+
+  @ApiPropertyOptional({
+    description:
+      'The workspace (organization / team) the project belongs to. Omit it and ' +
+      'the project lives in the owner\'s own workspace.',
+  })
+  @IsString()
+  @IsOptional()
+  organizationId?: string;
 }

@@ -28,7 +28,15 @@ export class ProjectAccessService {
     const isMember = await this.prisma.projectMember.findUnique({
       where: { projectId_userId: { projectId: project.id, userId } },
     });
-    if (!isOwner && !isMember) throw new ForbiddenException('Access denied');
+    // A project in a team is reachable by the team's members: that is what
+    // makes it the team's project and not one person's.
+    const inWorkspace = project.organizationId
+      ? await this.prisma.organizationMember.findUnique({
+          where: { organizationId_userId: { organizationId: project.organizationId, userId } },
+          select: { id: true },
+        })
+      : null;
+    if (!isOwner && !isMember && !inWorkspace) throw new ForbiddenException('Access denied');
     return project;
   }
 
@@ -45,8 +53,16 @@ export class ProjectAccessService {
     const member = await this.prisma.projectMember.findUnique({
       where: { projectId_userId: { projectId: project.id, userId } },
     });
-    if (!member || !allowedRoles.includes(member.role.toLowerCase())) {
-      throw new ForbiddenException('Insufficient permissions');
+    if (member && allowedRoles.includes(member.role.toLowerCase())) return;
+    // A team member acts with the team's own role on a team project.
+    if (project.organizationId) {
+      const inWorkspace = await this.prisma.organizationMember.findUnique({
+        where: { organizationId_userId: { organizationId: project.organizationId, userId } },
+        include: { role: { select: { name: true } } },
+      });
+      const orgRole = (inWorkspace?.role?.name ?? '').toUpperCase();
+      if (orgRole && allowedRoles.includes(orgRole.toLowerCase())) return;
     }
+    throw new ForbiddenException('Insufficient permissions');
   }
 }

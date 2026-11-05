@@ -11,6 +11,7 @@ import { ProjectInvitationService } from '@/modules/projects/services/project-in
 import { ProjectApiKeyService } from '@/modules/projects/services/project-api-key.service';
 import { ProjectFormatService } from '@/modules/projects/services/project-format.service';
 import { ProjectCreateService } from '@/modules/projects/services/project-create.service';
+import { ProjectWorkspaceService } from '@/modules/projects/services/project-workspace.service';
 import { ProjectProvisionService } from '@/modules/projects/services/project-provision.service';
 import { StorageModule } from '@/modules/storage/storage.module';
 import { RealtimeModule } from '@/modules/realtime/realtime.module';
@@ -35,6 +36,7 @@ import { AuthModule } from '@/modules/auth/auth.module';
     ProjectFormatService,
     ProjectCreateService,
     ProjectProvisionService,
+    ProjectWorkspaceService,
   ],
   exports: [
     ProjectsService,

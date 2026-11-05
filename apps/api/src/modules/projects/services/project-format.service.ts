@@ -9,6 +9,9 @@ export class ProjectFormatService {
       description: project.description, type: project.type?.toLowerCase(),
       status: project.status?.toLowerCase(), ownerId: project.ownerId,
       owner: project.owner, region: project.region, subdomain: project.subdomain,
+      // The workspace the project lives in: null is the owner's own.
+      organizationId: project.organizationId ?? null,
+      organization: project.organization ?? null,
       customDomains: project.customDomains || [], buildSettings: project.buildSettings || {},
       deploymentStrategy: project.deploymentStrategy, sourceProvider: project.sourceProvider,
       sourceRepo: project.sourceRepo, sourceBranch: project.sourceBranch,

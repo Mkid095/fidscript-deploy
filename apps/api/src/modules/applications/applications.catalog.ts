@@ -68,7 +68,9 @@ export interface ApplicationMcp {
 export const CORE_APPLICATIONS: Record<string, ApplicationPresentation> = {
   deployment: {
     host: null, // the dashboard itself
-    path: '/projects',
+    // The wizard that starts a deployment — the operator's next action after
+    // they arrive, not a list of projects they have to go and find.
+    path: '/deployments/new',
     port: null,
     icon: 'rocket',
     installable: false,

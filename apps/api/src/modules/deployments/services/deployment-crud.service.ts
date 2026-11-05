@@ -8,6 +8,7 @@ import { NodeBuildpackProvider } from '@/modules/deployments/providers/node-buil
 import { DockerBuildWorkspaceService } from '@/modules/deployments/providers/docker-build-workspace.service';
 import { UserGithubService } from '@/modules/app-auth/services/user-github.service';
 import { DeploymentRoutesService } from '@/modules/deployments/services/deployment-routes.service';
+import { ProjectEnvVarsService } from '@/modules/deployments/services/project-env-vars.service';
 
 @Injectable()
 export class DeploymentCrudService {
@@ -22,6 +23,7 @@ export class DeploymentCrudService {
     private github: UserGithubService,
     private configService: ConfigService,
     private routes: DeploymentRoutesService,
+    private envVars: ProjectEnvVarsService,
   ) {}
 
   // ─── Framework detection (pre-deploy) ──────────────────────────────────────
@@ -60,6 +62,21 @@ export class DeploymentCrudService {
     const project = await this.prisma.project.findUnique({ where: { id: projectId } });
     if (!project) throw new NotFoundException('Project not found');
     await this.checkAccessOrThrow(userId, projectId);
+
+    // The environment variables are SAVED before anything is built.
+    //
+    // They used to travel only inside the deployment event, which meant they
+    // existed for exactly as long as the event did, and the project's own
+    // variables were the only ones a later build could read. An operator who
+    // typed a variable into the wizard expected it to be there for the next
+    // deploy too — and a build that needs a variable should fail when it is
+    // missing, not three deploys later.
+    if (dto.envVars && Object.keys(dto.envVars).length > 0) {
+      const saved = await this.envVars.save(projectId, dto.envVars);
+      this.logger.log(
+        `[deployments] Saved ${saved} environment variable(s) on project ${projectId} before building`,
+      );
+    }
 
     const version = this.generateVersion();
     // Encode the source into sourceUrl so the build runner can reconstruct it.
@@ -248,6 +265,7 @@ export class DeploymentCrudService {
       data: {
         ...(dto.buildTarget !== undefined && { buildTarget: dto.buildTarget }),
         ...(dto.startupTimeoutSeconds !== undefined && { startupTimeoutSeconds: dto.startupTimeoutSeconds }),
+        ...(dto.requiredEnvVars !== undefined && { requiredEnvVars: dto.requiredEnvVars }),
       },
     });
     return this.formatBuildConfig(config);
@@ -352,6 +370,7 @@ export class DeploymentCrudService {
       projectId: c.projectId,
       buildTarget: c.buildTarget || null,
       startupTimeoutSeconds: c.startupTimeoutSeconds ?? 120,
+      requiredEnvVars: c.requiredEnvVars ?? [],
       createdAt: c.createdAt,
       updatedAt: c.updatedAt,
     };
