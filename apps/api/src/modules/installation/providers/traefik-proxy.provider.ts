@@ -3,6 +3,7 @@ import { ConfigService } from '@nestjs/config';
 import { promises as fs } from 'fs';
 import { join } from 'path';
 import { IReverseProxyProvider } from './reverse-proxy.provider';
+import { buildPlatformRoutes } from './platform-routes';
 
 @Injectable()
 export class TraefikProxyProvider implements IReverseProxyProvider {
@@ -68,58 +69,10 @@ export class TraefikProxyProvider implements IReverseProxyProvider {
   }
 
   private buildDynamicYml(domain: string): string {
-    // Traefik resolves certResolver names against the resolvers defined in
-    // installer/docker/traefik/traefik.yml. The committed traefik.yml defines two
-    // resolvers: `letsencrypt-dns` (DNS-01 via Cloudflare) and
-    // `letsencrypt-http` (HTTP-01 fallback). The previous template used a
-    // hardcoded `myresolver` placeholder which doesn't exist in the static
-    // config — Traefik silently ignores the tls block and certificates never
-    // get issued. Use the real resolver names.
-    //
-    // NOTE: do NOT define `certificatesResolvers` here — the file provider
-    // can only define them in the static config. The original template's
-    // `certificatesResolvers: myresolver` block was both a typo and a no-op
-    // (file providers can't redefine resolvers that already exist in the
-    // static config).
-    //
-    // The rules MUST be single-quoted YAML. A bare backtick is a YAML
-    // reserved indicator and `rule: `Host(...)`` is a parse error, which
-    // makes Traefik reject the whole file — every route then 404s.
-    // In a single-quoted scalar backticks need no escaping and a regex
-    // like \.[^.]+\. stays literal.
-    //
-    // The service URLs use the container names (fidscript_api /
-    // fidscript_dashboard) — the hyphenated service names are not
-    // resolvable DNS names — and the dashboard listens on 3001, not 3000.
-    return `# Managed by FIDScript Platform — do not edit manually
-http:
-  routers:
-    fidscript-api:
-      rule: 'Host(\`api.${domain}\`)'
-      service: fidscript-api
-      entryPoints:
-        - websecure
-      tls:
-        certResolver: letsencrypt-dns
-
-    fidscript-dashboard:
-      rule: 'Host(\`${domain}\`)'
-      service: fidscript-dashboard
-      entryPoints:
-        - websecure
-      tls:
-        certResolver: letsencrypt-dns
-
-  services:
-    fidscript-api:
-      loadBalancer:
-        servers:
-          - url: http://fidscript_api:3001
-
-    fidscript-dashboard:
-      loadBalancer:
-        servers:
-          - url: http://fidscript_dashboard:3001
-`;
+    // The resolver: DNS-01 when the platform holds a Cloudflare token,
+    // HTTP-01 otherwise. The installer picks the same way.
+    const resolver = process.env.CLOUDFLARE_API_TOKEN_FILE ? 'letsencrypt-dns' : 'letsencrypt-http';
+    return buildPlatformRoutes(domain, resolver);
   }
+
 }
