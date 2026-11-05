@@ -9,6 +9,7 @@ import { spawn } from 'child_process';
 import { randomUUID } from 'crypto';
 import { ApplicationCatalogueService } from './application-catalogue.service';
 import { ApplicationDnsService } from './application-dns.service';
+import { ShellRunnerService } from '@/modules/deployments/runner/shell-runner.service';
 import { INSTALLER_DIR } from '../application-manifest.reader';
 
 /** One install, running or finished. */
@@ -44,6 +45,7 @@ export class ApplicationInstallService {
   constructor(
     private catalogue: ApplicationCatalogueService,
     private dns: ApplicationDnsService,
+    private shell: ShellRunnerService,
   ) {}
 
   /** The installs currently running, and the ones that just finished. */
@@ -137,8 +139,27 @@ export class ApplicationInstallService {
         this.logger.error(
           `[applications] Install of ${job.applicationId} exited with code ${code}`,
         );
+        // The installer records the selection BEFORE it runs compose, so a
+        // failed install leaves the platform claiming the application is
+        // installed when it is not. Take the record back, or the catalogue
+        // lies until somebody reinstalls it by hand.
+        void this.unrecord(job.applicationId);
       }
     });
+  }
+
+  /** Take a failed install back out of the installer's record. */
+  private async unrecord(applicationId: string): Promise<void> {
+    try {
+      await this.shell.runStreaming(
+        `bash ${INSTALLER_DIR}/scripts/addons.sh disable ${applicationId}`,
+        () => {},
+        { timeout: 60_000 },
+      );
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      this.logger.warn(`[applications] Could not unrecord ${applicationId}: ${msg}`);
+    }
   }
 
   /** Publish the application's DNS records once its containers are up. */
