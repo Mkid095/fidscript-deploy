@@ -1,5 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
+import { ShellRunnerService } from '@/modules/deployments/runner/shell-runner.service';
 import { existsSync, readFileSync } from 'fs';
 import { join } from 'path';
 import {
@@ -12,6 +13,14 @@ import {
   readAddonManifests,
   type AddonManifest,
 } from '../application-manifest.reader';
+import { ApplicationRuntimeService } from './application-runtime.service';
+import {
+  coreSummary,
+  coreTitle,
+  resolveApiHost,
+  resolveMcp,
+  resolveUrl,
+} from '../application-urls';
 
 /** An application, as the operator sees it. */
 export interface Application {
@@ -39,35 +48,40 @@ export interface Application {
 /**
  * The catalogue of applications on this platform, and which are installed.
  *
- * "Installed" means what the installer recorded — the add-on is listed in the
- * installer's `FIDScript_ADDONS`. That is the same record the installer's
- * own commands use, so the screen and the installer never disagree.
+ * "Installed" means the installer recorded the add-on, or one of the
+ * application's containers is running.
  */
 @Injectable()
 export class ApplicationCatalogueService {
   private readonly logger = new Logger(ApplicationCatalogueService.name);
 
-  constructor(private configService: ConfigService) {}
+  constructor(
+    private configService: ConfigService,
+    private runtime: ApplicationRuntimeService,
+  ) {}
 
   /** Every application, installed or not. */
-  list(): Application[] {
+  async list(): Promise<Application[]> {
     const manifests = readAddonManifests();
     const installed = this.installedAddons();
+    const running = await this.runtime.runningContainers();
+    const domain = this.configService.get<string>('PLATFORM_DOMAIN', '');
+    const ip = this.configService.get<string>('SERVER_IP', '');
     const applications: Application[] = [];
 
     for (const [id, presentation] of Object.entries(CORE_APPLICATIONS)) {
       applications.push({
         id,
-        title: this.coreTitle(id),
-        summary: this.coreSummary(id),
+        title: coreTitle(id),
+        summary: coreSummary(id),
         kind: 'core',
         installed: true,
         installable: false,
-        url: this.resolveUrl(presentation),
+        url: resolveUrl(presentation, domain, ip),
         requires: [],
         icon: presentation.icon,
-        apiHost: this.resolveApiHost(presentation),
-        mcp: this.resolveMcp(presentation),
+        apiHost: resolveApiHost(presentation, domain),
+        mcp: resolveMcp(presentation, domain),
       });
     }
 
@@ -78,13 +92,13 @@ export class ApplicationCatalogueService {
         title: manifest.title,
         summary: manifest.summary,
         kind: 'add-on',
-        installed: installed.has(manifest.id),
+        installed: installed.has(manifest.id) || this.runtime.isRunning(manifest.id, running),
         installable: presentation?.installable ?? true,
-        url: presentation ? this.resolveUrl(presentation) : null,
+        url: presentation ? resolveUrl(presentation, domain, ip) : null,
         requires: manifest.requires,
         icon: presentation?.icon ?? 'cube',
-        apiHost: presentation ? this.resolveApiHost(presentation) : null,
-        mcp: presentation ? this.resolveMcp(presentation) : null,
+        apiHost: presentation ? resolveApiHost(presentation, domain) : null,
+        mcp: presentation ? resolveMcp(presentation, domain) : null,
       });
     }
 
@@ -92,8 +106,8 @@ export class ApplicationCatalogueService {
   }
 
   /** One application, or null when there is no such thing. */
-  get(id: string): Application | null {
-    return this.list().find((a) => a.id === id) ?? null;
+  async get(id: string): Promise<Application | null> {
+    return (await this.list()).find((a) => a.id === id) ?? null;
   }
 
   /**
@@ -126,61 +140,5 @@ export class ApplicationCatalogueService {
         .map((id) => id.trim())
         .filter(Boolean),
     );
-  }
-
-  /** Where an application's console is, resolved against this platform. */
-  private resolveUrl(presentation: ApplicationPresentation): string | null {
-    const domain = this.configService.get<string>('PLATFORM_DOMAIN', '');
-    const ip = this.configService.get<string>('SERVER_IP', '');
-
-    if (presentation.port) {
-      const host = ip || domain;
-      return host ? `http://${host}:${presentation.port}` : null;
-    }
-    if (!domain) return null;
-    if (presentation.host) {
-      return `https://${presentation.host}.${domain}${presentation.path ?? ''}`;
-    }
-    if (presentation.path) {
-      // A console on the platform's own domain — the dashboard itself.
-      return `https://${domain}${presentation.path}`;
-    }
-    // No console of its own.
-    return null;
-  }
-
-  /** An application's own API host, resolved against this platform. */
-  private resolveApiHost(presentation: ApplicationPresentation): string | null {
-    if (!presentation.apiHost) return null;
-    const domain = this.configService.get<string>('PLATFORM_DOMAIN', '');
-    return domain ? `https://${presentation.apiHost}.${domain}` : null;
-  }
-
-  /**
-   * An application's MCP server, with its hosts resolved against this
-   * platform. The variable names are the ones the server itself reads.
-   */
-  private resolveMcp(
-    presentation: ApplicationPresentation,
-  ): { package: string; env: Record<string, string> } | null {
-    if (!presentation.mcp) return null;
-    const domain = this.configService.get<string>('PLATFORM_DOMAIN', '');
-    if (!domain) return null;
-
-    const env: Record<string, string> = {};
-    for (const [variable, label] of Object.entries(presentation.mcp.hosts)) {
-      env[variable] = `https://${label}.${domain}`;
-    }
-    return { package: presentation.mcp.package, env };
-  }
-
-  private coreTitle(id: string): string {
-    return id === 'deployment' ? 'Deployments' : 'Email';
-  }
-
-  private coreSummary(id: string): string {
-    return id === 'deployment'
-      ? 'Build and run your applications on this server — a git push is the whole deploy.'
-      : 'Send and receive mail on your own domain, with deliverability, aliases and inbound.';
   }
 }

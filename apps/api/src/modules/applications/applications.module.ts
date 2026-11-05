@@ -5,6 +5,8 @@ import { DomainsModule } from '@/modules/domains/domains.module';
 import { ApplicationCatalogueService } from './services/application-catalogue.service';
 import { ApplicationInstallService } from './services/application-install.service';
 import { ApplicationDnsService } from './services/application-dns.service';
+import { ApplicationJobsService } from './services/application-jobs.service';
+import { ApplicationRuntimeService } from './services/application-runtime.service';
 import { ApplicationsController } from './controllers/applications.controller';
 
 /**
@@ -27,7 +29,13 @@ import { ApplicationsController } from './controllers/applications.controller';
     DeploymentsModule,
   ],
   controllers: [ApplicationsController],
-  providers: [ApplicationCatalogueService, ApplicationInstallService, ApplicationDnsService],
+  providers: [
+    ApplicationCatalogueService,
+    ApplicationInstallService,
+    ApplicationDnsService,
+    ApplicationJobsService,
+    ApplicationRuntimeService,
+  ],
   exports: [ApplicationCatalogueService, ApplicationInstallService],
 })
 export class ApplicationsModule {}

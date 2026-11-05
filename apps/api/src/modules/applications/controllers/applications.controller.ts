@@ -31,8 +31,8 @@ export class ApplicationsController {
 
   @Get()
   @ApiOperation({ summary: 'Every application on this platform, and which are installed' })
-  list() {
-    return { applications: this.catalogue.list() };
+  async list() {
+    return { applications: await this.catalogue.list() };
   }
 
   @Get('installs')
@@ -51,7 +51,7 @@ export class ApplicationsController {
   @UseGuards(PlatformAdminGuard)
   @SetMetadata(ROLES_KEY, ['ADMIN', 'OWNER'])
   @ApiOperation({ summary: 'Install an application in the background' })
-  startInstall(@Param('id') id: string) {
+  async startInstall(@Param('id') id: string) {
     return { install: this.installs.start(id) };
   }
 }

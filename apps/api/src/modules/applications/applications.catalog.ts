@@ -2,14 +2,12 @@
  * The applications an operator can have on a platform.
  *
  * The **catalogue** is the product view: what an application is called, what
- * it does, and where its console is. The installer's manifests
- * (`installer/addons/<id>/addon.yml`) carry the title and the summary, and this
- * file carries the rest — where the console lives, and which icon the
- * dashboard draws.
+ * it does, and where its console is. The installer's manifests carry the
+ * title and the summary; this file carries the rest — where the console
+ * lives, and which icon the dashboard draws.
  *
- * An application is either part of the **core** (the platform itself — the
- * deployment engine and the mail server are always there) or an **add-on**
- * the operator installs from this screen.
+ * An application is either part of the **core** (the deployment engine and
+ * the mail server are always there) or an **add-on** the operator installs.
  */
 
 /** How an application reaches the operator. */
