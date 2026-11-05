@@ -73,8 +73,14 @@ RUN apt-get update -y && apt-get install -y ca-certificates curl gnupg && \
     curl -fsSL https://download.docker.com/linux/debian/gpg | gpg --dearmor -o /etc/apt/keyrings/docker.gpg && \
     chmod a+r /etc/apt/keyrings/docker.gpg && \
     echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.gpg] https://download.docker.com/linux/debian $(. /etc/os-release && echo "$VERSION_CODENAME") stable" > /etc/apt/sources.list.d/docker.list && \
-    apt-get update -y && apt-get install -y openssl curl docker-ce-cli docker-buildx-plugin docker-compose-plugin && \
+    apt-get update -y && apt-get install -y openssl curl docker-ce-cli docker-buildx-plugin docker-compose-plugin apache2-utils && \
     apt-get clean && rm -rf /var/lib/apt/lists/*
+
+# apache2-utils is here for htpasswd: the platform installs an application
+# by running the installer's OWN scripts, and an add-on whose secret is a
+# basic-auth password needs a real bcrypt hash. The image has neither
+# python3 nor htpasswd, so the install died with "command not found" the
+# first time an application was installed from the Applications screen.
 
 # Install Prisma CLI globally — used at container startup for migrate + db seed + generate.
 # Install tsx globally to run seed.ts (TypeScript seed file, not compiled to JS).
