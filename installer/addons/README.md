@@ -81,6 +81,46 @@ installs the ones selected there.
 | id | What it adds |
 |----|--------------|
 | `observability` | Prometheus, Grafana, Loki, Promtail and cAdvisor |
-| `realtime-db` | An InstantDB-compatible realtime backend (its own Postgres + server + dashboard) |
-| `whatsapp` | The WhatsApp Business platform — Evolution API, chatbot worker, web frontend |
-| `app-runtime` | A local image registry and a dedicated build-runner worker |
+| `instant` | The complete Instant BaaS — realtime Postgres, the Instant server, the web console, a Maven repository for the Kotlin/Android SDK, and object storage |
+| `whatsapp` | The WhatsApp Business platform — the Evolution API for channels, its own database and cache, and the web console |
+| `app-runtime` | A local image registry, so built application images are stored durably and can be pulled by any node |
+
+### `instant` — a full BaaS, not just a database
+
+The `instant` add-on provisions the same shape as the upstream Instant
+self-hosting stack:
+
+| Service | Image | What it is |
+|---------|-------|-----------|
+| `instant-postgres` | `ghcr.io/instantdb/postgresql:postgresql-17-pg-hint-plan` | The database, with logical replication — Instant's change streams are built on it |
+| `instant-server` | `ghcr.io/instantdb/server:latest` | The Instant backend: the query layer and the realtime websocket API |
+| `instant-console` | `ghcr.io/instantdb/dashboard:latest` | The web console — the dashboard an operator opens in a browser |
+| `instant-maven` | `caddy:2-alpine` | Serves the Kotlin/Android SDK artifacts, which is how a Kotlin app depends on Instant |
+| `instant-storage` | `rustfs/rustfs:1.0.4` | S3-compatible storage for app backups |
+| `instant-init` | `amazon/aws-cli:latest` | Creates the storage buckets, then exits |
+
+The console and the server are the **published** upstream images, so the
+add-on installs without building anything. A locally built console (from
+the Instant repository's `self-hosting/Dockerfile.www`) can be used
+instead with `INSTANT_CONSOLE_IMAGE`.
+
+Two things are **public hostnames** and cannot be generated — set them in
+`installer/docker/.env` before the console is useful:
+
+```
+INSTANT_API_HOST=https://api.<your-domain>
+INSTANT_DASH_HOST=https://<your-domain>
+INSTANT_MAVEN_HOST=https://<your-domain>/maven
+```
+
+The console resolves the backend from the browser, so these have to be the
+addresses a client can reach — the in-network container names will not
+work outside Docker.
+
+**Authentication.** Instant has no API key. A client identifies itself
+with an *app id* (public), and access is governed by the app's
+permission rules. The console signs users in with a magic code, and
+server-side tooling (the CLI, the MCP) authenticates with a **Personal
+Access Token** (`per_…`), issued from the console under User Settings →
+Personal Access Tokens. The platform admin account is created from
+`INSTANT_SUPERUSER_EMAIL`.

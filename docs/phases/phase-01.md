@@ -133,9 +133,11 @@ enabled ones with the core.
 
 Four ship: **observability** (Prometheus, Grafana, Loki, Promtail,
 cAdvisor, a Postgres exporter — with real configs, a provisioned
-dashboard, and logs flowing), **realtime-db** (an InstantDB-compatible
-backend), **whatsapp** (the WhatsApp Business platform) and
-**app-runtime** (a local image registry).
+dashboard, and logs flowing), **instant** (the complete Instant BaaS:
+realtime Postgres, the Instant server, the web console, a Maven
+repository serving the Kotlin/Android SDK, and object storage),
+**whatsapp** (the WhatsApp Business platform) and **app-runtime** (a
+local image registry).
 
 The whole platform plus all four add-ons was installed together and
 reached 25 containers, all healthy.
