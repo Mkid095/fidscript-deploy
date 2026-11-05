@@ -82,14 +82,11 @@ export async function middleware(req: NextRequest) {
 
   const { lifecycle, platformDomain } = await fetchInstallation();
 
-  // Request host matches the configured platform domain → serve landing at /home
-  // e.g. someone visits deploy.fidscript.com → redirect to /home (landing page)
+  // The landing page IS the root now, so there is nothing to redirect it to.
+  // The platform is served from its own domain: the root is the front door
+  // (the marketing page, with a Log in link), and the app lives under its
+  // own paths — /applications, /projects and the rest.
   if (platformDomain && host === platformDomain) {
-    if (pathname === '/' || pathname === '') {
-      const url = req.nextUrl.clone();
-      url.pathname = '/home';
-      return NextResponse.redirect(url);
-    }
     return NextResponse.next();
   }
 
