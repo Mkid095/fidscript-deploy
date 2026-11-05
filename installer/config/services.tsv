@@ -1,0 +1,34 @@
+# FIDScript Deploy — the services a platform install publishes.
+#
+# One row per hostname the platform serves. The installer uses this to
+# create the DNS records (through the operator's Cloudflare account) and
+# to print the links at the end of the setup.
+#
+# Columns, tab separated:
+#   label      what it is, shown in the summary
+#   hostname   the hostname relative to the platform domain. "." is the
+#              apex itself; "*" is the wildcard for deployed apps.
+#   record     A | CNAME | MX | TXT
+#   target     the record's content. "IP" means the server's public IP;
+#              otherwise it is a literal value.
+#   when       always | <add-on id> — add-on services are only created
+#              when that add-on is installed.
+#
+# The order matters: the dashboard comes first, because it is the link the
+# operator is told to open.
+
+Dashboard	.	A	IP	always
+API	api	A	IP	always
+Mail — JMAP	jmap	A	IP	always
+Mail — IMAP	imap	A	IP	always
+Mail — SMTP	mail	A	IP	always
+Mail — admin	stalwart-admin	A	IP	always
+Object storage	storage	A	IP	always
+Deployed apps	*.apps	A	IP	always
+WhatsApp — console	whatsapp	A	IP	whatsapp
+WhatsApp — API	whatsapp-api	A	IP	whatsapp
+Instant — console	instant	A	IP	instant
+Instant — realtime	realtime	A	IP	instant
+Instant — MCP	instant-mcp	A	IP	instant
+Package manager — npm	registry	A	IP	package-manager
+Package manager — Maven	maven	A	IP	package-manager

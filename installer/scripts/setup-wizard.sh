@@ -25,6 +25,17 @@ banner()  {
 }
 divider() { echo -e "${DIM}$(printf '  ─%.0s' {1..64})${NC}"; }
 
+# ── Helpers ────────────────────────────────────────────────────────────────────
+# The Cloudflare client and the DNS/summary helpers live next to this file.
+# shellcheck source=./cloudflare.sh
+. "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/cloudflare.sh"
+# shellcheck source=./dns.sh
+. "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/dns.sh"
+
+CF_ZONE_ID=""; CF_ZONE_NAME=""
+# Shell variables used by the top-level steps below.
+ns=""; addons_list=(); label=""; host=""; record=""; target=""; when=""; hname=""
+
 # ── Defaults ────────────────────────────────────────────────────────────────────
 DOMAIN=""; ADMIN_EMAIL=""; ADMIN_PASSWORD=""
 CLOUDFLARE_API_TOKEN=""; DNS_ZONE_ID=""
@@ -58,7 +69,7 @@ detect_env() {
 
 # ── Step 1: Domain ───────────────────────────────────────────────────────────
 step_domain() {
-  title "Step 1 / 6 — Platform Domain"
+  title "Step 1 / 7 — Platform Domain"
   divider
   echo "  The domain where this platform will live. DNS A records will be"
   echo "  created automatically if using Cloudflare (Step 4)."
@@ -72,7 +83,7 @@ step_domain() {
 
 # ── Step 2: Admin email ──────────────────────────────────────────────────────
 step_email() {
-  title "Step 2 / 6 — Administrator Account"
+  title "Step 2 / 7 — Administrator Account"
   divider
   echo "  Platform alerts and login username."
   echo ""
@@ -89,7 +100,7 @@ step_email() {
 
 # ── Step 3: Password ─────────────────────────────────────────────────────────
 step_password() {
-  title "Step 3 / 6 — Admin Password"
+  title "Step 3 / 7 — Admin Password"
   divider
   echo "  Minimum 12 characters. Shown as dots."
   echo ""
@@ -111,45 +122,88 @@ step_password() {
   info "Password set."
 }
 
-# ── Step 4: DNS provider ─────────────────────────────────────────────────────
-step_dns() {
-  title "Step 4 / 6 — DNS Provider  (optional)"
+# ── Step 4: Cloudflare account ───────────────────────────────────────────────
+# The platform publishes every service on one domain and needs DNS for it.
+# Rather than asking the operator to create records by hand, we ask for a
+# Cloudflare API token and create them ourselves — and Cloudflare issues the
+# TLS certificates.
+step_cloudflare() {
+  title "Step 4 / 7 — Cloudflare account"
   divider
-  echo "  Cloudflare is optional. Without it, SSL certificates use HTTP-01"
-  echo "  challenge — you must create DNS A records manually before running."
+  echo "  Your platform is published on one domain, and Cloudflare will hold"
+  echo "  the DNS records for it and issue the TLS certificates."
   echo ""
-  echo "  For Cloudflare: Zone / DNS / Edit token at:"
-  echo "  https://dash.cloudflare.com/profile/api-tokens"
-  echo ""
-  prompt "Cloudflare API token [Enter to skip]: "
-  read -r -s cf; echo ""
-  if [[ -z "$cf" ]]; then
-    info "Cloudflare skipped — using HTTP-01 for SSL (manual DNS required)"
-    CLOUDFLARE_API_TOKEN=""
-    return
-  fi
-  CLOUDFLARE_API_TOKEN="$cf"
 
-  step "Validating token..."
-  ZONE_RESULT=$(curl -s -m 10 -X GET \
-    "https://api.cloudflare.com/client/v4/zones?name=${DOMAIN#*.}&status=active" \
-    -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" \
-    -H "Content-Type: application/json")
-  DNS_ZONE_ID=$(echo "$ZONE_RESULT" | jq -r '.result[0].id // empty' 2>/dev/null)
-  if [[ -z "$DNS_ZONE_ID" ]]; then
-    warn "Token invalid or no zone found. Check permissions."
-    warn "Continuing without Cloudflare — create DNS records manually."
-    CLOUDFLARE_API_TOKEN=""; DNS_ZONE_ID=""
+  local zones zone_id zone_name picked
+
+  while true; do
+    echo "  Create an API token:"
+    echo ""
+    echo "      $(cf_token_create_url)"
+    echo ""
+    echo "    with these permissions:"
+    cf_permissions_help
+    echo ""
+    prompt "Paste the API token (Enter to skip Cloudflare): "
+    read -r -s CLOUDFLARE_API_TOKEN; echo ""
+
+    if [[ -z "$CLOUDFLARE_API_TOKEN" ]]; then
+      warn "Skipped — you will have to create the DNS records yourself."
+      warn "The full list is in installer/config/services.tsv."
+      CF_ZONE_ID=""
+      CF_ZONE_NAME=""
+      return
+    fi
+
+    if ! cf_verify_token; then
+      error "That token was not accepted. Check the permissions and try again."
+      continue
+    fi
+
+    step "Token accepted. Zones this account can manage:"
+    zones="$(cf_list_zones)"
+    if [[ -z "$zones" ]]; then
+      warn "This token cannot see any zones."
+      warn "Add the domain to Cloudflare first, or check the token's Zone permissions."
+      CLOUDFLARE_API_TOKEN=""
+      continue
+    fi
+
+    local id name
+    while IFS=$'\t' read -r id name; do
+      [[ -z "$id" ]] && continue
+      printf '      %s\n' "$name"
+    done <<< "$zones"
+
+    echo ""
+    prompt "Which zone is the platform domain in? [type it]: "
+    read -r picked
+    picked="${picked,,}"
+    picked="${picked#https://}"; picked="${picked#http://}"; picked="${picked%/}"
+    picked="${picked%%/*}"
+
+    zone_id="$(cf_find_zone "$picked")"
+    if [[ -z "$zone_id" ]]; then
+      error "No zone in this account covers ${picked}."
+      error "Add the domain to Cloudflare (nameservers are assigned when you do),"
+      error "or pick one of the zones listed above."
+      CLOUDFLARE_API_TOKEN=""
+      continue
+    fi
+    zone_name="$(echo "$zones" | awk -F'\t' -v z="$zone_id" '$1==z {print $2}')"
+
+    CF_ZONE_ID="$zone_id"
+    CF_ZONE_NAME="$zone_name"
+    info "Using zone: ${zone_name}"
     return
-  fi
-  info "Token validated."
+  done
 }
 
 # ── Step 5: Optional components ──────────────────────────────────────────────
 step_addons() {
   local ADDONS_ROOT
   ADDONS_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../addons" 2>/dev/null && pwd)" || ADDONS_ROOT=""
-  title "Step 5 / 6 — Optional components"
+  title "Step 5 / 7 — Optional components"
   divider
   echo "  These install alongside the platform. They are optional — the"
   echo "  core platform does not need them."
@@ -202,7 +256,7 @@ step_addons() {
 
 # ── Step 6: Review ───────────────────────────────────────────────────────────
 step_review() {
-  title "Step 6 / 6 — Review"
+  title "Step 6 / 7 — Review"
   divider
   echo "  Domain:       $DOMAIN"
   echo "  Admin:       $ADMIN_EMAIL"
@@ -241,7 +295,7 @@ detect_env
 step_domain
 step_email
 step_password
-step_dns
+step_cloudflare
 step_addons
 step_review
 
@@ -431,48 +485,46 @@ if [[ ${#SELECTED_ADDONS[@]} -gt 0 ]]; then
   }
 fi
 
-# ── Cloudflare DNS ──────────────────────────────────────────────────────────
-if [[ -n "$CLOUDFLARE_API_TOKEN" && -n "$DNS_ZONE_ID" ]]; then
+# ── DNS records ─────────────────────────────────────────────────────────────
+# The records for every service the platform publishes come from
+# installer/config/services.tsv, so the list of hostnames lives in one
+# place instead of being scattered through this script.
+if [[ -n "$CF_ZONE_ID" && -n "$CLOUDFLARE_API_TOKEN" ]]; then
+  title "Nameservers"
+  divider
+  ns="$(cf_zone_nameservers "$CF_ZONE_ID")"
+  if [[ -n "$ns" ]]; then
+    echo "  Cloudflare has assigned these nameservers for ${CF_ZONE_NAME}:"
+    echo "$ns" | while read -r n; do echo "      ${n}"; done
+    echo ""
+    echo "  If ${CF_ZONE_NAME} is not already using them, point the domain's"
+    echo "  nameservers at Cloudflare — at your registrar, not here. DNS will"
+    echo "  not work until that has propagated (usually minutes, sometimes"
+    echo "  up to a day)."
+  fi
+  echo ""
+
   title "Creating DNS records"
-  for sub in app jmap storage mail; do
-    FULL="${sub}.${DOMAIN}"
-    RESULT=$(curl -s -X POST \
-      "https://api.cloudflare.com/client/v4/zones/${DNS_ZONE_ID}/dns_records" \
-      -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" \
-      -H "Content-Type: application/json" \
-      -d "{\"type\":\"A\",\"name\":\"${FULL}\",\"content\":\"${DETECTED_IP}\",\"ttl\":3600,\"proxied\":false}")
-    echo "$RESULT" | grep -q '"success":true' \
-      && info "DNS: ${FULL} → ${DETECTED_IP}" \
-      || warn "DNS: ${FULL} — failed"
-  done
-
-  RESULT=$(curl -s -X POST \
-    "https://api.cloudflare.com/client/v4/zones/${DNS_ZONE_ID}/dns_records" \
-    -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" \
-    -H "Content-Type: application/json" \
-    -d "{\"type\":\"A\",\"name\":\"*.${DOMAIN}\",\"content\":\"${DETECTED_IP}\",\"ttl\":3600,\"proxied\":false}")
-  echo "$RESULT" | grep -q '"success":true' \
-    && info "DNS: *.${DOMAIN} → ${DETECTED_IP}" \
-    || warn "DNS: wildcard failed"
-
-  RESULT=$(curl -s -X POST \
-    "https://api.cloudflare.com/client/v4/zones/${DNS_ZONE_ID}/dns_records" \
-    -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" \
-    -H "Content-Type: application/json" \
-    -d "{\"type\":\"MX\",\"name\":\"${DOMAIN}\",\"content\":\"mail.${DOMAIN}\",\"ttl\":3600,\"proxied\":false,\"priority\":10}")
-  echo "$RESULT" | grep -q '"success":true' \
-    && info "DNS: MX ${DOMAIN} → mail.${DOMAIN}" \
-    || warn "DNS: MX failed"
+  addons_list=()
+  if [[ ${#SELECTED_ADDONS[@]} -gt 0 ]]; then
+    addons_list=("${SELECTED_ADDONS[@]}")
+  fi
+  if create_dns_records "$CF_ZONE_ID" "$DOMAIN" "$DETECTED_IP" "${addons_list[@]}"; then
+    info "${DNS_CREATED} record(s) created."
+  else
+    warn "${DNS_FAILED} record(s) could not be created — see the list above."
+    warn "You can create them by hand from installer/config/services.tsv."
+  fi
 else
-  title "Skipping Cloudflare DNS"
-  info "Skipped — create these DNS records manually before deploying:"
-  echo "    A    deploy.${DOMAIN}     → ${DETECTED_IP}"
-  echo "    A    app.${DOMAIN}       → ${DETECTED_IP}"
-  echo "    A    jmap.${DOMAIN}      → ${DETECTED_IP}"
-  echo "    A    storage.${DOMAIN}   → ${DETECTED_IP}"
-  echo "    A    mail.${DOMAIN}      → ${DETECTED_IP}"
-  echo "    A    *.${DOMAIN}         → ${DETECTED_IP}"
-  echo "    MX   ${DOMAIN}           → mail.${DOMAIN}"
+  title "DNS records"
+  warn "No Cloudflare account connected — create these records by hand:"
+  echo ""
+  while IFS=$'\t' read -r label host record target when; do
+    [[ -z "$label" ]] && continue
+    hname="$(service_hostname "$host" "$DOMAIN")"
+    printf '    %-5s %-34s → %s\n' "$record" "$hname" "$DETECTED_IP"
+  done < <(services_for always)
+  echo ""
 fi
 
 # ── Traefik config ──────────────────────────────────────────────────────────
@@ -634,7 +686,7 @@ api:
 entryPoints:
   # The internal entrypoint Traefik's own /ping endpoint binds to. It is
   # NOT published to the host — it exists so the healthcheck has something
-  # to probe, and so `traefik healthcheck --ping` works.
+  # to probe, and so traefik healthcheck --ping works.
   traefik:
     address: ":8080"
   web:
@@ -648,7 +700,7 @@ entryPoints:
     address: ":443"
 # The ping endpoint the healthcheck probes. It is enabled here rather than
 # with a --ping flag: the image's entrypoint rewrites a flag-only command
-# line into `traefik traefik --ping=true`, and the flag is then swallowed
+# line into traefik traefik --ping=true, and the flag is then swallowed
 # as an argument instead of being applied.
 ping:
   entryPoint: traefik
@@ -676,7 +728,7 @@ providers:
     # A DIRECTORY: Traefik's file provider reads every .yml/.toml file in
     # it, so the platform's routing (platform.yml) and the deployments'
     # routing (dynamic-deployments.yml) never overwrite each other.
-    # The option is `directory`, not `filename` — `filename` with a
+    # The option is directory, not filename — filename with a
     # directory path fails with "read ...: is a directory".
     directory: /etc/traefik/dynamic
     watch: true
@@ -698,3 +750,7 @@ echo ""
 echo -e "  ${DIM}To start the platform:${NC}"
 echo -e "  ${CYAN}  cd $DOCKER_DIR && sudo docker compose up -d --build${NC}"
 echo ""
+
+# The links. The operator is told to open the dashboard, so it comes first.
+print_summary "$DOMAIN" "${SELECTED_ADDONS[@]}"
+

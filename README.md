@@ -99,38 +99,87 @@ FIDScript Deploy turns any VPS into a private application cloud — hosting, aut
 
 ### Option A — One-Command VPS Install (recommended for production)
 
-For a fresh Ubuntu 22.04+ or Debian 12+ VPS with **root SSH access** and a domain whose DNS you control:
+For a fresh Ubuntu 22.04+ or Debian 12+ VPS with **root SSH access**:
 
 ```bash
 curl -sSL https://fidscript.dev/install.sh | sudo bash
 ```
 
-The dumb bootstrap installer (`installer/scripts/install.sh`):
-1. Installs Docker + Compose if missing.
-2. Clones the repo to `/opt/fidscript-deploy`.
-3. Copies the install tree to `/opt/fidscript`.
-4. Generates all secrets (chmod 600) under `/opt/fidscript/docker/secrets/`.
-5. Writes a minimal IP-fallback Traefik config (no domain routing yet).
-6. Brings the stack up (`docker compose up -d --build`).
-7. Runs `prisma migrate deploy`.
-8. Prints the IP-fallback access URL.
+That is the whole install. The bootstrap installer installs Docker and
+Compose if they are missing, clones the repository to `/opt/fidscript-deploy`,
+generates every secret, brings the stack up and runs the database
+migrations — then hands over to the setup wizard.
 
-You then open that URL → the in-browser **/setup wizard** collects your real domain, Cloudflare token (optional), and admin credentials, then renders Traefik dynamic config and DNS records.
+### The setup wizard
+
+The wizard asks a handful of questions and does the rest:
+
+```
+Step 1/7  Platform domain          the domain everything is published on
+Step 2/7  Administrator account   email + password
+Step 3/7  Admin password
+Step 4/7  Cloudflare account      ← the interesting one
+Step 5/7  Optional components     observability, Instant, WhatsApp, package manager
+Step 6/7  Review
+Step 7/7  Done — with the links
+```
+
+**Cloudflare (step 4).** Your platform is published on one domain, and
+Cloudflare holds the DNS for it and issues the TLS certificates. The
+wizard prints a link to Cloudflare's token page with the permissions it
+needs listed underneath:
+
+```
+Zone · DNS · Edit            — create the records for each service
+Zone · Zone · Read           — find your zone and read its nameservers
+Zone · Cache Purge · Edit     — purge the cache when records change
+```
+
+Paste the token back and the wizard verifies it, lists the zones the
+account can see, and asks which one the domain is in. It then shows the
+two nameservers Cloudflare assigned — if the domain is not already using
+them, point it at Cloudflare at your registrar — and creates the DNS
+record for every service itself.
+
+**The services.** One domain, one record each, listed in
+`installer/config/services.tsv`:
+
+| Service | Hostname |
+|---|---|
+| Dashboard | `example.com` |
+| API | `api.example.com` |
+| Mail — JMAP / IMAP / SMTP / admin | `jmap.` · `imap.` · `mail.` · `stalwart-admin.example.com` |
+| Object storage | `storage.example.com` |
+| Deployed apps | `*.apps.example.com` |
+| WhatsApp (add-on) | `whatsapp.` · `whatsapp-api.example.com` |
+| Instant (add-on) | `instant.` · `realtime.` · `instant-mcp.example.com` |
+| Package manager (add-on) | `registry.` · `maven.example.com` |
+
+**What you get back.** The last thing the wizard prints is the list of
+links, with the dashboard first, because that is the one to open:
+
+```
+   Dashboard                    https://example.com
+   API                          https://api.example.com
+   ...
+   Open the dashboard, sign in with the administrator account, and
+   the setup guide walks you through the rest.
+```
 
 ### Option B — Manual Install (for review / dev on this machine)
 
 ```bash
 # 1. Clone the repo
-git clone https://github.com/kennedymwangi/fidscript-deploy.git
+git clone https://github.com/Mkid095/fidscript-deploy.git
 cd fidscript-deploy
 
 # 2. Generate secrets and write .env files
 sudo bash installer/scripts/setup-wizard.sh
-#    → interactive: domain, admin email, admin password, optional Cloudflare token
-#    → writes /opt/fidscript/docker/.env  (per-host) and  secrets/api.env
+#    → interactive: domain, admin email, admin password, Cloudflare token
+#    → writes installer/docker/.env, secrets/api.env and the Traefik routing
 
 # 3. Build and start
-cd /opt/fidscript/docker
+cd installer/docker
 sudo docker compose up -d --build
 
 # 4. Verify (waits up to 5 min)
