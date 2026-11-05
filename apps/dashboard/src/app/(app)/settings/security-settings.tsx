@@ -42,7 +42,7 @@ export function SecuritySettings({ onRevoke, revoking, revokeError }: SecuritySe
 
   return (
     <>
-      <Card className="border border-[var(--rail)] mb-6">
+      <Card id="api-keys" className="border border-[var(--rail)] mb-6 scroll-mt-6">
         <div className="flex items-center justify-between mb-4">
           <h2 className="text-sm font-semibold text-[var(--text)]">API Keys</h2>
         </div>

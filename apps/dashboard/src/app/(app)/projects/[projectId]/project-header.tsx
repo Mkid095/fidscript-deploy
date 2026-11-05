@@ -89,8 +89,12 @@ export function ProjectHeader({
           {project.name}
         </button>
         <div className="hidden md:flex items-center gap-1.5">
-          <HugeiconsIcon icon={ChevronRightIcon} size={12} className="text-[var(--text-dim)] flex-shrink-0" />
-          <span className="text-[var(--text-dim)] font-normal">{SECTION_MAP[effectiveSection]?.group ?? '—'}</span>
+          {SECTION_MAP[effectiveSection]?.group && (
+            <>
+              <HugeiconsIcon icon={ChevronRightIcon} size={12} className="text-[var(--text-dim)] flex-shrink-0" />
+              <span className="text-[var(--text-dim)] font-normal">{SECTION_MAP[effectiveSection].group}</span>
+            </>
+          )}
           <HugeiconsIcon icon={ChevronRightIcon} size={12} className="text-[var(--text-dim)] flex-shrink-0" />
           <span className="text-[var(--text)] font-medium">{SECTION_MAP[effectiveSection]?.label ?? effectiveSection}</span>
         </div>

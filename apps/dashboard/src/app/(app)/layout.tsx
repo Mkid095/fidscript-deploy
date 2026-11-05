@@ -43,9 +43,9 @@ export default function AppLayout({ children }: { children: ReactNode }) {
         ) : (
         <div className="min-h-screen flex flex-col bg-[var(--surface-2)]">
           <header className="h-14 bg-[var(--surface-2)] border-b border-[var(--rail)] flex items-center px-6 gap-4 flex-shrink-0">
-            {/* Logo — links home */}
+            {/* Logo — links to the platform's front door */}
             <Link
-              href="/projects"
+              href="/applications"
               className="flex items-center gap-2 group"
               aria-label="FIDScript home"
             >
@@ -79,7 +79,7 @@ export default function AppLayout({ children }: { children: ReactNode }) {
             {/* The platform's two top-level surfaces: the applications the
                 operator can have, and the projects they are working on. */}
             {!isProjectRoute && (
-              <nav className="flex items-center gap-1">
+              <nav className="flex items-center gap-1 px-1 py-1 rounded-lg bg-[var(--surface)] border border-[var(--rail)]">
                 <TopNavLink href="/applications" pathname={pathname}>
                   Applications
                 </TopNavLink>

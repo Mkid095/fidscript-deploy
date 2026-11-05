@@ -4,6 +4,8 @@ interface CardProps {
   children: React.ReactNode;
   className?: string;
   padding?: 'none' | 'sm' | 'md' | 'lg';
+  /** An anchor for the card — so a link can point at this exact section. */
+  id?: string;
 }
 
 const paddingClasses = {
@@ -13,9 +15,10 @@ const paddingClasses = {
   lg: 'p-6 sm:p-8',
 };
 
-export function Card({ children, className = '', padding = 'md' }: CardProps) {
+export function Card({ children, className = '', padding = 'md', id }: CardProps) {
   return (
     <div
+      id={id}
       className={`
         rounded-2xl border border-[var(--rail)] bg-[var(--surface)]
         dark:border-[var(--rail)] dark:bg-[var(--surface)]
