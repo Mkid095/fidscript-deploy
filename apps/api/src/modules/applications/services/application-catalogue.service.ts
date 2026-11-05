@@ -129,12 +129,16 @@ export class ApplicationCatalogueService {
       const host = ip || domain;
       return host ? `http://${host}:${presentation.port}` : null;
     }
-    if (!presentation.host) {
-      // The dashboard itself — no external URL.
-      return null;
-    }
     if (!domain) return null;
-    return `https://${presentation.host}.${domain}${presentation.path ?? ''}`;
+    if (presentation.host) {
+      return `https://${presentation.host}.${domain}${presentation.path ?? ''}`;
+    }
+    if (presentation.path) {
+      // A console on the platform's own domain — the dashboard itself.
+      return `https://${domain}${presentation.path}`;
+    }
+    // No console of its own.
+    return null;
   }
 
   private coreTitle(id: string): string {

@@ -39,3 +39,12 @@ asking for the install.
 **APP-04 answers 409** when the application is already installed or an
 install for it is already running, and **404** when there is no such
 application.
+
+**APP-04 publishes the application's DNS records** once its containers are
+up. The wizard creates those records for the add-ons it installs; one
+installed later needs them too, or its console is a hostname that does not
+resolve. The hostnames come from the installer's own service list
+(`installer/config/services.tsv`), and the records are created through the
+platform's Cloudflare provider — idempotently. A DNS failure is reported in
+the job's output and does not fail the install: the containers are up, and
+the application is installed.

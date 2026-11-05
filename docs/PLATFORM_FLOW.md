@@ -248,12 +248,18 @@ operator chooses what goes on top of it.
 | 3 | They press **Install** on an application that is not there | `POST /api/v1/applications/:id/install` |
 | 4 | The API runs the installer's own command | `application-install.service.ts` |
 | 5 | The screen watches the installer's output while it works | `GET /api/v1/applications/installs` |
-| 6 | When it is done, the application opens on its own subdomain | the catalogue's `url` |
+| 6 | The application's DNS records are published, so its console resolves | `application-dns.service.ts` |
+| 7 | When it is done, the application opens on its own subdomain | the catalogue's `url` |
 
 **"Installed" is the installer's own record** — the add-on is listed in
 `installer/docker/.env`'s `FIDScript_ADDONS`. It is the same record
 `fidscript-addons` reads and writes, so the screen and the installer cannot
 disagree about what is installed.
+
+**The DNS records are published after the containers come up**, from the
+installer's own `services.tsv`. The wizard creates them for the add-ons it
+installs; one installed later needs them too, or its console is a hostname
+that does not resolve.
 
 **The install is the installer's command**, not a reimplementation of it, and
 it runs with `--no-recreate`: the platform's api is one of the running

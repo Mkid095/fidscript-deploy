@@ -96,6 +96,10 @@ import { AuthModule } from '@/modules/auth/auth.module';
     CloudflareOAuthService,
   ],
   exports: [
+    // The applications module publishes an application's DNS records when it
+    // installs one, and the Cloudflare provider is the only implementation
+    // that can do it with the platform's own token.
+    CloudflareDnsProvider,
     DomainsService,
     DomainCrudService,
     DomainListService,

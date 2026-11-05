@@ -8,6 +8,7 @@ import {
 import { spawn } from 'child_process';
 import { randomUUID } from 'crypto';
 import { ApplicationCatalogueService } from './application-catalogue.service';
+import { ApplicationDnsService } from './application-dns.service';
 import { INSTALLER_DIR } from '../application-manifest.reader';
 
 /** One install, running or finished. */
@@ -40,7 +41,10 @@ export class ApplicationInstallService {
   private readonly logger = new Logger(ApplicationInstallService.name);
   private readonly jobs = new Map<string, InstallJob>();
 
-  constructor(private catalogue: ApplicationCatalogueService) {}
+  constructor(
+    private catalogue: ApplicationCatalogueService,
+    private dns: ApplicationDnsService,
+  ) {}
 
   /** The installs currently running, and the ones that just finished. */
   list(): InstallJob[] {
@@ -123,6 +127,10 @@ export class ApplicationInstallService {
       if (code === 0) {
         job.status = 'succeeded';
         this.logger.log(`[applications] Installed ${job.applicationId}`);
+        // The containers are up; the hostnames still need to resolve. A
+        // failure here is not a failed install — the application IS
+        // installed — so it is reported and the install still succeeded.
+        void this.publishDns(job);
       } else {
         job.status = 'failed';
         job.error = job.error ?? `The installer exited with code ${code}.`;
@@ -131,5 +139,12 @@ export class ApplicationInstallService {
         );
       }
     });
+  }
+
+  /** Publish the application's DNS records once its containers are up. */
+  private async publishDns(job: InstallJob): Promise<void> {
+    for (const note of await this.dns.publish(job.applicationId)) {
+      job.output += `\n${note}`;
+    }
   }
 }
