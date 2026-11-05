@@ -25,7 +25,10 @@ export function ApplicationsScreen() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  const canInstall = user?.role === 'ADMIN' || user?.role === 'OWNER';
+  // The same check the rest of the dashboard uses (owner or admin), and the
+  // API re-checks it — the button is a hint, not the gate.
+  const role = user?.role?.toLowerCase();
+  const canInstall = role === 'owner' || role === 'admin';
 
   const load = useCallback(async () => {
     try {
