@@ -252,7 +252,7 @@ These are the places to work next. Each names the file to change.
 | 8 | **The `?section=` system** — only Settings is reachable, and the URL degrades from `/projects/X/settings` to `/projects/X?section=settings`. | `apps/dashboard/src/app/(app)/projects/[projectId]/` |
 | 9 | **No tests.** The suite is green because it is empty. | `apps/api`, `apps/dashboard` |
 | 10 | **The Instant app has no screen.** The API can provision a project's Instant app and the SDK can read its configuration, but the dashboard shows nothing — the operator has to open the Instant console for it. The split of ownership is decided in `docs/CAPABILITY_OVERLAP.md`; the screen is not written yet. | `apps/dashboard/src/app/(app)/projects/[projectId]/` |
-| 11 | **The second user system is still duplicated.** The live-query half of `modules/databases/` is retired — `POST /databases/:id/live-query`, `GET /databases/:id/live-query/:table` and the SDK's `watch()` are gone. `modules/app-auth/` remains: a second, weaker user system, and retiring it takes the second JWT issuer with it. | `modules/app-auth/` |
+| 11 | **The two duplicated halves are retired.** The live-query half of `modules/databases/` is gone (`POST /databases/:id/live-query`, `GET /databases/:id/live-query/:table`, the SDK's `watch()`), and so is the app-facing half of `modules/app-auth/` (the whole `APPAUTH-01..19` cluster, the per-project OAuth providers, the role management, and four tables). What remains in `modules/app-auth/` is what two other products need: the WhatsApp console's magic-code login and the operator's GitHub credentials. | — |
 
 ---
 

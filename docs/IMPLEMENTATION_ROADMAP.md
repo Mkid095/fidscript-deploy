@@ -239,8 +239,10 @@ After F11, close the non-blocking prereqs before any production claim:
 
 ## Out of scope for this roadmap (resume after F11 + hardening)
 
-- **BaaS app-auth UI** — `APPAUTH-01..19` exist in the backend; no dashboard screen is
-  specced. Per-project end-user auth (Supabase-Auth-style) is a future product surface.
+- **BaaS app-auth UI** — **retired 2026-11-05.** `APPAUTH-01..19` no longer exist: an
+  application's users, roles and OAuth providers are Instant's job, not a platform feature.
+  Per-project end-user auth is not a future product surface; it is Instant's. See
+  `docs/CAPABILITY_OVERLAP.md`.
 - **Templates / AI / Marketplace** — backend stubs/broken; no F-phase. Resumes as backend
   hardening tracks (AUDIT §E Track 4).
 - **CLI** — missing entirely (AUDIT §D). A separate surface track.

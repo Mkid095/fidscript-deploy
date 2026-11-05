@@ -1,7 +1,8 @@
 # F02 — Authentication (full spec)
 
-> **Status:** ✅ Implemented (2026-06-20). **Connects to:** backend Phase 03 (`AUTH-*`, `APPAUTH-*`;
-> see `backend/auth.md`). Login, register, magic-code, force-change-password wired to real API.
+> **Status:** ✅ Implemented (2026-06-20). **Connects to:** backend Phase 03 (`AUTH-*`; see
+> `backend/auth.md`). Login, register, magic-code, force-change-password wired to real API.
+> (`APPAUTH-*` was retired 2026-11-05 — an application's own users are Instant's job.)
 
 ## 1. Purpose
 Authentication is the gate every `/dashboard/*` route passes through and the start of every user's
@@ -21,8 +22,8 @@ fast typed **code** instead of a click-link).
   wants to enable MFA. Frustration: being forced through weak default creds.
 - **Solo developer** — registers themselves; wants magic-code (no password to remember) or email/pw.
 - **Invited team member** — arrives via invitation (PROJ-22); sets a password via accept flow.
-- **End user of a customer's app** — out of scope here (that's BaaS `APPAUTH-*`, surfaced per-project,
-  not in the platform console).
+- **End user of a customer's app** — out of scope here. That is Instant's job: an application's
+  users and permissions live in its Instant app, not in the platform console.
 
 ## 4. Complete User Journey
 ```
@@ -127,8 +128,8 @@ strength meter updates live; confirm must match; "Update & continue" → clears 
 
 ## 11. Design Philosophy
 Two methods only (email/pw + magic-code) — fewer choices = faster decisions. **No OAuth button** in the
-platform console UI (the BaaS `APPAUTH-*` OAuth stays available for *customer* apps, configured
-per-project, not here). Magic-code chosen over magic-**link** because a typed code needs no email
+platform console UI (an *application's* OAuth is Instant's — its `app_oauth_client`s — not a
+platform-side provider configuration). Magic-code chosen over magic-**link** because a typed code needs no email
 client switch and is faster (and the backend magic-**link** is broken — AUTH-05/06). Defaults: tab =
 email/pw; "remember me" implicit via refresh-token rotation. Advanced (MFA, sessions, API keys) live in
 Settings, not on the login card.

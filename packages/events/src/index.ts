@@ -55,6 +55,9 @@ export type EventType =
   | 'auth.magic_code_verified'
   | 'auth.token_refreshed'
   | 'auth.refresh_rejected'
+  // RETIRED 2026-11-05 — the app developer's auth surface moved to Instant
+  // (see docs/CAPABILITY_OVERLAP.md). These are no longer emitted; the IDs
+  // are retired, never recycled (rule 20).
   | 'auth.oauth_authorize_started'
   | 'auth.oauth_signin_succeeded'
   | 'auth.oauth_signin_failed'

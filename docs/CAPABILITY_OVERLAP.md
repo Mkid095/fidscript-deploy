@@ -123,6 +123,18 @@ project management · the **operator** half of auth (`User`, `ApiKey`,
    password, magic code, magic link, OAuth × 3, roles, sessions).
    *Cost today:* two user tables, two JWT issuers, two magic-code flows, for
    every app developer.
+   **Retired 2026-11-05**, in part. The app-facing surface is gone:
+   `POST /projects/:id/auth` and the whole `APPAUTH-01..19` cluster, the
+   per-project OAuth provider configuration, and the role management —
+   along with the `app_roles`, `app_user_roles`, `app_oauth_accounts` and
+   `auth_providers` tables, which nothing used afterwards.
+   **What stayed, and why.** The module was never only an app-facing
+   surface: the **WhatsApp console signs in with it** (magic code), and the
+   **deployment pipeline reads the operator's GitHub credentials through
+   it** when it clones a private repository. Removing the module wholesale
+   would have broken both. So the *app developer's* auth went, and the two
+   platform products' auth stayed. The `app_users` and `app_sessions` tables
+   remain for the same reason.
 3. **The `fidscript-mcp` binary collision** — `@fidscript-deploy/mcp-server`
    and `@fidscript/instant-mcp` both install `fidscript-mcp`.
 4. **The `fidscript-cli` alias collision** — the Instant fork's own
@@ -243,7 +255,7 @@ Instant does not already do better.
 | 2 | The wizard asks for the Instant PAT when the Instant add-on is on | none — additive | **done** |
 | 3 | The SDK's `instant` module | none — additive | **done** |
 | 4 | Retire the live-query half of `modules/databases/` | **medium** — the API surface disappears | **done** |
-| 5 | Retire `modules/app-auth/` as the app-facing auth | **high** — the second JWT issuer goes | to do |
+| 5 | Retire `modules/app-auth/` as the app-facing auth | **high** — the second JWT issuer goes | **done** (the app-facing half; the WhatsApp login and the GitHub credentials stayed) |
 | 6 | Drop the duplicate CLI/MCP bin names | low — the Instant fork is a separate repo | to do |
 | 7 | The dashboard's data screens point at the Instant console | none | to do |
 

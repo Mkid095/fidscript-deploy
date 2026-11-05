@@ -4,23 +4,35 @@ import { ConfigModule, ConfigService } from '@nestjs/config';
 import { EmailModule } from '@/modules/email/email.module';
 import { PassportModule } from '@nestjs/passport';
 import { resolveJwtSecret } from '@/common/secrets';
-import { AppAuthController } from '@/modules/app-auth/controllers/app-auth.controller';
-import { AuthProvidersController } from '@/modules/app-auth/auth-providers/auth-providers.controller';
 import { UserGithubController } from '@/modules/app-auth/controllers/user-github.controller';
-import { AppAuthUserService } from '@/modules/app-auth/services/app-auth-user.service';
-import { AppAuthManagementService } from '@/modules/app-auth/services/app-auth-management.service';
-import { AppAuthRegisterService } from '@/modules/app-auth/services/app-auth-register.service';
-import { AppAuthLoginService } from '@/modules/app-auth/services/app-auth-login.service';
 import { AppAuthTokenService } from '@/modules/app-auth/services/app-auth-token.service';
 import { MagicCodeService } from '@/modules/app-auth/services/magic-code.service';
-import { OAuthService } from '@/modules/app-auth/services/oauth.service';
 import { UserGithubService } from '@/modules/app-auth/services/user-github.service';
-import { AppAuthRoleService } from '@/modules/app-auth/services/app-auth-role.service';
-import { AuthProvidersService } from '@/modules/app-auth/auth-providers/auth-providers.service';
 import { AppJwtStrategy } from '@/modules/app-auth/jwt/app-jwt.strategy';
 import { AppJwtGuard } from '@/modules/app-auth/jwt/app-jwt.guard';
 import { ProjectsModule } from '@/modules/projects/projects.module';
 
+/**
+ * App-scoped users — but NOT the app developer's auth.
+ *
+ * An application's own users and permissions are Instant's job: its CEL
+ * rules are evaluated per entity per action against live data, which the
+ * platform's per-project role blobs never were. The app-facing auth surface
+ * that used to live here — `POST /projects/:id/auth`, the OAuth provider
+ * configuration, the role management — is gone. See
+ * `docs/CAPABILITY_OVERLAP.md`.
+ *
+ * What is left is what two other products depend on:
+ *
+ * - the **magic-code login** the WhatsApp console signs in with, and
+ * - the **GitHub credentials** the deployment pipeline injects when it
+ *   clones a private repository.
+ *
+ * Both are platform products, not app-developer surfaces. The GitHub
+ * controller in particular is the operator's own account connection, and the
+ * OAuth callback URL the service builds points at it — removing it would
+ * break the connect flow.
+ */
 @Module({
   imports: [
     EmailModule,
@@ -35,21 +47,14 @@ import { ProjectsModule } from '@/modules/projects/projects.module';
       inject: [ConfigService],
     }),
   ],
-  controllers: [AppAuthController, AuthProvidersController, UserGithubController],
+  controllers: [UserGithubController],
   providers: [
-    AppAuthUserService,
-    AppAuthRegisterService,
-    AppAuthLoginService,
     AppAuthTokenService,
     MagicCodeService,
-    OAuthService,
     UserGithubService,
-    AppAuthRoleService,
-    AppAuthManagementService,
-    AuthProvidersService,
     AppJwtStrategy,
     AppJwtGuard,
   ],
-  exports: [AppAuthUserService, AppAuthRoleService, AppJwtGuard, AppAuthTokenService, AppAuthManagementService, UserGithubService, MagicCodeService],
+  exports: [AppJwtGuard, AppAuthTokenService, UserGithubService, MagicCodeService],
 })
 export class AppAuthModule {}

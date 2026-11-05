@@ -18,9 +18,12 @@ the tool catalog + a connect snippet so a user can wire their IDE/agent in two c
 - No new tables. The MCP server is a **thin proxy** over the SDK (`@fidscript/sdk`) → API.
 
 ## 4. API mapping
-**The MCP server exposes 108 tools across** (see `backend/surfaces.md` → MCP): auth(6), projects(10),
-deployments(6), storage(7), databases(8), email(8), functions(9), queues(9), cron(8), realtime(4),
-monitoring(10), logging(6), app-auth(7), ai(10), marketplace(9).
+**The MCP server exposes 135 tools across** (see `backend/surfaces.md` → MCP): monitoring(24),
+auth(14), marketplace(13), logging(12), ai(10), deployments(8), storage(7), functions(7), email(7),
+databases(7), cron(7), queues(6), realtime(4), env_var(3), domain(3), project(2).
+
+There is **no app-auth family**: an application's users and permissions are Instant's, and the
+platform's app-auth surface was retired on 2026-11-05 (`docs/CAPABILITY_OVERLAP.md`).
 
 **Tools vs API:** every tool corresponds to one or more inventory endpoints (e.g. `auth_login` →
 `AUTH-02`; `deploy_function` → `FN-06`). Cross-reference inventory IDs in the *Tools* tab.

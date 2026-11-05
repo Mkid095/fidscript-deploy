@@ -1,8 +1,20 @@
 # Auth BaaS UI Gaps
 
-> **Status:** 5 missing frontend features identified by auth-mapper agent (2026-07-31).
-> Backend endpoints exist; no frontend UI has been built for any of these.
-> These gaps block Journey 5 (BaaS power user) and Journey 2 (team member) use cases.
+> **Status:** ⛔ **SUPERSEDED 2026-11-05 — do not build this.**
+>
+> Every endpoint these gaps are written against (`APPAUTH-01..19`) was **retired** on
+> 2026-11-05: an application's users, roles and OAuth providers are **Instant's** job, not
+> a platform feature. Instant's CEL permission rules are evaluated per entity per action
+> against live data, which the platform's per-project JSON permission blobs never were —
+> so the platform's version was the weaker duplicate of a thing that already exists, and
+> it went. See `docs/CAPABILITY_OVERLAP.md`.
+>
+> The gap is closed by **delegating**, not by building UI: an application gets its users
+> and permissions from its Instant app, and the platform's dashboard links to the Instant
+> console. There is nothing left here to implement.
+>
+> The document is kept for the record — it describes what the app-auth surface was, and
+> why it is no longer part of the product.
 
 ---
 

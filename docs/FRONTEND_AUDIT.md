@@ -140,13 +140,13 @@ These need frontend implementation. Backend IDs from `docs/phases/frontend/backe
 
 | # | Feature | Backend IDs | Priority | Notes |
 |---|---|---|---|---|
-| 1 | OAuth Provider Connection UI (Google/GitHub) | APPAUTH-07, APPAUTH-08 | HIGH | No UI at all |
+| 1 | OAuth Provider Connection UI (Google/GitHub) | APPAUTH-07, APPAUTH-08 | — | **Retired 2026-11-05** — an application's OAuth is Instant's (`app_oauth_client`), not a platform feature |
 | 2 | Platform API Key Management (`fsk_`) | AUTH-15, AUTH-16, AUTH-17 | HIGH | `/settings/security` or `/platform/api-keys` |
 | 3 | Project API Key Management (`fpk_`) | PROJ-19, PROJ-20, PROJ-21 | HIGH | Per-project settings |
-| 4 | Auth Provider Settings (per-project) | APPAUTH-17, APPAUTH-18, APPAUTH-19 | MEDIUM | OAuth credentials config |
-| 5 | BaaS User Management | APPAUTH-14, APPAUTH-15, APPAUTH-16 | MEDIUM | List/disable app users |
+| 4 | Auth Provider Settings (per-project) | APPAUTH-17, APPAUTH-18, APPAUTH-19 | — | **Retired 2026-11-05** — with them |
+| 5 | BaaS User Management | APPAUTH-14, APPAUTH-15, APPAUTH-16 | — | **Retired 2026-11-05** — an application's users are managed in Instant, where the permission rules are |
 | 6 | Guided first-project creation | — | HIGH | User lands on empty `/projects`, no CTA |
-| 7 | Magic code verify on register | APPAUTH-20 | HIGH | Register flow broken (see above) |
+| 7 | Magic code verify on register | APPAUTH-20 | — | **Retired 2026-11-05** — the app-auth surface is gone; the platform's own register is AUTH-01 |
 
 ---
 

@@ -35,10 +35,11 @@ specs, service specs, and component specs; diffed the two sets.
     `docs/backend-prerequisites.md` (`PREREQ-SCHED-1`, `PREREQ-PROJ-1`). No unassigned
     inventory token remains anywhere in the docs.
 - **Orphan IDs (in inventory, not referenced by any screen): 73.** *Acceptable.* These are
-  endpoints that exist in the backend but have no frontend screen yet — most notably
-  `APPAUTH-01..19` (the BaaS app-auth surface; no dashboard screen exists for it because
-  per-project end-user auth UI is out of scope for F02–F11) and a handful of read/list
+  endpoints that exist in the backend but have no frontend screen yet — a handful of read/list
   variants. They are not defects; they are documented surface area awaiting a screen.
+  (`APPAUTH-01..19` used to be in this list as "surface awaiting a screen"; they are now
+  **retired** — an application's users and permissions are Instant's job. See
+  `docs/CAPABILITY_OVERLAP.md`.)
 
 ### Verdict
 

@@ -19,7 +19,6 @@ export interface AppAuthUser {
   projectId: string;
   email: string;
   sessionId: string;
-  roles: { id: string; name: string; permissions: string[] }[];
 }
 
 @Injectable()
@@ -45,10 +44,10 @@ export class AppJwtStrategy extends PassportStrategy(Strategy, 'app-jwt') {
       throw new UnauthorizedException('Session revoked or expired');
     }
 
-    // Load user + roles.
+    // Load the user. It has no roles: an application's permissions are
+    // Instant's CEL rules, not a JSON blob on a platform-side role.
     const user = await this.prisma.appUser.findUnique({
       where: { id: payload.sub },
-      include: { roles: { include: { role: true } } },
     });
     if (!user || user.projectId !== payload.projectId) {
       throw new UnauthorizedException('User no longer valid');
@@ -65,11 +64,6 @@ export class AppJwtStrategy extends PassportStrategy(Strategy, 'app-jwt') {
       projectId: user.projectId,
       email: user.email,
       sessionId: session.id,
-      roles: user.roles.map((ur) => ({
-        id: ur.role.id,
-        name: ur.role.name,
-        permissions: (ur.role.permissions as string[]) || [],
-      })),
     };
   }
 }

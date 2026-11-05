@@ -13,9 +13,7 @@ import { ApiTags, ApiOperation } from '@nestjs/swagger';
 import { IsEmail, IsOptional, IsString, IsNotEmpty } from 'class-validator';
 import { MagicCodeService } from '@/modules/app-auth/services/magic-code.service';
 import { AppAuthTokenService } from '@/modules/app-auth/services/app-auth-token.service';
-import { AppAuthUserService } from '@/modules/app-auth/services/app-auth-user.service';
 import { AppJwtGuard } from '@/modules/app-auth/jwt/app-jwt.guard';
-import { AppAuthManagementService } from '@/modules/app-auth/services/app-auth-management.service';
 import { extractRequestContext } from '@/common/request-context';
 import { Request } from 'express';
 
@@ -43,7 +41,7 @@ export class VerifyCodeDto {
  * Maps:
  *   POST /api/auth/request-code  → MagicCodeService.requestCode (project-scoped)
  *   POST /api/auth/verify-code  → MagicCodeService.verifyCode  (project-scoped)
- *   GET  /api/auth/me           → AppJwtGuard + AppAuthManagementService
+ *   GET  /api/auth/me           → AppJwtGuard
  */
 @ApiTags('whatsapp-auth')
 @Controller('api/auth')
@@ -51,8 +49,6 @@ export class WhatsappAuthController {
   constructor(
     private magicCodeService: MagicCodeService,
     private tokenService: AppAuthTokenService,
-    private userService: AppAuthUserService,
-    private managementService: AppAuthManagementService,
   ) {}
 
   @Post('request-code')
