@@ -35,7 +35,7 @@ export function PasswordForm({
         value={email}
         onChange={e => onEmailChange(e.target.value)}
         placeholder="admin@example.com"
-        autoComplete="email"
+        autoComplete="username"
       />
       <Input
         label="Password"
