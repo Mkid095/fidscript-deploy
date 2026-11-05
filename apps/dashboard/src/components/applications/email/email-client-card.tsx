@@ -1,7 +1,6 @@
 'use client';
 
 import { useState } from 'react';
-import { Button } from '@fidscript/ui';
 import { HugeiconsIcon } from '@hugeicons/react';
 import { Copy01Icon } from '@hugeicons/core-free-icons';
 

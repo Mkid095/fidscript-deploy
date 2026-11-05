@@ -5,6 +5,7 @@ import { HugeiconsIcon } from '@hugeicons/react';
 import { CheckmarkCircle02Icon, GitBranchIcon, GithubIcon } from '@hugeicons/core-free-icons';
 
 import { EnvVarsEditor } from './env-vars-editor';
+import { WorkspacePicker } from './workspace-picker';
 import type { BuildPlan, EnvVarEntry, ImportSource, Workspace } from './new-deployment-types';
 
 interface StepProjectProps {
@@ -59,29 +60,11 @@ export function StepProject(props: StepProjectProps) {
       </Card>
 
       <Card className="border border-[var(--rail)] p-5 space-y-4">
-        <div>
-          <h2 className="text-sm font-semibold text-[var(--text)] mb-1">Where should this project live?</h2>
-          <p className="text-xs text-[var(--text-muted)] mb-4">
-            Your own workspace, or a team you belong to — everybody in the team works in it.
-          </p>
-          <div className="space-y-2">
-            <WorkspaceOption
-              selected={props.workspaceId === ''}
-              onSelect={() => props.onWorkspaceChange('')}
-              title="My workspace"
-              hint="Only you can see it"
-            />
-            {props.workspaces.map(workspace => (
-              <WorkspaceOption
-                key={workspace.id}
-                selected={props.workspaceId === workspace.id}
-                onSelect={() => props.onWorkspaceChange(workspace.id)}
-                title={workspace.name}
-                hint={`The ${workspace.name} team`}
-              />
-            ))}
-          </div>
-        </div>
+        <WorkspacePicker
+          workspaces={props.workspaces}
+          workspaceId={props.workspaceId}
+          onWorkspaceChange={props.onWorkspaceChange}
+        />
 
         <Input
           label="Project name"
@@ -159,38 +142,5 @@ export function StepProject(props: StepProjectProps) {
         />
       </Card>
     </div>
-  );
-}
-
-interface WorkspaceOptionProps {
-  selected: boolean;
-  onSelect: () => void;
-  title: string;
-  hint: string;
-}
-
-function WorkspaceOption({ selected, onSelect, title, hint }: WorkspaceOptionProps) {
-  return (
-    <button
-      type="button"
-      onClick={onSelect}
-      className={`w-full flex items-center gap-3 px-3.5 py-3 rounded-lg border text-left transition-all ${
-        selected
-          ? 'border-[var(--accent)]/60 bg-[var(--accent)]/5'
-          : 'border-[var(--rail)] bg-[var(--surface-2)] hover:border-[var(--rail-light)]'
-      }`}
-    >
-      <span
-        className={`w-3.5 h-3.5 rounded-full border flex-shrink-0 ${
-          selected ? 'border-[var(--accent)] bg-[var(--accent)]' : 'border-[var(--rail-light)]'
-        }`}
-      />
-      <span>
-        <span className={`block text-sm ${selected ? 'text-[var(--text)]' : 'text-[var(--text-muted)]'}`}>
-          {title}
-        </span>
-        <span className="block text-xs text-[var(--text-dim)] mt-0.5">{hint}</span>
-      </span>
-    </button>
   );
 }

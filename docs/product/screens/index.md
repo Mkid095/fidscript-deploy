@@ -41,6 +41,7 @@ opens on its own subdomain.
 | Screen | Route | Auth | Renders | Key fields | Operations | Deep spec |
 |---|---|---|---|---|---|---|
 | Applications | `/applications` | O/A/D/V | the application catalogue | title, summary, kind (core / add-on), installed, the console URL | install `APP-04` · watch the install `APP-02` | — |
+| **Email application** | `/applications/email` | O/A | the mail server's configuration | the console address, the credential to log into it with (revealed on demand), the SMTP/STARTTLS/IMAP client settings, the domains the platform receives mail for and the aliases on them | `/api/v1/admin/platform-mail/console` · manage the domains and aliases in the mail console | ✅ built 2026-11-05 |
 
 **The screen is the answer to "what can this platform do for me".** The core
 applications are listed with their console; the rest carry an **Install**

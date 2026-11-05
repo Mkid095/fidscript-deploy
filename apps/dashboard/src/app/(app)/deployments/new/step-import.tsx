@@ -1,8 +1,6 @@
 'use client';
 
 import { Card, Input, Dropzone } from '@fidscript/ui';
-import { HugeiconsIcon } from '@hugeicons/react';
-import { GithubIcon, HardDriveIcon, Link01Icon } from '@hugeicons/core-free-icons';
 
 import { MAX_ARCHIVE_BYTES } from '@/lib/deployment-source';
 import {
@@ -12,6 +10,7 @@ import {
 } from '@/app/(app)/projects/[projectId]/services/new/github-connect-banner';
 import type { GithubRepo, GithubBranch, GithubStatus } from './new-deployment-types';
 import type { ImportSource } from './new-deployment-types';
+import { SourceCards } from './source-cards';
 
 interface StepImportProps {
   source: ImportSource;
@@ -40,12 +39,6 @@ interface StepImportProps {
   onArchiveChange: (file: File | null) => void;
 }
 
-const SOURCES: { key: ImportSource; label: string; hint: string; Icon: typeof GithubIcon }[] = [
-  { key: 'github', label: 'Connect GitHub', hint: 'Browse your repositories and branches', Icon: GithubIcon },
-  { key: 'git', label: 'Import a git repository', hint: 'Any git URL — a host you control', Icon: Link01Icon },
-  { key: 'archive', label: 'Upload the code', hint: 'A .zip or .tar.gz of your project', Icon: HardDriveIcon },
-];
-
 /**
  * Step one — where the code comes from.
  *
@@ -56,32 +49,7 @@ const SOURCES: { key: ImportSource; label: string; hint: string; Icon: typeof Gi
 export function StepImport(props: StepImportProps) {
   return (
     <div className="space-y-5">
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-        {SOURCES.map(({ key, label, hint, Icon }) => (
-          <button
-            key={key}
-            type="button"
-            onClick={() => props.onSourceChange(key)}
-            className={`flex items-start gap-3 p-4 rounded-lg border text-left transition-all ${
-              props.source === key
-                ? 'border-[var(--accent)]/60 bg-[var(--accent)]/5'
-                : 'border-[var(--rail)] bg-[var(--surface-2)] hover:border-[var(--rail-light)]'
-            }`}
-          >
-            <HugeiconsIcon
-              icon={Icon}
-              size={18}
-              className={`mt-0.5 flex-shrink-0 ${props.source === key ? 'text-[var(--accent)]' : 'text-[var(--text-dim)]'}`}
-            />
-            <span>
-              <span className={`block text-sm font-medium ${props.source === key ? 'text-[var(--text)]' : 'text-[var(--text-muted)]'}`}>
-                {label}
-              </span>
-              <span className="block text-xs text-[var(--text-dim)] mt-0.5">{hint}</span>
-            </span>
-          </button>
-        ))}
-      </div>
+      <SourceCards source={props.source} onSourceChange={props.onSourceChange} />
 
       {props.source === 'github' && (
         <div className="space-y-4">
