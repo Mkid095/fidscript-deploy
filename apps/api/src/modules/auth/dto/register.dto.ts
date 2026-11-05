@@ -16,6 +16,25 @@ export class RegisterDto {
   @IsOptional()
   name?: string;
 
+  @ApiPropertyOptional({ description: "The person's first name." })
+  @IsString()
+  @IsOptional()
+  firstName?: string;
+
+  @ApiPropertyOptional({ description: "The person's last name." })
+  @IsString()
+  @IsOptional()
+  lastName?: string;
+
+  @ApiPropertyOptional({
+    description:
+      'The company password — the shared secret the operator set during setup. ' +
+      'Required when the platform has one.',
+  })
+  @IsString()
+  @IsOptional()
+  setupPassword?: string;
+
   @ApiPropertyOptional({ description: 'Preferred auth method: PASSWORD or MAGIC_CODE (defaults to PASSWORD)', enum: ['PASSWORD', 'MAGIC_CODE'] })
   @IsOptional()
   @IsIn(['PASSWORD', 'MAGIC_CODE'])

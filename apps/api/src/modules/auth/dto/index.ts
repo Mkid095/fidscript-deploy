@@ -1,4 +1,5 @@
 export * from './register.dto';
+export * from './setup-password.dto';
 export * from './login.dto';
 export * from './magic-code.dto';
 export * from './session.dto';

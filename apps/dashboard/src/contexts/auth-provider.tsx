@@ -48,11 +48,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     name: string,
     password: string,
     authMethod: 'PASSWORD' | 'MAGIC_CODE',
-    inviteKeyword: string,
+    setupPassword: string,
+    firstName: string,
+    lastName: string,
   ): Promise<void> {
     setState(s => ({ ...s, loading: true, error: null }));
     try {
-      await registerMethod(email, name, password, authMethod, inviteKeyword, sendMagicCode, login);
+      await registerMethod(email, name, password, authMethod, setupPassword, firstName, lastName, sendMagicCode, login);
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Registration failed';
       setState(s => ({ ...s, loading: false, error: message }));

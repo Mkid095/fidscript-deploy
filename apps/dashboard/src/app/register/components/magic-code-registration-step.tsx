@@ -4,22 +4,30 @@ import { useState } from 'react';
 import { Button, Input } from '@fidscript/ui';
 import { LoginErrorBanner } from '../../login/components/login-error-banner';
 import { MagicCodeConfirmStep } from './magic-code-confirm-step';
+import { SetupPasswordInput } from './setup-password-input';
 
 interface MagicCodeRegistrationStepProps {
-  name: string;
+  firstName: string;
+  lastName: string;
   email: string;
+  setupPassword: string;
+  setupPasswordError: string;
   loading: boolean;
   validationError: string;
   backendError: string;
-  onNameChange: (v: string) => void;
+  onFirstNameChange: (v: string) => void;
+  onLastNameChange: (v: string) => void;
   onEmailChange: (v: string) => void;
+  onSetupPasswordChange: (v: string) => void;
   onSubmit: () => Promise<void>;
   onCodeComplete: (code: string) => void;
 }
 
 export function MagicCodeRegistrationStep({
-  name, email, loading, validationError, backendError,
-  onNameChange, onEmailChange, onSubmit, onCodeComplete,
+  firstName, lastName, email, setupPassword, setupPasswordError, loading,
+  validationError, backendError,
+  onFirstNameChange, onLastNameChange, onEmailChange, onSetupPasswordChange,
+  onSubmit, onCodeComplete,
 }: MagicCodeRegistrationStepProps) {
   const [step, setStep] = useState<'form' | 'code'>('form');
   const [maskedEmail, setMaskedEmail] = useState('');
@@ -56,14 +64,24 @@ export function MagicCodeRegistrationStep({
             A magic code will be sent to your email each time you sign in.
           </p>
         </div>
-        <Input
-          label="Name"
-          type="text"
-          value={name}
-          onChange={e => onNameChange(e.target.value)}
-          placeholder="Your full name"
-          autoComplete="name"
-        />
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+          <Input
+            label="First name"
+            type="text"
+            value={firstName}
+            onChange={e => onFirstNameChange(e.target.value)}
+            placeholder="Ada"
+            autoComplete="given-name"
+          />
+          <Input
+            label="Last name"
+            type="text"
+            value={lastName}
+            onChange={e => onLastNameChange(e.target.value)}
+            placeholder="Lovelace"
+            autoComplete="family-name"
+          />
+        </div>
         <Input
           label="Email"
           type="email"
@@ -71,6 +89,11 @@ export function MagicCodeRegistrationStep({
           onChange={e => onEmailChange(e.target.value)}
           placeholder="you@example.com"
           autoComplete="email"
+        />
+        <SetupPasswordInput
+          value={setupPassword}
+          error={setupPasswordError}
+          onChange={onSetupPasswordChange}
         />
         {(validationError || backendError) && (
           <LoginErrorBanner message={validationError || backendError} />

@@ -8,9 +8,9 @@ import type { AuthCoreHost } from './auth-host';
 export function applyAuthCoreMethods(host: AuthCoreHost): void {
   const client = host.client;
 
-  host.register = (email, password, name, authMethod, inviteKeyword) =>
+  host.register = (email, password, name, authMethod, setupPassword, firstName, lastName) =>
     client.post<import('./auth-types').AuthResponse>('/api/v1/auth/register', {
-      email, password, name, authMethod, inviteKeyword,
+      email, password, name, authMethod, setupPassword, firstName, lastName,
     });
 
   host.login = (email, password) =>

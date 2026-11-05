@@ -39,7 +39,9 @@ export async function registerMethod(
   name: string,
   password: string,
   authMethod: 'PASSWORD' | 'MAGIC_CODE',
-  inviteKeyword: string,
+  setupPassword: string,
+  firstName: string,
+  lastName: string,
   sendMagicCode: (email: string) => Promise<{ sent: boolean }>,
   login: (email: string, password: string) => Promise<void>,
 ): Promise<void> {
@@ -47,9 +49,11 @@ export async function registerMethod(
   await sdk.auth.register(
     email,
     authMethod === 'PASSWORD' ? password : null,
-    name,
+    `${firstName.trim()} ${lastName.trim()}`,
     authMethod,
-    inviteKeyword,
+    setupPassword,
+    firstName,
+    lastName,
   );
   if (authMethod === 'PASSWORD') {
     await login(email, password);

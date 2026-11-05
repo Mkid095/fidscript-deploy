@@ -27,7 +27,7 @@ export class AuthModule implements AuthCoreHost, AuthSessionsHost, AuthOrgsHost,
   readonly client: FidscriptClient;
 
   // AuthCoreHost
-  register!: (email: string, password: string | null, name: string, authMethod: 'PASSWORD' | 'MAGIC_CODE', inviteKeyword?: string) => Promise<import('./auth-types').AuthResponse>;
+  register!: (email: string, password: string | null, name: string, authMethod: 'PASSWORD' | 'MAGIC_CODE', setupPassword?: string, firstName?: string, lastName?: string) => Promise<import('./auth-types').AuthResponse>;
   login!: (email: string, password: string) => Promise<import('./auth-types').AuthResponse>;
   lookupAuthMethod!: (email: string) => Promise<import('./auth-types').AuthMethodResponse>;
   logout!: () => Promise<unknown>;

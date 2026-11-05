@@ -9,6 +9,7 @@ interface ConfigureBody {
   adminEmail: string;
   authMethod: string;
   adminPassword?: string;
+  setupPassword?: string;
   cloudflareApiToken?: string;
   cloudflareClientId?: string;
   cloudflareClientSecret?: string;

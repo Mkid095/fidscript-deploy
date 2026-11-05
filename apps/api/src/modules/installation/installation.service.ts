@@ -225,6 +225,12 @@ export class InstallationOrchestratorService {
           },
         });
 
+        // The company password is stored as a bcrypt hash, never in the
+        // clear. Leaving it out leaves registration open.
+        const setupPasswordHash = dto.setupPassword
+          ? bcrypt.hashSync(dto.setupPassword, 12)
+          : undefined;
+
         await tx.installationSettings.upsert({
           where: { id: 'installation' },
           create: {
@@ -235,6 +241,7 @@ export class InstallationOrchestratorService {
             adminEmail: dto.adminEmail,
             authMethod: dto.authMethod as AuthMethod,
             dnsMode: dto.dnsMode ?? 'cloudflare_auto',
+            ...(setupPasswordHash ? { setupPasswordHash } : {}),
           } as any,
           update: {
             platformName: dto.platformName,
@@ -243,6 +250,7 @@ export class InstallationOrchestratorService {
             adminEmail: dto.adminEmail,
             authMethod: dto.authMethod as AuthMethod,
             dnsMode: dto.dnsMode ?? 'cloudflare_auto',
+            ...(setupPasswordHash ? { setupPasswordHash } : {}),
           } as any,
         });
 

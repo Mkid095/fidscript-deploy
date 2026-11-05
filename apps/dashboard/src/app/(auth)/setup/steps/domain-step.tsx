@@ -7,6 +7,7 @@ import { CloudflareOAuthSection } from './cloudflare-oauth-section';
 import { CloudflareTokenField } from './cloudflare-token-field';
 import { AdminEmailField } from './admin-email-field';
 import { PasswordFields } from './password-fields';
+import { CompanyPasswordFields } from './company-password-fields';
 import { AuthMethodBadge } from './auth-method-badge';
 import { PlatformNameField } from './platform-name-field';
 
@@ -22,6 +23,8 @@ interface DomainStepProps {
   adminEmail: string;
   adminPassword: string;
   confirmPassword: string;
+  setupPassword: string;
+  confirmSetupPassword: string;
   formError: string;
   onPlatformNameChange: (v: string) => void;
   onPlatformDomainChange: (v: string) => void;
@@ -31,6 +34,8 @@ interface DomainStepProps {
   onAdminEmailChange: (v: string) => void;
   onAdminPasswordChange: (v: string) => void;
   onConfirmPasswordChange: (v: string) => void;
+  onSetupPasswordChange: (v: string) => void;
+  onConfirmSetupPasswordChange: (v: string) => void;
   onTestConnection: () => void;
   onSubmit: () => void;
   testingConnection: boolean;
@@ -47,6 +52,8 @@ export function DomainStep({
   adminEmail,
   adminPassword,
   confirmPassword,
+  setupPassword,
+  confirmSetupPassword,
   formError,
   onPlatformNameChange,
   onPlatformDomainChange,
@@ -56,6 +63,8 @@ export function DomainStep({
   onAdminEmailChange,
   onAdminPasswordChange,
   onConfirmPasswordChange,
+  onSetupPasswordChange,
+  onConfirmSetupPasswordChange,
   onTestConnection,
   onSubmit,
   testingConnection,
@@ -66,8 +75,10 @@ export function DomainStep({
     ? `https://${platformDomain}/api/callback/cloudflare`
     : '';
 
+  const canSubmit =
     platformDomain.trim() && !domainError &&
     adminEmail.trim() && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(adminEmail) &&
+    setupPassword.length >= 8 && setupPassword === confirmSetupPassword &&
     (authMethod === 'MAGIC_CODE' || (
       adminPassword.length >= 12 && adminPassword === confirmPassword
     ));
@@ -134,9 +145,16 @@ export function DomainStep({
           />
         )}
 
+        <CompanyPasswordFields
+          setupPassword={setupPassword}
+          confirmSetupPassword={confirmSetupPassword}
+          onSetupPasswordChange={onSetupPasswordChange}
+          onConfirmSetupPasswordChange={onConfirmSetupPasswordChange}
+        />
+
         {formError && <p className="text-sm text-[var(--danger)]" role="alert">{formError}</p>}
 
-        <Button type="submit" variant="primary" size="lg" className="w-full mt-2">
+        <Button type="submit" variant="primary" size="lg" className="w-full mt-2" disabled={!canSubmit}>
           Configure Platform
         </Button>
       </form>

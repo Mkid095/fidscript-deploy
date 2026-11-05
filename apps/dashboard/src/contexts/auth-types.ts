@@ -15,7 +15,9 @@ export interface AuthContextValue extends AuthState {
     name: string,
     password: string,
     authMethod: 'PASSWORD' | 'MAGIC_CODE',
-    inviteKeyword: string,
+    setupPassword: string,
+    firstName: string,
+    lastName: string,
   ) => Promise<void>;
   sendMagicCode: (email: string) => Promise<{ sent: boolean }>;
   verifyMagicCode: (email: string, code: string) => Promise<void>;

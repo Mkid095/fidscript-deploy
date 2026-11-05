@@ -18,7 +18,10 @@ export interface AuthCoreHost {
     password: string | null,
     name: string,
     authMethod: 'PASSWORD' | 'MAGIC_CODE',
-    inviteKeyword?: string,
+    /** The company password — what the platform's operator set at setup. */
+    setupPassword?: string,
+    firstName?: string,
+    lastName?: string,
   ): Promise<AuthResponse>;
   login(email: string, password: string): Promise<AuthResponse>;
   lookupAuthMethod(email: string): Promise<AuthMethodResponse>;

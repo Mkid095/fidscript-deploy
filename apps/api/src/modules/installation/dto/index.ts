@@ -21,6 +21,16 @@ export class ConfigureInstallationDto {
   @IsIn(['PASSWORD', 'MAGIC_CODE'])
   authMethod!: 'PASSWORD' | 'MAGIC_CODE';
 
+  /**
+   * The company password — the shared secret that gates registration.
+   *
+   * It is stored as a bcrypt hash, never in the clear. Leave it out to
+   * leave registration open.
+   */
+  @IsString()
+  @IsOptional()
+  setupPassword?: string;
+
   /** Admin password — required when authMethod is PASSWORD, ignored for MAGIC_CODE */
   @IsString()
   @IsOptional()

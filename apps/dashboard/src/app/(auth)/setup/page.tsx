@@ -30,6 +30,8 @@ export default function SetupPage() {
   const [adminEmail, setAdminEmail] = useState('');
   const [adminPassword, setAdminPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
+  const [setupPassword, setSetupPassword] = useState('');
+  const [confirmSetupPassword, setConfirmSetupPassword] = useState('');
 
   // Cloudflare connection test
   const [testingConnection, setTestingConnection] = useState(false);
@@ -58,6 +60,9 @@ export default function SetupPage() {
       if (adminPassword.length < 12) { setFormError('Password must be at least 12 characters'); return false; }
       if (adminPassword !== confirmPassword) { setFormError('Passwords do not match'); return false; }
     }
+    if (!setupPassword) { setFormError('Company password is required'); return false; }
+    if (setupPassword.length < 8) { setFormError('Company password must be at least 8 characters'); return false; }
+    if (setupPassword !== confirmSetupPassword) { setFormError('Company passwords do not match'); return false; }
     setFormError('');
     return true;
   }
@@ -72,6 +77,7 @@ export default function SetupPage() {
       authMethod,
     };
     if (authMethod === 'PASSWORD') body.adminPassword = adminPassword;
+    body.setupPassword = setupPassword;
     if (cloudflareToken.trim()) body.cloudflareApiToken = cloudflareToken.trim();
     if (cloudflareClientId.trim()) body.cloudflareClientId = cloudflareClientId.trim();
     if (cloudflareClientSecret.trim()) body.cloudflareClientSecret = cloudflareClientSecret.trim();
@@ -119,6 +125,8 @@ export default function SetupPage() {
             adminEmail={adminEmail}
             adminPassword={adminPassword}
             confirmPassword={confirmPassword}
+            setupPassword={setupPassword}
+            confirmSetupPassword={confirmSetupPassword}
             formError={formError}
             onPlatformNameChange={setPlatformName}
             onPlatformDomainChange={setPlatformDomain}
@@ -128,6 +136,8 @@ export default function SetupPage() {
             onAdminEmailChange={setAdminEmail}
             onAdminPasswordChange={setAdminPassword}
             onConfirmPasswordChange={setConfirmPassword}
+            onSetupPasswordChange={setSetupPassword}
+            onConfirmSetupPasswordChange={setConfirmSetupPassword}
             onTestConnection={handleTestConnection}
             onSubmit={handleSubmit}
             testingConnection={testingConnection}

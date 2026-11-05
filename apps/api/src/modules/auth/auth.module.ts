@@ -6,9 +6,11 @@ import { resolveJwtSecret } from '@/common/secrets';
 import { AuthController } from '@/modules/auth/controllers/auth.controller';
 import { OrganizationController, InvitationAcceptController } from '@/modules/auth/controllers/organization.controller';
 import { AuthApiKeysController } from '@/modules/auth/controllers/auth-api-keys.controller';
+import { AuthSetupPasswordController } from '@/modules/auth/controllers/auth-setup-password.controller';
 import { AuthService } from '@/modules/auth/services/auth.service';
 import { AuthSessionService } from '@/modules/auth/services/auth-session.service';
 import { AuthRegisterService } from '@/modules/auth/services/auth-register.service';
+import { AuthSetupPasswordService } from '@/modules/auth/services/auth-setup-password.service';
 import { AuthOnboardingService } from '@/modules/auth/services/auth-onboarding.service';
 import { AuthLoginService } from '@/modules/auth/services/auth-login.service';
 import { AuthTokenService } from '@/modules/auth/services/auth-token.service';
@@ -49,11 +51,12 @@ import { ProjectsModule } from '@/modules/projects/projects.module';
       inject: [ConfigService],
     }),
   ],
-  controllers: [AuthController, OrganizationController, InvitationAcceptController, AuthApiKeysController],
+  controllers: [AuthController, OrganizationController, InvitationAcceptController, AuthApiKeysController, AuthSetupPasswordController],
   providers: [
     AuthService,
     AuthSessionService,
     AuthRegisterService,
+    AuthSetupPasswordService,
     AuthOnboardingService,
     AuthLoginService,
     AuthTokenService,
