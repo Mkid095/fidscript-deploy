@@ -17,6 +17,10 @@ export interface Application {
   requires: string[];
   /** The icon the dashboard draws. */
   icon: string;
+  /** The application's own API host, when it speaks one over HTTP. */
+  apiHost: string | null;
+  /** The application's own MCP server, when it has one. */
+  mcp: { package: string; env: Record<string, string> } | null;
 }
 
 /** One install, running or finished. */

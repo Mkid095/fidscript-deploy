@@ -17,6 +17,7 @@ import { DockerCommandService } from './runner/docker-command.service';
 import { ShellRunnerService } from './runner/shell-runner.service';
 import { ImageRegistryService } from './runner/image-registry.service';
 import { BuildConcurrencyService } from './runner/build-concurrency.service';
+import { InstantModule } from '@/modules/instant/instant.module';
 import { DeploymentGcService } from './runner/deployment-gc.service';
 import { DockerfileBuildProvider } from './providers/dockerfile-build.provider';
 import { NodeBuildpackProvider } from './providers/node-buildpack.provider';
@@ -29,7 +30,9 @@ import { AuthModule } from '@/modules/auth/auth.module';
 @Module({
   // AppAuthModule gives us UserGithubService so the build pipeline can inject
   // the connected GitHub token when cloning private repos (detect + deploy).
-  imports: [StorageModule, AppAuthModule, forwardRef(() => AuthModule)],
+  // The Instant module links a deployment to the project's data plane: the
+  // application gets its Instant app id and hosts in its environment.
+  imports: [InstantModule, StorageModule, AppAuthModule, forwardRef(() => AuthModule)],
   controllers: [DeploymentsController, GithubWebhookController],
   providers: [
     DeploymentsService,

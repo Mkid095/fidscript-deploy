@@ -9,6 +9,18 @@ import { InstantClientConfigBlock } from './instant-client-config';
 import { InstantDeleteConfirmation } from './instant-delete-confirmation';
 import type { InstantAppStatus, InstantClientConfig } from './instant-types';
 
+/**
+ * The console's link to ONE app.
+ *
+ * The Instant console keeps the selected app in the `app` query parameter,
+ * so the link goes straight to this project's app rather than to the list of
+ * all of them.
+ */
+function instantConsoleUrl(dashboardUrl: string, appId: string): string {
+  const base = dashboardUrl.replace(/\/$/, '');
+  return `${base}/dash?app=${encodeURIComponent(appId)}`;
+}
+
 interface InstantAppCardProps {
   app: InstantAppStatus;
   dashboardUrl: string;
@@ -98,7 +110,7 @@ export function InstantAppCard({ app, dashboardUrl, projectId, onDeleted }: Inst
         <div className="mt-4 flex flex-wrap items-center gap-2">
           {dashboardUrl && (
             <a
-              href={dashboardUrl}
+              href={instantConsoleUrl(dashboardUrl, app.appId)}
               target="_blank"
               rel="noreferrer"
               className="inline-flex items-center gap-1.5 rounded-lg border border-[var(--rail)] px-3 py-1.5 text-xs text-[var(--text)] hover:bg-[var(--surface-2)] transition-colors"

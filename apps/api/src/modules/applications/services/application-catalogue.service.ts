@@ -30,6 +30,10 @@ export interface Application {
   requires: string[];
   /** The icon the dashboard draws. */
   icon: string;
+  /** The application's own API host, when it speaks one over HTTP. */
+  apiHost: string | null;
+  /** The application's own MCP server, when it has one. */
+  mcp: { package: string; env: Record<string, string> } | null;
 }
 
 /**
@@ -62,6 +66,8 @@ export class ApplicationCatalogueService {
         url: this.resolveUrl(presentation),
         requires: [],
         icon: presentation.icon,
+        apiHost: this.resolveApiHost(presentation),
+        mcp: this.resolveMcp(presentation),
       });
     }
 
@@ -77,6 +83,8 @@ export class ApplicationCatalogueService {
         url: presentation ? this.resolveUrl(presentation) : null,
         requires: manifest.requires,
         icon: presentation?.icon ?? 'cube',
+        apiHost: presentation ? this.resolveApiHost(presentation) : null,
+        mcp: presentation ? this.resolveMcp(presentation) : null,
       });
     }
 
@@ -139,6 +147,31 @@ export class ApplicationCatalogueService {
     }
     // No console of its own.
     return null;
+  }
+
+  /** An application's own API host, resolved against this platform. */
+  private resolveApiHost(presentation: ApplicationPresentation): string | null {
+    if (!presentation.apiHost) return null;
+    const domain = this.configService.get<string>('PLATFORM_DOMAIN', '');
+    return domain ? `https://${presentation.apiHost}.${domain}` : null;
+  }
+
+  /**
+   * An application's MCP server, with its hosts resolved against this
+   * platform. The variable names are the ones the server itself reads.
+   */
+  private resolveMcp(
+    presentation: ApplicationPresentation,
+  ): { package: string; env: Record<string, string> } | null {
+    if (!presentation.mcp) return null;
+    const domain = this.configService.get<string>('PLATFORM_DOMAIN', '');
+    if (!domain) return null;
+
+    const env: Record<string, string> = {};
+    for (const [variable, label] of Object.entries(presentation.mcp.hosts)) {
+      env[variable] = `https://${label}.${domain}`;
+    }
+    return { package: presentation.mcp.package, env };
   }
 
   private coreTitle(id: string): string {

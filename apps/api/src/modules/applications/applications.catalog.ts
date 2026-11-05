@@ -30,6 +30,34 @@ export interface ApplicationPresentation {
   icon: string;
   /** Whether the operator can install it from this screen. */
   installable: boolean;
+  /**
+   * The application's own API host, when it speaks one over HTTP. This is
+   * the data plane's address — what an agent or a library connects to, as
+   * opposed to the console a human opens.
+   */
+  apiHost: string | null;
+  /** The application's own MCP server, when it has one. */
+  mcp: ApplicationMcp | null;
+}
+
+/**
+ * An application's MCP server.
+ *
+ * The platform has an MCP server of its own (the control plane: deployments,
+ * queues, mail). An application with its own protocol has one too — the data
+ * plane's MCP speaks queries and permissions. Both belong in the same hub,
+ * so an agent operator finds them in one place rather than guessing which
+ * is which.
+ */
+export interface ApplicationMcp {
+  /** The npm package that provides the server. */
+  package: string;
+  /**
+   * The hosts the server reads from its environment, by the variable name
+   * it uses. The values are host labels — they are resolved against the
+   * platform's domain.
+   */
+  hosts: Record<string, string>;
 }
 
 /**
@@ -46,6 +74,8 @@ export const CORE_APPLICATIONS: Record<string, ApplicationPresentation> = {
     port: null,
     icon: 'rocket',
     installable: false,
+    apiHost: null,
+    mcp: null,
   },
   email: {
     host: 'stalwart-admin',
@@ -53,6 +83,8 @@ export const CORE_APPLICATIONS: Record<string, ApplicationPresentation> = {
     port: null,
     icon: 'mail',
     installable: false,
+    apiHost: null,
+    mcp: null,
   },
 };
 
@@ -64,6 +96,8 @@ export const ADDON_APPLICATIONS: Record<string, ApplicationPresentation> = {
     port: null,
     icon: 'chat',
     installable: true,
+    apiHost: null,
+    mcp: null,
   },
   instant: {
     host: 'instant',
@@ -71,6 +105,19 @@ export const ADDON_APPLICATIONS: Record<string, ApplicationPresentation> = {
     port: null,
     icon: 'hierarchy',
     installable: true,
+    // The data plane's own address. The Instant server answers queries,
+    // realtime and storage on this host.
+    apiHost: 'apiinstant',
+    // The data plane's MCP server. It is the package the Instant console's
+    // own setup page tells an agent to install.
+    mcp: {
+      package: '@fidscript/instant-mcp',
+      hosts: {
+        INSTANT_API_HOST: 'apiinstant',
+        INSTANT_DASH_HOST: 'instant',
+        INSTANT_MAVEN_HOST: 'maven',
+      },
+    },
   },
   'package-manager': {
     host: 'registry',
@@ -78,6 +125,8 @@ export const ADDON_APPLICATIONS: Record<string, ApplicationPresentation> = {
     port: null,
     icon: 'package',
     installable: true,
+    apiHost: null,
+    mcp: null,
   },
   observability: {
     host: null,
@@ -86,6 +135,8 @@ export const ADDON_APPLICATIONS: Record<string, ApplicationPresentation> = {
     port: 3000,
     icon: 'analytics',
     installable: true,
+    apiHost: null,
+    mcp: null,
   },
   'app-runtime': {
     // An internal image registry — no console to open.
@@ -94,5 +145,7 @@ export const ADDON_APPLICATIONS: Record<string, ApplicationPresentation> = {
     port: null,
     icon: 'cube',
     installable: true,
+    apiHost: null,
+    mcp: null,
   },
 };

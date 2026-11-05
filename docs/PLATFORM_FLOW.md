@@ -217,6 +217,13 @@ dashboard's live feed and the SDK's `subscribe()` read.
 unavailable rather than failing to start, so a platform-only install is
 unaffected.
 
+**A deployment is connected to its data plane.** Every deployment of a
+project that has an Instant app carries the app's address in its
+environment, under the names Instant's own SDK reads — `INSTANT_APP_ID`,
+`INSTANT_API_URI`, `INSTANT_WS_URI`, `INSTANT_STORAGE_URI` and
+`INSTANT_DASH_URI` — so the application connects with no configuration of
+its own. A variable the operator has set themselves is left alone.
+
 ---
 
 ## 5. The applications screen — what the operator installs

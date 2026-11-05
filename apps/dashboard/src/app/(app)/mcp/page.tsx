@@ -3,53 +3,21 @@
 import { useState } from 'react';
 import { HugeiconsIcon } from '@hugeicons/react';
 import {
-  CheckmarkCircle01Icon,
-  CopyIcon,
   ComputerTerminal01Icon,
   Plug01Icon,
   AiBrain01Icon,
+  CheckmarkCircle01Icon,
   CheckmarkCircle02Icon,
 } from '@hugeicons/core-free-icons';
 
 import { useAuth } from '@/contexts/auth-context';
 import { useAccountCredentials } from '@/hooks/use-account-credentials';
 import { getMcpConfig, getCliLoginCommand, getSdkInitCode } from '../projects/ai-control-center-data';
+import { InstantMcpSection } from '@/components/mcp/instant-mcp-section';
+import { McpCodeBlock as CodeBlock, McpCopyButton as CopyButton } from '@/components/mcp/mcp-code-block';
 
 const API_BASE =
   typeof window !== 'undefined' ? `${window.location.origin}/api/v1` : '';
-
-function CopyButton({ text, label = 'Copy' }: { text: string; label?: string }) {
-  const [copied, setCopied] = useState(false);
-  async function copy() {
-    await navigator.clipboard.writeText(text);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
-  }
-  return (
-    <button
-      onClick={copy}
-      type="button"
-      className="inline-flex items-center gap-1.5 text-xs text-[var(--text-muted)] hover:text-[var(--text)] transition-colors"
-    >
-      <HugeiconsIcon icon={copied ? CheckmarkCircle01Icon : CopyIcon} size={13} />
-      {copied ? 'Copied!' : label}
-    </button>
-  );
-}
-
-function CodeBlock({ code, label }: { code: string; label?: string }) {
-  return (
-    <div className="relative">
-      {label && (
-        <p className="text-[var(--text-dim)] text-xs mb-1">{label}</p>
-      )}
-      <div className="flex items-center justify-between gap-2 bg-[var(--surface-2)] border border-[var(--rail)] rounded-md px-3 py-2">
-        <code className="text-xs font-mono text-[var(--text)] break-all">{code}</code>
-        <CopyButton text={code} />
-      </div>
-    </div>
-  );
-}
 
 const CLI_COMMANDS = [
   { group: 'Account', cmds: ['login <key>', 'logout', 'whoami'] },
@@ -232,6 +200,8 @@ export default function McpPage() {
       <section className="border border-[var(--rail)] rounded-lg p-5 bg-[var(--surface)] space-y-4">
         <div className="flex items-center gap-2">
           <HugeiconsIcon icon={ComputerTerminal01Icon} size={18} className="text-[var(--text-muted)]" />
+          <InstantMcpSection />
+
           <h2 className="text-sm font-semibold text-[var(--text)]">CLI Setup for Terminal</h2>
         </div>
         <p className="text-xs text-[var(--text-muted)]">

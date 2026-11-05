@@ -50,4 +50,34 @@ export class InstantAppConfigService {
       appId: row.appId,
     };
   }
+
+  /**
+   * The environment a deployed application needs to reach its data plane.
+   *
+   * The names are the ones Instant's own SDK reads — `INSTANT_API_URI` and
+   * its siblings — so an application connects with no configuration of its
+   * own. Null when the project has no Instant app, which is the same as
+   * "there is nothing to connect to".
+   */
+  async environmentFor(projectId: string): Promise<Record<string, string> | null> {
+    const row = await this.prisma.projectInstantApp.findUnique({
+      where: { projectId },
+    });
+    if (!row) return null;
+
+    const apiHost = this.client.publicApiHost;
+    const dashboardUrl = this.client.dashboardUrl;
+    if (!apiHost) return null;
+
+    return {
+      INSTANT_APP_ID: row.appId,
+      INSTANT_API_URI: apiHost,
+      // The realtime socket is the same host over a different scheme, and
+      // the path is Instant's session endpoint.
+      INSTANT_WS_URI: `${apiHost.replace(/^http/, 'ws')}/runtime/session`,
+      // Instant serves its storage routes from the API host.
+      INSTANT_STORAGE_URI: apiHost,
+      INSTANT_DASH_URI: dashboardUrl,
+    };
+  }
 }

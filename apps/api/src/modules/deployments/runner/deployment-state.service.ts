@@ -8,6 +8,7 @@ import { DeploymentRoutesService } from '../services/deployment-routes.service';
 import { DockerLifecycleService } from './docker-lifecycle.service';
 import { UserGithubService } from '@/modules/app-auth/services/user-github.service';
 import { BuildConcurrencyService } from './build-concurrency.service';
+import { InstantAppConfigService } from '@/modules/instant/services/instant-app-config.service';
 
 @Injectable()
 export class DeploymentStateService implements OnModuleInit {
@@ -23,6 +24,7 @@ export class DeploymentStateService implements OnModuleInit {
     private dockerLifecycle: DockerLifecycleService,
     private github: UserGithubService,
     private buildQueue: BuildConcurrencyService,
+    private instantConfig: InstantAppConfigService,
   ) {}
 
   onModuleInit() {
@@ -98,6 +100,26 @@ export class DeploymentStateService implements OnModuleInit {
 
       const projectEnv = await this.prisma.projectEnv.findMany({ where: { projectId } });
       const runtimeEnv = this.decryptEnvVars(projectEnv);
+
+      // Link the deployment to the project's data plane. An application's
+      // tables, users and permissions live in its Instant app, so it needs
+      // the app id and the hosts to reach it — under the names Instant's own
+      // SDK reads, so it connects with no configuration of its own.
+      //
+      // A variable the operator has set themselves is left alone: they set
+      // it deliberately.
+      const instantEnv = await this.instantConfig.environmentFor(projectId);
+      if (instantEnv) {
+        const set = new Set(runtimeEnv.map((e) => e.key));
+        const linked = Object.entries(instantEnv).filter(([key]) => !set.has(key));
+        for (const [key, value] of linked) runtimeEnv.push({ key, value });
+        if (linked.length) {
+          this.logger.log(
+            `[worker] Linked ${linked.length} Instant variable(s) into the deployment: ` +
+              linked.map(([k]) => k).join(', '),
+          );
+        }
+      }
       // Merge deploy-time env vars (from the wizard) on top of project env vars.
       // Deploy-time values take precedence so users can override without editing project settings.
       if (deployEnvVars && Object.keys(deployEnvVars).length > 0) {
