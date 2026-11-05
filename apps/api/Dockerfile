@@ -37,6 +37,15 @@ COPY tsconfig.base.json ./
 # Layer 4: install dependencies
 RUN pnpm install --no-frozen-lockfile
 
+# Layer 4b: build the workspace packages the api compiles against.
+#
+# Their `dist` is gitignored, so a fresh clone has no types for the api's
+# tsc to resolve — without this the build fails with "Cannot find module
+# '@fidscript-deploy/events'". It only ever worked because the packages
+# happened to have been built in the working tree already.
+RUN pnpm --filter @fidscript-deploy/types build && \
+    pnpm --filter @fidscript-deploy/events build
+
 # Layer 5: generate Prisma Client
 RUN cd apps/api && pnpm exec prisma generate
 
