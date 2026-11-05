@@ -440,6 +440,7 @@ model ProjectInstantApp {
   id            String   @id @default(uuid())
   projectId     String   @unique @map("project_id")
   appId         String   @unique @map("app_id")
+  title         String   @db.VarChar(255)
   adminTokenEnc String   @map("admin_token_enc") @db.Text
   status        String   @default("ACTIVE") @db.VarChar(32)
   createdAt     DateTime @default(now()) @map("created_at") @db.Timestamptz

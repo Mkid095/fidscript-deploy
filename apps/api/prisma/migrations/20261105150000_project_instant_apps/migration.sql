@@ -8,6 +8,7 @@ CREATE TABLE IF NOT EXISTS "projects"."project_instant_apps" (
     "id" TEXT NOT NULL,
     "project_id" TEXT NOT NULL,
     "app_id" TEXT NOT NULL,
+    "title" VARCHAR(255) NOT NULL,
     "admin_token_enc" TEXT NOT NULL,
     "status" VARCHAR(32) NOT NULL DEFAULT 'ACTIVE',
     "created_at" TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,

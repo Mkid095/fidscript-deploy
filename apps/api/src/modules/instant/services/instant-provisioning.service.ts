@@ -10,6 +10,7 @@ import { PrismaService } from '@/prisma/prisma.service';
 import { CryptoService } from '@/modules/crypto/crypto.service';
 import { EventService } from '@/modules/events/event.service';
 import { InstantClientService } from './instant-client.service';
+import { isRecordNotFound } from './instant-api.request';
 
 /** What the platform knows about a project's Instant app. */
 export interface InstantAppStatus {
@@ -20,12 +21,8 @@ export interface InstantAppStatus {
 }
 
 /**
- * Owns the link between a FIDScript project and an Instant app.
- *
- * The platform provisions one Instant app per project: it is the project's
- * data plane — its tables, its users, its permissions, its files. The managed
- * Postgres stays the database an application connects to. See
- * `docs/CAPABILITY_OVERLAP.md` for why the split falls here.
+ * Owns the link between a FIDScript project and an Instant app — one per
+ * project: the project's data plane. See `docs/CAPABILITY_OVERLAP.md`.
  */
 @Injectable()
 export class InstantProvisioningService {
@@ -42,12 +39,11 @@ export class InstantProvisioningService {
   async get(projectId: string): Promise<InstantAppStatus | null> {
     const row = await this.prisma.projectInstantApp.findUnique({
       where: { projectId },
-      include: { project: { select: { name: true } } },
     });
     if (!row) return null;
     return {
       appId: row.appId,
-      title: row.project.name,
+      title: row.title,
       status: row.status,
       createdAt: row.createdAt,
     };
@@ -57,9 +53,8 @@ export class InstantProvisioningService {
    * Provision an Instant app for a project.
    *
    * The app id and the admin token are generated here, not by Instant,
-   * because Instant reads both out of the request body — so the platform ends
-   * up holding a full-privilege credential for the app. The title defaults to
-   * the project's name.
+   * because Instant reads both out of the request body — so the platform
+   * ends up holding a full-privilege credential for the app.
    */
   async provision(
     projectId: string,
@@ -68,8 +63,7 @@ export class InstantProvisioningService {
   ): Promise<InstantAppStatus> {
     if (!this.client.isConfigured()) {
       throw new ServiceUnavailableException(
-        'The platform holds no Instant superuser token, so it cannot create apps. ' +
-          'Set INSTANT_SUPERUSER_TOKEN_FILE and restart the API.',
+        'The platform holds no Instant superuser token, so it cannot create apps. Set INSTANT_SUPERUSER_TOKEN_FILE.',
       );
     }
 
@@ -96,6 +90,7 @@ export class InstantProvisioningService {
       data: {
         projectId,
         appId: app.id,
+        title: app.title,
         adminTokenEnc: this.crypto.encrypt(adminToken),
         status: 'ACTIVE',
       },
@@ -131,8 +126,7 @@ export class InstantProvisioningService {
    * Delete the project's Instant app and forget it.
    *
    * The app is deleted FIRST: if that fails the platform still holds the
-   * link, so the operator can retry. The other order would orphan an app
-   * that still holds the project's data.
+   * link, so the operator can retry.
    */
   async unlink(projectId: string, actorId: string): Promise<void> {
     const row = await this.prisma.projectInstantApp.findUnique({
@@ -140,8 +134,14 @@ export class InstantProvisioningService {
     });
     if (!row) throw new NotFoundException(`Project ${projectId} has no Instant app`);
 
-    const adminToken = this.crypto.decrypt(row.adminTokenEnc);
-    await this.client.deleteApp(row.appId, adminToken);
+    // Deleting needs the superuser token, because Instant resolves a USER
+    // from the bearer on that route. An app that is already gone is not an
+    // error — that is the state the operator asked for.
+    try {
+      await this.client.deleteApp(row.appId);
+    } catch (err) {
+      if (!isRecordNotFound(err, 'app')) throw err;
+    }
     await this.prisma.projectInstantApp.delete({ where: { projectId } });
 
     this.emit('instant.app.deleted', projectId, { appId: row.appId }, actorId);

@@ -167,6 +167,20 @@ The admin token then authenticates the app's own routes
 (`req->app-accepting-superadmin-or-ref-token!` falls through to
 `app-for-admin-token!` when the bearer is not a PAT).
 
+**Verified against the running Instant server** — an app was created, read
+back and deleted, and the live app count was back to where it started
+afterwards:
+
+| Route | Credential it accepts |
+|---|---|
+| `POST /dash/apps` | the superuser's personal access token |
+| `GET /dash/apps/:id` | the app's admin token **or** the superuser's |
+| `DELETE /dash/apps/:id` | the superuser's personal access token — the app's admin token is refused with 401 |
+
+Two details the running server settled, and that the code depends on: a
+missing app comes back as **400 with `record-not-found`**, not a 404; and the
+delete is a **soft delete**.
+
 ### 4.2 The credential path
 
 `POST /dash/apps` authenticates with a **personal access token** — a

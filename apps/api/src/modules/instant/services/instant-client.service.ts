@@ -1,7 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { readFileSync } from 'fs';
-import { InstantApiError, instantRequest } from './instant-api.request';
+import { instantRequest, isRecordNotFound } from './instant-api.request';
 
 /** The Instant app, as the dash API returns it. */
 export interface InstantApp {
@@ -12,10 +12,9 @@ export interface InstantApp {
 /**
  * The client for Instant's dashboard API (`/dash/*`).
  *
- * This is the server-to-server half of the Instant integration: the platform
- * creates an app for a project, reads it back, and deletes it. The
- * app-facing half — queries, realtime, permissions — is Instant's own SDK,
- * and is not wrapped here.
+ * The server-to-server half of the Instant integration: the platform creates
+ * an app for a project, reads it back, and deletes it. The app-facing half —
+ * queries, realtime, permissions — is Instant's own SDK.
  *
  * Two credentials are involved, and they are NOT interchangeable:
  *
@@ -31,8 +30,8 @@ export class InstantClientService {
 
   /**
    * The base URL the platform talks to. The default is the in-network
-   * address of the Instant add-on's server — on a single host that avoids
-   * bouncing the request out through the edge and back.
+   * address of the Instant add-on's server, so a request does not bounce
+   * out through the edge and back.
    */
   get apiHost(): string {
     const host =
@@ -57,11 +56,11 @@ export class InstantClientService {
   /**
    * The superuser's personal access token.
    *
-   * It is read from a FILE when one is configured, because a token is a
-   * secret and the platform's own secrets are mounted read-only rather than
-   * passed through the environment.
+   * Read from a FILE when one is configured: a token is a secret, and the
+   * platform's own secrets are mounted read-only rather than passed through
+   * the environment.
    *
-   * A file that is not there yet is NOT remembered as "no token": the
+   * A file that is not there yet is NOT remembered as "no token" — the
    * installer writes it after the stack is up, and the platform must pick
    * it up without being restarted.
    */
@@ -104,7 +103,14 @@ export class InstantClientService {
     return { id: body.app.id, title: body.app.title };
   }
 
-  /** Read an app back, using the app's own admin token. */
+  /**
+   * Read an app back, using the app's own admin token.
+   *
+   * `GET /dash/apps/:id` accepts either credential: it falls back to the
+   * app's admin token when the bearer is not a user. An app that is gone
+   * comes back as null — Instant answers that with 400 and
+   * `record-not-found`, not with a 404.
+   */
   async getApp(appId: string, adminToken: string): Promise<InstantApp | null> {
     try {
       const body = await instantRequest<{ app: { id: string; title: string } }>(
@@ -115,28 +121,25 @@ export class InstantClientService {
       );
       return { id: body.app.id, title: body.app.title };
     } catch (err) {
-      if (err instanceof InstantApiError && err.status === 404) return null;
+      if (isRecordNotFound(err, 'app')) return null;
       throw err;
     }
   }
 
-  /** Delete an app and everything in it. */
-  async deleteApp(appId: string, adminToken: string): Promise<void> {
-    await instantRequest(this.apiHost, 'DELETE', `/dash/apps/${appId}`, adminToken);
-  }
-
   /**
-   * Whether a personal access token is valid.
+   * Delete an app and everything in it.
    *
-   * The Instant MCP bridge uses the same check: a token that lists the
-   * caller's tokens is a token that exists.
+   * This one needs the SUPERUSER token, not the app's admin token:
+   * `DELETE /dash/apps/:id` resolves a *user* from the bearer
+   * (`req->app-and-user!` → `req->auth-user!`), and the app's admin token
+   * is not a user. The superuser's user is the app's creator — the
+   * platform created it with that same token — so it is allowed to delete
+   * it.
+   *
+   * The delete is a soft delete: Instant marks the app for deletion rather
+   * than removing the row.
    */
-  async verifyToken(token: string): Promise<boolean> {
-    try {
-      await instantRequest(this.apiHost, 'GET', '/dash/personal_access_tokens', token);
-      return true;
-    } catch {
-      return false;
-    }
+  async deleteApp(appId: string): Promise<void> {
+    await instantRequest(this.apiHost, 'DELETE', `/dash/apps/${appId}`, this.superuserToken);
   }
 }

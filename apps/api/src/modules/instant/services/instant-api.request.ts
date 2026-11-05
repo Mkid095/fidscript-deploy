@@ -6,15 +6,33 @@
  * intent (create an app, read it, delete it) rather than about HTTP.
  */
 
-/** An error from the Instant API, carrying the HTTP status. */
+/** An error from the Instant API, carrying what Instant said about it. */
 export class InstantApiError extends Error {
   constructor(
     readonly status: number,
     message: string,
+    /** Instant's error type, e.g. "record-not-found" or "param-malformed". */
+    readonly type?: string,
+    /** The kind of record that was not found, e.g. "app". */
+    readonly recordType?: string,
   ) {
     super(message);
     this.name = 'InstantApiError';
   }
+}
+
+/**
+ * Whether Instant says a kind of record does not exist.
+ *
+ * Instant answers a missing record with 400 and
+ * `{"type":"record-not-found","hint":{"record-type":"app"}}` — not with a
+ * 404 — so a status check alone cannot tell "it is gone" from "you sent
+ * something malformed".
+ */
+export function isRecordNotFound(err: unknown, recordType?: string): boolean {
+  if (!(err instanceof InstantApiError)) return false;
+  if (err.type !== 'record-not-found') return false;
+  return recordType ? err.recordType === recordType : true;
 }
 
 /**
@@ -51,7 +69,14 @@ export async function instantRequest<T = unknown>(
   const payload = text ? safeParse(text) : {};
 
   if (!res.ok) {
-    throw new InstantApiError(res.status, errorMessage(payload, res.statusText));
+    const record = (payload ?? {}) as Record<string, unknown>;
+    const hint = record.hint as Record<string, unknown> | undefined;
+    throw new InstantApiError(
+      res.status,
+      errorMessage(record, res.statusText),
+      typeof record.type === 'string' ? record.type : undefined,
+      typeof hint?.['record-type'] === 'string' ? hint['record-type'] : undefined,
+    );
   }
   return payload as T;
 }

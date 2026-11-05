@@ -179,11 +179,30 @@ stores and who may see it. The split is decided in
 | 5 | A deployed application asks for its configuration — host and app id, never the admin token | `GET /projects/:id/instant/config` |
 
 **Two credentials, not interchangeable.** The *personal access token*
-(`per_…`) belongs to an Instant user and creates apps; the platform holds one
-for the superuser. The *admin token* belongs to an app and administers it; the
-platform generates one per app it creates. A deployed application
-authenticates with its own user token, and Instant evaluates its permission
-rules.
+(`per_…`) belongs to an Instant user; the *admin token* belongs to an app.
+Which one each route accepts was **verified against the running Instant
+server** — an app was created, read back and deleted, and the live app count
+was back to where it started afterwards:
+
+| Route | Credential it accepts | The other one |
+|---|---|---|
+| `POST /dash/apps` | the superuser's personal access token | — |
+| `GET /dash/apps/:id` | the app's admin token **or** the superuser's | — |
+| `DELETE /dash/apps/:id` | the superuser's personal access token | the app's admin token → **401** |
+
+The delete is the trap. `DELETE /dash/apps/:id` resolves a *user* from the
+bearer, and the app's admin token is not a user — so it has to be the
+superuser's token, which is also the app's creator and so is allowed to
+delete it.
+
+Two more things the running server settled: a missing app comes back as
+**400 with `record-not-found`**, not a 404 (so a status check alone cannot
+tell "it is gone" from "you sent something malformed"); and the delete is a
+**soft delete** — Instant marks the app for deletion rather than removing the
+row.
+
+A deployed application authenticates with its own user token, and Instant
+evaluates its permission rules.
 
 **The credential is optional.** Without it the api reports Instant as
 unavailable rather than failing to start, so a platform-only install is
