@@ -51,6 +51,7 @@ import { queueTools, handleQueueTool } from './tools/queues.js';
 import { storageTools, handleStorageTool } from './tools/storage.js';
 import { databaseTools, handleDatabaseTool } from './tools/databases.js';
 import { cronTools, handleCronTool } from './tools/cron.js';
+import { instantTools, handleInstantTool } from './tools/instant.js';
 import { realtimeTools, handleRealtimeTool } from './tools/realtime.js';
 import { monitoringTools, handleMonitoringTool } from './tools/monitoring/index.js';
 import { loggingTools, handleLoggingTool } from './tools/logging/index.js';
@@ -79,6 +80,7 @@ const allTools = [
   ...storageTools,
   ...databaseTools,
   ...cronTools,
+  ...instantTools,
   ...realtimeTools,
   ...monitoringTools,
   ...loggingTools,
@@ -155,6 +157,8 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
       result = await handleDatabaseTool(name, args ?? {}, sdk);
     } else if (name.startsWith('cron_')) {
       result = await handleCronTool(name, args ?? {}, sdk);
+    } else if (name.startsWith('instant_')) {
+      result = await handleInstantTool(name, args ?? {}, sdk);
     } else if (name.startsWith('realtime_')) {
       result = await handleRealtimeTool(name, args ?? {}, sdk);
     } else if (name.startsWith('monitoring_')) {

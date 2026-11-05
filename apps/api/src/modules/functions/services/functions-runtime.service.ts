@@ -1,5 +1,6 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '@/prisma/prisma.service';
+import { InstantAppConfigService } from '@/modules/instant/services/instant-app-config.service';
 import { EventService } from '@/modules/events/event.service';
 import { SandboxedRunnerService } from './sandboxed-runner.service';
 import { NodeJsRuntime } from '@/modules/functions/runtimes/nodejs.runtime';
@@ -18,6 +19,7 @@ export class FunctionsRuntimeService {
     private sandbox: SandboxedRunnerService,
     private nodeRuntime: NodeJsRuntime,
     private pythonRuntime: PythonRuntime,
+    private instantConfig: InstantAppConfigService,
   ) {
     this.functionsPath = process.env.FUNCTIONS_PATH ?? '/tmp/functions';
   }
@@ -59,8 +61,19 @@ export class FunctionsRuntimeService {
     const functionDir = path.join(this.functionsPath, projectId, functionId);
     const payload = typeof dto.payload === 'string' ? dto.payload : JSON.stringify(dto.payload ?? {});
 
-    // Inject project env vars (decrypted at runtime — Phase 04 CryptoService)
+    // The function's own env vars.
     const envVars = (func.envVars as Record<string, string>) ?? {};
+
+    // Link the function to the project's data plane. A function is part of
+    // the application, so it reaches the application's Instant app the same
+    // way a deployed container does — under the names Instant's own SDK
+    // reads. A variable the function has set itself is left alone.
+    const instantEnv = await this.instantConfig.environmentFor(projectId);
+    if (instantEnv) {
+      for (const [key, value] of Object.entries(instantEnv)) {
+        if (!(key in envVars)) envVars[key] = value;
+      }
+    }
 
     const result = await this.sandbox.run({
       code: await fs.readFile(path.join(functionDir, `handler.${func.runtime === 'nodejs' ? 'js' : 'py'}`), 'utf8'),

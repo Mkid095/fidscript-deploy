@@ -5,6 +5,7 @@ import { resolveJwtSecret } from '@/common/secrets';
 import { AuthModule } from '@/modules/auth/auth.module';
 import { ProjectsModule } from '@/modules/projects/projects.module';
 import { QueuesController } from './queues.controller';
+import { FunctionsModule } from '@/modules/functions/functions.module';
 import { QueuesService } from './queues.service';
 import { QueueCrudService } from '@/modules/queues/services/queue-crud.service';
 import { QueueProducerService } from '@/modules/queues/services/queue-producer.service';
@@ -26,6 +27,8 @@ import { EventService } from '@/modules/events/event.service';
     }),
     forwardRef(() => AuthModule),
     forwardRef(() => ProjectsModule),
+    // A queue can be pointed at a function, and the worker runs it.
+    forwardRef(() => FunctionsModule),
   ],
   controllers: [QueuesController],
   providers: [

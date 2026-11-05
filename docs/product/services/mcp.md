@@ -18,9 +18,14 @@ the tool catalog + a connect snippet so a user can wire their IDE/agent in two c
 - No new tables. The MCP server is a **thin proxy** over the SDK (`@fidscript/sdk`) → API.
 
 ## 4. API mapping
-**The MCP server exposes 135 tools across** (see `backend/surfaces.md` → MCP): monitoring(24),
+**The MCP server exposes 139 tools across** (see `backend/surfaces.md` → MCP): monitoring(24),
 auth(14), marketplace(13), logging(12), ai(10), deployments(8), storage(7), functions(7), email(7),
-databases(7), cron(7), queues(6), realtime(4), env_var(3), domain(3), project(2).
+databases(7), cron(7), queues(6), realtime(4), env_var(3), domain(3), project(2), instant(4).
+
+The **instant** family is the platform's view of a project's data plane: it
+provisions the project's Instant app and reports its address. The data plane's
+OWN MCP server — the one that queries and writes the data — is separate
+(`@fidscript/instant-mcp`), and the platform's MCP hub carries both.
 
 There is **no app-auth family**: an application's users and permissions are Instant's, and the
 platform's app-auth surface was retired on 2026-11-05 (`docs/CAPABILITY_OVERLAP.md`).

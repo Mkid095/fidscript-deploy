@@ -53,7 +53,7 @@ running, and not wired in at all.**
 | **Users — operator** | `User`/`Session`/`ApiKey`/`Org`/`Team`, JWT | `instant_user`/`org`/PAT | **Duplicate, disjoint DBs. Keep FIDScript's** — it gates deployments. |
 | **Users — app** | `AppUser`/`AppRole` (JSON perms) | `app_user` + **CEL rules** | **Duplicate; Instant is strictly stronger. Delegate.** |
 | **CLI** | `fidscript` — 12 command families, ops | `instantself` — schema-as-code, InstaQL | **Complementary, ~10% overlap. Keep both; fix the names.** |
-| **MCP** | 135 tools, control-plane | 93 tools, data-plane | **Complementary, ~10% overlap. Keep both; fix the names.** |
+| **MCP** | 139 tools, control-plane | 93 tools, data-plane | **Complementary, ~10% overlap. Keep both; fix the names.** |
 | **Queues** | NATS JetStream | ✗ | **FIDScript-only. Keep.** |
 | **Scheduler** | `CronJob`/`CronJobRun` | ✗ | **FIDScript-only. Keep.** |
 | **Email** | full platform — inbound, mailboxes, aliases, deliverability, suppression | outbound + senders/templates only | **FIDScript is a superset. Keep FIDScript.** |

@@ -50,7 +50,7 @@ Events: `marketplace.item.submitted`, `.approved`, `marketplace.review.created`.
 SVC-01 GET `/api/v1/services` · SVC-02 GET `/api/v1/services/:name` · SVC-03 GET `/api/v1/health` (aggregate) · SVC-04 GET `/api/v1/health/live` · SVC-05 GET `/api/v1/health/ready`.
 
 ## MCP server (`apps/mcp-server`, stdio, server `fidscript`)
-Proxies to the API. **135 tools** across: monitoring(24), auth(14), marketplace(13), logging(12), ai(10), deployments(8), storage(7), functions(7), email(7), databases(7), cron(7), queues(6), realtime(4), env_var(3), domain(3), project(2). **No app-auth family** — an application's users and permissions are Instant's; the platform's app-auth surface was retired 2026-11-05. **No tools for templates, skills, or registry/health.**
+Proxies to the API. **139 tools** across: monitoring(24), auth(14), marketplace(13), logging(12), ai(10), deployments(8), storage(7), functions(7), email(7), databases(7), cron(7), queues(6), realtime(4), env_var(3), domain(3), project(2), instant(4) — the platform's view of a project's data plane. **No app-auth family** — an application's users and permissions are Instant's; the platform's app-auth surface was retired 2026-11-05. **No tools for templates, skills, or registry/health.**
 
 ## SDK — `packages/sdk` (`@fidscript/sdk`, canonical)
 `createFidscript()` → 14 modules: `auth, projects, deployments, storage, databases, domains, email, functions, queues, cron, realtime, monitoring, logs, templates` + typed errors (`FidscriptError/AuthError/NotFoundError/ValidationError/RateLimitError`) + retries + `RealtimeModule` (socket.io-client) + `logs.ingest()` (X-API-Key). (Legacy `apps/sdk` has 11 modules, no databases/domains/templates/marketplace — being superseded.)

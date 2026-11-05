@@ -3,6 +3,7 @@ import { NatsConnection } from 'nats';
 import { JsMsg } from 'nats';
 import { JetStreamQueueService } from './jetstream-queue.service';
 import { PrismaService } from '@/prisma/prisma.service';
+import { FunctionsService } from '@/modules/functions/functions.service';
 import { EventService } from '@/modules/events/event.service';
 
 interface QueueTarget {
@@ -32,6 +33,7 @@ export class QueueWorkerService implements OnModuleInit {
     private jsQueue: JetStreamQueueService,
     private prisma: PrismaService,
     private eventService: EventService,
+    private functions: FunctionsService,
   ) {}
 
   async start(nc: NatsConnection): Promise<void> {
@@ -223,11 +225,18 @@ export class QueueWorkerService implements OnModuleInit {
 
       case 'function': {
         if (!target.functionId) throw new Error('Function target missing functionId');
-        this.eventService.emit('queues.function.dispatch', payload.projectId, {
-          functionId: target.functionId,
-          payload: JSON.parse(payload.body),
-          sourceQueue: payload.queueName,
-        });
+        // The function is RUN, not announced. This used to emit a
+        // `queues.function.dispatch` event, and nothing listened for it —
+        // so a queue pointed at a function consumed the message, said
+        // nothing, and the function never ran.
+        const result = await this.functions.invokeFunction(
+          payload.projectId,
+          target.functionId,
+          { payload: payload.body, sync: false },
+        );
+        if (result && !result.success) {
+          throw new Error(result.error ?? `Function ${target.functionId} failed`);
+        }
         this.logger.debug(`[function] dispatched to ${target.functionId}`);
         break;
       }

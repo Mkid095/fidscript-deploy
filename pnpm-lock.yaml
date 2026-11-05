@@ -211,8 +211,8 @@ importers:
   apps/cli:
     dependencies:
       '@fidscript-deploy/sdk':
-        specifier: ^1.0.2
-        version: 1.0.2
+        specifier: workspace:*
+        version: link:../../packages/sdk
       commander:
         specifier: ^12.0.0
         version: 12.1.0
@@ -282,8 +282,8 @@ importers:
   apps/mcp-server:
     dependencies:
       '@fidscript-deploy/sdk':
-        specifier: ^1.0.2
-        version: 1.0.2
+        specifier: workspace:*
+        version: link:../../packages/sdk
       '@modelcontextprotocol/sdk':
         specifier: ^1.27.0
         version: 1.29.0(zod@4.4.3)
@@ -950,9 +950,6 @@ packages:
 
   '@fidscript-deploy/events@1.0.1':
     resolution: {integrity: sha512-noOgpb/Wg55Xx5nfiXfwsm+8FxzsDyiVxQykzmtyFLlPOzgYsimYwtO70qKCB/4gJaAQcVyWe9BZ4rwNYp9P/Q==}
-
-  '@fidscript-deploy/sdk@1.0.2':
-    resolution: {integrity: sha512-Yib5EoP1q+v+iEb9d9VIucLey7+rxDZUV8cOx9KAS5dADY/vC3bWrITe6L49k/XWclsY6vDM4E1BSwzmD78Y0A==}
 
   '@fidscript-deploy/types@1.0.1':
     resolution: {integrity: sha512-F5oNCBc+sM6OVLnCoJ2dKKAVzmFodykVoaVbyvA2zRuOQjKmJy2g7xqr+mVl1Wnt9lSTHCBhJ5Wv18Q9uAf6OA==}
@@ -3151,6 +3148,7 @@ packages:
   eslint@9.39.4:
     resolution: {integrity: sha512-XoMjdBOwe/esVgEvLmNsD3IRHkm7fbKIUGvrleloJXUZgDHig2IPWNniv+GwjyJXzuNqVjlr5+4yVUZjycJwfQ==}
     engines: {node: ^18.18.0 || ^20.9.0 || >=21.1.0}
+    deprecated: This version is no longer supported. Please see https://eslint.org/version-support for other options.
     hasBin: true
     peerDependencies:
       jiti: '*'
@@ -4421,6 +4419,7 @@ packages:
   nkeys.js@1.1.0:
     resolution: {integrity: sha512-tB/a0shZL5UZWSwsoeyqfTszONTt4k2YS0tuQioMOD180+MbombYVgzDUYHlx+gejYK6rgf08n/2Df99WY0Sxg==}
     engines: {node: '>=10.0.0'}
+    deprecated: 'Package moved. Use @nats-io/nkeys instead: https://www.npmjs.com/package/@nats-io/nkeys'
 
   node-abort-controller@3.1.1:
     resolution: {integrity: sha512-AGK2yQKIjRuqnc6VkX2Xj5d+QW8xZ87pa1UK6yA6ouUyuxfHuMP6umE5QK7UmTeOAymo+Zx1Fxiuw9rVx8taHQ==}
@@ -6185,18 +6184,6 @@ snapshots:
   '@fidscript-deploy/events@1.0.1':
     dependencies:
       '@fidscript-deploy/types': 1.0.1
-
-  '@fidscript-deploy/sdk@1.0.2':
-    dependencies:
-      '@fidscript-deploy/events': 1.0.1
-      '@fidscript-deploy/types': 1.0.1
-      axios: 1.18.0
-      socket.io-client: 4.8.3
-    transitivePeerDependencies:
-      - bufferutil
-      - debug
-      - supports-color
-      - utf-8-validate
 
   '@fidscript-deploy/types@1.0.1': {}
 
