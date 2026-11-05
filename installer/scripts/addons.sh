@@ -333,7 +333,7 @@ cmd_enable() {
 
 cmd_disable() {
   [[ $# -gt 0 ]] || die "Usage: fidscript-addons disable <id> [<id>...]"
-  local id remaining current
+  local id current
   current="$(enabled_addons | tr '\n' ' ')"
   for id in "$@"; do
     if echo " $current " | grep -q " $id "; then
@@ -374,6 +374,13 @@ cmd_apply() {
     prepare_addon_env "$id"
     generate_addon_secrets "$id"
   done < <(enabled_addons)
+  # The Instant add-on's network is external — the platform's api joins it,
+  # because it is what provisions an Instant app for a project. Compose
+  # refuses to start when an external network is missing.
+  if echo " $(enabled_addons | tr '\n' ' ') " | grep -q " instant "; then
+    docker network inspect fidscript-instant >/dev/null 2>&1 \
+      || docker network create fidscript-instant >/dev/null 2>&1 || true
+  fi
   # shellcheck disable=SC2046
   docker compose $(compose_file_args) up -d
 }

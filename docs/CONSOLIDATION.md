@@ -91,6 +91,13 @@ and one routing model — which is what "package everything together" means.
 their networks, and it must be given static routes for the hostnames those
 products serve. That is `installer/config/traefik/products.yml`.
 
+The platform-relative hostnames in that file are a `__DOMAIN__` placeholder,
+substituted by the installer when it publishes the file — exactly as
+`platform.yml` already was. The `nextmavens` names belong to a different
+domain and stay literal. (Before this, the file carried one host's hardcoded
+names, so an install on any other domain published routes for names that were
+not its own.)
+
 ## 4. The steps
 
 | # | Step | Risk | State |
@@ -98,7 +105,7 @@ products serve. That is `installer/config/traefik/products.yml`.
 | 1 | Add the application wildcards to DNS | none — additive | **done** |
 | 2 | Write the static routes for the other products (`installer/config/traefik/products.yml`) | none — not deployed | **done** |
 | 3 | Have the installer publish those routes and join the other stacks' networks | none — not deployed | **done** |
-| 4 | Bring Traefik up on 8080/8443 and verify every route | none — the live edge is untouched | to do |
+| 4 | Bring Traefik up on 8080/8443 and verify every route | none — the live edge is untouched | **done** |
 | 5 | Stop Caddy, move Traefik to 80/443, verify every hostname | a few minutes of downtime | to do |
 | 6 | Link the other products from the platform's dashboard | none | to do |
 | 7 | Re-point `registry.` / `storage.` / `whatsapp.` on `nextmavens.com` at Traefik too | none | to do |

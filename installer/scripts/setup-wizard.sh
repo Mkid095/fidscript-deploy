@@ -38,7 +38,7 @@ ns=""; addons_list=(); label=""; host=""; record=""; target=""; when=""; hname="
 
 # ── Defaults ────────────────────────────────────────────────────────────────────
 DOMAIN=""; ADMIN_EMAIL=""; ADMIN_PASSWORD=""
-CLOUDFLARE_API_TOKEN=""; DNS_ZONE_ID=""
+CLOUDFLARE_API_TOKEN=""
 SERVER_IP=""; DETECTED_IP=""; DOCKER_GID="0"
 SELECTED_ADDONS=()
 
@@ -425,6 +425,16 @@ MINIO_ACCESS_KEY=$MINIO_ACCESS_KEY
 MINIO_SECRET_KEY=$MINIO_SECRET_KEY
 MINIO_EXTERNAL_ENDPOINT=https://storage.$DOMAIN
 DOCKER_GID=$DOCKER_GID
+# ── Instant BaaS — the project's data plane ────────────────────────────────
+# The superuser signs in with the same address as the platform's admin.
+# The platform's api reaches the server over the shared Docker network and
+# the public URL is what browsers and deployed applications connect to.
+INSTANT_SUPERUSER_EMAIL=$ADMIN_EMAIL
+INSTANT_API_HOST=http://fidscript_instant_server:8888
+INSTANT_PUBLIC_API_HOST=https://apiinstant.$DOMAIN
+INSTANT_DASH_HOST=https://instant.$DOMAIN
+INSTANT_BACKEND_URL=https://apiinstant.$DOMAIN
+INSTANT_DASHBOARD_URL=https://instant.$DOMAIN
 ENVEOF
 
 # Write api.env ONLY if absent. Re-running the wizard on an existing
@@ -519,11 +529,11 @@ else
   title "DNS records"
   warn "No Cloudflare account connected — create these records by hand:"
   echo ""
-  while IFS=$'\t' read -r label host record target when; do
+  while IFS=$'\t' read -r label host record target when link; do
     [[ -z "$label" ]] && continue
     hname="$(service_hostname "$host" "$DOMAIN")"
     printf '    %-5s %-34s → %s\n' "$record" "$hname" "$DETECTED_IP"
-  done < <(services_for always)
+  done < <(all_services)
   echo ""
 fi
 
@@ -638,6 +648,17 @@ http:
         - security-headers
       tls:
         certResolver: __CERT_RESOLVER__
+    # ── Stalwart admin console ───────────────────────────────────────────────
+    # The same HTTP listener as the JMAP route — the console is a path on
+    # it, not a separate service. The DNS record and the summary link both
+    # promise this hostname, so it needs a router of its own.
+    stalwart-admin:
+      rule: 'Host(`stalwart-admin.__DOMAIN__`)'
+      service: stalwart-jmap
+      middlewares:
+        - security-headers
+      tls:
+        certResolver: __CERT_RESOLVER__
     # ── ACME challenge (Let's Encrypt) ────────────────────────────────────────
     acme-challenge:
       rule: 'PathPrefix(`/.well-known/acme-challenge/`)'
@@ -674,6 +695,7 @@ info "Traefik dynamic config written (resolver: $CERT_RESOLVER)."
 # registry and the Maven repository are all reachable through it.
 if [[ -f "$(dirname "$SCRIPT_DIR")/config/traefik/products.yml" ]]; then
   cp "$(dirname "$SCRIPT_DIR")/config/traefik/products.yml" "$TRAEFIK_DYNAMIC_DIR/products.yml"
+  sed -i "s|__DOMAIN__|${DOMAIN}|g" "$TRAEFIK_DYNAMIC_DIR/products.yml"
   info "Product routes written."
 fi
 
@@ -683,6 +705,10 @@ fi
 for _net in self-hosting_self-hosting_default next-mavens-evolution-api_platform-net nextmavens-registry_default; do
   docker network inspect "$_net" >/dev/null 2>&1 || docker network create "$_net" >/dev/null 2>&1 || true
 done
+
+# The Instant BaaS — the project's data plane. The api joins this network
+# so it can provision an Instant app without going out through the edge.
+docker network inspect fidscript-instant >/dev/null 2>&1 || docker network create fidscript-instant >/dev/null 2>&1 || true
 
 # ── Traefik static ─────────────────────────────────────────────────────────
 # NOTE: the `docker` provider below is NOT optional. Every deployed

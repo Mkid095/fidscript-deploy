@@ -31,6 +31,7 @@ import { InstallationModule } from './modules/installation/installation.module';
 import { McpModule } from './modules/mcp/mcp.module';
 import { WhatsappAuthModule } from './modules/whatsapp-auth/whatsapp-auth.module';
 import { InfrastructureModule } from './modules/infrastructure/infrastructure.module';
+import { InstantModule } from './modules/instant/instant.module';
 
 @Module({
   imports: [
@@ -64,6 +65,7 @@ import { InfrastructureModule } from './modules/infrastructure/infrastructure.mo
     InstallationModule,
     WhatsappAuthModule,
     InfrastructureModule,
+    InstantModule,
   ],
   providers: [
     // Global guard: every authenticated request must have a verified email

@@ -260,6 +260,8 @@ volumes:
     name: fidscript_instant_maven
 
 networks:
+  # External, because the platform's api joins this network too — it is
+  # what provisions an Instant app for a project. The installer creates it.
   fidscript-instant:
+    external: true
     name: fidscript-instant
-    driver: bridge

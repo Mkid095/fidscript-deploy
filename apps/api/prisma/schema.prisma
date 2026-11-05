@@ -385,6 +385,7 @@ model Project {
   apiKeys              ProjectApiKey[]
   credentials          Credential[]
   storageConfig        ProjectStorageConfig?
+  instantApp           ProjectInstantApp?
 
   @@map("projects")
   @@schema("projects")
@@ -422,6 +423,31 @@ model ProjectInvitation {
   @@index([projectId, email])
   @@index([tokenHash])
   @@map("invitations")
+  @@schema("projects")
+}
+
+/// The Instant BaaS app that backs a project's data plane.
+///
+/// Instant creates the app id and the admin token from values the CALLER
+/// supplies (server/src/instant/dash/routes.clj — `apps-post` reads both
+/// `:id` and `:admin_token` out of the request body), so the platform
+/// generates them itself and ends up holding a full-privilege credential for
+/// the app it just created.
+///
+/// The token is stored encrypted with the platform's CryptoService
+/// (AES-256-GCM). It is never returned by the API.
+model ProjectInstantApp {
+  id            String   @id @default(uuid())
+  projectId     String   @unique @map("project_id")
+  appId         String   @unique @map("app_id")
+  adminTokenEnc String   @map("admin_token_enc") @db.Text
+  status        String   @default("ACTIVE") @db.VarChar(32)
+  createdAt     DateTime @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt     DateTime @updatedAt @map("updated_at") @db.Timestamptz
+
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@map("project_instant_apps")
   @@schema("projects")
 }
 

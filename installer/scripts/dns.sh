@@ -13,17 +13,28 @@
 
 SERVICES_FILE="${SERVICES_FILE:-$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)/config/services.tsv}"
 
-# services_for <when-filter> → the rows whose "when" column matches.
-# A filter of "always" matches the core rows plus every add-on row; a
-# filter of an add-on id matches only that add-on's rows.
+# services_for <when-filter> → the rows whose "when" column matches EXACTLY.
+# The filter is exclusive on purpose: a caller that wants the core rows
+# plus an add-on's rows asks for both, once each. Matching the core rows
+# again for every add-on printed the whole core list once per add-on.
 services_for() {
   local want="$1"
   awk -F'\t' -v want="$want" '
     /^#/ { next }
     NF < 5 { next }
     {
-      if ($5 == "always" || $5 == want) print
+      if ($5 == want) print
     }
+  ' "$SERVICES_FILE"
+}
+
+# Every row, whatever its "when" column — for the operator who is creating
+# the records by hand and wants the full list.
+all_services() {
+  awk -F'\t' '
+    /^#/ { next }
+    NF < 5 { next }
+    { print }
   ' "$SERVICES_FILE"
 }
 
@@ -34,6 +45,16 @@ service_hostname() {
   echo "${host}.${domain}"
 }
 
+# What the summary prints for a service. The link column is a template
+# with "{host}" (the full hostname) and "{domain}" (the platform's domain)
+# in it; empty means the ordinary https URL.
+service_link() {
+  local template="$1" hostname="$2" domain="$3"
+  [[ -z "$template" ]] && template="https://{host}"
+  template="${template//\{host\}/$hostname}"
+  echo "${template//\{domain\}/$domain}"
+}
+
 # create_dns_records <zoneId> <domain> <serverIp> [add-on ids...]
 # Creates (or updates) one record per service. Returns 0 if every record
 # was created, 1 otherwise — the caller decides whether that is fatal.
@@ -41,9 +62,9 @@ create_dns_records() {
   local zone="$1" domain="$2" ip="$3"
   shift 3
   local addons=("$@")
-  local created=0 failed=0 label host record target when hostname content
+  local created=0 failed=0 label host record target when link hostname content
 
-  while IFS=$'\t' read -r label host record target when; do
+  while IFS=$'\t' read -r label host record target when link; do
     [[ -z "$label" ]] && continue
 
     # Skip an add-on's services unless that add-on was installed.
@@ -78,7 +99,7 @@ print_summary() {
   local domain="$1"
   shift
   local addons=("$@")
-  local label host record target when hostname
+  local label host record target when link hostname
 
   echo ""
   echo "  ─────────────────────────────────────────────────────────────"
@@ -86,7 +107,7 @@ print_summary() {
   echo "  ─────────────────────────────────────────────────────────────"
   echo ""
 
-  while IFS=$'\t' read -r label host record target when; do
+  while IFS=$'\t' read -r label host record target when link; do
     [[ -z "$label" ]] && continue
     if [[ "$when" != "always" ]]; then
       local wanted=0 a
@@ -94,7 +115,9 @@ print_summary() {
       [[ "$wanted" -eq 0 ]] && continue
     fi
     hostname="$(service_hostname "$host" "$domain")"
-    printf '   %-28s https://%s\n' "$label" "$hostname"
+    # The link column says what to print. It is not always a URL: SMTP and
+    # IMAP are not served over HTTP, and a wildcard is a pattern.
+    printf '   %-28s %s\n' "$label" "$(service_link "$link" "$hostname" "$domain")"
   done < <(services_for always; for a in "${addons[@]}"; do services_for "$a"; done)
 
   echo ""

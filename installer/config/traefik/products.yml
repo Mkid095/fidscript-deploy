@@ -10,63 +10,67 @@
 # reached through host.docker.internal, which Docker resolves to the
 # bridge gateway — the subnet changes when the networks are recreated, so
 # a hardcoded address would break without warning.
+#
+# __DOMAIN__ is the platform's domain. The installer substitutes it when it
+# publishes this file, exactly as it does for platform.yml. The nextmavens
+# names are a different domain and stay literal.
 
 http:
   routers:
     # ── Instant BaaS ────────────────────────────────────────────────────────
     instant-console:
-      rule: 'Host(`instant.fidscript.com`)'
+      rule: 'Host(`instant.__DOMAIN__`)'
       service: instant-console
       entryPoints: [websecure]
       tls: { certResolver: letsencrypt-dns }
     instant-api:
-      rule: 'Host(`apiinstant.fidscript.com`)'
+      rule: 'Host(`apiinstant.__DOMAIN__`)'
       service: instant-api
       entryPoints: [websecure]
       tls: { certResolver: letsencrypt-dns }
     instant-realtime:
-      rule: 'Host(`realtime.fidscript.com`)'
+      rule: 'Host(`realtime.__DOMAIN__`)'
       service: instant-api
       entryPoints: [websecure]
       tls: { certResolver: letsencrypt-dns }
     instant-cli:
-      rule: 'Host(`cliinstant.fidscript.com`)'
+      rule: 'Host(`cliinstant.__DOMAIN__`)'
       service: instant-api
       entryPoints: [websecure]
       tls: { certResolver: letsencrypt-dns }
     instant-mcp:
-      rule: 'Host(`instantmcp.fidscript.com`)'
+      rule: 'Host(`instantmcp.__DOMAIN__`)'
       service: instant-mcp
       entryPoints: [websecure]
       tls: { certResolver: letsencrypt-dns }
     maven-repository:
-      rule: 'Host(`maven.fidscript.com`)'
+      rule: 'Host(`maven.__DOMAIN__`)'
       service: maven-repository
       entryPoints: [websecure]
       tls: { certResolver: letsencrypt-dns }
 
     # ── WhatsApp platform ───────────────────────────────────────────────────
     whatsapp-console:
-      rule: 'Host(`whatsapp.fidscript.com`) || Host(`whatsapp.nextmavens.com`)'
+      rule: 'Host(`whatsapp.__DOMAIN__`) || Host(`whatsapp.nextmavens.com`)'
       service: whatsapp-console
       entryPoints: [websecure]
       tls: { certResolver: letsencrypt-dns }
     whatsapp-api:
-      rule: 'Host(`whatsappapi.fidscript.com`)'
+      rule: 'Host(`whatsappapi.__DOMAIN__`)'
       service: whatsapp-api
       entryPoints: [websecure]
       tls: { certResolver: letsencrypt-dns }
 
     # ── npm registry ────────────────────────────────────────────────────────
     npm-registry:
-      rule: 'Host(`registry.fidscript.com`) || Host(`registry.nextmavens.com`)'
+      rule: 'Host(`registry.__DOMAIN__`) || Host(`registry.nextmavens.com`)'
       service: npm-registry
       entryPoints: [websecure]
       tls: { certResolver: letsencrypt-dns }
 
     # ── artifact storage for mobile and desktop builds ──────────────────────
     artifacts:
-      rule: 'Host(`files.fidscript.com`) || Host(`storage.nextmavens.com`)'
+      rule: 'Host(`files.__DOMAIN__`) || Host(`storage.nextmavens.com`)'
       service: artifacts
       entryPoints: [websecure]
       tls: { certResolver: letsencrypt-dns }

@@ -430,6 +430,16 @@ services:
       TRAEFIK_DYNAMIC_DIR: /etc/traefik/dynamic
       # The guided one-line installer, served at /install.sh.
       INSTALL_SCRIPT_PATH: /opt/fidscript-install/install.sh
+      # ── Instant BaaS — the project's data plane ──────────────────────────
+      # The server-side URL is the add-on's container on the shared network,
+      # so the api does not bounce the request out through the edge. The
+      # public URL is what a browser or a deployed application connects to.
+      INSTANT_API_HOST: ${INSTANT_API_HOST:-http://fidscript_instant_server:8888}
+      INSTANT_PUBLIC_API_HOST: ${INSTANT_PUBLIC_API_HOST:-https://apiinstant.${PLATFORM_DOMAIN:-deploy.fidscript.com}}
+      INSTANT_DASH_HOST: ${INSTANT_DASH_HOST:-https://instant.${PLATFORM_DOMAIN:-deploy.fidscript.com}}
+      # The superuser's personal access token. It is OPTIONAL — without it
+      # the api reports Instant as unavailable rather than failing to start.
+      INSTANT_SUPERUSER_TOKEN_FILE: /run/secrets/instant_superuser_token
     # NOTE: no Docker-secrets block for the api. The Docker-secrets mechanism
     # mounts the secret files with root-0400 perms, which the api (running as
     # `node`, uid 1000) cannot read ("Permission denied"). Instead, we bind-
@@ -462,6 +472,7 @@ services:
       - fidscript-deployment
       - fidscript-whatsapp
       - fidscript-app
+      - fidscript-instant
     depends_on:
       postgres:
         condition: service_healthy
@@ -564,6 +575,13 @@ networks:
   registry:
     external: true
     name: nextmavens-registry_default
+  # The Instant BaaS — the project's data plane. The api joins it so it can
+  # provision an Instant app without bouncing the request out through the
+  # edge and back. The installer creates it, so a platform-only install
+  # still starts.
+  fidscript-instant:
+    external: true
+    name: fidscript-instant
 
 volumes:
   fidscript_postgres:

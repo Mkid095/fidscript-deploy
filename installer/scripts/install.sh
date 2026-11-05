@@ -465,11 +465,18 @@ info "Traefik dynamic.yml written: ${DYNAMIC_YML}"
 # they run on (Compose refuses to start if an external network is missing).
 if [[ -f "${REPO_DIR}/installer/config/traefik/products.yml" ]]; then
   cp "${REPO_DIR}/installer/config/traefik/products.yml" "${DYNAMIC_DIR}/products.yml"
+  # The platform-relative hostnames follow the platform's domain. Until the
+  # domain is set the bootstrap serves by IP, so the IP stands in for it.
+  sed -i "s|__DOMAIN__|${PLATFORM_DOMAIN:-${PUBLIC_IP:-localhost}}|g" "${DYNAMIC_DIR}/products.yml"
   info "Product routes written: ${DYNAMIC_DIR}/products.yml"
 fi
 for _net in self-hosting_self-hosting_default next-mavens-evolution-api_platform-net nextmavens-registry_default; do
   docker network inspect "$_net" >/dev/null 2>&1 || docker network create "$_net" >/dev/null 2>&1 || true
 done
+
+# The Instant BaaS — the project's data plane. The api joins this network
+# so it can provision an Instant app without going out through the edge.
+docker network inspect fidscript-instant >/dev/null 2>&1 || docker network create fidscript-instant >/dev/null 2>&1 || true
 
 # ─── 11. Docker compose up ────────────────────────────────────────────────────
 title "11 — Starting Docker stack"

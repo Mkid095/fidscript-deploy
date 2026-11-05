@@ -14,8 +14,6 @@ INSTALL_DIR="/opt/fidscript"
 # the API and dashboard images are built from the monorepo root, so the
 # build context has to resolve to the repo root.
 COMPOSE_DIR="$REPO_DIR/installer/docker"
-SECRETS_DIR=""
-DNS_OK=false
 PUBLIC_IP=""
 
 # ── Colours ──────────────────────────────────────────────────────────────────
@@ -210,6 +208,68 @@ step_5_deploy() {
   docker compose -f "$COMPOSE_DIR/docker-compose.yml" kill -s HUP traefik 2>/dev/null || true
 }
 
+# ── Step 5b: Connect the Instant BaaS ───────────────────────────────────────
+# The Instant console only exists once the stack is up, so the personal
+# access token — the credential that lets the platform create an app for a
+# project — is collected AFTER the deploy rather than during the wizard.
+#
+# The token is optional: without it the platform runs with Instant
+# unavailable, and the operator can add it later.
+step_5b_instant() {
+  source "$COMPOSE_DIR/.env" 2>/dev/null || true
+  local secrets_dir="$COMPOSE_DIR/secrets"
+  local addons
+  addons="$(grep -m1 '^FIDScript_ADDONS=' "$COMPOSE_DIR/.env" 2>/dev/null \
+    | cut -d= -f2- | tr -d '"' | tr ',' ' ')"
+  case " ${addons} " in
+    *" instant "*) ;;
+    *) return 0 ;;
+  esac
+
+  local secret_file="$secrets_dir/instant_superuser_token.txt"
+  if [[ -s "$secret_file" ]]; then
+    info "Instant: superuser token already set"
+    return 0
+  fi
+
+  title "Step 5b / 6 — Connecting the Instant BaaS"
+  divider
+  echo -e "  ${DIM}The Instant BaaS is the data plane: your projects' tables,${NC}"
+  echo -e "  ${DIM}users, permissions and files live there. The platform needs${NC}"
+  echo -e "  ${DIM}one credential to create an app for a project.${NC}"
+  echo ""
+  echo -e "  ${WHITE}1.${NC} Open  ${CYAN}https://instant.${DOMAIN:-<domain>}${NC}"
+  echo -e "  ${WHITE}2.${NC} Sign in as  ${CYAN}${INSTANT_SUPERUSER_EMAIL:-${ADMIN_EMAIL}}${NC}"
+  echo -e "  ${WHITE}3.${NC} Open  ${CYAN}Settings → API keys${NC}, create a token named"
+  echo -e "     ${CYAN}FIDScript platform${NC} and copy it (it starts with ${CYAN}per_${NC})"
+  echo ""
+  prompt "Personal access token (Enter to skip): "
+  local token
+  read -r token || true
+  token="$(echo "$token" | tr -d '[:space:]')"
+
+  if [[ -z "$token" ]]; then
+    warn "Skipped — the platform will report Instant as unavailable."
+    warn "Add it later with: echo 'per_...' | sudo tee $secret_file"
+    return 0
+  fi
+
+  # Verify it against the running Instant server before storing it. The
+  # server publishes 8888 on the host, so this does not depend on DNS or
+  # on a certificate having been issued yet.
+  local port="${INSTANT_SERVER_PORT:-8888}"
+  if curl -sf -H "Authorization: Bearer ${token}" \
+      "http://127.0.0.1:${port}/dash/personal_access_tokens" >/dev/null 2>&1; then
+    printf '%s' "$token" > "$secret_file"
+    chmod 600 "$secret_file"
+    info "Instant: superuser token accepted"
+  else
+    warn "That token was not accepted by the Instant server."
+    warn "The platform will report Instant as unavailable. Add it later with:"
+    warn "  echo 'per_...' | sudo tee $secret_file"
+  fi
+}
+
 # ── Step 6: Verify ───────────────────────────────────────────────────────────
 step_6_verify() {
   title "Step 6 / 6 — Final verification"
@@ -220,7 +280,7 @@ step_6_verify() {
 
   step "Checking platform health..."
   local api_ok=false
-  for i in 1 2 3 4 5; do
+  for _ in 1 2 3 4 5; do
     if curl -sf "${access_url}/api/v1/health" &>/dev/null; then
       api_ok=true; break
     fi
@@ -264,4 +324,5 @@ step_2_prereqs
 step_3_clone
 step_4_wizard
 step_5_deploy
+step_5b_instant
 step_6_verify

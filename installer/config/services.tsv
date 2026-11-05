@@ -13,22 +13,39 @@
 #              otherwise it is a literal value.
 #   when       always | <add-on id> — add-on services are only created
 #              when that add-on is installed.
+#   link       what the summary prints for this service. "{host}" is the
+#              full hostname and "{domain}" is the platform's domain.
+#              Empty means "https://{host}". It is not only a URL — SMTP
+#              and IMAP are not served over HTTP, and a wildcard is a
+#              pattern rather than an address.
+#
+# The hostname MUST match the router that serves it (installer/config/
+# traefik/products.yml for the other products, the platform's platform.yml
+# for its own). A DNS record without a matching router is a hostname that
+# resolves and then 404s.
+#
+# Two routes in products.yml have no row here on purpose: `files` and the
+# `nextmavens` names point at host services of the registry stack that
+# lives on its own domain, not at anything an add-on installs.
 #
 # The order matters: the dashboard comes first, because it is the link the
 # operator is told to open.
 
 Dashboard	.	A	IP	always
+Dashboard — alias	app	A	IP	always
 API	api	A	IP	always
 Mail — JMAP	jmap	A	IP	always
-Mail — IMAP	imap	A	IP	always
-Mail — SMTP	mail	A	IP	always
-Mail — admin	stalwart-admin	A	IP	always
+Mail — IMAP	imap	A	IP	always	imaps://{host}:993
+Mail — SMTP	mail	A	IP	always	smtps://{host}:465
+Mail — admin	stalwart-admin	A	IP	always	https://{host}/admin
 Object storage	storage	A	IP	always
-Deployed apps	*.apps	A	IP	always
+Deployed apps	*.apps	A	IP	always	each app at <slug>.apps.{domain}
 WhatsApp — console	whatsapp	A	IP	whatsapp
-WhatsApp — API	whatsapp-api	A	IP	whatsapp
+WhatsApp — API	whatsappapi	A	IP	whatsapp
 Instant — console	instant	A	IP	instant
+Instant — API	apiinstant	A	IP	instant
 Instant — realtime	realtime	A	IP	instant
-Instant — MCP	instant-mcp	A	IP	instant
+Instant — CLI	cliinstant	A	IP	instant
+Instant — MCP	instantmcp	A	IP	instant
 Package manager — npm	registry	A	IP	package-manager
 Package manager — Maven	maven	A	IP	package-manager

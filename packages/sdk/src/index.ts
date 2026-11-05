@@ -53,6 +53,7 @@ import { LoggingModule } from './modules/logging';
 import { TemplatesModule } from './modules/templates';
 import { GithubModule } from './modules/github';
 import { InstallationModule } from './modules/installation';
+import { InstantModule } from './modules/instant';
 import { NotificationsModule } from './modules/notifications';
 import {
   FidscriptError,
@@ -64,7 +65,8 @@ import {
 
 export { FidscriptClient, FidscriptClientOptions };
 export { FidscriptError, AuthError, NotFoundError, ValidationError, RateLimitError };
-export { AuthModule, ProjectsModule, DeploymentsModule, StorageModule, DatabasesModule, DomainsModule, EmailModule, FunctionsModule, QueuesModule, CronModule, RealtimeModule, MonitoringModule, LoggingModule, TemplatesModule, GithubModule, InstallationModule, NotificationsModule };
+export { AuthModule, ProjectsModule, DeploymentsModule, StorageModule, DatabasesModule, DomainsModule, EmailModule, FunctionsModule, QueuesModule, CronModule, RealtimeModule, MonitoringModule, LoggingModule, TemplatesModule, GithubModule, InstallationModule, NotificationsModule, InstantModule };
+export type { InstantAppStatus, InstantClientConfig } from './modules/instant';
 export { AdminMailboxModule, AdminAttachmentConfigModule, AdminMailConnectionModule, type PlatformMailboxMessage, type PlatformMailboxSummary, type PlatformMailboxesResponse, type CreatePlatformMailboxResponse, type ListPlatformMessagesResponse, type AdminSendMailResponse, type AdminAttachmentConfig, type StorageBackend, type MailboxMessage, type EmailDomain, type Mailbox, type EmailAlias, type MailConnectionInfo };
 export type { Domain, DnsConnection, DomainHealth, DomainHealthStatus, DnsRecord, DnsRecordCategory, DnsRecordStatus, DnsRecordsResponse, DomainSslInfo, DomainType, DomainCapabilities, DomainReconciliationStatus, DomainVerificationRun, DomainIncident } from './modules/domains-types';
 export type { DomainHealthTimelineEntry, DomainWizardStatus, WizardStage, WizardRecord, WizardRecordStatus } from './modules/domains-types-wizard';
@@ -91,6 +93,8 @@ export interface FidscriptSDK {
   github: GithubModule;
   installation: InstallationModule;
   notifications: NotificationsModule;
+  /** The Instant BaaS — the project's data plane. */
+  instant: InstantModule;
 }
 
 export function createFidscript(options: {
@@ -120,5 +124,6 @@ export function createFidscript(options: {
     github: new GithubModule(client),
     installation: new InstallationModule(client),
     notifications: new NotificationsModule(client),
+    instant: new InstantModule(client),
   };
 }

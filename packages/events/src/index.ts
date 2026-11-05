@@ -122,6 +122,9 @@ export type EventType =
   | 'database.migration_applied'
   | 'database.realtime_enabled'
   | 'database.realtime_disabled'
+  // Instant events (the project's data plane)
+  | 'instant.app.provisioned'
+  | 'instant.app.deleted'
   // Domain events
   | 'domain.added'
   | 'domain.verified'

@@ -148,6 +148,21 @@ export const eventSchemas: Record<string, EventSchema> = {
       domain: { type: 'string', required: true },
     },
   },
+  'instant.app.provisioned': {
+    eventType: 'instant.app.provisioned',
+    currentVersion: '1.0',
+    fields: {
+      appId: { type: 'string', required: true },
+      title: { type: 'string', required: false },
+    },
+  },
+  'instant.app.deleted': {
+    eventType: 'instant.app.deleted',
+    currentVersion: '1.0',
+    fields: {
+      appId: { type: 'string', required: true },
+    },
+  },
   'projects.project.created': {
     eventType: 'projects.project.created',
     currentVersion: '1.0',
