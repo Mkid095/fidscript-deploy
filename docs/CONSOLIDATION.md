@@ -167,17 +167,44 @@ and a rollback to Caddy keeps working.
    failed on a clean one. The Dockerfile now builds the packages it compiles
    against.
 
-### What the cutover could not settle
+### The three `nextmavens.com` names
+
+They are a **different Cloudflare zone** from the platform's own, and that
+turned out to matter twice.
 
 **Port 80 is not reachable from the internet on this host.** An external
-fetch of `http://registry.nextmavens.com` times out. So an HTTP-01
-challenge is impossible here — every certificate has to come from DNS-01,
-which needs the token to hold the zone. The `nextmavens.com` zone is at
-Cloudflare and the token holds it, but Let's Encrypt's per-identifier limit
-(5 failed authorizations per hour) was reached during the first attempts, and
-the three `nextmavens.com` names are waiting for the window to clear. Their
-ROUTES are published and correct; their certificates are the only thing
-missing, and the registry is reachable meanwhile at `registry.fidscript.com`.
+fetch of `http://registry.nextmavens.com` times out. So an HTTP-01 challenge
+is impossible here — every certificate has to come from DNS-01.
+
+**DNS-01 could not find that zone.** The token holds both zones — the API
+lists them — but Traefik's Cloudflare solver answered "failed to find zone
+`_acme-challenge.registry.nextmavens.com.`" for the `nextmavens.com` zone
+while it issued certificates for `fidscript.com` without trouble. Splitting
+the routers (each name its own certificate) was still necessary — a router
+across two zones asks for one certificate, and a failure there took the
+`fidscript.com` name down with it — but it did not fix the lookup.
+
+**So those names now sit behind Cloudflare's edge.** `registry.nextmavens.com`
+and `storage.nextmavens.com` are proxied, like `whatsapp.nextmavens.com`
+already was. The edge certifies them, the origin's certificate does not
+matter, and the names work again:
+
+| Hostname | Now |
+|---|---|
+| `registry.nextmavens.com` | **200** — the npm registry, serving packages |
+| `registry.nextmavens.com/instant-mcp` | **401** — the Instant MCP bridge, asking for a token |
+| `storage.nextmavens.com` | 502 — the artifact store's host service is down |
+
+The MCP bridge needed one more thing: the Instant packages point their
+clients at `https://registry.nextmavens.com/instant-mcp`, so the route for
+that path has to reach the bridge rather than the registry. It does now — the
+path rule is more specific than the registry's, so it wins for that path —
+and the bridge answers a real MCP `initialize` with a personal access token.
+
+**The cost of the proxy:** Cloudflare's free plan caps an upload at 100 MB.
+The packages published here are small, and a package's tarball URL carries
+its version, so a published version is a new URL and cannot go stale in a
+cache. It is worth knowing the limit is there.
 
 ## 5. Another live bug this surfaced
 

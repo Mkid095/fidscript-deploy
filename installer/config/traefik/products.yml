@@ -86,6 +86,14 @@ http:
       service: npm-registry
       entryPoints: [websecure]
       tls: { certResolver: letsencrypt-dns }
+    # The Instant MCP bridge lives on the registry's hostname — that is the
+    # URL the Instant packages tell their clients to use. The path rule is
+    # more specific than the registry's, so it wins for that path.
+    instant-mcp-on-registry:
+      rule: 'Host(`registry.nextmavens.com`) && (Path(`/instant-mcp`) || Path(`/mcp`))'
+      service: instant-mcp
+      entryPoints: [websecure]
+      tls: { certResolver: letsencrypt-dns }
 
     # ── artifact storage for mobile and desktop builds ──────────────────────
     artifacts:
