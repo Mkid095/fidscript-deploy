@@ -91,7 +91,7 @@ const nextConfig = {
   images: {
     remotePatterns: [
       { protocol: 'https', hostname: 'res.cloudinary.com', pathname: '/dfp7uhzy3/image/upload/**' },
-      { protocol: 'https', hostname: '*.fidscript.dev' },
+      { protocol: 'https', hostname: '*.deploy.fidscript.com' },
       { protocol: 'https', hostname: '*.s3.amazonaws.com' },
     ],
   },

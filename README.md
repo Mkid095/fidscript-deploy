@@ -1,14 +1,10 @@
-<div align="center">
-<img width="1200" height="475" alt="FIDScript Deploy" src="https://fidscript.dev/banner.png" />
-</div>
-
 # FIDScript Deploy
 
 **A self-hosted Developer Operating System**
 
 FIDScript Deploy turns any VPS into a private application cloud — hosting, authentication, storage, databases, queues, cron jobs, email, realtime infrastructure, AI integration, and MCP-native platform management — all behind one domain, one dashboard, one CLI. Built as a single Docker Compose stack you install once with `curl | bash`.
 
-[![Version](https://img.shields.io/badge/version-1.0.0--alpha-red?style=for-the-badge)](https://fidscript.dev)
+[![Version](https://img.shields.io/badge/version-1.0.0--alpha-red?style=for-the-badge)](https://deploy.fidscript.com)
 [![Status](https://img.shields.io/badge/status-Phase%2001%20(Installer%20Verified)-orange?style=for-the-badge)](./docs/phases/phase-01.md)
 [![License](https://img.shields.io/badge/license-MIT-blue?style=for-the-badge)](LICENSE)
 
@@ -102,7 +98,7 @@ FIDScript Deploy turns any VPS into a private application cloud — hosting, aut
 For a fresh Ubuntu 22.04+ or Debian 12+ VPS with **root SSH access**:
 
 ```bash
-curl -sSL https://fidscript.dev/install.sh | sudo bash
+curl -sSL https://deploy.fidscript.com/install.sh | sudo bash
 ```
 
 That is the whole install. The bootstrap installer installs Docker and

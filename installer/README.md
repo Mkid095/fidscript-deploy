@@ -262,5 +262,5 @@ sudo netstat -tulpn | grep -E ':(80|443|22)\s'
 
 ## Support
 
-- Documentation: https://docs.fidscript.dev
+- Documentation: https://deploy.fidscript.com/docs
 - Issues: https://github.com/Mkid095/fidscript-deploy/issues

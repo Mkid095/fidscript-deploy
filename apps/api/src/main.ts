@@ -37,8 +37,11 @@ async function bootstrap() {
   const app = await NestFactory.create(AppModule);
 
   // Serve the one-line installer at the root so `curl …/install.sh` works
-  // outside the api/v1 prefix. The file is mounted into the container at
-  // /usr/local/share/fidscript/install.sh (see docker-compose.yml).
+  // outside the api/v1 prefix. It is the GUIDED one — the script at the
+  // repository root that asks for the domain, the admin account and the
+  // Cloudflare token. It is mounted into the container separately from
+  // installer/scripts/ (see docker-compose.yml), so the URL a customer is
+  // given does what the README promises.
   const { createReadStream, existsSync } = await import('node:fs');
   const INSTALL_SH = process.env.INSTALL_SCRIPT_PATH ?? '/usr/local/share/fidscript/install.sh';
   if (existsSync(INSTALL_SH)) {

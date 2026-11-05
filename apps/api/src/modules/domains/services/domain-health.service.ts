@@ -226,7 +226,7 @@ export class DomainHealthService {
     // DMARC record
     records.push({
       type: 'TXT', name: '_dmarc',
-      value: 'v=DMARC1; p=quarantine; rua=mailto:dmarc@fidscript.dev',
+      value: 'v=DMARC1; p=quarantine; rua=mailto:dmarc@deploy.fidscript.com',
       ttl: 300, status: 'pending', category: 'email',
     });
 

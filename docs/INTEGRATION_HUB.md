@@ -193,9 +193,9 @@ class CloudinaryAdapter implements StorageAdapter {
 {
   "host": "localhost",
   "port": 587,
-  "username": "noreply@fidscript.dev",
+  "username": "noreply@deploy.fidscript.com",
   "password": "smtp-password",
-  "fromAddress": "no-reply@fidscript.dev"
+  "fromAddress": "no-reply@deploy.fidscript.com"
 }
 ```
 

@@ -238,7 +238,7 @@ Fired when a new project is provisioned.
     "name": "my-application",
     "type": "frontend",
     "slug": "my-application",
-    "subdomain": "my-application.fidscript.dev"
+    "subdomain": "my-application.apps.deploy.fidscript.com"
   }
 }
 ```
@@ -424,7 +424,7 @@ Fired when deployment completes successfully.
   "payload": {
     "version": "1.0.0",
     "durationMs": 45000,
-    "url": "https://my-application.fidscript.dev"
+    "url": "https://my-application.apps.deploy.fidscript.com"
   }
 }
 ```

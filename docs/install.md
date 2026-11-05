@@ -28,7 +28,7 @@ Replace `YOUR_SERVER_IP` with your server's IP address.
 SSH into your server and run:
 
 ```bash
-curl -sSL https://install.fidscript.dev | bash
+curl -sSL https://deploy.fidscript.com/install.sh | sudo bash
 ```
 
 The installer will:

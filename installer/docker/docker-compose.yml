@@ -414,6 +414,8 @@ services:
       # Path to the directory containing Traefik dynamic.yml on the HOST.
       # The API needs this to write updated routing config during installation.
       TRAEFIK_DYNAMIC_DIR: /etc/traefik/dynamic
+      # The guided one-line installer, served at /install.sh.
+      INSTALL_SCRIPT_PATH: /opt/fidscript-install/install.sh
     # NOTE: no Docker-secrets block for the api. The Docker-secrets mechanism
     # mounts the secret files with root-0400 perms, which the api (running as
     # `node`, uid 1000) cannot read ("Permission denied"). Instead, we bind-
@@ -424,6 +426,17 @@ services:
       - ./secrets:/run/secrets:ro
       - /var/run/docker.sock:/var/run/docker.sock
       - ../scripts:/usr/local/share/fidscript:ro
+      # The ONE-LINE installer — the guided flow that asks for the domain,
+      # the admin account and the Cloudflare token — lives at the
+      # repository root, not in installer/scripts/. The api serves THAT
+      # one at /install.sh, so `curl …/install.sh | sudo bash` does what
+      # the README says it does. installer/scripts/install.sh (the
+      # no-questions bootstrap) stays available as its own script.
+      #
+      # It is mounted under /opt, not under /usr/local/share/fidscript —
+      # that directory is itself a read-only mount, so Docker cannot create
+      # a mount point inside it.
+      - ../../install.sh:/opt/fidscript-install/install.sh:ro
       - ./traefik:/etc/traefik:rw
     # The deployment worker runs `docker build`/`docker run` against the host
     # daemon via the mounted socket. The socket is root:docker on the host

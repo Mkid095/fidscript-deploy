@@ -9,7 +9,7 @@ Complete reference for the FIDScript Deploy REST API.
 ## Base URL
 
 ```
-Production: https://api.fidscript.dev/v1
+Production: https://api.deploy.fidscript.com/api/v1
 Development: http://localhost:3001/v1
 ```
 
@@ -263,7 +263,7 @@ List user's projects.
         "slug": "my-application",
         "type": "frontend",
         "status": "active",
-        "subdomain": "my-application.fidscript.dev",
+        "subdomain": "my-application.apps.deploy.fidscript.com",
         "createdAt": "2026-06-15T10:00:00Z"
       }
     ]
@@ -305,7 +305,7 @@ Create a new project.
       "slug": "my-application",
       "type": "frontend",
       "status": "creating",
-      "subdomain": "my-application.fidscript.dev",
+      "subdomain": "my-application.apps.deploy.fidscript.com",
       "createdAt": "2026-06-16T12:00:00Z"
     }
   }
@@ -334,7 +334,7 @@ Get project details.
       "type": "frontend",
       "status": "active",
       "ownerId": "usr_abc123",
-      "subdomain": "my-application.fidscript.dev",
+      "subdomain": "my-application.apps.deploy.fidscript.com",
       "customDomains": [],
       "envVars": { "NODE_ENV": "production" },
       "lastDeployAt": "2026-06-16T11:00:00Z",
@@ -436,7 +436,7 @@ Get deployment details.
       "commitSha": "abc123def",
       "commitMessage": "Fix bug",
       "buildDurationMs": 45000,
-      "deploymentUrl": "https://my-application.fidscript.dev",
+      "deploymentUrl": "https://my-application.apps.deploy.fidscript.com",
       "createdAt": "2026-06-16T12:00:00Z",
       "completedAt": "2026-06-16T12:00:45Z"
     }

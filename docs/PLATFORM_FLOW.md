@@ -13,7 +13,7 @@ finished.
 ## 1. The install flow — an operator with a fresh VPS
 
 ```
-curl -sSL https://fidscript.dev/install.sh | sudo bash
+curl -sSL https://deploy.fidscript.com/install.sh | sudo bash
 ```
 
 | # | Step | Where |
