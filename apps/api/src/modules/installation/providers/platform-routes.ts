@@ -11,6 +11,12 @@
  * The rules are single-quoted YAML: a bare backtick is a YAML reserved
  * indicator, so `rule: `Host(...)`` is a parse error that makes Traefik
  * reject the whole file — every route then 404s.
+ *
+ * The middlewares are Traefik v3's shape — `frameDeny: true` and
+ * `compress: {}`, not a map of raw header names. The v2 form
+ * (`Strict-Transport-Security "..."`) is rejected outright with "headers
+ * cannot be a standalone element", and one bad middleware takes every route
+ * in the file with it.
  */
 export function buildPlatformRoutes(domain: string, certResolver: string): string {
   const tls = `      tls:\n        certResolver: ${certResolver}`;
@@ -20,11 +26,15 @@ http:
   middlewares:
     security-headers:
       headers:
-        Strict-Transport-Security "max-age=31536000; includeSubDomains"
-        X-Content-Type-Options "nosniff"
-        X-Frame-Options "DENY"
+        frameDeny: true
+        browserXssFilter: true
+        contentTypeNosniff: true
+        sslRedirect: true
+        stsSeconds: 31536000
+        stsIncludeSubdomains: true
+        stsPreload: true
     compress:
-      encode gzip
+      compress: {}
   routers:
     dashboard-app:
 ${host(`app.${domain}`)}
