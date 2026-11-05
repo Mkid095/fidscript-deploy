@@ -618,6 +618,19 @@ http:
         - compress
       tls:
         certResolver: __CERT_RESOLVER__
+    # ── The API on its own hostname ───────────────────────────────────────────
+    # api.{domain} is what the platform advertises — PLATFORM_PUBLIC_URL, the
+    # DNS record and the setup summary all name it — so it needs a router of
+    # its own. Without one it had no certificate and the advertised URL did
+    # not serve, while the path-prefix rule above matched any host.
+    api-host:
+      rule: 'Host(`api.__DOMAIN__`) && PathPrefix(`/api`)'
+      service: api
+      middlewares:
+        - security-headers
+        - compress
+      tls:
+        certResolver: __CERT_RESOLVER__
     # ── Install script endpoint ─────────────────────────────────────────────────
     install-sh:
       rule: 'Path(`/install.sh`)'

@@ -50,11 +50,21 @@ http:
       tls: { certResolver: letsencrypt-dns }
 
     # ── WhatsApp platform ───────────────────────────────────────────────────
+    # The nextmavens.com names live in a different Cloudflare zone, so they
+    # get their OWN router and their own certificate. One router covering
+    # both zones asks for a single certificate, the token cannot solve the
+    # other zone's challenge, and the whole request fails — taking the
+    # fidscript.com name down with it. HTTP-01 needs no API token.
     whatsapp-console:
-      rule: 'Host(`whatsapp.__DOMAIN__`) || Host(`whatsapp.nextmavens.com`)'
+      rule: 'Host(`whatsapp.__DOMAIN__`)'
       service: whatsapp-console
       entryPoints: [websecure]
       tls: { certResolver: letsencrypt-dns }
+    whatsapp-console-nextmavens:
+      rule: 'Host(`whatsapp.nextmavens.com`)'
+      service: whatsapp-console
+      entryPoints: [websecure]
+      tls: { certResolver: letsencrypt-http }
     whatsapp-api:
       rule: 'Host(`whatsappapi.__DOMAIN__`)'
       service: whatsapp-api
@@ -63,17 +73,27 @@ http:
 
     # ── npm registry ────────────────────────────────────────────────────────
     npm-registry:
-      rule: 'Host(`registry.__DOMAIN__`) || Host(`registry.nextmavens.com`)'
+      rule: 'Host(`registry.__DOMAIN__`)'
       service: npm-registry
       entryPoints: [websecure]
       tls: { certResolver: letsencrypt-dns }
+    npm-registry-nextmavens:
+      rule: 'Host(`registry.nextmavens.com`)'
+      service: npm-registry
+      entryPoints: [websecure]
+      tls: { certResolver: letsencrypt-http }
 
     # ── artifact storage for mobile and desktop builds ──────────────────────
     artifacts:
-      rule: 'Host(`files.__DOMAIN__`) || Host(`storage.nextmavens.com`)'
+      rule: 'Host(`files.__DOMAIN__`)'
       service: artifacts
       entryPoints: [websecure]
       tls: { certResolver: letsencrypt-dns }
+    artifacts-nextmavens:
+      rule: 'Host(`storage.nextmavens.com`)'
+      service: artifacts
+      entryPoints: [websecure]
+      tls: { certResolver: letsencrypt-http }
 
   services:
     instant-console:
