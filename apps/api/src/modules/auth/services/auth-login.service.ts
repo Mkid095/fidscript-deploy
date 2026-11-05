@@ -46,7 +46,12 @@ export class AuthLoginService {
       }
     }
 
-    const user = await this.prisma.user.findUnique({ where: { email: dto.email } });
+    // Emails are stored and looked up lowercased, everywhere else in the
+    // platform. This lookup was the one that did not — so an account whose
+    // address was saved with capitals could never sign in, and the
+    // auth-method lookup (which does lowercase) could not find it either.
+    const email = dto.email.toLowerCase().trim();
+    const user = await this.prisma.user.findUnique({ where: { email } });
 
     if (!user) {
       // User-not-found must NOT consume the account lockout counter.
