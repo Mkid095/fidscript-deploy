@@ -37,6 +37,7 @@ export class InstantModule {
   /** Whether Instant is available, and whether the project has an app. */
   async get(projectId: string): Promise<{
     available: boolean;
+    dashboardUrl: string;
     app: InstantAppStatus | null;
   }> {
     return this.client.get(`/api/v1/projects/${projectId}/instant`);

@@ -16,6 +16,7 @@
 | `data.md` | storage, databases, email | `STOR-*`, `DB-*`, `MAIL-*` |
 | `compute.md` | functions, queues, scheduler/cron, realtime | `FN-*`, `QUEUE-*`, `CRON-*`, `RT-*` |
 | `surfaces.md` | monitoring, logging, templates, ai, marketplace, registry/health, MCP, SDK, CLI | `MON-*`, `LOG-*`, `TMPL-*`, `AI-*`, `MKT-*`, `SVC-*`, `MCP-*` |
+| `instant.md` | the Instant BaaS integration — the project's data plane | `INST-*` |
 
 ## Global conventions (document once, reference everywhere)
 

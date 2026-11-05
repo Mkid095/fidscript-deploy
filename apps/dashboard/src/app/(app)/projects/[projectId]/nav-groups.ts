@@ -4,6 +4,7 @@ import {
   Rocket01Icon,
   SourceCodeIcon,
   Database01Icon,
+  HierarchyIcon,
   HardDriveIcon,
   Share08Icon,
   Clock01Icon,
@@ -43,6 +44,7 @@ export const DEPLOY_NAV_GROUPS: { label: string; items: NavItem[] }[] = [
     items: [
       { id: 'databases', label: 'Databases', href: '/databases', icon: Database01Icon },
       { id: 'storage',   label: 'Storage',   href: '/storage',   icon: HardDriveIcon  },
+      { id: 'instant',   label: 'Instant',   href: '/instant',   icon: HierarchyIcon  },
     ],
   },
   {
@@ -79,6 +81,7 @@ export const BAAS_NAV_GROUPS: { label: string; items: NavItem[] }[] = [
       { id: 'storage',  label: 'Storage',    href: '/storage',    icon: HardDriveIcon  },
       { id: 'queues',   label: 'Queues',     href: '/queues',     icon: Share08Icon    },
       { id: 'realtime', label: 'Realtime',   href: '/realtime',   icon: FlashIcon      },
+      { id: 'instant',  label: 'Instant',    href: '/instant',    icon: HierarchyIcon   },
     ],
   },
   {

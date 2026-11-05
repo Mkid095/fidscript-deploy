@@ -31,6 +31,12 @@ export class InstantAppConfigService {
     return this.client.isConfigured();
   }
 
+  /** The Instant console — where the operator manages the app's schema,
+   *  permissions and users. Empty when it is not configured. */
+  dashboardUrl(): string {
+    return this.client.dashboardUrl;
+  }
+
   /** The configuration a deployed application needs. */
   async forProject(projectId: string): Promise<InstantAppConfig> {
     const row = await this.prisma.projectInstantApp.findUnique({

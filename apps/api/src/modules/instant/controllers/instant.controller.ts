@@ -40,6 +40,7 @@ export class InstantController {
   async get(@Param('projectId') projectId: string) {
     return {
       available: this.appConfig.isConfigured(),
+      dashboardUrl: this.appConfig.dashboardUrl(),
       app: await this.instant.get(projectId),
     };
   }

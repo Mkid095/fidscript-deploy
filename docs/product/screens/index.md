@@ -95,6 +95,28 @@ Auth keys: `O` owner · `A` admin · `D` developer · `V` viewer · `P` platform
 
 ---
 
+## Instant — the data plane (F08)
+
+An application's **tables, users, permissions and files** live in Instant, not
+in the platform. This section is the operator's console for that link: it
+shows whether the project has an Instant app, provisions one, and hands the
+developer what a deployed application needs to reach it. The query, realtime
+and permission APIs are **Instant's own SDK** — the platform does not proxy
+them.
+
+| Screen | Route | Auth | Renders | Key fields | Operations | Deep spec |
+|---|---|---|---|---|---|---|
+| Instant (data plane) | `…/instant` | O/A/D/V | `ProjectInstantApp` | appId, title, status, createdAt · the client config (apiHost, appId) · whether Instant is available at all | provision `INST-02` · delete `INST-03` · open the Instant console | — |
+
+**When Instant is not available** — the platform holds no superuser token —
+the section says so plainly and the provision button is greyed. It never
+pretends the app exists.
+
+**Deleting** removes the Instant app and everything in it. The confirmation
+must say so in those words.
+
+---
+
 ## Storage (F09) — operator's console for object storage
 
 | Screen | Route | Auth | Renders | Key fields | Operations | Deep spec |

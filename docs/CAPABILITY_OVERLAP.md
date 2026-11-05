@@ -230,12 +230,27 @@ duplicate.
 
 ### 4.4 MCP and CLI naming
 
-| Tool | Bin | Action |
-|---|---|---|
-| `@fidscript-deploy/mcp-server` | `fidscript-mcp` | keep |
-| `@fidscript/instant-mcp` | `fidscript-mcp` + `instant-mcp` | **drop `fidscript-mcp`**; keep `instant-mcp` |
-| `@fidscript-deploy/cli` | `fidscript` | keep |
-| `@fidscript/instant-cli` | `instantself` + `fidscript-cli` | **drop the `fidscript-cli` alias** |
+| Package | Bin(s) before | Bin now | Action |
+|---|---|---|---|
+| `@fidscript-deploy/mcp-server` | `fidscript-mcp` | `fidscript-mcp` | keep — the platform's own name |
+| `@fidscript/instant-mcp` | `fidscript-mcp` + `instant-mcp` | `instant-mcp` | **drop `fidscript-mcp`** — it collided with the platform's own |
+| `@fidscript-deploy/cli` | `fidscript` | `fidscript` | keep |
+| `@fidscript/instant-cli` | `instantself` + `fidscript-cli` | `instantself` | **drop the legacy `fidscript-cli` alias** — confusable with `fidscript` |
+
+Only the MCP pair was a true **binary collision**: both packages installed
+`fidscript-mcp`, so an agent with both configured could not tell them apart.
+The CLI pair never collided (`fidscript` vs `fidscript-cli`) — it was a
+*discoverability* problem, which the Instant fork's own `sdk-versions.ts`
+complained about: *"the package also ships `fidscript-cli` as a legacy alias,
+and `npx @fidscript/instant-cli` can't disambiguate between the two."*
+
+**State:** the two `package.json` edits and the stale comment are **applied in
+the Instant fork's working tree** (`client/packages/fidscript-mcp/package.json`,
+`client/packages/fidscript-cli/package.json`, and `sdk-versions.ts` in both
+`client/lib` and `client/www/lib`). They are **not committed**: that fork has
+~9,700 lines of uncommitted work in flight, including the version bumps and
+the registry configuration for the next publish, and committing a partial
+snapshot of it would break the release. It belongs with the rest of that work.
 
 If the two MCP servers are ever merged into one, the Instant tools take an
 `instant_` prefix so an agent can tell `email_send` (platform) from
@@ -256,7 +271,7 @@ Instant does not already do better.
 | 3 | The SDK's `instant` module | none — additive | **done** |
 | 4 | Retire the live-query half of `modules/databases/` | **medium** — the API surface disappears | **done** |
 | 5 | Retire `modules/app-auth/` as the app-facing auth | **high** — the second JWT issuer goes | **done** (the app-facing half; the WhatsApp login and the GitHub credentials stayed) |
-| 6 | Drop the duplicate CLI/MCP bin names | low — the Instant fork is a separate repo | to do |
+| 6 | Drop the duplicate CLI/MCP bin names | low — the Instant fork is a separate repo | **done** — applied in the fork's working tree, not committed (see §4.4) |
 | 7 | The dashboard's data screens point at the Instant console | none | to do |
 
 Steps 4 and 5 remove a public API surface. They are separate changes, each
