@@ -4,7 +4,7 @@ import Link from 'next/link';
 import { Card } from '@fidscript/ui';
 
 import type { SourceType } from './new-deploy-utils';
-import { formatBytes } from './new-deploy-utils';
+import { formatBytes } from '@/lib/format';
 
 interface StepReviewProps {
   sourceType: SourceType;

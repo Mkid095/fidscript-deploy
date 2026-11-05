@@ -7,7 +7,8 @@ import {
   Image01Icon,
 } from '@hugeicons/core-free-icons';
 import type { StorageFile } from '@/types';
-import { formatBytes, getFileTypeInfo, isPreviewable } from './file-utils';
+import { getFileTypeInfo, isPreviewable } from './file-utils';
+import { formatBytes } from '@/lib/format';
 
 interface FileTableProps {
   files: StorageFile[];

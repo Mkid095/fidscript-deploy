@@ -3,7 +3,8 @@
 import { useState, useCallback } from 'react';
 import type { Project } from '@/types';
 import { API_BASE_URL } from '@/lib/sdk';
-import { getAccessToken, formatBytes } from './new-deploy-utils';
+import { getAccessToken } from './new-deploy-utils';
+import { formatBytes } from '@/lib/format';
 
 interface UseArchiveUploadOptions {
   project: Project;

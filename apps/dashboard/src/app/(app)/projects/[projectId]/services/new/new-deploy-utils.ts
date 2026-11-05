@@ -1,4 +1,5 @@
-// Shared utilities and types for the new deployment wizard
+
+import { formatBytes } from '@/lib/format';// Shared utilities and types for the new deployment wizard
 
 
 export { type GithubRepo, type GithubBranch, type GithubStatus, type BuildPlan } from './new-deploy-types';
@@ -20,13 +21,6 @@ export function extractRepoInfo(url: string): { repo: string; owner: string } {
   if (sshMatch) return { owner: sshMatch[1], repo: `${sshMatch[1]}/${sshMatch[2]}` };
   if (httpsMatch) return { owner: httpsMatch[1], repo: `${httpsMatch[1]}/${httpsMatch[2]}` };
   return { owner: '', repo: url };
-}
-
-export function formatBytes(bytes: number): string {
-  if (bytes < 1024) return `${bytes} B`;
-  if (bytes < 1_048_576) return `${(bytes / 1024).toFixed(1)} KB`;
-  if (bytes < 1_073_741_824) return `${(bytes / 1_048_576).toFixed(1)} MB`;
-  return `${(bytes / 1_073_741_824).toFixed(2)} GB`;
 }
 
 export function getAccessToken(): string {

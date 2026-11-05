@@ -15,7 +15,8 @@ import {
 import { Badge } from '@fidscript/ui';
 
 import type { Deployment } from '@/types';
-import { statusMeta, isInFlight, relativeTime, formatDuration } from './services-utils';
+import { statusMeta, isInFlight } from './services-utils';
+import { formatRelativeTime, formatTimeRange } from '@/lib/format';
 
 interface DeploymentRowProps {
   deployment: Deployment;
@@ -47,10 +48,10 @@ export function DeploymentRow({ deployment, projectId, onAction, isFirst }: Depl
         )}
         <div className="flex items-center gap-2 ml-auto">
           <span className="text-[10px] text-[var(--text-dim)]">
-            {deployment.completedAt ? formatDuration(deployment.createdAt, deployment.completedAt) : '—'}
+            {deployment.completedAt ? formatTimeRange(deployment.createdAt, deployment.completedAt) : '—'}
           </span>
           <span className="text-[10px] text-[var(--text-dim)]">·</span>
-          <span className="text-[10px] text-[var(--text-dim)]">{relativeTime(deployment.createdAt)}</span>
+          <span className="text-[10px] text-[var(--text-dim)]">{formatRelativeTime(deployment.createdAt)}</span>
         </div>
       </div>
 

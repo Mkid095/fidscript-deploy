@@ -9,18 +9,7 @@ import { isInFlight } from '@/components/deployments';
 import { DeploymentDetailBody } from './deployment-detail-body';
 import { useDeploymentRealtime } from './use-deployment-realtime';
 import { useDeploymentDetail } from './page-hooks';
-
-function formatDuration(start: string, end?: string | null): string {
-  const s = new Date(start).getTime();
-  const e = end ? new Date(end).getTime() : Date.now();
-  const ms = Math.max(0, e - s);
-  if (ms < 1000) return `${ms}ms`;
-  const sec = Math.floor(ms / 1000);
-  if (sec < 60) return `${sec}s`;
-  const min = Math.floor(sec / 60);
-  const remSec = sec % 60;
-  return `${min}m ${remSec}s`;
-}
+import { formatTimeRange } from '@/lib/format';
 
 function DeploymentDetailInner() {
   const params = useParams();
@@ -72,7 +61,7 @@ function DeploymentDetailInner() {
       inFlight={inFlight}
       getSdk={getSdk}
       showToast={showToast}
-      formatDuration={formatDuration}
+      formatTimeRange={formatTimeRange}
       showRollbackPicker={showRollbackPicker}
       showDeleteConfirm={showDeleteConfirm}
       onAction={handleAction}

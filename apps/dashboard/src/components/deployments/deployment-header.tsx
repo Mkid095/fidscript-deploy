@@ -23,7 +23,7 @@ interface DeploymentHeaderProps {
   onRollback: () => void;
   onDelete: () => void;
   showToast: (toast: { type: ToastType; message: string }) => void;
-  formatDuration: (start: string, end?: string | null) => string;
+  formatTimeRange: (start: string, end?: string | null) => string;
 }
 
 export function DeploymentHeader({
@@ -38,7 +38,7 @@ export function DeploymentHeader({
   onRollback,
   onDelete,
   showToast,
-  formatDuration,
+  formatTimeRange,
 }: DeploymentHeaderProps) {
   return (
     <Card className="border border-[var(--rail)] p-4 sm:p-5">
@@ -63,7 +63,7 @@ export function DeploymentHeader({
         </span>
         {deployment.completedAt && (
           <span className="text-[var(--text-dim)]">
-            · {formatDuration(deployment.createdAt, deployment.completedAt)}
+            · {formatTimeRange(deployment.createdAt, deployment.completedAt)}
           </span>
         )}
       </div>

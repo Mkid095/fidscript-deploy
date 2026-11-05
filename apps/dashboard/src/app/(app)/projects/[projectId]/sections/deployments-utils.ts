@@ -1,14 +1,15 @@
 // Deployment list section utilities — no React imports
 
 import type { Deployment } from '@/types';
+import { formatRelativeTime } from '@/lib/format';
 import {
   IN_FLIGHT_STATUSES,
   statusMeta,
-  formatDuration,
+  formatTimeRange,
   isInFlight,
 } from '@/components/deployments/status-utils';
 
-export { IN_FLIGHT_STATUSES, statusMeta, formatDuration, isInFlight };
+export { IN_FLIGHT_STATUSES, statusMeta, formatTimeRange, isInFlight };
 
 // Aliases for existing consumers
 export const getDeploymentStatus = (status?: string) => {
@@ -26,23 +27,10 @@ export const getDeploymentStatus = (status?: string) => {
   }
 };
 
-export const formatDeploymentDuration = formatDuration;
+export const formatDeploymentDuration = formatTimeRange;
 export const isDeploymentInFlight = isInFlight;
 
 export type DeploymentTab = 'active' | 'all';
-
-export function relativeTime(iso?: string): string {
-  if (!iso) return '—';
-  const diff = Date.now() - new Date(iso).getTime();
-  const s = Math.floor(diff / 1000);
-  if (s < 5) return 'just now';
-  if (s < 60) return `${s}s ago`;
-  const m = Math.floor(s / 60);
-  if (m < 60) return `${m}m ago`;
-  const h = Math.floor(m / 60);
-  if (h < 24) return `${h}h ago`;
-  return `${Math.floor(h / 24)}d ago`;
-}
 
 export function diffDuration(start: string, end?: string | null): number | null {
   if (!end) return null;

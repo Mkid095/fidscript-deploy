@@ -4,7 +4,7 @@ import { HugeiconsIcon } from '@hugeicons/react';
 import { Delete01Icon, ArchiveRestoreIcon } from '@hugeicons/core-free-icons';
 
 import type { Project } from '@/types';
-import { relativeTime } from './projects-utils';
+import { formatRelativeTime } from '@/lib/format';
 
 interface DeletedProjectCardProps {
   project: Project;
@@ -13,7 +13,7 @@ interface DeletedProjectCardProps {
 }
 
 export function DeletedProjectCard({ project, onRestore, onPurge }: DeletedProjectCardProps) {
-  const deletedAt = project.deletedAt ? relativeTime(project.deletedAt) : null;
+  const deletedAt = project.deletedAt ? formatRelativeTime(project.deletedAt) : null;
 
   return (
     <div className="group relative rounded-lg border border-[var(--danger)]/30 bg-[var(--surface)] hover:bg-[var(--hover)] opacity-75 transition-colors">

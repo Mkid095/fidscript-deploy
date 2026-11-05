@@ -1,3 +1,4 @@
+import { formatRelativeTime } from '@/lib/format';
 // Deployment status helpers and constants
 
 export const IN_FLIGHT_STATUSES = new Set(['PENDING', 'QUEUED', 'BUILDING', 'DEPLOYING']);
@@ -40,7 +41,7 @@ export function statusMeta(status?: string) {
   }
 }
 
-export function formatDuration(start: string, end?: string | null): string {
+export function formatTimeRange(start: string, end?: string | null): string {
   if (!end) return 'In progress';
   const s = Math.round((new Date(end).getTime() - new Date(start).getTime()) / 1000);
   if (s < 60) return `${s}s`;
@@ -48,17 +49,4 @@ export function formatDuration(start: string, end?: string | null): string {
   if (m < 60) return `${m}m ${s % 60}s`;
   const h = Math.floor(m / 60);
   return `${h}h ${m % 60}m`;
-}
-
-export function relativeTime(iso?: string): string {
-  if (!iso) return '—';
-  const diff = Date.now() - new Date(iso).getTime();
-  const s = Math.floor(diff / 1000);
-  if (s < 5) return 'just now';
-  if (s < 60) return `${s}s ago`;
-  const m = Math.floor(s / 60);
-  if (m < 60) return `${m}m ago`;
-  const h = Math.floor(m / 60);
-  if (h < 24) return `${h}h ago`;
-  return `${Math.floor(h / 24)}d ago`;
 }

@@ -12,7 +12,7 @@ import {
 } from '@hugeicons/core-free-icons';
 import { Spinner } from '@fidscript/ui';
 import type { StorageFile } from '@/types';
-import { formatBytes } from './file-utils';
+import { formatBytes } from '@/lib/format';
 
 interface FilePreviewModalProps {
   file: StorageFile | null;

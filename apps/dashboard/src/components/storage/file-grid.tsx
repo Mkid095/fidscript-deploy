@@ -9,7 +9,8 @@ import {
 } from '@hugeicons/core-free-icons';
 import { Card } from '@fidscript/ui';
 import type { StorageFile } from '@/types';
-import { formatBytes, getFileTypeInfo, isPreviewable } from './file-utils';
+import { getFileTypeInfo, isPreviewable } from './file-utils';
+import { formatBytes } from '@/lib/format';
 
 interface FileGridProps {
   files: StorageFile[];

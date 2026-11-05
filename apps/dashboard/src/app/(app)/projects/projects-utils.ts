@@ -1,4 +1,5 @@
-// Shared utilities for the projects page
+
+import { formatRelativeTime } from '@/lib/format';// Shared utilities for the projects page
 
 
 // Must match the Prisma ProjectType enum exactly (API rejects anything else).
@@ -27,18 +28,6 @@ export function slugify(name: string): string {
 /** Unicode NFC normalization — ensures "café" and "café" match the same way. */
 export function normalize(str: string): string {
   return str.trim().toLowerCase().normalize('NFC');
-}
-
-export function relativeTime(iso?: string): string {
-  if (!iso) return '—';
-  const t = new Date(iso).getTime();
-  if (Number.isNaN(t)) return '—';
-  const diff = Date.now() - t;
-  if (diff < 60_000) return 'Just now';
-  if (diff < 3_600_000) return `${Math.floor(diff / 60_000)} min ago`;
-  if (diff < 86_400_000) return `${Math.floor(diff / 3_600_000)} hr ago`;
-  if (diff < 604_800_000) return `${Math.floor(diff / 86_400_000)} days ago`;
-  return new Date(iso).toLocaleDateString();
 }
 
 // API contract: PATCH requires admin/owner; DELETE requires owner only.

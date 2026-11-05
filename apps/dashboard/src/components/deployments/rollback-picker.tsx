@@ -3,7 +3,7 @@
 import { useAuth } from '@/contexts/auth-context';
 import { Button, Spinner } from '@fidscript/ui';
 
-import { relativeTime } from './status-utils';
+import { formatRelativeTime } from '@/lib/format';
 import { useRollbackPicker } from './rollback-picker.use';
 import type { Deployment } from '@/types';
 
@@ -82,7 +82,7 @@ function DeploymentList({
             <div className="flex items-center gap-2 flex-wrap">
               <span className="text-xs font-mono text-[var(--text-muted)]">{d.commitSha?.slice(0, 7) ?? d.id.slice(0, 8)}</span>
               {d.branch && <span className="text-xs text-[var(--text-dim)]">· {d.branch}</span>}
-              <span className="text-[10px] text-[var(--text-dim)] ml-auto">{relativeTime(d.createdAt)}</span>
+              <span className="text-[10px] text-[var(--text-dim)] ml-auto">{formatRelativeTime(d.createdAt)}</span>
             </div>
             {d.imageTag && <p className="text-[10px] font-mono text-[var(--text-dim)] mt-0.5">{d.imageTag}</p>}
           </div>

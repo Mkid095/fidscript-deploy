@@ -5,7 +5,8 @@ import { Button } from '@fidscript/ui';
 import { HugeiconsIcon } from '@hugeicons/react';
 import { ArrowRight01Icon, GitBranchIcon } from '@hugeicons/core-free-icons';
 import type { Deployment } from '@/types';
-import { statusMeta, isInFlight, relativeTime, formatDuration } from '@/components/deployments';
+import { statusMeta, isInFlight, formatTimeRange } from '@/components/deployments';
+import { formatRelativeTime } from '@/lib/format';
 
 function statusBadgeVariant(status?: string): string {
   const meta = statusMeta(status);
@@ -64,12 +65,12 @@ export function DeploymentsListRow({ deployment: d, projectId }: DeploymentsList
         )}
       </td>
       <td className="px-4 py-3 hidden md:table-cell">
-        <span className="text-xs text-[var(--text-muted)]">{relativeTime(d.createdAt)}</span>
+        <span className="text-xs text-[var(--text-muted)]">{formatRelativeTime(d.createdAt)}</span>
       </td>
       <td className="px-4 py-3 hidden md:table-cell">
         <span className="text-xs text-[var(--text-muted)]">
           {d.completedAt
-            ? formatDuration(d.createdAt, d.completedAt)
+            ? formatTimeRange(d.createdAt, d.completedAt)
             : inFlight ? 'In progress' : '—'}
         </span>
       </td>

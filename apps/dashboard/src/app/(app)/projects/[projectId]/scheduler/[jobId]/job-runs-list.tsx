@@ -5,6 +5,7 @@ import { HugeiconsIcon } from '@hugeicons/react';
 import { Refresh01Icon, AlertCircleIcon } from '@hugeicons/core-free-icons';
 import type { CronJobRun } from '@/types';
 import { RunTimeline } from './run-timeline';
+import { formatDuration } from '@/lib/format';
 
 function statusColor(status: CronJobRun['status']): { bg: string; text: string; border: string; dot: string } {
   switch (status) {
@@ -13,13 +14,6 @@ function statusColor(status: CronJobRun['status']): { bg: string; text: string; 
     case 'skipped':   return { bg: 'bg-[var(--warning)]/10',text: 'text-[var(--warning)]', border: 'border-[var(--warning)]/20',dot: 'bg-[var(--warning)]' };
     default:          return { bg: 'bg-[var(--accent)]/10', text: 'text-[var(--accent)]', border: 'border-[var(--accent)]/20', dot: 'bg-[var(--accent)]' };
   }
-}
-
-function formatDuration(ms: number | undefined): string {
-  if (!ms) return '—';
-  if (ms < 1000) return `${ms}ms`;
-  if (ms < 60_000) return `${(ms / 1000).toFixed(1)}s`;
-  return `${Math.floor(ms / 60_000)}m ${((ms % 60_000) / 1000).toFixed(0)}s`;
 }
 
 interface Props {

@@ -6,7 +6,8 @@ import { CheckmarkCircle02Icon, Cancel01Icon } from '@hugeicons/core-free-icons'
 import { Dropzone } from '@fidscript/ui';
 
 import type { SourceType, GithubRepo, GithubBranch, GithubStatus } from './new-deploy-utils';
-import { MAX_ARCHIVE_BYTES, formatBytes } from './new-deploy-utils';
+import { MAX_ARCHIVE_BYTES } from './new-deploy-utils';
+import { formatBytes } from '@/lib/format';
 import { GithubConnectBanner, RepoBrowser, BranchPicker } from './github-connect-banner';
 
 interface StepSelectProps {

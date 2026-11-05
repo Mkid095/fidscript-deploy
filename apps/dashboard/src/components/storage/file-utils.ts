@@ -1,4 +1,5 @@
-'use client';
+
+import { formatBytes } from '@/lib/format';'use client';
 
 import {
   File01Icon,
@@ -10,14 +11,6 @@ import {
 } from '@hugeicons/core-free-icons';
 
 type FileTypeIcon = typeof File01Icon;
-
-export function formatBytes(bytes: number): string {
-  if (bytes === 0) return '0 B';
-  const k = 1024;
-  const sizes = ['B', 'KB', 'MB', 'GB', 'TB'];
-  const i = Math.floor(Math.log(bytes) / Math.log(k));
-  return `${parseFloat((bytes / Math.pow(k, i)).toFixed(1))} ${sizes[i]}`;
-}
 
 export function getFileTypeInfo(mimeType?: string): { Icon: FileTypeIcon; label: string; color: string } {
   if (!mimeType) return { Icon: File01Icon, label: 'Unknown', color: 'text-[var(--text-dim)]' };

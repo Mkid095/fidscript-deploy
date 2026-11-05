@@ -3,6 +3,7 @@
 import { HugeiconsIcon } from '@hugeicons/react';
 import { FlashIcon, Delete01Icon, LockKeyIcon, Globe02Icon, RefreshIcon, Add01Icon } from '@hugeicons/core-free-icons';
 import { Button, Card, Input, Spinner } from '@fidscript/ui';
+import { formatRelativeTime } from '@/lib/format';
 
 
 interface Channel {
@@ -11,14 +12,6 @@ interface Channel {
   isPrivate: boolean;
   createdAt: string;
   metadata?: Record<string, unknown>;
-}
-
-function relativeTime(iso: string): string {
-  const s = Math.floor((Date.now() - new Date(iso).getTime()) / 1000);
-  if (s < 60) return 'just now';
-  if (s < 3600) return `${Math.floor(s / 60)}m ago`;
-  if (s < 86400) return `${Math.floor(s / 3600)}h ago`;
-  return `${Math.floor(s / 86400)}d ago`;
 }
 
 interface RealtimeChannelListProps {
@@ -108,7 +101,7 @@ export function RealtimeChannelList({
                     {ch.isPrivate ? 'Private' : 'Public'}
                   </span>
                 </div>
-                <p className="text-[11px] text-[var(--text-dim)] mt-1.5">Created {relativeTime(ch.createdAt)}</p>
+                <p className="text-[11px] text-[var(--text-dim)] mt-1.5">Created {formatRelativeTime(ch.createdAt)}</p>
                 <p className="text-[10px] text-[var(--text-dim)] mt-1 font-mono truncate">{ch.id}</p>
               </div>
               <button

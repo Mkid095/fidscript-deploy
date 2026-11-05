@@ -15,6 +15,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/).
 - `fix(dashboard): the deployment wizard's stepper advanced instead of jumping` — clicking an earlier step called `continueStep()` regardless of which step was clicked.
 - `fix(dashboard): a new project said its deployments had "reached a terminal state"` — with no deployments at all, the empty state claimed everything had finished and showed no button. It now distinguishes "nothing has been deployed" and carries the call to action on both tabs.
 
+### Improved
+- `chore(dashboard): the formatters are consolidated` — `formatBytes`, `relativeTime` and `formatDuration` existed as eight copies across the app, and they did not agree. One relative-time copy said "5 min ago", another "5m ago", a third "Just now"; one byte formatter capped at MB, so a 2 GB file was shown as "2048.0 MB". The same timestamp rendered three different ways depending on which screen you were on. `lib/format.ts` is now the only implementation, and the time-range helper is named `formatTimeRange` — it used to share the name `formatDuration` with the duration-in-milliseconds helper, which is how the two got confused in the first place.
+
 ### Removed
 - `chore(dashboard): ~2,000 lines of unreachable code deleted` — 35 files that nothing imported: superseded copies of the database context hooks, a duplicate activity cluster, an orphaned platform-mail console piece, a duplicate diff view, a second copy of the starter-code map, the whole notification-bell chain (a feature that was never mounted), and the create-project modal and its form (the projects page has its own right-panel flow). The compiler confirmed nothing live referenced them.
 - `chore(dashboard): the mock mode was fiction` — `pnpm dev:mock` set `NEXT_PUBLIC_USE_MOCK_API`, which is read nowhere in the repository, and the mock SDK it was supposed to use does not exist. The script is gone rather than documented as broken.

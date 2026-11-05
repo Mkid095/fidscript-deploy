@@ -17,6 +17,7 @@ import { Button, Badge } from '@fidscript/ui';
 import { statusMeta, isInFlight } from './services-utils';
 import { DeploymentRow } from './deployment-row';
 import type { ServiceGroup } from './services-utils';
+import { formatRelativeTime } from '@/lib/format';
 
 interface ServiceCardProps {
   service: ServiceGroup;
@@ -69,7 +70,7 @@ export function ServiceCard({ service, projectId, onAction, isExpanded, onToggle
                 {latest.commitSha.slice(0, 7)}
               </code>
             )}
-            <span className="text-[10px] text-[var(--text-dim)] ml-auto">{relativeTime(latest.createdAt)}</span>
+            <span className="text-[10px] text-[var(--text-dim)] ml-auto">{formatRelativeTime(latest.createdAt)}</span>
           </div>
           {latest.deploymentUrl && !inFlight && (
             <a href={latest.deploymentUrl} target="_blank" rel="noopener noreferrer"
@@ -131,17 +132,4 @@ export function ServiceCard({ service, projectId, onAction, isExpanded, onToggle
       )}
     </div>
   );
-}
-
-function relativeTime(iso?: string): string {
-  if (!iso) return '—';
-  const diff = Date.now() - new Date(iso).getTime();
-  const s = Math.floor(diff / 1000);
-  if (s < 5) return 'just now';
-  if (s < 60) return `${s}s ago`;
-  const m = Math.floor(s / 60);
-  if (m < 60) return `${m}m ago`;
-  const h = Math.floor(m / 60);
-  if (h < 24) return `${h}h ago`;
-  return `${Math.floor(h / 24)}d ago`;
 }

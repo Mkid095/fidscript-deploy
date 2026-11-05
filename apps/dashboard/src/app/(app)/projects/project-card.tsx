@@ -5,7 +5,8 @@ import { HugeiconsIcon } from '@hugeicons/react';
 import { Delete01Icon, Edit01Icon, Time01Icon } from '@hugeicons/core-free-icons';
 
 import type { Project } from '@/types';
-import { STATUS_PALETTE, relativeTime } from './projects-utils';
+import { STATUS_PALETTE } from './projects-utils';
+import { formatRelativeTime } from '@/lib/format';
 
 interface ProjectCardProps {
   project: Project;
@@ -39,7 +40,7 @@ export function ProjectCard({ project, onOpen, onEdit, onDelete }: ProjectCardPr
           {lastActive && (
             <span className="text-xs text-[var(--text-muted)] flex items-center gap-1">
               <HugeiconsIcon icon={Time01Icon} size={12} className="text-[var(--text-dim)]" />
-              {relativeTime(lastActive)}
+              {formatRelativeTime(lastActive)}
             </span>
           )}
         </div>

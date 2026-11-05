@@ -1,13 +1,7 @@
 'use client';
 
 import type { CronJobRun } from '@/types';
-
-function formatDuration(ms: number | undefined): string {
-  if (!ms) return '—';
-  if (ms < 1000) return `${ms}ms`;
-  if (ms < 60_000) return `${(ms / 1000).toFixed(1)}s`;
-  return `${Math.floor(ms / 60_000)}m ${((ms % 60_000) / 1000).toFixed(0)}s`;
-}
+import { formatDuration } from '@/lib/format';
 
 function statusColor(status: CronJobRun['status']): { dot: string } {
   switch (status) {
