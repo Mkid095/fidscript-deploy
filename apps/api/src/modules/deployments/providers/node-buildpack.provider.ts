@@ -23,12 +23,12 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { existsSync, readFileSync, writeFileSync } from 'fs';
 import { join } from 'path';
-import { execSync } from 'child_process';
 import {
   BuildProvider,
   BuildContext,
   BuildResult,
 } from './build-provider.interface';
+import { ShellRunnerService } from '../runner/shell-runner.service';
 
 export type DetectedFramework =
   | 'next'
@@ -84,6 +84,8 @@ const FRAMEWORK_META: Record<string, { label: string; pkg: string }> = {
 
 @Injectable()
 export class NodeBuildpackProvider implements BuildProvider {
+  constructor(private shell: ShellRunnerService) {}
+
   name = 'node-buildpack';
   private readonly logger = new Logger(NodeBuildpackProvider.name);
 
@@ -162,11 +164,14 @@ export class NodeBuildpackProvider implements BuildProvider {
       const envSecret = envVars.length > 0 ? ` --secret id=envfile,src="${join(ws, '.fidscript.env')}"` : '';
       addLog(`[NodeBuildpackProvider] docker build${buildArgs} -t "${imageTag}" -f "${dfPath}" "${ws}"`);
 
-      const output = NodeBuildpackProvider.exec(
+      // Asynchronous and streaming: a build can run for ten minutes, and
+      // blocking the api for that long stops every other request — including
+      // the one watching this build.
+      await this.shell.runStreaming(
         `docker build${buildArgs}${envSecret} -t "${imageTag}" -f "${dfPath}" "${ws}"`,
+        addLog,
         { timeout: 600_000 },
       );
-      addLog(output);
 
       return {
         imageTag,
@@ -190,25 +195,6 @@ export class NodeBuildpackProvider implements BuildProvider {
     }
   }
 
-  /**
-   * Run a shell command synchronously, returning stdout. Mirrors the semantics
-   * of DockerBuildWorkspaceService.exec so that build providers stay shell-call
-   * capable without depending on the workspace service (which the runner owns).
-   */
-  private static exec(cmd: string, opts?: { timeout?: number; env?: Record<string, string> }): string {
-    try {
-      return execSync(cmd, {
-        timeout: opts?.timeout ?? 300_000,
-        stdio: 'pipe',
-        env: { ...process.env, DOCKER_BUILDKIT: '1', ...opts?.env },
-      } as any).toString();
-    } catch (err: any) {
-      throw new Error(
-        `Command failed: ${cmd}\n` +
-        `${err?.stderr?.toString() || err?.message || String(err)}`,
-      );
-    }
-  }
 
   // ─── Framework detection ───────────────────────────────────────────────────
 

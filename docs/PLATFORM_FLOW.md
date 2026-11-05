@@ -295,7 +295,7 @@ These are the places to work next. Each names the file to change.
 
 | # | Seam | Where |
 |---|------|-------|
-| 1 | **The build runs on the api's event loop.** `docker build` is `execSync`, so it blocks the api and there is no concurrency cap. The `app-runtime` add-on already provides a registry; moving the build to a worker and pushing the image is what makes it a queue. | `runner/build-runner.service.ts`, `runner/deployment-state.service.ts` |
+| 1 | **The build no longer blocks the api, but there is still no concurrency cap.** `docker build` was `execSync`; it now runs asynchronously and streams its output, so the api stays responsive and the operator watches the build live. What is still missing is a cap on how many builds run at once — the queue is the next step, and the registry is what it is for. | `runner/shell-runner.service.ts`, `runner/build-runner.service.ts` |
 | 2 | **The registry is provisioned but nothing uses it.** No code path pushes an image. | `runner/*`, `services/deployment-routes.service.ts` |
 | 3 | **No preview deployments.** Every deployment replaces the previous one at the same URL. The routing mechanism to support them now exists. | `runner/deployment-state.service.ts`, `schema.prisma` |
 | 4 | **The WhatsApp management layer needs an image the operator supplies.** The repository's copy of that app is missing files, so it cannot be built here; it sits behind a `management` compose profile. | `installer/addons/whatsapp/` |

@@ -14,6 +14,7 @@ import { DeploymentRollbackService } from './runner/deployment-rollback.service'
 import { DockerLifecycleService } from './runner/docker-lifecycle.service';
 import { DockerBuildArgsService } from './runner/docker-build-args.service';
 import { DockerCommandService } from './runner/docker-command.service';
+import { ShellRunnerService } from './runner/shell-runner.service';
 import { DeploymentGcService } from './runner/deployment-gc.service';
 import { DockerfileBuildProvider } from './providers/dockerfile-build.provider';
 import { NodeBuildpackProvider } from './providers/node-buildpack.provider';
@@ -42,6 +43,7 @@ import { AuthModule } from '@/modules/auth/auth.module';
     DockerLifecycleService,
     DockerBuildArgsService,
     DockerCommandService,
+    ShellRunnerService,
     DeploymentGcService,
     DockerBuildWorkspaceService,
     DockerfileBuildProvider,

@@ -1,12 +1,15 @@
 import { Injectable } from '@nestjs/common';
-import { execSync } from 'child_process';
 import { existsSync, writeFileSync, mkdirSync, rmSync } from 'fs';
 import { join } from 'path';
 import { ConfigService } from '@nestjs/config';
+import { ShellRunnerService } from '../runner/shell-runner.service';
 
 @Injectable()
 export class DockerBuildWorkspaceService {
-  constructor(private config: ConfigService) {}
+  constructor(
+    private config: ConfigService,
+    private shell: ShellRunnerService,
+  ) {}
 
   prepareWorkspace(): string {
     const ws = `/tmp/fidscript-build-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
@@ -43,7 +46,9 @@ export class DockerBuildWorkspaceService {
     // added in recent but not-necessarily-the-latest commit. depth=1 often misses
     // files added in the tip commit when the tip is a merge commit.
     const cloneCmd = `git clone --depth=5 --branch "${branch}" "${cloneUrl}" "${workspace}"`;
-    this.exec(cloneCmd);
+    // Asynchronous: a clone of a large repository takes minutes, and
+    // blocking the api for that long stops every other request.
+    await this.shell.runStreaming(cloneCmd, () => {}, { timeout: 300_000 });
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
     throw new Error(`Git clone failed: ${msg}`);
@@ -88,8 +93,9 @@ export class DockerBuildWorkspaceService {
       const downloadUrl = `${scheme}://${host}:${port}/${bucketId}/${objectKey}`;
 
       // Use curl with HTTP basic auth (MinIO accepts basic auth for reads).
-      this.exec(
+      await this.shell.runStreaming(
         `curl -fsS -u "${accessKey}:${secretKey}" -o "${archivePath}" "${downloadUrl}"`,
+        () => {},
         { timeout: 300_000 },
       );
 
@@ -99,9 +105,9 @@ export class DockerBuildWorkspaceService {
 
       // Extract into the workspace root.
       if (isZip) {
-        this.exec(`unzip -o -q "${archivePath}" -d "${workspace}"`, { timeout: 120_000 });
+        await this.shell.runStreaming(`unzip -o -q "${archivePath}" -d "${workspace}"`, () => {}, { timeout: 120_000 });
       } else {
-        this.exec(`tar -xzf "${archivePath}" -C "${workspace}"`, { timeout: 120_000 });
+        await this.shell.runStreaming(`tar -xzf "${archivePath}" -C "${workspace}"`, () => {}, { timeout: 120_000 });
       }
     } catch (err) {
       throw new Error(`Archive fetch/extract failed: ${err instanceof Error ? err.message : String(err)}`);
@@ -111,17 +117,5 @@ export class DockerBuildWorkspaceService {
     }
   }
 
-  exec(cmd: string, opts?: { timeout?: number; env?: Record<string, string> }): string {
-    try {
-      return execSync(cmd, {
-        timeout: opts?.timeout ?? 300_000,
-        stdio: 'pipe',
-        env: { ...process.env, DOCKER_BUILDKIT: '1', ...opts?.env },
-      } as any).toString();
-    } catch (err) {
-      const e = err as { message?: string; stderr?: Buffer | string };
-      const msg = typeof e.stderr === 'string' ? e.stderr : e.stderr?.toString() || e.message || String(err);
-      throw new Error(msg);
-    }
-  }
+
 }
