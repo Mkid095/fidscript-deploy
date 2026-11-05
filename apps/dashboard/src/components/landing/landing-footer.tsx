@@ -3,10 +3,40 @@ import Image from 'next/image';
 import { HugeiconsIcon } from '@hugeicons/react';
 import { SourceCodeIcon } from '@hugeicons/core-free-icons';
 
-const COLS = [
-  { title: 'Platform', links: ['Deployments', 'Databases', 'Functions', 'Realtime', 'Queues', 'Storage'] },
-  { title: 'Resources', links: ['Documentation', 'API Reference', 'SDK', 'MCP Tools', 'CLI'] },
-  { title: 'Project', links: ['GitHub', 'Self-host guide', 'Changelog', 'License (OSS)'] },
+// Every link goes somewhere real. A footer's job is to be a map, and a
+// link that goes nowhere is worse than no link.
+const COLS: { title: string; links: { label: string; href: string; external?: boolean }[] }[] = [
+  {
+    title: 'Platform',
+    links: [
+      { label: 'Deployments', href: '/docs/deploy-an-app' },
+      { label: 'Databases', href: '/docs/databases' },
+      { label: 'Edge functions', href: '/docs/edge-functions' },
+      { label: 'Queues', href: '/docs/queues' },
+      { label: 'Scheduler', href: '/docs/scheduler' },
+      { label: 'Email', href: '/docs/email' },
+      { label: 'Storage', href: '/docs/storage' },
+      { label: 'Domains & TLS', href: '/docs/domains' },
+    ],
+  },
+  {
+    title: 'Resources',
+    links: [
+      { label: 'Getting started', href: '/docs/getting-started' },
+      { label: 'Installation', href: '/docs/installation' },
+      { label: 'Monitoring', href: '/docs/monitoring' },
+      { label: 'MCP & AI agents', href: '/docs/ai-mcp' },
+      { label: 'Log in', href: '/login' },
+    ],
+  },
+  {
+    title: 'Project',
+    links: [
+      { label: 'GitHub', href: 'https://github.com/Mkid095/fidscript-deploy', external: true },
+      { label: 'Changelog', href: 'https://github.com/Mkid095/fidscript-deploy/blob/main/CHANGELOG.md', external: true },
+      { label: 'License (OSS)', href: 'https://github.com/Mkid095/fidscript-deploy/blob/main/LICENSE', external: true },
+    ],
+  },
 ];
 
 export function LandingFooter() {
@@ -37,21 +67,19 @@ export function LandingFooter() {
             <div key={c.title}>
               <h4 className="mb-3 text-xs font-semibold uppercase tracking-wide text-[var(--text-muted)]">{c.title}</h4>
               <ul className="space-y-2">
-                {c.links.map((l) =>
-                  l === 'Documentation' ? (
-                    <li key={l}>
-                      <Link href="/docs" className="text-xs text-[var(--text-dim)] transition hover:text-[var(--accent)]">
-                        {l}
-                      </Link>
-                    </li>
-                  ) : (
-                    <li key={l}>
-                      <a href="#" className="text-xs text-[var(--text-dim)] transition hover:text-[var(--accent)]">
-                        {l}
+                {c.links.map((l) => (
+                  <li key={l.label}>
+                    {l.external ? (
+                      <a href={l.href} target="_blank" rel="noreferrer" className="text-xs text-[var(--text-dim)] transition hover:text-[var(--accent)]">
+                        {l.label}
                       </a>
-                    </li>
-                  ),
-                )}
+                    ) : (
+                      <Link href={l.href} className="text-xs text-[var(--text-dim)] transition hover:text-[var(--accent)]">
+                        {l.label}
+                      </Link>
+                    )}
+                  </li>
+                ))}
               </ul>
             </div>
           ))}

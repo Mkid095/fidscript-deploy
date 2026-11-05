@@ -41,7 +41,7 @@ Error / alternate paths:
 - **No** `/login`, `/register`, `/dashboard`, `/app`, `/account` from anywhere on this site.
 - **No** nav links to the dashboard from the landing.
 - The nav links to: Features (in-page anchor `#features`), Docs (`/docs`), Open Source
-  (`#opensource` in-page), and the GitHub Source link.
+  (`#opensource` in-page), the GitHub Source link, and **Log in** (`/login`).
 - The footer links to: Platform / Resources / Project section labels (anchor to the
   landing sections + docs + source).
 

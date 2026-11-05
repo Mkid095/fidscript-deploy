@@ -22,12 +22,17 @@ export function LandingHero() {
             Transform any VPS into a private application cloud
           </span>
         </div>
-        <h1 className="mx-auto max-w-3xl text-center text-5xl font-semibold leading-none tracking-tight text-[var(--text)] sm:text-7xl" style={{ letterSpacing: '-0.05em' }}>
-          Self-hosted<br /><span className="text-[var(--text-muted)]">developer cloud</span>
+        <h1 className="mx-auto max-w-4xl text-center text-4xl font-semibold leading-[1.05] tracking-tight text-[var(--text)] sm:text-6xl" style={{ letterSpacing: '-0.04em' }}>
+          Self-Hosted Developer<br /><span className="text-[var(--accent)]">Operating System</span>
         </h1>
         <p className="mx-auto mt-6 max-w-2xl text-center text-base leading-relaxed text-[var(--text-muted)]">
           Deploy applications, run realtime databases, fire edge functions, process queues, schedule cron, and serve mail — all on your own private hardware. Open source, fully independent, zero vendor lock-in.
           Manage everything from the dashboard, CLI, or AI agents via MCP.
+        </p>
+        <p className="mx-auto mt-3 max-w-2xl text-center text-sm leading-relaxed text-[var(--text-dim)]">
+          The deployment engine and the mail server are part of the platform. Everything else
+          — WhatsApp, Instant, a private package registry, an observability stack — you install
+          from the Applications screen, one at a time.
         </p>
         <div className="mt-8"><CopyCommand /></div>
         <p className="mx-auto mt-3 flex max-w-xl items-center justify-center gap-1.5 text-center text-[13px] text-[var(--text-dim)]">
@@ -41,6 +46,9 @@ export function LandingHero() {
           <a href="https://github.com/Mkid095/fidscript-deploy" target="_blank" rel="noreferrer" className="flex items-center gap-2 px-5 py-2.5 text-[14px] font-medium text-[var(--text)] transition hover:text-[var(--text)]">
             <HugeiconsIcon icon={SourceCodeIcon} size={15} className="text-[var(--text-dim)]" /> View source
           </a>
+          <Link href="/login" className="flex items-center gap-2 rounded-md border border-[var(--rail)] px-5 py-2.5 text-[14px] font-medium text-[var(--text-muted)] transition hover:border-[var(--rail-light)] hover:text-[var(--text)]">
+            Log in <HugeiconsIcon icon={ArrowRight02Icon} size={15} className="transition group-hover:translate-x-0.5" />
+          </Link>
         </div>
         <div className="mx-auto mt-16 grid max-w-4xl grid-cols-2 gap-3 md:grid-cols-4">
           {METRICS.map((m) => (

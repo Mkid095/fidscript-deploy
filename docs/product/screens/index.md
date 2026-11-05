@@ -25,7 +25,7 @@ Auth keys: `O` owner · `A` admin · `D` developer · `V` viewer · `P` platform
 
 | Screen | Route | Auth | Renders (Prisma) | Key fields | Operations | Deep spec |
 |---|---|---|---|---|---|---|
-| Landing | `/` | — | — | hero + install cmd + features + OSS | "Read the docs" → `/docs` | — |
+| Landing | `/` | — | — | hero + install cmd + features + OSS | "Read the docs" → `/docs` · **"Log in" → `/login`** | — |
 | Docs index | `/docs` | — | `DOCS` content module | doc list grouped | open doc | — |
 | Docs page | `/docs/[slug]` | — | `DOCS[slug]` (TS module) | title + body + copy btn | copy page text | — |
 

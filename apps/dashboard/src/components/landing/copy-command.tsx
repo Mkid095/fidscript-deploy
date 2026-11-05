@@ -4,7 +4,7 @@ import { useState } from 'react';
 import { HugeiconsIcon } from '@hugeicons/react';
 import { ComputerTerminal01Icon, Copy01Icon, Tick01Icon } from '@hugeicons/core-free-icons';
 
-const COMMAND = 'curl -sSL https://deploy.fidscript.com/install.sh | bash';
+const COMMAND = 'curl -sSL https://fidscript.com/install.sh | bash';
 
 export function CopyCommand() {
   const [copied, setCopied] = useState(false);

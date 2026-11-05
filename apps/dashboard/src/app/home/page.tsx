@@ -1,19 +1,6 @@
-import { LandingNav } from '@/components/landing/landing-nav';
-import { LandingHero } from '@/components/landing/landing-hero';
-import { LandingFeatures } from '@/components/landing/landing-features';
-import { LandingOpenSource } from '@/components/landing/landing-opensource';
-import { LandingFooter } from '@/components/landing/landing-footer';
+import { redirect } from 'next/navigation';
 
+/** The landing page lives at the root now. */
 export default function Home() {
-  return (
-    <div className="min-h-screen bg-[var(--canvas)]">
-      <LandingNav />
-      <main>
-        <LandingHero />
-        <LandingFeatures />
-        <LandingOpenSource />
-      </main>
-      <LandingFooter />
-    </div>
-  );
+  redirect('/');
 }
