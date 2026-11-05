@@ -7,6 +7,7 @@ import { BuildProviderFactory } from '../providers/build-provider.factory';
 import { DeploymentRoutesService } from '../services/deployment-routes.service';
 import { DockerLifecycleService } from './docker-lifecycle.service';
 import { UserGithubService } from '@/modules/app-auth/services/user-github.service';
+import { BuildConcurrencyService } from './build-concurrency.service';
 
 @Injectable()
 export class DeploymentStateService implements OnModuleInit {
@@ -21,6 +22,7 @@ export class DeploymentStateService implements OnModuleInit {
     private routes: DeploymentRoutesService,
     private dockerLifecycle: DockerLifecycleService,
     private github: UserGithubService,
+    private buildQueue: BuildConcurrencyService,
   ) {}
 
   onModuleInit() {
@@ -83,121 +85,132 @@ export class DeploymentStateService implements OnModuleInit {
 
     await this.prisma.deployment.update({ where: { id: deploymentId }, data: { status: 'QUEUED' } });
     await this.emit(deploymentId, projectId, userId, 'deployments.deployment.queued', {});
-    await this.prisma.deployment.update({ where: { id: deploymentId }, data: { status: 'BUILDING' } });
-    await this.emit(deploymentId, projectId, userId, 'deployments.deployment.building', {});
 
-    const projectEnv = await this.prisma.projectEnv.findMany({ where: { projectId } });
-    const runtimeEnv = this.decryptEnvVars(projectEnv);
-    // Merge deploy-time env vars (from the wizard) on top of project env vars.
-    // Deploy-time values take precedence so users can override without editing project settings.
-    if (deployEnvVars && Object.keys(deployEnvVars).length > 0) {
-      const existing = new Map(runtimeEnv.map(e => [e.key, e.value]));
-      for (const [key, value] of Object.entries(deployEnvVars)) {
-        existing.set(key, value);
+    // Wait for a build slot. A build is heavy, and the box is often a small
+    // one — two at once fight each other and can push the machine into swap,
+    // which slows the API down with them. A deployment beyond the cap waits
+    // in QUEUED, which is what that state is for.
+    const releaseSlot = await this.buildQueue.acquire();
+
+    try {
+      await this.prisma.deployment.update({ where: { id: deploymentId }, data: { status: 'BUILDING' } });
+      await this.emit(deploymentId, projectId, userId, 'deployments.deployment.building', {});
+
+      const projectEnv = await this.prisma.projectEnv.findMany({ where: { projectId } });
+      const runtimeEnv = this.decryptEnvVars(projectEnv);
+      // Merge deploy-time env vars (from the wizard) on top of project env vars.
+      // Deploy-time values take precedence so users can override without editing project settings.
+      if (deployEnvVars && Object.keys(deployEnvVars).length > 0) {
+        const existing = new Map(runtimeEnv.map(e => [e.key, e.value]));
+        for (const [key, value] of Object.entries(deployEnvVars)) {
+          existing.set(key, value);
+        }
+        const merged = Array.from(existing, ([key, value]) => ({ key, value }));
+        this.logger.log(`[worker] Merged ${Object.keys(deployEnvVars).length} deploy-time env var(s) onto ${runtimeEnv.length} project env var(s)`);
+        runtimeEnv.length = 0;
+        runtimeEnv.push(...merged);
       }
-      const merged = Array.from(existing, ([key, value]) => ({ key, value }));
-      this.logger.log(`[worker] Merged ${Object.keys(deployEnvVars).length} deploy-time env var(s) onto ${runtimeEnv.length} project env var(s)`);
-      runtimeEnv.length = 0;
-      runtimeEnv.push(...merged);
-    }
-    const buildConfig = await this.prisma.buildConfig.findUnique({ where: { projectId } });
-    // Resolve the project owner's connected GitHub token so private repos clone
-    // without prompting (parseSource reconstructs the URL from release.sourceUrl
-    // but carries no credentials). Anonymous clone still works for public repos.
-    const githubCreds = deployment.project?.ownerId
-      ? await this.github.getCloneCredentials(deployment.project.ownerId)
-      : null;
-    const source = this.parseSource(deployment, githubCreds ?? undefined);
-    const logs: string[] = [];
-    // Incremental log persistence: debounce-write to the DB every 3 seconds
-    // so the dashboard can poll GET /deployments/:id/logs and see live progress
-    // during builds (instead of waiting for the build to complete).
-    let flushTimer: ReturnType<typeof setTimeout> | null = null;
-    let lastFlushedLength = 0;
-    const flushLogs = async () => {
-      const currentLength = logs.length;
-      if (currentLength === lastFlushedLength || !deployment.releaseId) return;
-      lastFlushedLength = currentLength;
-      try {
+      const buildConfig = await this.prisma.buildConfig.findUnique({ where: { projectId } });
+      // Resolve the project owner's connected GitHub token so private repos clone
+      // without prompting (parseSource reconstructs the URL from release.sourceUrl
+      // but carries no credentials). Anonymous clone still works for public repos.
+      const githubCreds = deployment.project?.ownerId
+        ? await this.github.getCloneCredentials(deployment.project.ownerId)
+        : null;
+      const source = this.parseSource(deployment, githubCreds ?? undefined);
+      const logs: string[] = [];
+      // Incremental log persistence: debounce-write to the DB every 3 seconds
+      // so the dashboard can poll GET /deployments/:id/logs and see live progress
+      // during builds (instead of waiting for the build to complete).
+      let flushTimer: ReturnType<typeof setTimeout> | null = null;
+      let lastFlushedLength = 0;
+      const flushLogs = async () => {
+        const currentLength = logs.length;
+        if (currentLength === lastFlushedLength || !deployment.releaseId) return;
+        lastFlushedLength = currentLength;
+        try {
+          await this.prisma.release.update({
+            where: { id: deployment.releaseId },
+            data: { buildLogs: logs.join('\n') },
+          });
+        } catch { /* non-fatal — will retry on next flush */ }
+      };
+      const onLog = (line: string) => {
+        logs.push(line);
+        // Realtime: fan out each build log line to project:<id> so the deployment
+        // LogViewer can subscribe via socket instead of polling GET /deployments/:id/logs.
+        // Fire-and-forget — emit() returns void; failures must not block the build.
+        void this.emit(deploymentId, projectId, userId, 'deployments.deployment.log', { line, index: logs.length - 1 });
+        // Debounce: schedule a flush 3s from now, or reset if one is pending
+        if (flushTimer) clearTimeout(flushTimer);
+        flushTimer = setTimeout(() => { flushLogs().catch(() => {}); }, 3000);
+      };
+
+      const projectType = deployment.project.type || 'DOCKER';
+      const buildProvider = this.buildProviderFactory.getProvider(
+        projectType,
+        source,
+        deployment.project.slug,
+      );
+
+      const { buildResult, deployResult } = await this.buildRunner.buildAndDeploy(
+        buildProvider,
+        {
+          deploymentId, releaseId: deployment.releaseId!, projectId,
+          projectSlug: deployment.project.slug, projectType,
+          source, envVars: runtimeEnv,
+          buildTarget: buildConfig?.buildTarget || undefined,
+          startupTimeoutSeconds: buildConfig?.startupTimeoutSeconds ?? 120, onLog,
+          onDeploy: async () => {
+            // The image is built; the container is about to start. This state
+            // existed in the enum but was never written.
+            await this.prisma.deployment.update({ where: { id: deploymentId }, data: { status: 'DEPLOYING' } });
+            await this.emit(deploymentId, projectId, userId, 'deployments.deployment.deploying', {});
+          },
+        },
+      );
+
+      // Final flush of all logs (cancel any pending debounce timer)
+      if (flushTimer) clearTimeout(flushTimer);
+
+      if (deployment.releaseId) {
         await this.prisma.release.update({
           where: { id: deployment.releaseId },
-          data: { buildLogs: logs.join('\n') },
+          data: {
+            buildLogs: logs.join('\n'),
+            buildDurationMs: buildResult.buildDurationMs,
+            imageTag: buildResult.imageTag,
+            // The port the app really listens on. Traefik routes to this,
+            // not to the project type's default.
+            runtimePort: buildResult.port ?? null,
+          },
         });
-      } catch { /* non-fatal — will retry on next flush */ }
-    };
-    const onLog = (line: string) => {
-      logs.push(line);
-      // Realtime: fan out each build log line to project:<id> so the deployment
-      // LogViewer can subscribe via socket instead of polling GET /deployments/:id/logs.
-      // Fire-and-forget — emit() returns void; failures must not block the build.
-      void this.emit(deploymentId, projectId, userId, 'deployments.deployment.log', { line, index: logs.length - 1 });
-      // Debounce: schedule a flush 3s from now, or reset if one is pending
-      if (flushTimer) clearTimeout(flushTimer);
-      flushTimer = setTimeout(() => { flushLogs().catch(() => {}); }, 3000);
-    };
+      }
 
-    const projectType = deployment.project.type || 'DOCKER';
-    const buildProvider = this.buildProviderFactory.getProvider(
-      projectType,
-      source,
-      deployment.project.slug,
-    );
+      if (deployResult.success) {
+        await this.prisma.deployment.update({
+          where: { id: deploymentId },
+          data: { status: 'SUCCESS', deploymentUrl: deployResult.deploymentUrl, completedAt: new Date() },
+        });
+        await this.prisma.project.update({ where: { id: projectId }, data: { lastDeployAt: new Date() } });
+        await this.emit(deploymentId, projectId, userId, 'deployments.deployment.succeeded', { deploymentUrl: deployResult.deploymentUrl, duration: deployResult.deployDurationMs });
 
-    const { buildResult, deployResult } = await this.buildRunner.buildAndDeploy(
-      buildProvider,
-      {
-        deploymentId, releaseId: deployment.releaseId!, projectId,
-        projectSlug: deployment.project.slug, projectType,
-        source, envVars: runtimeEnv,
-        buildTarget: buildConfig?.buildTarget || undefined,
-        startupTimeoutSeconds: buildConfig?.startupTimeoutSeconds ?? 120, onLog,
-        onDeploy: async () => {
-          // The image is built; the container is about to start. This state
-          // existed in the enum but was never written.
-          await this.prisma.deployment.update({ where: { id: deploymentId }, data: { status: 'DEPLOYING' } });
-          await this.emit(deploymentId, projectId, userId, 'deployments.deployment.deploying', {});
-        },
-      },
-    );
+        // Publish the deployment's custom domains to Traefik. The default
+        // hostname is published by Traefik's Docker provider from the
+        // container labels; this covers the rest.
+        await this.routes.sync();
 
-    // Final flush of all logs (cancel any pending debounce timer)
-    if (flushTimer) clearTimeout(flushTimer);
+        // Clean up the previous deployment's container + image to prevent disk bloat.
+        // We keep the container name convention from docker-run.service.ts: fidscript-{slug}-{deploymentId}
+        await this.cleanupPreviousDeployment(projectId, deploymentId, deployment.project.slug);
+      } else {
+        await this.markFailed(deploymentId, projectId, deployResult.error || 'Deploy failed');
+      }
 
-    if (deployment.releaseId) {
-      await this.prisma.release.update({
-        where: { id: deployment.releaseId },
-        data: {
-          buildLogs: logs.join('\n'),
-          buildDurationMs: buildResult.buildDurationMs,
-          imageTag: buildResult.imageTag,
-          // The port the app really listens on. Traefik routes to this,
-          // not to the project type's default.
-          runtimePort: buildResult.port ?? null,
-        },
-      });
+      await this.releaseLock(projectId, deploymentId);
+    } finally {
+      releaseSlot();
     }
-
-    if (deployResult.success) {
-      await this.prisma.deployment.update({
-        where: { id: deploymentId },
-        data: { status: 'SUCCESS', deploymentUrl: deployResult.deploymentUrl, completedAt: new Date() },
-      });
-      await this.prisma.project.update({ where: { id: projectId }, data: { lastDeployAt: new Date() } });
-      await this.emit(deploymentId, projectId, userId, 'deployments.deployment.succeeded', { deploymentUrl: deployResult.deploymentUrl, duration: deployResult.deployDurationMs });
-
-      // Publish the deployment's custom domains to Traefik. The default
-      // hostname is published by Traefik's Docker provider from the
-      // container labels; this covers the rest.
-      await this.routes.sync();
-
-      // Clean up the previous deployment's container + image to prevent disk bloat.
-      // We keep the container name convention from docker-run.service.ts: fidscript-{slug}-{deploymentId}
-      await this.cleanupPreviousDeployment(projectId, deploymentId, deployment.project.slug);
-    } else {
-      await this.markFailed(deploymentId, projectId, deployResult.error || 'Deploy failed');
-    }
-
-    await this.releaseLock(projectId, deploymentId);
   }
 
   async markFailed(deploymentId: string, projectId: string, error: string) {

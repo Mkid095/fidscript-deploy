@@ -430,6 +430,12 @@ services:
       TRAEFIK_DYNAMIC_DIR: /etc/traefik/dynamic
       # The guided one-line installer, served at /install.sh.
       INSTALL_SCRIPT_PATH: /opt/fidscript-install/install.sh
+      # ── The build queue ───────────────────────────────────────────────────
+      # How many builds may run at once. A build is heavy and the box is
+      # often a small one — two at once fight each other and can push the
+      # machine into swap, which slows the API down with them. The rest
+      # wait in QUEUED.
+      MAX_CONCURRENT_BUILDS: ${MAX_CONCURRENT_BUILDS:-2}
       # ── The image registry (the app-runtime add-on) ───────────────────────
       # A built image lives in the host's Docker daemon and nowhere else, so
       # a pruned daemon loses it and the deployment cannot be rolled back to
