@@ -669,6 +669,21 @@ HEREDOC
 sed -i "s|__DOMAIN__|${DOMAIN}|g; s|__CERT_RESOLVER__|${CERT_RESOLVER}|g" "$TRAEFIK_DYNAMIC_DIR/platform.yml"
 info "Traefik dynamic config written (resolver: $CERT_RESOLVER)."
 
+# The static routes for the other products that share this host. Traefik is
+# the single edge, so the Instant console, the WhatsApp console, the npm
+# registry and the Maven repository are all reachable through it.
+if [[ -f "$(dirname "$SCRIPT_DIR")/config/traefik/products.yml" ]]; then
+  cp "$(dirname "$SCRIPT_DIR")/config/traefik/products.yml" "$TRAEFIK_DYNAMIC_DIR/products.yml"
+  info "Product routes written."
+fi
+
+# Traefik joins the networks those products run on. Compose refuses to start
+# if an external network does not exist, so create them when the products
+# are not installed — an empty network is harmless.
+for _net in self-hosting_self-hosting_default next-mavens-evolution-api_platform-net nextmavens-registry_default; do
+  docker network inspect "$_net" >/dev/null 2>&1 || docker network create "$_net" >/dev/null 2>&1 || true
+done
+
 # ── Traefik static ─────────────────────────────────────────────────────────
 # NOTE: the `docker` provider below is NOT optional. Every deployed
 # application is published by setting `traefik.enable=true` labels on its

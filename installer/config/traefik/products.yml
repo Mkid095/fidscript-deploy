@@ -1,0 +1,106 @@
+# Static routes for the products that share this host.
+#
+# The FIDScript platform's Traefik is the single edge. The Instant BaaS,
+# the WhatsApp platform, the npm registry and the Maven repository each
+# serve their own console on their own hostname; these routes point at
+# those consoles so everything is reachable under one domain.
+#
+# The upstreams are container names on the networks the platform's Traefik
+# joins (see installer/docker/docker-compose.yml). Host services are
+# reached through host.docker.internal, which Docker resolves to the
+# bridge gateway — the subnet changes when the networks are recreated, so
+# a hardcoded address would break without warning.
+
+http:
+  routers:
+    # ── Instant BaaS ────────────────────────────────────────────────────────
+    instant-console:
+      rule: 'Host(`instant.fidscript.com`)'
+      service: instant-console
+      entryPoints: [websecure]
+      tls: { certResolver: letsencrypt-dns }
+    instant-api:
+      rule: 'Host(`apiinstant.fidscript.com`)'
+      service: instant-api
+      entryPoints: [websecure]
+      tls: { certResolver: letsencrypt-dns }
+    instant-realtime:
+      rule: 'Host(`realtime.fidscript.com`)'
+      service: instant-api
+      entryPoints: [websecure]
+      tls: { certResolver: letsencrypt-dns }
+    instant-cli:
+      rule: 'Host(`cliinstant.fidscript.com`)'
+      service: instant-api
+      entryPoints: [websecure]
+      tls: { certResolver: letsencrypt-dns }
+    instant-mcp:
+      rule: 'Host(`instantmcp.fidscript.com`)'
+      service: instant-mcp
+      entryPoints: [websecure]
+      tls: { certResolver: letsencrypt-dns }
+    maven-repository:
+      rule: 'Host(`maven.fidscript.com`)'
+      service: maven-repository
+      entryPoints: [websecure]
+      tls: { certResolver: letsencrypt-dns }
+
+    # ── WhatsApp platform ───────────────────────────────────────────────────
+    whatsapp-console:
+      rule: 'Host(`whatsapp.fidscript.com`) || Host(`whatsapp.nextmavens.com`)'
+      service: whatsapp-console
+      entryPoints: [websecure]
+      tls: { certResolver: letsencrypt-dns }
+    whatsapp-api:
+      rule: 'Host(`whatsappapi.fidscript.com`)'
+      service: whatsapp-api
+      entryPoints: [websecure]
+      tls: { certResolver: letsencrypt-dns }
+
+    # ── npm registry ────────────────────────────────────────────────────────
+    npm-registry:
+      rule: 'Host(`registry.fidscript.com`) || Host(`registry.nextmavens.com`)'
+      service: npm-registry
+      entryPoints: [websecure]
+      tls: { certResolver: letsencrypt-dns }
+
+    # ── artifact storage for mobile and desktop builds ──────────────────────
+    artifacts:
+      rule: 'Host(`files.fidscript.com`) || Host(`storage.nextmavens.com`)'
+      service: artifacts
+      entryPoints: [websecure]
+      tls: { certResolver: letsencrypt-dns }
+
+  services:
+    instant-console:
+      loadBalancer:
+        servers:
+          - url: "http://self-hosting-www-1:3000"
+    instant-api:
+      loadBalancer:
+        servers:
+          - url: "http://self-hosting-server-1:8888"
+    instant-mcp:
+      loadBalancer:
+        servers:
+          - url: "http://host.docker.internal:4876"
+    maven-repository:
+      loadBalancer:
+        servers:
+          - url: "http://self-hosting-maven-repository-1:8081"
+    whatsapp-console:
+      loadBalancer:
+        servers:
+          - url: "http://whatsapp-nextmavens:3000"
+    whatsapp-api:
+      loadBalancer:
+        servers:
+          - url: "http://platform-api:8080"
+    npm-registry:
+      loadBalancer:
+        servers:
+          - url: "http://nextmavens-verdaccio:4873"
+    artifacts:
+      loadBalancer:
+        servers:
+          - url: "http://host.docker.internal:4877"

@@ -50,6 +50,15 @@ services:
       - fidscript_acme_http:/acme-http
     environment:
       CLOUDFLARE_DNS_API_TOKEN_FILE: /run/secrets/cf_api_token
+    # The products that share this host (the Instant BaaS, the WhatsApp
+    # platform, the npm registry) live on their own docker networks. Traefik
+    # joins them so one edge can serve every console. The installer creates
+    # these networks if those products are not installed.
+    extra_hosts:
+      # Docker resolves this to the bridge gateway. A hardcoded address
+      # breaks the moment a network is recreated with a different subnet —
+      # the previous Caddyfile's 172.19.0.1 had already gone stale.
+      - "host.docker.internal:host-gateway"
     networks:
       fidscript-deployment:
       fidscript-whatsapp:
@@ -63,6 +72,11 @@ services:
       # server fail to come up.
       fidscript-mail:
         ipv4_address: 10.0.8.3
+      # The networks the other products on this host run on. They are
+      # declared as external at the bottom of this file.
+      self-hosting:
+      evolution:
+      registry:
     healthcheck:
       test: ["CMD", "traefik", "healthcheck", "--ping"]
       interval: 15s
@@ -537,6 +551,19 @@ networks:
     ipam:
       config:
         - subnet: 10.0.8.0/24
+  # The networks the other products on this host run on. They are EXTERNAL:
+  # the platform joins them, it does not create them. The installer creates
+  # them if those products are not installed, so a platform-only install
+  # still starts.
+  self-hosting:
+    external: true
+    name: self-hosting_self-hosting_default
+  evolution:
+    external: true
+    name: next-mavens-evolution-api_platform-net
+  registry:
+    external: true
+    name: nextmavens-registry_default
 
 volumes:
   fidscript_postgres:

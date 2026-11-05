@@ -461,6 +461,16 @@ TRAEFIKEOF
 
 info "Traefik dynamic.yml written: ${DYNAMIC_YML}"
 
+# The static routes for the other products on this host, and the networks
+# they run on (Compose refuses to start if an external network is missing).
+if [[ -f "${REPO_DIR}/installer/config/traefik/products.yml" ]]; then
+  cp "${REPO_DIR}/installer/config/traefik/products.yml" "${DYNAMIC_DIR}/products.yml"
+  info "Product routes written: ${DYNAMIC_DIR}/products.yml"
+fi
+for _net in self-hosting_self-hosting_default next-mavens-evolution-api_platform-net nextmavens-registry_default; do
+  docker network inspect "$_net" >/dev/null 2>&1 || docker network create "$_net" >/dev/null 2>&1 || true
+done
+
 # ─── 11. Docker compose up ────────────────────────────────────────────────────
 title "11 — Starting Docker stack"
 
