@@ -1,6 +1,7 @@
+import Image from 'next/image';
 import Link from 'next/link';
 import { HugeiconsIcon } from '@hugeicons/react';
-import { BoltIcon, SourceCodeIcon, Login01Icon } from '@hugeicons/core-free-icons';
+import { SourceCodeIcon, Login01Icon } from '@hugeicons/core-free-icons';
 
 const LINKS = [
   { href: '#features', label: 'Features' },
@@ -13,9 +14,7 @@ export function LandingNav() {
     <header className="sticky top-0 z-50 border-b border-[var(--rail)] bg-[var(--surface)]/80 backdrop-blur-md">
       <nav className="mx-auto flex max-w-6xl items-center justify-between px-6 py-4">
         <Link href="/" className="flex items-center gap-2.5">
-          <span className="flex h-8 w-8 items-center justify-center rounded-lg border border-[var(--accent)]/30 bg-[var(--accent)]/10 text-[var(--accent)]">
-            <HugeiconsIcon icon={BoltIcon} size={18} color="currentColor" className="animate-pulse-slow" />
-          </span>
+          <Image src="/logo.png" alt="FIDScript" width={32} height={32} className="h-8 w-auto" />
           <span className="font-mono text-lg font-bold tracking-tight text-[var(--text)]">
             FID<span className="text-[var(--accent)]">Script</span>
           </span>

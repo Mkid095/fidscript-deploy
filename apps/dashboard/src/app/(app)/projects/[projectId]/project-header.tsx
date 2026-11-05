@@ -55,7 +55,7 @@ export function ProjectHeader({
         aria-label="FIDScript — back to projects"
       >
         <Image
-          src="https://res.cloudinary.com/dfp7uhzy3/image/upload/v1782017464/Generated_Image_June_21__2026_-_2_00AM-removebg-preview_ekpdad.png"
+          src="/logo.png"
           alt="FIDScript"
           width={26}
           height={26}

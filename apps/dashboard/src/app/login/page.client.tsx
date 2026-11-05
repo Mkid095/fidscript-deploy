@@ -1,5 +1,6 @@
 'use client';
 
+import Image from 'next/image';
 import Link from 'next/link';
 import { useLoginForm } from './hooks/use-login-form';
 import { AuthMethodTabs } from './components/auth-method-tabs';
@@ -35,7 +36,7 @@ export function LoginClient({ platformAuthMethod }: LoginClientProps) {
       footer={footer}
     >
       <div className="flex flex-col items-center mb-6">
-        <img
+        <Image
           src="/logo.png"
           alt="FIDScript"
           width={80}

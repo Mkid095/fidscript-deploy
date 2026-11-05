@@ -47,7 +47,7 @@ export function LandingFooter() {
           <div>
             <div className="flex items-center gap-2.5 mb-1">
               <Image
-                src="https://res.cloudinary.com/dfp7uhzy3/image/upload/v1782017464/Generated_Image_June_21__2026_-_2_00AM-removebg-preview_ekpdad.png"
+                src="/logo.png"
                 alt="FIDScript"
                 width={28}
                 height={28}
