@@ -1,5 +1,6 @@
 import { Module, forwardRef } from '@nestjs/common';
 import { AuthModule } from '@/modules/auth/auth.module';
+import { DeploymentsModule } from '@/modules/deployments/deployments.module';
 import { DomainsModule } from '@/modules/domains/domains.module';
 import { ApplicationCatalogueService } from './services/application-catalogue.service';
 import { ApplicationInstallService } from './services/application-install.service';
@@ -22,6 +23,8 @@ import { ApplicationsController } from './controllers/applications.controller';
     // The guard on these routes resolves a JWT, and the JwtService comes
     // from the auth module.
     forwardRef(() => AuthModule),
+    // For the shell runner: an install runs the installer's own commands.
+    DeploymentsModule,
   ],
   controllers: [ApplicationsController],
   providers: [ApplicationCatalogueService, ApplicationInstallService, ApplicationDnsService],

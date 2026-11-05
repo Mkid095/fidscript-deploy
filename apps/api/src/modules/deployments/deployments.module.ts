@@ -57,6 +57,16 @@ import { AuthModule } from '@/modules/auth/auth.module';
     NodeBuildpackProvider,
     BuildProviderFactory,
   ],
-  exports: [DeploymentsService, DeploymentWorkerService, DeploymentCrudService, DeploymentRoutesService, GithubWebhookService, BuildProviderFactory],
+  exports: [
+    DeploymentsService,
+    DeploymentWorkerService,
+    DeploymentCrudService,
+    DeploymentRoutesService,
+    GithubWebhookService,
+    BuildProviderFactory,
+    // The applications module installs an application by running the
+    // installer's own commands, and needs the same shell runner.
+    ShellRunnerService,
+  ],
 })
 export class DeploymentsModule {}
