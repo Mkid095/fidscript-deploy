@@ -1,4 +1,5 @@
-import { Module } from '@nestjs/common';
+import { Module, forwardRef } from '@nestjs/common';
+import { AuthModule } from '@/modules/auth/auth.module';
 import { DomainsModule } from '@/modules/domains/domains.module';
 import { ApplicationCatalogueService } from './services/application-catalogue.service';
 import { ApplicationInstallService } from './services/application-install.service';
@@ -16,7 +17,12 @@ import { ApplicationsController } from './controllers/applications.controller';
 @Module({
   // The domains module brings the Cloudflare provider, which publishes an
   // application's DNS records when it is installed.
-  imports: [DomainsModule],
+  imports: [
+    DomainsModule,
+    // The guard on these routes resolves a JWT, and the JwtService comes
+    // from the auth module.
+    forwardRef(() => AuthModule),
+  ],
   controllers: [ApplicationsController],
   providers: [ApplicationCatalogueService, ApplicationInstallService, ApplicationDnsService],
   exports: [ApplicationCatalogueService, ApplicationInstallService],

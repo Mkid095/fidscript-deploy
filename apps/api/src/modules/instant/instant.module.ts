@@ -1,4 +1,6 @@
 import { Module } from '@nestjs/common';
+import { forwardRef } from '@nestjs/common';
+import { AuthModule } from '@/modules/auth/auth.module';
 import { InstantClientService } from './services/instant-client.service';
 import { InstantProvisioningService } from './services/instant-provisioning.service';
 import { InstantAppConfigService } from './services/instant-app-config.service';
@@ -13,6 +15,9 @@ import { InstantController } from './controllers/instant.controller';
  * administers it.
  */
 @Module({
+  // The guard on these routes resolves a JWT, and the JwtService comes from
+  // the auth module.
+  imports: [forwardRef(() => AuthModule)],
   controllers: [InstantController],
   providers: [InstantClientService, InstantProvisioningService, InstantAppConfigService],
   exports: [InstantClientService, InstantProvisioningService, InstantAppConfigService],
