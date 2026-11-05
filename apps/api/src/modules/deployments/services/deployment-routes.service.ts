@@ -3,6 +3,7 @@ import { ConfigService } from '@nestjs/config';
 import { promises as fs } from 'fs';
 import { join } from 'path';
 import { PrismaService } from '@/prisma/prisma.service';
+import { EventService } from '@/modules/events/event.service';
 
 /**
  * Writes the Traefik routers that publish a deployment's CUSTOM domains.
@@ -32,7 +33,21 @@ export class DeploymentRoutesService {
   constructor(
     private prisma: PrismaService,
     private configService: ConfigService,
+    private eventService: EventService,
   ) {}
+
+  /**
+   * Republish the routes whenever a domain is attached or detached.
+   *
+   * The domains module owns the domain rows and the deployments module
+   * owns the routing, so this listens for the domain events rather than
+   * the domains module importing this one — the two modules would
+   * otherwise depend on each other in a cycle.
+   */
+  onModuleInit(): void {
+    this.eventService.on('domain.added', () => { void this.sync(); });
+    this.eventService.on('domain.deleted', () => { void this.sync(); });
+  }
 
   /**
    * Rewrite the deployment routers from the current state of the database.
