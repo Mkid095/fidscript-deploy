@@ -39,6 +39,10 @@ services:
       # provider reads every YAML file in the directory it is pointed at,
       # so the platform's routing (platform.yml) and the deployments'
       # routing (dynamic-deployments.yml) live side by side.
+      #
+      # Mounted separately as well, so Docker creates the directory on a
+      # host where it does not exist yet — otherwise the API cannot write
+      # its routing and every route stays a 404.
       - ./traefik/dynamic:/etc/traefik/dynamic:rw
       - ./traefik/certs:/certs:ro
       - ./secrets:/run/secrets:ro
