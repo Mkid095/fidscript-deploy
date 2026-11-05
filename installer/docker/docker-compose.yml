@@ -451,6 +451,9 @@ services:
       # The file only exists when the add-on is installed; the entrypoint
       # skips a missing one, and the push is then simply skipped too.
       APP_RUNTIME_REGISTRY_PASSWORD_FILE: /run/secrets/app_runtime_registry_password
+      # Where the installer lives, as seen by this container. The platform
+      # runs the installer's own scripts from here to install an application.
+      INSTALLER_DIR: /opt/fidscript-deploy/installer
       # ── Instant BaaS — the project's data plane ──────────────────────────
       # The server-side URL is the add-on's container on the shared network,
       # so the api does not bounce the request out through the edge. The
@@ -474,10 +477,14 @@ services:
       # The installer directory, so the platform can install an application
       # from its Applications screen. It runs the installer's OWN scripts
       # against the SAME compose files the wizard used, so there is one
-      # installer and one record of what is installed. The layout has to be
-      # the real one: addons.sh finds ../docker and ../addons relative to
-      # itself, and the compose project name comes from the directory name.
-      - ..:/opt/fidscript:rw
+      # installer and one record of what is installed.
+      #
+      # The path MUST be the same one the host has. Compose resolves a
+      # relative bind path (./secrets/...) against the project directory,
+      # and the DAEMON resolves it — on the host, not in this container. If
+      # the two paths differ, the daemon is told to mount a file that does
+      # not exist on the host, and the container never starts.
+      - ..:/opt/fidscript-deploy/installer:rw
       # The ONE-LINE installer — the guided flow that asks for the domain,
       # the admin account and the Cloudflare token — lives at the
       # repository root, not in installer/scripts/. The api serves THAT

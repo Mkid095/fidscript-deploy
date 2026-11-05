@@ -24,7 +24,7 @@ export interface AddonManifest {
 }
 
 /** Where the installer lives inside the API container. */
-export const INSTALLER_DIR = process.env.INSTALLER_DIR ?? '/opt/fidscript';
+export const INSTALLER_DIR = process.env.INSTALLER_DIR ?? '/opt/fidscript-deploy/installer';
 
 export const ADDONS_DIR = join(INSTALLER_DIR, 'addons');
 export const DOCKER_DIR = join(INSTALLER_DIR, 'docker');
