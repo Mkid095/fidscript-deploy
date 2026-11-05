@@ -479,6 +479,12 @@ fi
 title "Writing Traefik configuration"
 TRAEFIK_DIR="$DOCKER_DIR/traefik"
 mkdir -p "$TRAEFIK_DIR/certs"
+# The dynamic configuration lives in its own subdirectory: Traefik's file
+# provider reads every YAML file in the directory it is pointed at, so the
+# platform's routing and the deployments' routing cannot overwrite each
+# other.
+TRAEFIK_DYNAMIC_DIR="$TRAEFIK_DIR/dynamic"
+mkdir -p "$TRAEFIK_DYNAMIC_DIR"
 
 if [[ -n "$CLOUDFLARE_API_TOKEN" ]]; then
   CERT_RESOLVER="letsencrypt-dns"
@@ -495,7 +501,7 @@ fi
 #
 # The quoted heredoc leaves the backticks alone; the domain and the
 # certificate resolver are substituted afterwards with placeholders.
-cat > "$TRAEFIK_DIR/dynamic.yml" << 'HEREDOC'
+cat > "$TRAEFIK_DYNAMIC_DIR/platform.yml" << 'HEREDOC'
 http:
   middlewares:
     security-headers:
@@ -608,7 +614,7 @@ http:
         servers:
           - url: "http://127.0.0.1:8080"
 HEREDOC
-sed -i "s|__DOMAIN__|${DOMAIN}|g; s|__CERT_RESOLVER__|${CERT_RESOLVER}|g" "$TRAEFIK_DIR/dynamic.yml"
+sed -i "s|__DOMAIN__|${DOMAIN}|g; s|__CERT_RESOLVER__|${CERT_RESOLVER}|g" "$TRAEFIK_DYNAMIC_DIR/platform.yml"
 info "Traefik dynamic config written (resolver: $CERT_RESOLVER)."
 
 # ── Traefik static ─────────────────────────────────────────────────────────
@@ -667,7 +673,12 @@ certificatesResolvers:
       caServer: https://acme-v02.api.letsencrypt.org/directory
 providers:
   file:
-    filename: /etc/traefik/dynamic.yml
+    # A DIRECTORY: Traefik's file provider reads every .yml/.toml file in
+    # it, so the platform's routing (platform.yml) and the deployments'
+    # routing (dynamic-deployments.yml) never overwrite each other.
+    # The option is `directory`, not `filename` — `filename` with a
+    # directory path fails with "read ...: is a directory".
+    directory: /etc/traefik/dynamic
     watch: true
   # Docker provider — via a socat TCP proxy that bridges the raw unix socket
   # to TCP. Over TCP the Go Docker client negotiates the API version

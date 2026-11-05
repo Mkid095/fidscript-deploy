@@ -1,4 +1,5 @@
 import { Module, forwardRef } from '@nestjs/common';
+import { DeploymentsModule } from '@/modules/deployments/deployments.module';
 import { DomainsController } from '@/modules/domains/controllers/domains.controller';
 import { DomainsZoneController } from '@/modules/domains/controllers/domains-zone.controller';
 import { NotificationsController } from '@/modules/domains/controllers/notifications.controller';
@@ -48,7 +49,14 @@ import { RedisModule } from '@/modules/redis/redis.module';
 import { AuthModule } from '@/modules/auth/auth.module';
 
 @Module({
-  imports: [EventsModule, RedisModule, forwardRef(() => AuthModule)],
+  // The deployments module owns the Traefik routing writer: adding or
+  // removing a domain has to publish or withdraw that domain's route.
+  imports: [
+    EventsModule,
+    RedisModule,
+    forwardRef(() => AuthModule),
+    forwardRef(() => DeploymentsModule),
+  ],
   controllers: [DomainsController, DomainsZoneController, NotificationsController, DomainTemplatesController, CloudflareOAuthController],
   providers: [
     CloudflareZoneService,

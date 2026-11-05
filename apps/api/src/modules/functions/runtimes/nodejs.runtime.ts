@@ -5,7 +5,7 @@ import { SandboxedRunnerService } from '../services/sandboxed-runner.service';
 @Injectable()
 export class NodeJsRuntime implements Runtime {
   name = 'nodejs';
-  version = '18';
+  version = '20';
   supportedExtensions = ['.js', '.mjs'];
 
   constructor(private sandbox: SandboxedRunnerService) {}

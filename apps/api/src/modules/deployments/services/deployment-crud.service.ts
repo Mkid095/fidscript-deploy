@@ -7,6 +7,7 @@ import { CreateDeploymentDto, UpdateBuildConfigDto } from '@/modules/deployments
 import { NodeBuildpackProvider } from '@/modules/deployments/providers/node-buildpack.provider';
 import { DockerBuildWorkspaceService } from '@/modules/deployments/providers/docker-build-workspace.service';
 import { UserGithubService } from '@/modules/app-auth/services/user-github.service';
+import { DeploymentRoutesService } from '@/modules/deployments/services/deployment-routes.service';
 
 @Injectable()
 export class DeploymentCrudService {
@@ -20,6 +21,7 @@ export class DeploymentCrudService {
     private workspace: DockerBuildWorkspaceService,
     private github: UserGithubService,
     private configService: ConfigService,
+    private routes: DeploymentRoutesService,
   ) {}
 
   // ─── Framework detection (pre-deploy) ──────────────────────────────────────
@@ -266,6 +268,9 @@ export class DeploymentCrudService {
   async destroy(userId: string, projectId: string, deploymentId: string) {
     await this.checkAccessOrThrow(userId, projectId, ['admin', 'owner']);
     await this.worker.destroyDeployment(deploymentId, userId);
+    // Its custom-domain routes have to go with it, or Traefik keeps
+    // routing the hostname to a container that no longer exists.
+    await this.routes.sync();
     return { success: true };
   }
 

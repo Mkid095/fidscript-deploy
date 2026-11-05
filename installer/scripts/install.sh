@@ -391,7 +391,13 @@ info "pgbouncer_userlist.txt written: ${SECRETS_DIR}/pgbouncer_userlist.txt"
 # ─── 10. Write minimal Traefik dynamic.yml ────────────────────────────────────
 title "10 — Writing Traefik dynamic.yml (IP-fallback only)"
 
-DYNAMIC_YML="${COMPOSE_DIR}/traefik/dynamic.yml"
+# The dynamic configuration lives in its own directory: Traefik's file
+# provider reads every YAML file in the directory it is pointed at, so the
+# platform's routing and the deployments' routing cannot overwrite each
+# other.
+DYNAMIC_DIR="${COMPOSE_DIR}/traefik/dynamic"
+mkdir -p "$DYNAMIC_DIR"
+DYNAMIC_YML="$DYNAMIC_DIR/platform.yml"
 
 cat > "${DYNAMIC_YML}" << 'TRAEFIKEOF'
 # =============================================================================

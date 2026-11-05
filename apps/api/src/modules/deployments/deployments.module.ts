@@ -3,6 +3,7 @@ import { DeploymentsController } from './deployments.controller';
 import { GithubWebhookController } from './controllers/github-webhook.controller';
 import { DeploymentsService } from './deployments.service';
 import { DeploymentCrudService } from './services/deployment-crud.service';
+import { DeploymentRoutesService } from './services/deployment-routes.service';
 import { GithubWebhookService } from './services/github-webhook.service';
 import { BuildRunnerService } from './runner/build-runner.service';
 import { DockerRunService } from './runner/docker-run.service';
@@ -30,6 +31,7 @@ import { AuthModule } from '@/modules/auth/auth.module';
   providers: [
     DeploymentsService,
     DeploymentCrudService,
+    DeploymentRoutesService,
     GithubWebhookService,
     BuildRunnerService,
     DockerRunService,
@@ -46,6 +48,6 @@ import { AuthModule } from '@/modules/auth/auth.module';
     NodeBuildpackProvider,
     BuildProviderFactory,
   ],
-  exports: [DeploymentsService, DeploymentWorkerService, DeploymentCrudService, GithubWebhookService, BuildProviderFactory],
+  exports: [DeploymentsService, DeploymentWorkerService, DeploymentCrudService, DeploymentRoutesService, GithubWebhookService, BuildProviderFactory],
 })
 export class DeploymentsModule {}

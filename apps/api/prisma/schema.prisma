@@ -631,6 +631,10 @@ model Release {
   sourceUrl       String?  @map("source_url") @db.VarChar(1024) // git repo URL at creation
   buildLogs       String?  @db.Text // full build log output
   buildDurationMs Int?     @map("build_duration_ms")
+  // The port the built application actually listens on. The project type's
+  // default port is only a guess (a Vite app listens on 4173, Astro on
+  // 4321), and Traefik has to route to the real one.
+  runtimePort     Int?     @map("runtime_port")
   createdBy       String?  @map("created_by") // userId or "system"
   createdAt       DateTime @default(now()) @map("created_at") @db.Timestamptz
 

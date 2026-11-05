@@ -1,3 +1,4 @@
+import { DeploymentRoutesService } from '@/modules/deployments/services/deployment-routes.service';
 import { Injectable, Logger, NotFoundException, Inject } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { PrismaService } from '@/prisma/prisma.service';
@@ -14,6 +15,7 @@ export class DomainCleanupService {
     private eventService: EventService,
     @Inject('DNS_PROVIDER') private dnsProvider: DnsProvider,
     private configService: ConfigService,
+    private routes: DeploymentRoutesService,
   ) {
     this.platformDomain = this.configService.get<string>('PLATFORM_DOMAIN', 'apps.local');
   }
@@ -32,6 +34,9 @@ export class DomainCleanupService {
 
     await this.prisma.domain.delete({ where: { id: domainId } });
     await this.emit(domainId, projectId, userId, 'domain.deleted', { domain: domain.domain });
+    // Withdraw the route — otherwise Traefik keeps serving a hostname
+    // whose domain no longer exists.
+    await this.routes.sync();
     return { success: true };
   }
 

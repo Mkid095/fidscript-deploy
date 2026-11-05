@@ -1,3 +1,4 @@
+import { DeploymentRoutesService } from '@/modules/deployments/services/deployment-routes.service';
 import { Injectable, NotFoundException, ForbiddenException, ConflictException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { PrismaService } from '@/prisma/prisma.service';
@@ -20,6 +21,7 @@ export class DomainAddService {
     private listService: DomainListService,
     private access: DomainAccessService,
     private configService: ConfigService,
+    private routes: DeploymentRoutesService,
   ) {
     this.platformDomain = this.configService.get<string>('PLATFORM_DOMAIN', 'apps.local');
   }
@@ -98,6 +100,11 @@ export class DomainAddService {
     if (dto.dnsMode === 'cloudflare_auto' && deployment) {
       await this.cloudflareAuto.cloudflareAutoSetup(domain.id, dto.domain, deployment.deploymentUrl ?? '', isApex);
     }
+
+    // Publish the domain to Traefik. The default {slug}.apps.{domain} zone
+    // is routed by Traefik's Docker provider from the container labels; a
+    // custom domain has no label and would 404 without this.
+    await this.routes.sync();
 
     return {
       domain: this.listService.formatDomain(domain),

@@ -4,6 +4,7 @@ import { PrismaService } from '@/prisma/prisma.service';
 import { CryptoService } from '@/modules/crypto/crypto.service';
 import { BuildRunnerService } from './build-runner.service';
 import { BuildProviderFactory } from '../providers/build-provider.factory';
+import { DeploymentRoutesService } from '../services/deployment-routes.service';
 import { DockerLifecycleService } from './docker-lifecycle.service';
 import { UserGithubService } from '@/modules/app-auth/services/user-github.service';
 
@@ -17,6 +18,7 @@ export class DeploymentStateService implements OnModuleInit {
     private buildRunner: BuildRunnerService,
     private cryptoService: CryptoService,
     private buildProviderFactory: BuildProviderFactory,
+    private routes: DeploymentRoutesService,
     private dockerLifecycle: DockerLifecycleService,
     private github: UserGithubService,
   ) {}
@@ -164,7 +166,14 @@ export class DeploymentStateService implements OnModuleInit {
     if (deployment.releaseId) {
       await this.prisma.release.update({
         where: { id: deployment.releaseId },
-        data: { buildLogs: logs.join('\n'), buildDurationMs: buildResult.buildDurationMs, imageTag: buildResult.imageTag },
+        data: {
+          buildLogs: logs.join('\n'),
+          buildDurationMs: buildResult.buildDurationMs,
+          imageTag: buildResult.imageTag,
+          // The port the app really listens on. Traefik routes to this,
+          // not to the project type's default.
+          runtimePort: buildResult.port ?? null,
+        },
       });
     }
 
@@ -175,6 +184,11 @@ export class DeploymentStateService implements OnModuleInit {
       });
       await this.prisma.project.update({ where: { id: projectId }, data: { lastDeployAt: new Date() } });
       await this.emit(deploymentId, projectId, userId, 'deployments.deployment.succeeded', { deploymentUrl: deployResult.deploymentUrl, duration: deployResult.deployDurationMs });
+
+      // Publish the deployment's custom domains to Traefik. The default
+      // hostname is published by Traefik's Docker provider from the
+      // container labels; this covers the rest.
+      await this.routes.sync();
 
       // Clean up the previous deployment's container + image to prevent disk bloat.
       // We keep the container name convention from docker-run.service.ts: fidscript-{slug}-{deploymentId}

@@ -48,7 +48,12 @@ certificatesResolvers:
 
 providers:
   file:
-    filename: /etc/traefik/dynamic.yml
+    # A DIRECTORY: Traefik's file provider reads every .yml/.toml file in
+    # it, so the platform's routing (platform.yml) and the deployments'
+    # routing (dynamic-deployments.yml) never overwrite each other.
+    # The option is `directory`, not `filename` — `filename` with a
+    # directory path fails with "read ...: is a directory".
+    directory: /etc/traefik/dynamic
     watch: true
   # Docker provider — via a socat TCP proxy that bridges the raw unix socket
   # to TCP. Over TCP the Go Docker client negotiates the API version

@@ -35,7 +35,11 @@ services:
       - "443:443"
     volumes:
       - ./traefik/traefik.yml:/etc/traefik/traefik.yml:ro
-      - ./traefik/dynamic.yml:/etc/traefik/dynamic.yml:rw
+      # The whole dynamic directory, not a single file: Traefik's file
+      # provider reads every YAML file in the directory it is pointed at,
+      # so the platform's routing (platform.yml) and the deployments'
+      # routing (dynamic-deployments.yml) live side by side.
+      - ./traefik/dynamic:/etc/traefik/dynamic:rw
       - ./traefik/certs:/certs:ro
       - ./secrets:/run/secrets:ro
       - fidscript_acme_dns:/acme-dns
@@ -405,7 +409,7 @@ services:
       STALWART_WEBHOOK_SECRET_FILE: /run/secrets/stalwart_webhook_secret
       # Path to the directory containing Traefik dynamic.yml on the HOST.
       # The API needs this to write updated routing config during installation.
-      TRAEFIK_DYNAMIC_DIR: /etc/traefik
+      TRAEFIK_DYNAMIC_DIR: /etc/traefik/dynamic
     # NOTE: no Docker-secrets block for the api. The Docker-secrets mechanism
     # mounts the secret files with root-0400 perms, which the api (running as
     # `node`, uid 1000) cannot read ("Permission denied"). Instead, we bind-

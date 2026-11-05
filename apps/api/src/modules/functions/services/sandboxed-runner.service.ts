@@ -13,7 +13,7 @@ export interface SandboxedRunOptions {
 }
 
 const RUNTIME_IMAGES = {
-  nodejs: 'node:18-alpine',
+  nodejs: 'node:20-alpine',
   python: 'python:3.11-alpine',
 };
 
