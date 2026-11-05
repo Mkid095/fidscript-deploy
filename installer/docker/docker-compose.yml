@@ -450,6 +450,13 @@ services:
       - ./secrets:/run/secrets:ro
       - /var/run/docker.sock:/var/run/docker.sock
       - ../scripts:/usr/local/share/fidscript:ro
+      # The installer directory, so the platform can install an application
+      # from its Applications screen. It runs the installer's OWN scripts
+      # against the SAME compose files the wizard used, so there is one
+      # installer and one record of what is installed. The layout has to be
+      # the real one: addons.sh finds ../docker and ../addons relative to
+      # itself, and the compose project name comes from the directory name.
+      - ..:/opt/fidscript:rw
       # The ONE-LINE installer — the guided flow that asks for the domain,
       # the admin account and the Cloudflare token — lives at the
       # repository root, not in installer/scripts/. The api serves THAT

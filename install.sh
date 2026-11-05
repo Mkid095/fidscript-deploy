@@ -208,6 +208,57 @@ step_5_deploy() {
   docker compose -f "$COMPOSE_DIR/docker-compose.yml" kill -s HUP traefik 2>/dev/null || true
 }
 
+# ── Step 5c: Send the operator their credentials ────────────────────────────
+# The wizard prints the credentials once, at the end of the screen. An email
+# means they do not have to photograph the terminal, and it means the
+# operator has a way in even if the session ends.
+#
+# The password is the install-time one, and the platform forces a change on
+# the first sign-in — so this is a way in, not a permanent secret.
+step_5c_welcome_email() {
+  source "$COMPOSE_DIR/.env" 2>/dev/null || true
+  [[ -n "$ADMIN_EMAIL" && -n "$ADMIN_PASSWORD" && -n "$DOMAIN" ]] || {
+    warn "No admin credentials to email — skipping."
+    return 0
+  }
+
+  local msg_file
+  msg_file="$(mktemp)"
+  {
+    printf 'From: FIDScript Deploy <admin@%s>\n' "$DOMAIN"
+    printf 'To: %s\n' "$ADMIN_EMAIL"
+    printf 'Subject: Your FIDScript platform is ready\n'
+    printf 'MIME-Version: 1.0\n'
+    printf 'Content-Type: text/plain; charset=utf-8\n'
+    printf '\n'
+    printf 'Your platform is installed and running.\n\n'
+    printf '  Sign in:  https://%s\n' "$DOMAIN"
+    printf '  Email:    %s\n' "$ADMIN_EMAIL"
+    printf '  Password: %s\n\n' "$ADMIN_PASSWORD"
+    printf 'That password is temporary — you will be asked to change it when\n'
+    printf 'you sign in.\n\n'
+    printf 'The first thing you will see is the Applications screen. The\n'
+    printf 'deployment engine and the mail server are already there; the rest\n'
+    printf 'you install from it, one at a time.\n\n'
+    printf 'If you did not do this install, ignore this message and change the\n'
+    printf 'password.\n'
+  } > "$msg_file"
+
+  # The mail server publishes submission on 465, so this does not depend on
+  # DNS or on a certificate having been issued.
+  if curl -sS --ssl-reqd --max-time 30 \
+      --url "smtp://127.0.0.1:465" \
+      --mail-from "admin@${DOMAIN}" \
+      --mail-rcpt "$ADMIN_EMAIL" \
+      --user "admin:${SMTP_SUBMISSION_PASS:-}" \
+      --upload-file "$msg_file" >/dev/null 2>&1; then
+    info "Welcome email sent to $ADMIN_EMAIL"
+  else
+    warn "Could not send the welcome email — the credentials are below."
+  fi
+  rm -f "$msg_file"
+}
+
 # ── Step 5b: Connect the Instant BaaS ───────────────────────────────────────
 # The Instant console only exists once the stack is up, so the personal
 # access token — the credential that lets the platform create an app for a
@@ -325,4 +376,5 @@ step_3_clone
 step_4_wizard
 step_5_deploy
 step_5b_instant
+step_5c_welcome_email
 step_6_verify

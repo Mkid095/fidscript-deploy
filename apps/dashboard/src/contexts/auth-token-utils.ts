@@ -26,7 +26,10 @@ export function clearTokens(): void {
 }
 
 export function getNextRoute(): string {
-  if (typeof window === 'undefined') return '/projects';
+  // The Applications screen is where an operator arrives: it is the answer
+  // to "what can this platform do for me". A `next` parameter still wins —
+  // someone who was sent to a specific page goes there.
+  if (typeof window === 'undefined') return '/applications';
   const params = new URLSearchParams(window.location.search);
-  return params.get('next') || '/projects';
+  return params.get('next') || '/applications';
 }

@@ -219,7 +219,54 @@ unaffected.
 
 ---
 
-## 5. The add-ons
+## 5. The applications screen — what the operator installs
+
+Not everything is installed up front. The platform is set up, and the
+operator chooses what goes on top of it.
+
+```
+   the operator logs in
+          │
+          ▼
+   /applications ──▶ GET /api/v1/applications
+          │              the catalogue: what this platform can do, and
+          │              which of it is installed
+          │
+          └──▶ POST /api/v1/applications/:id/install
+                     │
+                     ▼
+              fidscript-addons enable <id> --no-recreate
+                     │
+                     ├──▶ records the selection, generates the secrets
+                     └──▶ docker compose up -d --no-recreate
+```
+
+| # | Step | Where |
+|---|------|-------|
+| 1 | The operator signs in and lands on the Applications screen | `/applications` |
+| 2 | The screen asks the API what is installed | `GET /api/v1/applications` |
+| 3 | They press **Install** on an application that is not there | `POST /api/v1/applications/:id/install` |
+| 4 | The API runs the installer's own command | `application-install.service.ts` |
+| 5 | The screen watches the installer's output while it works | `GET /api/v1/applications/installs` |
+| 6 | When it is done, the application opens on its own subdomain | the catalogue's `url` |
+
+**"Installed" is the installer's own record** — the add-on is listed in
+`installer/docker/.env`'s `FIDScript_ADDONS`. It is the same record
+`fidscript-addons` reads and writes, so the screen and the installer cannot
+disagree about what is installed.
+
+**The install is the installer's command**, not a reimplementation of it, and
+it runs with `--no-recreate`: the platform's api is one of the running
+containers, and it is the process asking for the install. Recreating it would
+kill the request in flight.
+
+**The core is always there.** The deployment engine and the mail server are
+part of the platform; the screen lists them with their consoles, so the
+catalogue answers "what can this platform do for me" in one place.
+
+---
+
+## 6. The add-ons
 
 All five merge cleanly with the core into one Compose project (verified with
 `docker compose config`).
@@ -236,7 +283,7 @@ Manage them with `fidscript-addons list | enable | disable | status`.
 
 ---
 
-## 6. The seams — defined but not finished
+## 7. The seams — defined but not finished
 
 These are the places to work next. Each names the file to change.
 
@@ -251,12 +298,12 @@ These are the places to work next. Each names the file to change.
 | 7 | **The orphaned flat route trees.** `/email/*` (with templates, suppressions, webhooks, analytics) and `/platform/*` (a whole admin mail console) render correctly but no button leads to them — and they hold capabilities the project-scoped screens do not have. They need a product decision before they can be deleted. | `apps/dashboard/src/app/(app)/` |
 | 8 | **The `?section=` system** — only Settings is reachable, and the URL degrades from `/projects/X/settings` to `/projects/X?section=settings`. | `apps/dashboard/src/app/(app)/projects/[projectId]/` |
 | 9 | **No tests.** The suite is green because it is empty. | `apps/api`, `apps/dashboard` |
-| 10 | **The Instant app has no screen.** The API can provision a project's Instant app and the SDK can read its configuration, but the dashboard shows nothing — the operator has to open the Instant console for it. The split of ownership is decided in `docs/CAPABILITY_OVERLAP.md`; the screen is not written yet. | `apps/dashboard/src/app/(app)/projects/[projectId]/` |
-| 11 | **The two duplicated halves are retired.** The live-query half of `modules/databases/` is gone (`POST /databases/:id/live-query`, `GET /databases/:id/live-query/:table`, the SDK's `watch()`), and so is the app-facing half of `modules/app-auth/` (the whole `APPAUTH-01..19` cluster, the per-project OAuth providers, the role management, and four tables). What remains in `modules/app-auth/` is what two other products need: the WhatsApp console's magic-code login and the operator's GitHub credentials. | — |
+| 10 | **The applications screen installs, but it cannot uninstall.** An application is installed by the operator; there is no way to remove one from the screen, so an application that was installed by mistake stays until somebody runs `fidscript-addons disable` on the host. | `modules/applications/` |
+| 11 | **The Instant app's console link is not per-app.** The catalogue links to the Instant console for the platform; Instant's console lists the apps, but the link does not deep-link to the one project. | `modules/applications/applications.catalog.ts` |
 
 ---
 
-## 7. How to check a change
+## 8. How to check a change
 
 ```bash
 # the installer, from a clean copy

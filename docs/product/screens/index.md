@@ -31,6 +31,31 @@ Auth keys: `O` owner · `A` admin · `D` developer · `V` viewer · `P` platform
 
 ---
 
+## Applications — what this platform can do (platform-wide)
+
+The operator arrives at this screen. The deployment engine and the mail server
+are part of the platform and are already there; everything else is installed
+from here, one at a time, by the operator's choice. An installed application
+opens on its own subdomain.
+
+| Screen | Route | Auth | Renders | Key fields | Operations | Deep spec |
+|---|---|---|---|---|---|---|
+| Applications | `/applications` | O/A/D/V | the application catalogue | title, summary, kind (core / add-on), installed, the console URL | install `APP-04` · watch the install `APP-02` | — |
+
+**The screen is the answer to "what can this platform do for me".** The core
+applications are listed with their console; the rest carry an **Install**
+button, and installing one runs in the background — the operator watches the
+installer's own output rather than holding a request open.
+
+**Installing is admin/owner only.** The UI greys the button for anyone else;
+the API re-checks.
+
+**An application that is not installed has no console link.** Nothing is
+faked: the catalogue says what the platform can do, and says plainly which of
+it is not there yet.
+
+---
+
 ## Auth & first-run (F02 + F03)
 
 | Screen | Route | Auth | Renders | Key fields | Operations | Deep spec |

@@ -8,6 +8,7 @@ import { HugeiconsIcon } from '@hugeicons/react';
 import { ArrowTurnBackwardIcon } from '@hugeicons/core-free-icons';
 
 import { AuthGuard } from '@/components/auth-guard';
+import { TopNavLink } from '@/components/layout/top-nav-link';
 import { AvatarDropdown } from '@/components/layout/avatar-dropdown';
 import { ThemeToggle } from '@/components/theme/theme-toggle';
 import { ConfirmProvider } from '@/components/ui/confirm-provider';
@@ -74,6 +75,19 @@ export default function AppLayout({ children }: { children: ReactNode }) {
             )}
 
             <div className="flex-1" />
+
+            {/* The platform's two top-level surfaces: the applications the
+                operator can have, and the projects they are working on. */}
+            {!isProjectRoute && (
+              <nav className="flex items-center gap-1">
+                <TopNavLink href="/applications" pathname={pathname}>
+                  Applications
+                </TopNavLink>
+                <TopNavLink href="/projects" pathname={pathname}>
+                  Projects
+                </TopNavLink>
+              </nav>
+            )}
 
             {/* Theme toggle */}
             <ThemeToggle />

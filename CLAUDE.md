@@ -397,6 +397,8 @@ FIDScript Deploy repo
 │   │       ├── projects-deployments-domains.md  ← PROJ-*, DEPL-*, DOM-* (~38 routes)
 │   │       ├── data.md              ← STOR-*, DB-*, MAIL-* (~53 routes)
 │   │       ├── compute.md           ← FN-*, QUEUE-*, CRON-*, RT-* (~38 routes)
+│   │       ├── applications.md      ← APP-* — the applications an operator installs
+│   │       ├── instant.md           ← INST-* — the project's data plane
 │   │       └── surfaces.md          ← MON-*, LOG-*, TMPL-*, AI-*, MKT-*, SVC-*, MCP-* (~80+)
 │   │
 │   ├── product/                     ← THE BLUEPRINT (authoritative)

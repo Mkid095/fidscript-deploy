@@ -64,7 +64,7 @@ RUN apt-get update -y && apt-get install -y ca-certificates curl gnupg && \
     curl -fsSL https://download.docker.com/linux/debian/gpg | gpg --dearmor -o /etc/apt/keyrings/docker.gpg && \
     chmod a+r /etc/apt/keyrings/docker.gpg && \
     echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.gpg] https://download.docker.com/linux/debian $(. /etc/os-release && echo "$VERSION_CODENAME") stable" > /etc/apt/sources.list.d/docker.list && \
-    apt-get update -y && apt-get install -y openssl curl docker-ce-cli docker-buildx-plugin && \
+    apt-get update -y && apt-get install -y openssl curl docker-ce-cli docker-buildx-plugin docker-compose-plugin && \
     apt-get clean && rm -rf /var/lib/apt/lists/*
 
 # Install Prisma CLI globally — used at container startup for migrate + db seed + generate.

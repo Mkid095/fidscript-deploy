@@ -17,6 +17,7 @@
 | `compute.md` | functions, queues, scheduler/cron, realtime | `FN-*`, `QUEUE-*`, `CRON-*`, `RT-*` |
 | `surfaces.md` | monitoring, logging, templates, ai, marketplace, registry/health, MCP, SDK, CLI | `MON-*`, `LOG-*`, `TMPL-*`, `AI-*`, `MKT-*`, `SVC-*`, `MCP-*` |
 | `instant.md` | the Instant BaaS integration — the project's data plane | `INST-*` |
+| `applications.md` | the applications an operator can have — the catalogue and the installs | `APP-*` |
 
 ## Global conventions (document once, reference everywhere)
 

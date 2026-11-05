@@ -325,10 +325,19 @@ cmd_select() {
 }
 
 cmd_enable() {
-  [[ $# -gt 0 ]] || die "Usage: fidscript-addons enable <id> [<id>...]"
+  [[ $# -gt 0 ]] || die "Usage: fidscript-addons enable <id> [<id>...] [--no-recreate]"
+  # --no-recreate: bring the new application up without recreating the
+  # containers that are already running. The platform installs applications
+  # from its own dashboard, and it is running in one of those containers —
+  # recreating it would kill the process that asked for the install.
+  local recreate=1
+  if [[ "${!#}" == "--no-recreate" ]]; then
+    recreate=0
+    set -- "${@:1:$(( $# - 1 ))}"
+  fi
   cmd_select "$@"
   step "Applying…"
-  cmd_apply
+  cmd_apply "$recreate"
 }
 
 cmd_disable() {
@@ -368,7 +377,7 @@ cmd_status() {
 cmd_apply() {
   # Make sure every enabled add-on's secrets exist before Compose starts —
   # a missing secret file is a hard error at container-create time.
-  local id
+  local id recreate="${1:-1}"
   while read -r id; do
     [[ -z "$id" ]] && continue
     prepare_addon_env "$id"
@@ -382,7 +391,11 @@ cmd_apply() {
       || docker network create fidscript-instant >/dev/null 2>&1 || true
   fi
   # shellcheck disable=SC2046
-  docker compose $(compose_file_args) up -d
+  if [[ "$recreate" == "1" ]]; then
+    docker compose $(compose_file_args) up -d
+  else
+    docker compose $(compose_file_args) up -d --no-recreate
+  fi
 }
 
 case "${1:-list}" in
