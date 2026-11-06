@@ -30,6 +30,16 @@ uplinks:
     failtimeout: 5m
 
 packages:
+  # The platform's own packages — @fidscript-deploy/{types,events,sdk,cli,
+  # mcp-server}. Public read (so `npm i --registry=… @fidscript-deploy/sdk`
+  # works without a token), authenticated publish, and **local-only**:
+  # nothing is proxied upstream, so a package published here is served
+  # from this registry and can never be shadowed by one from npmjs.org.
+  '@fidscript-deploy/*':
+    access: $all
+    publish: $authenticated
+    unpublish: $authenticated
+
   # Anything not published locally falls through to npmjs. Reading is
   # open; publishing requires an authenticated user.
   '**':
