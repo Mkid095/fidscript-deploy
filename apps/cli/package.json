@@ -1,13 +1,27 @@
 {
   "name": "@fidscript-deploy/cli",
-  "version": "1.1.2",
-  "description": "FIDScript Deploy CLI \u2014 manage projects, deployments, functions, and more from the terminal",
+  "version": "1.1.3",
+  "description": "FIDScript Deploy CLI — manage projects, deployments, functions, and more from the terminal",
   "type": "module",
   "bin": {
     "fidscript": "./dist/bin/fidscript.js"
   },
+  "files": [
+    "dist",
+    "README.md"
+  ],
+  "publishConfig": {
+    "registry": "https://registry.fidscript.com",
+    "access": "public"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Mkid095/fidscript-deploy.git",
+    "directory": "apps/cli"
+  },
+  "homepage": "https://fidscript.com/docs",
   "scripts": {
-    "build": "tsc && node scripts/fix-extensions.mjs",
+    "build": "tsc && node ../../scripts/fix-extensions.mjs",
     "dev": "tsc --watch",
     "typecheck": "tsc --noEmit"
   },

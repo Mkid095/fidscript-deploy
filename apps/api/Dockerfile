@@ -27,6 +27,11 @@ COPY apps/api/package.json ./apps/api/
 # Layer 2: workspace packages source
 COPY packages/ ./packages/
 
+# The shared build scripts. The packages' build runs
+# scripts/fix-extensions.mjs — every published package is ESM, and Node
+# needs the .js extension on every relative import.
+COPY scripts/ ./scripts/
+
 # Layer 3: API source, schema, TypeScript config, and build helpers
 COPY apps/api/src/ ./apps/api/src/
 COPY apps/api/prisma/ ./apps/api/prisma/

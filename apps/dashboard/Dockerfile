@@ -33,6 +33,13 @@ COPY apps/dashboard/package.json ./apps/dashboard/
 # Layer 2: workspace packages source (@fidscript-deploy/ui, /sdk, /events, /types)
 COPY packages/ ./packages/
 
+# Layer 2b: the shared build scripts.
+# The packages' build runs scripts/fix-extensions.mjs — every published
+# package is ESM, and Node needs the .js extension on every relative import.
+# Without this copy the sdk's build fails with "Cannot find module
+# '/app/scripts/fix-extensions.mjs'".
+COPY scripts/ ./scripts/
+
 # Layer 3: install dependencies
 # --no-frozen-lockfile, not --frozen-lockfile: the image contains only the
 # dashboard and packages/ importers, which is a subset of the lockfile's

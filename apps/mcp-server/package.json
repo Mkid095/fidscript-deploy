@@ -1,11 +1,25 @@
 {
   "name": "@fidscript-deploy/mcp-server",
-  "version": "1.0.6",
-  "description": "FIDScript Deploy MCP Server \u2014 Model Context Protocol tools for AI agents",
+  "version": "1.0.7",
+  "description": "FIDScript Deploy MCP Server — Model Context Protocol tools for AI agents",
   "type": "module",
   "bin": {
     "fidscript-mcp": "./dist/index.js"
   },
+  "files": [
+    "dist",
+    "README.md"
+  ],
+  "publishConfig": {
+    "registry": "https://registry.fidscript.com",
+    "access": "public"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Mkid095/fidscript-deploy.git",
+    "directory": "apps/mcp-server"
+  },
+  "homepage": "https://fidscript.com/docs",
   "scripts": {
     "build": "tsc",
     "dev": "tsc --watch",

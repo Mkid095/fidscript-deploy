@@ -66,8 +66,22 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/).
   platform overview, the projects list, the project overview, the database console, the functions
   console, the email console and the settings — are on the new foundations. `docs/product/DESIGN_SYSTEM.md`
   is the contract.
+- `feat(cli): the registry, from the command line` — `fidscript registry whoami | list | versions
+  | search | info | login | logout | publish | unpublish | remove | guide`. The CLI speaks the
+  registry's HTTP **directly**: it does not go through the MCP server, because a person at a
+  terminal should not have to speak MCP to a registry. The token is read from
+  `FIDScript_REGISTRY_TOKEN`, then `NPM_TOKEN`, then `~/.fidscript/registry.json`, then npm's own
+  npmrc — and is never written into a project. Publishing drives `npm publish` with a temporary
+  npmrc and `NODE_AUTH_TOKEN`, so npm builds and hashes the tarball rather than a
+  reimplementation of it here, and the token never touches the disk.
 
 ### Fixed
+- `fix(packages): the published SDK could not be imported at all` — every published package is ESM,
+  so Node needs the `.js` extension on every relative import, and `tsc` does not write them. The
+  SDK's `1.0.0`–`1.0.3` were published without them and **failed on import** (`ERR_MODULE_NOT_FOUND`);
+  they are withdrawn, and `1.0.4` replaces them. The build now runs the same extension-fixing step
+  the CLI has always run, from one script both use. Every package is also republished with a clean
+  `files` allowlist, so the tarball carries the compiled output and nothing else.
 - `fix(projects): a project could not be reached by its slug** — the dashboard's project console
   addresses a project by its **slug** (that is what the address carries), while most of the API
   looked the project up by its **id** alone: the project's deployments answered 404, its settings

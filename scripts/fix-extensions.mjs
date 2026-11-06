@@ -2,6 +2,10 @@
  * Post-build: add .js extension ONLY to relative import specifiers in dist JS files.
  * Node ESM requires .js on relative paths; npm packages stay bare.
  * Only touches bare specifiers that look like relative paths (./ or ../ or start with a dir name in dist/).
+ *
+ * Run from the package directory: `node ../../scripts/fix-extensions.mjs`.
+ * Shared by the CLI and the SDK — both publish ESM packages that Node has to
+ * be able to import.
  */
 import { readdir, readFile, writeFile } from 'fs/promises';
 import { join, extname, relative, basename } from 'path';
