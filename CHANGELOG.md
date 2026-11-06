@@ -45,6 +45,21 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/).
 - `chore(databases): the SSE live-query is retired` — **breaking.** `POST /databases/:id/live-query`, `GET /databases/:id/live-query/:table` and the SDK's `QueryBuilder.watch()` are gone. The platform had reimplemented Instant's `.watch()` on Postgres `LISTEN/NOTIFY` — a second realtime protocol, with the server sending raw row patches and the client reassembling them by array splice, no conflict handling, and **no row-level authorization** (any holder of the project API key read every row of every table). Instant's is query-scoped and permission-aware, and the platform's own Instant integration now points an application at its app. Nothing called `watch()`: no dashboard screen, no MCP tool, no CLI command, and the endpoints were never in the endpoint inventory. **Migrating:** an application that wants reactive data subscribes to its Instant app — the app id and host come from `GET /projects/:id/instant/config` — and Instant evaluates its permission rules before sending anything. The platform's own `database.row.changed` event on the managed Postgres is unchanged, so the dashboard's live feed and the SDK's `subscribe()` keep working.
 
 ### Fixed
+- `fix(security): a refresh token worked as an access token, and survived logout** — the composite
+  API-key/JWT guard checked a bearer token's **signature** and nothing else, while the session
+  strategy checked its **type**, its **session** and its **revocation list**. A refresh token
+  (seven days) presented as a bearer token therefore authenticated as the user on every route the
+  guard covers — and logging out did not stop it, because the logout tombstone is only consulted
+  by the strategy. There is one implementation of "what a token is worth" now, and both callers
+  use it. **Verified live**: a refresh token answers 401 (it answered 200), and after logout both
+  the access and the refresh token answer 401.
+- `fix(security): the mail server's password and every login code were written to the log** — the
+  SMTP transport printed its whole options object, `auth.pass` included, on every message the
+  platform sent, and nodemailer's `debug` flag printed the `AUTH` line on top; the login code was
+  logged next to the address it was sent to. Anyone who could read the API log had the mail
+  server's admin password and every user's login code. The credential is redacted, the transcript
+  no longer carries it, the code is no longer logged, and a queue message's body is logged by
+  length rather than by content.
 - `fix(security): a project API key could reach any project` — the guard that decides whether a caller
   may act on a project attached the key's project to the request and **never compared it with the
   route's**, and the membership guard waved every API-key caller through on the strength of a

@@ -2,9 +2,8 @@ import { Injectable, UnauthorizedException } from '@nestjs/common';
 import { PassportStrategy } from '@nestjs/passport';
 import { ExtractJwt, Strategy } from 'passport-jwt';
 import { ConfigService } from '@nestjs/config';
-import { PrismaService } from '../../prisma/prisma.service';
 import { resolveJwtSecret } from '@/common/secrets';
-import { JwtBlocklistService } from '@/common/jwt-blocklist.service';
+import { AccessTokenService } from './services/access-token.service';
 
 interface AccessPayload {
   sub: string;
@@ -18,8 +17,7 @@ interface AccessPayload {
 export class JwtStrategy extends PassportStrategy(Strategy) {
   constructor(
     configService: ConfigService,
-    private prisma: PrismaService,
-    private jwtBlocklist: JwtBlocklistService,
+    private accessTokens: AccessTokenService,
   ) {
     super({
       jwtFromRequest: ExtractJwt.fromAuthHeaderAsBearerToken(),
@@ -28,53 +26,15 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
     });
   }
 
+  /**
+   * The rules a bearer token has to satisfy live in one place —
+   * `AccessTokenService` — so that the composite API-key/JWT guard cannot
+   * quietly disagree with this strategy about what a token is worth.
+   */
   async validate(payload: AccessPayload) {
-    if (payload.type !== 'access') {
-      throw new UnauthorizedException('Invalid token type');
-    }
-
-    // Fast-path revocation check: if logout (or another revocation event)
-    // wrote a tombstone for this sessionId, reject before any DB hit. Redis
-    // is the deny-fast cache; the session.expiresAt DB check below remains
-    // the source of truth if Redis is unavailable.
-    if (payload.sessionId && (await this.jwtBlocklist.isRevoked(payload.sessionId))) {
-      throw new UnauthorizedException('Session has been revoked');
-    }
-
-    const user = await this.prisma.user.findUnique({
-      where: { id: payload.sub },
-      select: { id: true, email: true, role: true, emailVerifiedAt: true },
-    });
-
-    if (!user) {
-      throw new UnauthorizedException('User not found');
-    }
-
-    // Enforce session validity on every guarded request. JWTs are stateless, so
-    // without this check a revoked/expired Session row (logout, change-password
-    // rotation, DELETE /sessions/:id) would NOT invalidate the access token — it
-    // would stay usable until its own 15-min expiry. Found under live
-    // verification 2026-06-20 (logout did not actually 401 the next call).
-    if (payload.sessionId) {
-      const session = await this.prisma.session.findUnique({
-        where: { id: payload.sessionId },
-        select: { expiresAt: true },
-      });
-      if (!session || session.expiresAt.getTime() <= Date.now()) {
-        throw new UnauthorizedException('Session expired or revoked');
-      }
-    }
-
-    // sessionId travels in the access JWT so logout can revoke the originating
-    // session without an extra lookup. Refresh tokens carry it too.
-    // emailVerifiedAt surfaces to the EmailVerifiedGuard so the platform can
-    // block unverified users from non-verification endpoints.
-    return {
-      userId: user.id,
-      email: user.email,
-      role: user.role,
-      sessionId: payload.sessionId,
-      emailVerifiedAt: user.emailVerifiedAt,
-    };
+    // The payload has already been verified by passport; the service needs the
+    // token itself to check the session and the revocation list, so it is
+    // re-signed from the payload's own claims.
+    return this.accessTokens.verifyClaims(payload);
   }
 }

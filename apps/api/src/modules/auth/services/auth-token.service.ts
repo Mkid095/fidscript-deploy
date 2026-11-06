@@ -50,10 +50,5 @@ export class AuthTokenService {
     return { user, oldSession: session };
   }
 
-  buildAccessToken(user: { id: string; email: string; role: string }): string {
-    const payload = { sub: user.id, email: user.email, role: user.role, type: 'access' as const };
-    return this.jwtService.sign(payload);
-  }
-
   get accessTokenTtl() { return ACCESS_TOKEN_TTL_SECONDS; }
 }

@@ -243,7 +243,12 @@ export class QueueWorkerService implements OnModuleInit {
 
       case 'internal':
       default:
-        this.logger.debug(`[internal] queue=${payload.queueName} body=${(payload.body || '').slice(0, 80)}`);
+        // The body is not logged. A queue message carries whatever the
+        // producer put in it — an API key, a token, a customer's data — and
+        // the first 80 characters of it were written to the log.
+        this.logger.debug(
+          `[internal] queue=${payload.queueName} bodyLength=${(payload.body || '').length}`,
+        );
         break;
     }
   }

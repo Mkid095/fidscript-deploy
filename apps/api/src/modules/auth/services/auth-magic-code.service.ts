@@ -52,7 +52,10 @@ export class AuthMagicCodeService {
     if (!user) return { sent: true };
 
     const code = this.generateCode();
-    this.logger.log(`MAGIC_CODE ${email}: ${code}`);
+    // The code is NOT logged. It was, in the clear, next to the address it
+    // was sent to — so anyone who could read the API log could sign in as
+    // that person. What is logged is that a code was issued.
+    this.logger.log(`MAGIC_CODE issued for ${email}`);
     const codeHash = await bcrypt.hash(code, 10); // 6-digit codes are low-entropy; hash for defense-in-depth
     const expiresAt = new Date(Date.now() + CODE_TTL_MINUTES * 60 * 1000);
 
