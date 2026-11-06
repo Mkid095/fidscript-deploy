@@ -72,6 +72,12 @@ Impact:
 - **Dashboard:** the email modals, the toasts, and the backup-schedule tab.
 - **Documentation:** `docs/implementation/PHASE2_CONTRACTS.md` — the verification matrix, the
   defects closed, the testing foundation and the deferred list.
+- **Verified live** on `fidscript.com`: the email console says *"3 domains"* and lists them (it
+  said *"0 domains"* before), adding a domain shows the DNS steps and does not crash, the new
+  routes answer, and a project key without `envvars:read` is refused the environment variables.
+  The verification data was deleted afterwards.
+- **The whole-workspace build needs `--concurrency=1` on this host** — the dashboard's build
+  asks for up to 4 GB and the kernel's OOM killer takes it out beside the API's build (KI-15).
 
 ## 2026-11-06 — Phase 1: isolation and authorization
 

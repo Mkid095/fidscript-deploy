@@ -45,6 +45,17 @@
   this phase) and one of the reasons the email console is empty. **Status: FIXED (Phase 1)** — a
   null project is found with `findFirst`, written as find-then-update-or-create and deleted with
   `deleteMany`; a project's secret keeps the compound lookup. Four tests cover it.
+- **KI-15 · 2026-11-06 · Phase 2 · The whole-workspace build is killed on a small host.** The
+  dashboard's `next build` asks for up to 4 GB, and turbo runs it beside the API's build — the
+  kernel's OOM killer takes the dashboard out (`status 137`). The build is fine **serialised**
+  (`pnpm build --concurrency=1`), and the Docker image build is fine (it caps the heap at 2 GB).
+  **Status: open** — a build-order matter for the operator's own hardware, not a defect.
+- **KI-14 · 2026-11-06 · Phase 2 · The published SDK still carries the broken email methods.**
+  npm has `@fidscript-deploy/sdk@1.0.2`, and that build predates the fix: anyone who installs
+  the SDK from npm today gets the empty email lists. The corrected source is built and ready —
+  **the publish is blocked by the credential**: the npm token in `~/.npmrc` answers 401, so the
+  release cannot be made from this machine. **Status: open** — a release decision, not a code
+  change.
 - **KI-12 · 2026-11-06 · Phase 1 · The `*.nextmavens.com` hostnames cannot be served from this
   platform.** The edge has routers for `registry.nextmavens.com`, `whatsapp.nextmavens.com` and
   `storage.nextmavens.com`, and every one of them fails to get a certificate: the ACME DNS-01
