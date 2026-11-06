@@ -34,7 +34,10 @@ async function bootstrap() {
     process.exit(1);
   }
 
-  const app = await NestFactory.create(AppModule);
+  // `rawBody` keeps the bytes Stalwart signed. The webhook signature is an
+  // HMAC over the request body as it arrived; re-serializing the parsed JSON
+  // changes the bytes, so a correctly signed webhook would not match.
+  const app = await NestFactory.create(AppModule, { rawBody: true });
 
   // Serve the one-line installer at the root so `curl …/install.sh` works
   // outside the api/v1 prefix. It is the GUIDED one — the script at the

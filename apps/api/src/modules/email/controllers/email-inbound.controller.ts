@@ -1,37 +1,32 @@
 import {
-  Controller, Post, Headers, Body, HttpCode, HttpStatus, UnauthorizedException,
+  Controller, Post, Headers, Body, HttpCode, HttpStatus, Req,
 } from '@nestjs/common';
 import { ApiTags, ApiOperation } from '@nestjs/swagger';
-import { ConfigService } from '@nestjs/config';
+import { Request } from 'express';
 import { EmailInboundService } from '@/modules/email/services/inbound.service';
-import * as crypto from 'crypto';
+import { WebhookSignatureService } from '@/modules/email/services/webhook-signature.service';
 
 @ApiTags('email-inbound')
 @Controller('email/inbound')
 export class EmailInboundController {
   constructor(
     private inboundService: EmailInboundService,
-    private configService: ConfigService,
+    private signatures: WebhookSignatureService,
   ) {}
-
-  private verifySignature(body: string, signature: string): boolean {
-    const secret = this.configService.get<string>('STALWART_WEBHOOK_SECRET');
-    if (!secret) return false;
-    const expected = 'sha256=' + crypto.createHmac('sha256', secret).update(body, 'utf8').digest('hex');
-    return crypto.timingSafeEqual(Buffer.from(signature), Buffer.from(expected));
-  }
 
   @Post('webhook')
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Stalwart inbound email webhook' })
   inboundWebhook(
-    @Headers('x-stalwart-signature') signature: string,
+    @Req() req: Request & { rawBody?: Buffer },
+    @Headers('x-stalwart-signature') signature: string | undefined,
     @Body() payload: { from: string; to: string; subject?: string; sizeBytes?: number; spamScore?: number },
   ) {
-    const rawBody = JSON.stringify(payload);
-    if (signature && !this.verifySignature(rawBody, signature)) {
-      throw new UnauthorizedException('Invalid webhook signature');
-    }
+    // The signature is over the bytes Stalwart signed, not over the parsed
+    // body re-serialized — and it is required: a webhook without one is
+    // refused, because the header is the only thing standing between the
+    // internet and the ability to inject mail into any tenant's mailbox.
+    this.signatures.verify(req.rawBody ?? JSON.stringify(payload), signature);
     return this.inboundService.handleInboundEmail({
       from: payload.from,
       to: payload.to,

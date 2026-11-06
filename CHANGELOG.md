@@ -45,6 +45,16 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/).
 - `chore(databases): the SSE live-query is retired` — **breaking.** `POST /databases/:id/live-query`, `GET /databases/:id/live-query/:table` and the SDK's `QueryBuilder.watch()` are gone. The platform had reimplemented Instant's `.watch()` on Postgres `LISTEN/NOTIFY` — a second realtime protocol, with the server sending raw row patches and the client reassembling them by array splice, no conflict handling, and **no row-level authorization** (any holder of the project API key read every row of every table). Instant's is query-scoped and permission-aware, and the platform's own Instant integration now points an application at its app. Nothing called `watch()`: no dashboard screen, no MCP tool, no CLI command, and the endpoints were never in the endpoint inventory. **Migrating:** an application that wants reactive data subscribes to its Instant app — the app id and host come from `GET /projects/:id/instant/config` — and Instant evaluates its permission rules before sending anything. The platform's own `database.row.changed` event on the managed Postgres is unchanged, so the dashboard's live feed and the SDK's `subscribe()` keep working.
 
 ### Fixed
+- `fix(security): a mail webhook could be forged** — the signature check ran **only when the
+  signature header was present**, so a caller who left the header off was let in, and the header is
+  the only thing standing between the internet and the ability to inject mail into any tenant's
+  mailbox. The comparison was also made over the **re-serialized** body rather than the bytes
+  Stalwart signed, so even a correctly signed webhook did not match. And the secret was in a file
+  the installer wrote and **nothing read**: `STALWART_WEBHOOK_SECRET_FILE` was set on the container
+  and no code looked at it, so the check could never have passed either. The signature is now
+  required, it is checked over the raw request body, and the secret is read from the file.
+  **Verified live**: an unsigned webhook answers 401, a wrongly signed one answers 401, and a
+  correctly signed one is accepted.
 - `fix(security): anyone could configure the platform and become its administrator** — the
   installation routes had **no guard at all**, and `POST /installation/configure` writes the
   platform's administrator, its routing, its DNS credentials and the company password that gates

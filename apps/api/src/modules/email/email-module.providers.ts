@@ -32,6 +32,7 @@ import { BounceParserService, BounceRuleMatcherService } from './services/bounce
 import {
   EmailWebhookSubscriptionService, EmailWebhookSubscriptionCrudService, EmailWebhookDispatchService,
 } from './services/email-webhook-split-index';
+import { WebhookSignatureService } from './services/webhook-signature.service';
 import { EmailInboundService } from './services/inbound.service';
 import { EmailCatchallCrudService } from './services/email-catchall-crud.service';
 import { EmailCatchallDeliveryService } from './services/email-catchall-delivery.service';
@@ -78,7 +79,8 @@ export const emailProviders = [
   EmailTrackingService, EmailTrackingStoreService, EmailMetricsService,
   BounceParserService, BounceRuleMatcherService,
   EmailWebhookSubscriptionService, EmailWebhookSubscriptionCrudService, EmailWebhookDispatchService,
-  EmailInboundService, EmailCatchallCrudService, EmailCatchallDeliveryService, SmtpSendService, SmtpSendPrecheckService,
+  EmailInboundService,
+  WebhookSignatureService, EmailCatchallCrudService, EmailCatchallDeliveryService, SmtpSendService, SmtpSendPrecheckService,
   BounceHandlerService, RateLimitService,
   EmailRateLimitService, EmailRateLimitStoreService, EmailRateLimitCheckerService,
   MailboxCleanupService, DomainCleanupService,
