@@ -201,14 +201,30 @@ the project console's functions, for the project the caller was last in.
 | The flat paths → the project console | `redirect-to-project.test.tsx` | 3 |
 | The overview — the data, the empty state, the failure | `overview.test.tsx` | 6 |
 | The overview, over HTTP, against a real database | `apps/api/src/testing/overview.integration-spec.ts` | 5 |
+| A project named by its slug, over HTTP | `apps/api/src/testing/project-routes.integration-spec.ts` | 2 |
 | The email console's domains (Phase 2) | `domains-tab.test.tsx` | 2 |
 | The toast (Phase 2) | `toast-provider.test.tsx` | 2 |
 | The login's `next` (Phase 1) | `auth-token-utils.test.ts` | 5 |
 
-**Results:** the dashboard's suite is **37 tests in 6 files**; the API's
-integration tier is **27 tests in 7 files** (the Phase 1 and Phase 2 suites
-still pass); the API's unit tier is **115 tests**; the typecheck passes in
-**all 12 workspaces**.
+**Results:** the dashboard's suite is **37 tests in 7 files**; the API's
+integration tier is **29 tests in 8 files** (the Phase 1 and Phase 2 suites
+still pass); the API's unit tier is **115 tests in 19 suites**; the typecheck
+passes in **all 12 workspaces**.
+
+---
+
+### The slug, and the id
+
+The project console addresses a project by its **slug** — that is what the address carries — while
+most of the API looked the project up by its **id** alone. So the project's deployments answered
+404, its settings answered "Project not found", and updating it by slug did the same: the route
+worked when the operator arrived through the deployment wizard (which uses the id) and broke when they
+arrived from the project list.
+
+The project's id is now resolved **once**, in the guard every project-scoped route uses, and put back
+into the request — so every service behind it receives the same thing whatever the address said.
+The parameter that names the project is read from the route's own metadata, because `:id` also names
+a domain, a mailbox and a rule.
 
 ---
 

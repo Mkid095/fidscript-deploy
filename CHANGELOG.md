@@ -54,6 +54,14 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/).
   infrastructure. When there is nothing to show, it says so.
 
 ### Fixed
+- `fix(projects): a project could not be reached by its slug** — the dashboard's project console
+  addresses a project by its **slug** (that is what the address carries), while most of the API
+  looked the project up by its **id** alone: the project's deployments answered 404, its settings
+  answered "Project not found", and updating it by slug did the same. Every project-scoped route
+  worked when the operator arrived through the deployment wizard (which uses the id) and broke when
+  they arrived from the project list. The project's id is now resolved **once**, in the guard every
+  project-scoped route uses, and put back into the request — so every service behind it receives
+  the same thing whatever the address said.
 - `fix(navigation): the dashboard had two ways to ask for the same screen** — the project console,
   and a flat tree of the same pages without a project in the address. The flat tree was reachable
   from nowhere (the audit found twenty-two orphaned routes), and its links were built from the

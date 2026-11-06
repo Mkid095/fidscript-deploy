@@ -5,6 +5,7 @@ import {
   ForbiddenException,
   NotFoundException,
 } from '@nestjs/common';
+import { PATH_METADATA } from '@nestjs/common/constants';
 import { PrismaService } from '@/prisma/prisma.service';
 
 /**
@@ -88,6 +89,22 @@ export class ProjectMemberGuard implements CanActivate {
       throw new NotFoundException('Project not found');
     }
 
+    // The route may carry the project's **slug** — the dashboard's project
+    // console addresses a project by its slug — and the services behind this
+    // guard work with its **id**. The id is put back into the request here,
+    // once, so every one of them receives the same thing whatever the
+    // address said.
+    //
+    // The parameter that names the project is the one the **route** uses for
+    // it: `:projectId` in most modules, `:id` in the projects module itself.
+    // It is read from the route's own metadata rather than guessed, because
+    // `:id` also names a domain, a mailbox and a rule.
+    if (project.id !== rawId) {
+      const projectParam = this.projectParamName(context);
+      const params = request.params as Record<string, string>;
+      if (params[projectParam]) params[projectParam] = project.id;
+    }
+
     if (project.ownerId === userId) {
       return true;
     }
@@ -102,6 +119,23 @@ export class ProjectMemberGuard implements CanActivate {
     }
 
     return true;
+  }
+
+  /**
+   * The name of the parameter that carries the project in this route.
+   *
+   * `projects/:projectId/deployments` names it `projectId`; `projects/:id` names
+   * it `id`; `projects/:projectId/domains/:id` names the project `projectId`
+   * and the domain `id`.
+   */
+  private projectParamName(context: ExecutionContext): string {
+    const controllerPath =
+      Reflect.getMetadata(PATH_METADATA, context.getClass()) ?? '';
+    const methodPath = Reflect.getMetadata(PATH_METADATA, context.getHandler()) ?? '';
+    const segments = `${controllerPath}/${methodPath}`.split('/').filter(Boolean);
+    const afterProjects = segments.indexOf('projects') + 1;
+    const candidate = segments[afterProjects];
+    return candidate?.startsWith(':') ? candidate.slice(1) : 'projectId';
   }
 
   /**
