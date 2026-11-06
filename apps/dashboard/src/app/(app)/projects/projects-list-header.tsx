@@ -51,6 +51,7 @@ export function ProjectsListHeader({
             : search
               ? `${filteredCount} of ${totalCount} project${totalCount !== 1 ? 's' : ''}`
               : `${totalCount} project${totalCount !== 1 ? 's' : ''}`}
+          {!search && <span className="ml-2 text-[var(--text-dim)]">·</span>}
           {!search && (
             <span className="ml-2 text-[var(--text-dim)]">
               Deploy applications, databases, domains, and automation
@@ -59,8 +60,8 @@ export function ProjectsListHeader({
         </span>
       }
       actions={
-        <div className="flex items-center gap-2 flex-1 max-w-md justify-end">
-        <div className="relative flex-1 max-w-xs">
+        <div className="flex items-center gap-2 flex-wrap justify-end w-full sm:w-auto sm:flex-1 max-w-md">
+        <div className="relative w-full sm:flex-1 sm:max-w-xs">
           <HugeiconsIcon
             icon={Search01Icon}
             size={14}

@@ -34,7 +34,7 @@ export function PageHeader({
             <p className="text-sm text-[var(--text-muted)] mt-1">{description}</p>
           )}
         </div>
-        {actions && <div className="flex items-center gap-2 flex-shrink-0">{actions}</div>}
+        {actions && <div className="flex items-center gap-2 flex-wrap">{actions}</div>}
       </div>
     </header>
   );
@@ -62,7 +62,7 @@ export function SectionHeader({
           <p className="text-xs text-[var(--text-dim)] mt-0.5">{description}</p>
         )}
       </div>
-      {actions && <div className="flex items-center gap-2 flex-shrink-0">{actions}</div>}
+      {actions && <div className="flex items-center gap-2 flex-wrap">{actions}</div>}
     </div>
   );
 }

@@ -123,7 +123,25 @@ picked rather than because it meant anything.
 
 ---
 
-## 6. The tests
+## 6. The visual check
+
+TypeScript compiling is not the same as a screen being right, so the seven
+screens were opened in a browser at **1440×900** and at **390×844** and
+looked at. The screenshots are in
+`docs/implementation/screenshots/phase4/` — fourteen of them, one pair per
+screen.
+
+Three things the compilation could not have caught:
+
+| What the check found | The fix |
+|---|---|
+| The projects header read "**1 project** Deploy applications, databases…" — the count and the description ran into each other, because the separator the old header had was lost in the move to `PageHeader` | the separator is back |
+| On a phone the header's actions ran off the right edge: the search field, the refresh button, "New deployment" and "New project" were one row that did not fit | the actions wrap, and the search field takes the whole width below `sm` |
+| The platform's navigation was clipped mid-word on a phone, with nothing to say it could be scrolled | the nav scrolls horizontally, the wordmark gives up its space below `sm`, and the header's padding tightens |
+
+---
+
+## 7. The tests
 
 | Suite | Result |
 |---|---|
@@ -140,7 +158,7 @@ name.
 
 ---
 
-## 7. What is not settled
+## 8. What is not settled
 
 Recorded, so that it is not rediscovered as a bug:
 

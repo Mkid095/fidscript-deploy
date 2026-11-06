@@ -82,6 +82,13 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/).
   does the connecting. The endpoint IDs are `AUTH-23…31` in the backend inventory.
 
 ### Fixed
+- `fix(design-system): what the compiler cannot see` — the seven screens were opened in a browser
+  at **1440×900** and at **390×844**, and three things that typechecking could never have
+  caught were found: the projects header read "**1 project** Deploy applications…" because the
+  separator the old header had was lost in the move to `PageHeader`; on a phone the header's
+  actions ran off the right edge; and the platform's navigation was clipped mid-word with
+  nothing to say it could be scrolled. The separator is back, the actions wrap, and the nav
+  scrolls. The screenshots are in `docs/implementation/screenshots/phase4/`.
 - `fix(github): the popup sign-in could never work, and said nothing` — the deployment carried the
   installer's placeholders in `GITHUB_CLIENT_ID` and `GITHUB_CLIENT_SECRET`, so the API built an
   authorize URL with `client_id=REPLACE_WITH_YOUR_GITHUB_OAUTH_CLIENT_ID` and the browser opened

@@ -19,7 +19,7 @@ export function PlatformNav() {
   return (
     <nav
       aria-label="Platform"
-      className="flex items-center gap-1 px-1 py-1 rounded-lg bg-[var(--surface)] border border-[var(--rail)]"
+      className="flex items-center gap-1 px-1 py-1 rounded-lg bg-[var(--surface)] border border-[var(--rail)] overflow-x-auto max-w-full min-w-0"
     >
       {PLATFORM_NAV.map((item) => {
         const active = isPlatformNavActive(item.href, pathname);
@@ -29,7 +29,7 @@ export function PlatformNav() {
             href={item.href}
             title={item.hint}
             aria-current={active ? 'page' : undefined}
-            className={`rounded-lg px-3 py-1.5 text-xs transition-colors ${
+            className={`shrink-0 rounded-lg px-3 py-1.5 text-xs transition-colors ${
               active
                 ? 'bg-[var(--rail)] text-[var(--text)]'
                 : 'text-[var(--text-muted)] hover:text-[var(--text)] hover:bg-[var(--rail)]'

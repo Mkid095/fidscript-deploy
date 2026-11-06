@@ -42,7 +42,7 @@ export default function AppLayout({ children }: { children: ReactNode }) {
           <>{children}</>
         ) : (
         <div className="min-h-screen flex flex-col bg-[var(--surface-2)]">
-          <header className="h-14 bg-[var(--surface-2)] border-b border-[var(--rail)] flex items-center px-6 gap-4 flex-shrink-0">
+          <header className="h-14 bg-[var(--surface-2)] border-b border-[var(--rail)] flex items-center px-4 sm:px-6 gap-2 sm:gap-4 flex-shrink-0">
             {/* Logo — links to the platform's front door */}
             <Link
               href="/applications"
@@ -56,7 +56,7 @@ export default function AppLayout({ children }: { children: ReactNode }) {
                 height={28}
                 className="rounded-md"
               />
-              <span className="text-sm font-bold tracking-widest text-[var(--text)] uppercase group-hover:text-[var(--text)] transition-colors">
+              <span className="hidden sm:inline text-sm font-bold tracking-widest text-[var(--text)] uppercase group-hover:text-[var(--text)] transition-colors">
                 fidscript
               </span>
             </Link>
