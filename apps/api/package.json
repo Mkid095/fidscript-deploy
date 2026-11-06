@@ -11,7 +11,7 @@
     "lint": "eslint \"src/**/*.ts\" --fix",
     "postinstall": "prisma generate",
     "typecheck": "tsc --noEmit",
-    "test": "jest --passWithNoTests",
+    "test": "jest",
     "test:watch": "jest --watch",
     "test:cov": "jest --coverage",
     "clean": "rm -rf dist",

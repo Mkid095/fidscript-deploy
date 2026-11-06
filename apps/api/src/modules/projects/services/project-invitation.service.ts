@@ -3,6 +3,7 @@ import { PrismaService } from '@/prisma/prisma.service';
 import { EventService } from '@/modules/events/event.service';
 import { CreateInvitationDto, AcceptInvitationDto } from '@/modules/projects/dto/invitation.dto';
 import * as crypto from 'crypto';
+import { ProjectAccessService } from '@/modules/projects/services/project-access.service';
 
 const INVITATION_TOKEN_BYTES = 32;
 const INVITATION_EXPIRY_DAYS = 7;
@@ -11,11 +12,12 @@ const INVITATION_EXPIRY_DAYS = 7;
 export class ProjectInvitationService {
   constructor(
     private prisma: PrismaService,
+    private access: ProjectAccessService,
     private eventService: EventService,
   ) {}
 
-  async createInvitation(userId: string, projectId: string, dto: CreateInvitationDto) {
-    await this.checkPermission(userId, projectId, ['admin', 'owner']);
+  async createInvitation(userId: string, projectId: string, dto: CreateInvitationDto, keyProjectId?: string) {
+    await this.checkPermission(userId, projectId, ['admin', 'owner'], keyProjectId);
 
     const project = await this.prisma.project.findUnique({ where: { id: projectId } });
     if (!project) throw new NotFoundException('Project not found');
@@ -79,8 +81,8 @@ export class ProjectInvitationService {
     return { success: true, projectId: invitation.projectId };
   }
 
-  async listInvitations(userId: string, projectId: string) {
-    await this.checkPermission(userId, projectId, ['admin', 'owner']);
+  async listInvitations(userId: string, projectId: string, keyProjectId?: string) {
+    await this.checkPermission(userId, projectId, ['admin', 'owner'], keyProjectId);
     const invitations = await this.prisma.projectInvitation.findMany({
       where: { projectId },
       orderBy: { createdAt: 'desc' },
@@ -88,8 +90,8 @@ export class ProjectInvitationService {
     return { invitations };
   }
 
-  async revokeInvitation(userId: string, projectId: string, invitationId: string) {
-    await this.checkPermission(userId, projectId, ['admin', 'owner']);
+  async revokeInvitation(userId: string, projectId: string, invitationId: string, keyProjectId?: string) {
+    await this.checkPermission(userId, projectId, ['admin', 'owner'], keyProjectId);
     const invitation = await this.prisma.projectInvitation.findFirst({
       where: { id: invitationId, projectId },
     });
@@ -105,17 +107,16 @@ export class ProjectInvitationService {
     return { success: true };
   }
 
-  private async checkPermission(userId: string, projectId: string, allowedRoles: string[]) {
-    if (userId === 'api-key') return;
-    const project = await this.prisma.project.findUnique({ where: { id: projectId } });
-    if (!project) throw new NotFoundException('Project not found');
-    const isOwner = project.ownerId === userId;
-    if (isOwner || allowedRoles.includes('owner')) return;
-    const member = await this.prisma.projectMember.findUnique({
-      where: { projectId_userId: { projectId, userId } },
-    });
-    if (!member || !allowedRoles.includes(member.role.toLowerCase())) {
-      throw new ForbiddenException('Insufficient permissions');
-    }
+  /**
+   * The shared access rules — see `ProjectAccessService`. This service used
+   * to carry its own copy, with the same two bugs as the others.
+   */
+  private checkPermission(
+    userId: string,
+    projectId: string,
+    allowedRoles: string[],
+    keyProjectId?: string,
+  ) {
+    return this.access.checkPermission(userId, projectId, allowedRoles, keyProjectId);
   }
 }

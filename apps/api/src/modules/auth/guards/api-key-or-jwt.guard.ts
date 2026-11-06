@@ -71,6 +71,8 @@ export class ApiKeyOrJwtGuard {
           apiKeyName: result.name,
           isApiKey: true,
           keyType: 'project',
+          // The key's own scopes, so `@RequireScope` is enforced for it.
+          keyPermissions: result.permissions ?? [],
         } satisfies ApiKeyUser;
         return true;
       }

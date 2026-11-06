@@ -45,6 +45,33 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/).
 - `chore(databases): the SSE live-query is retired` — **breaking.** `POST /databases/:id/live-query`, `GET /databases/:id/live-query/:table` and the SDK's `QueryBuilder.watch()` are gone. The platform had reimplemented Instant's `.watch()` on Postgres `LISTEN/NOTIFY` — a second realtime protocol, with the server sending raw row patches and the client reassembling them by array splice, no conflict handling, and **no row-level authorization** (any holder of the project API key read every row of every table). Instant's is query-scoped and permission-aware, and the platform's own Instant integration now points an application at its app. Nothing called `watch()`: no dashboard screen, no MCP tool, no CLI command, and the endpoints were never in the endpoint inventory. **Migrating:** an application that wants reactive data subscribes to its Instant app — the app id and host come from `GET /projects/:id/instant/config` — and Instant evaluates its permission rules before sending anything. The platform's own `database.row.changed` event on the managed Postgres is unchanged, so the dashboard's live feed and the SDK's `subscribe()` keep working.
 
 ### Fixed
+- `fix(security): a project API key could reach any project` — the guard that decides whether a caller
+  may act on a project attached the key's project to the request and **never compared it with the
+  route's**, and the membership guard waved every API-key caller through on the strength of a
+  comment claiming the comparison had already happened. A key minted for one project could read
+  another project's record, **rename it**, and list its databases — including the connection string
+  with the password in it. The guard compares the two now, the service fails closed when a key's
+  project cannot be resolved, and the project's own `:id` routes carry the guard. **Verified live**: a
+  key on project A now answers 403 on project B (it answered 200), while still answering 200 on its
+  own project.
+- `fix(security): the project role was never enforced** — `checkPermission` returned before it had
+  looked the member up, because every call site passes `['admin','owner']` and the check tested
+  whether `'owner'` was in that list. A **viewer** could delete the project, mint an API key, write
+  environment variables, add a member as an admin and suspend the project. The role is the member's
+  own role now, and the four services that carried their own copies of the check (each with the same
+  two bugs) use the one implementation. **Verified live**: a viewer still reads the project and its
+  deployments, and is refused all five administrator operations with 403; the owner keeps them.
+- `fix(security): the API key's scopes were stored and never read** — `validateProjectApiKey`
+  selected the key's id, project, name and hash but not its `permissions`, so `@RequireScope` was a
+  no-op for every project key. The scopes travel with the key now.
+- `fix(security): an account key with scopes could mint a key without them** — that is an
+  escalation: `projects:read` became "anything". A key with scopes may now only mint a key whose
+  scopes are a subset of its own.
+- `fix(security): a non-expiring account API key could never authenticate** — the rows were created
+  with `expiresAt: null` and the lookup asked for `expiresAt > now()`, which SQL excludes for NULL.
+- `fix(security): the account key's scope allowlist lived in a controller that never ran** — another
+  controller declared the same paths and was registered first, so any string was accepted as a
+  scope. The allowlist is in the service now, where route ordering cannot bypass it.
 - `fix(sdk): the admin mail calls went to the wrong host` — every path in the SDK's admin mail module was missing the `/api/v1` prefix the platform serves on, so the dashboard's own routes answered them instead of the API and the calls failed. The mail console's credential could not be fetched at all, and neither could the platform's mailboxes, its messages, its attachment settings or its connection details.
 - `fix(deployments): the worker never picked up a deployment up` — the deployment event's payload carries the deployment's id, but the project it belongs to is on the event itself. The worker read both from the payload, never found the project, and gave up with "Missing deploymentId/projectId". Every deployment sat in PENDING for ever: the platform could create a deployment and never build one. The project's own column was read from the payload too — it is now read from the event.
 - `fix(deployments): the api image had neither git nor unzip` — the build stage of the image installed both; the runtime stage did not. Every deployment from a repository failed with "git: not found" and every uploaded archive with "unzip: not found": the deployment engine could not deploy anything at all. Both are in the runtime image now.

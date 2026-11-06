@@ -61,8 +61,8 @@ export class ProjectCrudService {
     };
   }
 
-  async get(userId: string, projectId: string) {
-    const project = await this.access.findProjectWithAccess(userId, projectId);
+  async get(userId: string, projectId: string, callerKeyProjectId?: string) {
+    const project = await this.access.findProjectWithAccess(userId, projectId, callerKeyProjectId);
     // For API-key callers, findProjectWithAccess returns only { id } — fetch full data.
     if (userId === 'api-key' || !('ownerId' in project)) {
       const full = await this.prisma.project.findUnique({
@@ -80,8 +80,8 @@ export class ProjectCrudService {
     return this.format.formatProject(project, { role });
   }
 
-  async update(userId: string, projectId: string, dto: any) {
-    await this.access.checkPermission(userId, projectId, ['admin', 'owner']);
+  async update(userId: string, projectId: string, dto: any, callerKeyProjectId?: string) {
+    await this.access.checkPermission(userId, projectId, ['admin', 'owner'], callerKeyProjectId);
     const project = await this.prisma.project.update({
       where: { id: projectId },
       data: {
@@ -94,10 +94,13 @@ export class ProjectCrudService {
     return this.format.formatProject(project);
   }
 
-  async delete(userId: string, projectId: string) {
+  async delete(userId: string, projectId: string, callerKeyProjectId?: string) {
     const project = await this.prisma.project.findUnique({ where: { id: projectId } });
     if (!project) throw new NotFoundException('Project not found');
-    if (userId === 'api-key') return;
+    // Deleting a project is an owner's act. A key is never the owner.
+    if (userId === 'api-key') {
+      throw new ForbiddenException('An API key cannot delete a project');
+    }
     if (project.ownerId !== userId) throw new ForbiddenException('Only owner can delete project');
     if (project.deletedAt) throw new ForbiddenException('Project is already deleted');
 
@@ -113,10 +116,12 @@ export class ProjectCrudService {
    * Request a purge verification code for immediate permanent deletion.
    * Sends a code to the owner's email.
    */
-  async requestPurgeVerification(userId: string, projectId: string) {
+  async requestPurgeVerification(userId: string, projectId: string, callerKeyProjectId?: string) {
     const project = await this.prisma.project.findUnique({ where: { id: projectId } });
     if (!project) throw new NotFoundException('Project not found');
-    if (userId === 'api-key') return;
+    if (userId === 'api-key') {
+      throw new ForbiddenException('An API key cannot purge a project');
+    }
     if (project.ownerId !== userId) throw new ForbiddenException('Only owner can permanently delete');
     if (!project.deletedAt) throw new ForbiddenException('Project must be soft-deleted before permanent purge');
 
@@ -142,10 +147,12 @@ export class ProjectCrudService {
    * Permanently delete a soft-deleted project after verifying the code.
    * Project must have been soft-deleted (deletedAt set).
    */
-  async purge(userId: string, projectId: string, code: string) {
+  async purge(userId: string, projectId: string, code: string, callerKeyProjectId?: string) {
     const project = await this.prisma.project.findUnique({ where: { id: projectId } });
     if (!project) throw new NotFoundException('Project not found');
-    if (userId === 'api-key') return;
+    if (userId === 'api-key') {
+      throw new ForbiddenException('An API key cannot purge a project');
+    }
     if (project.ownerId !== userId) throw new ForbiddenException('Only owner can permanently delete');
     if (!project.deletedAt) throw new ForbiddenException('Project must be soft-deleted first');
 
@@ -175,8 +182,8 @@ export class ProjectCrudService {
     return { success: true };
   }
 
-  async suspend(userId: string, projectId: string) {
-    await this.access.checkPermission(userId, projectId, ['admin', 'owner']);
+  async suspend(userId: string, projectId: string, callerKeyProjectId?: string) {
+    await this.access.checkPermission(userId, projectId, ['admin', 'owner'], callerKeyProjectId);
     const project = await this.prisma.project.update({
       where: { id: projectId }, data: { status: 'SUSPENDED' },
     });
@@ -184,8 +191,8 @@ export class ProjectCrudService {
     return this.format.formatProject(project);
   }
 
-  async archive(userId: string, projectId: string) {
-    await this.access.checkPermission(userId, projectId, ['admin', 'owner']);
+  async archive(userId: string, projectId: string, callerKeyProjectId?: string) {
+    await this.access.checkPermission(userId, projectId, ['admin', 'owner'], callerKeyProjectId);
     const project = await this.prisma.project.update({
       where: { id: projectId }, data: { status: 'ARCHIVED' },
     });
@@ -193,8 +200,8 @@ export class ProjectCrudService {
     return this.format.formatProject(project);
   }
 
-  async restore(userId: string, projectId: string) {
-    await this.access.checkPermission(userId, projectId, ['admin', 'owner']);
+  async restore(userId: string, projectId: string, callerKeyProjectId?: string) {
+    await this.access.checkPermission(userId, projectId, ['admin', 'owner'], callerKeyProjectId);
     const project = await this.prisma.project.update({
       where: { id: projectId },
       data: { status: 'ACTIVE', deletedAt: null },
@@ -203,17 +210,22 @@ export class ProjectCrudService {
     return this.format.formatProject(project);
   }
 
-  async clone(userId: string, projectId: string, dto: any) {
-    return this.createService.clone(userId, projectId, dto, this.access.findProjectWithAccess.bind(this.access));
+  async clone(userId: string, projectId: string, dto: any, callerKeyProjectId?: string) {
+    return this.createService.clone(
+      userId,
+      projectId,
+      dto,
+      (id: string, target: string) => this.access.findProjectWithAccess(id, target, callerKeyProjectId),
+    );
   }
 
   /**
    * Get the last N platform events for a project (activity feed).
    * Covers: project lifecycle, deployments, members, env vars, api keys.
    */
-  async getProjectEvents(userId: string, projectId: string, limit = 20) {
+  async getProjectEvents(userId: string, projectId: string, limit = 20, callerKeyProjectId?: string) {
     // Verify access
-    await this.access.findProjectWithAccess(userId, projectId);
+    await this.access.findProjectWithAccess(userId, projectId, callerKeyProjectId);
 
     // Collect related resource IDs for this project
     const [deployments, members] = await Promise.all([

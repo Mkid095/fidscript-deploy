@@ -3,6 +3,7 @@ import { PrismaService } from '@/prisma/prisma.service';
 import { EventService } from '@/modules/events/event.service';
 import * as bcrypt from 'bcrypt';
 import * as crypto from 'crypto';
+import { ProjectAccessService } from '@/modules/projects/services/project-access.service';
 
 const BCRYPT_ROUNDS = 12;
 const PROJECT_API_KEY_BYTES = 24;
@@ -14,15 +15,14 @@ const PROJECT_API_KEY_PREFIX_LEN = 8;
 export class ProjectApiKeyService {
   constructor(
     private prisma: PrismaService,
+    private access: ProjectAccessService,
     private eventService: EventService,
   ) {}
 
-  async createProjectApiKey(
-    userId: string,
+  async createProjectApiKey(userId: string,
     projectId: string,
-    dto: { name: string; permissions?: string[]; expiresAt?: string },
-  ) {
-    await this.checkPermission(userId, projectId, ['admin', 'owner']);
+    dto: { name: string; permissions?: string[]; expiresAt?: string }, keyProjectId?: string) {
+    await this.checkPermission(userId, projectId, ['admin', 'owner'], keyProjectId);
 
     const key = `fpk_${crypto.randomBytes(PROJECT_API_KEY_BYTES).toString('base64url')}`;
     // Hash the key BODY (without the fpk_ prefix). validateProjectApiKey strips
@@ -55,8 +55,8 @@ export class ProjectApiKeyService {
     return { apiKey, key };
   }
 
-  async listProjectApiKeys(userId: string, projectId: string) {
-    await this.findProjectWithAccess(userId, projectId);
+  async listProjectApiKeys(userId: string, projectId: string, keyProjectId?: string) {
+    await this.findProjectWithAccess(userId, projectId, keyProjectId);
 
     const keys = await this.prisma.projectApiKey.findMany({
       where: { projectId },
@@ -67,8 +67,8 @@ export class ProjectApiKeyService {
     return { apiKeys: keys };
   }
 
-  async revokeProjectApiKey(userId: string, projectId: string, keyId: string) {
-    await this.checkPermission(userId, projectId, ['admin', 'owner']);
+  async revokeProjectApiKey(userId: string, projectId: string, keyId: string, keyProjectId?: string) {
+    await this.checkPermission(userId, projectId, ['admin', 'owner'], keyProjectId);
 
     const apiKey = await this.prisma.projectApiKey.findFirst({
       where: { id: keyId, projectId },
@@ -90,7 +90,9 @@ export class ProjectApiKeyService {
    * Used by the Phase 15 log ingest endpoint (X-API-Key header).
    * Returns null if the key is invalid or expired.
    */
-  async validateProjectApiKey(rawKey: string): Promise<{ projectId: string; name: string } | null> {
+  async validateProjectApiKey(
+    rawKey: string,
+  ): Promise<{ projectId: string; name: string; permissions: string[] } | null> {
     if (!rawKey.startsWith('fpk_')) return null;
     const body = rawKey.slice(4);
     const prefix = body.slice(0, PROJECT_API_KEY_PREFIX_LEN);
@@ -101,7 +103,7 @@ export class ProjectApiKeyService {
         keyPrefix: prefix,
         OR: [{ expiresAt: null }, { expiresAt: { gt: new Date() } }],
       },
-      select: { id: true, projectId: true, name: true, keyHash: true },
+      select: { id: true, projectId: true, name: true, keyHash: true, permissions: true },
     });
     for (const key of candidates) {
       const valid = await bcrypt.compare(body, key.keyHash).catch(() => false);
@@ -110,35 +112,32 @@ export class ProjectApiKeyService {
           where: { id: key.id },
           data: { lastUsedAt: new Date() },
         });
-        return { projectId: key.projectId, name: key.name };
+        // The key's scopes travel with it. They were stored but never
+        // loaded, so every `@RequireScope` was a no-op for a project key.
+        return {
+          projectId: key.projectId,
+          name: key.name,
+          permissions: (key.permissions ?? []) as string[],
+        };
       }
     }
     return null;
   }
 
-  private async findProjectWithAccess(userId: string, projectId: string) {
-    if (userId === 'api-key') return;
-    const project = await this.prisma.project.findUnique({ where: { id: projectId } });
-    if (!project) throw new NotFoundException('Project not found');
-    const isOwner = project.ownerId === userId;
-    const isMember = await this.prisma.projectMember.findUnique({
-      where: { projectId_userId: { projectId, userId } },
-    });
-    if (!isOwner && !isMember) throw new ForbiddenException('Access denied');
-    return project;
+  /**
+   * The shared access rules — see `ProjectAccessService`. This service used
+   * to carry its own copy, with the same two bugs as the others.
+   */
+  private findProjectWithAccess(userId: string, projectId: string, keyProjectId?: string) {
+    return this.access.findProjectWithAccess(userId, projectId, keyProjectId);
   }
 
-  private async checkPermission(userId: string, projectId: string, allowedRoles: string[]) {
-    if (userId === 'api-key') return;
-    const project = await this.prisma.project.findUnique({ where: { id: projectId } });
-    if (!project) throw new NotFoundException('Project not found');
-    const isOwner = project.ownerId === userId;
-    if (isOwner || allowedRoles.includes('owner')) return;
-    const member = await this.prisma.projectMember.findUnique({
-      where: { projectId_userId: { projectId, userId } },
-    });
-    if (!member || !allowedRoles.includes(member.role.toLowerCase())) {
-      throw new ForbiddenException('Insufficient permissions');
-    }
+  private checkPermission(
+    userId: string,
+    projectId: string,
+    allowedRoles: string[],
+    keyProjectId?: string,
+  ) {
+    return this.access.checkPermission(userId, projectId, allowedRoles, keyProjectId);
   }
 }

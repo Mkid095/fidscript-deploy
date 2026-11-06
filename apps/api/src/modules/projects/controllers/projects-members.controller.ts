@@ -20,21 +20,21 @@ export class ProjectsMembersController {
 
   @Get(':id/members')
   async listMembers(@Req() req: Request, @Param('id') id: string) {
-    const user = req.user as { userId: string };
-    return this.projects.listMembers(user.userId, id);
+    const user = req.user as { userId: string; projectId?: string };
+    return this.projects.listMembers(user.userId, id, user.projectId);
   }
 
   @Post(':id/members')
   async addMember(@Req() req: Request, @Param('id') id: string, @Body() dto: AddMemberDto) {
-    const user = req.user as { userId: string };
-    return this.projects.addMember(user.userId, id, dto);
+    const user = req.user as { userId: string; projectId?: string };
+    return this.projects.addMember(user.userId, id, dto, user.projectId);
   }
 
   @Delete(':id/members/:userId')
   @HttpCode(HttpStatus.OK)
   async removeMember(@Req() req: Request, @Param('id') id: string, @Param('userId') userId: string) {
-    const currentUser = req.user as { userId: string };
-    return this.projects.removeMember(currentUser.userId, id, userId);
+    const currentUser = req.user as { userId: string; projectId?: string };
+    return this.projects.removeMember(currentUser.userId, id, userId, currentUser.projectId);
   }
 
   @Patch(':id/members/:userId')
@@ -45,67 +45,67 @@ export class ProjectsMembersController {
     @Param('userId') userId: string,
     @Body() dto: { role: 'admin' | 'developer' | 'viewer' },
   ) {
-    const currentUser = req.user as { userId: string };
-    return this.projects.updateMemberRole(currentUser.userId, id, userId, dto.role);
+    const currentUser = req.user as { userId: string; projectId?: string };
+    return this.projects.updateMemberRole(currentUser.userId, id, userId, dto.role, currentUser.projectId);
   }
 
   @Get(':id/invitations')
   async listInvitations(@Req() req: Request, @Param('id') id: string) {
-    const user = req.user as { userId: string };
-    return this.projects.listInvitations(user.userId, id);
+    const user = req.user as { userId: string; projectId?: string };
+    return this.projects.listInvitations(user.userId, id, user.projectId);
   }
 
   @Post(':id/invitations')
   async createInvitation(@Req() req: Request, @Param('id') id: string, @Body() dto: CreateInvitationDto) {
-    const user = req.user as { userId: string };
-    return this.projects.createInvitation(user.userId, id, dto);
+    const user = req.user as { userId: string; projectId?: string };
+    return this.projects.createInvitation(user.userId, id, dto, user.projectId);
   }
 
   @Delete(':id/invitations/:invitationId')
   @HttpCode(HttpStatus.OK)
   async revokeInvitation(@Req() req: Request, @Param('id') id: string, @Param('invitationId') invitationId: string) {
-    const user = req.user as { userId: string };
-    return this.projects.revokeInvitation(user.userId, id, invitationId);
+    const user = req.user as { userId: string; projectId?: string };
+    return this.projects.revokeInvitation(user.userId, id, invitationId, user.projectId);
   }
 
   @Get(':id/env-vars')
   async getEnvVars(@Req() req: Request, @Param('id') id: string) {
-    const user = req.user as { userId: string };
-    return this.projects.getEnvVars(user.userId, id);
+    const user = req.user as { userId: string; projectId?: string };
+    return this.projects.getEnvVars(user.userId, id, user.projectId);
   }
 
   @Put(':id/env-vars')
   @HttpCode(HttpStatus.OK)
   async updateEnvVars(@Req() req: Request, @Param('id') id: string, @Body() dto: UpdateEnvVarsDto) {
-    const user = req.user as { userId: string };
-    return this.projects.updateEnvVars(user.userId, id, dto);
+    const user = req.user as { userId: string; projectId?: string };
+    return this.projects.updateEnvVars(user.userId, id, dto, user.projectId);
   }
 
   @Delete(':id/env-vars/:key')
   @HttpCode(HttpStatus.OK)
   async deleteEnvVar(@Req() req: Request, @Param('id') id: string, @Param('key') key: string) {
-    const user = req.user as { userId: string };
-    return this.projects.deleteEnvVar(user.userId, id, key);
+    const user = req.user as { userId: string; projectId?: string };
+    return this.projects.deleteEnvVar(user.userId, id, key, user.projectId);
   }
 
   @Get(':id/api-keys')
   async listProjectApiKeys(@Req() req: Request, @Param('id') id: string) {
-    const user = req.user as { userId: string };
-    return this.projects.listProjectApiKeys(user.userId, id);
+    const user = req.user as { userId: string; projectId?: string };
+    return this.projects.listProjectApiKeys(user.userId, id, user.projectId);
   }
 
   @Post(':id/api-keys')
   @UseGuards(ScopeGuard, ProjectApiKeyMintGuard)
   @RequireScope('projects:write')
   async createProjectApiKey(@Req() req: Request, @Param('id') id: string, @Body() dto: any) {
-    const user = req.user as { userId: string };
-    return this.projects.createProjectApiKey(user.userId, id, dto);
+    const user = req.user as { userId: string; projectId?: string };
+    return this.projects.createProjectApiKey(user.userId, id, dto, user.projectId);
   }
 
   @Delete(':id/api-keys/:keyId')
   @HttpCode(HttpStatus.OK)
   async revokeProjectApiKey(@Req() req: Request, @Param('id') id: string, @Param('keyId') keyId: string) {
-    const user = req.user as { userId: string };
-    return this.projects.revokeProjectApiKey(user.userId, id, keyId);
+    const user = req.user as { userId: string; projectId?: string };
+    return this.projects.revokeProjectApiKey(user.userId, id, keyId, user.projectId);
   }
 }

@@ -4,17 +4,19 @@ import { EventService } from '@/modules/events/event.service';
 import { CryptoService } from '@/modules/crypto/crypto.service';
 import { UpdateEnvVarsDto } from '@/modules/projects/dto/env-vars.dto';
 import * as crypto from 'crypto';
+import { ProjectAccessService } from '@/modules/projects/services/project-access.service';
 
 @Injectable()
 export class ProjectEnvService {
   constructor(
     private prisma: PrismaService,
+    private access: ProjectAccessService,
     private eventService: EventService,
     private cryptoService: CryptoService,
   ) {}
 
-  async getEnvVars(userId: string, projectId: string) {
-    const project = await this.findProjectWithAccess(userId, projectId);
+  async getEnvVars(userId: string, projectId: string, keyProjectId?: string) {
+    const project = await this.findProjectWithAccess(userId, projectId, keyProjectId);
     const member = project.ownerId === userId
       ? null
       : await this.prisma.projectMember.findUnique({
@@ -43,8 +45,8 @@ export class ProjectEnvService {
     return { envVars };
   }
 
-  async updateEnvVars(userId: string, projectId: string, dto: UpdateEnvVarsDto) {
-    await this.checkPermission(userId, projectId, ['admin', 'owner']);
+  async updateEnvVars(userId: string, projectId: string, dto: UpdateEnvVarsDto, keyProjectId?: string) {
+    await this.checkPermission(userId, projectId, ['admin', 'owner'], keyProjectId);
 
     for (const item of dto.envVars) {
       const encrypted = this.cryptoService.encrypt(item.value);
@@ -62,8 +64,8 @@ export class ProjectEnvService {
     return { success: true };
   }
 
-  async deleteEnvVar(userId: string, projectId: string, key: string) {
-    await this.checkPermission(userId, projectId, ['admin', 'owner']);
+  async deleteEnvVar(userId: string, projectId: string, key: string, keyProjectId?: string) {
+    await this.checkPermission(userId, projectId, ['admin', 'owner'], keyProjectId);
 
     await this.prisma.projectEnv.deleteMany({ where: { projectId, key } });
 
@@ -72,29 +74,21 @@ export class ProjectEnvService {
     return { success: true };
   }
 
-  private async findProjectWithAccess(userId: string, projectId: string) {
-    if (userId === 'api-key') return { id: projectId, ownerId: projectId } as any;
-    const project = await this.prisma.project.findUnique({ where: { id: projectId } });
-    if (!project) throw new NotFoundException('Project not found');
-    const isOwner = project.ownerId === userId;
-    const isMember = await this.prisma.projectMember.findUnique({
-      where: { projectId_userId: { projectId, userId } },
-    });
-    if (!isOwner && !isMember) throw new ForbiddenException('Access denied');
-    return project;
+  /**
+   * The shared access rules — see `ProjectAccessService`. This service used
+   * to carry its own copies, with the same two bugs as the others: an
+   * API-key caller was waved through, and the role check never ran.
+   */
+  private findProjectWithAccess(userId: string, projectId: string, keyProjectId?: string) {
+    return this.access.findProjectWithAccess(userId, projectId, keyProjectId);
   }
 
-  private async checkPermission(userId: string, projectId: string, allowedRoles: string[]) {
-    if (userId === 'api-key') return undefined as any;
-    const project = await this.prisma.project.findUnique({ where: { id: projectId } });
-    if (!project) throw new NotFoundException('Project not found');
-    const isOwner = project.ownerId === userId;
-    if (isOwner || allowedRoles.includes('owner')) return;
-    const member = await this.prisma.projectMember.findUnique({
-      where: { projectId_userId: { projectId, userId } },
-    });
-    if (!member || !allowedRoles.includes(member.role.toLowerCase())) {
-      throw new ForbiddenException('Insufficient permissions');
-    }
+  private checkPermission(
+    userId: string,
+    projectId: string,
+    allowedRoles: string[],
+    keyProjectId?: string,
+  ) {
+    return this.access.checkPermission(userId, projectId, allowedRoles, keyProjectId);
   }
 }

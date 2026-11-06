@@ -25,7 +25,18 @@ export class ProjectApiKeyMintGuard implements CanActivate {
     const callerPerms: string[] = user.keyPermissions ?? [];
     const requestedPerms: string[] = request.body?.permissions ?? [];
 
-    if (requestedPerms.length === 0) return true;
+    // An empty scope list means "no scope restriction" — which is only
+    // something a caller with no scope restriction of its own may hand out.
+    // Otherwise an account key holding `projects:read` could mint a key with
+    // every scope, and escalate itself.
+    if (requestedPerms.length === 0) {
+      if (callerPerms.length > 0) {
+        throw new ForbiddenException(
+          'An account API key with scopes cannot mint a key without scope restrictions',
+        );
+      }
+      return true;
+    }
 
     const denied = requestedPerms.filter(p => !callerPerms.includes(p));
     if (denied.length > 0) {
