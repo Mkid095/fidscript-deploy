@@ -47,10 +47,10 @@ export function safeNextRoute(next: string | null | undefined): string | null {
 }
 
 export function getNextRoute(): string {
-  // The Applications screen is where an operator arrives: it is the answer
-  // to "what can this platform do for me". A `next` parameter still wins —
-  // someone who was sent to a specific page goes there.
-  if (typeof window === 'undefined') return '/applications';
+  // The overview is where an operator arrives: it is the answer to "what is
+  // happening across my projects". A `next` parameter still wins — someone
+  // who was sent to a specific page goes there.
+  if (typeof window === 'undefined') return '/overview';
   const params = new URLSearchParams(window.location.search);
-  return safeNextRoute(params.get('next')) ?? '/applications';
+  return safeNextRoute(params.get('next')) ?? '/overview';
 }

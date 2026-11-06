@@ -47,6 +47,9 @@ import { AuthModule } from '@/modules/auth/auth.module';
     ProjectSecretAccessService,
     ProjectMemberService,
     ProjectProvisionService,
+    // The workspaces a person belongs to — the overview counts their
+    // projects, and a team's project is theirs to reach.
+    ProjectWorkspaceService,
   ],
 })
 export class ProjectsModule {}

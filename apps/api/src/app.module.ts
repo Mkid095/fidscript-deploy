@@ -30,6 +30,7 @@ import { MarketplaceModule } from './modules/marketplace/marketplace.module';
 import { CryptoModule } from './modules/crypto/crypto.module';
 import { InstallationModule } from './modules/installation/installation.module';
 import { McpModule } from './modules/mcp/mcp.module';
+import { OverviewModule } from './modules/overview/overview.module';
 import { WhatsappAuthModule } from './modules/whatsapp-auth/whatsapp-auth.module';
 import { InfrastructureModule } from './modules/infrastructure/infrastructure.module';
 import { InstantModule } from './modules/instant/instant.module';
@@ -40,6 +41,7 @@ import { ApplicationsModule } from './modules/applications/applications.module';
     ConfigModule.forRoot({ isGlobal: true }),
     CryptoModule,
     McpModule,
+    OverviewModule,
     PrismaModule,
     RegistryModule,
     EventsModule,
