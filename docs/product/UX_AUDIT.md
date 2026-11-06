@@ -28,7 +28,7 @@ console renders real data from real endpoints. The problem is not that FIDScript
 that **the contract between its three layers (API → SDK → dashboard) has drifted in specific,
 findable places**, and those places are exactly where a user's workflow breaks.
 
-**Fifteen findings are 🔴 blockers**, and only one of them is in the platform's *architecture*.
+**Fourteen findings are 🔴 blockers**, and only one of them is in the platform's *architecture*.
 The rest are in the contract between its layers, in the authorization model, and in what the
 product has never been made to promise.
 
@@ -40,15 +40,14 @@ product has never been made to promise.
 | 3 | **The installation endpoints are unauthenticated** — a caller can configure the platform, become its admin, and rewrite its routing and DNS credentials | 🔴 | source |
 | 4 | **Mail webhooks accept an unsigned request** — the signature check is skipped when the header is absent, and the HMAC is computed over a re-serialized body | 🔴 | source |
 | 5 | **A project `viewer` can mint an admin invitation and a write-scoped API key** — membership is enforced everywhere, the project *role* almost nowhere | 🔴 | **live** |
-| 6 | **21 API routes are unreachable** (a doubled `api/v1` prefix) and **25 SDK paths the dashboard calls do not exist** | 🔴 | source |
+| 6 | **21 API routes are unreachable** (a doubled `api/v1` prefix), **25 SDK paths the dashboard calls do not exist**, **MCP scope validation always returns "allowed"**, and **`GET /metrics` is public** | 🔴 | source |
 | 7 | **No organization or team UI exists at all**, though the API, the SDK and the CLI expose 18 endpoints for it | 🔴 | source + live |
 | 8 | **The functions runtime's P0 sandbox finding is stale** — the runtime *is* isolated; three narrower gaps remain | 🔴 | source |
-| 9 | **MCP scope validation always returns "allowed"**, and `GET /metrics` is public | 🔴 | source |
-| 10 | **A refresh token works as an access token and survives logout** — a 7-day token that logging out does not revoke | 🔴 | **live** |
-| 11 | **The mail server's password and every login code are written to the API log** | 🔴 | **live** |
-| 12 | **The Cloudflare OAuth callback is unauthenticated with a no-op CSRF check** — a tenant's DNS provider can be replaced | 🔴 | source |
-| 13 | **The API is default-allow** — no global auth guard, so a controller that forgets one is public | 🔴 | source |
-| 14 | **There is no automated test suite**; every guarantee in this document rests on manual verification | 🔴 | source |
+| 9 | **A refresh token works as an access token and survives logout** — a 7-day token that logging out does not revoke | 🔴 | **live** |
+| 10 | **The mail server's password and every login code are written to the API log** | 🔴 | **live** |
+| 11 | **The Cloudflare OAuth callback is unauthenticated with a no-op CSRF check** — a tenant's DNS provider can be replaced | 🔴 | source |
+| 12 | **The API is default-allow** — no global auth guard, so a controller that forgets one is public | 🔴 | source |
+| 13 | **There is no automated test suite**; every guarantee in this document rests on manual verification | 🔴 | source |
 
 The rest of the audit is structural: **22 orphaned routes**, four screens rendered at two URLs, a
 component catalog that documents 41 components of which **13 exist**, a project console whose
@@ -372,7 +371,8 @@ return { allowed: true };                        // 200 → also allowed
 The API's `McpPermissionService` exists but is wired only into key management, never into tool
 invocation.
 
-**(d) `GET /metrics` is public** and enumerates every project's slug and metric names.
+**(d) `GET /metrics` is public** and enumerates every project's slug and metric names — the
+project list, to anyone.
 
 **Fix:** strip the literal `api/v1/` from the five controller paths (one change, 21 routes, 9 of the
 25 phantom paths); reconcile the SDK's paths with the API; implement `validateScope` against
