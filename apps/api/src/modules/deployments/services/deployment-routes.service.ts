@@ -160,19 +160,38 @@ export class DeploymentRoutesService {
     return `deploy-${deploymentId.slice(0, 8)}-${slug}`;
   }
 
+  /**
+   * Render the routers and their services as a Traefik dynamic file.
+   *
+   * **An empty map is not a valid Traefik dynamic file.** Traefik v3 rejects
+   * `routers: {}` — and, more importantly, it rejects the WHOLE FILE
+   * PROVIDER when one file in the directory is rejected: the error is
+   * "routers cannot be a standalone element", and from that moment the edge
+   * serves the configuration it had before, silently. Every route written
+   * after that — the platform's own, the products', a deployment's — is
+   * accepted by the file and never applied.
+   *
+   * So the sections that have nothing in them are left out entirely, and a
+   * file with no routers at all is a file of comments.
+   */
   private render(routers: Record<string, unknown>, services: Record<string, unknown>): string {
-    const lines: string[] = [
+    const header = [
       '# Managed by the FIDScript platform — do not edit manually.',
       '#',
       '# The routers that publish a deployment\'s CUSTOM domains. The default',
       '# {slug}.apps.{platformDomain} hostname is published by Traefik\'s Docker',
       '# provider from the container labels; this file covers the rest.',
-      'http:',
-      '  routers:',
     ];
-    if (Object.keys(routers).length === 0) {
-      lines.push('    {}');
-    } else {
+
+    const routerNames = Object.keys(routers);
+    const serviceNames = Object.keys(services);
+    if (routerNames.length === 0 && serviceNames.length === 0) {
+      return [...header, '# Nothing to publish right now.'].join('\n') + '\n';
+    }
+
+    const lines: string[] = [...header, 'http:'];
+    if (routerNames.length > 0) {
+      lines.push('  routers:');
       for (const [name, body] of Object.entries(routers)) {
         lines.push(`    ${name}:`);
         for (const [k, v] of Object.entries(body as Record<string, unknown>)) {
@@ -180,10 +199,8 @@ export class DeploymentRoutesService {
         }
       }
     }
-    lines.push('  services:');
-    if (Object.keys(services).length === 0) {
-      lines.push('    {}');
-    } else {
+    if (serviceNames.length > 0) {
+      lines.push('  services:');
       for (const [name, body] of Object.entries(services)) {
         lines.push(`    ${name}:`);
         lines.push('      loadBalancer:');

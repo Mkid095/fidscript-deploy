@@ -223,6 +223,20 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/).
   failed every time — the platform's domains were never connected to the mail server. A null
   project is found with `findFirst`, written as find-then-update-or-create, and deleted with
   `deleteMany`; a project's secret keeps the compound lookup.
+- `fix(traefik): one empty map took the whole edge down** — the platform writes the deployment
+  routers into the Traefik dynamic directory every time a deployment succeeds, and it wrote them as
+  `routers: {}` whenever no deployment had a custom domain — which is the usual case. **Traefik v3
+  rejects an empty map in a dynamic file**, and when it rejects one file it rejects the **file
+  provider**: from that moment the edge serves the configuration it had before, silently, and no
+  route written afterwards is ever applied. The sections that have nothing in them are left out now,
+  and a file with no routers at all is a file of comments.
+- `feat(applications): the package manager has a page of its own, and the token page is back** — the
+  registry's console hides the private packages (@soostori, @nextmavens) from an anonymous visitor,
+  and the page that issued a token — `/-/static/token` — went missing when Caddy stopped being the
+  edge. There was no way in, so the private half of the registry looked empty. The token page is
+  served again (by the registry's own static service, on the platform's domain), the snippets on it
+  name the registry it was served from, and the Applications screen's Package manager opens a page
+  with the console, the token page, and the packages anyone may see.
 - `fix(security): the platform's encryption secret was derived two different ways** — the domain
   services read `ENCRYPTION_KEY` as **UTF-8, truncated to 32 characters**, while the platform's
   `CryptoService` reads it as **base64, exactly 32 bytes**. A secret encrypted by one could not be

@@ -45,6 +45,21 @@
   this phase) and one of the reasons the email console is empty. **Status: FIXED (Phase 1)** — a
   null project is found with `findFirst`, written as find-then-update-or-create and deleted with
   `deleteMany`; a project's secret keeps the compound lookup. Four tests cover it.
+- **KI-12 · 2026-11-06 · Phase 1 · The `*.nextmavens.com` hostnames cannot be served from this
+  platform.** The edge has routers for `registry.nextmavens.com`, `whatsapp.nextmavens.com` and
+  `storage.nextmavens.com`, and every one of them fails to get a certificate: the ACME DNS-01
+  challenge needs the zone in the platform's Cloudflare account, and `nextmaven.com` is in a
+  different one ("zone could not be found"). The names also resolve to Namecheap's parking servers,
+  so they never reached this host anyway. The retries burn Let's Encrypt's rate limit (429s in the
+  Traefik log). **The live names are the platform's own** (`registry.fidscript.com` and the rest);
+  the nextmavens routers should be removed once the operator decides whether those names are
+  served from somewhere else. **Status: open** — an operator decision, not a code fix.
+- **KI-13 · 2026-11-06 · Phase 1 · The artifact storage service is down.** `files.fidscript.com`
+  answers 502: the service that served it (the Next Mavens storage service, on port 4877) is not
+  running — port 4876 was taken by the Instant MCP bridge when the edge was cut over, and the
+  storage service was not restarted on another port. The application's packs (including the
+  `soostori` app artifacts) are on disk under `/opt/nextmavens-storage/apps`. **Status: open** —
+  the service needs to be started on a free port and routed to it.
 - **KI-11 · 2026-11-06 · Phase 1 · The platform's own mail domains cannot be registered.** The email
   bootstrap registers the platform's domains against `PLATFORM_PROJECT_ID`, which is not set — so the
   platform falls back to a nil id and the insert fails on the foreign key

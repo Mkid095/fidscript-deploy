@@ -3,6 +3,7 @@ import { AuthModule } from '@/modules/auth/auth.module';
 import { DeploymentsModule } from '@/modules/deployments/deployments.module';
 import { DomainsModule } from '@/modules/domains/domains.module';
 import { ApplicationCatalogueService } from './services/application-catalogue.service';
+import { RegistryCatalogueService } from './services/registry-catalogue.service';
 import { ApplicationInstallService } from './services/application-install.service';
 import { ApplicationDnsService } from './services/application-dns.service';
 import { ApplicationJobsService } from './services/application-jobs.service';
@@ -31,6 +32,7 @@ import { ApplicationsController } from './controllers/applications.controller';
   controllers: [ApplicationsController],
   providers: [
     ApplicationCatalogueService,
+    RegistryCatalogueService,
     ApplicationInstallService,
     ApplicationDnsService,
     ApplicationJobsService,

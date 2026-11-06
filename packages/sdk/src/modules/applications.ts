@@ -51,6 +51,22 @@ export class ApplicationsModule {
     return this.client.get('/api/v1/applications');
   }
 
+  /**
+   * The package manager — the private npm registry the platform publishes.
+   *
+   * The console hides the private scopes from an anonymous visitor, so the
+   * packages listed here are the public ones; the rest are one token away,
+   * and `tokenUrl` is where the token is issued.
+   */
+  async packageManager(): Promise<{
+    registryUrl: string;
+    tokenUrl: string;
+    packages: Array<{ name: string; version: string; description?: string }>;
+    reachable: boolean;
+  }> {
+    return this.client.get('/api/v1/applications/package-manager');
+  }
+
   /** The installs currently running, and the ones that just finished. */
   async installs(): Promise<{ installs: InstallJob[] }> {
     return this.client.get('/api/v1/applications/installs');

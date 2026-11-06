@@ -123,8 +123,11 @@ export const ADDON_APPLICATIONS: Record<string, ApplicationPresentation> = {
     },
   },
   'package-manager': {
-    host: 'registry',
-    path: null,
+    // The application's own page in the dashboard: the console, the token
+    // page — which is how the private packages are reached — and the
+    // packages anyone may see. The console itself is one link away.
+    host: null,
+    path: '/applications/package-manager',
     port: null,
     icon: 'package',
     installable: true,

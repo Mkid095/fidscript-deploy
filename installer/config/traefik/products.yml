@@ -86,6 +86,27 @@ http:
       service: npm-registry
       entryPoints: [websecure]
       tls: { certResolver: letsencrypt-dns }
+    # The registry's token page — how a person gets a registry token.
+    #
+    # The console hides the private packages (@soostori, @nextmavens) from an
+    # anonymous visitor, so without a token the private half of the registry
+    # is invisible. These pages used to be served by Caddy, which was the
+    # edge before this platform's Traefik took over; when Caddy stopped they
+    # went with it, and there was no way in.
+    #
+    # The rule is an EXACT path, not the whole /-/static prefix: the
+    # registry's console serves its own assets under that prefix, and
+    # taking the prefix would leave the console a blank page.
+    npm-registry-token:
+      rule: 'Host(`registry.__DOMAIN__`) && Path(`/-/static/token`)'
+      service: npm-registry-static
+      entryPoints: [websecure]
+      tls: { certResolver: letsencrypt-dns }
+    npm-registry-reset:
+      rule: 'Host(`registry.__DOMAIN__`) && Path(`/-/static/reset`)'
+      service: npm-registry-static
+      entryPoints: [websecure]
+      tls: { certResolver: letsencrypt-dns }
     # The Instant MCP bridge lives on the registry's hostname — that is the
     # URL the Instant packages tell their clients to use. The path rule is
     # more specific than the registry's, so it wins for that path.
@@ -136,6 +157,10 @@ http:
       loadBalancer:
         servers:
           - url: "http://nextmavens-verdaccio:4873"
+    npm-registry-static:
+      loadBalancer:
+        servers:
+          - url: "http://nextmavens-registry-static:80"
     artifacts:
       loadBalancer:
         servers:
