@@ -5,9 +5,16 @@ import { EmailModule } from '@/modules/email/email.module';
 import { PassportModule } from '@nestjs/passport';
 import { resolveJwtSecret } from '@/common/secrets';
 import { UserGithubController } from '@/modules/app-auth/controllers/user-github.controller';
+import { UserGithubReposController } from '@/modules/app-auth/controllers/user-github-repos.controller';
 import { AppAuthTokenService } from '@/modules/app-auth/services/app-auth-token.service';
 import { MagicCodeService } from '@/modules/app-auth/services/magic-code.service';
 import { UserGithubService } from '@/modules/app-auth/services/user-github.service';
+import { GithubApiService } from '@/modules/app-auth/services/github-api.service';
+import { GithubConnectionStore } from '@/modules/app-auth/services/github-connection.store';
+import { GithubOAuthService } from '@/modules/app-auth/services/github-oauth.service';
+import { GithubOAuthAppService } from '@/modules/app-auth/services/github-oauth-app.service';
+import { GithubOAuthExchangeService } from '@/modules/app-auth/services/github-oauth-exchange.service';
+import { GithubOAuthStateService } from '@/modules/app-auth/services/github-oauth-state.service';
 import { AppJwtStrategy } from '@/modules/app-auth/jwt/app-jwt.strategy';
 import { AppJwtGuard } from '@/modules/app-auth/jwt/app-jwt.guard';
 import { ProjectsModule } from '@/modules/projects/projects.module';
@@ -47,11 +54,17 @@ import { ProjectsModule } from '@/modules/projects/projects.module';
       inject: [ConfigService],
     }),
   ],
-  controllers: [UserGithubController],
+  controllers: [UserGithubController, UserGithubReposController],
   providers: [
     AppAuthTokenService,
     MagicCodeService,
     UserGithubService,
+    GithubApiService,
+    GithubConnectionStore,
+    GithubOAuthService,
+    GithubOAuthAppService,
+    GithubOAuthExchangeService,
+    GithubOAuthStateService,
     AppJwtStrategy,
     AppJwtGuard,
   ],

@@ -3,11 +3,8 @@
 import { Card, Input, Dropzone } from '@fidscript/ui';
 
 import { MAX_ARCHIVE_BYTES } from '@/lib/deployment-source';
-import {
-  GithubConnectBanner,
-  RepoBrowser,
-  BranchPicker,
-} from '@/app/(app)/projects/[projectId]/services/new/github-connect-banner';
+import { GithubConnectBanner } from '@/app/(app)/projects/[projectId]/services/new/github-connect-banner';
+import { RepoBrowser, BranchPicker } from '@/app/(app)/projects/[projectId]/services/new/github-repo-browser';
 import type { GithubRepo, GithubBranch, GithubStatus } from './new-deployment-types';
 import type { ImportSource } from './new-deployment-types';
 import { SourceCards } from './source-cards';
@@ -25,7 +22,8 @@ interface StepImportProps {
   branches: GithubBranch[];
   branchLoading: boolean;
   selectedBranch: string;
-  onConnectGithub: () => void;
+  onOpenGithubDialog: () => void;
+  githubOauthConfigured: boolean | null;
   onSelectRepo: (repo: GithubRepo) => void;
   onClearRepo: () => void;
   onLoadMoreRepos: () => void;
@@ -54,7 +52,10 @@ export function StepImport(props: StepImportProps) {
       {props.source === 'github' && (
         <div className="space-y-4">
           {!props.githubStatus?.connected && (
-            <GithubConnectBanner onConnect={props.onConnectGithub} connecting={false} />
+            <GithubConnectBanner
+              onOpenDialog={props.onOpenGithubDialog}
+              oauthConfigured={props.githubOauthConfigured}
+            />
           )}
           {props.githubStatus?.connected && !props.selectedRepo && (
             <RepoBrowser

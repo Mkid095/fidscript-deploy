@@ -1,7 +1,6 @@
 'use client';
 
 import { useCallback, useEffect, useState } from 'react';
-import { useRouter } from 'next/navigation';
 import type { FidscriptSDK } from '@fidscript-deploy/sdk';
 import { useAuth } from '@/contexts/auth-context';
 import type { Deployment, Project } from '@/types';
@@ -81,37 +80,6 @@ export function useDeploymentsFetch(projectId: string) {
     setDeployments(current => current.filter(d => d.id !== id));
 
   return { deployments, isLoading, error, loadDeployments, updateDeployment, removeDeployment };
-}
-
-// ── useGithubConnection ────────────────────────────────────────────────────────
-
-export function useGithubConnection(project: Project) {
-  const { getSdk } = useAuth();
-  const router = useRouter();
-  const [status, setStatus] = useState<{ connected: boolean; username?: string; avatarUrl?: string } | null>(null);
-  const [connecting, setConnecting] = useState(false);
-
-  useEffect(() => {
-    getSdk().github.status().then(setStatus).catch(() => setStatus({ connected: false }));
-  }, [getSdk]);
-
-  const connect = useCallback(async (onToast: (o: ToastLike) => void) => {
-    setConnecting(true);
-    try {
-      await getSdk().github.connect();
-      setStatus(await getSdk().github.status());
-    } catch (err: unknown) {
-      if ((err as { name?: string })?.name === 'AuthError') {
-        router.replace('/login');
-        return;
-      }
-      onToast({ type: 'error', message: err instanceof Error ? err.message : 'Failed to connect to GitHub' });
-    } finally {
-      setConnecting(false);
-    }
-  }, [getSdk, router]);
-
-  return { status, connecting, connect };
 }
 
 // ── useInlineDeploy ────────────────────────────────────────────────────────────

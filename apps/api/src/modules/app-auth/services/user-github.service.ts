@@ -1,350 +1,139 @@
 import { BadRequestException, Injectable, Logger, NotFoundException } from '@nestjs/common';
-import axios from 'axios';
-import { ConfigService } from '@nestjs/config';
-import { PrismaService } from '@/prisma/prisma.service';
-import { CryptoService } from '@/modules/crypto/crypto.service';
+
 import { EventService } from '@/modules/events/event.service';
-import { RedisService } from '@/modules/redis/redis.service';
-import * as crypto from 'crypto';
+import { GithubApiService, type GithubRepo } from './github-api.service';
+import { GithubConnectionStore } from './github-connection.store';
+import { GithubOAuthService } from './github-oauth.service';
+import { GithubOAuthExchangeService } from './github-oauth-exchange.service';
 
-const GITHUB_AUTH_URL = 'https://github.com/login/oauth/authorize';
-const GITHUB_TOKEN_URL = 'https://github.com/login/oauth/access_token';
-const GITHUB_USER_URL = 'https://api.github.com/user';
-const GITHUB_REPOS_URL = 'https://api.github.com/user/repos';
-// admin:repo_hook lets us register push-to-deploy webhooks on connected repos.
-const GITHUB_SCOPES = 'read:user,user:email,repo,admin:repo_hook';
-
-const STATE_TTL_SEC = 5 * 60;
-
-interface GithubStatePayload {
-  userId: string;
-  redirectAfterUrl?: string;
-}
-
-interface GithubTokenResponse {
-  access_token: string;
-  refresh_token?: string;
-  expires_in?: number;
-  scope?: string;
-  token_type?: string;
-}
-
-interface GithubUser {
-  id: number;
-  login: string;
-  avatar_url?: string;
-  name?: string;
-}
-
-export interface GithubRepo {
-  id: number;
-  full_name: string;
-  name: string;
-  private: boolean;
-  html_url: string;
-  default_branch: string;
-  description?: string;
-}
-
+/**
+ * The GitHub account a platform user is connected to.
+ *
+ * Two ways in: the OAuth popup (when the deployment has a GitHub OAuth app)
+ * and a personal access token (when it does not, and when a person wants to
+ * use one anyway). Both end in the same encrypted row.
+ */
 @Injectable()
 export class UserGithubService {
   private readonly logger = new Logger(UserGithubService.name);
-  private readonly platformBaseUrl: string;
-  private readonly githubClientId: string;
-  private readonly githubClientSecret: string;
 
   constructor(
-    private prisma: PrismaService,
-    private cryptoService: CryptoService,
-    private eventService: EventService,
-    private redis: RedisService,
-    configService: ConfigService,
-  ) {
-    this.platformBaseUrl =
-      configService.get<string>('PLATFORM_PUBLIC_URL') ||
-      configService.get<string>('PLATFORM_BASE_URL') ||
-      'http://localhost:3001';
-    // Platform-level GitHub OAuth app credentials (different from per-project AuthProvider)
-    this.githubClientId =
-      configService.get<string>('GITHUB_CLIENT_ID') ||
-      process.env.GITHUB_CLIENT_ID ||
-      '';
-    this.githubClientSecret =
-      configService.get<string>('GITHUB_CLIENT_SECRET') ||
-      process.env.GITHUB_CLIENT_SECRET ||
-      '';
+    private readonly connections: GithubConnectionStore,
+    private readonly githubApi: GithubApiService,
+    private readonly oauth: GithubOAuthService,
+    private readonly exchange: GithubOAuthExchangeService,
+    private readonly eventService: EventService,
+  ) {}
+
+  /** Whether this deployment has a GitHub OAuth app. */
+  isOAuthConfigured(): boolean {
+    return this.oauth.isConfigured();
   }
 
-  // ── Step 1: Build the authorize URL ────────────────────────────────────────
-
-  async buildAuthorizeUrl(userId: string, redirectAfterUrl?: string): Promise<{ url: string }> {
-    const callbackUrl = `${this.platformBaseUrl}/api/v1/users/me/github/callback`;
-
-    const state = crypto.randomBytes(32).toString('base64url');
-    const payload: GithubStatePayload = { userId, redirectAfterUrl };
-
-    // Store state → userId mapping in Redis (TTL 5 min). Used in callback to
-    // recover the userId when GitHub redirects back without our JWT.
-    await this.redis.set(`github:oauth:state:${state}`, payload, STATE_TTL_SEC);
-
-    const params = new URLSearchParams({
-      client_id: this.githubClientId,
-      redirect_uri: callbackUrl,
-      scope: GITHUB_SCOPES,
-      state,
-      allow_signup: 'true',
-    });
-
-    const url = `${GITHUB_AUTH_URL}?${params.toString()}`;
-
-    this.logger.log(`GitHub OAuth authorize for user=${userId}`);
-    return { url };
+  /** The URL the browser opens to start the OAuth sign-in. */
+  buildAuthorizeUrl(userId: string, redirectAfterUrl?: string): Promise<{ url: string }> {
+    return this.oauth.buildAuthorizeUrl(userId, redirectAfterUrl);
   }
 
-  // ── Step 2: Exchange code for token + store ───────────────────────────────────
-
-  async handleCallback(code: string, state: string): Promise<{
+  /** Exchanges the OAuth code for a stored connection. */
+  handleCallback(code: string, state: string): Promise<{
     username: string;
     avatarUrl?: string;
     scopes: string;
   }> {
-    if (!code || !state) throw new BadRequestException('Missing OAuth code or state');
+    return this.exchange.handle(code, state);
+  }
 
-    // Look up userId from the state that GitHub returned.
-    const payload = await this.redis.get<GithubStatePayload>(`github:oauth:state:${state}`);
-    if (!payload) throw new BadRequestException('Invalid or expired OAuth state');
-    await this.redis.del(`github:oauth:state:${state}`); // one-shot
-
-    const { userId } = payload;
-
-    // Exchange code for token
-    let tokenData: GithubTokenResponse;
-    try {
-      const res = await axios.post<GithubTokenResponse>(
-        GITHUB_TOKEN_URL,
-        new URLSearchParams({
-          code,
-          client_id: this.githubClientId,
-          client_secret: this.githubClientSecret,
-          redirect_uri: `${this.platformBaseUrl}/api/v1/users/me/github/callback`,
-        }),
-        { headers: { Accept: 'application/json' } },
+  /**
+   * Connects a GitHub account with a personal access token.
+   *
+   * The token is checked against GitHub before it is stored, and stored
+   * encrypted — exactly like the token the OAuth flow gets. It never leaves
+   * the server in a response, and it is never written to a log.
+   */
+  async connectWithToken(userId: string, token: string): Promise<{
+    username: string;
+    avatarUrl?: string;
+    scopes: string;
+  }> {
+    const trimmed = token?.trim();
+    if (!trimmed) throw new BadRequestException('Missing token');
+    if (!/^(gh[pousr]_[A-Za-z0-9]{20,}|github_pat_[A-Za-z0-9_]{20,})$/.test(trimmed)) {
+      throw new BadRequestException(
+        'That does not look like a GitHub personal access token — it should start with ghp_, gho_, ghs_ or github_pat_.',
       );
-      tokenData = res.data;
-    } catch (err) {
-      this.logger.error(`GitHub token exchange failed: ${(err as Error).message}`);
-      throw new BadRequestException('GitHub OAuth failed — could not exchange code');
     }
 
-    if (!tokenData.access_token) {
-      throw new BadRequestException('GitHub OAuth failed — no access token returned');
-    }
+    const identity = await this.githubApi.identify(trimmed);
+    const scopes = identity.scopes || 'repo,read:user';
 
-    // Fetch GitHub user profile
-    let githubUser: GithubUser;
-    try {
-      const userRes = await axios.get<GithubUser>(GITHUB_USER_URL, {
-        headers: {
-          Authorization: `Bearer ${tokenData.access_token}`,
-          Accept: 'application/vnd.github+json',
-          'User-Agent': 'fidscript-deploy',
-        },
-      });
-      githubUser = userRes.data;
-    } catch (err) {
-      this.logger.error(`GitHub user fetch failed: ${(err as Error).message}`);
-      throw new BadRequestException('GitHub OAuth failed — could not fetch user profile');
-    }
-
-    // Encrypt tokens before storing
-    const encryptedToken = this.cryptoService.encrypt(tokenData.access_token);
-    const encryptedRefresh = tokenData.refresh_token
-      ? this.cryptoService.encrypt(tokenData.refresh_token)
-      : null;
-
-    const tokenExpiresAt = tokenData.expires_in
-      ? new Date(Date.now() + tokenData.expires_in * 1000)
-      : null;
-
-    const scopes = tokenData.scope || GITHUB_SCOPES;
-
-    // Upsert connection
-    await this.prisma.$executeRaw`
-      INSERT INTO "identity"."github_connections"
-        (id, user_id, github_user_id, username, avatar_url, encrypted_token, encrypted_refresh, token_expires_at, scopes, created_at, updated_at)
-      VALUES
-        (gen_random_uuid()::text, ${userId}, ${String(githubUser.id)}, ${githubUser.login},
-         ${githubUser.avatar_url ?? null}, ${encryptedToken}, ${encryptedRefresh ?? null},
-         ${tokenExpiresAt ?? null}, ${scopes}, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
-      ON CONFLICT (user_id) DO UPDATE SET
-        github_user_id = EXCLUDED.github_user_id,
-        username = EXCLUDED.username,
-        avatar_url = EXCLUDED.avatar_url,
-        encrypted_token = EXCLUDED.encrypted_token,
-        encrypted_refresh = EXCLUDED.encrypted_refresh,
-        token_expires_at = EXCLUDED.token_expires_at,
-        scopes = EXCLUDED.scopes,
-        updated_at = CURRENT_TIMESTAMP
-    `;
+    await this.connections.save(userId, {
+      githubUserId: identity.githubUserId,
+      username: identity.username,
+      avatarUrl: identity.avatarUrl ?? null,
+      accessToken: trimmed,
+      scopes,
+    });
 
     this.eventService.emit('users.github_connected', null, {
       userId,
-      githubUserId: String(githubUser.id),
-      username: githubUser.login,
+      githubUserId: identity.githubUserId,
+      username: identity.username,
     });
 
-    this.logger.log(`GitHub connected for user=${userId} as ${githubUser.login}`);
-    return {
-      username: githubUser.login,
-      avatarUrl: githubUser.avatar_url,
-      scopes,
-    };
+    this.logger.log(`GitHub connected by token for user=${userId} as ${identity.username}`);
+    return { username: identity.username, avatarUrl: identity.avatarUrl, scopes };
   }
 
-  // ── Check connection status ──────────────────────────────────────────────────
-
+  /** The connection, or null when the account is not connected. */
   async getConnection(userId: string) {
-    const row = await this.prisma.$queryRaw<{
-      github_user_id: string;
-      username: string;
-      avatar_url: string | null;
-      scopes: string;
-      token_expires_at: Date | null;
-    }[]>
-      `SELECT github_user_id, username, avatar_url, scopes, token_expires_at
-       FROM "identity"."github_connections"
-       WHERE user_id = ${userId}`;
-
-    if (!row?.[0]) return null;
-    const conn = row[0];
+    const conn = await this.connections.find(userId);
+    if (!conn) return null;
     return {
-      githubUserId: conn.github_user_id,
+      githubUserId: conn.githubUserId,
       username: conn.username,
-      avatarUrl: conn.avatar_url,
+      avatarUrl: conn.avatarUrl,
       scopes: conn.scopes,
-      tokenExpiresAt: conn.token_expires_at,
+      tokenExpiresAt: conn.tokenExpiresAt,
       connected: true,
     };
   }
 
-  // ── Clone credentials (for the deployment pipeline) ──────────────────────────
-
-  /**
-   * Returns git-clone credentials for a connected GitHub account, in the form
-   * `x-access-token:<token>` — the username GitHub expects for OAuth/PAT auth
-   * over HTTPS. Used by the deployment pipeline (detect + build) to clone
-   * private repos without ever prompting for a username (which would fail in
-   * a non-TTY server environment).
-   *
-   * Returns null if the user has no GitHub connection or the token can't be
-   * decrypted — callers then fall back to anonymous clone (public repos only).
-   */
-  async getCloneCredentials(userId: string): Promise<string | null> {
-    const conn = await this.prisma.$queryRaw<{ encrypted_token: string }[]>`
-      SELECT encrypted_token FROM "identity"."github_connections" WHERE user_id = ${userId}
-    `;
-    if (!conn?.[0]?.encrypted_token) return null;
-    try {
-      const token = this.cryptoService.decrypt(conn[0].encrypted_token);
-      return `x-access-token:${token}`;
-    } catch (err) {
-      this.logger.warn(`Failed to decrypt GitHub token for user=${userId}: ${(err as Error).message}`);
-      return null;
-    }
+  /** The git-clone credentials, or null when there is no connection. */
+  getCloneCredentials(userId: string): Promise<string | null> {
+    return this.connections.cloneCredentials(userId);
   }
 
-  // ── Disconnect ──────────────────────────────────────────────────────────────
-
+  /** Removes the connection. */
   async disconnect(userId: string): Promise<void> {
-    await this.prisma.$executeRaw`
-      DELETE FROM "identity"."github_connections" WHERE user_id = ${userId}
-    `;
+    await this.connections.remove(userId);
     this.eventService.emit('users.github_disconnected', null, { userId });
     this.logger.log(`GitHub disconnected for user=${userId}`);
   }
 
-  // ── List repos ───────────────────────────────────────────────────────────────
-
-  async listRepos(userId: string, page = 1, limit = 30): Promise<{
-    repos: GithubRepo[];
-    total: number;
-    hasMore: boolean;
-  }> {
-    const conn = await this.prisma.$queryRaw<{
-      encrypted_token: string;
-    }[]>`SELECT encrypted_token FROM "identity"."github_connections" WHERE user_id = ${userId}`;
-
-    if (!conn?.[0]) throw new NotFoundException('GitHub account not connected');
-
-    const accessToken = this.cryptoService.decrypt(conn[0].encrypted_token);
-
-    try {
-      const [reposRes, userRes] = await Promise.all([
-        axios.get<GithubRepo[]>('https://api.github.com/user/repos', {
-          headers: {
-            Authorization: `Bearer ${accessToken}`,
-            Accept: 'application/vnd.github+json',
-            'User-Agent': 'fidscript-deploy',
-            'X-GitHub-Api-Version': '2022-11-28',
-          },
-          params: {
-            sort: 'updated',
-            per_page: limit,
-            page,
-            affiliation: 'owner',
-          },
-        }),
-        axios.get<GithubUser>('https://api.github.com/user', {
-          headers: {
-            Authorization: `Bearer ${accessToken}`,
-            Accept: 'application/vnd.github+json',
-            'User-Agent': 'fidscript-deploy',
-          },
-        }),
-      ]);
-
-      const repos = reposRes.data;
-      const total = parseInt(reposRes.headers['x-total-count'] as string, 10) || repos.length;
-
-      return {
-        repos,
-        total,
-        hasMore: page * limit < total,
-      };
-    } catch (err) {
-      const status = (err as any)?.response?.status;
-      if (status === 401) {
-        throw new BadRequestException('GitHub token expired — please reconnect your GitHub account');
-      }
-      this.logger.error(`GitHub repos fetch failed: ${(err as Error).message}`);
-      throw new BadRequestException('Failed to fetch GitHub repositories');
-    }
+  /** The repositories the connected account can reach. */
+  async listRepos(
+    userId: string,
+    page = 1,
+    limit = 30,
+  ): Promise<{ repos: GithubRepo[]; total: number; hasMore: boolean }> {
+    const token = await this.requireToken(userId);
+    return this.githubApi.listRepos(token, page, limit);
   }
 
-  // ── List branches for a repo ────────────────────────────────────────────────
+  /** The branches of a repository. */
+  async listBranches(
+    userId: string,
+    repoFullName: string,
+  ): Promise<Array<{ name: string; commit: { sha: string } }>> {
+    const token = await this.requireToken(userId);
+    return this.githubApi.listBranches(token, repoFullName);
+  }
 
-  async listBranches(userId: string, repoFullName: string): Promise<{ name: string; commit: { sha: string } }[]> {
-    const conn = await this.prisma.$queryRaw<{ encrypted_token: string }[]>`
-      SELECT encrypted_token FROM "identity"."github_connections" WHERE user_id = ${userId}`;
-
-    if (!conn?.[0]) throw new NotFoundException('GitHub account not connected');
-
-    const accessToken = this.cryptoService.decrypt(conn[0].encrypted_token);
-
-    try {
-      const res = await axios.get(`https://api.github.com/repos/${repoFullName}/branches`, {
-        headers: {
-          Authorization: `Bearer ${accessToken}`,
-          Accept: 'application/vnd.github+json',
-          'User-Agent': 'fidscript-deploy',
-          'X-GitHub-Api-Version': '2022-11-28',
-        },
-        params: { per_page: 100 },
-      });
-      return res.data;
-    } catch (err) {
-      this.logger.error(`GitHub branches failed for ${repoFullName}: ${(err as Error).message}`);
-      throw new BadRequestException('Failed to fetch repository branches');
-    }
+  /** The stored token, decrypted — or the reason there isn't one. */
+  private async requireToken(userId: string): Promise<string> {
+    const token = await this.connections.token(userId);
+    if (!token) throw new NotFoundException('GitHub account not connected');
+    return token;
   }
 }

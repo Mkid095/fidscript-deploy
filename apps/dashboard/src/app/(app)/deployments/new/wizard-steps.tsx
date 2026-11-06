@@ -34,7 +34,8 @@ export interface WizardStepProps {
   branches: GithubBranch[];
   branchLoading: boolean;
   selectedBranch: string;
-  onConnectGithub: () => void;
+  onOpenGithubDialog: () => void;
+  githubOauthConfigured: boolean | null;
   onSelectRepo: (repo: GithubRepo) => void;
   onClearRepo: () => void;
   onLoadMoreRepos: () => void;
@@ -84,7 +85,8 @@ export function WizardSteps(props: WizardStepProps) {
         branches={props.branches}
         branchLoading={props.branchLoading}
         selectedBranch={props.selectedBranch}
-        onConnectGithub={props.onConnectGithub}
+        onOpenGithubDialog={props.onOpenGithubDialog}
+        githubOauthConfigured={props.githubOauthConfigured}
         onSelectRepo={props.onSelectRepo}
         onClearRepo={props.onClearRepo}
         onLoadMoreRepos={props.onLoadMoreRepos}

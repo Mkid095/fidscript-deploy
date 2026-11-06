@@ -8,11 +8,13 @@ import { CheckmarkCircle02Icon } from '@hugeicons/core-free-icons';
 import type { Project } from '@/types';
 import { NewDeploymentModal } from '@/components/deployments/new-deployment-modal';
 import { useToast } from '@/components/toast-provider';
+import { useAuth } from '@/contexts/auth-context';
 import {
   useDeploymentsFetch,
-  useGithubConnection,
   useInlineDeploy,
 } from './deployments-fetch';
+import { useGithubConnect } from '@/hooks/use-github-connect';
+import { GithubConnectDialog } from '@/components/github/github-connect-dialog';
 import { DeploymentCard, DeploymentCardSkeleton } from './deployments-card';
 import { DeploymentsListHeader } from './deployments-list-header';
 import { DeploymentsEmptyState } from './deployments-empty-state';
@@ -30,8 +32,11 @@ function DeploymentsSectionInner({ project }: Props) {
 
   const { deployments, isLoading, error, loadDeployments, updateDeployment, removeDeployment } =
     useDeploymentsFetch(project.id);
-  const { status: githubStatus, connecting: githubConnecting, connect: connectGithub } =
-    useGithubConnection(project);
+  const { getSdk } = useAuth();
+  const github = useGithubConnect({
+    getSdk,
+    onShowToast: opts => showToast({ type: opts.type as 'success' | 'error', message: opts.message }),
+  });
   const { url: repositoryUrl, setUrl: setRepositoryUrl, submitting: isDeploying, submit: deployRepository } =
     useInlineDeploy(project);
 
@@ -49,22 +54,22 @@ function DeploymentsSectionInner({ project }: Props) {
         tab={tab}
         activeCount={activeDeployments.length}
         totalCount={deployments.length}
-        githubConnected={githubStatus?.connected ?? false}
+        githubConnected={github.status?.connected ?? false}
         onSwitchTab={switchTab}
         onRefresh={() => void loadDeployments()}
         onNewDeployment={() => setIsModalOpen(true)}
-        onConnectGithub={() => void connectGithub(showToast)}
+        onConnectGithub={github.openDialog}
       />
 
       {deployments.length === 0 && tab === 'active' && (
         <DeploymentsEmptyState
-          githubConnected={githubStatus?.connected ?? false}
-          githubConnecting={githubConnecting}
+          githubConnected={github.status?.connected ?? false}
+          githubConnecting={github.connecting}
           repositoryUrl={repositoryUrl}
           isDeploying={isDeploying}
           onUrlChange={setRepositoryUrl}
           onDeploy={e => deployRepository(e, showToast, loadDeployments)}
-          onConnectGithub={() => void connectGithub(showToast)}
+          onConnectGithub={github.openDialog}
         />
       )}
 
@@ -107,10 +112,20 @@ function DeploymentsSectionInner({ project }: Props) {
         </div>
       )}
 
+      <GithubConnectDialog
+        isOpen={github.dialogOpen}
+        onClose={github.closeDialog}
+        oauthConfigured={github.oauthConfigured}
+        connecting={github.connecting}
+        error={github.error}
+        onSignInWithGithub={() => void github.connect()}
+        onSubmitToken={github.connectWithToken}
+      />
+
       {isModalOpen && (
         <NewDeploymentModal
           project={project}
-          githubStatus={githubStatus}
+          githubStatus={github.status}
           onClose={() => setIsModalOpen(false)}
           onCreated={loadDeployments}
         />

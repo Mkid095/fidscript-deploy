@@ -74,8 +74,19 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/).
   npmrc — and is never written into a project. Publishing drives `npm publish` with a temporary
   npmrc and `NODE_AUTH_TOKEN`, so npm builds and hashes the tarball rather than a
   reimplementation of it here, and the token never touches the disk.
+- `feat(github): an account can be connected without a GitHub OAuth app` — a deployment does not
+  always have one, and the personal access token is the way in when it does not. The API checks
+  the token with GitHub, stores it **encrypted** in the same row the OAuth flow uses, and never
+  returns it; the dashboard offers both ways in one dialog and says which one this deployment
+  supports. `GET /users/me/github/oauth` tells the dashboard, and `POST /users/me/github/token`
+  does the connecting. The endpoint IDs are `AUTH-23…31` in the backend inventory.
 
 ### Fixed
+- `fix(github): the popup sign-in could never work, and said nothing` — the deployment carried the
+  installer's placeholders in `GITHUB_CLIENT_ID` and `GITHUB_CLIENT_SECRET`, so the API built an
+  authorize URL with `client_id=REPLACE_WITH_YOUR_GITHUB_OAUTH_CLIENT_ID` and the browser opened
+  a page GitHub would reject. The API now answers **503** and says that sign-in is not configured
+  on this deployment, and points at the token.
 - `fix(packages): the published SDK could not be imported at all` — every published package is ESM,
   so Node needs the `.js` extension on every relative import, and `tsc` does not write them. The
   SDK's `1.0.0`–`1.0.3` were published without them and **failed on import** (`ERR_MODULE_NOT_FOUND`);

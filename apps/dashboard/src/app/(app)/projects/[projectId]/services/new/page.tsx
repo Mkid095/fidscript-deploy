@@ -19,6 +19,7 @@ import { StepReview } from './step-review';
 import { useNewDeploy } from './use-new-deploy';
 import { useGithubRepos } from './use-githubRepos';
 import { useArchiveUpload } from './use-archive-upload';
+import { GithubConnectDialog } from '@/components/github/github-connect-dialog';
 
 export default function NewDeploymentPageWrapper() {
   const { project } = useProjectContext();
@@ -79,7 +80,8 @@ function NewDeploymentPage({ project }: { project: NonNullable<ReturnType<typeof
               onLoadMoreRepos={() => github.loadRepos(github.repoPage + 1, true)}
               onRepoSearchChange={github.setRepoSearch} onBranchSelect={github.setSelectedBranch}
               onManualUrlChange={newDeploy.setManualGitUrl}
-              onConnectGithub={github.connect}
+              onOpenGithubDialog={github.openDialog}
+              githubOauthConfigured={github.oauthConfigured}
               onArchiveChange={archive.setArchiveFile}
               onUploadArchive={archive.uploadArchive}
               onReplaceArchive={archive.replaceArchive}
@@ -124,6 +126,16 @@ function NewDeploymentPage({ project }: { project: NonNullable<ReturnType<typeof
           )}
         </div>
       </div>
+
+      <GithubConnectDialog
+        isOpen={github.dialogOpen}
+        onClose={github.closeDialog}
+        oauthConfigured={github.oauthConfigured}
+        connecting={github.connecting}
+        error={github.error}
+        onSignInWithGithub={() => void github.connect()}
+        onSubmitToken={github.connectWithToken}
+      />
 
       <WizardFooter
         stepIndex={newDeploy.stepIndex}

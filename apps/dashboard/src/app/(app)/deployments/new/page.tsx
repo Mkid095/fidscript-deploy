@@ -6,6 +6,7 @@ import { useRouter } from 'next/navigation';
 import { useAuth } from '@/contexts/auth-context';
 import { useToast } from '@/components/toast-provider';
 import { useGithubRepos } from '@/app/(app)/projects/[projectId]/services/new/use-githubRepos';
+import { GithubConnectDialog } from '@/components/github/github-connect-dialog';
 import { WizardHeader } from './wizard-header';
 import { WizardSteps } from './wizard-steps';
 import { WizardFooter } from './wizard-footer';
@@ -129,6 +130,16 @@ function NewDeploymentWizard() {
           <WizardSteps {...stepProps} />
         </div>
       </div>
+
+      <GithubConnectDialog
+        isOpen={github.dialogOpen}
+        onClose={github.closeDialog}
+        oauthConfigured={github.oauthConfigured}
+        connecting={github.connecting}
+        error={github.error}
+        onSignInWithGithub={() => void github.connect()}
+        onSubmitToken={github.connectWithToken}
+      />
 
       <WizardFooter
         step={step}

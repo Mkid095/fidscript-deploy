@@ -2,13 +2,11 @@ import {
   Controller,
   Get,
   Post,
-  Delete,
   Query,
-  Param,
   UseGuards,
   HttpCode,
   HttpStatus,
-  NotFoundException,
+  BadRequestException,
   Res,
   Req,
   Body,
@@ -101,61 +99,29 @@ export class UserGithubController {
     @CurrentUser() user: AuthUser,
     @Body() body: { code?: string; state?: string },
   ) {
-    if (!body.code) throw new NotFoundException('Missing code parameter');
-    const result = await this.githubService.handleCallback(body.code, body.state ?? '');
-    return result;
+    if (!body.code) throw new BadRequestException('Missing code parameter');
+    return this.githubService.handleCallback(body.code, body.state ?? '');
   }
 
-  @Get('status')
-  @UseGuards(JwtAuthGuard)
-  @ApiBearerAuth()
-  @ApiOperation({ summary: 'Return the current GitHub connection status for this user' })
-  async status(@CurrentUser() user: AuthUser) {
-    const conn = await this.githubService.getConnection(user.userId);
-    if (!conn) return { connected: false };
-    return {
-      connected: true,
-      username: conn.username,
-      avatarUrl: conn.avatarUrl,
-      scopes: conn.scopes,
-    };
-  }
-
-  @Delete('disconnect')
+  /**
+   * POST /users/me/github/token
+   *
+   * Connects the account with a GitHub personal access token.
+   *
+   * The OAuth popup needs a GitHub OAuth app, and a deployment does not
+   * always have one. A personal access token gets the same access without it:
+   * the token is checked against GitHub, stored encrypted, and used for the
+   * same repository and clone operations. The token is never returned.
+   */
+  @Post('token')
   @UseGuards(JwtAuthGuard)
   @ApiBearerAuth()
   @HttpCode(HttpStatus.OK)
-  @ApiOperation({ summary: 'Remove the GitHub connection for this user' })
-  async disconnect(@CurrentUser() user: AuthUser) {
-    await this.githubService.disconnect(user.userId);
-    return { success: true };
-  }
-
-  @Get('repos')
-  @UseGuards(JwtAuthGuard)
-  @ApiBearerAuth()
-  @ApiOperation({ summary: "List the authenticated user's GitHub repositories" })
-  async listRepos(
+  @ApiOperation({ summary: 'Connect a GitHub account with a personal access token' })
+  async connectWithToken(
     @CurrentUser() user: AuthUser,
-    @Query('page') page?: string,
-    @Query('limit') limit?: string,
+    @Body() body: { token?: string },
   ) {
-    return this.githubService.listRepos(
-      user.userId,
-      page ? parseInt(page, 10) : 1,
-      limit ? parseInt(limit, 10) : 30,
-    );
-  }
-
-  @Get('repos/:owner/:repo/branches')
-  @UseGuards(JwtAuthGuard)
-  @ApiBearerAuth()
-  @ApiOperation({ summary: 'List branches for a GitHub repository' })
-  async listBranches(
-    @CurrentUser() user: AuthUser,
-    @Param('owner') owner: string,
-    @Param('repo') repo: string,
-  ) {
-    return this.githubService.listBranches(user.userId, `${owner}/${repo}`);
+    return this.githubService.connectWithToken(user.userId, body?.token ?? '');
   }
 }

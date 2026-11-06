@@ -29,6 +29,27 @@ See `index.md` for conventions. IDs are stable cross-reference targets for specs
 | AUTH-21 | GET | `/auth/setup-password` | JWT (owner/admin) | — | `{configured:boolean}` — never the password itself | none |
 | AUTH-22 | POST | `/auth/setup-password` | JWT (owner/admin) | `SetupPasswordDto`{setupPassword(min8)} | `{configured:true}` | none |
 
+## The operator's GitHub account — `@Controller('users/me/github')` → `/api/v1/users/me/github`
+
+The deployment pipeline clones private repositories with these credentials.
+Two ways in: the OAuth popup (which needs a GitHub OAuth app on the
+deployment) and a personal access token (which does not). Both end in the
+same encrypted row — `identity.github_connections`, token AES-256-GCM
+encrypted, never returned in a response.
+
+| ID | Method | Path | Auth | Request | Response | Events |
+|----|--------|------|------|---------|----------|--------|
+| AUTH-23 | GET | `/users/me/github/connect` | JWT | — | `{url}` — the OAuth authorize URL. **503** when the deployment has no OAuth app; use AUTH-25 instead | none |
+| AUTH-24 | GET | `/users/me/github/callback` | public | GitHub redirects here | an HTML page that posts the code to the opener and closes the popup | none |
+| AUTH-25 | POST | `/users/me/github/token` | JWT | `{token}` — a GitHub personal access token | `{username,avatarUrl?,scopes}` — **the token is never returned** | `users.github_connected` |
+| AUTH-26 | GET | `/users/me/github/oauth` | JWT | — | `{configured:boolean}` — whether this deployment has a GitHub OAuth app | none |
+| AUTH-27 | POST | `/users/me/github/exchange` | JWT | `{code,state}` | `{username,avatarUrl?,scopes}` | `users.github_connected` |
+| AUTH-28 | GET | `/users/me/github/status` | JWT | — | `{connected:false}` or `{connected:true,username,avatarUrl?,scopes}` | none |
+| AUTH-29 | DELETE | `/users/me/github/disconnect` | JWT | — | `{success:true}` | `users.github_disconnected` |
+| AUTH-30 | GET | `/users/me/github/repos` | JWT | `?page&limit` | `{repos,total,hasMore}` — 404 when no account is connected | none |
+| AUTH-31 | GET | `/users/me/github/repos/:owner/:repo/branches` | JWT | — | `[{name,commit:{sha}}]` — 404 when no account is connected | none |
+
+
 ## BaaS app-auth — `/api/v1/projects/:projectId/auth` — **RETIRED 2026-11-05**
 
 Every endpoint in this section is gone. The paths below were recorded without

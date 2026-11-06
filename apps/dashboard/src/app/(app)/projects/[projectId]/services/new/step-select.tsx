@@ -8,7 +8,8 @@ import { Dropzone } from '@fidscript/ui';
 import type { SourceType, GithubRepo, GithubBranch, GithubStatus } from './new-deploy-utils';
 import { MAX_ARCHIVE_BYTES } from './new-deploy-utils';
 import { formatBytes } from '@/lib/format';
-import { GithubConnectBanner, RepoBrowser, BranchPicker } from './github-connect-banner';
+import { GithubConnectBanner } from './github-connect-banner';
+import { RepoBrowser, BranchPicker } from './github-repo-browser';
 
 interface StepSelectProps {
   sourceType: SourceType;
@@ -32,7 +33,8 @@ interface StepSelectProps {
   onRepoSearchChange: (v: string) => void;
   onBranchSelect: (b: string) => void;
   onManualUrlChange: (v: string) => void;
-  onConnectGithub: () => void;
+  onOpenGithubDialog: () => void;
+  githubOauthConfigured: boolean | null;
   onArchiveChange: (f: File | null) => void;
   onUploadArchive: (f: File) => void;
   onReplaceArchive: () => void;
@@ -44,13 +46,17 @@ export function StepSelect({
   selectedRepo, branches, branchLoading, selectedBranch, manualGitUrl,
   archiveFile, uploadedArchive, uploadingArchive,
   onSelectRepo, onClearRepo, onLoadMoreRepos, onRepoSearchChange, onBranchSelect, onManualUrlChange,
-  onConnectGithub, onArchiveChange, onUploadArchive, onReplaceArchive, onShowToast,
+  onOpenGithubDialog, githubOauthConfigured,
+  onArchiveChange, onUploadArchive, onReplaceArchive, onShowToast,
 }: StepSelectProps) {
   if (sourceType === 'git') {
     return (
       <>
         {!githubStatus?.connected && (
-          <GithubConnectBanner onConnect={onConnectGithub} connecting={false} />
+          <GithubConnectBanner
+            onOpenDialog={onOpenGithubDialog}
+            oauthConfigured={githubOauthConfigured}
+          />
         )}
         {!githubStatus?.connected && (
           <Card className="border border-[var(--rail)] p-5 mt-4">
