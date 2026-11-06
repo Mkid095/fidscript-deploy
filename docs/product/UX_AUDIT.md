@@ -378,7 +378,7 @@ invocation.
 25 phantom paths); reconcile the SDK's paths with the API; implement `validateScope` against
 `McpPermissionService`; and put `/metrics` behind the platform admin.
 
-### B11 — A refresh token works as an access token, and survives logout
+### B10 — A refresh token works as an access token, and survives logout
 
 `ApiKeyOrJwtGuard` verifies the bearer token with `jwtService.verifyAsync(token)` — **no `type`
 check, no blocklist check, no session check** (`api-key-or-jwt.guard.ts:98-110`). `JwtStrategy`
@@ -401,7 +401,7 @@ by `JwtStrategy`, which these routes never use.
 **Fix:** verify the token's `type` is `access`, check the session is live and the blocklist is
 clean — the same three checks `JwtStrategy` already makes. Or route the guard through the strategy.
 
-### B12 — The mail server's password and every login code are written to the log
+### B11 — The mail server's password and every login code are written to the log
 
 **Verified live**, both of them:
 
@@ -420,7 +420,7 @@ address (`auth-magic-code.service.ts:55`).
 **Anyone who can read the API log has the mail server's admin password and every user's login
 code.** The log is also shipped to wherever the platform's logs go.
 
-### B13 — The Cloudflare OAuth callback is unauthenticated, with a no-op CSRF check
+### B12 — The Cloudflare OAuth callback is unauthenticated, with a no-op CSRF check
 
 `POST /api/v1/api/v1/domains/connect-cloudflare/callback`
 (`domains/controllers/cloudflare-oauth.controller.ts:40-53`) has **no guard**, and passes the
@@ -435,7 +435,7 @@ routing and its TLS all follow the attacker's Cloudflare account from that momen
 **Fix:** persist the `state` nonce at the start of the OAuth flow, compare it on the callback, and
 require an authenticated, authorized caller.
 
-### B14 — The API is default-allow
+### B13 — The API is default-allow
 
 There is **no global authentication guard**. The only `APP_GUARD` is `EmailVerifiedGuard`, which
 returns `true` when there is no user — and because global guards run *before* controller guards,
@@ -450,7 +450,7 @@ controllers (B3).
 **Fix:** register `JwtAuthGuard` (or a composite) as the global guard, with an explicit
 `@Public()` opt-out for the handful of routes that are genuinely public.
 
-### B10 — There is no automated test suite
+### B14 — There is no automated test suite
 
 `find apps packages -name "*.spec.ts" -o -name "*.test.ts"` → **0 files**. `apps/api`'s test script
 is `jest --passWithNoTests`, which passes with an empty suite. The dashboard has no test runner
@@ -623,7 +623,7 @@ A fourth: `--network none` makes the project's Instant data plane **unreachable*
 (`functions-runtime.service.ts:71-76` injects the variables; the container has no network), so the
 platform's own data plane is not usable from the edge runtime.
 
-### H12 — The deployment's action buttons contradict the API, and two states are dead ends
+### H11 — The deployment's action buttons contradict the API, and two states are dead ends
 
 | Button | The UI offers it when | The API allows it when | Result |
 |---|---|---|---|
@@ -636,7 +636,7 @@ platform's own data plane is not usable from the edge runtime.
 running (`deployment-state.service.ts:107-110`), and the event carries `blockedBy` — which the
 dashboard never reads. The operator sees the word "Blocked" and a dead end.
 
-### H13 — The email-verification gate is inert
+### H12 — The email-verification gate is inert
 
 `EmailVerifiedGuard` is the only global `APP_GUARD` (`app.module.ts:77`). It returns `true` when
 `request.user` is unset (`email-verified.guard.ts:53-55`) — and NestJS runs **global guards before
@@ -648,7 +648,7 @@ Corroboration: the installer-created admin has **no** `emailVerifiedAt`
 locked out of every endpoint. And `sendVerification` is never called after registration, and
 there is no `/verify-email` page. **The verification requirement exists on paper only.**
 
-### H14 — The organization invitation flow cannot work
+### H13 — The organization invitation flow cannot work
 
 Two independent defects:
 
@@ -664,14 +664,14 @@ Also: **teams grant no access at all.** `Team` and `TeamMember` are consulted by
 path — access resolves through `OrganizationMember` + `Project.organizationId`. Teams are a
 labelling layer today.
 
-### H15 — A failed deployment does not say why
+### H14 — A failed deployment does not say why
 
 The `Deployment` model has **no** error column (`schema.prisma:681-701`). `markFailed` sets the
 status and emits an event; the message — *"Missing required environment variable: DATABASE_URL"* —
 reaches only the log. `MetadataPanel` has no error field. **The operator must read the build log
 to learn why their deployment failed**, which is the one thing a failure screen exists to avoid.
 
-### H16 — The in-product documentation is materially stale
+### H15 — The in-product documentation is materially stale
 
 `apps/dashboard/src/content/docs-hooks.ts` — 16 pages. The "Deploy an Application" page says:
 
@@ -687,7 +687,7 @@ to learn why their deployment failed**, which is the one thing a failure screen 
 None of the 16 pages documents the **Applications screen** or any of the five add-ons, and **no
 in-app screen links to `/docs`** — the docs are a destination, not contextual help.
 
-### H17 — The CI's "test" job is a guaranteed-green no-op, and `pnpm lint` rewrites source
+### H16 — The CI's "test" job is a guaranteed-green no-op, and `pnpm lint` rewrites source
 
 `.github/workflows/ci.yml:50-62` runs `pnpm test` → turbo → `jest --passWithNoTests`, which
 **prints "No tests found" and exits 0**. There is no `jest.config.*` anywhere in the repo, so jest
@@ -699,7 +699,7 @@ Worse: `apps/api`'s lint script is `eslint --fix` and its rule set disables `no-
 report. And there is no `.husky/`, no `lint-staged` and no `commitlint` — `CONTRIBUTING.md:55-59`
 promises "all changes must include tests" and nothing enforces it.
 
-### H18 — A hardcoded encryption key is the fallback for every "encrypted" secret
+### H17 — A hardcoded encryption key is the fallback for every "encrypted" secret
 
 Four services fall back to `default-dev-key-32-chars-here!!` when `ENCRYPTION_KEY` is missing
 (`domain-dns-detection.service.ts:138`, `domain-email-key.service.ts:208`,
@@ -707,7 +707,7 @@ Four services fall back to `default-dev-key-32-chars-here!!` when `ENCRYPTION_KE
 Cloudflare OAuth secret, DNS token and email key is encrypted with a **publicly known** key.
 `JWT_SECRET` fails closed; the encryption key does not.
 
-### H19 — Function environment variables are returned to any member, unmasked
+### H18 — Function environment variables are returned to any member, unmasked
 
 `GET /projects/:id/functions` and `GET /projects/:id/functions/:id` return `envVars` **verbatim**
 (`functions-crud.service.ts:24,27-31`) to any project member, including a `viewer`. The project
@@ -715,34 +715,34 @@ env-var endpoint does the right thing (`[masked]` unless owner/admin,
 `project-env.service.ts:24,34-37`) — so the platform has the correct pattern and the functions
 module simply does not use it.
 
-### H20 — Non-expiring account API keys are permanently invalid
+### H19 — Non-expiring account API keys are permanently invalid
 
 `createApiKey` stores `expiresAt: null` for a key with no expiry (`auth-api-key.service.ts:24`),
 but `validateApiKey` queries `where: { expiresAt: { gt: new Date() } }` (`:51`) — a NULL row is
 excluded by SQL. **Every `fsk_` key without an expiry can never authenticate.** The project-key
 equivalent handles null correctly (`project-api-key.service.ts:102`).
 
-### H21 — The API-key scope allowlist is dead code
+### H20 — The API-key scope allowlist is dead code
 
 `AuthApiKeysController` validates the scope allowlist and the past-expiry rule
 (`auth-api-keys.controller.ts:48-53,56-58`), but `AuthController` is registered first
 (`auth.module.ts:54`) and declares **the same paths** — so the validating controller never runs.
 The scope allowlist is therefore not enforced for account keys either.
 
-### H22 — Magic code and magic link bypass MFA
+### H21 — Magic code and magic link bypass MFA
 
 Only the password path checks `user.mfaEnabled` (`auth-login.service.ts:117-120`). A user with MFA
 enabled can sign in with a magic code or a magic link, which mints a full session
 (`auth-magic-code.service.ts:130-176`, `auth-verification.service.ts:219-253`).
 
-### H23 — Account enumeration, and an open redirect
+### H22 — Account enumeration, and an open redirect
 
 `GET /auth/auth-method/:email` answers 404 or 200 for an unauthenticated caller, and
 `send-verification` says *"No account found"*. Separately, `?next=` is used **verbatim** as
 `window.location.href` (`auth-token-utils.ts:34`, `auth-methods.ts:18,92`) — an open redirect from
 the platform's own domain.
 
-### H24 — Four more dead links in the product's own flows
+### H23 — Four more dead links in the product's own flows
 
 | Flow | The link it sends | Reality |
 |---|---|---|
@@ -751,7 +751,7 @@ the platform's own domain.
 | The dashboard's invite page | `POST /api/v1/projects/invitations/accept` (`packages/sdk/src/modules/projects.ts:142`) | **No route matches** — the org variant is shadowed |
 | `/forgot-password` | — | Orphaned: no link from the login page |
 
-### H25 — The platform's own access model is three inconsistent implementations
+### H24 — The platform's own access model is three inconsistent implementations
 
 `ProjectAccessService` (org-aware, role-checked — but the role check is a no-op), the shared
 `ProjectMemberGuard` (project-only, org-blind), and four private copy-pastes of the role check in
@@ -763,7 +763,7 @@ The observable symptom: **the same workspace member** can `GET /projects/:id` an
 `/storage`, `/functions` and `/queues` (guard-based, org-blind). And an org member removed from the
 workspace **keeps** access through a stale `ProjectMember` row.
 
-### H27 — The shared Modal has no dialog semantics (35 call sites)
+### H25 — The shared Modal has no dialog semantics (35 call sites)
 
 `packages/ui/src/components/Modal.tsx:34-53`: no `role="dialog"`, no `aria-modal`, no
 `aria-labelledby`, **no Tab trap**, no initial focus, no focus restore. Escape and backdrop
@@ -774,7 +774,7 @@ click work; nothing else does. `RightPanel` — the far-less-used component — 
 (`components/deployments/confirm-dialog.tsx`, the four queue modals, the Instant confirm, the two
 data-grid modals, the file preview, the mailbox card).
 
-### H28 — The global focus ring is invisible
+### H26 — The global focus ring is invisible
 
 ```css
 /* apps/dashboard/src/app/globals.css:228-232 */
@@ -787,20 +787,20 @@ removes the browser default **globally**, so this faint shadow is the only indic
 element without an explicit `focus-visible:ring-*`. A further **29** places use
 `focus:outline-none` with a border-colour change as the only replacement.
 
-### H29 — Twelve destructive actions have no confirmation at all
+### H27 — Twelve destructive actions have no confirmation at all
 
 Deleting a **deployment** (`projects/[projectId]/sections/deployments-card.tsx:41` — the detail page
 for the same object does confirm), an email domain, an alias, a mailbox, a message, an email API
 key, a webhook, a catch-all rule, a suppression, an environment variable, and two account API keys.
 One mis-click destroys production.
 
-### H30 — The shared Button has no `type` default, so "Cancel" submits the form
+### H28 — The shared Button has no `type` default, so "Cancel" submits the form
 
 `packages/ui/src/components/Button.tsx:52` — a `<button>` with no `type` defaults to `submit`.
 Inside a `<form>`, a Cancel button **submits it**. Confirmed live in the Cloudflare API-token tab
 (`connect-cloudflare-modal.tsx:111`).
 
-### H31 — 92 form controls have no programmatic label
+### H29 — 92 form controls have no programmatic label
 
 The dominant pattern is `<label className="…">Text</label>` next to a sibling input with **no
 `htmlFor` and no `id`** — the label is decorative text, the screen reader announces only the
@@ -812,20 +812,20 @@ onboarding and setup field is unlabelled.
 Only **4 of 56 forms** show an inline per-field error; 30+ use `noValidate`, which makes their own
 `required`/`minLength`/`type=email` attributes inert.
 
-### H32 — 98 hardcoded Tailwind palette colours break dark mode
+### H30 — 98 hardcoded Tailwind palette colours break dark mode
 
 `bg-emerald-900`, `text-red-500`, `bg-blue-900/40` and 95 others, in 40 files, where
 `components/README.md:40` forbids exactly this. The same status gets three different colours in
 three files, and the palette is tuned for one theme.
 
-### H33 — Eighteen of nineteen tables overflow on mobile
+### H31 — Eighteen of nineteen tables overflow on mobile
 
 Only one `<table>` has an `overflow-x-auto` wrapper; the rest overflow the viewport. Two of them
 use `overflow-hidden`, which **clips** rather than scrolls. Separately, 28 grids use a fixed
 `grid-cols-N` with no responsive prefix, and the shells use `h-screen`/`min-h-screen` where
 `min-h-dvh` is needed — on a mobile browser the toolbar hides the last ~15% of the page.
 
-### H34 — The published SDK on npm contains the broken email methods
+### H32 — The published SDK on npm contains the broken email methods
 
 npm has `@fidscript-deploy/sdk@1.0.2`; the local source has today's fixes but has not been
 published. Anyone installing the SDK from npm today gets the `/api/v1`-less admin mail paths and
@@ -991,12 +991,12 @@ Traced through the code, not read from the blueprint.
 
 | # | Journey | State | What is actually there, and what is not |
 |---|---|---|---|
-| 1 | **First-time registration** | 🟡 **65%** | The landing page, the register form, the company password (server-checked), auto-creation of an **organization** *and* a **first project**, and the login all work — **verified live**. **Missing:** the landing page has **no Register link** (only the login page has one); no verification email is ever sent and no verification page exists (H13); the register response carries `onboarding: {organizationId, projectId}` and the dashboard **throws it away**; `/onboarding` is the *install* wizard, not user onboarding; and a new user lands on `/applications` with no orientation and no next step. |
+| 1 | **First-time registration** | 🟡 **65%** | The landing page, the register form, the company password (server-checked), auto-creation of an **organization** *and* a **first project**, and the login all work — **verified live**. **Missing:** the landing page has **no Register link** (only the login page has one); no verification email is ever sent and no verification page exists (H12); the register response carries `onboarding: {organizationId, projectId}` and the dashboard **throws it away**; `/onboarding` is the *install* wizard, not user onboarding; and a new user lands on `/applications` with no orientation and no next step. |
 | 2 | **Create a project** | 🟡 **60%** | The list, the empty state, create/edit/delete/restore/purge work. But "create a project" is a **two-field form** — the type is hardcoded `frontend` on create — and everything the journey describes after "details" (import, GitHub, environment variables, optional services) lives inside the *deployment* wizard instead. The operator cannot create an empty project and configure it later without deploying something. And the best guidance in the product — a four-step "what to do next" card — **never renders**, because a project is auto-created. |
-| 3 | **Deploy an application** | 🟢 **80%** | Two wizards exist (a 3-step platform-level one and a 4-step project-level one) and they are **not equivalent**: the platform one cannot set a subdomain, a Dockerfile path or credentials; the project one cannot mark required variables. The journey is otherwise complete — import, repo, branch, detection, build settings, variables, review, start, live logs, live URL — and **verified end to end**. **The gaps are the failure path:** the Stop and Restart buttons contradict the API (H12), `BLOCKED` and `ROLLED_BACK` are dead ends, a failure does not say why (H15), and there is no per-deployment environment editing or redeploy after the fact. |
+| 3 | **Deploy an application** | 🟢 **80%** | Two wizards exist (a 3-step platform-level one and a 4-step project-level one) and they are **not equivalent**: the platform one cannot set a subdomain, a Dockerfile path or credentials; the project one cannot mark required variables. The journey is otherwise complete — import, repo, branch, detection, build settings, variables, review, start, live logs, live URL — and **verified end to end**. **The gaps are the failure path:** the Stop and Restart buttons contradict the API (H12), `BLOCKED` and `ROLLED_BACK` are dead ends, a failure does not say why (H14), and there is no per-deployment environment editing or redeploy after the fact. |
 | 4 | **Manage a deployed project** | 🟡 **80%** | All twelve console sections exist with real data — none is a placeholder. **But** three of the project's own sections (deployments, members, activity) are **not in the sidebar** and are reachable only by editing `?section=`; four sections are the same component as a flat route; and the mobile timeline renders no current step for every terminal state (`stepIndex` returns −1). |
 | 5 | **Configure an infrastructure service** | 🔴 **30%** | Discover and install work (the install runs the installer's own command, in the background, with a live log). **Everything between "discover" and "use" is missing for six of the seven applications:** no requirements, no "is it configured", no instructions, no credential collection, no validation, no troubleshooting. The one well-built instance of this journey is the Cloudflare OAuth form — and it is not one of the seven. Secrets the installer generates (the Grafana password, the registry password, the Instant token) **never reach the operator**. And the email service's configuration path is the two blockers (B4, B5). |
-| 6 | **Manage an organization** | 🔴 **5%** | The API is ~80% built (23 endpoints), the SDK wraps most of it, the MCP server exposes five tools, the platform **auto-creates an organization** for every new account — and the dashboard shows **none** of it. No members, no teams, no roles, no permissions, no ownership transfer, no org-scoped API keys. Even the parts that exist cannot be used: the invite email is a dead link and inviting anyone throws (H14). |
+| 6 | **Manage an organization** | 🔴 **5%** | The API is ~80% built (23 endpoints), the SDK wraps most of it, the MCP server exposes five tools, the platform **auto-creates an organization** for every new account — and the dashboard shows **none** of it. No members, no teams, no roles, no permissions, no ownership transfer, no org-scoped API keys. Even the parts that exist cannot be used: the invite email is a dead link and inviting anyone throws (H13). |
 
 ---
 
@@ -1021,12 +1021,12 @@ no sequence may trade them away — and **the first test suite lands in Phase 1*
    the two domain-activity routes.
 6. **Fix the path drift** (B9) — strip the doubled `api/v1` (one change, 21 routes), reconcile the
    25 SDK paths, implement MCP scope checking, put `/metrics` behind the admin.
-7. **Make the refresh token useless as an access token** (B11) — the same three checks
+7. **Make the refresh token useless as an access token** (B10) — the same three checks
    `JwtStrategy` makes: type, session, blocklist.
-8. **Stop printing secrets** (B12) — the transport options, the SMTP transcript and the magic code.
+8. **Stop printing secrets** (B11) — the transport options, the SMTP transcript and the magic code.
    Then sweep the log for what has already been written there.
-9. **Fix the Cloudflare OAuth callback** (B13) — persist the nonce, compare it, require a caller.
-10. **Make the API default-deny** (B13, B14) — a global auth guard with an explicit `@Public()`
+9. **Fix the Cloudflare OAuth callback** (B12) — persist the nonce, compare it, require a caller.
+10. **Make the API default-deny** (B12, B13) — a global auth guard with an explicit `@Public()`
     opt-out, so a forgotten `@UseGuards` is a failed test rather than a public route.
 
 **Verified by:** the same live probes that found them — an `fpk_` key from project A must fail
@@ -1049,9 +1049,9 @@ must be refused an admin invitation and a write-scoped key.
     - a **per-controller authorization test** (the matrix in this document is the test's data);
     - unit tests for `project-access.service.ts` (the highest-density logic in the repo, one
       mockable dependency), `common/secrets.ts` and the bounce-rule matcher (both pure);
-    - and a **guard test** that the email-verification gate actually gates (H13).
-    Add a `.husky/pre-commit` so the gap cannot reopen (H17).
-5. Publish the SDK (H34).
+    - and a **guard test** that the email-verification gate actually gates (H12).
+    Add a `.husky/pre-commit` so the gap cannot reopen (H16).
+5. Publish the SDK (H32).
 6. Mount `ToastProvider` once, globally (H0) — one line, 51 dead toasts alive.
 
 ### Phase 3 — Navigation and information architecture
@@ -1073,15 +1073,15 @@ must be refused an admin invitation and a write-scoped key.
     **`ErrorState`** first (it is the root of 113 swallowed errors), then `DataTable`, `FilterBar`,
     `Breadcrumbs`, `EntityCard`, `KeyValueTable`.
 2. Replace the 16 browser dialogs with the `ConfirmProvider`, and **add a confirmation to the 12
-   destructive actions that have none** (H29) — a deployment delete is one of them.
+   destructive actions that have none** (H27) — a deployment delete is one of them.
 3. One error-state pattern and one empty-state pattern across every page (H6).
-4. **Make the shared components accessible** (H27, H28, H30, H31): dialog semantics and a focus
+4. **Make the shared components accessible** (H25, H26, H28, H29): dialog semantics and a focus
    trap on `Modal`; a visible focus ring (the current one is ~1.1:1); a `type="button"` default
    on `Button`; a `label` prop that emits an `id` and wires `htmlFor`, so 92 controls become
    labelled.
-5. **The design tokens become real** (H32): 98 hardcoded palette colours replaced by the token
+5. **The design tokens become real** (H30): 98 hardcoded palette colours replaced by the token
    scale, and the twelve duplicated status-colour maps collapsed into one module.
-6. **The tables and grids become responsive** (H33): an `overflow-x-auto` wrapper on every table,
+6. **The tables and grids become responsive** (H31): an `overflow-x-auto` wrapper on every table,
    responsive prefixes on the 28 fixed grids, `min-h-dvh` in the shells.
 
 ### Phase 5 — The organization and account surfaces
@@ -1092,12 +1092,12 @@ must be refused an admin invitation and a write-scoped key.
 ### Phase 6 — The deployment experience, deepened
 1. Per-deployment environment editing after creation; preview deployments; a build worker that
     survives an API restart.
-2. **Fix the deployment action buttons against the API** (H12) and **persist the failure reason**
-    on the deployment (H15) — a failure that cannot be understood from the screen is a failure the
+2. **Fix the deployment action buttons against the API** (H11) and **persist the failure reason**
+    on the deployment (H14) — a failure that cannot be understood from the screen is a failure the
     operator has to guess at.
 3. The email journey end to end, once B4/B5 are fixed: domain → records → verify → mailbox →
     alias → deliverability.
-4. Bring the in-product documentation back in line with the code (H16), and give the six services
+4. Bring the in-product documentation back in line with the code (H15), and give the six services
     that have no configuration flow a real one (journey 5).
 
 ### Phase 7 — Developer tools and operations
