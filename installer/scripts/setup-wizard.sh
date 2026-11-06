@@ -371,6 +371,11 @@ generate_secret "$SECRETS_DIR/jwt_secret.txt"            64
 generate_secret "$SECRETS_DIR/stalwart_admin_token.txt"  32
 generate_secret "$SECRETS_DIR/stalwart_webhook_secret.txt" 32
 
+# The one-time setup token. The API's setup routes refuse to configure the
+# platform without it, so an anonymous caller cannot become the platform's
+# administrator. It is printed once, in the summary below.
+generate_secret "$SECRETS_DIR/fidscript_setup_token.txt" 32
+
 # The AES-256-GCM key is NOT a hex secret. CryptoService does
 # Buffer.from(value, 'base64') and rejects anything that is not exactly
 # 32 bytes, so the value has to be base64 of 32 random bytes (44 chars).
@@ -823,4 +828,16 @@ echo ""
 
 # The links. The operator is told to open the dashboard, so it comes first.
 print_summary "$DOMAIN" "${SELECTED_ADDONS[@]}"
+
+# The setup token. The platform's setup page asks for it once, and the API
+# will not configure the platform without it — which is what stops an
+# anonymous visitor from installing themselves as the administrator.
+SETUP_TOKEN="$(cat "$SECRETS_DIR/fidscript_setup_token.txt" 2>/dev/null || echo "")"
+if [[ -n "$SETUP_TOKEN" ]]; then
+  echo ""
+  echo "   Setup token — the setup page asks for it once:"
+  echo ""
+  echo "     ${SETUP_TOKEN}"
+  echo ""
+fi
 

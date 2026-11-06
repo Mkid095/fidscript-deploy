@@ -248,6 +248,10 @@ declare -A SECRETS=(
   [system_mailbox_password.txt]=32
   [smtp_submission_pass.txt]=64
   [cf_api_token.txt]=0          # empty — Cloudflare configured via /setup
+  # The one-time token that opens the setup routes. The API refuses to
+  # configure the platform without it, so an anonymous caller cannot become
+  # the platform's administrator. It is printed once, in the summary.
+  [fidscript_setup_token.txt]=32
 )
 
 mkdir -p "${SECRETS_DIR}"

@@ -3,18 +3,23 @@
 import { HugeiconsIcon } from '@hugeicons/react';
 import { Mail01Icon, LockPasswordIcon } from '@hugeicons/core-free-icons';
 import { Card } from '@fidscript/ui';
+import { SetupTokenField } from './setup-token-field';
 
 type AuthMethod = 'MAGIC_CODE' | 'PASSWORD';
 
 interface MethodStepProps {
+  setupToken: string;
+  onSetupTokenChange: (value: string) => void;
   onSelect: (method: AuthMethod) => void;
 }
 
-export function MethodStep({ onSelect }: MethodStepProps) {
+export function MethodStep({ setupToken, onSetupTokenChange, onSelect }: MethodStepProps) {
   return (
     <Card padding="lg">
       <h1 className="text-xl font-bold text-[var(--text)] mb-1">Platform Setup</h1>
       <p className="text-sm text-[var(--text-muted)] mb-8">Configure your platform to get started</p>
+
+      <SetupTokenField value={setupToken} onChange={onSetupTokenChange} />
 
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <button
