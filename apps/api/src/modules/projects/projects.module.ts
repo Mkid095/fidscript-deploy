@@ -5,6 +5,7 @@ import { InvitationsController } from '@/modules/projects/controllers/invitation
 import { ProjectsService } from '@/modules/projects/services/projects.service';
 import { ProjectCrudService } from '@/modules/projects/services/project-crud.service';
 import { ProjectAccessService } from '@/modules/projects/services/project-access.service';
+import { ProjectSecretAccessService } from '@/modules/projects/services/project-secret-access.service';
 import { ProjectMemberService } from '@/modules/projects/services/project-member.service';
 import { ProjectEnvService } from '@/modules/projects/services/project-env.service';
 import { ProjectInvitationService } from '@/modules/projects/services/project-invitation.service';
@@ -29,6 +30,7 @@ import { AuthModule } from '@/modules/auth/auth.module';
     ProjectsService,
     ProjectCrudService,
     ProjectAccessService,
+    ProjectSecretAccessService,
     ProjectMemberService,
     ProjectEnvService,
     ProjectInvitationService,
@@ -42,6 +44,7 @@ import { AuthModule } from '@/modules/auth/auth.module';
     ProjectsService,
     ProjectApiKeyService,
     ProjectAccessService,
+    ProjectSecretAccessService,
     ProjectMemberService,
     ProjectProvisionService,
   ],

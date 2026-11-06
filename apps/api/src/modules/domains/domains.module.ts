@@ -33,6 +33,7 @@ import { DomainRepairExecutorService } from '@/modules/domains/services/domain-r
 import { DomainRepairQueueService } from '@/modules/domains/services/domain-repair-queue.service';
 import { DomainRepairWorker } from '@/modules/domains/services/domain-repair-worker.service';
 import { DomainDnsDetectionService } from '@/modules/domains/services/domain-dns-detection.service';
+import { DomainCloudflareZoneService } from '@/modules/domains/services/domain-cloudflare-zone.service';
 import { DomainEmailKeyService } from '@/modules/domains/services/domain-email-key.service';
 import { DomainEmailRecordsService } from '@/modules/domains/services/domain-email-records.service';
 import { DomainActivityService } from '@/modules/domains/services/domain-activity.service';
@@ -85,6 +86,7 @@ import { AuthModule } from '@/modules/auth/auth.module';
     DomainRepairQueueService,
     DomainRepairWorker,
     DomainDnsDetectionService,
+    DomainCloudflareZoneService,
     DomainEmailKeyService,
     DomainEmailRecordsService,
     DomainActivityService,

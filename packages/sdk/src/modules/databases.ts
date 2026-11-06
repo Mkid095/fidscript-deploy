@@ -23,23 +23,24 @@ import { DatabaseProviderWithMigrations } from './databases-migrations';
 export class DatabasesModule implements DatabasesHost {
   readonly client: FidscriptClient;
 
-  // Backups (mixed in)
-  backup!: (databaseId: string) => Promise<{ backupId: string }>;
-  listBackups!: (databaseId: string) => Promise<unknown[]>;
-  restore!: (databaseId: string, backupId: string) => Promise<unknown>;
+  // Backups (mixed in). The routes are project-scoped: a database belongs
+  // to a project, and the project's members are who may back it up.
+  backup!: (projectId: string, databaseId: string) => Promise<{ backupId: string }>;
+  listBackups!: (projectId: string, databaseId: string) => Promise<unknown[]>;
+  restore!: (projectId: string, databaseId: string, backupId: string) => Promise<unknown>;
 
   // Credentials (mixed in)
-  rotatePassword!: <T = unknown>(databaseId: string) => Promise<T>;
-  getConnection!: (databaseId: string, poolOnly?: boolean) => Promise<{
+  rotatePassword!: <T = unknown>(projectId: string, databaseId: string) => Promise<T>;
+  getConnection!: (projectId: string, databaseId: string, poolOnly?: boolean) => Promise<{
     host: string; port: number; database: string; username: string; connectionString: string;
     pgbouncerHost?: string; pgbouncerPort?: number;
   }>;
-  updateSsl!: (databaseId: string, ssl: boolean) => Promise<unknown>;
+  updateSsl!: (projectId: string, databaseId: string, ssl: boolean) => Promise<unknown>;
 
   // Backup scheduling (mixed in)
-  getBackupSchedule!: (databaseId: string) => Promise<import('./databases-types').BackupSchedule | null>;
-  updateBackupSchedule!: (databaseId: string, schedule: Partial<import('./databases-types').BackupSchedule>) => Promise<import('./databases-types').BackupSchedule>;
-  getBackupSettings!: (databaseId: string) => Promise<import('./databases-types').BackupSettings>;
+  getBackupSchedule!: (projectId: string, databaseId: string) => Promise<import('./databases-types').BackupSchedule | null>;
+  updateBackupSchedule!: (projectId: string, databaseId: string, schedule: Partial<import('./databases-types').BackupSchedule>) => Promise<import('./databases-types').BackupSchedule>;
+  getBackupSettings!: (projectId: string, databaseId: string) => Promise<import('./databases-types').BackupSettings>;
 
   constructor(client: FidscriptClient) {
     this.client = client;

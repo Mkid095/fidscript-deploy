@@ -1,9 +1,7 @@
 import { Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '@/prisma/prisma.service';
-import { generateKeyPairSync, randomBytes, createCipheriv, createDecipheriv } from 'crypto';
-import { readFileSync } from 'fs';
-
-const ENCRYPTION_KEY_ENV = 'ENCRYPTION_KEY';
+import { CryptoService } from '@/modules/crypto/crypto.service';
+import { generateKeyPairSync } from 'crypto';
 
 /**
  * DomainEmailKeyService
@@ -29,7 +27,10 @@ const ENCRYPTION_KEY_ENV = 'ENCRYPTION_KEY';
 export class DomainEmailKeyService {
   private readonly logger = new Logger(DomainEmailKeyService.name);
 
-  constructor(private prisma: PrismaService) {}
+  constructor(
+    private prisma: PrismaService,
+    private crypto: CryptoService,
+  ) {}
 
   /**
    * Generate a new DKIM key pair for a domain.
@@ -170,41 +171,27 @@ export class DomainEmailKeyService {
     return this.generateKey(domainId, newSelector, domainName);
   }
 
-  // ── Encryption helpers (shared pattern with CloudflareOAuthService) ────────
+  // ── Encryption helpers ────────────────────────────────────────────────────
+  //
+  // The platform's own cipher, not a copy of it. The copy read the key
+  // differently — the environment variable as UTF-8, the first 32
+  // characters — so a secret encrypted here could not be decrypted by the
+  // platform's CryptoService at all, and the fail-closed resolution of the
+  // key was never reached while ENCRYPTION_KEY was in the environment.
 
   private encryptSecret(plaintext: string): string {
-    const key = this.getEncryptionKey();
-    const iv = randomBytes(16);
-    const cipher = createCipheriv('aes-256-gcm', key, iv);
-    const encrypted = Buffer.concat([cipher.update(plaintext, 'utf8'), cipher.final()]);
-    const authTag = cipher.getAuthTag();
-    return `${iv.toString('base64')}:${authTag.toString('base64')}:${encrypted.toString('base64')}`;
+    return this.crypto.encrypt(plaintext);
   }
 
+  /**
+   * A secret that cannot be decrypted is an EMPTY string, not the ciphertext:
+   * returning the ciphertext made a failed decryption look like a key.
+   */
   private decryptSecret(encryptedToken: string): string {
-    const key = this.getEncryptionKey();
-    const [ivB64, authTagB64, encryptedB64] = encryptedToken.split(':');
-    if (!ivB64 || !authTagB64 || !encryptedB64) return encryptedToken;
     try {
-      const decipher = createDecipheriv('aes-256-gcm', key, Buffer.from(ivB64, 'base64'));
-      decipher.setAuthTag(Buffer.from(authTagB64, 'base64'));
-      return decipher.update(encryptedB64, 'base64', 'utf8') + decipher.final('utf8');
+      return this.crypto.decrypt(encryptedToken);
     } catch {
-      return encryptedToken;
+      return '';
     }
-  }
-
-  private getEncryptionKey(): Buffer {
-    const envKey = process.env[ENCRYPTION_KEY_ENV];
-    if (envKey) return Buffer.from(envKey, 'utf8').slice(0, 32);
-
-    const keyFile = process.env[`${ENCRYPTION_KEY_ENV}_FILE`];
-    if (keyFile) {
-      try {
-        return Buffer.from(readFileSync(keyFile, 'utf8').trim(), 'base64').slice(0, 32);
-      } catch { /* fall through */ }
-    }
-
-    return Buffer.from('default-dev-key-32-chars-here!!', 'utf8').slice(0, 32);
   }
 }

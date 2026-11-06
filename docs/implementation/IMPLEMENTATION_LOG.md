@@ -20,6 +20,98 @@
 
 ---
 
+## 2026-11-06 — Phase 1: isolation and authorization
+
+Phase: Phase 1 (security only — no product or interface work)
+
+Completed:
+- **The test harness came first.** `apps/api/jest.config.js` did not exist, `pnpm test` in the API
+  was `jest --passWithNoTests` (so an empty suite was a green suite), and turbo's `test` task
+  depended on the API's own build — a 3m43s tax before every test run. The harness is real now:
+  **97 tests in 12 suites**, and the dashboard has its own runner (`node --test`, no new
+  dependency).
+- **Tenant isolation (B1).** `ProjectMemberGuard` now compares the key's project with the route's,
+  `ProjectAccessService` fails closed for a key whose project cannot be resolved, and the four
+  services that carried their own copies of the access check now use the one implementation.
+- **Role enforcement (B6).** `checkPermission` compared the member's role with the allowed list —
+  but every call site passed `['admin','owner']` and the check tested whether `'owner'` was in
+  that list, so it returned before the member was even looked up. A viewer could delete the
+  project, mint an API key, write environment variables and add an admin. The role is the
+  member's own role now, and the functions console got the same treatment.
+- **Tokens, sessions and secrets (B10, B11).** One implementation of "what a token is worth"
+  (`AccessTokenService`) is used by both the session strategy and the composite guard, so they
+  cannot disagree — a refresh token presented as a bearer token used to authenticate. The mail
+  server's password is redacted, the login code is not logged, and a queue message's body is
+  logged by length.
+- **The installation routes (B2), the mail webhooks (B3), the Cloudflare OAuth callback (B12),
+  the doubled `api/v1` prefix (B9), and the default-allow API (B13)** — each with a test and a
+  live check.
+- **The metrics endpoint** no longer names every project to anyone who asks: the scrape carries a
+  token, and without one the platform's own series are served and the per-project ones are not.
+- **A function's variables** were stored in plain text and returned to every member of the
+  project. They are encrypted on write, masked on read for anyone who does not administer the
+  project, and decrypted only for the runtime — and a page that saves the mask back does not
+  overwrite the secret with the word "masked".
+- **Five defects Phase 1 found on its own reading of the code**, not in the audit: the sign-in
+  lookup said whether an address had an account; the login code skipped the second factor; the
+  login's `next` parameter could send a person to another site; the account's API keys page
+  listed the **first project's** keys; and the MCP server's scope check failed open.
+- **The SDK** was corrected against the API: the ten paths that did not exist, the database's
+  backup calls that carried no project, the template categories that asked about a project that
+  does not exist, and the invitation endpoint.
+
+Unexpected issues:
+- **The API would not start.** `ApiKeyOrJwtGuard` gained a dependency on `AccessTokenService`,
+  and the guard is instantiated in the context of whichever module declares the controller —
+  twelve of them do not import the auth module. The platform that could not be constructed is a
+  platform that does not start. The token service is now resolved through the module reference,
+  the way the guard already resolved the two API-key services.
+- **The Docker build could not read its own context.** `installer/docker/secrets` is root-only,
+  and the build context is the repository root. The secrets are now excluded from the context —
+  they are mounted at RUN time and must never be part of a build.
+- **The database's `secret.findUnique` with a null project id is invalid in Prisma**, so the
+  email bootstrap fails on every start (`Invalid this.prisma.secret.findUnique() invocation`).
+  Pre-existing, not caused by this phase, and it is one of the reasons the email console is
+  empty. Recorded as `KI-8`.
+
+Decision:
+- **The functions console was given roles rather than left open.** A viewer may read and nothing
+  else; a developer may write, deploy and invoke but not delete; the deletion is the owner's and
+  the admin's alone. The screen inventory already said a viewer sees no "Deploy", no "Invoke"
+  and no env edit — this makes the API agree with the specification instead of inventing a rule.
+- **The sign-in lookup answers with the platform's method, not the account's.** A per-account
+  answer cannot be returned without being an oracle; a platform-level answer is true, and it is
+  what the dashboard's own login page already used.
+- **Two defects outside the security mandate were fixed because the platform was visibly broken
+  by them**: the platform's own secrets could not be read at all (a Prisma compound lookup cannot
+  match a NULL column, so the email bootstrap failed on every start of the API), and the mail
+  server's credential was handed over whole (`admin:admin:<hash>` instead of `admin:<hash>`).
+  Both have tests. The remaining causes of the empty email console are Phase 3's, and are recorded
+  as KI-11.
+- **The verification data was removed afterwards.** Two projects, two members, one function, one
+  account key and one project key were created to prove the rules against the running platform,
+  and every one of them was deleted afterwards — along with the eight `smoke-test-*` projects an
+  earlier verification had left behind. The platform has no projects and no test users now, as it
+  did before.
+
+Impact:
+- **API:** authorization is default-deny; every project-scoped route is tenant-bound and, where
+  the screen inventory says so, role-bound. The SDK, the MCP server and the dashboard were
+  corrected to match.
+- **No migration.** Nothing in the schema changed: the function's variables were encrypted with
+  the platform's existing AES-256-GCM `CryptoService`, and the platform has no functions with
+  variables, so there was nothing to re-encrypt.
+- **Documentation:** `docs/technical-debt.md` was **corrected**, not merely updated —
+  `TD-SEC-5` was wrong and is rewritten as the three gaps that are real; `docs/product/UX_AUDIT.md`
+  §3.1 records what Phase 1 closed and how it was proved.
+- **The 150-line rule.** Every file this phase created or grew is under the limit: the functions
+  console was split into a reading controller and a writing controller, the variables into their
+  own service, the MCP server's scope check and its tool dispatcher into their own modules, the
+  code mail out of the magic-code service, and the code exchange into a service of its own.
+  **Three files that were already over the limit are still over it** — `cloudflare-oauth.service.ts`
+  (329), `domain-email-key.service.ts` (197) and `installation.service.ts` (557). This phase made
+  each of them **smaller**; splitting them properly is a Phase 2 piece of work.
+
 ## 2026-11-06 — Phase 0: the product, architecture and journey audit
 
 Phase: Phase 0 (audit only — no feature code)

@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 import { PrismaService } from '@/prisma/prisma.service';
 import { AuthSessionService } from '@/modules/auth/services/auth-session.service';
 import { AuthRegisterService } from '@/modules/auth/services/auth-register.service';
@@ -9,6 +9,7 @@ import { AuthSessionMgmtService } from '@/modules/auth/services/auth-session-mgm
 import { AuthApiKeyService } from '@/modules/auth/services/auth-api-key.service';
 import { AuthPasswordService } from '@/modules/auth/services/auth-password.service';
 import { AuthMagicCodeService } from '@/modules/auth/services/auth-magic-code.service';
+import { AuthMagicCodeVerifyService } from '@/modules/auth/services/auth-magic-code-verify.service';
 import { AuthVerificationService } from '@/modules/auth/services/auth-verification.service';
 import { MfaService } from '@/modules/auth/mfa/mfa.service';
 
@@ -27,6 +28,7 @@ export class AuthService {
     private apiKeys: AuthApiKeyService,
     private password: AuthPasswordService,
     private magicCodeService: AuthMagicCodeService,
+    private magicCodeVerify: AuthMagicCodeVerifyService,
     private verification: AuthVerificationService,
     private mfa: MfaService,
   ) {}
@@ -73,7 +75,7 @@ export class AuthService {
   }
 
   verifyMagicCode(dto: { email: string; code: string }, ip?: string, ua?: string) {
-    return this.magicCodeService.verifyCode(dto, ip, ua);
+    return this.magicCodeVerify.verifyCode(dto, ip, ua);
   }
 
   async refreshToken(token: string) {
@@ -97,13 +99,27 @@ export class AuthService {
   revokeApiKey(userId: string, keyId: string) { return this.apiKeys.revokeApiKey(userId, keyId); }
   validateApiKey(key: string) { return this.apiKeys.validateApiKey(key); }
 
-  async lookupAuthMethod(email: string) {
-    const user = await this.prisma.user.findUnique({
-      where: { email: email.toLowerCase() },
-      select: { preferredAuthMethod: true },
-    });
-    if (!user) throw new NotFoundException('User not found');
-    return { authMethod: user.preferredAuthMethod ?? 'PASSWORD' };
+  /**
+   * Which sign-in method this platform uses.
+   *
+   * It used to answer with the *account's* stored preference, and 404 for an
+   * address with no account. That is an account-enumeration oracle: anyone
+   * could ask the platform whether a given address was registered, and the
+   * answer was different for "no such person" and "that person signs in with
+   * a code". The answer now depends on the platform alone, never on the
+   * address, so the question reveals nothing about who has an account.
+   */
+  async lookupAuthMethod(_email: string) {
+    let authMethod: string | null = null;
+    try {
+      const settings = await this.prisma.installationSettings.findFirst({
+        select: { authMethod: true },
+      });
+      authMethod = settings?.authMethod ?? null;
+    } catch {
+      // The platform is not configured yet: the default stands.
+    }
+    return { authMethod: authMethod ?? 'PASSWORD' };
   }
 
   // Phase 5.1 — Verification flows

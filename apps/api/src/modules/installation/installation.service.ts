@@ -17,6 +17,7 @@ import { Prisma, Role, AuthMethod } from '@prisma/client';
 import { writeFileSync, mkdirSync } from 'fs';
 import { join } from 'path';
 import * as bcrypt from 'bcrypt';
+import { resolveEncryptionKey } from '@/common/secrets';
 
 const LOCK_KEY = 'installation:orchestrate';
 const LOCK_TOKEN_TTL_MS = 5 * 60 * 1000;
@@ -402,13 +403,8 @@ export class InstallationOrchestratorService {
   }
 
   private getEncryptionKey(): Buffer {
-    const envKey = process.env.ENCRYPTION_KEY;
-    if (envKey) return Buffer.from(envKey, 'utf8').slice(0, 32);
-    const keyFile = process.env.ENCRYPTION_KEY_FILE;
-    if (keyFile) {
-      try { return require('fs').readFileSync(keyFile, 'utf8').trim().slice(0, 32) as Buffer; } catch { /* fall through */ }
-    }
-    return Buffer.from('default-dev-key-32-chars-here!!', 'utf8').slice(0, 32);
+    // One resolution for the whole platform — and it fails closed.
+    return resolveEncryptionKey(this.configService);
   }
 
   // ─── Cloudflare OAuth credential update (post-install) ──────────────

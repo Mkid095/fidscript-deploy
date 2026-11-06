@@ -27,6 +27,7 @@ import { Injectable, Logger, InternalServerErrorException } from '@nestjs/common
 import { ConfigService } from '@nestjs/config';
 import { AxiosInstance } from 'axios';
 import { SecretsService } from '@/modules/infrastructure/secrets/secrets.service';
+import { parseJmapCredential, StalwartJmapCredentials } from '@/modules/email/providers/stalwart-credential';
 import {
   IEmailProvider,
   ProviderDomain,
@@ -41,12 +42,6 @@ import {
 interface JmapResponse {
   sessionState: string;
   methodResponses: Array<[string, Record<string, unknown>, string]>;
-}
-
-/** Resolved basic-auth credentials for the admin JMAP session. */
-interface StalwartJmapCredentials {
-  user: string;
-  pass: string;
 }
 
 @Injectable()
@@ -72,10 +67,10 @@ export class StalwartEmailProvider implements IEmailProvider {
   private async resolveJmapCredentials(): Promise<StalwartJmapCredentials> {
     if (this.jmapCreds) return this.jmapCreds;
 
-    const user = this.config.get<string>('STALWART_JMAP_USER', 'admin');
+    const configuredUser = this.config.get<string>('STALWART_JMAP_USER', '');
     const pass = await this.resolveJmapPassword();
 
-    this.jmapCreds = { user, pass };
+    this.jmapCreds = parseJmapCredential(configuredUser, pass);
     return this.jmapCreds;
   }
 

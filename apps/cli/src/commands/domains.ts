@@ -45,10 +45,11 @@ export function registerDomainsCommands(program: Command, ctx: CliContext): void
     .command('get <domainId>')
     .description('Get a domain by ID')
     .option('-p, --project <id>', 'Project ID', cfg.currentProject ?? '')
-    .action(async (domainId: string, _opts: { project?: string }) => {
+    .action(async (domainId: string, opts: { project?: string }) => {
       const sdk = await loadSdk(ctx);
+      const projectId = opts.project ?? die('No project ID (--project)');
       try {
-        const d = (await sdk.domains.get(domainId)) as unknown as Record<string, unknown>;
+        const d = (await sdk.domains.get(projectId, domainId)) as unknown as Record<string, unknown>;
         const fields: Array<[string, unknown]> = [
           ['Domain', d.domain], ['ID', d.id],
           ['Type', Array.isArray(d.type) ? d.type.join(',') : d.type],

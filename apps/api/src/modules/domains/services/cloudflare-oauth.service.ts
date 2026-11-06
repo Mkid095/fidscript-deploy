@@ -2,10 +2,10 @@ import { Injectable, Logger, UnauthorizedException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { PrismaService } from '@/prisma/prisma.service';
 import { DomainAccessService } from './domain-access.service';
+import { resolveEncryptionKey } from '@/common/secrets';
 import * as crypto from 'crypto';
 import axios from 'axios';
 
-const ENCRYPTION_KEY_ENV = 'ENCRYPTION_KEY';
 const SCOPES = ['zone:read', 'dns:edit', 'account:read'].join(' ');
 /** How long an OAuth state stays valid. */
 const STATE_TTL_MS = 10 * 60 * 1000;
@@ -323,14 +323,7 @@ export class CloudflareOAuthService {
   }
 
   private getEncryptionKey(): Buffer {
-    const envKey = process.env[ENCRYPTION_KEY_ENV];
-    if (envKey) {
-      return Buffer.from(envKey, 'utf8').slice(0, 32);
-    }
-    const keyFile = process.env[`${ENCRYPTION_KEY_ENV}_FILE`];
-    if (keyFile) {
-      try { return Buffer.from(require('fs').readFileSync(keyFile, 'utf8').trim(), 'base64').slice(0, 32); } catch { /* fall through */ }
-    }
-    return Buffer.from('default-dev-key-32-chars-here!!', 'utf8').slice(0, 32);
+    // One resolution for the whole platform — and it fails closed.
+    return resolveEncryptionKey(this.configService);
   }
 }

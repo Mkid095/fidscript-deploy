@@ -110,14 +110,24 @@ export async function handleDatabaseTool(
     case 'databases_delete':
       return sdk.databases.delete(args.databaseId as string);
 
-    case 'databases_backup':
-      return sdk.databases.backup(args.databaseId as string);
+    // The backup routes are project-scoped: a database belongs to a
+    // project, and the project's members are who may back it up. The
+    // project comes from the database itself, so the agent does not have to
+    // name it.
+    case 'databases_backup': {
+      const db = await sdk.databases.get(args.databaseId as string);
+      return sdk.databases.backup(db.projectId, args.databaseId as string);
+    }
 
-    case 'databases_listBackups':
-      return sdk.databases.listBackups(args.databaseId as string);
+    case 'databases_listBackups': {
+      const db = await sdk.databases.get(args.databaseId as string);
+      return sdk.databases.listBackups(db.projectId, args.databaseId as string);
+    }
 
-    case 'databases_restore':
-      return sdk.databases.restore(args.databaseId as string, args.backupId as string);
+    case 'databases_restore': {
+      const db = await sdk.databases.get(args.databaseId as string);
+      return sdk.databases.restore(db.projectId, args.databaseId as string, args.backupId as string);
+    }
 
     default:
       throw new Error(`Unknown database tool: ${name}`);

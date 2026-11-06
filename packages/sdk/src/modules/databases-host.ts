@@ -19,21 +19,22 @@ export interface DatabasesHost {
   delete(databaseId: string): Promise<{ success: boolean }>;
   database(databaseId: string): unknown;
 
-  // Backups (legacy)
-  backup(databaseId: string): Promise<{ backupId: string }>;
-  listBackups(databaseId: string): Promise<unknown[]>;
-  restore(databaseId: string, backupId: string): Promise<unknown>;
+  // Backups. The routes are project-scoped — a database belongs to a
+  // project and the project's members are who may back it up.
+  backup(projectId: string, databaseId: string): Promise<{ backupId: string }>;
+  listBackups(projectId: string, databaseId: string): Promise<unknown[]>;
+  restore(projectId: string, databaseId: string, backupId: string): Promise<unknown>;
 
   // Credentials
-  rotatePassword<T = unknown>(databaseId: string): Promise<T>;
-  getConnection(databaseId: string, poolOnly?: boolean): Promise<{
+  rotatePassword<T = unknown>(projectId: string, databaseId: string): Promise<T>;
+  getConnection(projectId: string, databaseId: string, poolOnly?: boolean): Promise<{
     host: string; port: number; database: string; username: string; connectionString: string;
     pgbouncerHost?: string; pgbouncerPort?: number;
   }>;
-  updateSsl(databaseId: string, ssl: boolean): Promise<unknown>;
+  updateSsl(projectId: string, databaseId: string, ssl: boolean): Promise<unknown>;
 
   // Backup scheduling
-  getBackupSchedule(databaseId: string): Promise<BackupSchedule | null>;
-  updateBackupSchedule(databaseId: string, schedule: Partial<BackupSchedule>): Promise<BackupSchedule>;
-  getBackupSettings(databaseId: string): Promise<BackupSettings>;
+  getBackupSchedule(projectId: string, databaseId: string): Promise<BackupSchedule | null>;
+  updateBackupSchedule(projectId: string, databaseId: string, schedule: Partial<BackupSchedule>): Promise<BackupSchedule>;
+  getBackupSettings(projectId: string, databaseId: string): Promise<BackupSettings>;
 }

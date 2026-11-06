@@ -20,6 +20,7 @@ import { AuthSessionMgmtService } from '@/modules/auth/services/auth-session-mgm
 import { AuthApiKeyService } from '@/modules/auth/services/auth-api-key.service';
 import { AuthPasswordService } from '@/modules/auth/services/auth-password.service';
 import { AuthMagicCodeService } from '@/modules/auth/services/auth-magic-code.service';
+import { AuthMagicCodeVerifyService } from '@/modules/auth/services/auth-magic-code-verify.service';
 import { AuthVerificationService } from '@/modules/auth/services/auth-verification.service';
 import { OrganizationService } from '@/modules/auth/services/organization.service';
 import { TeamService } from '@/modules/auth/services/team.service';
@@ -67,6 +68,7 @@ import { ProjectsModule } from '@/modules/projects/projects.module';
     AuthApiKeyService,
     AuthPasswordService,
     AuthMagicCodeService,
+    AuthMagicCodeVerifyService,
     AuthVerificationService,
     OrganizationService,
     TeamService,

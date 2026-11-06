@@ -50,7 +50,6 @@ export class ApiKeyOrJwtGuard {
   private readonly logger = new Logger(ApiKeyOrJwtGuard.name);
 
   constructor(
-    private accessTokens: AccessTokenService,
     private reflector: Reflector,
     private moduleRef: ModuleRef,
   ) {}
@@ -114,7 +113,13 @@ export class ApiKeyOrJwtGuard {
     // (seven days) presented as a bearer token authenticated as the user on
     // every route this guard covers — and survived logout, because the
     // logout tombstone is only consulted by the strategy.
-    const caller = await this.accessTokens.verify(token);
+    // The token is checked by the same service the session strategy uses.
+    // It is looked up through the module reference rather than injected: this
+    // guard is used by controllers in a dozen modules, and only some of them
+    // import the auth module — a guard that cannot be constructed is a
+    // platform that does not start.
+    const accessTokens = this.moduleRef.get(AccessTokenService, { strict: false });
+    const caller = await accessTokens.verify(token);
     (request as any).user = {
       userId: caller.userId,
       email: caller.email,

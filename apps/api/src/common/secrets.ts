@@ -29,3 +29,40 @@ export function resolveJwtSecret(config: ConfigService): string {
   }
   return secret;
 }
+
+/**
+ * Resolve the platform's encryption key.
+ *
+ * Reads `ENCRYPTION_KEY` (base64 of exactly 32 bytes) or the file named by
+ * `ENCRYPTION_KEY_FILE`, and **fails closed** — there is no default key.
+ *
+ * Four services used to carry their own copy of this, each reading the key
+ * differently: some took the environment variable as UTF-8 and some as
+ * base64, and all four fell back to `default-dev-key-32-chars-here!!` —
+ * a key that is published in this repository. A secret encrypted under it
+ * is readable by anyone who has read the source, and a secret encrypted by
+ * `CryptoService` (base64) could not be decrypted by those services at all.
+ *
+ * One resolution, one key, and it fails closed.
+ */
+export function resolveEncryptionKey(config: ConfigService): Buffer {
+  let keyBase64 = config.get<string>('ENCRYPTION_KEY');
+  if (!keyBase64) {
+    const keyFile = config.get<string>('ENCRYPTION_KEY_FILE');
+    if (keyFile) {
+      keyBase64 = fs.readFileSync(keyFile, 'utf8').trim();
+    }
+  }
+  if (!keyBase64) {
+    throw new Error(
+      'ENCRYPTION_KEY must be set. Use the ENCRYPTION_KEY_FILE env var.',
+    );
+  }
+  const raw = Buffer.from(keyBase64, 'base64');
+  if (raw.length !== 32) {
+    throw new Error(
+      `ENCRYPTION_KEY must be 32 bytes (got ${raw.length}). Provide a base64-encoded 32-byte key.`,
+    );
+  }
+  return raw;
+}

@@ -36,7 +36,7 @@ export function DatabaseProvider({
   const { savedQueries, saveQuery, deleteSavedQuery } = useDatabaseSavedQueries();
   const { dbStatus, refreshStatus } = useDatabaseStatus(databaseId);
   const { migrations, refreshMigrations, applyMigration } = useDatabaseMigrations(databaseId);
-  const { backupSchedule, refreshBackupSchedule, updateBackupSchedule } = useDatabaseBackup(databaseId);
+  const { backupSchedule, refreshBackupSchedule, updateBackupSchedule } = useDatabaseBackup(projectId, databaseId);
   const { realtimeTables, refreshRealtimeTables } = useDatabaseRealtime(databaseId);
 
   // ── Auto-load on databaseId change ───────────────────────────────────────

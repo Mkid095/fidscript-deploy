@@ -15,13 +15,31 @@
 
 | ID | Description | Reason | T/P | Impact | Resolution | Priority |
 |---|---|---|---|---|---|---|
-| `TD-SEC-1` | `DOM-05`/`DOM-06` skip project-access checks | Pre-hardening scaffold; functional but ungated | Temp | Any member can connect-Cloudflare / delete a domain | `PREREQ-SEC-1`; UI greys for non-A/D meanwhile | P0 |
-| `TD-SEC-2` | Email services lack project-access checks | Path-scoping only, no membership re-validation | Temp | Cross-project read/write possible by a crafted request | `PREREQ-SEC-2`; UI greys for non-members | P0 |
-| `TD-SEC-3` | `STOR-08` public-URL skips access check | Same scaffold gap | Temp | Anyone can mint a public URL for any bucket | `PREREQ-SEC-3`; UI greys for non-members | P0 |
-| `TD-SEC-4` | Email webhooks open if `STALWART_WEBHOOK_SECRET` unset | HMAC is optional | Temp | Unauthenticated inbound webhook spoofing | `PREREQ-SEC-4`; UI shows a warning banner | P0 |
-| `TD-SEC-5` | Functions runtime has **no sandboxing** | `child_process.exec`, Docker socket mounted, `/tmp` storage | Temp | A function can read `/etc/shadow` / the host | Hardening track (AUDIT §C); **mandatory before multi-tenant production** | P0 |
+| `TD-SEC-1` | The domain endpoints check **membership** but not the **role** | The pre-hardening scaffold guarded the route, not the privilege | Temp | A project `viewer` can connect Cloudflare or delete a domain | `PREREQ-SEC-1`; the one shared rule (`ProjectAccessService`) now exists and the functions console uses it | P0 |
+| `TD-SEC-2` | The email services check **membership** but not the **role** | Same | Temp | A `viewer` can read and write another member's mail settings | `PREREQ-SEC-2`; UI greys for non-members | P0 |
+| `TD-SEC-3` | `STOR-08` checks **membership** but not the **role** | Same | Temp | A `viewer` can mint a public URL for any bucket in the project | `PREREQ-SEC-3`; UI greys for non-members | P0 |
+| `TD-SEC-4` | ~~Email webhooks open if `STALWART_WEBHOOK_SECRET` unset~~ **RESOLVED (Phase 1)** | — | — | The signature is now **required**, the HMAC is computed over the **raw** body, and the platform **refuses** the webhook when no secret is configured | Done — `webhook-signature.service.ts`, verified live (unsigned → 401, wrongly signed → 401) | ✅ |
+| `TD-SEC-5` | ~~Functions runtime has no sandboxing~~ **THE ENTRY WAS WRONG — rewritten below** | — | — | — | — | — |
+
+**`TD-SEC-5` as it actually is (corrected 2026-11-06).** The runtime **is** sandboxed: the
+container runs with `--network none`, `--read-only`, `--cap-drop ALL`,
+`--security-opt no-new-privileges`, a 64 MB `noexec` tmpfs, and memory/CPU/pid limits; the code
+is piped in over **stdin** and never bind-mounted. Three narrower gaps remain, and they are the
+real ones:
+
+| ID | Description | Reason | T/P | Impact | Resolution | Priority |
+|---|---|---|---|---|---|---|
+| `TD-SEC-5a` | The container has no `--userns=remap` and no `--user`, so it runs as **root in the host's user namespace** — and the API container holds the Docker socket read-write | The socket is needed for builds | Temp | A container escape is host root | Run the function container as a non-root user with a remapped namespace | P0 |
+| `TD-SEC-5b` | The runner uses `execFileSync`, which **blocks the API's event loop** for the whole container run, and `timeoutSeconds` has **no upper bound** | The runner predates the async build work | Temp | One project member can freeze the whole API for as long as they ask | Make the run asynchronous, as the deployment build already is, and cap the timeout | P0 |
+| `TD-SEC-5c` | The function's variables are passed on the **`docker` argv** (`-e KEY=VALUE`), so every secret is visible in `/proc/<pid>/cmdline` to any local user | The runner builds its argument list inline | Temp | A local user reads another tenant's function secrets | Pass them with `--env-file` | P1 |
+| `TD-SEC-5d` | `--network none` makes the project's **Instant data plane unreachable** from a function | The isolation and the data plane contradict each other | Temp | An edge function cannot reach the app's own data | Give the function container a route to the project's data plane, and nothing else | P1 |
 
 ## Correctness / honesty (P1)
+
+| ID | Description | Reason | T/P | Impact | Resolution | Priority |
+|---|---|---|---|---|---|---|
+| `TD-COR-0` | The dashboard's sign-in does not answer the API's **`mfaRequired`** answer | The MFA step was never built in the frontend (F02 is still a spec) | Temp | An account with MFA enrolled cannot complete a sign-in through the dashboard — the password path *and* the code path both stop at the challenge | Build the MFA step in F02; the API answers correctly on both paths (Phase 1) | P1 |
+| `TD-COR-0b` | `GET /projects/:id/env-vars` carries **no scope requirement**, so a project key reads the project's variable NAMES whatever its scopes | The route was written before scopes existed | Temp | A key with `functions:read` learns the names of the project's variables (the values stay masked) | Give the route `@RequireScope('projects:read')` | P2 |
 
 | ID | Description | Reason | T/P | Impact | Resolution | Priority |
 |---|---|---|---|---|---|---|
@@ -66,6 +84,12 @@ contributor doesn't file them as bugs.
   the active phase.
 
 ## Change log
+- 2026-11-06 — **Corrected, not just updated.** `TD-SEC-1/2/3` said the endpoints "skip
+  project-access checks"; they check **membership** — what is missing is the **role**, and the
+  entry now says so. `TD-SEC-4` is **resolved** (Phase 1). `TD-SEC-5` was **wrong**: the runtime
+  *is* sandboxed, and the entry is rewritten as the three narrower gaps that are real
+  (`TD-SEC-5a`–`d`). Two new entries record what Phase 1 found and did not close
+  (`TD-COR-0`, `TD-COR-0b`).
 - 2026-06-20 — Initial registry. Seeded from the UI-mitigated gaps in
   `docs/backend-prerequisites.md` + the AUDIT §C findings. 5 P0 security, 4 P1 correctness,
   5 P1–P2 UX, 5 permanent scope boundaries.

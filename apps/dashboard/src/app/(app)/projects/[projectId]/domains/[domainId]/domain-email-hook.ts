@@ -16,7 +16,7 @@ export function useDomainEmail(
     try {
       const sdk = getSdk();
       const [domainData, dnsData] = await Promise.all([
-        sdk.domains.get(domainId).catch(() => null),
+        sdk.domains.get(projectId, domainId).catch(() => null),
         sdk.domains.getDnsRecords(projectId, domainId).catch(() => null),
       ]);
       if (domainData) setDomain(domainData as Domain);

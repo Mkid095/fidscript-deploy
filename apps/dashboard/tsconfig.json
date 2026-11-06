@@ -19,6 +19,7 @@
       "@fidscript/ui/*": ["../../packages/ui/src/*"]
     },
     "allowJs": true,
+    "allowImportingTsExtensions": true,
     "incremental": true,
     "isolatedModules": true,
     "skipLibCheck": true,

@@ -161,6 +161,87 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/).
 - `fix(dashboard): deleting an alert rule landed on another project's monitoring screen` — the delete navigated to the flat `/monitoring?project=…`, and that page ignores `?project=` and falls back to whatever project the shell holds.
 - `fix(dashboard): the deployment wizard's stepper advanced instead of jumping` — clicking an earlier step called `continueStep()` regardless of which step was clicked.
 - `fix(dashboard): a new project said its deployments had "reached a terminal state"` — with no deployments at all, the empty state claimed everything had finished and showed no button. It now distinguishes "nothing has been deployed" and carries the call to action on both tabs.
+- `fix(security): a function's variables were stored in plain text and shown to every member** — the
+  variables of an edge function are the credentials it calls with (an OpenAI key, a database URL), and
+  they were written to the database as plain text and returned to **every** member of the project,
+  whatever their role. They are encrypted on write now, like the project's own variables; a member who
+  may only read the project sees `[masked]`; the runtime — the one thing that genuinely needs them —
+  gets the decrypted values through a separate path. A page that saves the mask back does not
+  overwrite the secret with the word "masked": a masked value keeps what is stored.
+- `fix(security): the functions console had no roles at all** — membership was checked and the *role*
+  never was, so a **viewer** could create a function, write its variables, deploy it, invoke it and
+  delete it. A viewer may now read and nothing else; a developer may write, deploy and invoke but not
+  delete; the deletion is the owner's and the admin's alone.
+- `fix(security): the login could be used as a front door for somebody else's site** — the `next`
+  parameter was followed wherever it pointed, so a link like
+  `https://fidscript.com/login?next=https://elsewhere.example` sent a person who had just signed in
+  to another site, from the platform's own login. Only a path inside the platform is a destination
+  now: another site, a protocol-relative address (`//elsewhere.example`) and a backslash — which a
+  browser reads as a slash — are all refused.
+- `fix(security): the sign-in lookup said whether an address had an account** — `GET
+  /auth/auth-method/:email` answered with the account's own preference and 404 for an address with no
+  account, which is an account-enumeration oracle: anyone could ask the platform who was registered.
+  The answer now depends on the platform alone, never on the address.
+- `fix(security): the login code skipped the second factor** — an account with MFA enrolled got a
+  session straight from the emailed code, while the password path asked for the second factor. The
+  code arrives by email, so without MFA it was the *only* factor and a readable mailbox was enough to
+  sign in. The magic-code path now issues a challenge, exactly like the password path, and consumes
+  the code with it.
+- `fix(security): the MCP server's scope check failed open** — it fetched the list of tools, took the
+  scopes a tool needed, and **allowed the call whatever the key carried** — and allowed everything
+  again when the platform could not be reached. The key's own scopes are fetched and enforced now, and
+  a platform that cannot answer cannot grant. The API answers with the calling key's MCP
+  permissions (`GET /api/v1/mcp/permissions`).
+- `fix(security): four services fell back to a known encryption key** — the domain services and the
+  installation service each carried `default-dev-key-32-chars-here!!` as the key to fall back on when
+  none was configured, so a platform without an encryption key encrypted its secrets with a key that
+  is published in the source. There is one resolution of the key now, and it **fails closed** when
+  there is none.
+- `fix(dashboard): the account's API keys page showed the first project's keys** — the "API Keys"
+  card in account settings listed the keys of the first project the person happened to own, and
+  revoked them through the project's endpoint. The account's own keys are listed and revoked now; the
+  project's keys stay in the project's console, where they belong.
+- `fix(sdk): the template categories asked about a project that does not exist** — the method called
+  the platform with a nil UUID, which the project's own guard refuses, so it could never answer. It
+  names a project, like every other call in that module.
+- `fix(sdk): the database's backup calls were not scoped to a project** — they asked for a database
+  without saying which project it belonged to, so the platform had to guess. Every backup and
+  credential call now carries its project, and the MCP tool resolves the project from the database it
+  was given.
+- `fix(dashboard): the API keys card did not refresh after a revoke** — the key was gone from the
+  platform and still on the screen. The list is asked for again once the revoke is done, so the
+  card shows what the platform holds.
+- `fix(email): the mail server's credential was handed over whole** — the installer writes the admin
+  credential as `user:hash` (the SHA-256 of the admin password), and the platform sent it as the
+  *password*: the mail server was asked for `admin:admin:<hash>` and answered 401 for a credential
+  that was right. The user and the secret are split now, and the platform's own admin token is used
+  when there is one.
+- `fix(infrastructure): the platform's own secrets could not be read at all** — a platform-level
+  secret has no project, so `projectId` is null, and Prisma's compound unique lookup **cannot match
+  a NULL column**: the lookup threw `Invalid this.prisma.secret.findUnique() invocation` instead of
+  finding the row. The email bootstrap read a platform secret on every start of the API, so it
+  failed every time — the platform's domains were never connected to the mail server. A null
+  project is found with `findFirst`, written as find-then-update-or-create, and deleted with
+  `deleteMany`; a project's secret keeps the compound lookup.
+- `fix(security): the platform's encryption secret was derived two different ways** — the domain
+  services read `ENCRYPTION_KEY` as **UTF-8, truncated to 32 characters**, while the platform's
+  `CryptoService` reads it as **base64, exactly 32 bytes**. A secret encrypted by one could not be
+  decrypted by the other, and the fail-closed resolution of the key was never reached while the
+  variable was in the environment — which it always is, because the entrypoint loads it there. The
+  domain services use the platform's cipher now, so there is one key and one derivation. Nothing
+  was encrypted under the old one (the platform holds no domain secrets).
+- `chore(api): every file this phase touched is under the 150-line limit** — the functions console
+  was split into a reading controller and a writing controller, the variables into a service of
+  their own, the MCP server's scope check and its tool dispatcher into modules of their own, the
+  code mail out of the magic-code service and the code exchange into a service of its own. Three
+  files that were already over the limit are smaller than they were; splitting them properly is
+  the next phase's work.
+- `chore(installer): the platform's secrets are no longer part of the Docker build context** — the
+  context is the repository root, and `installer/docker/secrets` sits inside it: the encryption key,
+  the database password, the mail server's password and the tokens. They are mounted into the
+  containers at RUN time; they have no business in a build context, where one stray `COPY` would
+  bake them into an image. They are excluded now — which also means the build no longer fails on a
+  machine that cannot read them.
 
 ### Improved
 - `chore(dashboard): the formatters are consolidated` — `formatBytes`, `relativeTime` and `formatDuration` existed as eight copies across the app, and they did not agree. One relative-time copy said "5 min ago", another "5m ago", a third "Just now"; one byte formatter capped at MB, so a 2 GB file was shown as "2048.0 MB". The same timestamp rendered three different ways depending on which screen you were on. `lib/format.ts` is now the only implementation, and the time-range helper is named `formatTimeRange` — it used to share the name `formatDuration` with the duration-in-milliseconds helper, which is how the two got confused in the first place.

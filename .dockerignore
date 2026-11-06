@@ -10,6 +10,10 @@
 # The build context can be large; mitigate by keeping the repo lean and
 # rebuilding the context rarely (only when artifacts change).
 **/coverage
+# The platform's own secrets (encryption key, database password, tokens).
+# They are mounted into the containers at RUN time — they must never be part
+# of a build context, where a stray COPY would bake them into an image.
+installer/docker/secrets
 .git
 .gitignore
 *.log

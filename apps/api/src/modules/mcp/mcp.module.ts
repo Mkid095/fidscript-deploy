@@ -10,9 +10,10 @@ import { McpPermissionService } from './mcp-permission.service';
 import { McpApiKeyService } from './mcp-api-key.service';
 import { McpAuditLogService } from './mcp-audit-log.service';
 import { McpController } from './mcp.controller';
+import { McpPermissionsController } from './mcp-permissions.controller';
 
 @Module({
-  controllers: [McpController],
+  controllers: [McpController, McpPermissionsController],
   providers: [McpPermissionService, McpApiKeyService, McpAuditLogService],
   exports: [McpPermissionService, McpApiKeyService, McpAuditLogService],
 })

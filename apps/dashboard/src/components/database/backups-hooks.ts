@@ -23,14 +23,14 @@ export function useBackups() {
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
 
   const loadBackups = useCallback(async () => {
-    if (!databaseId) return;
+    if (!projectId || !databaseId) return;
     setLoading(true);
     try {
-      const raw = await getSdk().databases.listBackups(databaseId) as { backups: BackupRecord[] } | BackupRecord[];
+      const raw = await getSdk().databases.listBackups(projectId, databaseId) as { backups: BackupRecord[] } | BackupRecord[];
       const bks = Array.isArray(raw) ? raw : raw.backups;
       setBackups(bks.map(b => normalizeBackupRecord(b as Parameters<typeof normalizeBackupRecord>[0])));
     } catch { /* ignore */ } finally { setLoading(false); }
-  }, [databaseId, getSdk]);
+  }, [projectId, databaseId, getSdk]);
 
   const loadBuckets = useCallback(async () => {
     if (!projectId) return;
@@ -53,10 +53,10 @@ export function useBackups() {
   };
 
   const handleCreate = useCallback(async () => {
-    if (!databaseId) return;
+    if (!projectId || !databaseId) return;
     setCreating(true);
     try {
-      const result = await getSdk().databases.backup(databaseId) as { backupId: string };
+      const result = await getSdk().databases.backup(projectId, databaseId) as { backupId: string };
       showMsg('success', `Backup ${result.backupId} started.`);
       await loadBackups();
     } catch (err: unknown) {
@@ -65,7 +65,7 @@ export function useBackups() {
   }, [databaseId, getSdk, loadBackups]);
 
   const handleRestore = useCallback(async (backupId: string) => {
-    if (!databaseId) return;
+    if (!projectId || !databaseId) return;
     const ok = await confirmFn({
       title: 'Restore backup',
       message: 'This will overwrite all current data. Continue?',
@@ -75,7 +75,7 @@ export function useBackups() {
     if (!ok) return;
     setRestoring(backupId);
     try {
-      await getSdk().databases.restore(databaseId, backupId);
+      await getSdk().databases.restore(projectId, databaseId, backupId);
       showMsg('success', 'Database restored successfully.');
     } catch (err: unknown) {
       showMsg('error', err instanceof Error ? err.message : 'Restore failed.');

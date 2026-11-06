@@ -8,6 +8,22 @@
 
 ## In flight
 
+**Phase 1 — isolation and authorization: ✅ COMPLETE (2026-11-06)**
+
+- The audit's security findings are closed: the tenant boundary holds for project API keys, the
+  project **role** is enforced (not just membership), the API is **default-deny**, the tokens and
+  the secrets are handled in one place, and the installation, webhook, OAuth and metrics routes
+  carry their own rules.
+- **97 tests in 12 suites** (`pnpm test`), and the dashboard has its own runner. Every security
+  fix has a test that proves it.
+- Five further defects were found on the way and closed: a function's variables in plain text,
+  the functions console without roles, an account-enumeration oracle, the magic code skipping MFA,
+  and an open redirect in the login.
+- The evidence is in `docs/product/UX_AUDIT.md` §3.1 and `docs/implementation/IMPLEMENTATION_LOG.md`.
+
+*Phase 2 (the product and interface work) has not been started. The operator's instruction is to
+stop at the phase boundary.*
+
 **Phase 0 — the product, architecture and journey audit: ✅ COMPLETE (2026-11-06)**
 
 - `docs/product/UX_AUDIT.md` is the deliverable: 68 routes and 62 controllers read, every SDK
@@ -22,7 +38,7 @@
 - Nothing was implemented. The roadmap in the audit is reordered to put isolation and
   authorization first, and the first test suite lands in Phase 2.
 
-*Awaiting the operator's direction on Phase 1 (isolation and authorization).*
+*Phase 1 was authorized and is now complete.*
 
 ## Not yet started
 

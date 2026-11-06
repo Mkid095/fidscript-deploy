@@ -3,6 +3,7 @@ import { PrismaService } from '@/prisma/prisma.service';
 import { InstantAppConfigService } from '@/modules/instant/services/instant-app-config.service';
 import { EventService } from '@/modules/events/event.service';
 import { SandboxedRunnerService } from './sandboxed-runner.service';
+import { FunctionsCrudService } from './functions-crud.service';
 import { NodeJsRuntime } from '@/modules/functions/runtimes/nodejs.runtime';
 import { PythonRuntime } from '@/modules/functions/runtimes/python.runtime';
 import { DeployFunctionDto, InvokeFunctionDto } from '@/modules/functions/dto/index';
@@ -20,6 +21,7 @@ export class FunctionsRuntimeService {
     private nodeRuntime: NodeJsRuntime,
     private pythonRuntime: PythonRuntime,
     private instantConfig: InstantAppConfigService,
+    private crud: FunctionsCrudService,
   ) {
     this.functionsPath = process.env.FUNCTIONS_PATH ?? '/tmp/functions';
   }
@@ -55,14 +57,16 @@ export class FunctionsRuntimeService {
   }
 
   async invokeFunction(projectId: string, functionId: string, dto: InvokeFunctionDto) {
-    const func = await this.prisma.function.findFirst({ where: { id: functionId, projectId } });
-    if (!func) throw new NotFoundException('Function not found');
+    // The runtime needs the function's REAL variables — they are the
+    // credentials it calls with. They are stored encrypted, so they are
+    // decrypted here and here only.
+    const func = await this.crud.getFunctionWithSecrets(projectId, functionId);
 
     const functionDir = path.join(this.functionsPath, projectId, functionId);
     const payload = typeof dto.payload === 'string' ? dto.payload : JSON.stringify(dto.payload ?? {});
 
-    // The function's own env vars.
-    const envVars = (func.envVars as Record<string, string>) ?? {};
+    // The function's own env vars — decrypted, for the sandbox only.
+    const envVars = { ...((func.envVars as Record<string, string>) ?? {}) };
 
     // Link the function to the project's data plane. A function is part of
     // the application, so it reaches the application's Instant app the same
@@ -103,54 +107,5 @@ export class FunctionsRuntimeService {
     });
 
     return result;
-  }
-
-  async getFunctionLogs(projectId: string, functionId: string, limit = 50, cursor?: string) {
-    const func = await this.prisma.function.findFirst({ where: { id: functionId, projectId } });
-    if (!func) throw new NotFoundException('Function not found');
-
-    const logs = await this.prisma.functionLog.findMany({
-      where: { functionId },
-      orderBy: { createdAt: 'desc' },
-      take: limit + 1,
-      ...(cursor && { cursor: { id: cursor }, skip: 1 }),
-    });
-    const hasMore = logs.length > limit;
-    if (hasMore) logs.pop();
-    return { logs: logs.reverse(), nextCursor: hasMore ? logs[logs.length - 1]?.id : null };
-  }
-
-  async getFunctionVersions(projectId: string, functionId: string) {
-    const func = await this.prisma.function.findFirst({ where: { id: functionId, projectId } });
-    if (!func) throw new NotFoundException('Function not found');
-    return this.prisma.functionLog.findMany({
-      where: { functionId },
-      select: { version: true, createdAt: true, status: true },
-      distinct: ['version'],
-      orderBy: { createdAt: 'desc' },
-    });
-  }
-
-  async getFunctionCode(projectId: string, functionId: string, version?: string) {
-    const func = await this.prisma.function.findFirst({ where: { id: functionId, projectId } });
-    if (!func) throw new NotFoundException('Function not found');
-    const ext = func.runtime === 'nodejs' ? 'js' : func.runtime === 'python' ? 'py' : 'txt';
-    const functionDir = path.join(this.functionsPath, projectId, functionId);
-
-    async function fileExists(p: string) {
-      try { await fs.access(p, fs.constants.F_OK); return true; } catch { return false; }
-    }
-
-    if (version) {
-      const versionedPath = path.join(functionDir, `handler.v${version}.${ext}`);
-      if (await fileExists(versionedPath)) {
-        return { code: await fs.readFile(versionedPath, 'utf8'), versioned: true };
-      }
-    }
-    const currentPath = path.join(functionDir, `handler.${ext}`);
-    if (await fileExists(currentPath)) {
-      return { code: await fs.readFile(currentPath, 'utf8'), versioned: false };
-    }
-    return { code: null, versioned: false };
   }
 }

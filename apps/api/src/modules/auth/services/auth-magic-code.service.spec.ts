@@ -45,14 +45,12 @@ describe('the log', () => {
     };
     const eventService = { emit: jest.fn(async () => undefined) };
     const rateLimiter = { consume: jest.fn(async () => ({ allowed: true, remaining: 10 })) };
-    const session = { createSession: jest.fn(async () => ({ accessToken: 'a', refreshToken: 'r', expiresIn: 900 })) };
     const mail = { send: jest.fn(async () => ({ status: 'sent' })) };
 
     const service = new AuthMagicCodeService(
       prisma as any,
       eventService as any,
       rateLimiter as any,
-      session as any,
       mail as any,
     );
 

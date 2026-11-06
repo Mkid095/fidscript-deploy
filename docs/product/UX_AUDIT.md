@@ -49,6 +49,11 @@ product has never been made to promise.
 | 12 | **The API is default-allow** — no global auth guard, so a controller that forgets one is public | 🔴 | source |
 | 13 | **There is no automated test suite**; every guarantee in this document rests on manual verification | 🔴 | source |
 
+**Phase 1 (2026-11-06) closed the security half of this list.** Every authorization and
+isolation finding below is fixed, and each fix carries a test that proves it and a check against
+the running platform. **§3.1** is the table of what was closed and how it was proved; the findings
+themselves are left as they were written, because they are the record of what was true.
+
 The rest of the audit is structural: **22 orphaned routes**, four screens rendered at two URLs, a
 component catalog that documents 41 components of which **13 exist**, a project console whose
 sections the sidebar cannot reach, **16 browser `confirm()`/`alert()` dialogs** and **12 destructive
@@ -99,6 +104,38 @@ reachable by making a domain, a mailbox, an alias, a queue) was still hiding.
 ---
 
 ## 3. 🔴 Blockers
+
+### 3.1 Phase 1 status — what was closed, and how it was proved
+
+Phase 1 was **isolation and authorization only**. The findings below are the ones it was chartered
+to close; the product and interface findings (the email console, the duplicated trees, the
+missing organization interface) were deliberately left for the phases that follow.
+
+| Finding | State | Proof |
+|---|---|---|
+| **B1** — a project API key is not bound to its project | ✅ closed | a key minted on project A answers **403** on project B (it answered 200 and renamed it); it still answers 200 on its own project |
+| **B2** — the installation endpoints are unauthenticated | ✅ closed | configuring without the setup token answers **403**; a configured platform has no setup at all |
+| **B3** — mail webhooks accept an unsigned request | ✅ closed | an unsigned webhook answers **401**; a wrongly signed one answers **401**; the secret is read from the file the installer wrote |
+| **B6** — a project `viewer` can mint an admin invitation and a write-scoped API key | ✅ closed | the role is the member's own role now; a viewer is refused the five administrator operations with 403, and the owner keeps them |
+| **B9** — 21 routes unreachable · 25 SDK paths that do not exist · MCP scope checking is a stub | ✅ closed | the doubled `api/v1` prefix is gone and those routes answer 200; the MCP server fetches the calling key's scopes and **fails closed**; the SDK's ten wrong paths were corrected against the API |
+| **B10** — a refresh token works as an access token, and survives logout | ✅ closed | one implementation of "what a token is worth"; a refresh token answers 401, and after logout both tokens do |
+| **B11** — the mail server's password and every login code are written to the log | ✅ closed | the credential is redacted, the transcript no longer carries it, the code is not logged |
+| **B12** — the Cloudflare OAuth callback is unauthenticated, with a no-op CSRF check | ✅ closed | the state is a value the platform signs; a forged state answers **401** |
+| **B13** — the API is default-allow | ✅ closed | a global guard requires a caller unless a route says `@Public()`; the 17 public routes say so explicitly |
+| **B14** — there is no automated test suite | ✅ closed | **97 tests in 12 suites**, run by `pnpm test` in CI and by hand; every security fix in this phase has one |
+| **H8** — `GET /projects/raw-headers` reflects the Authorization header | ✅ closed | the route is gone |
+| **H17** — a hardcoded encryption key is the fallback for every "encrypted" secret | ✅ closed | one resolution of the key, and it **fails closed** when there is none |
+| **H10** — the functions sandbox's three narrower gaps | ◐ partly | the sandbox itself was real (the recorded P0 was wrong); the function's variables are now encrypted, masked on read and decrypted only for the runtime. The container's user namespace, the blocking runner and the secrets on the argv remain — `TD-SEC-5a`–`d` |
+| **B4 / B5** — the email console is empty, and adding a domain crashes the page | ⬜ open | Phase 3 — the SDK unwraps an envelope the API never sends |
+| **B7** — no organization or team interface | ⬜ open | by the operator's decision: the data model and the authorization are prepared, and an incomplete organization interface is deliberately not built |
+| **B8** — the functions sandbox finding is stale | ✅ corrected | the debt entry is rewritten as `TD-SEC-5a`–`d` — what is real, not what was recorded |
+
+Phase 1 also found, on its own reading of the code, five defects the audit had not named: **a
+function's variables were stored in plain text and shown to every member**; **the functions
+console had no roles at all**; **the sign-in lookup said whether an address had an account**;
+**the login code skipped the second factor**; and **the login's `next` parameter could send a
+person to another site**. All five are closed, each with a test and a live check.
+
 
 ### B1 — A project API key is not bound to its project
 
