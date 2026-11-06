@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { HugeiconsIcon } from '@hugeicons/react';
 import { Add01Icon, Rocket01Icon, Layers01Icon } from '@hugeicons/core-free-icons';
 
+import { PageHeader, Button, ErrorState } from '@fidscript/ui';
 import { usePlatformOverview } from '@/components/overview/use-platform-overview';
 import {
   OverviewPanel,
@@ -31,7 +32,10 @@ export default function OverviewPage() {
   if (loading) {
     return (
       <div className="max-w-5xl">
-        <h1 className="text-xl font-bold text-[var(--text)] mb-1">Overview</h1>
+        <PageHeader
+          title="Overview"
+          description="What is happening across your projects."
+        />
         <p className="text-sm text-[var(--text-muted)]" aria-live="polite">
           Reading your projects…
         </p>
@@ -42,16 +46,15 @@ export default function OverviewPage() {
   if (error) {
     return (
       <div className="max-w-5xl">
-        <h1 className="text-xl font-bold text-[var(--text)] mb-4">Overview</h1>
-        <p className="text-sm text-[var(--danger)] mb-3" role="alert">
-          {error}
-        </p>
-        <button
-          onClick={reload}
-          className="text-sm text-[var(--accent)] hover:underline"
-        >
-          Try again
-        </button>
+        <PageHeader
+          title="Overview"
+          description="What is happening across your projects."
+        />
+        <ErrorState
+          title="The overview could not be read"
+          message={error}
+          action={{ label: 'Try again', onClick: reload }}
+        />
       </div>
     );
   }
@@ -64,23 +67,22 @@ export default function OverviewPage() {
 
   return (
     <div className="max-w-5xl space-y-5">
-      <header className="flex items-start justify-between gap-4">
-        <div>
-          <h1 className="text-xl font-bold text-[var(--text)] mb-1">Overview</h1>
-          <p className="text-sm text-[var(--text-muted)]">
-            {projects.total === 0
-              ? 'What is happening across your projects.'
-              : `What is happening across your ${projects.total} project${projects.total === 1 ? '' : 's'}.`}
-          </p>
-        </div>
-        <Link
-          href="/deployments/new"
-          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[var(--accent)] text-[var(--text)] text-xs font-medium hover:opacity-90 flex-shrink-0"
-        >
-          <HugeiconsIcon icon={Add01Icon} size={13} />
-          New deployment
-        </Link>
-      </header>
+      <PageHeader
+        title="Overview"
+        description={
+          projects.total === 0
+            ? 'What is happening across your projects.'
+            : `What is happening across your ${projects.total} project${projects.total === 1 ? '' : 's'}.`
+        }
+        actions={
+          <Link href="/deployments/new">
+            <Button size="sm">
+              <HugeiconsIcon icon={Add01Icon} size={13} />
+              New deployment
+            </Button>
+          </Link>
+        }
+      />
 
       {nothingAtAll && (
         <div className="rounded-xl border border-[var(--rail)] bg-[var(--surface)] p-6 text-center">

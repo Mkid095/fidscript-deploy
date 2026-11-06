@@ -53,6 +53,20 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/).
   whole, so the overview is a picture of their work and never of somebody else's, or of the
   infrastructure. When there is nothing to show, it says so.
 
+- `feat(design-system): the dashboard has a floor to stand on` — the tokens (radii, elevation,
+  depth, motion and a focus ring), sixteen shared components in `packages/ui` — a form field, a
+  select, a textarea, a checkbox, a switch, a table, a pagination, a breadcrumb, a tooltip, a
+  dropdown menu, an error state, a page header, a search field, a code block, an icon button, a
+  status dot — and the shared **Modal** turned into a real dialog: it had no role, no name and no
+  focus trap, so the tab key walked out of the dialog into the page behind it and the focus never
+  came back. The **Button** had no `type`, so a "Cancel" submitted the form it sat in. The focus
+  ring was the accent at 12% over the surface — about 1.1:1, invisible — and `outline: none` had
+  removed the browser's own; it is the accent at 4px with a canvas-coloured gap now, above the
+  3:1 WCAG 2.2 asks for. Thirty-eight tests hold the components to it, and seven screens — the
+  platform overview, the projects list, the project overview, the database console, the functions
+  console, the email console and the settings — are on the new foundations. `docs/product/DESIGN_SYSTEM.md`
+  is the contract.
+
 ### Fixed
 - `fix(projects): a project could not be reached by its slug** — the dashboard's project console
   addresses a project by its **slug** (that is what the address carries), while most of the API

@@ -4,6 +4,7 @@ import { useState } from 'react';
 import Link from 'next/link';
 
 import { useProjectContext } from '@/contexts/project-context';
+import { PageHeader } from '@fidscript/ui';
 import { EmailTabs, type EmailTab } from './email-tabs';
 
 export default function ProjectEmailPage() {
@@ -12,12 +13,10 @@ export default function ProjectEmailPage() {
 
   return (
     <div className="p-6 max-w-5xl space-y-5">
-      <header>
-        <h1 className="text-lg font-semibold text-[var(--text)]">Email</h1>
-        <p className="text-xs text-[var(--text-dim)] mt-0.5">
-          Self-hosted mail: domains, mailboxes, aliases, sender identities, API keys, and messages.
-        </p>
-      </header>
+      <PageHeader
+        title="Email"
+        description="Self-hosted mail: domains, mailboxes, aliases, sender identities, API keys, and messages."
+      />
 
       <aside
         role="note"

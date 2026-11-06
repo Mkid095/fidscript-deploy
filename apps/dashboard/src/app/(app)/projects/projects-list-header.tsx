@@ -9,7 +9,7 @@ import {
   EyeOffIcon,
   Rocket01Icon,
 } from '@hugeicons/core-free-icons';
-import { Button, Input } from '@fidscript/ui';
+import { Button, Input, PageHeader, IconButton } from '@fidscript/ui';
 import Link from 'next/link';
 
 export interface ProjectsListHeaderProps {
@@ -42,25 +42,24 @@ export function ProjectsListHeader({
   onCreate,
 }: ProjectsListHeaderProps) {
   return (
-    <div className="flex items-center justify-between gap-4 mb-6">
-      <div>
-        <h1 className="text-xl font-bold text-[var(--text)] mb-1">Projects</h1>
-        <p className="text-sm text-[var(--text-muted)]" aria-live="polite">
+    <PageHeader
+      title="Projects"
+      description={
+        <span aria-live="polite">
           {loading
             ? 'Loading…'
             : search
               ? `${filteredCount} of ${totalCount} project${totalCount !== 1 ? 's' : ''}`
               : `${totalCount} project${totalCount !== 1 ? 's' : ''}`}
-          {!search && <span className="ml-2 text-[var(--text-dim)]">·</span>}
           {!search && (
             <span className="ml-2 text-[var(--text-dim)]">
               Deploy applications, databases, domains, and automation
             </span>
           )}
-        </p>
-      </div>
-
-      <div className="flex items-center gap-2 flex-1 max-w-md justify-end">
+        </span>
+      }
+      actions={
+        <div className="flex items-center gap-2 flex-1 max-w-md justify-end">
         <div className="relative flex-1 max-w-xs">
           <HugeiconsIcon
             icon={Search01Icon}
@@ -75,9 +74,9 @@ export function ProjectsListHeader({
             className="pl-9 bg-[var(--surface-2)] border border-[var(--rail)] text-[var(--text)] placeholder:text-[var(--text-dim)]"
           />
         </div>
-        <Button variant="ghost" size="sm" onClick={onRefresh} title="Refresh" aria-label="Refresh" disabled={loading}>
+        <IconButton label="Refresh" onClick={onRefresh} disabled={loading}>
           <HugeiconsIcon icon={Refresh01Icon} size={14} />
-        </Button>
+        </IconButton>
         {deletedCount > 0 && (
           <Button
             variant={showDeleted ? 'secondary' : 'ghost'}
@@ -110,7 +109,8 @@ export function ProjectsListHeader({
             New project
           </Button>
         )}
-      </div>
-    </div>
+        </div>
+      }
+    />
   );
 }
