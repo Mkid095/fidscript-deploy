@@ -5,8 +5,6 @@
 import type { FidscriptClient } from '../client';
 import type {
   Database,
-  BackupSchedule,
-  BackupSettings,
 } from './databases-types';
 
 export interface DatabasesHost {
@@ -16,7 +14,7 @@ export interface DatabasesHost {
   list(projectId: string): Promise<Database[]>;
   get(databaseId: string): Promise<Database>;
   create(projectId: string, data: { name: string; type?: string; environment?: string }): Promise<Database>;
-  delete(databaseId: string): Promise<{ success: boolean }>;
+  delete(projectId: string, databaseId: string): Promise<{ success: boolean }>;
   database(databaseId: string): unknown;
 
   // Backups. The routes are project-scoped — a database belongs to a
@@ -34,7 +32,4 @@ export interface DatabasesHost {
   updateSsl(projectId: string, databaseId: string, ssl: boolean): Promise<unknown>;
 
   // Backup scheduling
-  getBackupSchedule(projectId: string, databaseId: string): Promise<BackupSchedule | null>;
-  updateBackupSchedule(projectId: string, databaseId: string, schedule: Partial<BackupSchedule>): Promise<BackupSchedule>;
-  getBackupSettings(projectId: string, databaseId: string): Promise<BackupSettings>;
 }

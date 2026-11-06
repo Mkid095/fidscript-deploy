@@ -45,6 +45,34 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/).
 - `chore(databases): the SSE live-query is retired` — **breaking.** `POST /databases/:id/live-query`, `GET /databases/:id/live-query/:table` and the SDK's `QueryBuilder.watch()` are gone. The platform had reimplemented Instant's `.watch()` on Postgres `LISTEN/NOTIFY` — a second realtime protocol, with the server sending raw row patches and the client reassembling them by array splice, no conflict handling, and **no row-level authorization** (any holder of the project API key read every row of every table). Instant's is query-scoped and permission-aware, and the platform's own Instant integration now points an application at its app. Nothing called `watch()`: no dashboard screen, no MCP tool, no CLI command, and the endpoints were never in the endpoint inventory. **Migrating:** an application that wants reactive data subscribes to its Instant app — the app id and host come from `GET /projects/:id/instant/config` — and Instant evaluates its permission rules before sending anything. The platform's own `database.row.changed` event on the managed Postgres is unchanged, so the dashboard's live feed and the SDK's `subscribe()` keep working.
 
 ### Fixed
+- `fix(email): the email console's lists were empty everywhere** — the SDK unwrapped
+  `{ domains }`, `{ mailboxes }` and `{ aliases }`, and the API answers with the list itself, so
+  `res.domains` was `undefined` and every list came back empty. The SDK accepts either shape now,
+  so a change on either side cannot empty a list silently again.
+- `fix(email): adding a domain crashed the page** — the API answers a create with
+  `{ domain, ownershipToken, steps }` and the dashboard cast the whole envelope to a row, so the list
+  held an envelope and `domain.id.slice(...)` took the screen down. The SDK types the answer, the
+  modals use the domain, and **the DNS steps the API returns are shown** — they were being thrown
+  away, and they are the exact records a beginner has to add.
+- `fix(sdk): the database's delete, the domain's read and the file's read called routes that do
+  not exist** — the delete was not project-scoped (the dashboard's delete button answered 404),
+  and there was no route for reading one domain or one file. The two reads exist now; the delete
+  names the project.
+- `fix(sdk): the backup schedule called three routes that never existed** — and the panel
+  promised a "next run" that nothing would honour. The calls are gone and the tab says what is
+  true: the platform takes a backup when you ask it to, and does not yet run one on a schedule.
+- `fix(security): the environment variables had no scope** — a project key read the project's
+  variable **names** whatever its scopes were. The values stayed masked, but the names are the
+  half that says what to go and look for. `envvars:read` and `envvars:write` are now asked for.
+- `fix(security): a declared scope could be inert** — the projects controller applied the scope
+  guard on **one** route and declared scopes on another, so the declaration was there and nothing
+  read it. The guard is on the controller now, and a test reads every route's guard chain.
+- `fix(sdk): the SDK compiled against the published types, not the workspace's** — a type added
+  in the workspace never reached the SDK, so the two could not be trusted to agree.
+- `fix(dashboard): fifty-one of the sixty-one toasts never rendered** — the toast provider was
+  mounted in five of the application's sixty-eight pages, and `useToast` falls back to a silent
+  no-op: an operator clicked a button, the request succeeded, and the screen did not move. One
+  provider, above everything.
 - `fix(security): the platform's authorization is default-deny** — a route was protected only if
   somebody remembered to guard it, and **twelve controllers had no guard at all**. Forgetting one
   line of code was a security hole. A route now needs a caller unless it says it is public, and

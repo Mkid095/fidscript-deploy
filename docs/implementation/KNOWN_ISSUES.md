@@ -73,7 +73,9 @@
   correct; the frontend step is missing (F02 is still a spec). **Status: open** — Phase 2/F02.
 - **KI-10 · 2026-11-06 · Phase 1 · `GET /projects/:id/env-vars` carries no scope requirement.** A
   project key reads the project's variable **names** whatever its scopes; the values stay masked.
-  **Status: open** — one line of work, deferred with the rest of the scope audit.
+  **Status: FIXED (Phase 2)** — the routes ask for `envvars:read` and `envvars:write`, and the
+  scope guard now runs on the controller that declares them. The policy: the vocabulary already
+  had the two scopes; they had never been used.
 
 - **KI-1 · 2026-06-20 · Phase A · Stale Prisma client breaks typecheck.** `apps/api` typecheck
   failed on `deployment-crud.service.ts:27` (`sourceUrl` not in Release type) because the

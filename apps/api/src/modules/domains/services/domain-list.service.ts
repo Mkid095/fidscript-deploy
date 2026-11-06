@@ -1,4 +1,4 @@
-import { Injectable, ForbiddenException } from '@nestjs/common';
+import { Injectable, ForbiddenException, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '@/prisma/prisma.service';
 
 @Injectable()
@@ -18,6 +18,28 @@ export class DomainListService {
     });
 
     return { domains: domains.map(d => this.formatDomain(d)) };
+  }
+
+  /**
+   * One domain of a project.
+   *
+   * The SDK and the dashboard both read a single domain — the domain
+   * detail screen is built from it — and the route did not exist, so the
+   * detail pages silently rendered empty.
+   */
+  async get(userId: string, projectId: string, domainId: string) {
+    const hasAccess = await this.checkAccess(userId, projectId);
+    if (!hasAccess) throw new ForbiddenException('Access denied');
+
+    const domain = await this.prisma.domain.findFirst({
+      where: { id: domainId, projectId },
+      include: {
+        deployment: { select: { id: true, deploymentUrl: true, status: true } },
+      },
+    });
+    if (!domain) throw new NotFoundException('Domain not found');
+
+    return this.formatDomain(domain);
   }
 
   private async checkAccess(userId: string, projectId: string): Promise<boolean> {

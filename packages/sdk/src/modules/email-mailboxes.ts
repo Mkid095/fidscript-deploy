@@ -48,7 +48,7 @@ export interface EmailMailboxesHost {
   deleteMessages(projectId: string, messageIds: string[]): Promise<{ deleted: number }>;
   listDomains(projectId: string): Promise<EmailDomain[]>;
   getDomain(projectId: string, domainId: string): Promise<unknown>;
-  createDomain(projectId: string, domain: string): Promise<unknown>;
+  createDomain(projectId: string, domain: string): Promise<import('@fidscript-deploy/types').EmailDomainCreated>;
   verifyDomain(projectId: string, domainId: string): Promise<unknown>;
   deleteDomain(projectId: string, domainId: string): Promise<void>;
   getCatchAll(projectId: string, domainId: string): Promise<unknown>;
@@ -70,9 +70,19 @@ export function applyMailboxesMethods(host: EmailMailboxesHost): void {
   host.send = (projectId, data) =>
     client.post<{ messageId: string; accepted: string[]; status: string; error?: string }>(`/api/v1/projects/${projectId}/email/send`, data);
 
+  /**
+   * The project's mailboxes.
+   *
+   * The API answers with the list itself — not wrapped in an object — and
+   * the SDK unwrapped an object that never came, so every mailbox list came
+   * back empty. The unwrapping now accepts either shape, so a change on
+   * either side cannot empty a list silently again.
+   */
   host.listMailboxes = async (projectId) => {
-    const res = await client.get<{ mailboxes: Mailbox[] }>(`/api/v1/projects/${projectId}/email/mailboxes`);
-    return res.mailboxes;
+    const res = await client.get<Mailbox[] | { mailboxes: Mailbox[] }>(
+      `/api/v1/projects/${projectId}/email/mailboxes`,
+    );
+    return Array.isArray(res) ? res : res.mailboxes ?? [];
   };
 
   host.createMailbox = (projectId, data) =>
@@ -81,9 +91,12 @@ export function applyMailboxesMethods(host: EmailMailboxesHost): void {
   host.deleteMailbox = (projectId, mailboxId) =>
     client.delete(`/api/v1/projects/${projectId}/email/mailboxes/${mailboxId}`);
 
+  /** The project's aliases — the list itself, or the object that carries it. */
   host.listAliases = async (projectId) => {
-    const res = await client.get<{ aliases: EmailAlias[] }>(`/api/v1/projects/${projectId}/email/aliases`);
-    return res.aliases;
+    const res = await client.get<EmailAlias[] | { aliases: EmailAlias[] }>(
+      `/api/v1/projects/${projectId}/email/aliases`,
+    );
+    return Array.isArray(res) ? res : res.aliases ?? [];
   };
 
   host.createAlias = (projectId, data) =>
@@ -107,23 +120,12 @@ export function applyMailboxesMethods(host: EmailMailboxesHost): void {
   host.deleteMessages = (projectId, messageIds) =>
     client.delete(`/api/v1/projects/${projectId}/email/messages`, { messageIds });
 
-  host.listDomains = async (projectId) => {
-    const res = await client.get<{ domains: EmailDomain[] }>(`/api/v1/projects/${projectId}/email/domains`);
-    return res.domains ?? [];
-  };
-
-  host.getDomain = (projectId, domainId) =>
-    client.get(`/api/v1/projects/${projectId}/email/domains/${domainId}`);
-
-  host.createDomain = (projectId, domain) =>
-    client.post(`/api/v1/projects/${projectId}/email/domains`, { domain });
-
-  host.verifyDomain = (projectId, domainId) =>
-    client.post(`/api/v1/projects/${projectId}/email/domains/${domainId}/verify`);
-
-  host.deleteDomain = (projectId, domainId) =>
-    client.delete(`/api/v1/projects/${projectId}/email/domains/${domainId}`);
-
+  /**
+   * The project's email domains.
+   *
+   * This is the list that was empty everywhere: the API answers with the
+   * list itself and the SDK unwrapped an object that never came.
+   */
   host.getCatchAll = (projectId, domainId) =>
     client.get(`/api/v1/projects/${projectId}/email/domains/${domainId}/catch-all`);
 

@@ -6,7 +6,7 @@ import Link from 'next/link';
 import { Button, Card } from '@fidscript/ui';
 import { HugeiconsIcon } from '@hugeicons/react';
 import { ArrowLeftIcon, SaveIcon } from '@hugeicons/core-free-icons';
-import { ToastProvider, useToast } from '@/components/toast-provider';
+import { useToast } from '@/components/toast-provider';
 import { LoadingScreen } from '@/components/ui/loading-screen';
 import { useAuth } from '@/contexts/auth-context';
 
@@ -27,9 +27,7 @@ function mergeConfig(c: Partial<BuildConfig> | null | undefined): BuildConfig {
 
 export default function BuildConfigPage() {
   return (
-    <ToastProvider>
-      <BuildConfigInner />
-    </ToastProvider>
+    <BuildConfigInner />
   );
 }
 

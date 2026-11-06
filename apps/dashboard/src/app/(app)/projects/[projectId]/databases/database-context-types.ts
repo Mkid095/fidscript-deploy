@@ -6,7 +6,6 @@ import type {
   QueryResult,
   QueryHistoryEntry,
   MigrationRecord,
-  BackupSchedule,
 } from '@/types';
 
 // ─── Local types ───────────────────────────────────────────────────────────────
@@ -74,9 +73,6 @@ export interface DatabaseContextValue {
   migrations: MigrationRecord[];
   refreshMigrations: () => Promise<void>;
   applyMigration: (sql: string, name?: string, source?: 'api' | 'cli' | 'manual') => Promise<void>;
-  backupSchedule: BackupSchedule | null;
-  refreshBackupSchedule: () => Promise<void>;
-  updateBackupSchedule: (schedule: Partial<BackupSchedule> & { frequency: string }) => Promise<void>;
   realtimeTables: RealtimeTableInfo[];
   refreshRealtimeTables: () => Promise<void>;
 }

@@ -23,6 +23,7 @@ import {
   applyMailboxesMethods,
   type EmailMailboxesHost,
 } from './email-mailboxes';
+import { applyDomainMethods } from './email-domains';
 import {
   applyEmailTemplatesMethods,
   type EmailTemplatesHost,
@@ -54,7 +55,7 @@ export class EmailModule implements EmailMailboxesHost, EmailTemplatesHost {
   deleteMessages!: (projectId: string, messageIds: string[]) => Promise<{ deleted: number }>;
   listDomains!: (projectId: string) => Promise<import('@fidscript-deploy/types').EmailDomain[]>;
   getDomain!: (projectId: string, domainId: string) => Promise<unknown>;
-  createDomain!: (projectId: string, domain: string) => Promise<unknown>;
+  createDomain!: (projectId: string, domain: string) => Promise<import('@fidscript-deploy/types').EmailDomainCreated>;
   verifyDomain!: (projectId: string, domainId: string) => Promise<unknown>;
   deleteDomain!: (projectId: string, domainId: string) => Promise<void>;
   getCatchAll!: (projectId: string, domainId: string) => Promise<unknown>;
@@ -87,6 +88,7 @@ export class EmailModule implements EmailMailboxesHost, EmailTemplatesHost {
   constructor(client: FidscriptClient) {
     this.client = client;
     applyMailboxesMethods(this as unknown as EmailMailboxesHost);
+    applyDomainMethods(this as unknown as EmailMailboxesHost);
     applyEmailTemplatesMethods(this as unknown as EmailTemplatesHost);
     this.admin = new AdminMailboxModule(client);
     this.attachmentConfig = new AdminAttachmentConfigModule(client);

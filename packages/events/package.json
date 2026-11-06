@@ -15,7 +15,7 @@
     "clean": "rm -rf dist"
   },
   "dependencies": {
-    "@fidscript-deploy/types": "^1.0.0"
+    "@fidscript-deploy/types": "workspace:*"
   },
   "devDependencies": {
     "@types/node": "^20.0.0",

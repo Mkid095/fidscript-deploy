@@ -20,6 +20,59 @@
 
 ---
 
+## 2026-11-06 — Phase 2: the contract between the layers
+
+Phase: Phase 2 (the contract — no visual redesign)
+
+Completed:
+- **The contract test.** The API's routes are read from the controllers' own metadata and the
+  SDK's paths from its source; every one of them must land on a route that exists. It found **six**
+  real mismatches — the database's delete, the domain's read, the file's read, and the three
+  backup-schedule calls — and it will find the next one.
+- **The email console.** The SDK unwrapped `{ domains }` and the API answers with the list, so
+  every list was empty; the SDK accepts either shape now. Adding a domain crashed the page (the
+  envelope was cast to a row); the SDK types the answer, the modals use the domain, and **the DNS
+  steps the API returns are shown** instead of thrown away.
+- **The scopes.** `GET /projects/:id/env-vars` had **no scope** (KI-10) — a project key read the
+  project's variable names whatever its scopes. And the projects controller applied the scope
+  guard on one route and declared scopes on another, so a declaration could be inert: the guard is
+  on the controller now, and a test reads every route's guard chain.
+- **The testing foundation.** A unit tier (115 tests), a contract tier (the routes, the paths and
+  the scopes, read from the code), an **integration tier** — the real application, over HTTP,
+  against a database of its own (21 tests) — and a dashboard tier: a component rendered with the
+  real SDK against a server that answers with the API's real shapes (9 tests).
+- **The toasts.** The toast provider was in five of sixty-eight pages, so fifty-one of the
+  sixty-one "it worked" messages never rendered. One provider, above everything.
+- **Two defects outside the contract work**, both found by reading the code: the platform's own
+  secrets could not be read at all (a compound lookup cannot match a NULL column — the email
+  bootstrap failed on every start), and the mail server's credential was handed over whole.
+
+Unexpected issues:
+- **The Prisma client could not run in the test container** — it was generated for the host's
+  OpenSSL and the container had another. The container installs OpenSSL now.
+- **The integration tests were killed by the OOM killer** on a box with 2 GB to spare, because
+  the application holds its connections open and Jest waits for them. `--forceExit`, and the
+  leftover containers cleaned up.
+- **The SDK was compiling against the *published* types package**, not the workspace's — so a
+  type added in the workspace never reached it. It is `workspace:*` now.
+
+Decision:
+- **The scheduled backups were not built.** The capability does not exist, and building it is a
+  feature (a model, a migration, a scheduler action, a retention job). The tab now says what is
+  true instead of promising a run that would never happen.
+- **Two routes were added** (`GET /projects/:id/domains/:id` and
+  `GET /projects/:id/storage/buckets/:bucketId/files/:fileId`): the SDK and the dashboard both
+  asked for them, and a read is not a feature.
+
+Impact:
+- **API:** two routes added, the scope guard moved onto the projects controller, the platform
+  secrets readable, the mail credential split.
+- **SDK:** the email unwrapping, the project-scoped delete, the domain and file reads, and the
+  dependency on the workspace's types.
+- **Dashboard:** the email modals, the toasts, and the backup-schedule tab.
+- **Documentation:** `docs/implementation/PHASE2_CONTRACTS.md` — the verification matrix, the
+  defects closed, the testing foundation and the deferred list.
+
 ## 2026-11-06 — Phase 1: isolation and authorization
 
 Phase: Phase 1 (security only — no product or interface work)

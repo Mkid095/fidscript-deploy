@@ -8,6 +8,24 @@
 
 ## In flight
 
+**Phase 2 — the contract between the layers: ✅ COMPLETE (2026-11-06)**
+
+- The objective: the API, the SDK and the dashboard must agree, the known
+  integration failures must be gone, and there must be a testing foundation
+  that proves it. **No visual redesign in this phase.**
+- The scope is the Phase 0 audit's Phase 2 (B4, B5, the SDK's wrong paths,
+  the missing test suites), plus the contract drift the audit did not name —
+  found by comparing every SDK path against the API's real routes.
+- The work is tracked in `docs/implementation/PHASE2_CONTRACTS.md` (the
+  verification matrix) and in the task list; every fix carries a test.
+- The Phase 1 security fixes stay protected by their regression tests, and
+  **KI-10** (the environment variables' scope policy) is resolved here
+  because it is an authorization question.
+- **The evidence is in `docs/implementation/PHASE2_CONTRACTS.md`** — the
+  verification matrix, the twelve defects closed, the testing foundation
+  and the deferred list.
+- **Phase 3 has not been started.**
+
 **Phase 1 — isolation and authorization: ✅ COMPLETE (2026-11-06)**
 
 - The audit's security findings are closed: the tenant boundary holds for project API keys, the

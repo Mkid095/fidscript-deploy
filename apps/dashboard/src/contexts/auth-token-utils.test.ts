@@ -1,5 +1,4 @@
-import { test } from 'node:test';
-import assert from 'node:assert/strict';
+import { describe, it, expect } from 'vitest';
 import { safeNextRoute } from './auth-token-utils.ts';
 
 /**
@@ -11,29 +10,31 @@ import { safeNextRoute } from './auth-token-utils.ts';
  * else's site.
  */
 
-test('a path inside the platform is a destination', () => {
-  assert.equal(safeNextRoute('/applications'), '/applications');
-  assert.equal(safeNextRoute('/projects/kennedy-test/deployments'), '/projects/kennedy-test/deployments');
-});
+describe('the login\'s next parameter', () => {
+  it('accepts a path inside the platform', () => {
+    expect(safeNextRoute('/applications')).toBe('/applications');
+    expect(safeNextRoute('/projects/kennedy-test/deployments')).toBe('/projects/kennedy-test/deployments');
+  });
 
-test('another site is not a destination', () => {
-  assert.equal(safeNextRoute('https://elsewhere.example'), null);
-  assert.equal(safeNextRoute('http://elsewhere.example/app'), null);
-  assert.equal(safeNextRoute('javascript:alert(1)'), null);
-  assert.equal(safeNextRoute('mailto:someone@example.com'), null);
-});
+  it('refuses another site', () => {
+    expect(safeNextRoute('https://elsewhere.example')).toBeNull();
+    expect(safeNextRoute('http://elsewhere.example/app')).toBeNull();
+    expect(safeNextRoute('javascript:alert(1)')).toBeNull();
+    expect(safeNextRoute('mailto:someone@example.com')).toBeNull();
+  });
 
-test('a protocol-relative address is not a destination', () => {
-  assert.equal(safeNextRoute('//elsewhere.example'), null);
-  assert.equal(safeNextRoute('/\\elsewhere.example'), null);
-});
+  it('refuses a protocol-relative address', () => {
+    expect(safeNextRoute('//elsewhere.example')).toBeNull();
+    expect(safeNextRoute('/\\elsewhere.example')).toBeNull();
+  });
 
-test('a backslash is not a destination — a browser reads it as a slash', () => {
-  assert.equal(safeNextRoute('/applications\\..\\..\\elsewhere.example'), null);
-});
+  it('refuses a backslash — a browser reads it as a slash', () => {
+    expect(safeNextRoute('/applications\\..\\..\\elsewhere.example')).toBeNull();
+  });
 
-test('nothing at all is not a destination', () => {
-  assert.equal(safeNextRoute(null), null);
-  assert.equal(safeNextRoute(undefined), null);
-  assert.equal(safeNextRoute(''), null);
+  it('refuses nothing at all', () => {
+    expect(safeNextRoute(null)).toBeNull();
+    expect(safeNextRoute(undefined)).toBeNull();
+    expect(safeNextRoute('')).toBeNull();
+  });
 });

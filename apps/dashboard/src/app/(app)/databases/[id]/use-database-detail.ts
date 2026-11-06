@@ -54,7 +54,7 @@ export function useDatabaseDetail({ id, getSdk }: UseDatabaseDetailOptions) {
     } finally {
       setLoading(false);
     }
-  }, [id, getSdk]);
+  }, [id, getSdk, db?.projectId]);
 
   useEffect(() => { load(); }, [load]);
 
@@ -72,7 +72,7 @@ export function useDatabaseDetail({ id, getSdk }: UseDatabaseDetailOptions) {
     } finally {
       setRotating(false);
     }
-  }, [id, getSdk]);
+  }, [id, getSdk, db?.projectId]);
 
   const handleDelete = useCallback(async () => {
     const ok = await confirmFn({
@@ -86,13 +86,14 @@ export function useDatabaseDetail({ id, getSdk }: UseDatabaseDetailOptions) {
     setToast(null);
     try {
       const sdk = getSdk();
-      await sdk.databases.delete(id);
+      if (!db?.projectId) return;
+      await sdk.databases.delete(db.projectId, id);
       window.location.href = '/databases';
     } catch (err) {
       setToast({ message: err instanceof Error ? err.message : 'Delete failed', type: 'error' });
       setDeleting(false);
     }
-  }, [id, getSdk]);
+  }, [id, getSdk, db?.projectId]);
 
   const handleCopyConnection = useCallback(async () => {
     if (!db?.connectionString) return;
@@ -112,7 +113,7 @@ export function useDatabaseDetail({ id, getSdk }: UseDatabaseDetailOptions) {
       if (poolOnly) setPoolConnectionInfo(info);
       else setConnectionInfo(info);
     } catch { /* silently fail */ }
-  }, [id, getSdk]);
+  }, [id, getSdk, db?.projectId]);
 
   const handleSslToggle = useCallback(async (enabled: boolean) => {
     setSslEnabled(enabled);
@@ -126,7 +127,7 @@ export function useDatabaseDetail({ id, getSdk }: UseDatabaseDetailOptions) {
       setSslEnabled(!enabled);
       setToast({ message: err instanceof Error ? err.message : 'Failed to update SSL', type: 'error' });
     }
-  }, [id, getSdk]);
+  }, [id, getSdk, db?.projectId]);
 
   return {
     db, backups, loading, error, showPassword, setShowPassword,

@@ -31,6 +31,11 @@ export class StorageService {
   listFiles(userId: string, projectId: string, bucketId: string, prefix?: string, page?: number, limit?: number) {
     return this.files.listFiles(userId, projectId, bucketId, prefix, page, limit);
   }
+  /** One file of a bucket. */
+  getFile(userId: string, projectId: string, bucketId: string, fileId: string) {
+    return this.files.getFile(userId, projectId, bucketId, fileId);
+  }
+
   deleteFile(userId: string, projectId: string, fileId: string) {
     return this.files.deleteFile(userId, projectId, fileId);
   }

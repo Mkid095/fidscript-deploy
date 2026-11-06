@@ -13,7 +13,10 @@ import { Request } from 'express';
 
 @ApiTags('projects/members')
 @Controller('projects')
-@UseGuards(ApiKeyOrJwtGuard, ProjectMemberGuard)
+// The scope guard is here, and not only on the route that needed it: a
+// scope declared on a route whose controller does not apply the guard is a
+// promise nothing keeps.
+@UseGuards(ApiKeyOrJwtGuard, ScopeGuard, ProjectMemberGuard)
 @ApiBearerAuth()
 export class ProjectsMembersController {
   constructor(private projects: ProjectsService) {}
@@ -68,13 +71,24 @@ export class ProjectsMembersController {
     return this.projects.revokeInvitation(user.userId, id, invitationId, user.projectId);
   }
 
+  /**
+   * The project's environment variables.
+   *
+   * The route carried **no scope**, so a project key read the project's
+   * variable names whatever its scopes were — the values stayed masked, but
+   * the names are the half of the secret that tells an attacker what to go
+   * and look for. The scope vocabulary already had `envvars:read` and
+   * `envvars:write`; they had never been used.
+   */
   @Get(':id/env-vars')
+  @RequireScope('envvars:read')
   async getEnvVars(@Req() req: Request, @Param('id') id: string) {
     const user = req.user as { userId: string; projectId?: string };
     return this.projects.getEnvVars(user.userId, id, user.projectId);
   }
 
   @Put(':id/env-vars')
+  @RequireScope('envvars:write')
   @HttpCode(HttpStatus.OK)
   async updateEnvVars(@Req() req: Request, @Param('id') id: string, @Body() dto: UpdateEnvVarsDto) {
     const user = req.user as { userId: string; projectId?: string };
@@ -82,6 +96,7 @@ export class ProjectsMembersController {
   }
 
   @Delete(':id/env-vars/:key')
+  @RequireScope('envvars:write')
   @HttpCode(HttpStatus.OK)
   async deleteEnvVar(@Req() req: Request, @Param('id') id: string, @Param('key') key: string) {
     const user = req.user as { userId: string; projectId?: string };

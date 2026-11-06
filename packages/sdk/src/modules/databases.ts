@@ -38,9 +38,6 @@ export class DatabasesModule implements DatabasesHost {
   updateSsl!: (projectId: string, databaseId: string, ssl: boolean) => Promise<unknown>;
 
   // Backup scheduling (mixed in)
-  getBackupSchedule!: (projectId: string, databaseId: string) => Promise<import('./databases-types').BackupSchedule | null>;
-  updateBackupSchedule!: (projectId: string, databaseId: string, schedule: Partial<import('./databases-types').BackupSchedule>) => Promise<import('./databases-types').BackupSchedule>;
-  getBackupSettings!: (projectId: string, databaseId: string) => Promise<import('./databases-types').BackupSettings>;
 
   constructor(client: FidscriptClient) {
     this.client = client;
@@ -65,8 +62,17 @@ export class DatabasesModule implements DatabasesHost {
     );
   }
 
-  async delete(databaseId: string): Promise<{ success: boolean }> {
-    return this.client.delete<{ success: boolean }>(`/api/v1/databases/${databaseId}`);
+  /**
+   * Delete a database.
+   *
+   * The route is project-scoped — a database belongs to a project — and the
+   * SDK called `/databases/{id}`, which the platform does not serve. The
+   * dashboard's delete button answered 404.
+   */
+  async delete(projectId: string, databaseId: string): Promise<{ success: boolean }> {
+    return this.client.delete<{ success: boolean }>(
+      `/api/v1/projects/${projectId}/databases/${databaseId}`,
+    );
   }
 
   database(databaseId: string): DatabaseProviderWithMigrations {
@@ -81,9 +87,6 @@ export {
 export { QueryBuilder } from './databases-query-builder';
 export type {
   Database,
-  BackupSchedule,
-  BackupSettings,
-  BackupScheduleFrequency,
   TableInfo,
   ColumnInfo,
   MigrationRecord,

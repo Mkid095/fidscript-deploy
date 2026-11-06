@@ -9,8 +9,9 @@
     "start": "next start",
     "lint": "next lint",
     "typecheck": "tsc --noEmit",
-    "test": "node --test \"src/**/*.test.ts\"",
-    "clean": "rm -rf .next"
+    "test": "vitest run",
+    "clean": "rm -rf .next",
+    "test:watch": "vitest"
   },
   "dependencies": {
     "@fidscript-deploy/sdk": "workspace:*",
@@ -28,9 +29,13 @@
   "devDependencies": {
     "@eslint/eslintrc": "^3.0.0",
     "@tailwindcss/typography": "^0.5.20",
+    "@testing-library/dom": "10",
+    "@testing-library/react": "16",
     "@types/node": "^20.0.0",
     "@types/react": "^19.0.0",
     "@types/react-dom": "^19.0.0",
-    "typescript": "^5.4.0"
+    "jsdom": "25",
+    "typescript": "^5.4.0",
+    "vitest": "2"
   }
 }

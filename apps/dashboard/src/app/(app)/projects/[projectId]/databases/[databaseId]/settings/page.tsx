@@ -19,7 +19,7 @@ type SettingsTab = 'connection' | 'migrations' | 'backups';
 
 export default function SettingsPage() {
   const {getSdk} = useAuth();
-  const { database, databaseId } = useDatabase();
+  const { database, databaseId, projectId } = useDatabase();
   const [activeTab, setActiveTab] = useState<SettingsTab>('connection');
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [deleting, setDeleting] = useState(false);
@@ -28,10 +28,10 @@ export default function SettingsPage() {
     if (!databaseId) return;
     setDeleting(true);
     try {
-      await getSdk().databases.delete(databaseId);
+      await getSdk().databases.delete(projectId, databaseId);
       window.location.href = `..`;
     } catch { /* ignore */ } finally { setDeleting(false); }
-  }, [databaseId, getSdk]);
+  }, [projectId, databaseId, getSdk]);
 
   const tabs: { key: SettingsTab; label: string; icon: typeof Plug01Icon }[] = [
     { key: 'connection', label: 'Connection',  icon: Plug01Icon },

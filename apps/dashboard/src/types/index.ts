@@ -32,5 +32,5 @@ export type {
   MigrationRecord,
   DatabaseStatusValue,
 } from './database';
-export type { BackupRecord, BackupSchedule, BackupScheduleFrequency, BackupSettings } from './database-backup';
+export type { BackupRecord } from './database-backup';
 export type { EmailDomain, EmailMailbox } from './email';

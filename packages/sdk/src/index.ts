@@ -41,6 +41,7 @@ import type {
   StorageBackend,
   MailboxMessage,
   EmailDomain,
+  EmailDomainCreated,
   Mailbox,
   EmailAlias,
 } from '@fidscript-deploy/types';
@@ -69,7 +70,7 @@ export { FidscriptError, AuthError, NotFoundError, ValidationError, RateLimitErr
 export { AuthModule, ProjectsModule, DeploymentsModule, StorageModule, DatabasesModule, DomainsModule, EmailModule, FunctionsModule, QueuesModule, CronModule, RealtimeModule, MonitoringModule, LoggingModule, TemplatesModule, GithubModule, InstallationModule, NotificationsModule, InstantModule, ApplicationsModule };
 export type { Application, InstallJob } from './modules/applications';
 export type { InstantAppStatus, InstantClientConfig } from './modules/instant';
-export { AdminMailboxModule, AdminAttachmentConfigModule, AdminMailConnectionModule, type PlatformMailboxMessage, type PlatformMailboxSummary, type PlatformMailboxesResponse, type CreatePlatformMailboxResponse, type ListPlatformMessagesResponse, type AdminSendMailResponse, type AdminAttachmentConfig, type StorageBackend, type MailboxMessage, type EmailDomain, type Mailbox, type EmailAlias, type MailConnectionInfo };
+export { AdminMailboxModule, AdminAttachmentConfigModule, AdminMailConnectionModule, type PlatformMailboxMessage, type PlatformMailboxSummary, type PlatformMailboxesResponse, type CreatePlatformMailboxResponse, type ListPlatformMessagesResponse, type AdminSendMailResponse, type AdminAttachmentConfig, type StorageBackend, type MailboxMessage, type EmailDomain, type EmailDomainCreated, type Mailbox, type EmailAlias, type MailConnectionInfo };
 export type { Domain, DnsConnection, DomainHealth, DomainHealthStatus, DnsRecord, DnsRecordCategory, DnsRecordStatus, DnsRecordsResponse, DomainSslInfo, DomainType, DomainCapabilities, DomainReconciliationStatus, DomainVerificationRun, DomainIncident } from './modules/domains-types';
 export type { DomainHealthTimelineEntry, DomainWizardStatus, WizardStage, WizardRecord, WizardRecordStatus } from './modules/domains-types-wizard';
 export type { UserNotification, ActivityEntry } from './modules/notifications';

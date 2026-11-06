@@ -107,8 +107,12 @@ export async function handleDatabaseTool(
         environment: args.environment as string | undefined,
       });
 
-    case 'databases_delete':
-      return sdk.databases.delete(args.databaseId as string);
+    case 'databases_delete': {
+      // The delete is project-scoped: the project comes from the database
+      // itself, so the agent does not have to name it.
+      const db = await sdk.databases.get(args.databaseId as string);
+      return sdk.databases.delete(db.projectId, args.databaseId as string);
+    }
 
     // The backup routes are project-scoped: a database belongs to a
     // project, and the project's members are who may back it up. The

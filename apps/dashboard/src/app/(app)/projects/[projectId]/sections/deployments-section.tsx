@@ -7,7 +7,7 @@ import { HugeiconsIcon } from '@hugeicons/react';
 import { CheckmarkCircle02Icon } from '@hugeicons/core-free-icons';
 import type { Project } from '@/types';
 import { NewDeploymentModal } from '@/components/deployments/new-deployment-modal';
-import { ToastProvider, useToast } from '@/components/toast-provider';
+import { useToast } from '@/components/toast-provider';
 import {
   useDeploymentsFetch,
   useGithubConnection,
@@ -120,9 +120,5 @@ function DeploymentsSectionInner({ project }: Props) {
 }
 
 export function DeploymentsSection(props: Props) {
-  return (
-    <ToastProvider>
-      <DeploymentsSectionInner {...props} />
-    </ToastProvider>
-  );
+  return <DeploymentsSectionInner {...props} />;
 }

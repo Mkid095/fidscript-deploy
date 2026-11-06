@@ -26,9 +26,20 @@ module.exports = {
   setupFiles: ['reflect-metadata'],
   transform: {
     '^.+\\.ts$': ['ts-jest', { tsconfig: '<rootDir>/tsconfig.json' }],
+    // A few dependencies ship ESM only — `otplib` (the TOTP library behind
+    // MFA) and the `@scure` packages it uses. Jest runs the tests as
+    // CommonJS, so those are transformed rather than skipped: the real
+    // implementation, not a stub.
+    '^.+\\.jsx?$': ['ts-jest', { tsconfig: { allowJs: true, module: 'commonjs', target: 'es2020' } }],
   },
   // A test that fails to compile is a failure, not a silent skip.
   testMatch: ['**/*.spec.ts'],
+  // `otplib` (the TOTP library behind MFA) ships ESM only. Jest runs the
+  // tests as CommonJS, so those packages are transformed instead of being
+  // skipped — the real implementation, not a stub.
+  transformIgnorePatterns: [
+    'node_modules/(?!(?:\\.pnpm/)?(?:otplib|@otplib|@scure|@noble))',
+  ],
   testPathIgnorePatterns: ['\\.e2e-spec\\.ts$', '/node_modules/'],
   collectCoverageFrom: ['src/**/*.ts', '!src/**/*.module.ts', '!src/main.ts'],
   coverageDirectory: '../coverage',

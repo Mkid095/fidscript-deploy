@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 
 import { useAuth } from '@/contexts/auth-context';
-import { ToastProvider, useToast } from '@/components/toast-provider';
+import { useToast } from '@/components/toast-provider';
 import { useGithubRepos } from '@/app/(app)/projects/[projectId]/services/new/use-githubRepos';
 import { WizardHeader } from './wizard-header';
 import { WizardSteps } from './wizard-steps';
@@ -25,9 +25,7 @@ import { useWizardStepProps } from './use-wizard-step-props';
  */
 export default function NewDeploymentPage() {
   return (
-    <ToastProvider>
-      <NewDeploymentWizard />
-    </ToastProvider>
+    <NewDeploymentWizard />
   );
 }
 

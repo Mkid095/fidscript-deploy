@@ -9,7 +9,7 @@ import { useRouter } from 'next/navigation';
 
 import { useAuth } from '@/contexts/auth-context';
 import { useProjectContext } from '@/contexts/project-context';
-import { ToastProvider, useToast } from '@/components/toast-provider';
+import { useToast } from '@/components/toast-provider';
 import { WizardHeader } from './wizard-header';
 import { WizardFooter } from './wizard-footer';
 import { StepSource } from './step-source';
@@ -24,9 +24,7 @@ export default function NewDeploymentPageWrapper() {
   const { project } = useProjectContext();
   if (!project) return <div className="p-6 text-sm text-[var(--text-muted)]">Loading project…</div>;
   return (
-    <ToastProvider>
-      <NewDeploymentPage project={project} />
-    </ToastProvider>
+    <NewDeploymentPage project={project} />
   );
 }
 

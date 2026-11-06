@@ -1,4 +1,4 @@
-// Database backup and schedule types
+// Database backup types
 
 export interface BackupRecord {
   id: string;
@@ -14,25 +14,6 @@ export interface BackupRecord {
   scheduleId?: string;
 }
 
-export type BackupScheduleFrequency = 'hourly' | 'daily' | 'weekly' | 'monthly';
-
-export interface BackupSchedule {
-  id: string;
-  enabled: boolean;
-  frequency: BackupScheduleFrequency;
-  timeUtc: string;
-  dayOfWeek?: number;
-  dayOfMonth?: number;
-  retentionCount: number;
-  storageBucket: string;
-  lastRunAt?: string;
-  nextRunAt?: string;
-  createdAt: string;
-}
-
-export interface BackupSettings {
-  schedule: BackupSchedule | null;
-  defaultBucket: string;
-  maxManualBackups: number;
-  autoBackupRetentionDays: number;
-}
+// The schedule types are gone with the schedule: the platform does not run
+// scheduled backups, so there is nothing for them to describe. `BackupRecord`
+// stays — that is the backup the operator took.

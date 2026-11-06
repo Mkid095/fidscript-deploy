@@ -36,14 +36,4 @@ export function applyBackupsMethods(host: DatabasesHost): void {
   host.updateSsl = (projectId, databaseId, ssl) =>
     client.post(`/api/v1/projects/${projectId}/databases/${databaseId}/credentials/rotate`, { ssl });
 
-  // ── Backup scheduling ───────────────────────────────────────────────────────
-
-  host.getBackupSchedule = (databaseId) =>
-    client.get(`/api/v1/databases/${databaseId}/backups/schedule`);
-
-  host.updateBackupSchedule = (databaseId, schedule) =>
-    client.patch(`/api/v1/databases/${databaseId}/backups/schedule`, schedule);
-
-  host.getBackupSettings = (databaseId) =>
-    client.get(`/api/v1/databases/${databaseId}/backups/settings`);
 }

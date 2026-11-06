@@ -3,6 +3,7 @@ import { ValidationPipe } from '@nestjs/common';
 import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger';
 import type { Request, Response } from 'express';
 import { AppModule } from './app.module';
+import { API_PREFIX } from './common/api-prefix';
 import { RedisIoAdapter } from './adapters/redis-io.adapter';
 
 // Fix MaxListenersExceededWarning: the Node.js default is 10. Socket.IO clients
@@ -55,7 +56,7 @@ async function bootstrap() {
     });
   }
 
-  app.setGlobalPrefix('api/v1', {
+  app.setGlobalPrefix(API_PREFIX, {
     exclude: ['metrics'],
   });
 
