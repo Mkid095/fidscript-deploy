@@ -1,5 +1,10 @@
 # FIDScript Dashboard — Frontend Audit & Restructuring PRD
 
+> **⚠️ SUPERSEDED (2026-11-06).** This is the 2026-07-31 snapshot. The current audit of the
+> product — routes, integrations, journeys, security, design system and testing — is
+> **`docs/product/UX_AUDIT.md`**. Where the two disagree, the newer document is the one that was
+> checked against the running platform. Kept for its history; do not work from it.
+
 > **Purpose:** Living source of truth for all frontend work. Every page, component, and gap is tracked here.
 > Updated per session. Teammates mark items DONE and note what was changed.
 > Last updated: 2026-07-31 — ANPAS SPLIT SPRINT COMPLETE ✅

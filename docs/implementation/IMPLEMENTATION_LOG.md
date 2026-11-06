@@ -20,6 +20,51 @@
 
 ---
 
+## 2026-11-06 — Phase 0: the product, architecture and journey audit
+
+Phase: Phase 0 (audit only — no feature code)
+
+Completed:
+- `docs/product/UX_AUDIT.md`: the true state of the product, established by reading all 68
+  dashboard routes and 62 API controllers, cross-referencing every SDK module against the live
+  API's response shapes, tracing the six user journeys, and driving the live platform in a
+  browser. It supersedes `docs/FRONTEND_AUDIT.md` (the 2026-07-31 snapshot).
+- Eleven blockers found, of which three were reproduced live against the running platform:
+  - an `fpk_` project API key reads **and renames** another project (tenant isolation does not
+    hold for project keys);
+  - a project `viewer` can mint an **admin invitation** and a **write-scoped API key**;
+  - the email console is empty everywhere (the SDK unwraps an envelope the API never sends) and
+    adding a domain **crashes the page** (the API's response envelope is pushed into a list of
+    domain rows).
+- Corrected three stale findings in `docs/technical-debt.md`: the functions runtime **is**
+  sandboxed (`--network none`, read-only rootfs, `--cap-drop ALL`, code over stdin), and the
+  domains/email/storage endpoints **do** check project membership — the real gap is that the
+  project *role* is enforced nowhere.
+
+Unexpected issues:
+- The `ErrorState` component is specified in `docs/product/components/error-state.md` and
+  catalogued as implemented, but **it does not exist**. That single omission is the root of 113
+  swallowed errors and ~110 raw error strings.
+- `ToastProvider` is mounted in 5 of 68 pages and its context default is a silent no-op, so **84%
+  of the product's "it worked" messages render nothing**.
+- Five controllers carry a literal `api/v1` in their path while the app sets a global `api/v1`
+  prefix — 21 routes live at `/api/v1/api/v1/…`.
+- The sidebar builds its hrefs from the project **UUID** while the projects list navigates by
+  **slug**, so no sidebar item is highlighted after opening a project from the list.
+
+Decision:
+- The audit is a document, not a code change. Nothing was implemented in this phase: the
+  directive is explicit that the audit must establish the baseline before a redesign, and several
+  findings change the shape of the later phases (the roadmap is reordered to put isolation and
+  authorization first, and the first test suite lands in Phase 2 rather than at the end).
+- Two isolated test resources were created and deleted to reproduce the email and role findings
+  honestly (a project named `audit-probe`, a `viewer` account, two `*.example.com` mail domains
+  and two probe projects). No production data, service or credential was touched.
+
+Impact:
+- Documentation only: one new document, one superseded document, and this log. No API, migration,
+  dependency or runtime change.
+
 ## 2026-06-21 — F06: Deployments UI
 
 Phase: F06

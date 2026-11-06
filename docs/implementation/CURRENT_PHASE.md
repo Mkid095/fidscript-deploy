@@ -8,7 +8,21 @@
 
 ## In flight
 
-*None — awaiting next directive.*
+**Phase 0 — the product, architecture and journey audit: ✅ COMPLETE (2026-11-06)**
+
+- `docs/product/UX_AUDIT.md` is the deliverable: 68 routes and 62 controllers read, every SDK
+  module cross-referenced against the live API, the six journeys traced, the live platform driven
+  in a browser.
+- **Eleven blockers**, three of them reproduced live: an `fpk_` key reads *and renames* another
+  project; a project `viewer` can mint an admin invitation and a write-scoped API key; the email
+  console is empty everywhere and adding a domain crashes the page.
+- Three findings in `docs/technical-debt.md` are **stale and materially wrong** — the functions
+  runtime *is* sandboxed, and the domains/email/storage endpoints *do* check project membership.
+  The real gap is that the project **role** is enforced nowhere.
+- Nothing was implemented. The roadmap in the audit is reordered to put isolation and
+  authorization first, and the first test suite lands in Phase 2.
+
+*Awaiting the operator's direction on Phase 1 (isolation and authorization).*
 
 ## Not yet started
 

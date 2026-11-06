@@ -7,6 +7,20 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/).
 ## [Unreleased]
 
 ### Added
+- `docs(audit): the product audited against itself` — `docs/product/UX_AUDIT.md` is the true state
+  of FIDScript: all 68 dashboard routes and 62 API controllers read, every SDK module
+  cross-referenced against the live API's actual response shapes, the six user journeys traced, and
+  the live platform driven in a browser. **Eleven blockers**, three of them reproduced against the
+  running platform: an `fpk_` project API key reads **and renames** another project (the tenant
+  boundary does not hold for project keys); a project `viewer` can mint an **admin invitation** and
+  a **write-scoped API key** (membership is enforced on all 26 project-scoped controllers, the
+  *role* on none); and the email console is **empty everywhere** while adding a domain **crashes
+  the page** — the SDK unwraps an envelope the API never sends, and the create call's response
+  envelope is pushed into the list as a row. Three entries in the technical-debt register are
+  **stale and materially wrong** (the functions runtime *is* sandboxed; the domains, email and
+  storage endpoints *do* check membership — what is missing is role enforcement). The roadmap is
+  reordered so that isolation and authorization come first, and the first automated test suite
+  lands in Phase 2 rather than at the end.
 - `feat(observability): the stack is installed by default, and it has hostnames` — the platform's own monitoring was an add-on the operator had to know about and install, and once installed it answered on a raw port: `http://the-server:3000`. It is now part of the default install (the wizard takes it unless the operator says otherwise), and each of its three consoles is published by hostname like every other application: **grafana.{domain}**, **prometheus.{domain}** and **loki.{domain}**, each with its own certificate. The host ports are gone — one edge serves them — which also settles the collisions the stack used to have with the Instant console on 3000 and the Maven repository on 8081.
 - `feat(applications): the mail application has a page of its own` — the Applications screen said "Email — send and receive mail on your own domain" and linked to the mail server's console, which is a dead end for anyone who has not used it before: no username, no password, no host and port, and no idea what to do with a domain once it is connected. The application now opens on its own page: the console and the credential to log into it with (behind a deliberate click — it is the credential to the whole mail server), the client settings for the three ways to connect (implicit TLS, STARTTLS, IMAP), and the domains the platform receives mail for with the aliases on them and whether their DNS is integrated automatically. The credential comes from the platform itself (`GET /api/v1/admin/platform-mail/console`, owners and admins only) — the installer generated it and put it in an email, and nowhere else could be found.
 - `feat(deployments): the deployment wizard starts at the platform, not at a project` — the flow an operator actually follows is "I have code, I want it running", and the wizard demanded a project before it would start. The new route (`/deployments/new`) asks for the code first: connect GitHub (or paste a git URL, or upload a zip), pick the repository and the branch, and then — in one form — where the project lives, what it is called, which folder holds the application, what the platform found in the code, and what the application needs. The project is created on the way, in the workspace the operator chose, and the deployment is the last step. GitHub is what the platform recommends, because a connected account is what makes push-to-deploy and rollback possible; the other two are there because the code does not always live on GitHub.
