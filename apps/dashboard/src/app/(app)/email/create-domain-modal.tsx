@@ -51,14 +51,13 @@ export function CreateDomainModal({ projectId, getSdk, onCreated, onClose }: Cre
             <span className="text-[var(--text)] font-medium">{created.domain.domain}</span> is registered.
             Add these records at your DNS provider, then verify the domain.
           </p>
-          <ol className="space-y-2">
+          <ul className="space-y-2">
             {created.steps.map((step, i) => (
-              <li key={i} className="text-xs text-[var(--text-muted)] flex gap-2">
-                <span className="text-[var(--text-dim)] flex-shrink-0">{i + 1}.</span>
-                <span className="font-mono break-words">{step}</span>
+              <li key={i} className="text-xs text-[var(--text-muted)] font-mono break-words">
+                {step}
               </li>
             ))}
-          </ol>
+          </ul>
           <div className="flex justify-end">
             <Button
               variant="primary"

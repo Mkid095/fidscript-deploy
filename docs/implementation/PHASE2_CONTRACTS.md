@@ -63,6 +63,26 @@
 
 ---
 
+## The live verification (2026-11-06)
+
+Against the running platform on `fidscript.com`:
+
+| Check | Answer |
+|---|---|
+| `GET /projects/:id/domains/:id` — the route the SDK and the dashboard asked for | **200** with the domain |
+| `GET /projects/:id/storage/buckets/:id/files/:id` | the route answers (401 without a caller, not 404) |
+| The email domains **list** | **an array** — `[{ domain, status, … }]` |
+| Creating an email domain | **the domain and the three DNS steps** |
+| The email console in a browser | **"3 domains"** and the domains listed — it said *"0 domains"* before this phase |
+| Adding a domain in a browser | the steps are shown; **no crash** |
+| A project key **without** `envvars:read` reading the environment variables | **403** |
+| The same key reading its own project | **200** |
+
+The verification data (a project, four email domains, two keys, a session) was deleted
+afterwards: the platform has no projects and no test rows.
+
+---
+
 ## The testing foundation
 
 | Tier | What it is | How it runs |
