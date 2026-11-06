@@ -14,7 +14,7 @@ import { DomainTemplateService } from '@/modules/domains/services/domain-templat
  * These endpoints are read-only (no auth required — templates are public).
  */
 @ApiTags('domain-templates')
-@Controller('api/v1/domain-templates')
+@Controller('domain-templates')
 export class DomainTemplatesController {
   constructor(private templateService: DomainTemplateService) {}
 

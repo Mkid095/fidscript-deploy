@@ -16,7 +16,7 @@ import { EmailDomainService } from '@/modules/email/services/domain.service';
  *
  * Auth: ApiKeyOrJwtGuard (JWT or fpk_ key) + ProjectMemberGuard.
  */
-@Controller('api/v1/projects/:projectId/email')
+@Controller('projects/:projectId/email')
 @UseGuards(ApiKeyOrJwtGuard, ProjectMemberGuard)
 export class EmailStatusController {
   constructor(

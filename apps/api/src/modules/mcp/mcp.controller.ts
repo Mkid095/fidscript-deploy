@@ -31,7 +31,7 @@ interface AuthRequest extends Request {
   user?: { id: string };
 }
 
-@Controller('api/v1/mcp')
+@Controller('mcp')
 @UseGuards(JwtAuthGuard)
 export class McpController {
   constructor(

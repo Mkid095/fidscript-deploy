@@ -45,6 +45,19 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/).
 - `chore(databases): the SSE live-query is retired` — **breaking.** `POST /databases/:id/live-query`, `GET /databases/:id/live-query/:table` and the SDK's `QueryBuilder.watch()` are gone. The platform had reimplemented Instant's `.watch()` on Postgres `LISTEN/NOTIFY` — a second realtime protocol, with the server sending raw row patches and the client reassembling them by array splice, no conflict handling, and **no row-level authorization** (any holder of the project API key read every row of every table). Instant's is query-scoped and permission-aware, and the platform's own Instant integration now points an application at its app. Nothing called `watch()`: no dashboard screen, no MCP tool, no CLI command, and the endpoints were never in the endpoint inventory. **Migrating:** an application that wants reactive data subscribes to its Instant app — the app id and host come from `GET /projects/:id/instant/config` — and Instant evaluates its permission rules before sending anything. The platform's own `database.row.changed` event on the managed Postgres is unchanged, so the dashboard's live feed and the SDK's `subscribe()` keep working.
 
 ### Fixed
+- `fix(security): the Cloudflare OAuth callback could take over a tenant's DNS** — the callback
+  had **no guard**, and its CSRF check compared the client's copy of the state with **itself** (the
+  same value was passed as both the expected and the actual state), so it could never fail. Any
+  state, and any project id, was accepted — and the endpoint **replaces that project's Cloudflare
+  connection** with the caller's account. The state is now a value the platform **signs**, carrying
+  the project and the person it was issued for and an expiry; the callback checks the signature,
+  checks the project, and checks the caller. **Verified live**: a forged state answers 401, and an
+  unauthenticated call answers 401.
+- `fix(api): 21 routes were unreachable at the URL everything called** — five controllers carried a
+  literal `api/v1` in their path while the application already sets a global `api/v1` prefix, so
+  they lived at `/api/v1/api/v1/…` and nothing could reach them: the whole MCP module, the domain
+  templates, the notifications feed, the email status route and the Cloudflare OAuth routes. The
+  doubled prefix is gone. **Verified live**: those routes now answer 200.
 - `fix(security): a mail webhook could be forged** — the signature check ran **only when the
   signature header was present**, so a caller who left the header off was let in, and the header is
   the only thing standing between the internet and the ability to inject mail into any tenant's
