@@ -20,6 +20,52 @@
 
 ---
 
+## 2026-11-06 — Phase 3: the navigation and the platform overview
+
+Phase: Phase 3 (navigation and the overview — no visual redesign)
+
+Completed:
+- **The platform overview.** `GET /api/v1/overview` counts over **the caller's own
+  projects** — the ones they own, the ones they are a member of, the ones their workspaces own —
+  and answers with the projects, the deployments (the running ones, the failures, the recent ones),
+  the alerts that have not been resolved, and the recent activity. The page shows what the
+  platform knows and says so when it knows nothing; there is no widget for anything it cannot
+  answer honestly.
+- **One navigation, two levels.** The platform's navigation (overview, projects, applications,
+  API & MCP, settings) and the project's (its own resources). The sidebar's links are built from
+  the project **as it is in the address** — the old ones used the project's id while the address
+  carried its slug, so the active state was dead.
+- **The flat tree now redirects.** Sixteen paths that were a second way of asking for the same
+  screens send the caller to the project console, for the project they were last in.
+- **The route inventory** — every route, its owner, where it is reachable from — with a test
+  that reads the route tree on disk and fails when the two disagree.
+- **The project's own sections** (overview, members, activity) are pages, not query parameters;
+  the email console's other screens (analytics, templates, webhooks, suppressions, the domain
+  and mailbox details) moved into the project console; and the mail console, the mail settings
+  and the Cloudflare connection have a way in.
+
+Unexpected issues:
+- **The API's `ProjectWorkspaceService` was not exported**, so the overview module could not be
+  built — Nest refused to resolve it. It is exported now, and the reason is written down.
+- **The SDK's `maxRetries: 0` does not mean "no retries"** — `withRetry` loops from 1 to
+  `maxRetries`, so zero means *never call the API at all*. The test that wanted a failure rather
+  than a backoff learned it the hard way.
+
+Decision:
+- **The scheduled-backup screens were not built** (Phase 2). The backup schedule's tab says the
+  platform does not run one.
+- **The flat paths were kept as redirects rather than removed**, so every deep link that ever
+  existed still lands somewhere sensible.
+
+Impact:
+- **API:** one new module (the overview) and one new endpoint; the projects module exports one
+  more service.
+- **SDK:** an `overview` module.
+- **Dashboard:** the overview page, the platform navigation, the project's navigation, sixteen
+  redirects, ten new pages, the route inventory and its test.
+- **Documentation:** `docs/implementation/PHASE3_NAVIGATION.md` — the inventory, the
+  architecture, the overview's data sources and what is still wrong.
+
 ## 2026-11-06 — Phase 2: the contract between the layers
 
 Phase: Phase 2 (the contract — no visual redesign)

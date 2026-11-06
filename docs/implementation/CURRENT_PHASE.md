@@ -8,6 +8,24 @@
 
 ## In flight
 
+**Phase 3 — the navigation and the platform overview: ✅ COMPLETE (2026-11-06)**
+
+- One navigation, two levels: the **platform's** (overview, projects,
+  applications, API & MCP, settings) and the **project's** (its own
+  resources). A service that belongs to the platform is not offered as if it
+  were a project's.
+- The signed-in operator lands on an **overview** with real numbers —
+  counted over the caller's own projects only, and never over the platform.
+- The flat tree of duplicate paths now redirects to the project console; the
+  sidebar's active state works with the project's **slug**; the project's
+  overview, members and activity are pages instead of query parameters; the
+  mail console and the integrations have a way in.
+- The **route inventory** — every route, its owner, where it is reachable
+  from — is checked against the route tree on disk by a test.
+- The evidence is in `docs/implementation/PHASE3_NAVIGATION.md`.
+
+**Phase 4 (the design system) has not been started.**
+
 **Phase 2 — the contract between the layers: ✅ COMPLETE (2026-11-06)**
 
 - The objective: the API, the SDK and the dashboard must agree, the known

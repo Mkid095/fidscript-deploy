@@ -44,7 +44,31 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/).
 - `chore(app-auth): the app developer's auth surface is retired` — **breaking.** `POST /projects/:id/auth` and the whole `APPAUTH-01..19` cluster are gone, along with the per-project OAuth provider configuration, the role management, the three OAuth providers, and four tables (`app_roles`, `app_user_roles`, `app_oauth_accounts`, `auth_providers`) that nothing used afterwards. An application's users and permissions are Instant's job: its CEL rules are evaluated per entity per action against live data, which the platform's per-project JSON permission blobs never were — so the platform's version was the weaker duplicate of something that already existed. **Migrating:** an application gets its users from its Instant app. The endpoint IDs are retired, never recycled (rule 20), and the inventory records what replaced them. **What stayed, and why:** the module was never only an app-facing surface — the WhatsApp console signs in with it (magic code), and the deployment pipeline reads the operator's GitHub credentials through it when cloning a private repository. Removing the module wholesale would have broken both, so the app developer's auth went and the two platform products' auth stayed. The `app_users` and `app_sessions` tables remain for the same reason. `docs/CAPABILITY_OVERLAP.md` is the decision.
 - `chore(databases): the SSE live-query is retired` — **breaking.** `POST /databases/:id/live-query`, `GET /databases/:id/live-query/:table` and the SDK's `QueryBuilder.watch()` are gone. The platform had reimplemented Instant's `.watch()` on Postgres `LISTEN/NOTIFY` — a second realtime protocol, with the server sending raw row patches and the client reassembling them by array splice, no conflict handling, and **no row-level authorization** (any holder of the project API key read every row of every table). Instant's is query-scoped and permission-aware, and the platform's own Instant integration now points an application at its app. Nothing called `watch()`: no dashboard screen, no MCP tool, no CLI command, and the endpoints were never in the endpoint inventory. **Migrating:** an application that wants reactive data subscribes to its Instant app — the app id and host come from `GET /projects/:id/instant/config` — and Instant evaluates its permission rules before sending anything. The platform's own `database.row.changed` event on the managed Postgres is unchanged, so the dashboard's live feed and the SDK's `subscribe()` keep working.
 
+### Added
+- `feat(overview): the platform answers what is happening** — an operator who signs in landed on a
+  marketing page, and the questions they actually have had no answer anywhere: how many projects
+  can I reach, what is running, what failed, what is firing. There is an **overview** now, and
+  every number in it is counted over **the caller's own projects** — the ones they own, the ones
+  they are a member of, the ones their workspaces own. Nothing counts over the platform as a
+  whole, so the overview is a picture of their work and never of somebody else's, or of the
+  infrastructure. When there is nothing to show, it says so.
+
 ### Fixed
+- `fix(navigation): the dashboard had two ways to ask for the same screen** — the project console,
+  and a flat tree of the same pages without a project in the address. The flat tree was reachable
+  from nowhere (the audit found twenty-two orphaned routes), and its links were built from the
+  project's **id** while the address carried its **slug**, so the sidebar's active state was dead
+  whichever way the operator arrived. The flat paths now send the caller to the project console —
+  for the project they were last in, or to the project picker when they have none — and the deep
+  links keep working.
+- `fix(navigation): the project's own sections were query parameters nothing linked to** — the
+  overview, the members and the activity existed as `?section=…`. They are pages now, in the
+  sidebar, and the query parameter is gone.
+- `fix(navigation): three whole screens had no way in** — the mail console, the mail settings and
+  the Cloudflare connection. They are under Settings → This platform now.
+- `fix(email): the email console's other screens were only in the flat tree** — the analytics, the
+  templates, the webhooks, the suppressions, the domain detail and the mailbox detail are in the
+  project console now, and the domain card links to them.
 - `fix(email): the email console's lists were empty everywhere** — the SDK unwrapped
   `{ domains }`, `{ mailboxes }` and `{ aliases }`, and the API answers with the list itself, so
   `res.domains` was `undefined` and every list came back empty. The SDK accepts either shape now,
