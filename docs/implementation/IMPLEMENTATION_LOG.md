@@ -45,6 +45,12 @@ Completed:
   and the Cloudflare connection have a way in.
 
 Unexpected issues:
+- **A project could not be reached by its slug.** The project console addresses a project by its
+  slug — that is what the address carries — and most of the API looked the project up by its **id**
+  alone: the project's deployments answered 404 and updating it by slug did the same. The route
+  worked when the operator arrived through the deployment wizard (which uses the id) and broke when
+  they arrived from the project list. The id is now resolved once, in the guard every
+  project-scoped route uses.
 - **The API's `ProjectWorkspaceService` was not exported**, so the overview module could not be
   built — Nest refused to resolve it. It is exported now, and the reason is written down.
 - **The SDK's `maxRetries: 0` does not mean "no retries"** — `withRetry` loops from 1 to
