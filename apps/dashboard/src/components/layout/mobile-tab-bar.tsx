@@ -14,6 +14,7 @@ import { MoreHorizontalIcon } from '@hugeicons/core-free-icons';
 
 import { getNavGroups, getMobilePriorityIds, type NavItem } from '@/app/(app)/projects/[projectId]/nav-groups';
 import { MobileTabBarSheet } from './mobile-tab-bar-sheet';
+import { useProjectContext } from '@/contexts/project-context';
 import type { Project } from '@/types';
 import type { ProjectMode } from '@/app/(app)/projects/[projectId]/use-project-mode';
 
@@ -24,6 +25,10 @@ interface MobileTabBarProps {
 
 export function MobileTabBar({ project, mode }: MobileTabBarProps) {
   const pathname = usePathname();
+  // The project as it is in the URL — the links and the active state are
+  // built from it (see the sidebar).
+  const { projectId } = useProjectContext();
+  const base = projectId ?? project.id;
   const [showMore, setShowMore] = useState(false);
   const role = (project.role ?? 'viewer').toLowerCase();
   const navGroups = getNavGroups(mode);
@@ -40,7 +45,7 @@ export function MobileTabBar({ project, mode }: MobileTabBarProps) {
   );
 
   function isActive(itemHref: string): boolean {
-    const fullPath = `/projects/${project.id}${itemHref}`;
+    const fullPath = `/projects/${base}${itemHref}`;
     return pathname === fullPath || pathname.startsWith(fullPath + '/');
   }
 
@@ -55,7 +60,7 @@ export function MobileTabBar({ project, mode }: MobileTabBarProps) {
         {priorityItems.map(item => {
           const active = isActive(item.href);
           const locked = item.adminOnly && !['owner', 'admin'].includes(role);
-          const href = locked ? '#' : `/projects/${project.id}${item.href}`;
+          const href = locked ? '#' : `/projects/${base}${item.href}`;
 
           return (
             <Link
@@ -109,7 +114,7 @@ export function MobileTabBar({ project, mode }: MobileTabBarProps) {
           />
           <MobileTabBarSheet
             items={moreItems}
-            projectId={project.id}
+            projectId={base}
             role={role}
             onClose={() => setShowMore(false)}
           />

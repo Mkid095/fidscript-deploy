@@ -2,13 +2,13 @@
 
 import { type ReactNode } from 'react';
 import Link from 'next/link';
-import Image from 'next/image';
 import { usePathname } from 'next/navigation';
+import Image from 'next/image';
 import { HugeiconsIcon } from '@hugeicons/react';
 import { ArrowTurnBackwardIcon } from '@hugeicons/core-free-icons';
 
 import { AuthGuard } from '@/components/auth-guard';
-import { TopNavLink } from '@/components/layout/top-nav-link';
+import { PlatformNav } from '@/components/navigation/platform-nav';
 import { AvatarDropdown } from '@/components/layout/avatar-dropdown';
 import { ThemeToggle } from '@/components/theme/theme-toggle';
 import { ConfirmProvider } from '@/components/ui/confirm-provider';
@@ -76,18 +76,10 @@ export default function AppLayout({ children }: { children: ReactNode }) {
 
             <div className="flex-1" />
 
-            {/* The platform's two top-level surfaces: the applications the
-                operator can have, and the projects they are working on. */}
-            {!isProjectRoute && (
-              <nav className="flex items-center gap-1 px-1 py-1 rounded-lg bg-[var(--surface)] border border-[var(--rail)]">
-                <TopNavLink href="/applications" pathname={pathname}>
-                  Applications
-                </TopNavLink>
-                <TopNavLink href="/projects" pathname={pathname}>
-                  Projects
-                </TopNavLink>
-              </nav>
-            )}
+            {/* The platform's navigation: the overview, the projects, the
+                applications the platform can have, and the operator's own
+                settings. A project's resources live in the project console. */}
+            {!isProjectRoute && <PlatformNav />}
 
             {/* Theme toggle */}
             <ThemeToggle />

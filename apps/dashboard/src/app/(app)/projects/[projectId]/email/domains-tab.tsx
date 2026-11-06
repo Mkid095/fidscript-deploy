@@ -87,6 +87,7 @@ export function DomainsTab() {
             <DomainCard
               key={d.id}
               domain={d}
+              projectId={projectId}
               onDelete={() => handleDelete(d.id)}
               onVerify={() => handleVerify(d.id)}
             />

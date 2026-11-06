@@ -2,21 +2,29 @@
 
 import type { EmailDomain } from '@fidscript-deploy/sdk';
 
+import Link from 'next/link';
 import { Button, Card } from '@fidscript/ui';
 import { DOMAIN_STATUS_TONE, VERIFY_TONE, truncate } from './email-shared';
 
 interface Props {
   domain: EmailDomain;
+  /** The project the domain belongs to — the detail screen lives under it. */
+  projectId: string;
   onDelete: () => void;
   onVerify: () => void;
 }
 
-export function DomainCard({ domain, onDelete, onVerify }: Props) {
+export function DomainCard({ domain, projectId, onDelete, onVerify }: Props) {
   return (
     <Card className="border border-[var(--rail)] p-4">
       <div className="flex items-start justify-between mb-2">
         <div>
-          <p className="text-sm font-semibold text-[var(--text)]">{domain.domain}</p>
+          <Link
+            href={`/projects/${projectId}/email/domains/${domain.id}`}
+            className="text-sm font-semibold text-[var(--text)] hover:text-[var(--accent)] no-underline"
+          >
+            {domain.domain}
+          </Link>
           <p className="text-[10px] text-[var(--text-dim)] font-mono mt-0.5">{truncate(domain.id, 14)}</p>
         </div>
         <span className={`text-[10px] px-1.5 py-0.5 rounded font-medium uppercase ${

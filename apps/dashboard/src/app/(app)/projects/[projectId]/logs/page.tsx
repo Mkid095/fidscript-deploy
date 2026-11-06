@@ -1,1 +1,1 @@
-export { default } from '@/app/(app)/logs/page';
+export { LogsPage as default } from '@/app/(app)/logs/logs-page';
