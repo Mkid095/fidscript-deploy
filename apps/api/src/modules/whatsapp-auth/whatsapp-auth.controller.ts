@@ -16,6 +16,7 @@ import { AppAuthTokenService } from '@/modules/app-auth/services/app-auth-token.
 import { AppJwtGuard } from '@/modules/app-auth/jwt/app-jwt.guard';
 import { extractRequestContext } from '@/common/request-context';
 import { Request } from 'express';
+import { Public } from '@/modules/auth/decorators/public.decorator';
 
 /** WhatsApp Console uses a single fixed project for all WhatsApp clients. */
 const WHATSAPP_PROJECT_ID = '00000000-0000-0000-0000-000000000001';
@@ -52,6 +53,8 @@ export class WhatsappAuthController {
   ) {}
 
   @Post('request-code')
+
+  @Public()
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Request magic code for WhatsApp Console login' })
   async requestCode(@Body() dto: RequestCodeDto, @Req() req: Request) {
@@ -61,6 +64,8 @@ export class WhatsappAuthController {
   }
 
   @Post('verify-code')
+
+  @Public()
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Verify magic code and return session token' })
   async verifyCode(@Body() dto: VerifyCodeDto, @Req() req: Request) {

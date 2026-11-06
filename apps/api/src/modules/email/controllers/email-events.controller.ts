@@ -5,6 +5,7 @@ import { ApiTags, ApiOperation } from '@nestjs/swagger';
 import { Request } from 'express';
 import { EmailInboundService } from '@/modules/email/services/inbound.service';
 import { WebhookSignatureService } from '@/modules/email/services/webhook-signature.service';
+import { Public } from '@/modules/auth/decorators/public.decorator';
 
 @ApiTags('email-events')
 @Controller('email/events')
@@ -15,6 +16,8 @@ export class EmailEventsController {
   ) {}
 
   @Post('bounce')
+
+  @Public()
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Stalwart bounce webhook — updates message status' })
   handleBounce(
@@ -28,6 +31,8 @@ export class EmailEventsController {
   }
 
   @Post('complaint')
+
+  @Public()
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Stalwart complaint (FBL) webhook — adds recipient to suppression list' })
   handleComplaint(

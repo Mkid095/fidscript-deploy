@@ -15,6 +15,7 @@ import {
   ChangePasswordDto,
   SendVerificationDto, VerifyEmailDto, ConfirmPasswordResetDto, ConfirmMagicLinkDto,
 } from '@/modules/auth/dto/index';
+import { Public } from '@/modules/auth/decorators/public.decorator';
 
 @ApiTags('auth')
 @Controller('auth')
@@ -22,6 +23,8 @@ export class AuthController {
   constructor(private authService: AuthService) {}
 
   @Get('auth-method/:email')
+
+  @Public()
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Look up preferred auth method for an email (used to pre-fill login)' })
   async lookupAuthMethod(@Param('email') email: string) {
@@ -46,6 +49,8 @@ export class AuthController {
   }
 
   @Post('refresh')
+
+  @Public()
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Refresh access token' })
   async refresh(@Body() dto: RefreshTokenDto) {
@@ -161,6 +166,8 @@ export class AuthController {
   }
 
   @Post('mfa/challenge')
+
+  @Public()
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Complete MFA login with challenge token + code' })
   async mfaChallenge(@Body() dto: MfaChallengeDto, @Req() req: Request) {

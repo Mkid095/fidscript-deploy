@@ -6,6 +6,7 @@ import { Controller, Get, Param, Query, Res, Req, Header } from '@nestjs/common'
 import { ApiTags } from '@nestjs/swagger';
 import { Response, Request } from 'express';
 import { EmailTrackingService } from '@/modules/email/services/email-tracking.service';
+import { Public } from '@/modules/auth/decorators/public.decorator';
 
 @ApiTags('email-tracking')
 @Controller('email/t')
@@ -13,6 +14,8 @@ export class EmailTrackingController {
   constructor(private tracking: EmailTrackingService) {}
 
   @Get('open/:messageId')
+
+  @Public()
   @Header('Content-Type', 'image/gif')
   @Header('Cache-Control', 'no-store, no-cache, must-revalidate')
   async trackOpen(
@@ -28,6 +31,8 @@ export class EmailTrackingController {
   }
 
   @Get('click/:messageId')
+
+  @Public()
   async trackClick(
     @Param('messageId') messageId: string,
     @Query('url') url: string,

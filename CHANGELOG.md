@@ -45,6 +45,15 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/).
 - `chore(databases): the SSE live-query is retired` — **breaking.** `POST /databases/:id/live-query`, `GET /databases/:id/live-query/:table` and the SDK's `QueryBuilder.watch()` are gone. The platform had reimplemented Instant's `.watch()` on Postgres `LISTEN/NOTIFY` — a second realtime protocol, with the server sending raw row patches and the client reassembling them by array splice, no conflict handling, and **no row-level authorization** (any holder of the project API key read every row of every table). Instant's is query-scoped and permission-aware, and the platform's own Instant integration now points an application at its app. Nothing called `watch()`: no dashboard screen, no MCP tool, no CLI command, and the endpoints were never in the endpoint inventory. **Migrating:** an application that wants reactive data subscribes to its Instant app — the app id and host come from `GET /projects/:id/instant/config` — and Instant evaluates its permission rules before sending anything. The platform's own `database.row.changed` event on the managed Postgres is unchanged, so the dashboard's live feed and the SDK's `subscribe()` keep working.
 
 ### Fixed
+- `fix(security): the platform's authorization is default-deny** — a route was protected only if
+  somebody remembered to guard it, and **twelve controllers had no guard at all**. Forgetting one
+  line of code was a security hole. A route now needs a caller unless it says it is public, and
+  the routes that are public say so explicitly: a probe, a webhook with its own signature, a link
+  whose token IS the credential, and the setup routes with their setup token.
+- `fix(security): the metrics endpoint named every project to anyone who asked** — the
+  per-project series carry the project's slug, and the endpoint was open. The scrape now carries a
+  token (the observability add-on generates it and Prometheus presents it); without one the
+  platform's own series are served and the per-project ones are not.
 - `fix(security): the Cloudflare OAuth callback could take over a tenant's DNS** — the callback
   had **no guard**, and its CSRF check compared the client's copy of the state with **itself** (the
   same value was passed as both the expected and the actual state), so it could never fail. Any

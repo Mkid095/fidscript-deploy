@@ -14,6 +14,7 @@ import {
   CreateReviewDto,
   ListMarketplaceDto,
 } from '@/modules/marketplace/dto/index';
+import { Public } from '@/modules/auth/decorators/public.decorator';
 
 @ApiTags('marketplace')
 @Controller('marketplace')
@@ -25,24 +26,32 @@ export class MarketplaceController {
   ) {}
 
   @Get()
+
+  @Public()
   @ApiOperation({ summary: 'List marketplace items' })
   async listItems(@Query() query: ListMarketplaceDto) {
     return this.catalog.listItems(query);
   }
 
   @Get('featured')
+
+  @Public()
   @ApiOperation({ summary: 'Get featured items' })
   async getFeatured() {
     return this.catalog.getFeatured();
   }
 
   @Get('categories')
+
+  @Public()
   @ApiOperation({ summary: 'Get categories' })
   async getCategories() {
     return this.catalog.getCategories();
   }
 
   @Get(':slug')
+
+  @Public()
   @ApiOperation({ summary: 'Get marketplace item' })
   async getItem(@Param('slug') slug: string) {
     return this.catalog.getItem(slug);
@@ -61,6 +70,8 @@ export class MarketplaceController {
   }
 
   @Post(':slug/download')
+
+  @Public()
   @ApiOperation({ summary: 'Record download' })
   async incrementDownloads(@Param('slug') slug: string) {
     return this.reviews.incrementDownloads(slug);

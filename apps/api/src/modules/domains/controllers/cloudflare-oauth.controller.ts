@@ -10,6 +10,7 @@ import { CloudflareOAuthService } from '@/modules/domains/services/cloudflare-oa
 import { PrismaService } from '@/prisma/prisma.service';
 import { Request } from 'express';
 import * as crypto from 'crypto';
+import { Public } from '@/modules/auth/decorators/public.decorator';
 
 @ApiTags('cloudflare-oauth')
 @Controller()
@@ -88,6 +89,7 @@ export class CloudflareOAuthController {
    * Validates clientId/clientSecret by attempting a token exchange.
    */
   @Post('installation/test-cloudflare-connection')
+  @Public()
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Test Cloudflare OAuth credentials before saving' })
   async testConnection(@Body() body: { clientId: string; clientSecret: string }) {
@@ -100,6 +102,7 @@ export class CloudflareOAuthController {
    * Used by the frontend to show/hide OAuth-dependent UI.
    */
   @Get('installation/cloudflare-oauth-status')
+  @Public()
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Check if Cloudflare OAuth is enabled at platform level' })
   async getOAuthStatus() {

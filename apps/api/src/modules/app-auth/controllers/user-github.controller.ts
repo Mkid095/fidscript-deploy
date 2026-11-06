@@ -18,6 +18,7 @@ import { Response, Request } from 'express';
 import { JwtAuthGuard } from '@/modules/auth/jwt-auth.guard';
 import { CurrentUser, AuthUser } from '@/modules/auth/current-user.decorator';
 import { UserGithubService } from '../services/user-github.service';
+import { Public } from '@/modules/auth/decorators/public.decorator';
 
 @ApiTags('github')
 @Controller('users/me/github')
@@ -60,6 +61,7 @@ export class UserGithubController {
    * The frontend (opener) then makes POST /exchange to complete the flow server-side.
    */
   @Get('callback')
+  @Public()
   @ApiOperation({ summary: 'GitHub OAuth callback — closes popup via postMessage' })
   async callback(@Req() req: Request, @Res() res: Response) {
     const code = req.query.code as string | undefined;

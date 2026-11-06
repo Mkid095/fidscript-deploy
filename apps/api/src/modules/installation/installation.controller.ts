@@ -15,6 +15,7 @@ import { InstallationOrchestratorService } from './installation.service';
 import { SetupTokenGuard } from './guards/setup-token.guard';
 import { ConfigureInstallationDto, DiscoveryResult, StepValidationIssue } from './dto';
 import { Response } from 'express';
+import { Public } from '@/modules/auth/decorators/public.decorator';
 
 @Controller('installation')
 export class InstallationController {
@@ -22,18 +23,21 @@ export class InstallationController {
 
   /** Discovery — what does this server already know about itself? */
   @Get('discover')
+  @Public()
   async discover(): Promise<DiscoveryResult> {
     return this.orchestrator.discover();
   }
 
   /** Current installation status. */
   @Get('status')
+  @Public()
   async getStatus() {
     return this.orchestrator.getStatus();
   }
 
   /** Dry-run validation — what would block configuration? */
   @Get('validate')
+  @Public()
   async validate(@Query() dto: Partial<ConfigureInstallationDto>): Promise<{ validations: StepValidationIssue[] }> {
     const results = await this.orchestrator.validate(dto);
     return { validations: results };
@@ -56,6 +60,7 @@ export class InstallationController {
 
   /** SSE progress stream for an operation. */
   @Get('operations/:id/stream')
+  @Public()
   async streamProgress(@Param('id') id: string, @Res() res: Response) {
     res.setHeader('Content-Type', 'text/event-stream');
     res.setHeader('Cache-Control', 'no-cache');

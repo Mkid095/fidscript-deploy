@@ -15,6 +15,7 @@ import { LogQuotaService } from '@/modules/logging/services/log-quota.service';
 import { LogShipperService } from '@/modules/logging/services/log-shipper.service';
 import { EventService } from '@/modules/events/event.service';
 import { IngestLogsDto } from '@/modules/logging/dto/ingest-log.dto';
+import { Public } from '@/modules/auth/decorators/public.decorator';
 
 @ApiTags('logs-ingest')
 @Controller('logs')
@@ -39,6 +40,7 @@ export class LogIngestController {
    * (soft enforcement).
    */
   @Post('ingest')
+  @Public()
   @HttpCode(HttpStatus.ACCEPTED)
   @ApiOperation({ summary: 'Ingest structured log entries' })
   @ApiHeader({ name: 'X-API-Key', description: 'Project API key (fpk_...)', required: true })

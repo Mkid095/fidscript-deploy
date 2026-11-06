@@ -20,6 +20,9 @@ scrape_configs:
   # metrics need the collectors that are not implemented yet.
   - job_name: fidscript-api
     metrics_path: /metrics
+    # The scrape carries a token: the metrics name every project, so they are
+    # not public.
+    bearer_token_file: /etc/prometheus/scrape_token
     static_configs:
       - targets: ["fidscript_api:3001"]
 

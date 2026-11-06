@@ -81,6 +81,6 @@ import { ProjectsModule } from '@/modules/projects/projects.module';
     EmailVerifiedGuard,
     ProjectApiKeyMintGuard,
   ],
-  exports: [AuthService, OrganizationService, TeamService, AccessTokenService, JwtAuthGuard, ApiKeyOrJwtGuard, ScopeGuard, ProjectApiKeyMintGuard, PlatformAdminGuard, InstallationGuard, ProjectMemberGuard, EmailVerifiedGuard, JwtModule, forwardRef(() => ProjectsModule)],
+  exports: [AuthService, OrganizationService, TeamService, AccessTokenService, AuthApiKeyService, JwtAuthGuard, ApiKeyOrJwtGuard, ScopeGuard, ProjectApiKeyMintGuard, PlatformAdminGuard, InstallationGuard, ProjectMemberGuard, EmailVerifiedGuard, JwtModule, forwardRef(() => ProjectsModule)],
 })
 export class AuthModule {}

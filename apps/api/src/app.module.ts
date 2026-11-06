@@ -11,6 +11,7 @@ import { VerificationModule } from './modules/verification/verification.module';
 import { StorageModule } from './modules/storage/storage.module';
 import { AuthModule } from './modules/auth/auth.module';
 import { EmailVerifiedGuard } from './modules/auth/guards/email-verified.guard';
+import { DefaultAuthGuard } from './modules/auth/guards/default-auth.guard';
 import { AppAuthModule } from './modules/app-auth/app-auth.module';
 import { ProjectsModule } from './modules/projects/projects.module';
 import { DeploymentsModule } from './modules/deployments/deployments.module';
@@ -75,6 +76,17 @@ import { ApplicationsModule } from './modules/applications/applications.module';
     // Registered here rather than in AuthModule so the guard is wired up
     // before AppModule is fully constructed.
     { provide: APP_GUARD, useClass: EmailVerifiedGuard },
+    // Default-deny. A route is protected unless it says it is public or
+    // carries a guard of its own — so forgetting a guard can no longer make
+    // a route public.
+    //
+    // It is registered AFTER the verification guard on purpose: the
+    // verification guard runs before any controller guard, so it has never
+    // seen a caller, and it would start locking out every account the moment
+    // this one authenticates them. There is no email-verification flow yet
+    // to make that gate meaningful, so it stays where it is until there is
+    // one.
+    { provide: APP_GUARD, useClass: DefaultAuthGuard },
   ],
 })
 export class AppModule {}

@@ -1,6 +1,7 @@
 import { Controller, Get, Headers, UnauthorizedException } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse } from '@nestjs/swagger';
 import { ConfigService } from '@nestjs/config';
+import { Public } from '@/modules/auth/decorators/public.decorator';
 
 /**
  * Domain routing verification endpoint.
@@ -19,6 +20,8 @@ export class VerificationController {
   constructor(private configService: ConfigService) {}
 
   @Get('fidscript')
+
+  @Public()
   @ApiOperation({ summary: 'Domain routing verification token' })
   @ApiResponse({ status: 200, description: 'Platform routing confirmation' })
   getVerificationToken(@Headers('host') host: string) {

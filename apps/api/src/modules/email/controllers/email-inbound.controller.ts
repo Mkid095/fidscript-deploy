@@ -5,6 +5,7 @@ import { ApiTags, ApiOperation } from '@nestjs/swagger';
 import { Request } from 'express';
 import { EmailInboundService } from '@/modules/email/services/inbound.service';
 import { WebhookSignatureService } from '@/modules/email/services/webhook-signature.service';
+import { Public } from '@/modules/auth/decorators/public.decorator';
 
 @ApiTags('email-inbound')
 @Controller('email/inbound')
@@ -15,6 +16,8 @@ export class EmailInboundController {
   ) {}
 
   @Post('webhook')
+
+  @Public()
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Stalwart inbound email webhook' })
   inboundWebhook(

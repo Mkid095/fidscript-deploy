@@ -22,6 +22,9 @@ services:
       - '--web.enable-admin-api'
     volumes:
       - ../addons/observability/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      # The token the platform's metrics endpoint requires. The metrics name
+      # every project, so the scrape is a credential.
+      - ./secrets/observability_prometheus_token.txt:/etc/prometheus/scrape_token:ro
       - fidscript_prometheus_data:/prometheus
     networks:
       - fidscript-deployment
