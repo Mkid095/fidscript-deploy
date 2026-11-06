@@ -24,7 +24,21 @@
   from — is checked against the route tree on disk by a test.
 - The evidence is in `docs/implementation/PHASE3_NAVIGATION.md`.
 
-**Phase 4 (the design system) has not been started.**
+**Phase 4 — the design system: ✅ COMPLETE (2026-11-06)**
+
+- The **tokens** (radii, elevation, depth, motion, and a focus ring that clears 3:1 where the
+  old one sat at 1.1:1) and **sixteen shared components** in `packages/ui`.
+- The shared **Modal** is a real dialog now — named, modal, focus-trapped, focus restored — and
+  the **Button** no longer submits the form it sits in.
+- Seven screens stand on the new foundations, and they were **looked at** at 1440×900 and at
+  390×844: three things typechecking could not have caught were found and fixed.
+- The evidence is in `docs/implementation/PHASE4_DESIGN_SYSTEM.md`; the contract is
+  `docs/product/DESIGN_SYSTEM.md`.
+
+**The npm registry and the GitHub connection (2026-11-06)** — the CLI is the registry's client
+(`fidscript registry …`), every package is published from this repository to
+registry.fidscript.com, and the GitHub account can be connected with a personal access token
+when the deployment has no OAuth app. The contract is `docs/REGISTRY.md`.
 
 **Phase 2 — the contract between the layers: ✅ COMPLETE (2026-11-06)**
 

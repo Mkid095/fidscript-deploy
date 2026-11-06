@@ -20,6 +20,63 @@
 
 ---
 
+## 2026-11-06 — Phase 4: the design system, the registry CLI, and the GitHub connection
+
+Phase: Phase 4 (the design system), plus the npm registry and the GitHub connection
+
+Completed:
+- **The tokens and the sixteen shared components.** The focus ring was the accent at 12% over
+  the surface — about 1.1:1 — and `outline: none` had removed the browser's own; it is the accent
+  at 4px with a canvas-coloured gap now, above the 3:1 WCAG 2.2 asks for. The shared `Modal`
+  had no role, no name and no focus trap: the tab key walked out of the dialog into the page
+  behind it, and the focus never came back. The `Button` had no `type`, so a "Cancel" submitted
+  the form it sat in. All three are fixed, and thirty-eight tests hold the components to it.
+- **Seven screens** on the new foundations, **looked at** at 1440×900 and 390×844. Three things
+  typechecking could not have caught were found: a lost separator in the projects header, a
+  header whose actions ran off the edge of a phone, and a navigation clipped mid-word.
+- **The CLI is the npm registry's client.** `fidscript registry whoami | list | versions |
+  search | info | login | logout | publish | unpublish | remove | guide` — the registry's HTTP
+  directly, not through the MCP server. Every package is published from this repository to
+  registry.fidscript.com: types 1.0.2, events 1.0.2, sdk 1.0.4, cli 1.1.3, mcp-server 1.0.7.
+- **The GitHub connection works.** The deployment carried the installer's placeholders in
+  `GITHUB_CLIENT_ID`/`GITHUB_CLIENT_SECRET`, so the popup sign-in could never work. The API now
+  says so (503) and the dashboard offers the way that always works: a personal access token,
+  checked with GitHub and stored encrypted. The operator's account is connected as **Mkid095**,
+  and the repositories come back from GitHub with the stored token.
+
+Unexpected issues:
+- **The published SDK could not be imported at all.** Every published package is ESM, so Node
+  needs the `.js` extension on every relative import, and `tsc` does not write them. The SDK's
+  1.0.0–1.0.3 all failed on `import` with `ERR_MODULE_NOT_FOUND`; they are withdrawn and 1.0.4
+  replaces them. The CLI had been running an extension-fixing step after its build all along —
+  the SDK had not, and the fix-extensions script had been copied in a way that only the CLI's
+  image had it.
+- **The dashboard image could not build** after that: the SDK's build inside the image runs
+  `scripts/fix-extensions.mjs`, and the Dockerfile copied `packages/` but not `scripts/`.
+- **The registry's MCP server still points at the old host** (`registry.nextmavens.com`). It
+  serves the `@fidscript/instant-mcp` package and is not the path this repository publishes
+  through — the CLI is.
+- **`registry list` returns nothing** for the account that owns the packages: Verdaccio's
+  `/-/user/org.couchdb.user:<name>` does not list packages published before the account was
+  read. The packument itself carries the maintainer, and `fidscript registry versions` is the
+  honest way to ask.
+
+Decision:
+- **The CLI drives `npm publish`** rather than reimplementing it: npm builds and hashes the
+  tarball, and the token reaches it through `NODE_AUTH_TOKEN` and a temporary npmrc, so the
+  token never touches the disk.
+- **The GitHub service was split by what it does** — the OAuth app, the OAuth state, the
+  exchange, the calls to GitHub, the encrypted store — because one 460-line file was four things
+  at once.
+- **The token path and the OAuth path end in the same encrypted row**, so nothing downstream
+  (the repository browser, the clone credentials) knows which way the person came in.
+
+Impact:
+- The API gained `AUTH-23…31` (the GitHub routes, now with stable IDs) and a `github` module in
+  the SDK (`oauthConfigured`, `connectWithToken`).
+- `@fidscript-deploy/sdk` 1.0.0–1.0.3 were withdrawn from the registry.
+- The Dockerfiles copy `scripts/`; the dashboard's image needed it to build.
+
 ## 2026-11-06 — Phase 3: the navigation and the platform overview
 
 Phase: Phase 3 (navigation and the overview — no visual redesign)
