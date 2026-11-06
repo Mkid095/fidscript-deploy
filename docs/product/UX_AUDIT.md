@@ -28,7 +28,7 @@ console renders real data from real endpoints. The problem is not that FIDScript
 that **the contract between its three layers (API → SDK → dashboard) has drifted in specific,
 findable places**, and those places are exactly where a user's workflow breaks.
 
-**Eleven findings are 🔴 blockers**, and only one of them is in the platform's *architecture*.
+**Fifteen findings are 🔴 blockers**, and only one of them is in the platform's *architecture*.
 The rest are in the contract between its layers, in the authorization model, and in what the
 product has never been made to promise.
 
@@ -44,12 +44,17 @@ product has never been made to promise.
 | 7 | **No organization or team UI exists at all**, though the API, the SDK and the CLI expose 18 endpoints for it | 🔴 | source + live |
 | 8 | **The functions runtime's P0 sandbox finding is stale** — the runtime *is* isolated; three narrower gaps remain | 🔴 | source |
 | 9 | **MCP scope validation always returns "allowed"**, and `GET /metrics` is public | 🔴 | source |
-| 10 | **There is no automated test suite**; every guarantee in this document rests on manual verification | 🔴 | source |
+| 10 | **A refresh token works as an access token and survives logout** — a 7-day token that logging out does not revoke | 🔴 | **live** |
+| 11 | **The mail server's password and every login code are written to the API log** | 🔴 | **live** |
+| 12 | **The Cloudflare OAuth callback is unauthenticated with a no-op CSRF check** — a tenant's DNS provider can be replaced | 🔴 | source |
+| 13 | **The API is default-allow** — no global auth guard, so a controller that forgets one is public | 🔴 | source |
+| 14 | **There is no automated test suite**; every guarantee in this document rests on manual verification | 🔴 | source |
 
 The rest of the audit is structural: **22 orphaned routes**, four screens rendered at two URLs, a
-component catalog that documents 30 components of which **14 do not exist**, a project console
-whose sections the sidebar cannot reach, 15 browser `confirm()`/`alert()` dialogs beside a proper
-`ConfirmProvider` that exists, and no platform home at all.
+component catalog that documents 41 components of which **13 exist**, a project console whose
+sections the sidebar cannot reach, **16 browser `confirm()`/`alert()` dialogs** and **12 destructive
+actions with no confirmation at all** beside a proper `ConfirmProvider` that exists, a focus ring
+that fails contrast, and no platform home at all.
 
 ---
 
@@ -373,6 +378,78 @@ invocation.
 25 phantom paths); reconcile the SDK's paths with the API; implement `validateScope` against
 `McpPermissionService`; and put `/metrics` behind the platform admin.
 
+### B11 — A refresh token works as an access token, and survives logout
+
+`ApiKeyOrJwtGuard` verifies the bearer token with `jwtService.verifyAsync(token)` — **no `type`
+check, no blocklist check, no session check** (`api-key-or-jwt.guard.ts:98-110`). `JwtStrategy`
+does all three (`jwt.strategy.ts:32,40,58-66`), but the guard bypasses the strategy entirely.
+
+**Verified live:**
+
+| Request | Result |
+|---|---|
+| `GET /api/v1/applications` with the **access** token | 200 |
+| `GET /api/v1/applications` with the **refresh** token | ✅ **200** |
+| `POST /api/v1/auth/logout` (session revoked) | 200 |
+| `GET /api/v1/applications` with the **refresh** token **after logout** | ✅ **200** |
+
+**Logging out does not revoke the token** on any route guarded by `ApiKeyOrJwtGuard` — which is
+most of the project-scoped API — and the token lives for **7 days**. The same applies to the
+5-minute MFA challenge token. The logout blocklist (`auth-login.service.ts:142`) is only consulted
+by `JwtStrategy`, which these routes never use.
+
+**Fix:** verify the token's `type` is `access`, check the session is live and the blocklist is
+clean — the same three checks `JwtStrategy` already makes. Or route the guard through the strategy.
+
+### B12 — The mail server's password and every login code are written to the log
+
+**Verified live**, both of them:
+
+```
+[stalwart-transport] nodemailer version 6.10.1 options {"host":"fidscript_stalwart","port":465,
+  "secure":true,"auth":{"user":"admin","pass":"bdcb9efadb3f6542276695581c6aefd9772…"}, …}
+
+[AuthMagicCodeService] MAGIC_CODE kennedygithinjioffice@gmail.com: 110953
+```
+
+`createStalwartTransport` prints the whole transport options object — `auth.pass` included — with
+`logger: true, debug: true` adding the full SMTP transcript (with its `AUTH` lines) on top
+(`email/common/stalwart-transport.ts:53,60-67`). The magic-code service logs the code next to the
+address (`auth-magic-code.service.ts:55`).
+
+**Anyone who can read the API log has the mail server's admin password and every user's login
+code.** The log is also shipped to wherever the platform's logs go.
+
+### B13 — The Cloudflare OAuth callback is unauthenticated, with a no-op CSRF check
+
+`POST /api/v1/api/v1/domains/connect-cloudflare/callback`
+(`domains/controllers/cloudflare-oauth.controller.ts:40-53`) has **no guard**, and passes the
+client's `body.state` as **both** the expected and the actual state — so the CSRF comparison at
+`cloudflare-oauth.service.ts:107` can never fail. The service then deletes the project's existing
+Cloudflare connection (`deleteMany({projectId})`, `:149`) and creates one for the **attacker's**
+Cloudflare account (`:153`).
+
+**An unauthenticated caller can replace a tenant's DNS provider.** The domain's records, its mail
+routing and its TLS all follow the attacker's Cloudflare account from that moment.
+
+**Fix:** persist the `state` nonce at the start of the OAuth flow, compare it on the callback, and
+require an authenticated, authorized caller.
+
+### B14 — The API is default-allow
+
+There is **no global authentication guard**. The only `APP_GUARD` is `EmailVerifiedGuard`, which
+returns `true` when there is no user — and because global guards run *before* controller guards,
+`request.user` is always undefined when it runs, so it always short-circuits open
+(`app.module.ts:77`, `email-verified.guard.ts:52-55`). `PlatformAdminGuard` likewise returns
+`true` when no `ROLES_KEY` metadata is present (`platform-admin.guard.ts:22-24`).
+
+**A controller that forgets `@UseGuards` is public** — and 12 controllers have none, including the
+installation controller (B2), the Cloudflare OAuth callback (B13) and the three email webhook
+controllers (B3).
+
+**Fix:** register `JwtAuthGuard` (or a composite) as the global guard, with an explicit
+`@Public()` opt-out for the handful of routes that are genuinely public.
+
 ### B10 — There is no automated test suite
 
 `find apps packages -name "*.spec.ts" -o -name "*.test.ts"` → **0 files**. `apps/api`'s test script
@@ -622,7 +699,133 @@ Worse: `apps/api`'s lint script is `eslint --fix` and its rule set disables `no-
 report. And there is no `.husky/`, no `lint-staged` and no `commitlint` — `CONTRIBUTING.md:55-59`
 promises "all changes must include tests" and nothing enforces it.
 
-### H18 — The published SDK on npm contains the broken email methods
+### H18 — A hardcoded encryption key is the fallback for every "encrypted" secret
+
+Four services fall back to `default-dev-key-32-chars-here!!` when `ENCRYPTION_KEY` is missing
+(`domain-dns-detection.service.ts:138`, `domain-email-key.service.ts:208`,
+`cloudflare-oauth.service.ts:269`, `installation.service.ts:411`). If the key is absent, every
+Cloudflare OAuth secret, DNS token and email key is encrypted with a **publicly known** key.
+`JWT_SECRET` fails closed; the encryption key does not.
+
+### H19 — Function environment variables are returned to any member, unmasked
+
+`GET /projects/:id/functions` and `GET /projects/:id/functions/:id` return `envVars` **verbatim**
+(`functions-crud.service.ts:24,27-31`) to any project member, including a `viewer`. The project
+env-var endpoint does the right thing (`[masked]` unless owner/admin,
+`project-env.service.ts:24,34-37`) — so the platform has the correct pattern and the functions
+module simply does not use it.
+
+### H20 — Non-expiring account API keys are permanently invalid
+
+`createApiKey` stores `expiresAt: null` for a key with no expiry (`auth-api-key.service.ts:24`),
+but `validateApiKey` queries `where: { expiresAt: { gt: new Date() } }` (`:51`) — a NULL row is
+excluded by SQL. **Every `fsk_` key without an expiry can never authenticate.** The project-key
+equivalent handles null correctly (`project-api-key.service.ts:102`).
+
+### H21 — The API-key scope allowlist is dead code
+
+`AuthApiKeysController` validates the scope allowlist and the past-expiry rule
+(`auth-api-keys.controller.ts:48-53,56-58`), but `AuthController` is registered first
+(`auth.module.ts:54`) and declares **the same paths** — so the validating controller never runs.
+The scope allowlist is therefore not enforced for account keys either.
+
+### H22 — Magic code and magic link bypass MFA
+
+Only the password path checks `user.mfaEnabled` (`auth-login.service.ts:117-120`). A user with MFA
+enabled can sign in with a magic code or a magic link, which mints a full session
+(`auth-magic-code.service.ts:130-176`, `auth-verification.service.ts:219-253`).
+
+### H23 — Account enumeration, and an open redirect
+
+`GET /auth/auth-method/:email` answers 404 or 200 for an unauthenticated caller, and
+`send-verification` says *"No account found"*. Separately, `?next=` is used **verbatim** as
+`window.location.href` (`auth-token-utils.ts:34`, `auth-methods.ts:18,92`) — an open redirect from
+the platform's own domain.
+
+### H24 — Four more dead links in the product's own flows
+
+| Flow | The link it sends | Reality |
+|---|---|---|
+| Password reset | `/auth/reset-password` (`auth-verification.service.ts:85`) | **No such route** — 404 |
+| Organization invitation | `/auth/invitation/accept` (`organization.service.ts:324`) | The dashboard route is `/invitations/accept` |
+| The dashboard's invite page | `POST /api/v1/projects/invitations/accept` (`packages/sdk/src/modules/projects.ts:142`) | **No route matches** — the org variant is shadowed |
+| `/forgot-password` | — | Orphaned: no link from the login page |
+
+### H25 — The platform's own access model is three inconsistent implementations
+
+`ProjectAccessService` (org-aware, role-checked — but the role check is a no-op), the shared
+`ProjectMemberGuard` (project-only, org-blind), and four private copy-pastes of the role check in
+`project-api-key.service.ts:136`, `project-env.service.ts:93`, `project-invitation.service.ts:118`
+and `project-member.service.ts:131`.
+
+The observable symptom: **the same workspace member** can `GET /projects/:id` and
+`GET /projects/:id/databases` (both org-aware) but gets **403** on `/deployments`, `/email`,
+`/storage`, `/functions` and `/queues` (guard-based, org-blind). And an org member removed from the
+workspace **keeps** access through a stale `ProjectMember` row.
+
+### H27 — The shared Modal has no dialog semantics (35 call sites)
+
+`packages/ui/src/components/Modal.tsx:34-53`: no `role="dialog"`, no `aria-modal`, no
+`aria-labelledby`, **no Tab trap**, no initial focus, no focus restore. Escape and backdrop
+click work; nothing else does. `RightPanel` — the far-less-used component — has all of it
+(`RightPanel.tsx:97-99,78-88`).
+
+**16 more modals hand-roll the overlay entirely**, with no role, no Escape and no focus trap
+(`components/deployments/confirm-dialog.tsx`, the four queue modals, the Instant confirm, the two
+data-grid modals, the file preview, the mailbox card).
+
+### H28 — The global focus ring is invisible
+
+```css
+/* apps/dashboard/src/app/globals.css:228-232 */
+*:focus-visible { outline: none; box-shadow: 0 0 0 2px var(--accent-glow); border-radius: 4px; }
+```
+
+`--accent-glow` is 12% (dark) / 8% (light) orange. Composited over the surface it is ≈1.1:1 —
+it fails WCAG 2.2 SC 2.4.11 (which requires ≥3:1) and is, in practice, invisible. `outline: none`
+removes the browser default **globally**, so this faint shadow is the only indicator for any
+element without an explicit `focus-visible:ring-*`. A further **29** places use
+`focus:outline-none` with a border-colour change as the only replacement.
+
+### H29 — Twelve destructive actions have no confirmation at all
+
+Deleting a **deployment** (`projects/[projectId]/sections/deployments-card.tsx:41` — the detail page
+for the same object does confirm), an email domain, an alias, a mailbox, a message, an email API
+key, a webhook, a catch-all rule, a suppression, an environment variable, and two account API keys.
+One mis-click destroys production.
+
+### H30 — The shared Button has no `type` default, so "Cancel" submits the form
+
+`packages/ui/src/components/Button.tsx:52` — a `<button>` with no `type` defaults to `submit`.
+Inside a `<form>`, a Cancel button **submits it**. Confirmed live in the Cloudflare API-token tab
+(`connect-cloudflare-modal.tsx:111`).
+
+### H31 — 92 form controls have no programmatic label
+
+The dominant pattern is `<label className="…">Text</label>` next to a sibling input with **no
+`htmlFor` and no `id`** — the label is decorative text, the screen reader announces only the
+placeholder, and clicking the label does not focus the field. The shared `Input` is correctly
+labelled **only when the `label` prop is passed** (`packages/ui/src/components/Input.tsx:22-27`).
+The shared `FormField` in the onboarding has the same defect (`form-field.tsx:26-28`), so **every**
+onboarding and setup field is unlabelled.
+
+Only **4 of 56 forms** show an inline per-field error; 30+ use `noValidate`, which makes their own
+`required`/`minLength`/`type=email` attributes inert.
+
+### H32 — 98 hardcoded Tailwind palette colours break dark mode
+
+`bg-emerald-900`, `text-red-500`, `bg-blue-900/40` and 95 others, in 40 files, where
+`components/README.md:40` forbids exactly this. The same status gets three different colours in
+three files, and the palette is tuned for one theme.
+
+### H33 — Eighteen of nineteen tables overflow on mobile
+
+Only one `<table>` has an `overflow-x-auto` wrapper; the rest overflow the viewport. Two of them
+use `overflow-hidden`, which **clips** rather than scrolls. Separately, 28 grids use a fixed
+`grid-cols-N` with no responsive prefix, and the shells use `h-screen`/`min-h-screen` where
+`min-h-dvh` is needed — on a mobile browser the toolbar hides the last ~15% of the page.
+
+### H34 — The published SDK on npm contains the broken email methods
 
 npm has `@fidscript-deploy/sdk@1.0.2`; the local source has today's fixes but has not been
 published. Anyone installing the SDK from npm today gets the `/api/v1`-less admin mail paths and
@@ -753,6 +956,13 @@ with root would reach for it — does not have it.
   do not exist, and 7 real tools are never listed.
 - The NATS JetStream "durable transport" consumes every event, parses it, and **acks it without
   doing anything** (`event-nats-consumer.service.ts:34-45`) — the stream grows without bound.
+- **Dead code in the shared library:** `LoadingOverlay` (Spinner.tsx:41), the second `useToast`
+  (Toast.tsx:47 — not exported, zero usages), and `Card.Header` / `Card.Title` /
+  `Card.Description` (Card.tsx:40-55 — zero usages).
+- **Emoji in the UI** — `'☁️ OAuth (Recommended)'` and `'🔑 API Token'`
+  (`connect-cloudflare-modal.tsx:55`), against the project's own rule.
+- 19 tables have no `scope` and no `<caption>`; the theme pill's active state is colour-only (no
+  `aria-pressed`); the sidebar's collapsed status dot has no label at all.
 
 ---
 
@@ -811,18 +1021,25 @@ no sequence may trade them away — and **the first test suite lands in Phase 1*
    the two domain-activity routes.
 6. **Fix the path drift** (B9) — strip the doubled `api/v1` (one change, 21 routes), reconcile the
    25 SDK paths, implement MCP scope checking, put `/metrics` behind the admin.
+7. **Make the refresh token useless as an access token** (B11) — the same three checks
+   `JwtStrategy` makes: type, session, blocklist.
+8. **Stop printing secrets** (B12) — the transport options, the SMTP transcript and the magic code.
+   Then sweep the log for what has already been written there.
+9. **Fix the Cloudflare OAuth callback** (B13) — persist the nonce, compare it, require a caller.
+10. **Make the API default-deny** (B13, B14) — a global auth guard with an explicit `@Public()`
+    opt-out, so a forgotten `@UseGuards` is a failed test rather than a public route.
 
 **Verified by:** the same live probes that found them — an `fpk_` key from project A must fail
 against project B; an unauthenticated `POST /installation/configure` must be refused; a viewer
 must be refused an admin invitation and a write-scoped key.
 
 ### Phase 2 — Make the platform true (the contract between the layers)
-7. Fix the three SDK email unwraps (B4) — one file, three lines.
-8. Fix the email-domain creation envelope and surface the DNS steps the API already returns (B5).
-9. Correct the TD-SEC-5 entry and re-state the functions isolation honestly (B8), including the
+1. Fix the three SDK email unwraps (B4) — one file, three lines.
+2. Fix the email-domain creation envelope and surface the DNS steps the API already returns (B5).
+3. Correct the TD-SEC-5 entry and re-state the functions isolation honestly (B8), including the
    three narrower gaps (H10): `--userns=remap`, an upper bound on `timeoutSeconds`, and
    `--env-file` instead of secrets on the argv.
-10. **Write the first test suite** — and make it *runnable* first: `apps/api` has **no
+4. **Write the first test suite** — and make it *runnable* first: `apps/api` has **no
     `jest.config.*`**, so jest cannot parse TypeScript or resolve the `@/` alias. Add the config
     (ts-jest preset, `reflect-metadata`, the alias mapper), change the test script from
     `jest --passWithNoTests` to `jest`, then write:
@@ -834,53 +1051,62 @@ must be refused an admin invitation and a write-scoped key.
       mockable dependency), `common/secrets.ts` and the bounce-rule matcher (both pure);
     - and a **guard test** that the email-verification gate actually gates (H13).
     Add a `.husky/pre-commit` so the gap cannot reopen (H17).
-11. Publish the SDK (H18).
-12. Mount `ToastProvider` once, globally (H0) — one line, 51 dead toasts alive.
+5. Publish the SDK (H34).
+6. Mount `ToastProvider` once, globally (H0) — one line, 51 dead toasts alive.
 
 ### Phase 3 — Navigation and information architecture
-13. Decide the platform home (H3): an **Overview** that answers the six questions — health,
+1. Decide the platform home (H3): an **Overview** that answers the six questions — health,
     projects, deployments, failures, resources, what to do next.
-14. Resolve Applications vs Projects explicitly in the nav: **Platform** (infrastructure) vs
+2. Resolve Applications vs Projects explicitly in the nav: **Platform** (infrastructure) vs
     **Projects** (the operator's work), with the mail application page under Platform.
-15. Consolidate the flat tree (H2, M0b) into the project console, with **redirects** for every old
+3. Consolidate the flat tree (H2, M0b) into the project console, with **redirects** for every old
     URL, keeping the CLI, the MCP server and the docs working. `/email` survives; the four
     unreachable stubs do not.
-16. Link or retire the 22 orphans (H1); give `/platform/email` and `/platform/integrations/settings`
+4. Link or retire the 22 orphans (H1); give `/platform/email` and `/platform/integrations/settings`
     real entry points.
-17. Fix the sidebar's slug/id split so the active state works (M0), and make the role difference
+5. Fix the sidebar's slug/id split so the active state works (M0), and make the role difference
     real in the navigation (M0c).
-18. Replace the three theme buttons with one control, default System, and persist it (M1).
+6. Replace the three theme buttons with one control, default System, and persist it (M1).
 
 ### Phase 4 — The design system, for real
-19. Build the components the catalogue already promises but that do not exist (M4, H0b):
+1. Build the components the catalogue already promises but that do not exist (M4, H0b):
     **`ErrorState`** first (it is the root of 113 swallowed errors), then `DataTable`, `FilterBar`,
     `Breadcrumbs`, `EntityCard`, `KeyValueTable`.
-20. Replace the 15 browser dialogs with the `ConfirmProvider` (H5).
-21. One error-state pattern and one empty-state pattern across every page (H6).
+2. Replace the 16 browser dialogs with the `ConfirmProvider`, and **add a confirmation to the 12
+   destructive actions that have none** (H29) — a deployment delete is one of them.
+3. One error-state pattern and one empty-state pattern across every page (H6).
+4. **Make the shared components accessible** (H27, H28, H30, H31): dialog semantics and a focus
+   trap on `Modal`; a visible focus ring (the current one is ~1.1:1); a `type="button"` default
+   on `Button`; a `label` prop that emits an `id` and wires `htmlFor`, so 92 controls become
+   labelled.
+5. **The design tokens become real** (H32): 98 hardcoded palette colours replaced by the token
+   scale, and the twelve duplicated status-colour maps collapsed into one module.
+6. **The tables and grids become responsive** (H33): an `overflow-x-auto` wrapper on every table,
+   responsive prefixes on the 28 fixed grids, `min-h-dvh` in the shells.
 
 ### Phase 5 — The organization and account surfaces
-22. Build the organization surface the API already has (B7): members, teams, roles, invitations —
+1. Build the organization surface the API already has (B7): members, teams, roles, invitations —
     and make the workspace picker in the deployment wizard meaningful.
-23. Account menu: sessions, password change, and **make two-factor settable** (H4).
+2. Account menu: sessions, password change, and **make two-factor settable** (H4).
 
 ### Phase 6 — The deployment experience, deepened
-24. Per-deployment environment editing after creation; preview deployments; a build worker that
+1. Per-deployment environment editing after creation; preview deployments; a build worker that
     survives an API restart.
-25. **Fix the deployment action buttons against the API** (H12) and **persist the failure reason**
+2. **Fix the deployment action buttons against the API** (H12) and **persist the failure reason**
     on the deployment (H15) — a failure that cannot be understood from the screen is a failure the
     operator has to guess at.
-26. The email journey end to end, once B4/B5 are fixed: domain → records → verify → mailbox →
+3. The email journey end to end, once B4/B5 are fixed: domain → records → verify → mailbox →
     alias → deliverability.
-27. Bring the in-product documentation back in line with the code (H16), and give the six services
+4. Bring the in-product documentation back in line with the code (H16), and give the six services
     that have no configuration flow a real one (journey 5).
 
 ### Phase 7 — Developer tools and operations
-28. The MCP hub and CLI as first-class surfaces; install the CLI on the platform host (M8).
-29. Monitoring and logs with real consumption and alerting; the notification centre the
+1. The MCP hub and CLI as first-class surfaces; install the CLI on the platform host (M8).
+2. Monitoring and logs with real consumption and alerting; the notification centre the
     documentation already promises (M0d).
 
 ### Phase 8 — Quality and verification
-30. Playwright journeys for the six flows; accessibility pass; responsive pass; a regression suite
+1. Playwright journeys for the six flows; accessibility pass; responsive pass; a regression suite
     that runs on every commit — and a CI job that fails when there are none.
 
 ---
