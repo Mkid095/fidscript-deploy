@@ -116,8 +116,14 @@ cd apps/mcp-server    && pnpm publish --no-git-checks
 ```
 
 `pnpm publish` is used rather than `npm publish` because it rewrites the
-`workspace:*` dependencies into real version ranges — npm does not understand
+`workspace:` dependencies into real version ranges — npm does not understand
 the `workspace:` protocol and refuses to publish it.
+
+**The published dependencies are ranges, not exact versions.** `workspace:*`
+is published as the exact version, so withdrawing a patch would break every
+package that depended on it — which is exactly what happened when the SDK's
+1.0.3 was withdrawn and the CLI could no longer be installed. The published
+packages therefore use `workspace:^`, which is published as `^version`.
 
 ### The ESM rule
 
@@ -167,5 +173,6 @@ must never leak through the proxy to the public registry.
 ---
 
 *Last updated: 2026-11-06 — the CLI registry command group; the packages
-republished from this repository (`types` 1.0.2, `events` 1.0.2, `sdk` 1.0.4,
-`cli` 1.1.3, `mcp-server` 1.0.7); the SDK's broken 1.0.x versions withdrawn.*
+republished from this repository (`types` 1.0.2, `events` 1.0.3, `sdk` 1.0.5,
+`cli` 1.1.4, `mcp-server` 1.0.8); the SDK's broken 1.0.0–1.0.3 withdrawn; the
+published dependencies are ranges, not exact versions.*

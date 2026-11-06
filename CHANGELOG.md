@@ -89,6 +89,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/).
   actions ran off the right edge; and the platform's navigation was clipped mid-word with
   nothing to say it could be scrolled. The separator is back, the actions wrap, and the nav
   scrolls. The screenshots are in `docs/implementation/screenshots/phase4/`.
+- `fix(packages): a withdrawn patch broke every dependent** — `workspace:*` is published as the
+  **exact** version, so the CLI 1.1.3 depended on the SDK 1.0.3 and stopped installing the
+  moment that version was withdrawn. The published packages now use `workspace:^`, which is
+  published as `^version`, and every package is republished: `types` 1.0.2, `events` 1.0.3,
+  `sdk` 1.0.5, `cli` 1.1.4, `mcp-server` 1.0.8.
 - `fix(github): the popup sign-in could never work, and said nothing` — the deployment carried the
   installer's placeholders in `GITHUB_CLIENT_ID` and `GITHUB_CLIENT_SECRET`, so the API built an
   authorize URL with `client_id=REPLACE_WITH_YOUR_GITHUB_OAUTH_CLIENT_ID` and the browser opened

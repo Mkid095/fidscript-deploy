@@ -60,6 +60,13 @@ Unexpected issues:
   `/-/user/org.couchdb.user:<name>` does not list packages published before the account was
   read. The packument itself carries the maintainer, and `fidscript registry versions` is the
   honest way to ask.
+- **A withdrawn patch broke every dependent.** `workspace:*` is published as the **exact**
+  version, so the CLI 1.1.3 depended on the SDK 1.0.3 and could no longer be installed the
+  moment that version was withdrawn. The published packages now use `workspace:^` — published as
+  `^version` — and every package was republished.
+- **The `@fidscript-deploy/*` scope was being proxied to npmjs.org**, because only
+  `@fidscript/*`, `@nextmavens/*`, `@soostori/*` and `@viventure/*` had rules. The scope is now
+  local-only: public read, authenticated publish, nothing proxied upstream.
 
 Decision:
 - **The CLI drives `npm publish`** rather than reimplementing it: npm builds and hashes the

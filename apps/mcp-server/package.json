@@ -1,7 +1,7 @@
 {
   "name": "@fidscript-deploy/mcp-server",
-  "version": "1.0.7",
-  "description": "FIDScript Deploy MCP Server — Model Context Protocol tools for AI agents",
+  "version": "1.0.8",
+  "description": "FIDScript Deploy MCP Server \u2014 Model Context Protocol tools for AI agents",
   "type": "module",
   "bin": {
     "fidscript-mcp": "./dist/index.js"
@@ -27,7 +27,7 @@
     "start": "node dist/index.js"
   },
   "dependencies": {
-    "@fidscript-deploy/sdk": "workspace:*",
+    "@fidscript-deploy/sdk": "workspace:^",
     "@modelcontextprotocol/sdk": "^1.27.0"
   },
   "devDependencies": {
