@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useTransition } from 'react';
+import Link from 'next/link';
 
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -104,7 +105,14 @@ export function EmailDomainsSection({
                 <span className="text-xs text-text-dim">
                   The records can be written from your connected DNS account.
                 </span>
-              ) : null}
+              ) : (
+                <Link
+                  href={`/projects/${projectId}/domains`}
+                  className="text-xs text-accent hover:underline"
+                >
+                  Connect your DNS account, and the platform writes them for you
+                </Link>
+              )}
             </div>
           </Card>
         ))

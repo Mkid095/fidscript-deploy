@@ -1,7 +1,8 @@
 import { Card, SectionHeader } from '@/components/ui/card';
-import { Badge, EmptyState } from '@/components/ui/feedback';
+import { EmptyState } from '@/components/ui/feedback';
 import { CodeBlock } from '@/components/ui/code-block';
 import type { RegistryPackage } from '@/lib/api/packages';
+import { PackageRow } from '@/components/project/package-row';
 
 /**
  * The registry.
@@ -10,16 +11,28 @@ import type { RegistryPackage } from '@/lib/api/packages';
  * reach it: npm, Maven and Gradle. Every snippet is filled in with the
  * registry's real address.
  */
+export interface PackageDetail {
+  name: string;
+  description?: string;
+  latest?: string;
+  tags: Record<string, string>;
+  versions: string[];
+  readme?: string;
+}
+
 export function PackagesRegistry({
   registryUrl,
   packages,
   reachable,
   scope,
+  details,
 }: {
   registryUrl: string | null;
   packages: RegistryPackage[];
   reachable: boolean;
   scope: string;
+  /** What the registry knows about each of the packages shown. */
+  details: Record<string, PackageDetail | null>;
 }) {
   const inScope = packages.filter((entry) => entry.name.startsWith(scope));
   const shown = inScope.length > 0 ? inScope : packages.slice(0, 12);
@@ -86,22 +99,7 @@ export function PackagesRegistry({
           ) : (
             <ul className="divide-y divide-rail">
               {shown.map((entry) => (
-                <li key={entry.name} className="px-4 py-3">
-                  <div className="flex flex-wrap items-center justify-between gap-3">
-                    <div className="min-w-0">
-                      <p className="truncate font-mono text-sm text-text">{entry.name}</p>
-                      {entry.description ? (
-                        <p className="mt-0.5 truncate text-xs text-text-dim">{entry.description}</p>
-                      ) : null}
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <span className="text-xs text-text-dim">
-                        {entry.versions.length} version{entry.versions.length === 1 ? '' : 's'}
-                      </span>
-                      <Badge tone="neutral">{entry.latest ?? 'no version'}</Badge>
-                    </div>
-                  </div>
-                </li>
+                <PackageRow key={entry.name} entry={entry} detail={details[entry.name] ?? null} />
               ))}
             </ul>
           )}

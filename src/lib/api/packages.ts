@@ -59,3 +59,54 @@ export async function getPublishedPackages(
     return { packages: [], reachable: false };
   }
 }
+
+/**
+ * One package, and everything the registry knows about it.
+ *
+ * The registry answers with the manifest: the versions, the tags, and the
+ * README the package was published with.
+ */
+export async function getRegistryPackage(
+  registryUrl: string,
+  name: string,
+): Promise<{
+  name: string;
+  description?: string;
+  latest?: string;
+  tags: Record<string, string>;
+  versions: string[];
+  readme?: string;
+} | null> {
+  try {
+    const response = await fetch(
+      `${registryUrl}/${encodeURIComponent(name).replace('%40', '@')}`,
+      { cache: 'no-store', signal: AbortSignal.timeout(8000) },
+    );
+    if (!response.ok) return null;
+
+    const body = (await response.json()) as {
+      name?: string;
+      description?: string;
+      'dist-tags'?: Record<string, string>;
+      versions?: Record<string, { version?: string }>;
+      readme?: string;
+    };
+
+    const versions = Object.values(body.versions ?? {})
+      .map((entry) => entry.version ?? '')
+      .filter(Boolean)
+      .sort()
+      .reverse();
+
+    return {
+      name: body.name ?? name,
+      description: body.description,
+      latest: body['dist-tags']?.latest,
+      tags: body['dist-tags'] ?? {},
+      versions,
+      readme: body.readme,
+    };
+  } catch {
+    return null;
+  }
+}

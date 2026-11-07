@@ -1,7 +1,11 @@
 import { redirect } from 'next/navigation';
 
 import { getProject } from '@/lib/api/project';
-import { getPublishedPackages, getRegistryUrl } from '@/lib/api/packages';
+import {
+  getPublishedPackages,
+  getRegistryPackage,
+  getRegistryUrl,
+} from '@/lib/api/packages';
 import { Page } from '@/components/ui/page';
 import { PageHeader } from '@/components/ui/card';
 import { PackagesRegistry } from '@/components/project/packages-registry';
@@ -31,6 +35,16 @@ export default async function ProjectPackagesPage({
     ? await getPublishedPackages(registryUrl)
     : { packages: [], reachable: false };
 
+  // What the registry knows about the packages under the platform's scope.
+  const scope = '@fidscript-deploy';
+  const inScope = packages.filter((entry) => entry.name.startsWith(scope));
+  const details: Record<string, Awaited<ReturnType<typeof getRegistryPackage>>> = {};
+  if (registryUrl) {
+    for (const entry of inScope.slice(0, 12)) {
+      details[entry.name] = await getRegistryPackage(registryUrl, entry.name);
+    }
+  }
+
   return (
     <Page>
       <PageHeader
@@ -42,7 +56,8 @@ export default async function ProjectPackagesPage({
         registryUrl={registryUrl}
         packages={packages}
         reachable={reachable}
-        scope="@fidscript-deploy"
+        scope={scope}
+        details={details}
       />
 
       <section>
