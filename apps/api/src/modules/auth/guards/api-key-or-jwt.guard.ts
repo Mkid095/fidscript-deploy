@@ -26,6 +26,7 @@ import {
   Logger,
 } from '@nestjs/common';
 import { Reflector, ModuleRef } from '@nestjs/core';
+import { IS_PUBLIC_KEY } from '@/modules/auth/decorators/public.decorator';
 import { AccessTokenService } from '@/modules/auth/services/access-token.service';
 import type { Request } from 'express';
 import { ProjectApiKeyService } from '@/modules/projects/services/project-api-key.service';
@@ -56,6 +57,15 @@ export class ApiKeyOrJwtGuard {
 
   async canActivate(context: ExecutionContext): Promise<boolean> {
     const request = context.switchToHttp().getRequest<Request>();
+
+    // A route that says it is public is public. The platform's
+    // authorization is default-deny, and this guard used to be the one
+    // exception — it asked for a caller whatever the route said.
+    const isPublic = this.reflector.getAllAndOverride<boolean>(IS_PUBLIC_KEY, [
+      context.getHandler(),
+      context.getClass(),
+    ]);
+    if (isPublic) return true;
 
     // Check for API key header first (X-API-Key: fpk_... or fsk_...)
     const apiKey = request.headers['x-api-key'] as string | undefined;

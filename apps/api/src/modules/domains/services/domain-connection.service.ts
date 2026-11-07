@@ -22,6 +22,18 @@ export class DomainConnectionService {
     };
   }
 
+  /**
+   * Remove the connection.
+   *
+   * The token goes with it. The domains are not touched — they are the
+   * project's, and the records already set stay set.
+   */
+  async disconnectConnection(userId: string, projectId: string) {
+    await this.ensureAccess(userId, projectId);
+    const { count } = await this.prisma.domainConnection.deleteMany({ where: { projectId } });
+    return { disconnected: count > 0 };
+  }
+
   private async ensureAccess(userId: string, projectId: string): Promise<void> {
     // API-key callers already passed ProjectMemberGuard — allow through.
     if (userId === 'api-key') return;

@@ -9,6 +9,7 @@ import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { ApiKeyOrJwtGuard } from '@/modules/auth/guards/api-key-or-jwt.guard';
 import { PlatformAdminGuard, ROLES_KEY } from '@/modules/auth/guards/platform-admin.guard';
 import { SetMetadata } from '@nestjs/common';
+import { Public } from '@/modules/auth/decorators/public.decorator';
 import { ApplicationCatalogueService } from '../services/application-catalogue.service';
 import { ApplicationInstallService } from '../services/application-install.service';
 import { RegistryCatalogueService } from '../services/registry-catalogue.service';
@@ -31,7 +32,15 @@ export class ApplicationsController {
     private registry: RegistryCatalogueService,
   ) {}
 
+  /**
+   * The catalogue.
+   *
+   * It is **public**, because the setup wizard offers the applications as a
+   * choice before there is an account to sign in with — and because the
+   * list of what this platform is made of is not a secret.
+   */
   @Get()
+  @Public()
   @ApiOperation({ summary: 'Every application on this platform, and which are installed' })
   async list() {
     return { applications: await this.catalogue.list() };

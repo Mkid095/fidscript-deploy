@@ -99,6 +99,21 @@ export class DomainsController {
   }
 
   /**
+   * Disconnect the DNS account.
+   *
+   * The token is thrown away with the connection. The domains stay — they
+   * are the project's, and the records that are already set stay set.
+   */
+  @Delete('connection')
+  @RequireScope('domains:write')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Disconnect the DNS account of this project' })
+  async disconnect(@Req() req: Request, @Param('projectId') projectId: string) {
+    const user = req.user as { userId: string };
+    return this.domainsService.disconnectConnection(user.userId, projectId);
+  }
+
+  /**
    * One domain of the project.
    *
    * Declared after the literal routes (`detect`, `connection`) on purpose:

@@ -46,6 +46,10 @@ export class DomainsService {
     return this.connection.getConnection(userId, projectId);
   }
 
+  disconnectConnection(userId: string, projectId: string) {
+    return this.connection.disconnectConnection(userId, projectId);
+  }
+
   delete(userId: string, projectId: string, domainId: string) {
     return this.cleanup.delete(userId, projectId, domainId);
   }
