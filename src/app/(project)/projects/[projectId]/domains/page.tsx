@@ -9,6 +9,7 @@ import { EmptyState } from '@/components/ui/feedback';
 import { DnsConnectionCard } from '@/components/project/dns-connection-card';
 import { DomainCard } from '@/components/project/domain-card';
 import { ProjectAddDomainForm } from '@/components/project/project-add-domain-form';
+import { DomainZonePicker } from '@/components/project/domain-zone-picker';
 
 export const metadata = { title: 'Domains' };
 
@@ -84,9 +85,20 @@ export default async function ProjectDomainsPage({
       </section>
 
       <section>
-        <SectionHeader title="Add a domain" />
+        <SectionHeader
+          title="Add a domain"
+          description={
+            canWrite
+              ? 'Pick the domain out of the connected account, and the platform writes the records.'
+              : 'The records are shown, and you set them yourself.'
+          }
+        />
         <Card>
-          <ProjectAddDomainForm projectId={project.id} canWrite={canWrite} />
+          {canWrite ? (
+            <DomainZonePicker projectId={project.id} />
+          ) : (
+            <ProjectAddDomainForm projectId={project.id} canWrite={canWrite} />
+          )}
         </Card>
       </section>
     </Page>

@@ -6,6 +6,8 @@ import { Page, PageColumns } from '@/components/ui/page';
 import { Badge, EmptyState, ErrorState } from '@/components/ui/feedback';
 import { Button } from '@/components/ui/button';
 import { sayEvent, sayWhen } from '@/lib/events';
+import { getMachineState, getSystemState } from '@/lib/api/metrics';
+import { Meter } from '@/components/system/system-charts';
 
 /**
  * The platform's overview.
@@ -19,10 +21,16 @@ import { sayEvent, sayWhen } from '@/lib/events';
 export const metadata = { title: 'Overview' };
 
 export default async function OverviewPage() {
-  const [overview, apps] = await Promise.all([
+  const [overview, apps, machine, system] = await Promise.all([
     platformOverview().catch(() => null),
     applications().catch(() => []),
+    getMachineState(),
+    getSystemState(),
   ]);
+
+  const containers = system?.containers ?? [];
+  const memoryUsed = containers.reduce((total, entry) => total + entry.memoryBytes, 0);
+  const cpuUsed = containers.reduce((total, entry) => total + entry.cpuPercent, 0);
 
   const installed = apps.filter((app) => app.installed);
   const hasProjects = (overview?.projects.total ?? 0) > 0;
@@ -79,6 +87,40 @@ export default async function OverviewPage() {
                       ))}
                     </ul>
                   )}
+                </Card>
+              </section>
+
+              {/* The machine, at a glance. */}
+              <section>
+                <SectionHeader
+                  title="This machine"
+                  description="What the platform is running on."
+                  actions={
+                    <Link
+                      href="/system"
+                      className="text-xs text-text-muted transition-colors hover:text-text"
+                    >
+                      More
+                    </Link>
+                  }
+                />
+                <Card className="space-y-4 p-4">
+                  <Meter
+                    label="Memory"
+                    used={memoryUsed}
+                    total={machine.memoryTotal}
+                    format={(value) => `${(value / 1024 ** 3).toFixed(1)} GB`}
+                  />
+                  <Meter
+                    label="Disk"
+                    used={system?.disk.used ?? 0}
+                    total={system?.disk.total ?? 0}
+                    format={(value) => `${(value / 1024 ** 3).toFixed(1)} GB`}
+                  />
+                  <p className="text-xs text-text-dim">
+                    {cpuUsed.toFixed(0)}% of {machine.cpuCores.toFixed(0)} cores ·{' '}
+                    {containers.length} container{containers.length === 1 ? '' : 's'}
+                  </p>
                 </Card>
               </section>
 

@@ -1,0 +1,204 @@
+# Static routes for the products that share this host.
+#
+# The FIDScript platform's Traefik is the single edge. The Instant BaaS,
+# the WhatsApp platform, the npm registry and the Maven repository each
+# serve their own console on their own hostname; these routes point at
+# those consoles so everything is reachable under one domain.
+#
+# The upstreams are container names on the networks the platform's Traefik
+# joins (see installer/docker/docker-compose.yml). Host services are
+# reached through host.docker.internal, which Docker resolves to the
+# bridge gateway — the subnet changes when the networks are recreated, so
+# a hardcoded address would break without warning.
+#
+# fidscript.com is the platform's domain. The installer substitutes it when it
+# publishes this file, exactly as it does for platform.yml. The nextmavens
+# names are a different domain and stay literal.
+
+http:
+  routers:
+    # ── Instant BaaS ────────────────────────────────────────────────────────
+    instant-console:
+      rule: 'Host(`instant.fidscript.com`)'
+      service: instant-console
+      entryPoints: [websecure]
+      tls: { certResolver: letsencrypt-dns }
+    instant-api:
+      rule: 'Host(`apiinstant.fidscript.com`)'
+      service: instant-api
+      entryPoints: [websecure]
+      tls: { certResolver: letsencrypt-dns }
+    instant-realtime:
+      rule: 'Host(`realtime.fidscript.com`)'
+      service: instant-api
+      entryPoints: [websecure]
+      tls: { certResolver: letsencrypt-dns }
+    instant-cli:
+      rule: 'Host(`cliinstant.fidscript.com`)'
+      service: instant-api
+      entryPoints: [websecure]
+      tls: { certResolver: letsencrypt-dns }
+    instant-mcp:
+      rule: 'Host(`instantmcp.fidscript.com`)'
+      service: instant-mcp
+      entryPoints: [websecure]
+      tls: { certResolver: letsencrypt-dns }
+    maven-repository:
+      rule: 'Host(`maven.fidscript.com`)'
+      service: maven-repository
+      entryPoints: [websecure]
+      tls: { certResolver: letsencrypt-dns }
+
+    # ── WhatsApp platform ───────────────────────────────────────────────────
+    # The nextmavens.com names live in a different Cloudflare zone, so they
+    # get their OWN router and their own certificate. One router covering
+    # both zones asks for a single certificate, the token cannot solve the
+    # other zone's challenge, and the whole request fails — taking the
+    # fidscript.com name down with it.
+    #
+    # DNS-01 rather than HTTP-01: an HTTP-01 challenge needs port 80 to be
+    # reachable from the internet, and on a host whose only public entry is
+    # a proxied HTTPS one it is not.
+    whatsapp-console:
+      rule: 'Host(`whatsapp.fidscript.com`)'
+      service: whatsapp-console
+      entryPoints: [websecure]
+      tls: { certResolver: letsencrypt-dns }
+    whatsapp-console-nextmavens:
+      rule: 'Host(`whatsapp.nextmavens.com`)'
+      service: whatsapp-console
+      entryPoints: [websecure]
+      tls: { certResolver: letsencrypt-dns }
+    whatsapp-api:
+      rule: 'Host(`whatsappapi.fidscript.com`)'
+      service: whatsapp-api
+      entryPoints: [websecure]
+      tls: { certResolver: letsencrypt-dns }
+
+    # ── The observability stack ─────────────────────────────────────────────
+    #
+    # Prometheus and Grafana are on hosts of their own, and the platform's
+    # own routing swallowed them: the wildcard that sends every two-level
+    # subdomain to the API was longer than these rules, so
+    # prometheus.fidscript.com answered with the API's 404.
+    observability-prometheus:
+      rule: 'Host(`prometheus.fidscript.com`)'
+      service: observability-prometheus
+      priority: 100
+      entryPoints: [websecure]
+      tls: { certResolver: letsencrypt-dns }
+    observability-grafana:
+      rule: 'Host(`grafana.fidscript.com`)'
+      service: observability-grafana
+      priority: 100
+      entryPoints: [websecure]
+      tls: { certResolver: letsencrypt-dns }
+    observability-loki:
+      rule: 'Host(`loki.fidscript.com`)'
+      service: observability-loki
+      priority: 100
+      entryPoints: [websecure]
+      tls: { certResolver: letsencrypt-dns }
+
+    # ── npm registry ────────────────────────────────────────────────────────
+    npm-registry:
+      rule: 'Host(`registry.fidscript.com`)'
+      service: npm-registry
+      entryPoints: [websecure]
+      tls: { certResolver: letsencrypt-dns }
+    npm-registry-nextmavens:
+      rule: 'Host(`registry.nextmavens.com`)'
+      service: npm-registry
+      entryPoints: [websecure]
+      tls: { certResolver: letsencrypt-dns }
+    # The registry's token page — how a person gets a registry token.
+    #
+    # The console hides the private packages (@soostori, @nextmavens) from an
+    # anonymous visitor, so without a token the private half of the registry
+    # is invisible. These pages used to be served by Caddy, which was the
+    # edge before this platform's Traefik took over; when Caddy stopped they
+    # went with it, and there was no way in.
+    #
+    # The rule is an EXACT path, not the whole /-/static prefix: the
+    # registry's console serves its own assets under that prefix, and
+    # taking the prefix would leave the console a blank page.
+    npm-registry-token:
+      rule: 'Host(`registry.fidscript.com`) && Path(`/-/static/token`)'
+      service: npm-registry-static
+      entryPoints: [websecure]
+      tls: { certResolver: letsencrypt-dns }
+    npm-registry-reset:
+      rule: 'Host(`registry.fidscript.com`) && Path(`/-/static/reset`)'
+      service: npm-registry-static
+      entryPoints: [websecure]
+      tls: { certResolver: letsencrypt-dns }
+    # The Instant MCP bridge lives on the registry's hostname — that is the
+    # URL the Instant packages tell their clients to use. The path rule is
+    # more specific than the registry's, so it wins for that path.
+    instant-mcp-on-registry:
+      rule: 'Host(`registry.nextmavens.com`) && (Path(`/instant-mcp`) || Path(`/mcp`))'
+      service: instant-mcp
+      entryPoints: [websecure]
+      tls: { certResolver: letsencrypt-dns }
+
+    # ── artifact storage for mobile and desktop builds ──────────────────────
+    artifacts:
+      rule: 'Host(`files.fidscript.com`)'
+      service: artifacts
+      entryPoints: [websecure]
+      tls: { certResolver: letsencrypt-dns }
+    artifacts-nextmavens:
+      rule: 'Host(`storage.nextmavens.com`)'
+      service: artifacts
+      entryPoints: [websecure]
+      tls: { certResolver: letsencrypt-dns }
+
+  services:
+    instant-console:
+      loadBalancer:
+        servers:
+          - url: "http://self-hosting-www-1:3000"
+    instant-api:
+      loadBalancer:
+        servers:
+          - url: "http://self-hosting-server-1:8888"
+    instant-mcp:
+      loadBalancer:
+        servers:
+          - url: "http://host.docker.internal:4876"
+    maven-repository:
+      loadBalancer:
+        servers:
+          - url: "http://self-hosting-maven-repository-1:8081"
+    whatsapp-console:
+      loadBalancer:
+        servers:
+          - url: "http://whatsapp-nextmavens:3000"
+    whatsapp-api:
+      loadBalancer:
+        servers:
+          - url: "http://platform-api:8080"
+    npm-registry:
+      loadBalancer:
+        servers:
+          - url: "http://nextmavens-verdaccio:4873"
+    npm-registry-static:
+      loadBalancer:
+        servers:
+          - url: "http://nextmavens-registry-static:80"
+    artifacts:
+      loadBalancer:
+        servers:
+          - url: "http://host.docker.internal:4877"
+    observability-prometheus:
+      loadBalancer:
+        servers:
+          - url: "http://fidscript_prometheus:9090"
+    observability-grafana:
+      loadBalancer:
+        servers:
+          - url: "http://fidscript_grafana:3000"
+    observability-loki:
+      loadBalancer:
+        servers:
+          - url: "http://fidscript_loki:3100"

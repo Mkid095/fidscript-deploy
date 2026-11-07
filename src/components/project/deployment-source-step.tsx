@@ -1,25 +1,27 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
+import Link from 'next/link';
 
 import { browserApi } from '@/lib/api/browser';
-import { Input, Select } from '@/components/ui/input';
+import { Input } from '@/components/ui/input';
 import { ErrorState } from '@/components/ui/feedback';
 
 interface Repo {
   full_name: string;
-  html_url?: string;
-  description?: string;
+  name: string;
   private: boolean;
+  description?: string | null;
   default_branch: string;
 }
 
 /**
- * Where the application comes from.
+ * Where the code comes from.
  *
- * The repositories of the connected GitHub account when there is one, and a
- * repository address when there is not — a public repository needs no
- * connection at all.
+ * The repositories of the GitHub account that is connected — with a search,
+ * because an account with a hundred repositories is not a list anybody can
+ * use. When no account is connected, the field is still there: a public
+ * repository needs no connection at all.
  */
 export function DeploymentSourceStep({
   gitUrl,
@@ -30,9 +32,9 @@ export function DeploymentSourceStep({
   branch: string;
   onChange: (next: { gitUrl: string; branch: string }) => void;
 }) {
-  const [connected, setConnected] = useState<boolean | null>(null);
-  const [username, setUsername] = useState<string | null>(null);
   const [repos, setRepos] = useState<Repo[]>([]);
+  const [account, setAccount] = useState<string | null>(null);
+  const [search, setSearch] = useState('');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -45,16 +47,14 @@ export function DeploymentSourceStep({
           '/users/me/github/status',
         );
         if (cancelled) return;
-        setConnected(status.connected);
-        setUsername(status.username ?? null);
+        setAccount(status.connected ? (status.username ?? 'your account') : null);
 
         if (status.connected) {
-          const list = await browserApi.get<{ repos: Repo[] }>('/users/me/github/repos');
-          if (!cancelled) setRepos(list.repos);
+          const response = await browserApi.get<{ repos?: Repo[] }>('/users/me/github/repos');
+          if (!cancelled) setRepos(response.repos ?? []);
         }
       } catch (err) {
         if (!cancelled) {
-          setConnected(false);
           setError(err instanceof Error ? err.message : 'GitHub could not be reached.');
         }
       } finally {
@@ -67,33 +67,83 @@ export function DeploymentSourceStep({
     };
   }, []);
 
-  if (loading) {
-    return <p className="text-sm text-text-muted">Looking for your repositories…</p>;
-  }
+  const shown = useMemo(() => {
+    const needle = search.trim().toLowerCase();
+    if (!needle) return repos.slice(0, 50);
+    return repos
+      .filter(
+        (repo) =>
+          repo.full_name.toLowerCase().includes(needle) ||
+          (repo.description ?? '').toLowerCase().includes(needle),
+      )
+      .slice(0, 50);
+  }, [repos, search]);
 
   return (
     <div className="space-y-4">
-      {connected ? (
-        <>
-          <Select
-            label={`Repository${username ? ` — ${username}` : ''}`}
-            value={gitUrl}
-            onChange={(event) => {
-              const repo = repos.find((candidate) => candidate.full_name === event.target.value);
-              onChange({
-                // The platform clones the address, so it needs the whole one.
-                gitUrl: repo?.html_url ?? event.target.value,
-                branch: repo?.default_branch ?? branch ?? 'main',
-              });
-            }}
-            options={[
-              { value: '', label: 'Choose a repository…' },
-              ...repos.map((repo) => ({ value: repo.full_name, label: repo.full_name })),
-            ]}
-          />
+      {account ? (
+        <div className="flex flex-wrap items-center justify-between gap-3">
           <p className="text-xs text-text-dim">
-            The address is filled in for you. The branch is the one it deploys.
+            The repositories of <span className="text-text-muted">{account}</span>.
           </p>
+          <Link href="/settings/integrations" className="text-xs text-accent hover:underline">
+            Another account
+          </Link>
+        </div>
+      ) : (
+        <p className="text-xs text-text-dim">
+          No GitHub account is connected —{' '}
+          <Link href="/settings/integrations" className="text-accent hover:underline">
+            connect one
+          </Link>{' '}
+          to pick from your repositories. A public repository needs no connection.
+        </p>
+      )}
+
+      {repos.length > 0 ? (
+        <>
+          <Input
+            label="Search"
+            placeholder="Search the repositories"
+            value={search}
+            onChange={(event) => setSearch(event.target.value)}
+            autoComplete="off"
+          />
+
+          {shown.length === 0 ? (
+            <p className="text-xs text-text-dim">Nothing matches that.</p>
+          ) : (
+            <ul className="max-h-72 divide-y divide-rail overflow-y-auto rounded-lg border border-rail">
+              {shown.map((repo) => (
+                <li key={repo.full_name}>
+                  <button
+                    type="button"
+                    onClick={() =>
+                      onChange({
+                        gitUrl: `https://github.com/${repo.full_name}`,
+                        branch: repo.default_branch ?? 'main',
+                      })
+                    }
+                    className={`flex w-full items-center justify-between gap-3 px-3 py-2 text-left transition-colors hover:bg-surface-2 ${
+                      gitUrl === `https://github.com/${repo.full_name}` ? 'bg-surface-3' : ''
+                    }`}
+                  >
+                    <span className="min-w-0">
+                      <span className="block truncate text-sm text-text">{repo.full_name}</span>
+                      {repo.description ? (
+                        <span className="block truncate text-xs text-text-dim">
+                          {repo.description}
+                        </span>
+                      ) : null}
+                    </span>
+                    <span className="shrink-0 text-[11px] text-text-dim">
+                      {repo.private ? 'private' : 'public'}
+                    </span>
+                  </button>
+                </li>
+              ))}
+            </ul>
+          )}
         </>
       ) : null}
 
@@ -101,25 +151,19 @@ export function DeploymentSourceStep({
         label="Repository address"
         hint="owner/repository, or the https address of the repository."
         value={gitUrl}
-        placeholder="mkid095/acme-store"
         onChange={(event) => onChange({ gitUrl: event.target.value, branch })}
+        placeholder="mkid095/acme-store"
       />
 
       <Input
         label="Branch"
         value={branch}
-        placeholder="main"
         onChange={(event) => onChange({ gitUrl, branch: event.target.value })}
+        placeholder="main"
       />
 
-      {connected ? null : (
-        <p className="text-xs text-text-dim">
-          A public repository needs no connection. A private one needs the GitHub account
-          connected in your settings.
-        </p>
-      )}
-
       {error ? <ErrorState message={error} /> : null}
+      {loading ? <p className="text-xs text-text-dim">Looking for your repositories…</p> : null}
     </div>
   );
 }

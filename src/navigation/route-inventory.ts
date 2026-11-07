@@ -138,6 +138,12 @@ export const ROUTE_INVENTORY: RouteEntry[] = [
     purpose: 'The applications the platform has.',
   },
   {
+    path: '/settings/integrations',
+    level: 'platform',
+    canonical: true,
+    purpose: 'The GitHub and Cloudflare accounts the platform holds for you.',
+  },
+  {
     path: '/system',
     level: 'platform',
     canonical: true,

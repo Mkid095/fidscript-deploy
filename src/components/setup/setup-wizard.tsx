@@ -1,51 +1,81 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useTransition } from 'react';
 import Link from 'next/link';
 
-import { Card, SectionHeader } from '@/components/ui/card';
-import { Badge } from '@/components/ui/feedback';
 import { Button } from '@/components/ui/button';
-import type { Application } from '@/lib/api/types';
-import type { Discovery, InstallationStatus, StepValidation } from '@/lib/api/installation';
-import { SetupAccountForm } from '@/components/setup/setup-account-form';
+import { Card } from '@/components/ui/card';
+import { ErrorState } from '@/components/ui/feedback';
+import { SetupDomainForm } from '@/components/setup/setup-domain-form';
+import { SetupAccountStep } from '@/components/setup/setup-account-step';
 import { SetupApplicationsStep } from '@/components/setup/setup-applications-step';
+import { SetupInstallStep } from '@/components/setup/setup-install-step';
+import { configurePlatformAction } from '@/app/(setup)/setup/actions';
 
-const STEPS = ['Discover', 'Validate', 'Account', 'Applications', 'Install', 'Verify', 'Done'];
+const STEPS = ['The domain', 'The administrator', 'The applications', 'The install', 'Done'];
 
 /**
  * The setup.
  *
- * One wizard: what the server is, what would block it, who the
- * administrator is, what this platform provides, the install, the check,
- * and the first project.
+ * The same order the installer asks in: the domain, the administrator, the
+ * applications, and then it is done — with the domain's records written by
+ * the platform when a Cloudflare token was given.
  */
 export function SetupWizard({
-  discovery,
-  validations,
-  status,
+  serverIp,
+  configured,
   applications,
 }: {
-  discovery: Discovery | null;
-  validations: StepValidation[];
-  status: InstallationStatus | null;
-  applications: Application[];
+  serverIp: string;
+  configured: boolean;
+  applications: Array<{ id: string; title: string; summary: string; installed: boolean }>;
 }) {
-  const configured = status?.lifecycle === 'CONFIGURED';
   const [step, setStep] = useState(configured ? 3 : 0);
+  const [values, setValues] = useState({
+    domain: '',
+    cloudflareToken: '',
+    setupToken: '',
+    email: '',
+    password: '',
+  });
+  const [operationId, setOperationId] = useState<string | null>(null);
   const [chosen, setChosen] = useState<string[]>([]);
+  const [error, setError] = useState<string | null>(null);
+  const [pending, startTransition] = useTransition();
+
+  const set = (next: Partial<typeof values>) => setValues({ ...values, ...next });
+
+  const configure = () => {
+    setError(null);
+    startTransition(async () => {
+      const result = await configurePlatformAction(
+        {
+          platformName: 'FIDScript',
+          platformDomain: values.domain.trim().toLowerCase(),
+          serverIp,
+          adminEmail: values.email.trim(),
+          authMethod: 'PASSWORD',
+          adminPassword: values.password,
+          ...(values.cloudflareToken.trim()
+            ? { cloudflareApiToken: values.cloudflareToken.trim() }
+            : {}),
+          dnsMode: values.cloudflareToken.trim() ? 'cloudflare_auto' : 'manual',
+        },
+        values.setupToken,
+      );
+      if (result.error) {
+        setError(result.error);
+        return;
+      }
+      if (result.operationId) {
+        setOperationId(result.operationId);
+        setStep(3);
+      }
+    });
+  };
 
   return (
-    <div className="space-y-8">
-      <header>
-        <h1 className="text-xl font-semibold tracking-tight text-text">Set up FIDScript</h1>
-        <p className="mt-1 text-sm text-text-muted">
-          {configured
-            ? 'This platform is already set up. What is left is what it provides.'
-            : 'One wizard, from an empty machine to a platform that serves.'}
-        </p>
-      </header>
-
+    <div className="space-y-6">
       <ol className="flex flex-wrap items-center gap-2 text-xs">
         {STEPS.map((label, index) => (
           <li key={label} className="flex items-center gap-2">
@@ -64,183 +94,86 @@ export function SetupWizard({
       </ol>
 
       {step === 0 ? (
-        <section>
-          <SectionHeader title="What this server is" />
-          <Card className="divide-y divide-rail">
-            <Fact term="Server" value={discovery?.serverIp ?? 'Not known'} />
-            <Fact term="Docker" value={discovery?.dockerAvailable ? 'Available' : 'Not available'} />
-            <Fact term="Traefik" value={discovery?.traefikConfigured ? 'Configured' : 'Not configured'} />
-            <Fact term="Certificate" value={discovery?.existingCertificateFound ? 'Found' : 'None'} />
-            <Fact
-              term="Cloudflare"
-              value={
-                discovery?.cloudflareOAuthConfigured
-                  ? 'OAuth configured'
-                  : discovery?.cloudflareTokenFound
-                    ? 'A token was found'
-                    : 'Not connected'
-              }
-            />
-            <Fact
-              term="Already installed"
-              value={
-                discovery?.existingInstallation
-                  ? `Yes — ${discovery.existingInstallation.projectCount} project(s), ${discovery.existingInstallation.userCount} account(s)`
-                  : 'No'
-              }
-            />
-          </Card>
-          <div className="mt-4 flex justify-end">
-            <Button variant="primary" onClick={() => setStep(1)}>
+        <>
+          <SetupDomainForm
+            domain={values.domain}
+            cloudflareToken={values.cloudflareToken}
+            setupToken={values.setupToken}
+            onChange={set}
+          />
+          <div className="flex justify-end">
+            <Button
+              variant="primary"
+              onClick={() => setStep(1)}
+              disabled={!values.domain.trim() || !values.setupToken.trim()}
+            >
               Next
             </Button>
           </div>
-        </section>
+        </>
       ) : null}
 
       {step === 1 ? (
-        <section>
-          <SectionHeader
-            title="What would block it"
-            description="Each step that has to pass before the platform is written."
-          />
-          <Card className="divide-y divide-rail">
-            {validations.length === 0 ? (
-              <p className="px-4 py-3 text-sm text-text-muted">
-                The platform did not answer with its checks.
-              </p>
-            ) : (
-              validations.map((validation) => (
-                <div key={validation.step} className="flex items-center justify-between gap-4 px-4 py-2.5">
-                  <div className="min-w-0">
-                    <p className="text-sm text-text capitalize">{validation.step}</p>
-                    {validation.issues.length > 0 ? (
-                      <p className="truncate text-xs text-text-dim">
-                        {validation.issues.join(', ')}
-                      </p>
-                    ) : null}
-                  </div>
-                  <Badge tone={validation.valid ? 'success' : 'warning'}>
-                    {validation.valid ? 'passes' : 'blocked'}
-                  </Badge>
-                </div>
-              ))
-            )}
-          </Card>
-          <div className="mt-4 flex justify-end gap-2">
+        <>
+          <SetupAccountStep email={values.email} onChange={set} />
+          {error ? <ErrorState message={error} /> : null}
+          <div className="flex justify-end gap-2">
             <Button variant="ghost" onClick={() => setStep(0)}>
               Back
             </Button>
-            <Button variant="primary" onClick={() => setStep(2)}>
-              Next
+            <Button
+              variant="primary"
+              onClick={configure}
+              loading={pending}
+              disabled={!values.email.trim() || values.password.length < 12}
+            >
+              Configure the platform
             </Button>
           </div>
-        </section>
+        </>
       ) : null}
 
       {step === 2 ? (
-        <SetupAccountForm
-          discovery={discovery}
-          onDone={() => setStep(3)}
-        />
-      ) : null}
-
-      {step === 3 ? (
         <SetupApplicationsStep
           applications={applications}
           chosen={chosen}
           onChosen={setChosen}
-          onNext={() => setStep(4)}
-          onBack={configured ? undefined : () => setStep(2)}
+          onNext={() => setStep(3)}
+          onBack={() => setStep(1)}
         />
       ) : null}
 
+      {step === 3 && operationId ? (
+        <>
+          <SetupInstallStep operationId={operationId} />
+          <div className="flex justify-end">
+            <Button variant="primary" onClick={() => setStep(4)}>
+              Next
+            </Button>
+          </div>
+        </>
+      ) : null}
+
       {step === 4 ? (
-        <section>
-          <SectionHeader title="Install" description="One row per application, as it goes." />
-          <Card className="divide-y divide-rail">
-            {chosen.length === 0 ? (
-              <p className="px-4 py-3 text-sm text-text-muted">
-                Nothing was chosen to install. Everything already here stays.
-              </p>
-            ) : (
-              chosen.map((id) => {
-                const application = applications.find((candidate) => candidate.id === id);
-                return (
-                  <div key={id} className="flex items-center justify-between gap-4 px-4 py-2.5">
-                    <span className="text-sm text-text">{application?.title ?? id}</span>
-                    <Badge tone="info">installing</Badge>
-                  </div>
-                );
-              })
-            )}
-          </Card>
-          <div className="mt-4 flex justify-end gap-2">
-            <Button variant="ghost" onClick={() => setStep(3)}>
-              Back
-            </Button>
-            <Button variant="primary" onClick={() => setStep(5)}>
-              Next
-            </Button>
+        <Card className="max-w-xl space-y-3 p-6 text-center">
+          <p className="text-sm font-medium text-text">The platform is ready.</p>
+          <p className="text-xs text-text-muted">
+            The first thing it does is hold a project.
+          </p>
+          <div className="flex justify-center gap-2 pt-2">
+            <Link href="/projects">
+              <Button variant="primary" size="sm">
+                Create a project
+              </Button>
+            </Link>
+            <Link href="/overview">
+              <Button variant="ghost" size="sm">
+                Go to the overview
+              </Button>
+            </Link>
           </div>
-        </section>
+        </Card>
       ) : null}
-
-      {step === 5 ? (
-        <section>
-          <SectionHeader title="Verify" description="Every application, and where it stands." />
-          <Card className="divide-y divide-rail">
-            {applications.map((application) => (
-              <div key={application.id} className="flex items-center justify-between gap-4 px-4 py-2.5">
-                <div className="min-w-0">
-                  <p className="truncate text-sm text-text">{application.title}</p>
-                  <p className="truncate text-xs text-text-dim">{application.summary}</p>
-                </div>
-                <Badge tone={application.installed ? 'success' : 'warning'}>
-                  {application.installed ? 'healthy' : 'not installed'}
-                </Badge>
-              </div>
-            ))}
-          </Card>
-          <div className="mt-4 flex justify-end gap-2">
-            <Button variant="ghost" onClick={() => setStep(3)}>
-              Back
-            </Button>
-            <Button variant="primary" onClick={() => setStep(6)}>
-              Next
-            </Button>
-          </div>
-        </section>
-      ) : null}
-
-      {step === 6 ? (
-        <section>
-          <SectionHeader title="Done" />
-          <Card className="p-6 text-center">
-            <p className="text-sm text-text">The platform is ready.</p>
-            <p className="mt-1 text-xs text-text-muted">
-              The first thing it does is hold a project.
-            </p>
-            <div className="mt-4 flex justify-center gap-2">
-              <Link href="/projects">
-                <Button variant="primary">Create a project</Button>
-              </Link>
-              <Link href="/overview">
-                <Button variant="ghost">Go to the overview</Button>
-              </Link>
-            </div>
-          </Card>
-        </section>
-      ) : null}
-    </div>
-  );
-}
-
-function Fact({ term, value }: { term: string; value: string }) {
-  return (
-    <div className="flex items-center justify-between gap-4 px-4 py-2.5">
-      <span className="text-sm text-text-muted">{term}</span>
-      <span className="truncate text-sm text-text">{value}</span>
     </div>
   );
 }

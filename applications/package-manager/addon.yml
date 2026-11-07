@@ -1,0 +1,11 @@
+id: package-manager
+title: Package manager
+summary: A private npm registry and a Maven repository, so the platform's own SDKs and a customer's internal packages have a home that does not depend on a public registry.
+requires: []
+conflicts: []
+host_ports:
+  - 4873
+  - 8081
+secrets:
+  # bcrypt htpasswd for the registry's users.
+  registry_password: {bytes: 32, type: htpasswd}

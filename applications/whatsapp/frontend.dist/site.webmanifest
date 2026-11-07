@@ -1,0 +1,22 @@
+{
+  "name": "FIDScript WhatsApp API",
+  "short_name": "FIDScript",
+  "icons": [
+    {
+      "src": "/web-app-manifest-192x192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "maskable"
+    },
+    {
+      "src": "/web-app-manifest-512x512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ],
+  "theme_color": "#181711",
+  "background_color": "#11110a",
+  "display": "standalone",
+  "description": "WhatsApp API platform for Kenyan businesses"
+}

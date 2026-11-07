@@ -5,7 +5,6 @@ import { useState, useTransition } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, SectionHeader } from '@/components/ui/card';
 import { Badge, ErrorState } from '@/components/ui/feedback';
-import type { Application } from '@/lib/api/types';
 
 import { installApplicationAction } from '@/app/(setup)/setup/actions';
 
@@ -23,7 +22,13 @@ export function SetupApplicationsStep({
   onNext,
   onBack,
 }: {
-  applications: Application[];
+  applications: Array<{
+    id: string;
+    title: string;
+    summary: string;
+    installed: boolean;
+    installable?: boolean;
+  }>;
   chosen: string[];
   onChosen: (next: string[]) => void;
   onNext: () => void;

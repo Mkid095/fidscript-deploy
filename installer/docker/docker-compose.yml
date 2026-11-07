@@ -1,0 +1,667 @@
+services:
+  # Docker socket → TCP proxy. Traefik's Go Docker client pins to API 1.24
+  # over the raw socket (which the modern daemon rejects, min 1.40). This tiny
+  # Node.js proxy rewrites the API version in the URL path (v1.24 → v1.41).
+  docker-proxy:
+    image: node:20-alpine
+    container_name: fidscript_docker_tcp
+    restart: unless-stopped
+    working_dir: /
+    command: node /proxy.js
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - ./docker-version-proxy.js:/proxy.js:ro
+    networks:
+      - fidscript-deployment
+    logging:
+      driver: json-file
+      options:
+        max-size: '10m'
+        max-file: '3'
+
+  traefik:
+    # v3.2+ fixes the Docker provider API version negotiation bug
+    # (v3.0.x pins to API 1.24 which modern daemons reject).
+    image: traefik:v3.3
+    container_name: fidscript_traefik
+    restart: unless-stopped
+    # The metrics Prometheus scrapes: the requests per router and per
+    # service — which is how the console knows how much traffic each of the
+    # platform's own sites is carrying.
+    command:
+      - traefik
+      - --metrics.prometheus=true
+      - --metrics.prometheus.addEntryPointsLabels=true
+      - --metrics.prometheus.addRoutersLabels=true
+      - --metrics.prometheus.addServicesLabels=true
+    deploy:
+      resources:
+        limits:
+          cpus: '0.2'
+          memory: 256M
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./traefik/traefik.yml:/etc/traefik/traefik.yml:ro
+      # The whole dynamic directory, not a single file: Traefik's file
+      # provider reads every YAML file in the directory it is pointed at,
+      # so the platform's routing (platform.yml) and the deployments'
+      # routing (dynamic-deployments.yml) live side by side.
+      #
+      # Mounted separately as well, so Docker creates the directory on a
+      # host where it does not exist yet — otherwise the API cannot write
+      # its routing and every route stays a 404.
+      - ./traefik/dynamic:/etc/traefik/dynamic:rw
+      - ./traefik/certs:/certs:ro
+      - ./secrets:/run/secrets:ro
+      - fidscript_acme_dns:/acme-dns
+      - fidscript_acme_http:/acme-http
+    environment:
+      CLOUDFLARE_DNS_API_TOKEN_FILE: /run/secrets/cf_api_token
+    # The products that share this host (the Instant BaaS, the WhatsApp
+    # platform, the npm registry) live on their own docker networks. Traefik
+    # joins them so one edge can serve every console. The installer creates
+    # these networks if those products are not installed.
+    extra_hosts:
+      # Docker resolves this to the bridge gateway. A hardcoded address
+      # breaks the moment a network is recreated with a different subnet —
+      # the previous Caddyfile's 172.19.0.1 had already gone stale.
+      - "host.docker.internal:host-gateway"
+    networks:
+      fidscript-deployment:
+      fidscript-whatsapp:
+      fidscript-app:
+      # Pinned to a distinct address on the mail network. Stalwart holds
+      # 10.0.8.2 there (a static address, so Docker DNS always resolves to
+      # the mail-network address rather than the deployment-network one).
+      # Without an explicit address here, Docker's IPAM hands Traefik
+      # 10.0.8.2 first and Stalwart then fails to start with
+      # "Address already in use" — a start-order race that made the mail
+      # server fail to come up.
+      fidscript-mail:
+        ipv4_address: 10.0.8.3
+      # The networks the other products on this host run on. They are
+      # declared as external at the bottom of this file.
+      self-hosting:
+      evolution:
+      registry:
+    healthcheck:
+      test: ["CMD", "traefik", "healthcheck", "--ping"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+    logging:
+      driver: json-file
+      options:
+        max-size: '10m'
+        max-file: '3'
+  postgres:
+    image: postgres:16-alpine
+    container_name: fidscript_postgres
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          cpus: '1.0'
+          memory: 1G
+    environment:
+      POSTGRES_DB: fidscript
+      POSTGRES_USER: fidscript
+      POSTGRES_PASSWORD_FILE: /run/secrets/postgres_password
+    secrets:
+      - postgres_password
+    volumes:
+      - fidscript_postgres:/var/lib/postgresql/data
+    networks:
+      - fidscript-deployment
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U fidscript -d fidscript"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    logging:
+      driver: json-file
+      options:
+        max-size: '10m'
+        max-file: '3'
+
+  pgbouncer:
+    image: pgbouncer/pgbouncer:1.15.0
+    container_name: fidscript_pgbouncer
+    restart: unless-stopped
+    # Bypass the image's entrypoint script (which demands DATABASES env).
+    # The pgbouncer binary lives at /opt/pgbouncer/pgbouncer (not in $PATH).
+    # We run a tiny shell wrapper that resolves `postgres` -> its current IP
+    # at startup and substitutes it into a temp copy of pgbouncer.ini before
+    # launching pgbouncer. This is required because (a) the committed ini uses
+    # the `postgres` service name as a placeholder, and (b) pgbouncer's c-ares
+    # resolver cannot parse the single-label docker name ("Misformatted domain
+    # name"). Resolving via getent (system resolver) at boot keeps the backend
+    # host dynamic — it survives postgres recreates (which change its IP),
+    # unlike a hardcoded literal IP which breaks on every recreate.
+    entrypoint: ["/bin/sh", "-c"]
+    command:
+      - |
+        set -e
+        PGIP=$$(getent hosts postgres | awk '{print $$1}' | head -1)
+        echo "[entrypoint] resolved postgres -> $${PGIP}"
+        sed "s/host=postgres/host=$${PGIP}/g" /etc/pgbouncer/pgbouncer.ini > /tmp/pgbouncer.ini
+        exec /opt/pgbouncer/pgbouncer /tmp/pgbouncer.ini
+    env_file:
+      - ./secrets/api.env
+    volumes:
+      - ./pgbouncer.ini:/etc/pgbouncer/pgbouncer.ini:ro
+    secrets:
+      - pgbouncer_userlist
+    networks:
+      - fidscript-deployment
+    depends_on:
+      postgres:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "nc -z localhost 6432 || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    logging:
+      driver: json-file
+      options:
+        max-size: '10m'
+        max-file: '3'
+
+  redis:
+    image: redis:7-alpine
+    container_name: fidscript_redis
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          cpus: '0.25'
+          memory: 256M
+    command: ["sh", "-c", "exec redis-server --requirepass \"$(cat /run/secrets/redis_password)\" --appendonly yes"]
+    secrets:
+      - redis_password
+    volumes:
+      - fidscript_redis:/data
+    networks:
+      - fidscript-deployment
+    healthcheck:
+      test: ["CMD-SHELL", "redis-cli -a \"$(cat /run/secrets/redis_password)\" --no-auth-warning ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    logging:
+      driver: json-file
+      options:
+        max-size: '10m'
+        max-file: '3'
+
+  nats:
+    image: nats:2.10-alpine
+    container_name: fidscript_nats
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          cpus: '0.1'
+          memory: 128M
+    command: ["-c", "/etc/nats/nats-server.conf"]
+    volumes:
+      - ../config/nats-server.conf:/etc/nats/nats-server.conf:ro
+      - fidscript_nats:/data
+    networks:
+      - fidscript-deployment
+    # The nats CLI isn't in PATH in this alpine image, so "nats server ping"
+    # fails. The proper healthcheck is the nats HTTP monitoring endpoint.
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:8222/healthz || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    logging:
+      driver: json-file
+      options:
+        max-size: '10m'
+        max-file: '3'
+
+  # S3-compatible object storage.
+  #
+  # RustFS, not MinIO: the minio/minio and minio/mc images are no longer
+  # publicly pullable from Docker Hub (the registry now answers
+  # "denied: requested access to the resource is denied" for anonymous
+  # pulls), so a fresh install could not start its object store at all.
+  # RustFS is a drop-in S3 replacement: same S3 API on :9000, same web
+  # console on :9001, and it still answers the /minio/health/live probe
+  # the API's health check expects.
+  #
+  # The service is still NAMED "minio" on purpose — the API resolves
+  # MINIO_ENDPOINT=minio:9000 and speaks the S3 protocol, so keeping the
+  # DNS name means no application code or configuration changes.
+  minio:
+    image: rustfs/rustfs:1.0.4
+    container_name: fidscript_minio
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          cpus: '0.25'
+          memory: 512M
+    environment:
+      RUSTFS_ACCESS_KEY: ${MINIO_ACCESS_KEY}
+      RUSTFS_SECRET_KEY: ${MINIO_SECRET_KEY}
+      RUSTFS_VOLUMES: /data
+      RUSTFS_ADDRESS: ":9000"
+      RUSTFS_CONSOLE_ENABLE: "true"
+    volumes:
+      - fidscript_minio:/data
+    networks:
+      - fidscript-deployment
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    logging:
+      driver: json-file
+      options:
+        max-size: '10m'
+        max-file: '3'
+
+  stalwart:
+    # Pinned to a specific version via STALWART_VERSION in .env.
+    # New installations get the newest stable; existing deployments stay pinned
+    # for reproducible rollbacks. Update STALWART_VERSION in .env and re-pull
+    # to upgrade: docker compose up -d stalwart
+    # v0.16.x includes JMAP-based management (Principal/set for role assignment)
+    # and database-keyed config (many former TOML keys now live in RocksDB).
+    image: stalwartlabs/stalwart:${STALWART_VERSION:-v0.16.10}
+    container_name: fidscript_stalwart
+    restart: unless-stopped
+    # Mail ports published to the host so external MTAs can deliver inbound
+    # (25) and users/clients can submit (465/587) and read mail (143/993).
+    # Without port 25 published, the MX record points at a closed port and
+    # no external mail arrives. The firewall (configure-firewall.sh) must
+    # also allow these — publishing alone is not enough.
+    ports:
+      - "25:25"     # SMTP  — inbound MX (server-to-server delivery)
+      - "465:465"   # SMTPS — implicit-TLS submission
+      - "993:993"   # IMAPS — implicit-TLS
+      - "127.0.0.1:8090:8080"  # Admin UI / JMAP (local only; routed via Traefik)
+      - "127.0.0.1:8091:8080"  # Traefik → stalwart via host loopback
+    # Stalwart v0.16 reads a bootstrap config.json that contains ONLY the
+    # data-store location. Every other setting — listeners, hostname,
+    # directory, authentication, DKIM — lives in the data store and is
+    # managed through the JMAP management API by the platform's
+    # email-bootstrap service. The previous TOML template in this repo
+    # described the pre-0.16 format and was rejected by the binary
+    # ("Failed to parse data store settings ... expected value at line 1
+    # column 1" — it was being JSON-parsed).
+    #
+    # create_host_path: false makes Compose fail loudly if the config file
+    # is missing, instead of silently creating a directory in its place.
+    environment:
+      # Bootstrap mode recovery admin — use the token from secrets as password.
+      # Format: username:password (password is the raw token, not hashed).
+      - STALWART_RECOVERY_ADMIN=${STALWART_RECOVERY_ADMIN}
+    volumes:
+      - type: bind
+        source: ../config/stalwart/config.json
+        target: /etc/stalwart/config.json
+        read_only: true
+        bind:
+          create_host_path: false
+      - fidscript_stalwart:/var/lib/stalwart
+      - ./secrets/stalwart_admin_token.txt:/run/secrets/stalwart_admin_token:ro
+      - ./secrets/stalwart_credentials.txt:/run/secrets/stalwart_credentials:ro
+    networks:
+      # fidscript-deployment: primary network for SMTP/IMAP/JMAP services
+      # reachable from other core services.
+      # fidscript-mail: dedicated network for Traefik → Stalwart HTTP.
+      # Static IP ensures Docker DNS always resolves to the fidscript-mail
+      # address (10.0.8.2), not the fidscript-deployment address.
+      fidscript-deployment:
+      fidscript-mail:
+        ipv4_address: 10.0.8.2
+    # NOTE: no depends_on — Stalwart uses RocksDB on its own volume
+    # and doesn't need postgres. Keeping it in the depends_on chain
+    # would block Stalwart start if postgres is slow to come up, even
+    # though they have no runtime dependency.
+    healthcheck:
+      # The Stalwart image is intentionally minimal: no curl, no
+      # wget, no nc. The only way to do an in-container check is
+      # bash's /dev/tcp. We open a TCP connection to the JMAP HTTP
+      # port (8080), close it, and exit 0 if the open succeeded.
+      # `cat </dev/tcp/...` would block reading until EOF (HTTP
+      # servers keep connections open), so we use exec-with-fd.
+      test:
+        - "CMD-SHELL"
+        - "timeout 2 bash -c 'exec 3<>/dev/tcp/localhost/8080' >/dev/null 2>&1 || exit 1"
+      interval: 15s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
+    secrets:
+      - stalwart_admin_token
+      - stalwart_credentials
+    logging:
+      driver: json-file
+      options:
+        max-size: '10m'
+        max-file: '3'
+
+  api:
+    # Built from the monorepo checkout so a fresh VPS can install without
+    # a pre-built image. The Dockerfile requires the repo ROOT as build
+    # context (it copies package.json, pnpm-lock.yaml, packages/ and
+    # apps/api/), which is why the context is ../.. and not .
+    build:
+      context: ../..
+      dockerfile: apps/api/Dockerfile
+    image: fidscript-api:latest
+    container_name: fidscript_api
+    restart: unless-stopped
+    # Expose API port on host for direct debugging and healthcheck curl.
+    # Traefik routes api.${PLATFORM_DOMAIN} -> api:3001 via fidscript-app network.
+    ports:
+      - "3001:3001"
+    # Read *_FILE env vars and materialize them before starting node
+    env_file:
+      - ./secrets/api.env
+    environment:
+      # Set SKIP_SEED=1 to skip `prisma db seed` on container start.
+      # Default is to run seed (it's idempotent: skips if admin already exists).
+      SKIP_SEED: "${SKIP_SEED:-0}"
+      # First-run admin seed (consumed by apps/api/prisma/seed.ts via ADMIN_EMAIL/ADMIN_PASSWORD).
+      # The seed runs on every container start (entrypoint.sh line 56) and is idempotent —
+      # if the admin user already exists, it skips. ponytail: this is the minimum
+      # needed for the dashboard's login to work end-to-end; the full F03 onboarding
+      # flow will replace this with a proper install wizard.
+      ADMIN_EMAIL: ${ADMIN_EMAIL}
+      ADMIN_PASSWORD: ${ADMIN_PASSWORD}
+      # Signup protection: new users must provide this keyword. Set to "nextmavens" or empty to disable.
+      SIGNUP_INVITE_KEYWORD: ${SIGNUP_INVITE_KEYWORD:-}
+      # Use direct postgres (not pgbouncer) to avoid transaction-mode conflicts with Prisma.
+      DATABASE_URL: postgresql://fidscript:${POSTGRES_PASSWORD}@postgres:5432/fidscript
+      DIRECT_URL: postgresql://fidscript:${POSTGRES_PASSWORD}@postgres:5432/fidscript
+      DB_ADMIN_USER: fidscript
+      DB_ADMIN_PASSWORD_FILE: /run/secrets/postgres_password
+      DB_ADMIN_HOST: postgres
+      DB_ADMIN_PORT: "5432"
+      DB_ADMIN_DATABASE: fidscript
+      PGBOUNCER_HOST: pgbouncer
+      PGBOUNCER_PORT: "6432"
+      REDIS_URL: redis://:${REDIS_PASSWORD}@redis:6379
+      NATS_URL: nats://nats:4222
+      # Override the image-baked EVOLUTION_API_URL (http://fidscript_whatsapp_api:8080)
+      # since the WhatsApp API container listens on port 3099, not 8080.
+      EVOLUTION_API_URL: http://fidscript_whatsapp_api:3099
+      MINIO_ENDPOINT: minio:9000
+      MINIO_PORT: "9000"
+      # Public MinIO endpoint used for signed URLs returned to clients.
+      # default to the storage.* subdomain the installer creates; the heredoc
+      # in setup-wizard.sh sets this to https://storage.${DOMAIN}.
+      MINIO_EXTERNAL_ENDPOINT: ${MINIO_EXTERNAL_ENDPOINT:-https://storage.${PLATFORM_DOMAIN:-deploy.fidscript.com}}
+      MINIO_ACCESS_KEY: ${MINIO_ACCESS_KEY}
+      MINIO_SECRET_KEY: ${MINIO_SECRET_KEY}
+      JWT_SECRET_FILE: /run/secrets/jwt_secret
+      ENCRYPTION_KEY_FILE: /run/secrets/encryption_key
+      API_PORT: "3001"
+      # Dashboard is served at https://${PLATFORM_DOMAIN} (root) via the
+      # Host(`deploy.fidscript.com`) router in dynamic.yml. An additional
+      # app.${PLATFORM_DOMAIN} alias may also be routed. Both are added
+      # comma-separated so CORS covers the actual origin(s) the browser uses.
+      CORS_ORIGIN: https://${PLATFORM_DOMAIN:-deploy.fidscript.com},https://app.${PLATFORM_DOMAIN:-deploy.fidscript.com}
+      SERVER_IP: ${SERVER_IP}
+      PLATFORM_DOMAIN: ${PLATFORM_DOMAIN:-deploy.fidscript.com}
+      PLATFORM_PUBLIC_URL: https://api.${PLATFORM_DOMAIN:-deploy.fidscript.com}
+      CLOUDFLARE_API_TOKEN_FILE: /run/secrets/cf_api_token
+      # Stalwart / Email
+      # StalwartJmapService appends '/jmap' to baseURL on every call,
+      # so the base must be the HTTP listener root (port 8080),
+      # NOT the /jmap path. The trailing slash is required.
+      STALWART_JMAP_URL: http://fidscript_stalwart:8080/
+      # JMAP auth: the SHA-256 hash of the admin password (from STALWART_RECOVERY_ADMIN).
+      # The API sends this as Basic Auth password on the /jmap endpoint.
+      STALWART_JMAP_PASSWORD: ${STALWART_RECOVERY_ADMIN}
+      STALWART_ADMIN_TOKEN_FILE: /run/secrets/stalwart_admin_token
+      STALWART_SMTP_HOST: fidscript_stalwart
+      STALWART_SMTP_PORT: "465"
+      PLATFORM_MAIL_HOST: ${PLATFORM_MAIL_HOST:-mail.deploy.fidscript.com}
+      # Use parent domain (deploy.fidscript.com) as sender — it has the
+      # SPF/DKIM/DMARC records. The mail. subdomain has no DNS auth records.
+      SMTP_FROM: admin@${PLATFORM_DOMAIN}
+      SMTP_SUBMISSION_USER: ${SMTP_SUBMISSION_USER}
+      SMTP_SUBMISSION_PASS: ${SMTP_SUBMISSION_PASS}
+      STALWART_WEBHOOK_SECRET_FILE: /run/secrets/stalwart_webhook_secret
+      # Path to the directory containing Traefik dynamic.yml on the HOST.
+      # The API needs this to write updated routing config during installation.
+      TRAEFIK_DYNAMIC_DIR: /etc/traefik/dynamic
+      # The guided one-line installer, served at /install.sh.
+      INSTALL_SCRIPT_PATH: /opt/fidscript-install/install.sh
+      # ── The build queue ───────────────────────────────────────────────────
+      # How many builds may run at once. A build is heavy and the box is
+      # often a small one — two at once fight each other and can push the
+      # machine into swap, which slows the API down with them. The rest
+      # wait in QUEUED.
+      MAX_CONCURRENT_BUILDS: ${MAX_CONCURRENT_BUILDS:-2}
+      # ── The image registry (the app-runtime add-on) ───────────────────────
+      # A built image lives in the host's Docker daemon and nowhere else, so
+      # a pruned daemon loses it and the deployment cannot be rolled back to
+      # it. When a registry is reachable, the deployment engine also pushes
+      # the image there, so a copy survives the build host.
+      #
+      # The address defaults to the add-on's container on the platform's own
+      # network; the platform asks the registry whether it is there rather
+      # than trusting the setting, so a platform without the add-on is not
+      # left failing a login on every build.
+      APP_RUNTIME_REGISTRY_URL: ${APP_RUNTIME_REGISTRY_URL:-}
+      APP_RUNTIME_REGISTRY_USERNAME: ${APP_RUNTIME_REGISTRY_USERNAME:-admin}
+      # The file only exists when the add-on is installed; the entrypoint
+      # skips a missing one, and the push is then simply skipped too.
+      APP_RUNTIME_REGISTRY_PASSWORD_FILE: /run/secrets/app_runtime_registry_password
+      # Where the installer lives, as seen by this container. The platform
+      # runs the installer's own scripts from here to install an application.
+      INSTALLER_DIR: /opt/fidscript-deploy/installer
+      # ── Instant BaaS — the project's data plane ──────────────────────────
+      # The server-side URL is the add-on's container on the shared network,
+      # so the api does not bounce the request out through the edge. The
+      # public URL is what a browser or a deployed application connects to.
+      INSTANT_API_HOST: ${INSTANT_API_HOST:-http://fidscript_instant_server:8888}
+      INSTANT_PUBLIC_API_HOST: ${INSTANT_PUBLIC_API_HOST:-https://apiinstant.${PLATFORM_DOMAIN:-deploy.fidscript.com}}
+      INSTANT_DASH_HOST: ${INSTANT_DASH_HOST:-https://instant.${PLATFORM_DOMAIN:-deploy.fidscript.com}}
+      # The superuser's personal access token. It is OPTIONAL — without it
+      # the api reports Instant as unavailable rather than failing to start.
+      INSTANT_SUPERUSER_TOKEN_FILE: /run/secrets/instant_superuser_token
+    # NOTE: no Docker-secrets block for the api. The Docker-secrets mechanism
+    # mounts the secret files with root-0400 perms, which the api (running as
+    # `node`, uid 1000) cannot read ("Permission denied"). Instead, we bind-
+    # mount the host secrets dir (chmod 755 dir + 644 files) so the entrypoint's
+    # `cat /run/secrets/<name>` works. The other services (traefik/stalwart)
+    # run as root and keep the Docker-secrets mechanism.
+    volumes:
+      - ./secrets:/run/secrets:ro
+      - /var/run/docker.sock:/var/run/docker.sock
+      - ../scripts:/usr/local/share/fidscript:ro
+      # The installer directory, so the platform can install an application
+      # from its Applications screen. It runs the installer's OWN scripts
+      # against the SAME compose files the wizard used, so there is one
+      # installer and one record of what is installed.
+      #
+      # The path MUST be the same one the host has. Compose resolves a
+      # relative bind path (./secrets/...) against the project directory,
+      # and the DAEMON resolves it — on the host, not in this container. If
+      # the two paths differ, the daemon is told to mount a file that does
+      # not exist on the host, and the container never starts.
+      - ..:/opt/fidscript-deploy/installer:rw
+      # The ONE-LINE installer — the guided flow that asks for the domain,
+      # the admin account and the Cloudflare token — lives at the
+      # repository root, not in installer/scripts/. The api serves THAT
+      # one at /install.sh, so `curl …/install.sh | sudo bash` does what
+      # the README says it does. installer/scripts/install.sh (the
+      # no-questions bootstrap) stays available as its own script.
+      #
+      # It is mounted under /opt, not under /usr/local/share/fidscript —
+      # that directory is itself a read-only mount, so Docker cannot create
+      # a mount point inside it.
+      - ../../install.sh:/opt/fidscript-install/install.sh:ro
+      - ./traefik:/etc/traefik:rw
+    # The deployment worker runs `docker build`/`docker run` against the host
+    # daemon via the mounted socket. The socket is root:docker on the host
+    # (host GID in DOCKER_GID); adding that GID here grants the non-root
+    # `node` user (uid 1000) read/write access without running as root.
+    group_add:
+      - "${DOCKER_GID}"
+    networks:
+      - fidscript-deployment
+      - fidscript-whatsapp
+      - fidscript-app
+      - fidscript-instant
+    depends_on:
+      postgres:
+        condition: service_healthy
+      pgbouncer:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      nats:
+        condition: service_healthy
+      minio:
+        condition: service_healthy
+    healthcheck:
+      # curl is installed in the runtime stage (see apps/api/Dockerfile).
+      # The health route is /api/v1/health (NestJS global prefix).
+      test: ["CMD-SHELL", "curl -fsS http://localhost:3001/api/v1/health/live > /dev/null || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    logging:
+      driver: json-file
+      options:
+        max-size: '10m'
+        max-file: '3'
+
+  dashboard:
+    # The console is its own project now — it was rebuilt from the user-flow
+    # guide, in its own repository, and it is built from there. The name of
+    # the service and the container are left as they are so the routing in
+    # traefik/dynamic/platform.yml (and the install scripts that write it)
+    # keeps pointing at the same place.
+    build:
+      context: /home/ken/projects/apps/fidscript-deploy
+      dockerfile: Dockerfile
+      args:
+        NEXT_PUBLIC_API_URL: https://api.${DOMAIN}
+    # Explicit tag so the image has a stable name (matching the API
+    # service) instead of Compose's project-prefixed default — an
+    # operator can pre-build it and `docker compose up` will reuse it.
+    image: fidscript-console:latest
+    container_name: fidscript_dashboard
+    restart: unless-stopped
+    # NEXT_PUBLIC_API_URL is baked into the bundle at build time, so it is
+    # an ARG above. It is mirrored here as runtime env as well, so a
+    # container started by hand still knows where the API is.
+    environment:
+      NEXT_PUBLIC_PLATFORM_DOMAIN: ${DOMAIN}
+      NEXT_PUBLIC_API_URL: https://api.${DOMAIN}
+    networks:
+      - fidscript-deployment
+    depends_on:
+      - api
+    healthcheck:
+      # The image is node:20-bookworm-slim — it has node but no wget.
+      test:
+        - CMD
+        - node
+        - -e
+        - "require('http').get('http://127.0.0.1:3001/',r=>process.exit(r.statusCode<500?0:1)).on('error',()=>process.exit(1))"
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+    logging:
+      driver: json-file
+      options:
+        max-size: '10m'
+        max-file: '3'
+
+networks:
+  # Deployment system infrastructure
+  fidscript-deployment:
+    name: fidscript-deployment
+    driver: bridge
+  # WhatsApp platform — frontend, API, and backend share this network
+  fidscript-whatsapp:
+    name: fidscript-whatsapp
+    driver: bridge
+  # Legacy app network (used by traefik Docker provider)
+  fidscript-app:
+    name: fidscript-app
+    driver: bridge
+  # Dedicated network for Traefik → Stalwart HTTP routing.
+  # Stalwart is NOT on fidscript-app to force Docker DNS to resolve
+  # fidscript_stalwart to this network's IP, avoiding the kernel-level
+  # RST that Stalwart sends to Traefik's multi-homed connections.
+  fidscript-mail:
+    name: fidscript-mail
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 10.0.8.0/24
+  # The networks the other products on this host run on. They are EXTERNAL:
+  # the platform joins them, it does not create them. The installer creates
+  # them if those products are not installed, so a platform-only install
+  # still starts.
+  self-hosting:
+    external: true
+    name: self-hosting_self-hosting_default
+  evolution:
+    external: true
+    name: next-mavens-evolution-api_platform-net
+  registry:
+    external: true
+    name: nextmavens-registry_default
+  # The Instant BaaS — the project's data plane. The api joins it so it can
+  # provision an Instant app without bouncing the request out through the
+  # edge and back. The installer creates it, so a platform-only install
+  # still starts.
+  fidscript-instant:
+    external: true
+    name: fidscript-instant
+
+volumes:
+  fidscript_postgres:
+    name: fidscript_postgres
+  fidscript_redis:
+    name: fidscript_redis
+  fidscript_nats:
+    name: fidscript_nats
+  fidscript_minio:
+    name: fidscript_minio
+  fidscript_stalwart:
+    name: fidscript_stalwart
+  fidscript_acme_dns:
+    name: fidscript_acme_dns
+  fidscript_acme_http:
+    name: fidscript_acme_http
+
+secrets:
+  pgbouncer_userlist:
+    file: ./secrets/pgbouncer_userlist.txt
+  postgres_password:
+    file: ./secrets/postgres_password.txt
+  redis_password:
+    file: ./secrets/redis_password.txt
+  jwt_secret:
+    file: ./secrets/jwt_secret.txt
+  encryption_key:
+    file: ./secrets/encryption_key.txt
+  cf_api_token:
+    file: ./secrets/cf_api_token.txt
+  stalwart_admin_token:
+    file: ./secrets/stalwart_admin_token.txt
+  stalwart_webhook_secret:
+    file: ./secrets/stalwart_webhook_secret.txt
+  stalwart_credentials:
+    file: ./secrets/stalwart_credentials.txt

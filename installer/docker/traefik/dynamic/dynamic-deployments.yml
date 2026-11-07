@@ -1,0 +1,10 @@
+# Managed by the FIDScript platform — do not edit manually.
+#
+# The routers that publish a deployment's CUSTOM domains. The default
+# {slug}.apps.{platformDomain} hostname is published by Traefik's Docker
+# provider from the container labels; this file covers the rest.
+#
+# Nothing to publish right now. The sections are left out rather than
+# written empty: Traefik v3 rejects an empty map in a dynamic file, and
+# one rejected file takes the whole file provider down — the edge then
+# serves the configuration it had before, silently.

@@ -8,12 +8,20 @@ This repository is the **FIDScript web console** — a Next.js application that
 talks to the FIDScript platform API.
 
 ```
+src/                        the console — the one Next.js app that serves the platform
+applications/               the hub: every application the platform can have, and
+                            the platform's integration with it
+installer/                  the installation — one command, then a few steps
 docs/USER_FLOW_GUIDE.md      the vision — how a person moves through the product
 docs/ARCHITECTURE.md         how this application is put together
 docs/IMPLEMENTATION_PLAN.md  the work, phase by phase
 docs/DECISIONS.md            the decisions taken, and the ones still owed
 docs/USER_FLOW_SYSTEM.md      the audit of the system as it is today
 ```
+
+The platform's API is **not** in this repository yet. It runs, it is
+deployed, and the console is built against it; it moves here in the last
+phase.
 
 ---
 
@@ -85,9 +93,6 @@ Three rules hold the product together:
 The plan is `docs/IMPLEMENTATION_PLAN.md`. The platform level, the project
 console, the three capabilities, the deployment flow, the first-time
 journey and the setup wizard are built.
-
-The API is **not** in this repository yet. It runs, it is deployed, and the
-console is built against it; it moves here in the last phase.
 
 ---
 

@@ -13,6 +13,7 @@ const SECTIONS = [
   { href: '/settings', label: 'Account' },
   { href: '/settings/applications', label: 'Applications' },
   { href: '/settings/api-keys', label: 'API keys & MCP' },
+  { href: '/settings/integrations', label: 'Integrations' },
 ];
 
 export function SettingsNav() {

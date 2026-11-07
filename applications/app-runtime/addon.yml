@@ -1,0 +1,11 @@
+id: app-runtime
+title: App runtime
+summary: A local image registry, so built application images are stored durably and can be pulled by any node.
+requires: []
+conflicts: []
+host_ports: []
+secrets:
+  # type htpasswd: the file holds `admin:<hash>` for the registry's basic
+  # auth. The registry is not published to the host by default, so this
+  # only guards other containers on the platform network.
+  registry_password: {bytes: 32, type: htpasswd}

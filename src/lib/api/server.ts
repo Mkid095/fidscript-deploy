@@ -17,9 +17,15 @@ const API_URL = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3001';
 
 async function serverRequest<T>(
   path: string,
-  options: { method?: string; body?: unknown; query?: Record<string, string | undefined> } = {},
+  options: {
+    method?: string;
+    body?: unknown;
+    query?: Record<string, string | undefined>;
+    /** Headers the API needs and the session does not carry — the setup token. */
+    headers?: Record<string, string>;
+  } = {},
 ): Promise<T> {
-  const { method = 'GET', body, query } = options;
+  const { method = 'GET', body, query, headers } = options;
 
   const search = new URLSearchParams();
   for (const [key, value] of Object.entries(query ?? {})) {
@@ -34,6 +40,7 @@ async function serverRequest<T>(
     headers: {
       'Content-Type': 'application/json',
       ...(access ? { Authorization: `Bearer ${access}` } : {}),
+      ...(headers ?? {}),
     },
     body: body === undefined ? undefined : JSON.stringify(body),
     cache: 'no-store',
@@ -61,7 +68,11 @@ function safeJson(text: string): unknown {
 export const serverApi = {
   get: <T>(path: string, query?: Record<string, string | undefined>) =>
     serverRequest<T>(path, { query }),
-  post: <T>(path: string, body?: unknown) => serverRequest<T>(path, { method: 'POST', body }),
+  post: <T>(
+    path: string,
+    body?: unknown,
+    headers?: Record<string, string>,
+  ) => serverRequest<T>(path, { method: 'POST', body, headers }),
   patch: <T>(path: string, body?: unknown) => serverRequest<T>(path, { method: 'PATCH', body }),
   delete: <T>(path: string) => serverRequest<T>(path, { method: 'DELETE' }),
 };

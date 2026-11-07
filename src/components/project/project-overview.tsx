@@ -22,6 +22,7 @@ export function ProjectOverview({
   deployments,
   memberCount,
   capabilities,
+  readiness,
 }: {
   projectSlug: string;
   shape: ProjectShape;
@@ -30,6 +31,8 @@ export function ProjectOverview({
   deployments: Deployment[];
   memberCount: number;
   capabilities: { email: boolean; whatsapp: boolean; packages: boolean };
+  /** What the project has, and what it is still waiting for. */
+  readiness: Array<{ name: string; ready: boolean; detail: string }>;
 }) {
   const base = `/projects/${projectSlug}`;
   const hasBackend = shape === 'BACKEND' || shape === 'BOTH';
@@ -90,6 +93,26 @@ export function ProjectOverview({
           </Card>
         </section>
       ) : null}
+
+      <section>
+        <SectionHeader
+          title="What it has"
+          description="Each piece of the project, and whether it is up."
+        />
+        <Card className="divide-y divide-rail">
+          {readiness.map((item) => (
+            <div key={item.name} className="flex items-center justify-between gap-3 px-4 py-2.5">
+              <div className="min-w-0">
+                <p className="text-sm text-text">{item.name}</p>
+                <p className="truncate text-xs text-text-dim">{item.detail}</p>
+              </div>
+              <Badge tone={item.ready ? 'success' : 'neutral'}>
+                {item.ready ? 'ready' : 'not yet'}
+              </Badge>
+            </div>
+          ))}
+        </Card>
+      </section>
 
       {deploymentOn ? (
         <section>

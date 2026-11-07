@@ -1,0 +1,13 @@
+id: instant
+title: Instant BaaS
+summary: A complete InstantDB-compatible backend — realtime Postgres, the Instant server, the web console, a Maven repository for the Kotlin SDK, and object storage.
+requires: []
+conflicts: []
+host_ports:
+  - 8888
+  - 3000
+  - 8081
+secrets:
+  postgres_password: {bytes: 32, uid: 999}
+  minio_access_key: {bytes: 32}
+  minio_secret_key: {bytes: 32}

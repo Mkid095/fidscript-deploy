@@ -38,6 +38,46 @@ export async function revokeSessionAction(sessionId: string): Promise<{ ok?: boo
   }
 }
 
+/**
+ * Connect the GitHub account.
+ *
+ * The token is checked against GitHub before it is kept, and it is stored
+ * encrypted — the platform never shows it again.
+ */
+export async function connectGithubAction(
+  token: string,
+): Promise<{ ok?: boolean; username?: string; error?: string }> {
+  if (!token.trim()) return { error: 'The token is needed.' };
+
+  try {
+    const response = await api.post<{ username?: string }>('/users/me/github/token', {
+      token: token.trim(),
+    });
+    revalidatePath('/settings/integrations');
+    return { ok: true, username: response.username };
+  } catch (err) {
+    return {
+      error:
+        err instanceof Error
+          ? err.message
+          : 'The account could not be connected. The token may be wrong, or it may not have the repository scope.',
+    };
+  }
+}
+
+/** Let the GitHub account go. The token goes with it. */
+export async function disconnectGithubAction(): Promise<{ ok?: boolean; error?: string }> {
+  try {
+    await api.delete('/users/me/github/disconnect');
+    revalidatePath('/settings/integrations');
+    return { ok: true };
+  } catch (err) {
+    return {
+      error: err instanceof Error ? err.message : 'The account could not be disconnected.',
+    };
+  }
+}
+
 /** Make a key that acts as you. It is shown once. */
 export async function createApiKeyAction(
   name: string,

@@ -50,6 +50,16 @@ export async function getProjectResources(projectId: string): Promise<ProjectRes
   };
 }
 
+/** The project's storage buckets. */
+export async function getProjectBuckets(
+  projectId: string,
+): Promise<Array<{ id: string; name: string }>> {
+  const response = await api
+    .get<{ buckets?: Array<{ id: string; name: string }> }>(`/projects/${projectId}/storage/buckets`)
+    .catch(() => ({ buckets: [] }));
+  return response.buckets ?? [];
+}
+
 /** The project's members — the people, and what they may do here. */
 export async function getProjectMembers(
   projectId: string,
