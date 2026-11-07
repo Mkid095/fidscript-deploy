@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useTransition } from 'react';
+import { useEffect, useState, useTransition } from 'react';
 
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -27,6 +27,12 @@ export function ProjectGeneralForm({
   slug: string;
 }) {
   const [values, setValues] = useState({ name, description });
+
+  // The server is the truth: a field the browser restored must not be
+  // able to change what is saved.
+  useEffect(() => {
+    setValues({ name, description });
+  }, [name, description]);
   const [error, setError] = useState<string | null>(null);
   const [saved, setSaved] = useState(false);
   const [pending, startTransition] = useTransition();

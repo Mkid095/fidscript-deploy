@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useTransition } from 'react';
+import { useEffect, useState, useTransition } from 'react';
 
 import { Button } from '@/components/ui/button';
 import { ChoiceGroup } from '@/components/ui/input';
@@ -27,6 +27,13 @@ export function ProjectShapeForm({
   deploymentOn: boolean;
 }) {
   const [values, setValues] = useState({ shape, deploymentOn });
+
+  // The server is the truth. When it says the shape changed, the form
+  // starts again from it — so a radio the browser restored cannot change
+  // what is saved.
+  useEffect(() => {
+    setValues({ shape, deploymentOn });
+  }, [shape, deploymentOn]);
   const [error, setError] = useState<string | null>(null);
   const [warning, setWarning] = useState<string | null>(null);
   const [saved, setSaved] = useState(false);
