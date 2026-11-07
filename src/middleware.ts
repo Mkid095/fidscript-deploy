@@ -11,7 +11,7 @@ import { NextResponse, type NextRequest } from 'next/server';
  * alone — it is not a page.
  */
 export function middleware(request: NextRequest) {
-  if (request.nextUrl.pathname.startsWith('/api/')) {
+  if (request.nextUrl.pathname.startsWith('/console/api/')) {
     return NextResponse.next();
   }
 

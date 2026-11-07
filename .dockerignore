@@ -1,0 +1,17 @@
+# The build happens inside the image, so nothing that a build would make is
+# carried into it.
+node_modules
+.next
+.git
+.gitignore
+*.md
+!README.md
+docs
+coverage
+.vscode
+.idea
+*.log
+.env
+.env.*
+!.env.example
+tsconfig.tsbuildinfo

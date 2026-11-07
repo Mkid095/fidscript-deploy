@@ -46,15 +46,19 @@ export function DeploymentProgressStep({
         setDeployment(result);
         setError(null);
 
+        // The log grows while the build runs, so it is read again and again
+        // and what is new is added. The platform has no stream for it — the
+        // build log is read where it is kept.
+        const log = await browserApi
+          .get<{ logs: string }>(`/projects/${projectId}/deployments/${deploymentId}/logs`)
+          .catch(() => ({ logs: '' }));
+        if (!cancelled) setLogs((current) => (log.logs ?? '').length > current.length ? log.logs : current);
+
         if (result.status === 'SUCCESS' || result.status === 'FAILED' || result.status === 'STOPPED') {
-          const log = await browserApi
-            .get<{ logs: string }>(`/projects/${projectId}/deployments/${deploymentId}/logs`)
-            .catch(() => ({ logs: '' }));
-          if (!cancelled) setLogs(log.logs ?? '');
           return;
         }
 
-        timer = setTimeout(poll, 3000);
+        timer = setTimeout(poll, 2000);
       } catch (err) {
         if (cancelled) return;
         setError(err instanceof Error ? err.message : 'The deployment could not be read.');

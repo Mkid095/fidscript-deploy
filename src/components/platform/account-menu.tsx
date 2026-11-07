@@ -13,7 +13,7 @@ export function AccountMenu({ name, email }: { name: string | null; email: strin
   const router = useRouter();
 
   async function signOut() {
-    await fetch('/api/v1/auth/logout', { method: 'POST' });
+    await fetch('/console/api/v1/auth/logout', { method: 'POST' });
     router.replace('/login');
     router.refresh();
   }

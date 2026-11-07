@@ -114,7 +114,7 @@ attaches the bearer to the upstream request; on a 401 it refreshes once and
 retries.
 
 ```
-browser ──cookie──▶ /api/v1/* (the proxy, a route handler)
+browser ──cookie──▶ /console/api/v1/* (the proxy, a route handler)
                        │  reads the cookie, attaches the bearer
                        ▼
                     the platform API
@@ -123,6 +123,10 @@ browser ──cookie──▶ /api/v1/* (the proxy, a route handler)
 A server component reads the session by calling the API **through the proxy**
 with the incoming cookie — so the same code path works on the server and in
 the browser, and there is no second auth mechanism.
+
+The proxy's path is `/console/api/v1/*`, not `/api/v1/*`: the platform's API
+answers on `/api/*` at the root domain too, and the console's proxy must
+not be mistaken for it.
 
 ### Server components by default
 

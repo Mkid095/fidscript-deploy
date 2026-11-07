@@ -3,11 +3,16 @@ import { ApiError, messageFrom } from './errors';
 /**
  * The browser's way in.
  *
- * Every call goes to the proxy at `/api/v1/*`, which carries the session
- * cookie, attaches the bearer, and refreshes on a 401. **The browser never
- * holds a token** — it cannot, because the tokens are httpOnly cookies and
- * the proxy moves them out of the response body.
+ * Every call goes to the console's own proxy at `/console/api/v1/*`, which
+ * carries the session cookie, attaches the bearer, and refreshes on a 401.
+ * **The browser never holds a token** — it cannot, because the tokens are
+ * httpOnly cookies and the proxy moves them out of the response body.
+ *
+ * The proxy has a path of its own rather than `/api/v1`: the platform's
+ * API answers on `/api/*` at the root domain too, and the console's proxy
+ * must not be mistaken for it.
  */
+const PROXY = '/console/api/v1';
 
 export async function browserRequest<T>(
   path: string,
@@ -15,7 +20,7 @@ export async function browserRequest<T>(
 ): Promise<T> {
   const { method = 'GET', body } = options;
 
-  const response = await fetch(`/api/v1${path}`, {
+  const response = await fetch(`${PROXY}${path}`, {
     method,
     headers: { 'Content-Type': 'application/json' },
     body: body === undefined ? undefined : JSON.stringify(body),
