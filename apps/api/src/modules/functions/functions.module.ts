@@ -1,0 +1,50 @@
+import { Module, forwardRef } from '@nestjs/common';
+import { JwtModule } from '@nestjs/jwt';
+import { ConfigModule, ConfigService } from '@nestjs/config';
+import { resolveJwtSecret } from '@/common/secrets';
+import { FunctionsController } from './functions.controller';
+import { FunctionsReadController } from './functions-read.controller';
+import { InstantModule } from '@/modules/instant/instant.module';
+import { FunctionsService } from './functions.service';
+import { FunctionsCrudService } from './services/functions-crud.service';
+import { FunctionsRuntimeService } from './services/functions-runtime.service';
+import { FunctionsVarsService } from './services/functions-vars.service';
+import { FunctionsLogsService } from './services/functions-logs.service';
+import { FunctionsAccessService } from './services/functions-access.service';
+import { SandboxedRunnerService } from './services/sandboxed-runner.service';
+import { NodeJsRuntime } from './runtimes/nodejs.runtime';
+import { PythonRuntime } from './runtimes/python.runtime';
+import { AuthModule } from '@/modules/auth/auth.module';
+import { ProjectsModule } from '@/modules/projects/projects.module';
+
+@Module({
+  imports: [
+    ConfigModule,
+    JwtModule.registerAsync({
+      imports: [ConfigModule],
+      useFactory: (config: ConfigService) => ({
+        secret: resolveJwtSecret(config),
+        signOptions: { expiresIn: '15m' },
+      }),
+      inject: [ConfigService],
+    }),
+    forwardRef(() => AuthModule),
+    forwardRef(() => ProjectsModule),
+    // The Instant module links a function to the project's data plane.
+    InstantModule,
+  ],
+  controllers: [FunctionsController, FunctionsReadController],
+  providers: [
+    FunctionsService,
+    FunctionsCrudService,
+    FunctionsRuntimeService,
+    FunctionsVarsService,
+    FunctionsLogsService,
+    FunctionsAccessService,
+    SandboxedRunnerService,
+    NodeJsRuntime,
+    PythonRuntime,
+  ],
+  exports: [FunctionsService],
+})
+export class FunctionsModule {}

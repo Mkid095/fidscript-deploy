@@ -1,0 +1,362 @@
+// Event type definitions for FIDScript platform
+// All platform actions generate events for auditing and reactivity.
+//
+// Naming scheme: <domain>.<entity>.<verb>
+// Every string emitted by EventService.emit() must be a valid EventType.
+// Add new types here — never emit strings outside this union (gate behind typecheck).
+
+export type EventType =
+  // Identity events (Phase 03)
+  | 'identity.user.registered'
+  | 'identity.user.updated'
+  | 'identity.user.password_changed'
+  | 'identity.user.magic_code_sent'
+  | 'identity.user.magic_code_verified'
+  | 'identity.user.login_failed'
+  | 'identity.user.logged_in'
+  | 'identity.user.logged_out'
+  | 'identity.user.mfa_setup'
+  | 'identity.user.mfa_enabled'
+  | 'identity.user.mfa_disabled'
+  | 'identity.user.mfa_challenge'
+  | 'identity.session.created'
+  | 'identity.session.revoked'
+  | 'identity.token.refreshed'
+  | 'identity.api_key.created'
+  | 'identity.api_key.revoked'
+  | 'identity.user.email_verification_sent'
+  | 'identity.user.email_verified'
+  | 'identity.user.password_reset_requested'
+  | 'identity.user.password_reset_completed'
+  | 'identity.user.magic_link_sent'
+  | 'identity.user.magic_link_verified'
+  // Organization events (Phase 5.3)
+  | 'identity.organization.created'
+  | 'identity.organization.updated'
+  | 'identity.organization.deleted'
+  | 'identity.organization.member_invited'
+  | 'identity.organization.member_joined'
+  | 'identity.organization.member_removed'
+  | 'identity.organization.member_role_changed'
+  | 'identity.organization.invitation_revoked'
+  | 'identity.team.created'
+  | 'identity.team.updated'
+  | 'identity.team.deleted'
+  | 'identity.team.member_added'
+  | 'identity.team.member_removed'
+  | 'identity.team.member_role_changed'
+  // Legacy aliases (backwards-compat)
+  | 'user.created'
+  | 'user.login'
+  // App-level auth events (project-scoped)
+  | 'auth.user_created'
+  | 'auth.login_succeeded'
+  | 'auth.login_failed'
+  | 'auth.magic_code_sent'
+  | 'auth.magic_code_verified'
+  | 'auth.token_refreshed'
+  | 'auth.refresh_rejected'
+  // RETIRED 2026-11-05 — the app developer's auth surface moved to Instant
+  // (see docs/CAPABILITY_OVERLAP.md). These are no longer emitted; the IDs
+  // are retired, never recycled (rule 20).
+  | 'auth.oauth_authorize_started'
+  | 'auth.oauth_signin_succeeded'
+  | 'auth.oauth_signin_failed'
+  | 'auth.oauth_linked'
+  | 'auth.provider_configured'
+  | 'auth.provider_removed'
+  | 'auth.user_disabled'
+  | 'auth.role_assigned'
+  // Project events (Phase 04)
+  | 'projects.project.created'
+  | 'projects.project.updated'
+  | 'projects.project.deleted'
+  | 'projects.project.suspended'
+  | 'projects.project.archived'
+  | 'projects.project.restored'
+  | 'projects.project.cloned'
+  | 'projects.project.provisioned'
+  | 'projects.project.provision_failed'
+  | 'projects.whatsapp.connected'
+  | 'projects.whatsapp.disconnected'
+  | 'projects.member.added'
+  | 'projects.member.removed'
+  | 'projects.member.role_changed'
+  | 'projects.invitation.created'
+  | 'projects.invitation.accepted'
+  | 'projects.invitation.revoked'
+  | 'projects.api_key.created'
+  | 'projects.api_key.revoked'
+  | 'projects.env_var.updated'
+  | 'projects.env_var.deleted'
+  | 'projects.project.purge_verification_sent'
+  | 'projects.project.purged'
+  | 'users.github_connected'
+  | 'users.github_disconnected'
+  // Legacy aliases (backwards-compat)
+  | 'project.created'
+  | 'project.updated'
+  | 'project.deleted'
+  | 'project.suspended'
+  | 'project.archived'
+  | 'project.restored'
+  | 'project.cloned'
+  // Deployment events (Phase 06) — dot notation
+  | 'deployments.deployment.created'
+  | 'deployments.deployment.queued'
+  | 'deployments.deployment.building'
+  | 'deployments.deployment.deploying'
+  | 'deployments.deployment.succeeded'
+  | 'deployments.deployment.failed'
+  | 'deployments.deployment.stopped'
+  | 'deployments.deployment.blocked'
+  | 'deployments.deployment.rolled_back'
+  | 'deployments.deployment.log'
+  // Legacy aliases (backwards-compat)
+  | 'deployment.started'
+  | 'deployment.building'
+  | 'deployment.succeeded'
+  | 'deployment.failed'
+  | 'deployment.rolled_back'
+  // Database events
+  | 'database.provisioned'
+  | 'database.updated'
+  | 'database.deleted'
+  | 'database.backup_started'
+  | 'database.backup_completed'
+  | 'database.restored'
+  | 'database.row.changed'
+  | 'database.migration_applied'
+  | 'database.realtime_enabled'
+  | 'database.realtime_disabled'
+  // Instant events (the project's data plane)
+  | 'instant.app.provisioned'
+  | 'instant.app.deleted'
+  // Domain events
+  | 'domain.added'
+  | 'domain.verified'
+  | 'domain.failed'
+  | 'domain.deleted'
+  // Function events
+  | 'function.created'
+  | 'function.deployed'
+  | 'function.invoked'
+  | 'function.error'
+  | 'function.deleted'
+  | 'function.dead_lettered'
+  // Queue events
+  | 'queue.created'
+  | 'queue.message_published'
+  | 'queue.message_retried'
+  | 'queue.dead_lettered'
+  // Queue events (dot notation — backend emits these)
+  | 'queues.consumer.setup.degraded'
+  | 'queues.created'
+  | 'queues.updated'
+  | 'queues.deleted'
+  | 'queues.message.acknowledged'
+  | 'queues.message.retried'
+  | 'queues.message.dead_lettered'
+  | 'queues.message.purged'
+  | 'queues.message.published'
+  | 'queues.publish.degraded'
+  | 'queues.invocation.succeeded'
+  | 'queues.invocation.failed'
+  | 'queues.function.dispatch'
+  // Cron events
+  | 'cron.job_created'
+  | 'cron.job_updated'
+  | 'cron.job_deleted'
+  | 'cron.job_run_started'
+  | 'cron.job_run_completed'
+  | 'cron.job_run_failed'
+  | 'cron.job_run_deduplicated'
+  | 'cron.job_run_leases_expired'
+  // Storage events (Phase 05)
+  | 'storage.bucket.created'
+  | 'storage.bucket.deleted'
+  | 'storage.file.uploaded'
+  | 'storage.file.deleted'
+  // Realtime events
+  | 'realtime.channel_created'
+  | 'realtime.channel_deleted'
+  | 'realtime.client_joined'
+  | 'realtime.client_left'
+  | 'realtime.message_sent'
+  // Email events
+  | 'email.queued'
+  | 'email.sent'
+  | 'email.delivered'
+  | 'email.bounced'
+  | 'email.failed'
+  | 'email.soft_bounce'
+  | 'email.received'
+  | 'email.opened'
+  | 'email.clicked'
+  | 'email.complained'
+  | 'email.mailbox_created'
+  | 'email.mailbox_deleted'
+  | 'email.domain_added'
+  | 'email.domain_deleted'
+  | 'email.domain_verified'
+  | 'email.domain_recovery_started'
+  | 'email.alias_created'
+  | 'email.alias_deleted'
+  | 'email.identity_created'
+  | 'email.identity_deleted'
+  | 'email.api_key_created'
+  | 'email.api_key_deleted'
+  | 'email.webhook_triggered'
+  | 'email.catchall.forward_pending'
+  | 'email.template_created'
+  | 'email.template_updated'
+  | 'email.template_deleted'
+  // Phase 4 — email audit events
+  | 'email.message.sent'
+  | 'email.message.read'
+  | 'email.message.deleted'
+  | 'email.message.permanently_deleted'
+  | 'email.message.exported'
+  | 'email.message.moved'
+  | 'email.message.restored'
+  | 'email.message.replied'
+  | 'email.message.forwarded'
+  | 'email.mailbox.member_added'
+  | 'email.mailbox.member_removed'
+  | 'email.mailbox.member_updated'
+  | 'email.conversation.assigned'
+  | 'email.conversation.unassigned'
+  | 'email.conversation.closed'
+  | 'email.conversation.reopened'
+  // Phase 4 — reputation + abuse events
+  | 'email.reputation.updated'
+  | 'email.reputation.degraded'
+  | 'email.reputation.throttled'
+  | 'email.reputation.suspended'
+  | 'email.abuse.detected'
+  // Phase 4 — retention + legal hold
+  | 'email.message.archived'
+  | 'email.message.purged'
+  | 'email.legal_hold.placed'
+  | 'email.legal_hold.released'
+  // AI events
+  | 'ai.conversation.created'
+  | 'ai.conversation.deleted'
+  | 'ai.error_diagnosed'
+  | 'ai.recommendation.generated'
+  | 'ai.deployment.assisted'
+  | 'ai.project.generation_assisted'
+  // Monitoring events
+  | 'monitoring.alert_triggered'
+  | 'monitoring.alert.firing'
+  | 'monitoring.alert.resolved'
+  | 'monitoring.notification.sent'
+  | 'monitoring.notification.failed'
+  // Logging events (Phase 15)
+  | 'logs.log.ingested'
+  | 'logs.pruned'
+  | 'logs.shipped'
+  | 'logs.ship_failed'
+  | 'logs.quota_exceeded'
+  // Template events
+  | 'template.created'
+  | 'template.deleted'
+  | 'template.project_generated'
+  | 'templates.template.applied'
+  // Marketplace events
+  | 'marketplace.item.submitted'
+  | 'marketplace.item.approved'
+  | 'marketplace.review.created'
+  // Installation events
+  | 'installation.lifecycle.changed'
+  | 'installation.lifecycle.validation.started'
+  | 'installation.lifecycle.validation.completed'
+  | 'installation.lifecycle.operation.started'
+  | 'installation.lifecycle.operation.completed'
+  // Installation step events (dynamic — step name is runtime)
+  | 'installation.step.dns.started'
+  | 'installation.step.dns.validation.completed'
+  | 'installation.step.dns.completed'
+  | 'installation.step.dns.failed'
+  | 'installation.step.proxy.started'
+  | 'installation.step.proxy.validation.completed'
+  | 'installation.step.proxy.completed'
+  | 'installation.step.proxy.failed'
+  | 'installation.step.certificate.started'
+  | 'installation.step.certificate.validation.completed'
+  | 'installation.step.certificate.completed'
+  | 'installation.step.certificate.failed'
+  | 'installation.step.email.started'
+  | 'installation.step.email.validation.completed'
+  | 'installation.step.email.completed'
+  | 'installation.step.email.failed'
+  | 'installation.step.health.started'
+  | 'installation.step.health.validation.completed'
+  | 'installation.step.health.completed'
+  | 'installation.step.health.failed';
+
+export interface PlatformEvent<T = unknown> {
+  id: string;
+  /** Semantic version of the event schema, e.g. "1.0". Allows forward-compatible schema evolution. */
+  version: string;
+  /** All project-scoped events MUST include their projectId at this level for routing.
+   *  Identity/system events (no project) can leave this undefined. */
+  projectId?: string;
+  type: EventType;
+  timestamp: Date;
+  actorId?: string;
+  actorType?: 'user' | 'system' | 'api_key';
+  resourceType?: string;
+  resourceId?: string;
+  /** Typed payload for this event. Payload shape is indexed by event type in EventPayloadSchemas. */
+  metadata?: T;
+  ipAddress?: string;
+  userAgent?: string;
+  /** W3C traceparent trace ID propagated across API → NATS → Worker boundaries.
+   *  Enables distributed trace correlation for email delivery pipeline. */
+  traceId?: string;
+}
+
+// Event schemas for specific resources
+export interface ProjectEventMetadata {
+  projectId: string;
+  projectName: string;
+  deploymentId?: string;
+  commitHash?: string;
+}
+
+export interface DeploymentEventMetadata {
+  deploymentId: string;
+  projectId: string;
+  status: string;
+  duration?: number;
+  error?: string;
+}
+
+export interface AuthEventMetadata {
+  userId: string;
+  email: string;
+  method?: 'password' | 'api_key' | 'mfa' | 'oauth';
+  success: boolean;
+  failureReason?: string;
+}
+
+// Event bus message format for NATS
+export interface EventBusMessage {
+  subject: string;
+  version: string;
+  data: PlatformEvent;
+  replyTo?: string;
+}
+
+// Event subscription filter
+export interface EventFilter {
+  types?: EventType[];
+  resourceTypes?: string[];
+  actorIds?: string[];
+  fromTimestamp?: Date;
+  toTimestamp?: Date;
+}
+
+// ── Event emitter utilities ──────────────────────────────────────────────────
+export { resolveEventType, isKnownEventType, validatePayload, buildPlatformEvent } from './event-emitter.js';

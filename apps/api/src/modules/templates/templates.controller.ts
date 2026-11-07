@@ -1,0 +1,80 @@
+import {
+  Controller, Get, Post, Patch, Delete,
+  Body, Param, Query, UseGuards, Req,
+} from '@nestjs/common';
+import { Request } from 'express';
+import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
+import { JwtAuthGuard } from '../auth/jwt-auth.guard';
+import { ProjectMemberGuard } from '../auth/guards/project-member.guard';
+import { TemplatesService } from './templates.service';
+import { CreateTemplateDto, UpdateTemplateDto, GenerateProjectDto, GenerateAndDeployDto } from './dto/index';
+
+@ApiTags('templates')
+@Controller('projects/:projectId/templates')
+@UseGuards(JwtAuthGuard, ProjectMemberGuard)
+@ApiBearerAuth()
+export class TemplatesController {
+  constructor(private templatesService: TemplatesService) {}
+
+  @Post()
+  @ApiOperation({ summary: 'Create template' })
+  async createTemplate(@Param('projectId') projectId: string, @Body() dto: CreateTemplateDto) {
+    return this.templatesService.createTemplate(projectId, dto);
+  }
+
+  @Get()
+  @ApiOperation({ summary: 'List templates' })
+  async listTemplates(@Param('projectId') projectId: string, @Query('category') category?: string) {
+    return this.templatesService.listTemplates(projectId, category);
+  }
+
+  @Get('categories')
+  @ApiOperation({ summary: 'List template categories' })
+  async listCategories() {
+    return this.templatesService.listCategories();
+  }
+
+  @Get(':templateId')
+  @ApiOperation({ summary: 'Get template' })
+  async getTemplate(@Param('projectId') projectId: string, @Param('templateId') templateId: string) {
+    return this.templatesService.getTemplate(projectId, templateId);
+  }
+
+  @Patch(':templateId')
+  @ApiOperation({ summary: 'Update template' })
+  async updateTemplate(
+    @Param('projectId') projectId: string,
+    @Param('templateId') templateId: string,
+    @Body() dto: UpdateTemplateDto,
+  ) {
+    return this.templatesService.updateTemplate(projectId, templateId, dto);
+  }
+
+  @Delete(':templateId')
+  @ApiOperation({ summary: 'Delete template' })
+  async deleteTemplate(@Param('projectId') projectId: string, @Param('templateId') templateId: string) {
+    return this.templatesService.deleteTemplate(projectId, templateId);
+  }
+
+  @Post('generate')
+  @ApiOperation({ summary: 'Generate project from template' })
+  async generateProject(
+    @Req() req: Request,
+    @Param('projectId') projectId: string,
+    @Body() dto: GenerateProjectDto,
+  ) {
+    const user = req.user as { userId: string };
+    return this.templatesService.generateProject(user.userId, projectId, dto);
+  }
+
+  @Post('generate-and-deploy')
+  @ApiOperation({ summary: 'Generate project from template and immediately deploy it' })
+  async generateAndDeploy(
+    @Req() req: Request,
+    @Param('projectId') projectId: string,
+    @Body() dto: GenerateAndDeployDto,
+  ) {
+    const user = req.user as { userId: string };
+    return this.templatesService.generateAndDeploy(user.userId, projectId, dto);
+  }
+}

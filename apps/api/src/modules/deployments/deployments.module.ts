@@ -1,0 +1,77 @@
+import { Module, forwardRef } from '@nestjs/common';
+import { DeploymentsController } from './deployments.controller';
+import { GithubWebhookController } from './controllers/github-webhook.controller';
+import { DeploymentsService } from './deployments.service';
+import { DeploymentCrudService } from './services/deployment-crud.service';
+import { DeploymentRoutesService } from './services/deployment-routes.service';
+import { DeploymentDetectService } from './services/deployment-detect.service';
+import { DeploymentDetectController } from './controllers/deployment-detect.controller';
+import { ProjectEnvVarsService } from './services/project-env-vars.service';
+import { GithubWebhookService } from './services/github-webhook.service';
+import { BuildRunnerService } from './runner/build-runner.service';
+import { DockerRunService } from './runner/docker-run.service';
+import { DeploymentWorkerService } from './runner/deployment-worker.service';
+import { DeploymentStateService } from './runner/deployment-state.service';
+import { DeploymentLifecycleService } from './runner/deployment-lifecycle.service';
+import { DeploymentRollbackService } from './runner/deployment-rollback.service';
+import { DockerLifecycleService } from './runner/docker-lifecycle.service';
+import { DockerBuildArgsService } from './runner/docker-build-args.service';
+import { DockerCommandService } from './runner/docker-command.service';
+import { ShellRunnerService } from './runner/shell-runner.service';
+import { ImageRegistryService } from './runner/image-registry.service';
+import { BuildConcurrencyService } from './runner/build-concurrency.service';
+import { InstantModule } from '@/modules/instant/instant.module';
+import { DeploymentGcService } from './runner/deployment-gc.service';
+import { DockerfileBuildProvider } from './providers/dockerfile-build.provider';
+import { NodeBuildpackProvider } from './providers/node-buildpack.provider';
+import { BuildProviderFactory } from './providers/build-provider.factory';
+import { DockerBuildWorkspaceService } from './providers/docker-build-workspace.service';
+import { StorageModule } from '@/modules/storage/storage.module';
+import { AppAuthModule } from '@/modules/app-auth/app-auth.module';
+import { AuthModule } from '@/modules/auth/auth.module';
+
+@Module({
+  // AppAuthModule gives us UserGithubService so the build pipeline can inject
+  // the connected GitHub token when cloning private repos (detect + deploy).
+  // The Instant module links a deployment to the project's data plane: the
+  // application gets its Instant app id and hosts in its environment.
+  imports: [InstantModule, StorageModule, AppAuthModule, forwardRef(() => AuthModule)],
+  controllers: [DeploymentsController, GithubWebhookController, DeploymentDetectController],
+  providers: [
+    DeploymentsService,
+    DeploymentCrudService,
+    DeploymentRoutesService,
+    ProjectEnvVarsService,
+    DeploymentDetectService,
+    GithubWebhookService,
+    BuildRunnerService,
+    DockerRunService,
+    DeploymentWorkerService,
+    DeploymentStateService,
+    DeploymentLifecycleService,
+    DeploymentRollbackService,
+    DockerLifecycleService,
+    DockerBuildArgsService,
+    DockerCommandService,
+    ShellRunnerService,
+    ImageRegistryService,
+    BuildConcurrencyService,
+    DeploymentGcService,
+    DockerBuildWorkspaceService,
+    DockerfileBuildProvider,
+    NodeBuildpackProvider,
+    BuildProviderFactory,
+  ],
+  exports: [
+    DeploymentsService,
+    DeploymentWorkerService,
+    DeploymentCrudService,
+    DeploymentRoutesService,
+    GithubWebhookService,
+    BuildProviderFactory,
+    // The applications module installs an application by running the
+    // installer's own commands, and needs the same shell runner.
+    ShellRunnerService,
+  ],
+})
+export class DeploymentsModule {}

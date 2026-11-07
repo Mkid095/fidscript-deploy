@@ -1,0 +1,75 @@
+import { PrismaClient, Role } from '@prisma/client';
+import * as bcrypt from 'bcrypt';
+
+const prisma = new PrismaClient();
+
+async function main() {
+  const email = process.env.ADMIN_EMAIL;
+  const password = process.env.ADMIN_PASSWORD;
+
+  if (!email) {
+    console.warn('ADMIN_EMAIL not set — skipping admin seed');
+    return;
+  }
+
+  if (!password) {
+    console.warn('ADMIN_PASSWORD not set — skipping admin seed');
+    return;
+  }
+
+  const existing = await prisma.user.findUnique({ where: { email } });
+  if (existing) {
+    console.log(`Admin user ${email} already exists — skipping seed`);
+    return;
+  }
+
+  // Admin exists under a different email — this means the operator changed ADMIN_EMAIL
+  // in the compose file after initial seeding. Do NOT create a new admin (would
+  // leave orphaned admin accounts). Skip silently so container restarts are not broken.
+  const anyAdmin = await prisma.user.findFirst({
+    where: { role: { in: ['ADMIN', 'OWNER'] } },
+    select: { email: true },
+    orderBy: { createdAt: 'asc' },
+  });
+  if (anyAdmin) {
+    console.log(`Another admin (${anyAdmin.email}) already exists — skipping seed (ADMIN_EMAIL mismatch)`);
+    return;
+  }
+
+  const passwordHash = await bcrypt.hash(password, 12);
+
+  const user = await prisma.user.create({
+    data: {
+      email,
+      passwordHash,
+      name: 'Platform Admin',
+      role: Role.ADMIN,
+      // Force a password change on first login — the install-time ADMIN_PASSWORD
+      // is a bootstrap secret; the operator should set their own. Cleared by
+      // POST /auth/change-password (PREREQ-AUTH-2). See f02-auth.md.
+      mustChangePassword: true,
+    },
+  });
+
+  // Create the PASSWORD credential record for this user.
+  // This allows force-change-password to distinguish between "has a password to change"
+  // and "was magic-code only and needs to create a password".
+  await prisma.userCredential.create({
+    data: {
+      userId: user.id,
+      type: 'PASSWORD',
+      secretHash: passwordHash,
+    },
+  });
+
+  console.log(`Admin user ${email} created with PASSWORD credential`);
+}
+
+main()
+  .catch((e) => {
+    console.error('Seed failed:', e);
+    process.exit(1);
+  })
+  .finally(async () => {
+    await prisma.$disconnect();
+  });

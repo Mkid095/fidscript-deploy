@@ -1,0 +1,126 @@
+import {
+  Controller, Get, Post, Put, Patch, Delete, Body, Param, UseGuards, Req, HttpCode, HttpStatus,
+} from '@nestjs/common';
+import { ApiTags, ApiBearerAuth } from '@nestjs/swagger';
+import { ApiKeyOrJwtGuard } from '@/modules/auth/guards/api-key-or-jwt.guard';
+import { ProjectMemberGuard } from '@/modules/auth/guards/project-member.guard';
+import { ScopeGuard } from '@/modules/auth/guards/scope-guard';
+import { ProjectApiKeyMintGuard } from '@/modules/auth/guards/project-api-key-mint.guard';
+import { RequireScope } from '@/modules/auth/decorators/require-scope.decorator';
+import { ProjectsService } from '@/modules/projects/services/projects.service';
+import { AddMemberDto, UpdateEnvVarsDto, CreateInvitationDto } from '@/modules/projects/dto/index';
+import { Request } from 'express';
+
+@ApiTags('projects/members')
+@Controller('projects')
+// The scope guard is here, and not only on the route that needed it: a
+// scope declared on a route whose controller does not apply the guard is a
+// promise nothing keeps.
+@UseGuards(ApiKeyOrJwtGuard, ScopeGuard, ProjectMemberGuard)
+@ApiBearerAuth()
+export class ProjectsMembersController {
+  constructor(private projects: ProjectsService) {}
+
+  @Get(':id/members')
+  async listMembers(@Req() req: Request, @Param('id') id: string) {
+    const user = req.user as { userId: string; projectId?: string };
+    return this.projects.listMembers(user.userId, id, user.projectId);
+  }
+
+  @Post(':id/members')
+  async addMember(@Req() req: Request, @Param('id') id: string, @Body() dto: AddMemberDto) {
+    const user = req.user as { userId: string; projectId?: string };
+    return this.projects.addMember(user.userId, id, dto, user.projectId);
+  }
+
+  @Delete(':id/members/:userId')
+  @HttpCode(HttpStatus.OK)
+  async removeMember(@Req() req: Request, @Param('id') id: string, @Param('userId') userId: string) {
+    const currentUser = req.user as { userId: string; projectId?: string };
+    return this.projects.removeMember(currentUser.userId, id, userId, currentUser.projectId);
+  }
+
+  @Patch(':id/members/:userId')
+  @HttpCode(HttpStatus.OK)
+  async updateMemberRole(
+    @Req() req: Request,
+    @Param('id') id: string,
+    @Param('userId') userId: string,
+    @Body() dto: { role: 'admin' | 'developer' | 'viewer' },
+  ) {
+    const currentUser = req.user as { userId: string; projectId?: string };
+    return this.projects.updateMemberRole(currentUser.userId, id, userId, dto.role, currentUser.projectId);
+  }
+
+  @Get(':id/invitations')
+  async listInvitations(@Req() req: Request, @Param('id') id: string) {
+    const user = req.user as { userId: string; projectId?: string };
+    return this.projects.listInvitations(user.userId, id, user.projectId);
+  }
+
+  @Post(':id/invitations')
+  async createInvitation(@Req() req: Request, @Param('id') id: string, @Body() dto: CreateInvitationDto) {
+    const user = req.user as { userId: string; projectId?: string };
+    return this.projects.createInvitation(user.userId, id, dto, user.projectId);
+  }
+
+  @Delete(':id/invitations/:invitationId')
+  @HttpCode(HttpStatus.OK)
+  async revokeInvitation(@Req() req: Request, @Param('id') id: string, @Param('invitationId') invitationId: string) {
+    const user = req.user as { userId: string; projectId?: string };
+    return this.projects.revokeInvitation(user.userId, id, invitationId, user.projectId);
+  }
+
+  /**
+   * The project's environment variables.
+   *
+   * The route carried **no scope**, so a project key read the project's
+   * variable names whatever its scopes were — the values stayed masked, but
+   * the names are the half of the secret that tells an attacker what to go
+   * and look for. The scope vocabulary already had `envvars:read` and
+   * `envvars:write`; they had never been used.
+   */
+  @Get(':id/env-vars')
+  @RequireScope('envvars:read')
+  async getEnvVars(@Req() req: Request, @Param('id') id: string) {
+    const user = req.user as { userId: string; projectId?: string };
+    return this.projects.getEnvVars(user.userId, id, user.projectId);
+  }
+
+  @Put(':id/env-vars')
+  @RequireScope('envvars:write')
+  @HttpCode(HttpStatus.OK)
+  async updateEnvVars(@Req() req: Request, @Param('id') id: string, @Body() dto: UpdateEnvVarsDto) {
+    const user = req.user as { userId: string; projectId?: string };
+    return this.projects.updateEnvVars(user.userId, id, dto, user.projectId);
+  }
+
+  @Delete(':id/env-vars/:key')
+  @RequireScope('envvars:write')
+  @HttpCode(HttpStatus.OK)
+  async deleteEnvVar(@Req() req: Request, @Param('id') id: string, @Param('key') key: string) {
+    const user = req.user as { userId: string; projectId?: string };
+    return this.projects.deleteEnvVar(user.userId, id, key, user.projectId);
+  }
+
+  @Get(':id/api-keys')
+  async listProjectApiKeys(@Req() req: Request, @Param('id') id: string) {
+    const user = req.user as { userId: string; projectId?: string };
+    return this.projects.listProjectApiKeys(user.userId, id, user.projectId);
+  }
+
+  @Post(':id/api-keys')
+  @UseGuards(ScopeGuard, ProjectApiKeyMintGuard)
+  @RequireScope('projects:write')
+  async createProjectApiKey(@Req() req: Request, @Param('id') id: string, @Body() dto: any) {
+    const user = req.user as { userId: string; projectId?: string };
+    return this.projects.createProjectApiKey(user.userId, id, dto, user.projectId);
+  }
+
+  @Delete(':id/api-keys/:keyId')
+  @HttpCode(HttpStatus.OK)
+  async revokeProjectApiKey(@Req() req: Request, @Param('id') id: string, @Param('keyId') keyId: string) {
+    const user = req.user as { userId: string; projectId?: string };
+    return this.projects.revokeProjectApiKey(user.userId, id, keyId, user.projectId);
+  }
+}

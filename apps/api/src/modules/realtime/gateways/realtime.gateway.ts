@@ -1,0 +1,172 @@
+import {
+  WebSocketGateway,
+  WebSocketServer,
+  SubscribeMessage,
+  OnGatewayConnection,
+  OnGatewayDisconnect,
+  MessageBody,
+  ConnectedSocket,
+} from '@nestjs/websockets';
+import { Server, Socket } from 'socket.io';
+import { ChannelService } from '@/modules/realtime/services/channel.service';
+import { PresenceService } from '@/modules/realtime/services/presence.service';
+import { TokenService } from '@/modules/realtime/services/token.service';
+import { RealtimeSubscriptionService } from '@/modules/realtime/services/realtime-subscription.service';
+import { projectRoom } from '@/modules/realtime/services/realtime-rooms';
+import { RealtimeMessageHandlerService } from './realtime-message-handler.service';
+import { ProjectApiKeyService } from '@/modules/projects/services/project-api-key.service';
+
+const NAMESPACE = '/realtime';
+
+// Socket.IO server options tuned to reduce spurious reconnections that cause
+// MaxListenersExceededWarning (each reconnect adds listeners; clients behind
+// proxies with short idle timeouts are especially noisy).
+// - pingInterval: how often server pings client (default 25s — too long if proxy
+//   kills idle after ~60s; 20s is safe for most corporate proxies)
+// - pingTimeout: client must respond within this window (default 20s; 15s is fine)
+@WebSocketGateway({
+  cors: { origin: '*' },
+  namespace: NAMESPACE,
+  pingInterval: 20_000,   // server→client ping every 20s
+  pingTimeout: 15_000,     // client→server pong must arrive within 15s
+})
+export class RealtimeGateway implements OnGatewayConnection, OnGatewayDisconnect {
+  @WebSocketServer()
+  server: Server;
+
+  constructor(
+    private channelService: ChannelService,
+    private presenceService: PresenceService,
+    private tokenService: TokenService,
+    private messages: RealtimeMessageHandlerService,
+    private subscriptions: RealtimeSubscriptionService,
+    private apiKeys: ProjectApiKeyService,
+  ) {}
+
+  onModuleInit() {
+    // Suppress MaxListenersExceededWarning from reconnecting clients — each
+    // reconnect adds close/end listeners; 30 is well above the default 10.
+    this.channelService.setServer(this.server);
+    // Cast to Node.js EventEmitter to call setMaxListeners (socket.io Server is
+    // built on EventEmitter but doesn't expose this method in its types)
+    (this.server as unknown as import('events').EventEmitter).setMaxListeners(30);
+  }
+
+  /**
+   * Fan a platform event out to every socket authorized for a project.
+   *
+   * For a namespaced gateway, NestJS injects the Namespace (not the root
+   * Server) into @WebSocketServer — so `this.server` is already the `/realtime`
+   * namespace where the clients (and the `project:<id>` rooms they joined)
+   * live. A plain `.to(room).emit()` reaches them; `.of()` would throw.
+   */
+  broadcastToProject(projectId: string, type: string, payload: unknown): void {
+    if (!this.server) return;
+    this.server.to(projectRoom(projectId)).emit(type, payload);
+  }
+
+  async handleConnection(client: Socket) {
+    try {
+      // API-key auth: an fpk_ key supplied as the handshake token OR via the
+      // x-api-key header. Lets external apps subscribe to realtime (DB row
+      // changes, deployment events, …) without a platform JWT.
+      const authHeader = client.handshake.headers['x-api-key'] as string | undefined;
+      const apiKey =
+        (typeof client.handshake.auth?.token === 'string' && client.handshake.auth.token.startsWith('fpk_')
+          ? (client.handshake.auth.token as string)
+          : undefined) ?? authHeader;
+      if (apiKey) {
+        const result = await this.apiKeys.validateProjectApiKey(apiKey);
+        if (!result) { client.disconnect(); return; }
+        client.data.userId = 'api-key';
+        client.data.projectId = result.projectId;
+        client.data.isApiKey = true;
+        this.channelService.registerSocket('api-key', result.projectId, client.id);
+        client.emit('connected', { socketId: client.id, via: 'api-key' });
+        return;
+      }
+
+      const token =
+        client.handshake.auth.token ||
+        client.handshake.headers.authorization?.replace('Bearer ', '');
+      if (!token) { client.disconnect(); return; }
+
+      const payload = await this.tokenService.validateJwt(token);
+      if (!payload) { client.disconnect(); return; }
+
+      client.data.userId = payload.userId;
+      client.data.projectId = payload.projectId;
+      this.channelService.registerSocket(payload.userId, payload.projectId, client.id);
+      client.emit('connected', { socketId: client.id });
+    } catch { client.disconnect(); }
+  }
+
+  async handleDisconnect(client: Socket) {
+    const userId = client.data.userId;
+    const projectId = client.data.projectId;
+    if (userId) {
+      await this.channelService.handleDisconnect(userId, projectId, client.id);
+    }
+  }
+
+  @SubscribeMessage('join_channel')
+  async handleJoinChannel(@ConnectedSocket() client: Socket, @MessageBody() data: { channelId: string; token?: string }) {
+    const result = await this.messages.joinChannel(client, client.data.userId, client.data.projectId, data);
+    if (!result.success) return;
+    return { channelId: result.channelId, success: true };
+  }
+
+  @SubscribeMessage('leave_channel')
+  async handleLeaveChannel(@ConnectedSocket() client: Socket, @MessageBody() data: { channelId: string }) {
+    return this.messages.leaveChannel(client, client.data.userId, client.data.projectId, data.channelId);
+  }
+
+  @SubscribeMessage('message')
+  async handleMessage(@ConnectedSocket() client: Socket, @MessageBody() data: { channelId: string; content: string; event?: string }) {
+    const result = await this.messages.handleMessage(this.server, client.data.userId, client.data.projectId, data, client.id);
+    if (!result.success) { client.emit('error', { message: result.error }); return; }
+    return { success: true, messageId: result.messageId };
+  }
+
+  @SubscribeMessage('set_presence')
+  async handleSetPresence(@ConnectedSocket() client: Socket, @MessageBody() data: { channelId?: string; status: string }) {
+    return this.messages.setPresence(this.server, client.data.userId, data);
+  }
+
+  @SubscribeMessage('get_presence')
+  handleGetPresence(@ConnectedSocket() client: Socket, @MessageBody() data: { channelId: string }) {
+    const presence = this.messages.getPresence(data.channelId);
+    return { channelId: data.channelId, users: presence };
+  }
+
+  /**
+   * Subscribe to a project's live platform-event feed. Authorization: the user
+   * MUST be a ProjectMember of the requested project, or the join is refused
+   * (the bridge then only ever emits to members-only rooms). This is the
+   * Phase 13 authorization prove-it (member of A, denied on B).
+   */
+  @SubscribeMessage('subscribe_project')
+  async handleSubscribeProject(
+    @ConnectedSocket() client: Socket,
+    @MessageBody() data: { projectId: string },
+  ) {
+    const result = await this.subscriptions.subscribeToProject(
+      client,
+      { userId: client.data.userId, projectId: client.data.projectId, isApiKey: client.data.isApiKey },
+      data.projectId,
+    );
+    if (!result.success) {
+      client.emit('error', { message: result.error });
+      return { success: false };
+    }
+    return { success: true, projectId: result.projectId };
+  }
+
+  @SubscribeMessage('unsubscribe_project')
+  handleUnsubscribeProject(
+    @ConnectedSocket() client: Socket,
+    @MessageBody() data: { projectId: string },
+  ) {
+    return this.subscriptions.unsubscribeFromProject(client, data.projectId);
+  }
+}

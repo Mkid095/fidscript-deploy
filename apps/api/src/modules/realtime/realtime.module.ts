@@ -1,0 +1,48 @@
+import { Module, forwardRef } from '@nestjs/common';
+import { RealtimeController } from './realtime.controller';
+import { RealtimeService } from './realtime.service';
+import { RealtimeGateway } from './gateways/realtime.gateway';
+import { RealtimeMessageHandlerService } from './gateways/realtime-message-handler.service';
+import { ChannelService } from './services/channel.service';
+import { ChannelStateService } from './services/channel-state.service';
+import { ChannelStateOpsService } from './services/channel-state-ops.service';
+import { ChannelEventsService } from './services/channel-events.service';
+import { PresenceService } from './services/presence.service';
+import { TokenService } from './services/token.service';
+import { RealtimeBridgeService } from './services/realtime-bridge.service';
+import { RealtimeSubscriptionService } from './services/realtime-subscription.service';
+import { RedisModule } from '../redis/redis.module';
+import { ProjectsModule } from '@/modules/projects/projects.module';
+import { AuthModule } from '@/modules/auth/auth.module';
+
+@Module({
+  // ProjectsModule provides ProjectApiKeyService so the WS gateway can accept
+  // project API keys (X-API-Key / fpk_ token) for BaaS realtime subscriptions.
+  imports: [RedisModule, forwardRef(() => ProjectsModule), forwardRef(() => AuthModule)],
+  controllers: [RealtimeController],
+  providers: [
+    RealtimeService,
+    RealtimeGateway,
+    RealtimeMessageHandlerService,
+    ChannelService,
+    ChannelStateService,
+    ChannelStateOpsService,
+    ChannelEventsService,
+    PresenceService,
+    TokenService,
+    // Phase 13: platform-event fan-out + project-room authorization
+    RealtimeBridgeService,
+    RealtimeSubscriptionService,
+  ],
+  exports: [
+    RealtimeService,
+    RealtimeGateway,
+    ChannelService,
+    ChannelStateService,
+    ChannelStateOpsService,
+    ChannelEventsService,
+    PresenceService,
+    TokenService,
+  ],
+})
+export class RealtimeModule {}
