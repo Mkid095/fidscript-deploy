@@ -25,7 +25,7 @@ export function Input({ label, hint, error, className = '', id, ...rest }: Input
   const message = error ?? hint;
 
   return (
-    <div className="space-y-1.5">
+    <div className="space-y-2">
       {label ? (
         <label htmlFor={inputId} className="block text-xs font-medium text-text-muted">
           {label}
@@ -62,7 +62,7 @@ export function Select({ label, hint, error, options, className = '', id, ...res
   const message = error ?? hint;
 
   return (
-    <div className="space-y-1.5">
+    <div className="space-y-2">
       {label ? (
         <label htmlFor={selectId} className="block text-xs font-medium text-text-muted">
           {label}

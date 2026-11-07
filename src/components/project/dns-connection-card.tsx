@@ -7,7 +7,10 @@ import { Input } from '@/components/ui/input';
 import { Card } from '@/components/ui/card';
 import { Badge, ErrorState } from '@/components/ui/feedback';
 
-import { connectDnsProviderAction } from '@/app/(project)/projects/[projectId]/domains/actions';
+import {
+  connectDnsProviderAction,
+  disconnectDnsProviderAction,
+} from '@/app/(project)/projects/[projectId]/domains/actions';
 
 /**
  * The account that holds the domain.
@@ -30,6 +33,16 @@ export function DnsConnectionCard({
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
+
+  const disconnect = () => {
+    setError(null);
+    setNotice(null);
+    startTransition(async () => {
+      const result = await disconnectDnsProviderAction(projectId);
+      if (result.error) setError(result.error);
+      else setNotice('The account is disconnected. The token went with it.');
+    });
+  };
 
   const connect = () => {
     setError(null);
@@ -62,8 +75,14 @@ export function DnsConnectionCard({
                 : 'not checked yet'}
             </p>
           </div>
-          <Badge tone="success">connected</Badge>
+          <div className="flex items-center gap-3">
+            <Badge tone="success">connected</Badge>
+            <Button variant="ghost" size="sm" onClick={disconnect} loading={pending}>
+              Disconnect
+            </Button>
+          </div>
         </div>
+        {error ? <div className="mt-3"><ErrorState message={error} /></div> : null}
         {notice ? <p className="mt-3 text-xs text-success">{notice}</p> : null}
       </Card>
     );

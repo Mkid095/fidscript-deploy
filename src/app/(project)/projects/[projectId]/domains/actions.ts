@@ -42,6 +42,21 @@ export async function connectDnsProviderAction(
   }
 }
 
+/** Let the DNS account go. The token goes with it. */
+export async function disconnectDnsProviderAction(
+  projectId: string,
+): Promise<{ ok?: boolean; error?: string }> {
+  try {
+    await api.delete(`/projects/${projectId}/domains/connection`);
+    revalidatePath(`/projects/${projectId}/domains`);
+    return { ok: true };
+  } catch (err) {
+    return {
+      error: err instanceof Error ? err.message : 'The account could not be disconnected.',
+    };
+  }
+}
+
 /**
  * Add a domain.
  *

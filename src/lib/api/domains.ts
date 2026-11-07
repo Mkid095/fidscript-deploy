@@ -36,6 +36,14 @@ export async function getDnsConnection(projectId: string): Promise<DnsConnection
   return api.get<DnsConnection | null>(`/projects/${projectId}/domains/connection`).catch(() => null);
 }
 
+/** The account is let go — the token goes with it. */
+export async function disconnectDnsProvider(projectId: string): Promise<boolean> {
+  const response = await api
+    .delete<{ disconnected: boolean }>(`/projects/${projectId}/domains/connection`)
+    .catch(() => ({ disconnected: false }));
+  return response.disconnected;
+}
+
 /** The records a domain needs. Their status is live. */
 export async function getDnsRecords(
   projectId: string,

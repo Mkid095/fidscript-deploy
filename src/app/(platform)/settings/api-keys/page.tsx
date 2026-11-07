@@ -1,8 +1,9 @@
 import { apiKeys } from '@/lib/api/platform';
-import { Card, PageHeader, SectionHeader } from '@/components/ui/card';
+import { PageHeader, SectionHeader } from '@/components/ui/card';
 import { Page } from '@/components/ui/page';
-import { Badge, EmptyState, ErrorState } from '@/components/ui/feedback';
+import { ErrorState } from '@/components/ui/feedback';
 import { SettingsNav } from '@/components/platform/settings-nav';
+import { ApiKeysPanel } from '@/components/platform/api-keys-panel';
 
 /**
  * The platform's API keys.
@@ -24,40 +25,17 @@ export default async function ApiKeysSettingsPage() {
       <SettingsNav />
 
       <section>
-        <SectionHeader title="Your keys" />
+        <SectionHeader
+          title="Your keys"
+          description="A key acts as you — from a script, from the command line, or from an agent."
+        />
         {!keys ? (
           <ErrorState
             title="The platform did not answer"
             message="The keys could not be loaded. The platform may be restarting — try again in a moment."
           />
-        ) : keys.length === 0 ? (
-          <Card>
-            <EmptyState
-              title="No keys yet"
-              body="A key acts as you, from a script or an agent."
-            />
-          </Card>
         ) : (
-          <Card>
-            <ul className="divide-y divide-rail">
-              {keys.map((key) => (
-                <li key={key.id} className="flex items-center justify-between gap-4 px-4 py-3">
-                  <div className="min-w-0">
-                    <p className="truncate text-sm text-text">{key.name}</p>
-                    <p className="truncate text-xs text-text-dim">
-                      {key.permissions.length > 0 ? key.permissions.join(', ') : 'No scopes'} · created{' '}
-                      {new Date(key.createdAt).toLocaleDateString()}
-                    </p>
-                  </div>
-                  {key.lastUsedAt ? (
-                    <Badge tone="neutral">Used {new Date(key.lastUsedAt).toLocaleDateString()}</Badge>
-                  ) : (
-                    <Badge tone="neutral">Never used</Badge>
-                  )}
-                </li>
-              ))}
-            </ul>
-          </Card>
+          <ApiKeysPanel keys={keys} />
         )}
       </section>
     </Page>

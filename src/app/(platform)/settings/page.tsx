@@ -3,9 +3,11 @@ import Link from 'next/link';
 import { mfaStatus, sessions, sessionUser } from '@/lib/api/platform';
 import { Card, PageHeader, SectionHeader } from '@/components/ui/card';
 import { Page } from '@/components/ui/page';
-import { Badge } from '@/components/ui/feedback';
-import { SettingsNav } from '@/components/platform/settings-nav';
 import { DefinitionRow } from '@/components/ui/input';
+import { SettingsNav } from '@/components/platform/settings-nav';
+import { AccountNameForm } from '@/components/platform/account-name-form';
+import { MfaPanel } from '@/components/platform/mfa-panel';
+import { SessionList } from '@/components/platform/session-list';
 
 /**
  * Platform settings — the account.
@@ -32,52 +34,28 @@ export default async function SettingsPage() {
         <Card className="px-4 py-2">
           <dl className="divide-y divide-rail">
             <DefinitionRow term="Email">{user?.email ?? '—'}</DefinitionRow>
-            <DefinitionRow term="Name">{user?.name ?? '—'}</DefinitionRow>
             <DefinitionRow term="Role">{user?.role ?? '—'}</DefinitionRow>
-            <DefinitionRow term="Two-factor">
-              {mfa ? (
-                <Badge tone={mfa.enabled ? 'success' : 'neutral'}>
-                  {mfa.enabled ? 'On' : 'Not enabled'}
-                </Badge>
-              ) : (
-                'Not available'
-              )}
-            </DefinitionRow>
           </dl>
+          <div className="py-3">
+            <AccountNameForm name={user?.name ?? null} />
+          </div>
         </Card>
-        {!mfa ? (
-          <p className="mt-2 text-xs text-text-dim">
-            The platform did not answer about two-factor. The account above is what it knows.
-          </p>
-        ) : null}
       </section>
 
       <section>
         <SectionHeader
-          title="Sessions"
-          description="Where this account is signed in."
+          title="Two-factor"
+          description="A code from your authenticator app, as well as your password."
         />
-        <Card>
-          {open.length === 0 ? (
-            <p className="px-4 py-3 text-sm text-text-muted">No other sessions.</p>
-          ) : (
-            <ul className="divide-y divide-rail">
-              {open.map((session) => (
-                <li key={session.id} className="flex items-center justify-between gap-4 px-4 py-3">
-                  <div className="min-w-0">
-                    <p className="truncate text-sm text-text">
-                      {session.userAgent ?? 'Unknown device'}
-                    </p>
-                    <p className="truncate text-xs text-text-dim">
-                      {session.ipAddress ?? 'Unknown address'} · started{' '}
-                      {new Date(session.createdAt).toLocaleDateString()}
-                    </p>
-                  </div>
-                </li>
-              ))}
-            </ul>
-          )}
-        </Card>
+        <MfaPanel
+          enabled={mfa?.enabled ?? false}
+          recoveryCodesRemaining={mfa?.recoveryCodesRemaining ?? 0}
+        />
+      </section>
+
+      <section>
+        <SectionHeader title="Sessions" description="Where this account is signed in." />
+        <SessionList sessions={open} />
       </section>
 
       <section>
