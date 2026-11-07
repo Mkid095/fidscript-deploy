@@ -128,3 +128,11 @@ export interface ApiKey {
   expiresAt: string | null;
   createdAt: string;
 }
+
+/** A project's Instant app — its data plane. */
+export interface InstantApp {
+  appId: string;
+  title: string;
+  status: string;
+  createdAt: string;
+}
