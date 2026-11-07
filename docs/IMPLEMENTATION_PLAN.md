@@ -163,6 +163,18 @@ application is down says so, and links to where it is fixed.
 
 ---
 
+### Where P3 stands
+
+| Capability | What is built | What is left |
+|---|---|---|
+| **Email** | The domains with their records and their live status, the mailboxes, the aliases, the keys, the sending, the deliverability counts and the message log. | The inbound routes and the webhook subscriptions — the API has them; the screen does not yet. |
+| **Packages** | The registry address, whether it answers, the connect snippets, the published packages, and each package's versions, tags and README. | Maven is not served by this deployment, and the screen says so. |
+| **WhatsApp** | The honest gap, and the console that does it today behind an **Advanced** link. | The instances, the pairing QR and the tokens — the platform keeps no project-scoped instances yet. |
+| **Monitoring and Logs** | The metrics, the alerts, the streams and the entries, per project, with **Open in Grafana**. | The alert rules and the notification channels — the API has them; the screen does not yet. |
+| **Deployments, polished** | Source → detect → configure → deploy → live, with the build log read while it runs, and the stop, restart, roll back and remove. | The redeploy, and the live tail of the log. |
+
+---
+
 ## P4 — the API moves home
 
 The API joins this repository, one module at a time, with the console as its
