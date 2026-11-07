@@ -76,6 +76,7 @@ export type EventType =
   | 'projects.project.restored'
   | 'projects.project.cloned'
   | 'projects.project.provisioned'
+  | 'projects.project.provision_failed'
   | 'projects.member.added'
   | 'projects.member.removed'
   | 'projects.member.role_changed'

@@ -54,8 +54,17 @@ export class ProjectCreateService {
 
     // Fire-and-forget provisioning of default resources (DB, bucket, channel,
     // API key). Errors are logged but never block the create response.
-    void this.provisioner.provisionDefaults(project.id, userId, project.name)
-      .then((resources) => {
+    //
+    // The project's status follows the provisioning: a project that is still
+    // "creating" after its resources are up is a project that says
+    // something untrue about itself.
+    void this.provisioner
+      .provisionDefaults(project.id, userId, project.name)
+      .then(async (resources) => {
+        await this.prisma.project
+          .update({ where: { id: project.id }, data: { status: 'ACTIVE' } })
+          .catch(() => undefined);
+
         this.eventService.emit('projects.project.provisioned', project.id, {
           projectId: project.id,
           databaseId: resources.databaseId,
@@ -63,6 +72,14 @@ export class ProjectCreateService {
           channelId: resources.channelId,
           apiKeyId: resources.apiKeyId,
           errors: resources.errors,
+        });
+      })
+      .catch((err) => {
+        // The provisioning itself failed — the project stays "creating", and
+        // the reason is in the event.
+        this.eventService.emit('projects.project.provision_failed', project.id, {
+          projectId: project.id,
+          error: err instanceof Error ? err.message : String(err),
         });
       });
 
