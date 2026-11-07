@@ -25,6 +25,15 @@ services:
     image: traefik:v3.3
     container_name: fidscript_traefik
     restart: unless-stopped
+    # The metrics Prometheus scrapes: the requests per router and per
+    # service — which is how the console knows how much traffic each of the
+    # platform's own sites is carrying.
+    command:
+      - traefik
+      - --metrics.prometheus=true
+      - --metrics.prometheus.addEntryPointsLabels=true
+      - --metrics.prometheus.addRoutersLabels=true
+      - --metrics.prometheus.addServicesLabels=true
     deploy:
       resources:
         limits:

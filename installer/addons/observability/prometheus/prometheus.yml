@@ -40,3 +40,9 @@ scrape_configs:
   - job_name: loki
     static_configs:
       - targets: ["fidscript_loki:3100"]
+
+  # The edge — the requests each router and each service carried. This is
+  # where "how much traffic is this site getting" comes from.
+  - job_name: traefik
+    static_configs:
+      - targets: ["fidscript_traefik:8080"]

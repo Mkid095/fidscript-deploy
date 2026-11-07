@@ -8,6 +8,11 @@ entryPoints:
   # The internal entrypoint Traefik's own /ping endpoint binds to. It is
   # NOT published to the host — it exists so the healthcheck has something
   # to probe, and so traefik healthcheck --ping works.
+  #
+  # The Prometheus metrics are served here too, and Prometheus scrapes them
+  # from inside the network: the requests each router carried, which is how
+  # the console knows how much traffic each of the platform's own sites is
+  # getting.
   traefik:
     address: ":8080"
   web:

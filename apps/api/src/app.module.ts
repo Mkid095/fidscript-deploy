@@ -23,6 +23,7 @@ import { FunctionsModule } from './modules/functions/functions.module';
 import { QueuesModule } from './modules/queues/queues.module';
 import { SchedulerModule } from './modules/scheduler/scheduler.module';
 import { MonitoringModule } from './modules/monitoring/monitoring.module';
+import { SystemModule } from './modules/system/system.module';
 import { LoggingModule } from './modules/logging/logging.module';
 import { TemplatesModule } from './modules/templates/templates.module';
 import { AIModule } from './modules/ai/ai.module';
@@ -62,6 +63,7 @@ import { ApplicationsModule } from './modules/applications/applications.module';
     QueuesModule,
     SchedulerModule,
     MonitoringModule,
+    SystemModule,
     LoggingModule,
     TemplatesModule,
     AIModule,
