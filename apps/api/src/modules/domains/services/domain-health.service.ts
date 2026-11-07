@@ -1,4 +1,5 @@
 import { Injectable, Logger, NotFoundException, ConflictException } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { PrismaService } from '@/prisma/prisma.service';
 import { EventService } from '@/modules/events/event.service';
 import { DomainChecksService } from './domain-checks.service';
@@ -11,6 +12,7 @@ export class DomainHealthService {
 
   constructor(
     private prisma: PrismaService,
+    private config: ConfigService,
     private eventService: EventService,
     private checks: DomainChecksService,
     private access: DomainAccessService,
@@ -198,10 +200,28 @@ export class DomainHealthService {
 
     // Deployment records
     if (isApex) {
-      records.push({ type: 'A', name: '@', value: 'YOUR_SERVER_IP', ttl: 300, status: 'pending', category: 'deployment' });
+      // The server's own address — a literal "YOUR_SERVER_IP" is a record
+      // that points nowhere.
+      records.push({
+        type: 'A',
+        name: '@',
+        value: this.config.get<string>('SERVER_IP', ''),
+        ttl: 300,
+        status: 'pending',
+        category: 'deployment',
+      });
     } else {
       const slug = this.extractSlug(domain.deployment?.deploymentUrl ?? domain.domain);
-      records.push({ type: 'CNAME', name: domain.domain.split('.')[0], value: `${slug}.apps.local`, ttl: 300, status: 'pending', category: 'deployment' });
+      // The platform's own domain — not a literal. A record that points at
+      // "apps.local" is a record that points nowhere.
+      records.push({
+        type: 'CNAME',
+        name: domain.domain.split('.')[0],
+        value: `${slug}.apps.${this.platformDomain()}`,
+        ttl: 300,
+        status: 'pending',
+        category: 'deployment',
+      });
     }
     records.push({ type: 'TXT', name: `_fidscript-verification.${domain.domain}`, value: `FIDScript verified ${domainId}`, ttl: 300, status: 'pending', category: 'verification' });
 
@@ -251,6 +271,11 @@ export class DomainHealthService {
       async (d: string) => { return ''; },
       async () => { return {}; },
     );
+  }
+
+  /** The domain this platform answers on. */
+  private platformDomain(): string {
+    return this.config.get<string>('PLATFORM_DOMAIN', 'apps.local');
   }
 
   private extractSlug(deploymentUrl: string): string {

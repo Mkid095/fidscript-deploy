@@ -1,4 +1,5 @@
 import { Injectable, Logger, Inject } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { PrismaService } from '@/prisma/prisma.service';
 import { EventService } from '@/modules/events/event.service';
 import { DnsProvider } from '@/modules/domains/providers/dns-provider.interface';
@@ -39,6 +40,7 @@ export class DomainRepairExecutorService {
     private eventService: EventService,
     private ssl: DomainSslService,
     private emailKeyService: DomainEmailKeyService,
+    private config: ConfigService,
     @Inject('DNS_PROVIDER') private dnsProvider: DnsProvider,
   ) {}
 
@@ -224,11 +226,16 @@ export class DomainRepairExecutorService {
   ): string {
     switch (type) {
       case 'A':
-        return 'YOUR_SERVER_IP'; // User must update to real IP
+        // The server's own address. A record that points at a placeholder
+        // is a record that points nowhere.
+        return this.config.get<string>('SERVER_IP', '');
       case 'AAAA':
-        return 'YOUR_IPV6';
+        return this.config.get<string>('SERVER_IPV6', '');
       case 'CNAME':
-        return domain.deployment?.deploymentUrl ?? `${domain.domain.split('.')[0]}.apps.local`;
+        return (
+          domain.deployment?.deploymentUrl ??
+          `${domain.domain.split('.')[0]}.apps.${this.config.get<string>('PLATFORM_DOMAIN', 'apps.local')}`
+        );
       case 'TXT':
         return `FIDScript verified ${domain.domain}`;
     }

@@ -120,7 +120,15 @@ export class DomainAddService {
     const slug = this.extractSlug(deploymentUrl || domain);
     const instructions = [];
     if (isApex) {
-      instructions.push({ type: 'A', name: '@', value: 'YOUR_SERVER_IP', ttl: 300, notes: 'A record for the root domain.' });
+      // The server's own address — a literal "YOUR_SERVER_IP" is a record
+      // that points nowhere.
+      instructions.push({
+        type: 'A',
+        name: '@',
+        value: this.configService.get<string>('SERVER_IP', ''),
+        ttl: 300,
+        notes: 'A record for the root domain.',
+      });
     } else {
       instructions.push({ type: 'CNAME', name: domain.replace(`.${this.platformDomain}`, '').split('.')[0], value: `${slug}.apps.${this.platformDomain}`, ttl: 300, notes: `Routes ${domain} to your deployment.` });
     }

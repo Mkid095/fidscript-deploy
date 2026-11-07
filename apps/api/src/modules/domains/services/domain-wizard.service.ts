@@ -1,4 +1,5 @@
 import { Injectable, Logger } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { PrismaService } from '@/prisma/prisma.service';
 import { DomainChecksService } from './domain-checks.service';
 import { DomainEmailKeyService } from './domain-email-key.service';
@@ -61,6 +62,7 @@ export class DomainWizardService {
     private prisma: PrismaService,
     private checks: DomainChecksService,
     private emailKeyService: DomainEmailKeyService,
+    private config: ConfigService,
   ) {}
 
   // ── Required records by type ────────────────────────────────────────────────
@@ -85,7 +87,7 @@ export class DomainWizardService {
           id: 'a_deploy',
           type: 'A',
           name: '@',
-          value: 'YOUR_SERVER_IP',
+          value: this.config.get<string>('SERVER_IP', ''),
           ttl: 300,
           category: 'deployment',
         });
@@ -94,7 +96,9 @@ export class DomainWizardService {
         id: 'cname_deploy',
         type: 'CNAME',
         name: domainName.startsWith('www.') ? 'www' : domainName.split('.')[0],
-        value: isApex ? 'YOUR_DEPLOYMENT_CNAME' : `${domainName.split('.')[0]}.apps.local`,
+        value: isApex
+          ? this.config.get<string>('SERVER_IP', '')
+          : `${domainName.split('.')[0]}.apps.${this.config.get<string>('PLATFORM_DOMAIN', 'apps.local')}`,
         ttl: 300,
         category: 'deployment',
       });
