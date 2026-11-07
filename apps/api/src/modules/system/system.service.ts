@@ -23,6 +23,15 @@ export interface ContainerStat {
   networkBytes: number;
 }
 
+export interface SiteTraffic {
+  /** The host the request came for. */
+  site: string;
+  /** How many requests it carried. */
+  requests: number;
+  /** How many of them did not succeed. */
+  errors: number;
+}
+
 export interface DiskState {
   /** The bytes used on the machine's own filesystem. */
   used: number;
@@ -51,6 +60,48 @@ export class SystemService {
    * held for a few seconds, because a page that asks twice does not need
    * the machine to be asked twice.
    */
+  /**
+   * The traffic each site carried.
+   *
+   * It is counted from the edge's own access log — the requests that
+   * reached the platform, and which host they came for. That is the answer
+   * to "how much traffic is this site getting".
+   */
+  async traffic(since = '1h'): Promise<SiteTraffic[]> {
+    const counts = new Map<string, SiteTraffic>();
+
+    try {
+      const output = execFileSync(
+        'docker',
+        ['logs', '--since', since, '--tail', '50000', 'fidscript_traefik'],
+        { timeout: 20_000, stdio: 'pipe' } as any,
+      ).toString();
+
+      for (const line of output.split('\n')) {
+        if (!line.trim().startsWith('{')) continue;
+        try {
+          const entry = JSON.parse(line) as {
+            RequestHost?: string;
+            DownstreamStatus?: number;
+          };
+          const site = entry.RequestHost;
+          if (!site) continue;
+
+          const current = counts.get(site) ?? { site, requests: 0, errors: 0 };
+          current.requests += 1;
+          if ((entry.DownstreamStatus ?? 0) >= 400) current.errors += 1;
+          counts.set(site, current);
+        } catch {
+          // A line that is not JSON is not a request.
+        }
+      }
+    } catch (err) {
+      this.logger.warn(`Could not read the access log: ${(err as Error).message}`);
+    }
+
+    return [...counts.values()].sort((a, b) => b.requests - a.requests);
+  }
+
   async state(): Promise<SystemState> {
     if (this.cached && Date.now() - this.cached.at < CACHE_MS) {
       return this.cached.state;

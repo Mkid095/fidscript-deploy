@@ -24,6 +24,7 @@ import { QueuesModule } from './modules/queues/queues.module';
 import { SchedulerModule } from './modules/scheduler/scheduler.module';
 import { MonitoringModule } from './modules/monitoring/monitoring.module';
 import { SystemModule } from './modules/system/system.module';
+import { WhatsappModule } from './modules/whatsapp/whatsapp.module';
 import { LoggingModule } from './modules/logging/logging.module';
 import { TemplatesModule } from './modules/templates/templates.module';
 import { AIModule } from './modules/ai/ai.module';
@@ -64,6 +65,7 @@ import { ApplicationsModule } from './modules/applications/applications.module';
     SchedulerModule,
     MonitoringModule,
     SystemModule,
+    WhatsappModule,
     LoggingModule,
     TemplatesModule,
     AIModule,

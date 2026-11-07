@@ -28,10 +28,13 @@ services:
     # The metrics Prometheus scrapes: the requests per router and per
     # service — which is how the console knows how much traffic each of the
     # platform's own sites is carrying.
+    # The Prometheus exporter, and the entrypoint that serves it. The
+    # requests each router carried are what the console's System screen
+    # shows — which entrypoint serves them is the one named "traefik".
     command:
       - traefik
       - --metrics.prometheus=true
-      - --metrics.prometheus.addEntryPointsLabels=true
+      - --entrypoints.traefik.observability.metrics=true
       - --metrics.prometheus.addRoutersLabels=true
       - --metrics.prometheus.addServicesLabels=true
     deploy:
@@ -393,9 +396,10 @@ services:
       PGBOUNCER_PORT: "6432"
       REDIS_URL: redis://:${REDIS_PASSWORD}@redis:6379
       NATS_URL: nats://nats:4222
-      # Override the image-baked EVOLUTION_API_URL (http://fidscript_whatsapp_api:8080)
-      # since the WhatsApp API container listens on port 3099, not 8080.
-      EVOLUTION_API_URL: http://fidscript_whatsapp_api:3099
+      # The WhatsApp platform's API — the Evolution API. The api joins the
+      # `evolution` network below and reaches it directly, rather than
+      # bouncing the request out through the edge and back.
+      EVOLUTION_API_URL: http://platform-api:8080
       MINIO_ENDPOINT: minio:9000
       MINIO_PORT: "9000"
       # Public MinIO endpoint used for signed URLs returned to clients.
@@ -517,6 +521,9 @@ services:
       - fidscript-whatsapp
       - fidscript-app
       - fidscript-instant
+      # The WhatsApp platform's own network, so the Evolution API is one
+      # hop away instead of a round trip through the internet.
+      - evolution
     depends_on:
       postgres:
         condition: service_healthy

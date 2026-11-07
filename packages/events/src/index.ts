@@ -77,6 +77,8 @@ export type EventType =
   | 'projects.project.cloned'
   | 'projects.project.provisioned'
   | 'projects.project.provision_failed'
+  | 'projects.whatsapp.connected'
+  | 'projects.whatsapp.disconnected'
   | 'projects.member.added'
   | 'projects.member.removed'
   | 'projects.member.role_changed'

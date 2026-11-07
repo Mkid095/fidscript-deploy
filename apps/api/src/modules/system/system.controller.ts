@@ -17,6 +17,12 @@ import { SystemService } from './system.service';
 export class SystemController {
   constructor(private readonly system: SystemService) {}
 
+  @Get('traffic')
+  @ApiOperation({ summary: 'The requests each site carried' })
+  async traffic() {
+    return { sites: await this.system.traffic() };
+  }
+
   @Get('containers')
   @ApiOperation({ summary: 'The running containers, and what each of them is using' })
   async containers() {

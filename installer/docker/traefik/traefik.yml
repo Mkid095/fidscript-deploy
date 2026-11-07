@@ -4,6 +4,14 @@ api:
   # on the platform networks. Keep it closed — the read-only dashboard is
   # still available, but the control API is not reachable.
   insecure: false
+# The access log.
+#
+# It is what the console's System screen counts the traffic with: the
+# requests each router carried, and the host they came for.
+accessLog:
+  format: json
+  bufferingSize: 100
+
 entryPoints:
   # The internal entrypoint Traefik's own /ping endpoint binds to. It is
   # NOT published to the host — it exists so the healthcheck has something
