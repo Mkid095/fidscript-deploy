@@ -162,6 +162,52 @@ export async function getMachineState(): Promise<{
   };
 }
 
+/**
+ * The logs of one project's containers.
+ *
+ * The deployment engine names a project's containers after the project, so
+ * the machine's log store can be asked for exactly those — the project's
+ * own logs, beside the platform's.
+ */
+export async function getProjectLogs(
+  projectSlug: string,
+  limit = 60,
+): Promise<LogLine[]> {
+  const base = await lokiUrl();
+  if (!base) return [];
+
+  const end = Date.now() * 1_000_000;
+  const start = end - 60 * 60 * 1_000_000;
+  const selector = `{container=~"fidscript-${projectSlug}-.*"}`;
+
+  try {
+    const response = await fetch(
+      `${base}/loki/api/v1/query_range?query=${encodeURIComponent(selector)}&limit=${limit}&start=${start}&end=${end}&direction=backward`,
+      { cache: 'no-store', signal: AbortSignal.timeout(8000) },
+    );
+    if (!response.ok) return [];
+
+    const body = (await response.json()) as {
+      data?: {
+        result?: Array<{
+          stream?: Record<string, string>;
+          values?: Array<[string, string]>;
+        }>;
+      };
+    };
+
+    return (body.data?.result ?? []).flatMap((entry) =>
+      (entry.values ?? []).map(([at, line]) => ({
+        at,
+        line,
+        source: entry.stream?.service_name ?? entry.stream?.container ?? 'the project',
+      })),
+    );
+  } catch {
+    return [];
+  }
+}
+
 /** A log line from the platform. */
 export interface LogLine {
   at: string;
