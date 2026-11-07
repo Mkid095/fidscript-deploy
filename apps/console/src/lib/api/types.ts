@@ -38,6 +38,9 @@ export interface Project {
   deploymentOn?: boolean;
   /** Whether a push to the branch makes a new deployment. */
   autoDeploy?: boolean;
+  /** The workspace this project belongs to, when it belongs to one. */
+  organizationId?: string | null;
+  organization?: { id: string; name: string; slug: string } | null;
   lastActivityAt?: string | null;
   createdAt: string;
   updatedAt: string;

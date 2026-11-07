@@ -8,6 +8,7 @@ import {
   getProjectResources,
 } from '@/lib/api/project';
 import { Card, PageHeader, SectionHeader } from '@/components/ui/card';
+import { DefinitionRow } from '@/components/ui/input';
 import { Page } from '@/components/ui/page';
 import { ErrorState } from '@/components/ui/feedback';
 import { ProjectGeneralForm } from '@/components/project/project-general-form';
@@ -63,6 +64,21 @@ export default async function ProjectSettingsPage({
   return (
     <Page>
       <PageHeader title="Settings" description={project.name} />
+
+      {project.organization ? (
+        <section>
+          <SectionHeader
+            title="The workspace"
+            description="Who this project belongs to, when it belongs to somebody."
+          />
+          <Card className="px-4 py-2">
+            <dl className="divide-y divide-rail">
+              <DefinitionRow term="Workspace">{project.organization.name}</DefinitionRow>
+              <DefinitionRow term="Owner">{project.ownerId ? 'A person' : '—'}</DefinitionRow>
+            </dl>
+          </Card>
+        </section>
+      ) : null}
 
       <section>
         <SectionHeader title="General" />

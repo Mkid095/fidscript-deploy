@@ -121,11 +121,38 @@ show.
 
 ---
 
+### D11 — The organisation model, answered
+
+**What:** a workspace is a **tenancy boundary** — the thing that owns
+projects, members and roles. A person has a personal workspace by default;
+a team shares one.
+
+| The question | The answer |
+|---|---|
+| Does a person have a personal workspace? | **Yes.** Every account has one, and it holds the projects it owns. It is what makes "my projects" and "our projects" the same thing when a team grows. |
+| What is a workspace for? | **Sharing.** It owns projects, the people who may work on them, and their roles. It is not a billing entity and it is not a folder. |
+| Who owns a project that belongs to a workspace? | **Both, and they are different.** The project keeps its maker (`ownerId` — a person); the workspace says who it belongs to (`organizationId`). Access is the union: the owner always has it, the workspace's members have it through their role. |
+| What happens to the auto-provisioned personal workspace? | **It stays, and it stops being named after the email.** It is called *Personal*, it can be renamed, and renaming it changes nothing else — which is why the migration is safe. |
+| Is there a billing or plan relationship? | **No, not here.** The plan column stays for a hosted variant; nothing on this platform reads it, and nothing should. |
+| What does "invite somebody to my platform" mean? | **Nothing — the platform is not a thing you are invited to.** An invitation says *come and work on this project* or *come and work in this workspace*. |
+
+**Why it is safe now:** the console's menus are derived from the project's
+shape and what it has — never from who owns it. The project's settings show
+the workspace it belongs to, and nothing else changes.
+
+**What is still owed:** the *hosted* variant's billing, and whether a
+workspace may be nested. Neither is read by this platform.
+
+---
+
 ## 2. Still owed — the organization model
 
-**Nothing about organizations is decided, and nothing in this plan depends on
-the answer.** It is recorded here so Phase 5B starts from facts rather than
-guesses.
+*This is now answered — see D11 above. What follows is the record of the
+questions as they were, and of what the schema does today.*
+
+**The decisions are made — see D11 above.** What follows is the record of
+the questions as they were, and of what the schema does today, so the
+reasoning is not lost.
 
 ### What exists today
 

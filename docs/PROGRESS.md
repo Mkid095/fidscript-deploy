@@ -106,7 +106,17 @@ touching a registrar.
 The installer's scripts and the applications' add-ons are **in this
 repository now**, and the installer finds them where they live.
 
-### 2.7 The hub
+### 2.7 The home
+
+The repository is the platform's home: the console, the API, the packages,
+the command line, the MCP server, the installer and the applications.
+
+```
+apps/console   apps/api   apps/cli   apps/mcp-server
+packages/      applications/   installer/   docs/
+```
+
+### 2.8 The hub
 
 `applications/` holds every application the platform can have, with the
 platform's own integration for it — the image it runs, the configuration it
@@ -121,11 +131,11 @@ a hub.
 
 ## 3. The platform behind it
 
-The API is **not** in this repository yet — it runs, it is deployed, and
-the console is built against it. It moves here in the last phase.
+The API is **in this repository now**, beside the console — so the
+platform is one repository, and the deployment is built from it.
 
-Ten changes to it this week, each one fixing something that was quietly
-wrong:
+Eleven changes to it this week, each one fixing something that was
+quietly wrong:
 
 | | |
 |---|---|
@@ -139,6 +149,7 @@ wrong:
 | The **traffic** | the requests each site carried, read from the edge's access log |
 | The **WhatsApp door** | the Evolution API's address pointed at a container that does not exist; the api joins that network now |
 | The **console at the root** | the compose service that serves it |
+| The **logs of a container** | the platform reads them from Loki, so a deployment's output can be followed while it runs |
 
 ---
 
@@ -159,11 +170,23 @@ links.
 
 ---
 
-## 5. What is still open
+## 5. What was finished this week
 
 | | |
 |---|---|
-| **The API moves home** | the last phase: the API, the packages and the installer come into this repository |
+| **The API moves home** | the API, the packages, the command line, the MCP server and the installer are in this repository; the deployment builds from it |
+| **The live log** | the deployment screen follows the application's own output, read from the machine that runs it |
+| **The redeploy** | one button builds the same source again |
+| **The alert rules** | the rules that say when to speak up, and the channels it goes to |
+| **The inbound routes** | where the mail goes when it arrives, and the webhooks that are told |
+| **Maven** | it was served all along — `maven.fidscript.com` carries the Instant SDKs |
+| **The organisation model** | answered in D11, and the project's settings show the workspace it belongs to |
+
+## 6. What is still open
+
+| | |
+|---|---|
+| **The API moves home** | **done** — the API, the packages, the command line, the MCP server and the installer are in this repository, and the deployment builds from it |
 | **The applications' own source** | each application stays in its own project; the hub holds the platform's integration and the link |
 | **The deployment's live tail** | the build log is polled, not streamed — the platform has no stream for it |
 | **The redeploy** | the deployment screen has stop, start, roll back and remove; a one-click redeploy is missing |
@@ -174,7 +197,7 @@ links.
 
 ---
 
-## 6. How it was done
+## 7. How it was done
 
 Thirty-one commits in this repository, ten in the platform's. Each one says
 what it is and why it is — the messages are the record.
