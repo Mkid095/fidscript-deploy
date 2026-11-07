@@ -28,6 +28,8 @@ an **MCP server with Claude skills**, and a **CLI**. Installers get all three.
 3. `docs/AUDIT.md` — where we actually are (honest current state).
 4. `AGENT_STATUS.md` — which phase is `In Progress` / `Verified`.
 5. `docs/phases/README.md` — the roadmap + the 6-point verification rubric.
+5b. `docs/USER_FLOWS.md` — **the levels** (platform / project / application),
+   the map of every file, and how a person is meant to move through it.
 6. `docs/phases/phase-XX.md` — the phase you are working. **Each has a
    `## Files you'll touch` map** (exact paths + where the stub lives) and a
    `## Verification` section with VPS prove-it commands.

@@ -68,6 +68,7 @@ Before touching any code, read in this exact order:
 | **Start here — orient any agent/human (read first)** | `docs/START_HERE.md` |
 | **Current phase and status** (what's done / what's next) | `AGENT_STATUS.md` |
 | **⚠️ Before implementing: read the validation + roadmap** | `docs/VALIDATION.md`, `docs/IMPLEMENTATION_ROADMAP.md`, `docs/backend-prerequisites.md` |
+| **The levels and the flows** | `docs/USER_FLOWS.md` — the platform / project / application levels, every file's map, and how a person is meant to move through it |
 | **⚠️ Before merging: the Definition of Done (merge gate)** | `docs/DEFINITION_OF_DONE.md` |
 | **⚠️ While building: the execution protocol + journal** | `docs/EXECUTION_PROTOCOL.md`, `docs/implementation/CURRENT_PHASE.md` |
 | **Project documentation map** (every doc in one place) | [below](#project-documentation-map) |
