@@ -1,0 +1,166 @@
+@import "tailwindcss";
+
+/*
+ * The tokens.
+ *
+ * One file, one place. A component never writes a hex colour, a radius or a
+ * shadow — it uses the token, and the theme changes underneath it.
+ *
+ * The rules the guide sets:
+ *   - colour carries meaning: the accent is the action colour, and nothing is
+ *     decorative;
+ *   - the focus ring is visible: the accent at 4px with a canvas-coloured
+ *     gap, which clears the 3:1 WCAG 2.2 asks for;
+ *   - one spacing, one radius, one shadow scale.
+ */
+
+/* ── The two themes ─────────────────────────────────────────────────────── */
+
+:root {
+  /* The surfaces, from the page up. */
+  --canvas: #f6f7f9;
+  --surface: #ffffff;
+  --surface-2: #f0f2f5;
+  --surface-3: #e7eaee;
+
+  /* The lines. */
+  --rail: #dfe3e8;
+  --rail-light: #c8cdd4;
+
+  /* The words. */
+  --text: #16181d;
+  --text-muted: #5b6069;
+  --text-dim: #878d97;
+
+  /* The meanings. */
+  --accent: #c2410c;
+  --accent-hover: #9a3412;
+  --success: #0f8a52;
+  --warning: #b45309;
+  --danger: #c62828;
+  --info: #1d6fd0;
+
+  /* The focus ring: the accent, set off the surface by the canvas. */
+  --focus-ring: 0 0 0 2px var(--canvas), 0 0 0 4px var(--accent);
+
+  /* The radii. */
+  --radius-sm: 4px;
+  --radius-md: 6px;
+  --radius-lg: 10px;
+  --radius-xl: 14px;
+  --radius-full: 9999px;
+
+  /* The elevations. */
+  --elevation-sm: 0 1px 2px rgb(16 24 40 / 0.06);
+  --elevation-md: 0 4px 12px rgb(16 24 40 / 0.10);
+  --elevation-lg: 0 16px 40px rgb(16 24 40 / 0.16);
+
+  /* The depths. */
+  --z-base: 0;
+  --z-sticky: 10;
+  --z-dropdown: 20;
+  --z-drawer: 30;
+  --z-overlay: 40;
+  --z-modal: 50;
+  --z-toast: 60;
+
+  /* The motion. */
+  --motion-fast: 120ms;
+  --motion-base: 200ms;
+  --motion-slow: 320ms;
+  --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.dark {
+  --canvas: #0b0c0f;
+  --surface: #111318;
+  --surface-2: #171a20;
+  --surface-3: #1e222a;
+
+  --rail: #262a33;
+  --rail-light: #363c47;
+
+  --text: #edeef1;
+  --text-muted: #9aa0ab;
+  --text-dim: #6d737e;
+
+  --accent: #f97316;
+  --accent-hover: #fb8c3c;
+  --success: #34d399;
+  --warning: #fbbf24;
+  --danger: #f87171;
+  --info: #60a5fa;
+}
+
+/* ── Tailwind's mapping ─────────────────────────────────────────────────── */
+
+@theme inline {
+  --color-canvas: var(--canvas);
+  --color-surface: var(--surface);
+  --color-surface-2: var(--surface-2);
+  --color-surface-3: var(--surface-3);
+
+  --color-rail: var(--rail);
+  --color-rail-light: var(--rail-light);
+
+  --color-text: var(--text);
+  --color-text-muted: var(--text-muted);
+  --color-text-dim: var(--text-dim);
+
+  --color-accent: var(--accent);
+  --color-accent-hover: var(--accent-hover);
+  --color-success: var(--success);
+  --color-warning: var(--warning);
+  --color-danger: var(--danger);
+  --color-info: var(--info);
+
+  --radius-sm: var(--radius-sm);
+  --radius-md: var(--radius-md);
+  --radius-lg: var(--radius-lg);
+  --radius-xl: var(--radius-xl);
+  --radius-full: var(--radius-full);
+
+  --shadow-sm: var(--elevation-sm);
+  --shadow-md: var(--elevation-md);
+  --shadow-lg: var(--elevation-lg);
+
+  --font-sans: var(--font-geist-sans);
+  --font-mono: var(--font-geist-mono);
+}
+
+/* ── The base ───────────────────────────────────────────────────────────── */
+
+* {
+  border-color: var(--rail);
+}
+
+html {
+  background: var(--canvas);
+}
+
+body {
+  background: var(--canvas);
+  color: var(--text);
+  font-family: var(--font-geist-sans), system-ui, sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* The focus ring, everywhere, on one rule. A browser's own outline is
+   removed only because this one replaces it — and this one is visible. */
+:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
+  border-radius: var(--radius-sm);
+}
+
+/* A person who asks for less motion gets less motion. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
