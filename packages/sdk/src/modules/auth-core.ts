@@ -13,8 +13,10 @@ export function applyAuthCoreMethods(host: AuthCoreHost): void {
       email, password, name, authMethod, setupPassword, firstName, lastName,
     });
 
+  // The API answers a sign-in for an MFA account with a challenge, not with
+  // tokens — so the type says so.
   host.login = (email, password) =>
-    client.post<import('./auth-types').AuthResponse>('/api/v1/auth/login', { email, password });
+    client.post<import('./auth-types').LoginResponse>('/api/v1/auth/login', { email, password });
 
   host.lookupAuthMethod = (email) =>
     client.get<import('./auth-types').AuthMethodResponse>(`/api/v1/auth/auth-method/${encodeURIComponent(email)}`);
@@ -25,6 +27,9 @@ export function applyAuthCoreMethods(host: AuthCoreHost): void {
     const r = await client.get<{ user: import('./auth-types').User }>('/api/v1/auth/me');
     return r.user;
   };
+
+  host.updateProfile = (data) =>
+    client.patch<import('./auth-types').User>('/api/v1/auth/me', data);
 
   host.refreshToken = (refreshToken) =>
     client.post<import('./auth-types').AuthResponse>('/api/v1/auth/refresh', { refreshToken });
@@ -49,4 +54,7 @@ export function applyAuthCoreMethods(host: AuthCoreHost): void {
 
   host.confirmMagicLink = (token) =>
     client.post<import('./auth-types').AuthResponse>('/api/v1/auth/magic-link/verify', { token });
+
+  host.completeOnboarding = () =>
+    client.post<{ onboarded: boolean }>('/api/v1/auth/onboarding/complete');
 }

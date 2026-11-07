@@ -45,7 +45,13 @@ async function refreshAccessToken(): Promise<string | null> {
     window.localStorage.removeItem(LEGACY_TOKEN_KEY);
     window.localStorage.removeItem(REFRESH_TOKEN_KEY);
     // Refresh token is also dead — force re-login (skip if already there).
-    if (window.location.pathname !== '/login') window.location.href = '/login';
+    // The destination comes with it: somebody whose session expired on
+    // /projects/acme/deployments used to land on the sign-in screen and,
+    // after signing in, on the overview — not where they were.
+    if (window.location.pathname !== '/login') {
+      const next = encodeURIComponent(window.location.pathname + window.location.search);
+      window.location.href = `/login?next=${next}`;
+    }
     return null;
   }
 }

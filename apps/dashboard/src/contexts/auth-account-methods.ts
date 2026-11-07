@@ -1,23 +1,12 @@
-// Auth method implementations — extracted to keep auth-provider.tsx under 150 lines
+// The account flows — registering, signing out, changing a password, and
+// asking for a reset.
 
 import { type FidscriptSDK } from '@fidscript-deploy/sdk';
 
 import { makeSdk } from '@/lib/sdk';
 import { ACCESS_TOKEN_KEY, getNextRoute, storeTokens, clearTokens } from './auth-token-utils';
 
-export async function loginMethod(
-  email: string,
-  password: string,
-  sdkRef: React.MutableRefObject<FidscriptSDK | null>,
-  buildSdk: (token: string) => void,
-): Promise<void> {
-  const sdk = makeSdk();
-  const res = await sdk.auth.login(email, password);
-  storeTokens(res.accessToken, res.refreshToken);
-  buildSdk(res.accessToken);
-  window.location.href = getNextRoute();
-}
-
+/** Signs out: the session is closed and the tokens are forgotten. */
 export async function logoutMethod(
   sdkRef: React.MutableRefObject<FidscriptSDK | null>,
 ): Promise<void> {
@@ -34,6 +23,12 @@ export async function logoutMethod(
   sdkRef.current = null;
 }
 
+/**
+ * Creates an account.
+ *
+ * A password account is signed in straight away; a magic-code account is
+ * sent a code and signs in when it arrives.
+ */
 export async function registerMethod(
   email: string,
   name: string,
@@ -62,36 +57,7 @@ export async function registerMethod(
   }
 }
 
-export async function lookupAuthMethodMethod(
-  email: string,
-): Promise<'PASSWORD' | 'MAGIC_CODE' | null> {
-  try {
-    const sdk = makeSdk();
-    const res = await sdk.auth.lookupAuthMethod(email);
-    return res.authMethod;
-  } catch {
-    return null;
-  }
-}
-
-export async function sendMagicCodeMethod(email: string): Promise<{ sent: boolean }> {
-  const sdk = makeSdk();
-  return sdk.auth.sendMagicCode(email);
-}
-
-export async function verifyMagicCodeMethod(
-  email: string,
-  code: string,
-  sdkRef: React.MutableRefObject<FidscriptSDK | null>,
-  buildSdk: (token: string) => void,
-): Promise<void> {
-  const sdk = makeSdk();
-  const res = await sdk.auth.verifyMagicCode(email, code);
-  storeTokens(res.accessToken, res.refreshToken);
-  buildSdk(res.accessToken);
-  window.location.href = getNextRoute();
-}
-
+/** Changes the password and rotates the session. */
 export async function changePasswordMethod(
   currentPassword: string,
   newPassword: string,
@@ -105,9 +71,13 @@ export async function changePasswordMethod(
   window.location.href = getNextRoute();
 }
 
-export async function forgotPasswordMethod(
-  email: string,
-): Promise<void> {
+/**
+ * Asks for a password reset.
+ *
+ * The API answers "sent" whether or not the account exists — the form's copy
+ * promises the same thing.
+ */
+export async function forgotPasswordMethod(email: string): Promise<void> {
   const sdk = makeSdk();
   await sdk.auth.sendVerification(email, 'PASSWORD_RESET');
 }

@@ -1,51 +1,66 @@
-import { Injectable, UnauthorizedException, NotFoundException } from '@nestjs/common';
-import { JwtService } from '@nestjs/jwt';
+import { Injectable, UnauthorizedException, NotFoundException, BadRequestException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { PrismaService } from '@/prisma/prisma.service';
 import { CryptoService } from '@/modules/crypto/crypto.service';
 import { EventService } from '@/modules/events/event.service';
-import { resolveJwtSecret } from '@/common/secrets';
+import { MfaRecoveryCodeService } from './mfa-recovery-code.service';
 import { generateSecret, verifySync, generateURI } from 'otplib';
+import * as bcrypt from 'bcrypt';
 
-const MFA_CHALLENGE_TTL_SEC = 5 * 60;
 const ISSUER = 'FIDScript Deploy';
-
-export interface MfaUser {
-  id: string;
-  email: string;
-  name: string | null;
-  role: string;
-}
-
 /**
- * Platform-user TOTP MFA (Phase 03 gap: mfaEnabled existed but was never enforced).
+ * Platform-user TOTP MFA — the enrollment.
  *
- * Flow: setup() generates a secret (stored AES-256-GCM encrypted) + otpauth URL for
- * the authenticator; enable() confirms the first code and flips mfaEnabled; at login,
- * if mfaEnabled, the password path issues a short-lived mfa_challenge JWT instead of
- * full tokens; completeChallenge() verifies the TOTP code against it and returns the
- * user so AuthService can mint a real session.
+ * `setup()` generates a secret (stored AES-256-GCM encrypted) and an otpauth
+ * URL for the authenticator; `enable()` confirms the first code and flips
+ * `mfaEnabled`.
+ *
+ * What this version adds: **a safe setup** (re-running it while MFA is
+ * enabled used to replace the secret with no check — a self-service reset of
+ * one's own second factor) and **a disable** (there was no way to turn MFA
+ * off at all, and no way to turn it on from the dashboard).
+ *
+ * The recovery codes live in `MfaRecoveryCodeService`; the challenge in
+ * `MfaChallengeService`.
  */
 @Injectable()
 export class MfaService {
-  private readonly jwtSecret: string;
-
   constructor(
     private prisma: PrismaService,
     private crypto: CryptoService,
-    private jwtService: JwtService,
     private eventService: EventService,
-    configService: ConfigService,
-  ) {
-    this.jwtSecret = resolveJwtSecret(configService);
-  }
+    private recoveryCodes: MfaRecoveryCodeService,
+  ) {}
 
-  async setup(userId: string): Promise<{ secret: string; otpauthUrl: string }> {
+  // ── Enrollment ─────────────────────────────────────────────────────────────
+
+  /**
+   * Generates a secret and the otpauth URL for an authenticator app.
+   *
+   * When MFA is already enabled, the current factor is required — otherwise
+   * a stolen session could replace somebody's second factor and lock them
+   * out of their own account.
+   */
+  async setup(
+    userId: string,
+    currentCode?: string,
+  ): Promise<{ secret: string; otpauthUrl: string }> {
     const user = await this.prisma.user.findUnique({
       where: { id: userId },
-      select: { id: true, email: true },
+      select: { id: true, email: true, mfaEnabled: true, mfaSecret: true },
     });
     if (!user) throw new NotFoundException('User not found');
+
+    if (user.mfaEnabled) {
+      if (!currentCode) {
+        throw new BadRequestException(
+          'MFA is already enabled — confirm it with a code from your authenticator to replace it.',
+        );
+      }
+      if (!user.mfaSecret) throw new BadRequestException('MFA is not set up properly');
+      const result = verifySync({ secret: this.crypto.decrypt(user.mfaSecret), token: currentCode });
+      if (!result.valid) throw new UnauthorizedException('Invalid MFA code');
+    }
 
     const secret = generateSecret();
     await this.prisma.user.update({
@@ -59,6 +74,7 @@ export class MfaService {
     return { secret, otpauthUrl: generateURI({ issuer: ISSUER, label: user.email, secret }) };
   }
 
+  /** Confirms the first code and turns MFA on. */
   async enable(userId: string, code: string): Promise<{ enabled: true }> {
     const user = await this.prisma.user.findUnique({
       where: { id: userId },
@@ -78,46 +94,57 @@ export class MfaService {
     return { enabled: true };
   }
 
-  /** Short-lived challenge token issued after a correct password for an MFA-enabled user. */
-  issueChallenge(userId: string): string {
-    return this.jwtService.sign(
-      { sub: userId, type: 'mfa_challenge' },
-      { expiresIn: `${MFA_CHALLENGE_TTL_SEC}s`, secret: this.jwtSecret },
+  /**
+   * Turns MFA off.
+   *
+   * Needs a reauthentication: the account's password, or a code from the
+   * authenticator. A session alone is not enough to remove a second factor.
+   */
+  async disable(
+    userId: string,
+    proof: { password?: string; code?: string },
+  ): Promise<{ disabled: true }> {
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+      select: { id: true, passwordHash: true, mfaSecret: true, mfaEnabled: true },
+    });
+    if (!user) throw new NotFoundException('User not found');
+    if (!user.mfaEnabled) throw new BadRequestException('MFA is not enabled');
+
+    const password = proof.password ?? '';
+    const code = proof.code ?? '';
+    let authenticated = false;
+
+    if (password && user.passwordHash) {
+      authenticated = await bcrypt.compare(password, user.passwordHash);
+    }
+    if (!authenticated && code && user.mfaSecret) {
+      authenticated = verifySync({ secret: this.crypto.decrypt(user.mfaSecret), token: code }).valid;
+    }
+    if (!authenticated) {
+      throw new UnauthorizedException(
+        'Confirm it is you — enter your password or a code from your authenticator.',
+      );
+    }
+
+    await this.prisma.user.update({
+      where: { id: userId },
+      data: { mfaEnabled: false, mfaSecret: null },
+    });
+    await this.recoveryCodes.clear(userId);
+    await this.eventService.emit(
+      'identity.user.mfa_disabled', null, {},
+      { actorId: userId, actorType: 'user', resourceType: 'user', resourceId: userId },
     );
+    return { disabled: true };
   }
 
-  /** Verify the TOTP code against a challenge token; returns the user for session minting. */
-  async completeChallenge(
-    challengeToken: string,
-    code: string,
-    ipAddress?: string,
-    userAgent?: string,
-  ): Promise<MfaUser> {
-    let payload: { sub: string; type: string };
-    try {
-      payload = this.jwtService.verify(challengeToken, { secret: this.jwtSecret });
-    } catch {
-      throw new UnauthorizedException('Invalid or expired MFA challenge');
-    }
-    if (payload.type !== 'mfa_challenge') {
-      throw new UnauthorizedException('Invalid token type');
-    }
-
+  /** Whether MFA is on for this account. */
+  async isEnabled(userId: string): Promise<boolean> {
     const user = await this.prisma.user.findUnique({
-      where: { id: payload.sub },
-      select: { id: true, email: true, name: true, role: true, mfaEnabled: true, mfaSecret: true },
+      where: { id: userId },
+      select: { mfaEnabled: true },
     });
-    if (!user || !user.mfaEnabled || !user.mfaSecret) {
-      throw new UnauthorizedException('MFA not enabled');
-    }
-
-    const result = verifySync({ secret: this.crypto.decrypt(user.mfaSecret), token: code });
-    if (!result.valid) throw new UnauthorizedException('Invalid MFA code');
-
-    await this.eventService.emit(
-      'identity.user.mfa_challenge', null, {},
-      { actorId: user.id, actorType: 'user', resourceType: 'user', resourceId: user.id, ipAddress, userAgent },
-    );
-    return { id: user.id, email: user.email, name: user.name, role: user.role };
+    return Boolean(user?.mfaEnabled);
   }
 }

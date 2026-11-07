@@ -5,8 +5,9 @@ import { ConfigModule, ConfigService } from '@nestjs/config';
 import { resolveJwtSecret } from '@/common/secrets';
 import { AuthController } from '@/modules/auth/controllers/auth.controller';
 import { OrganizationController, InvitationAcceptController } from '@/modules/auth/controllers/organization.controller';
-import { AuthApiKeysController } from '@/modules/auth/controllers/auth-api-keys.controller';
+import { AuthAccountController } from '@/modules/auth/controllers/auth-account.controller';
 import { AuthSetupPasswordController } from '@/modules/auth/controllers/auth-setup-password.controller';
+import { AuthMfaController } from '@/modules/auth/controllers/auth-mfa.controller';
 import { AuthService } from '@/modules/auth/services/auth.service';
 import { AuthSessionService } from '@/modules/auth/services/auth-session.service';
 import { AuthRegisterService } from '@/modules/auth/services/auth-register.service';
@@ -14,6 +15,7 @@ import { AccessTokenService } from '@/modules/auth/services/access-token.service
 import { AuthSetupPasswordService } from '@/modules/auth/services/auth-setup-password.service';
 import { AuthOnboardingService } from '@/modules/auth/services/auth-onboarding.service';
 import { AuthLoginService } from '@/modules/auth/services/auth-login.service';
+import { AuthLogoutService } from '@/modules/auth/services/auth-logout.service';
 import { AuthTokenService } from '@/modules/auth/services/auth-token.service';
 import { AuthProfileService } from '@/modules/auth/services/auth-profile.service';
 import { AuthSessionMgmtService } from '@/modules/auth/services/auth-session-mgmt.service';
@@ -22,11 +24,16 @@ import { AuthPasswordService } from '@/modules/auth/services/auth-password.servi
 import { AuthMagicCodeService } from '@/modules/auth/services/auth-magic-code.service';
 import { AuthMagicCodeVerifyService } from '@/modules/auth/services/auth-magic-code-verify.service';
 import { AuthVerificationService } from '@/modules/auth/services/auth-verification.service';
+import { AuthVerificationEmailService } from '@/modules/auth/services/auth-verification-email';
+import { AuthPasswordResetService } from '@/modules/auth/services/auth-password-reset.service';
+import { AuthMfaService } from '@/modules/auth/services/auth-mfa.service';
 import { OrganizationService } from '@/modules/auth/services/organization.service';
 import { TeamService } from '@/modules/auth/services/team.service';
 import { EmailModule } from '@/modules/email/email.module';
 import { JwtStrategy } from '@/modules/auth/jwt.strategy';
 import { MfaService } from '@/modules/auth/mfa/mfa.service';
+import { MfaChallengeService } from '@/modules/auth/mfa/mfa-challenge.service';
+import { MfaRecoveryCodeService } from '@/modules/auth/mfa/mfa-recovery-code.service';
 import { JwtAuthGuard } from '@/modules/auth/jwt-auth.guard';
 import { PlatformAdminGuard } from '@/modules/auth/guards/platform-admin.guard';
 import { InstallationGuard } from '@/modules/auth/guards/installation.guard';
@@ -53,7 +60,7 @@ import { ProjectsModule } from '@/modules/projects/projects.module';
       inject: [ConfigService],
     }),
   ],
-  controllers: [AuthController, OrganizationController, InvitationAcceptController, AuthApiKeysController, AuthSetupPasswordController],
+  controllers: [AuthController, AuthMfaController, AuthAccountController, OrganizationController, InvitationAcceptController, AuthSetupPasswordController],
   providers: [
     AuthService,
     AuthSessionService,
@@ -62,6 +69,7 @@ import { ProjectsModule } from '@/modules/projects/projects.module';
     AuthSetupPasswordService,
     AuthOnboardingService,
     AuthLoginService,
+    AuthLogoutService,
     AuthTokenService,
     AuthProfileService,
     AuthSessionMgmtService,
@@ -70,10 +78,15 @@ import { ProjectsModule } from '@/modules/projects/projects.module';
     AuthMagicCodeService,
     AuthMagicCodeVerifyService,
     AuthVerificationService,
+    AuthVerificationEmailService,
+    AuthPasswordResetService,
+    AuthMfaService,
     OrganizationService,
     TeamService,
     JwtStrategy,
     MfaService,
+    MfaChallengeService,
+    MfaRecoveryCodeService,
     JwtAuthGuard,
     ApiKeyOrJwtGuard,
     ScopeGuard,

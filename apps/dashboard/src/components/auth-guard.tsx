@@ -14,10 +14,13 @@ export function AuthGuard({ children }: AuthGuardProps) {
 
   useEffect(() => {
     if (!loading && !user) {
-      const next = encodeURIComponent(window.location.pathname);
+      // The whole address, not just the path: `/projects?tab=env` used to
+      // arrive as `/projects`.
+      const next = encodeURIComponent(window.location.pathname + window.location.search);
       window.location.href = `/login?next=${next}`;
     } else if (!loading && user?.mustChangePassword) {
-      window.location.href = '/force-change-password';
+      const next = encodeURIComponent(window.location.pathname + window.location.search);
+      window.location.href = `/force-change-password?next=${next}`;
     }
   }, [loading, user]);
 

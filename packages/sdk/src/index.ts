@@ -28,6 +28,7 @@ import { StorageModule } from './modules/storage';
 import { DatabasesModule, DatabaseProvider } from './modules/databases';
 export { DatabaseProvider };
 export type { Database, TableInfo, ColumnInfo, RealtimeEvent, MigrationRecord, DataResult, Op } from './modules/databases-types';
+export type { Project, ProjectMember as ProjectMembership, Organization } from './modules/projects-types';
 import { DomainsModule } from './modules/domains';
 import { EmailModule, AdminMailboxModule, AdminAttachmentConfigModule, AdminMailConnectionModule, MailConnectionInfo } from './modules/email';
 import type {

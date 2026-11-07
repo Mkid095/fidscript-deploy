@@ -9,6 +9,8 @@ export interface AuthState {
 
 export interface AuthContextValue extends AuthState {
   login: (email: string, password: string) => Promise<void>;
+  /** Finishes a sign-in that stopped at the second factor. */
+  mfaChallenge: (code: string) => Promise<void>;
   logout: () => Promise<void>;
   register: (
     email: string,

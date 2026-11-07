@@ -4,6 +4,10 @@ export const ACCESS_TOKEN_KEY = 'fidscript_access_token';
 export const REFRESH_TOKEN_KEY = 'fidscript_refresh_token';
 // Legacy alias — some pages read this key directly
 export const LEGACY_TOKEN_KEY = 'fidscript_token';
+// The MFA challenge token — the proof of the first half of a sign-in that
+// stopped at the second factor. It lives in sessionStorage: it is worth
+// five minutes, and it should not outlive the tab.
+export const MFA_TOKEN_KEY = 'fidscript_mfa_token';
 
 export function getStoredTokens(): { accessToken: string | null; refreshToken: string | null } {
   if (typeof window === 'undefined') return { accessToken: null, refreshToken: null };
@@ -23,6 +27,23 @@ export function clearTokens(): void {
   localStorage.removeItem(ACCESS_TOKEN_KEY);
   localStorage.removeItem(LEGACY_TOKEN_KEY);
   localStorage.removeItem(REFRESH_TOKEN_KEY);
+  clearMfaToken();
+}
+
+/** Holds the MFA challenge between the password step and the code step. */
+export function storeMfaToken(token: string): void {
+  if (typeof window === 'undefined') return;
+  sessionStorage.setItem(MFA_TOKEN_KEY, token);
+}
+
+export function getMfaToken(): string | null {
+  if (typeof window === 'undefined') return null;
+  return sessionStorage.getItem(MFA_TOKEN_KEY);
+}
+
+export function clearMfaToken(): void {
+  if (typeof window === 'undefined') return;
+  sessionStorage.removeItem(MFA_TOKEN_KEY);
 }
 
 /**
