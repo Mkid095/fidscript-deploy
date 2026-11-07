@@ -1,87 +1,44 @@
-import Link from 'next/link';
-
-import { listProjects } from '@/lib/api/projects';
-import { Card, PageHeader, SectionHeader } from '@/components/ui/card';
+import { getProjectSummaries } from '@/lib/api/projects';
+import { Card, PageHeader } from '@/components/ui/card';
 import { Page } from '@/components/ui/page';
-import { Badge, EmptyState, ErrorState } from '@/components/ui/feedback';
-import { NewProjectForm } from '@/components/platform/new-project-form';
+import { EmptyState } from '@/components/ui/feedback';
+import { ProjectCard } from '@/components/project/project-card';
+import { NewProjectDialog } from '@/components/platform/new-project-dialog';
 
 /**
  * The projects.
  *
- * A prominent **New project**, and the shape question inside the create
- * form — because the shape is what the project's menu is derived from, and
- * asking it later would mean changing the menu later.
+ * This page is for the projects that are there — what each one holds, and
+ * whether it has been busy. Making a new one is a button away, in a panel
+ * of its own.
  */
 export const metadata = { title: 'Projects' };
 
 export default async function ProjectsPage() {
-  const projects = await listProjects().catch(() => null);
+  const projects = await getProjectSummaries();
 
   return (
     <Page width="wide">
       <PageHeader
         title="Projects"
-        description="The workspaces you can reach."
+        description="A project is a directory for one application — when you have a new one, make a project and name it after it."
+        actions={<NewProjectDialog />}
       />
 
-      {!projects ? (
-        <ErrorState
-          title="The platform did not answer"
-          message="The projects could not be loaded. The platform may be restarting — try again in a moment."
-        />
+      {projects.length === 0 ? (
+        <Card>
+          <EmptyState
+            title="No projects yet"
+            body="A project holds one application: its code, its domains, its database and its settings. Make one, and it appears here."
+          />
+        </Card>
       ) : (
-        <>
-          <section>
-            <SectionHeader title="New project" description="What the project is for." />
-            <Card className="p-5">
-              <NewProjectForm />
-            </Card>
-          </section>
-
-          <section>
-            <SectionHeader title="Your projects" />
-            {projects.length === 0 ? (
-              <Card>
-                <EmptyState
-                  title="No projects yet"
-                  body="The one above is the first."
-                />
-              </Card>
-            ) : (
-              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                {projects.map((project) => (
-                  <Link
-                    key={project.id}
-                    href={`/projects/${project.slug}`}
-                    className="rounded-lg border border-rail bg-surface p-4 transition-colors hover:border-rail-light"
-                  >
-                    <div className="flex items-center justify-between gap-2">
-                      <span className="truncate text-sm font-medium text-text">{project.name}</span>
-                      <Badge tone={project.status === 'ACTIVE' ? 'success' : 'neutral'}>
-                        {project.status.toLowerCase()}
-                      </Badge>
-                    </div>
-                    <p className="mt-1 truncate font-mono text-xs text-text-dim">{project.slug}</p>
-                    {project.shape ? (
-                      <p className="mt-2 text-[11px] uppercase tracking-wide text-text-dim">
-                        {shapeLabel(project.shape)}
-                      </p>
-                    ) : null}
-                  </Link>
-                ))}
-              </div>
-            )}
-          </section>
-        </>
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3">
+          {projects.map((summary) => (
+            <ProjectCard key={summary.project.id} summary={summary} />
+          ))}
+        </div>
       )}
     </Page>
   );
-}
-
-/** The shape, said the way a person would say it. */
-function shapeLabel(shape: string): string {
-  if (shape === 'BACKEND') return 'Backend';
-  if (shape === 'BOTH') return 'Backend + Deployments';
-  return 'Deployments';
 }

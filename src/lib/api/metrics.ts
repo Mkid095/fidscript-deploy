@@ -163,6 +163,47 @@ export async function getMachineState(): Promise<{
 }
 
 /**
+ * What a project has been doing, over the last day.
+ *
+ * The count of what its containers wrote, an hour at a time — the honest
+ * little graph on a project's card. A project that has never run has
+ * nothing to show, and says so.
+ */
+export async function getProjectActivity(
+  projectSlug: string,
+  hours = 24,
+): Promise<number[]> {
+  const base = await lokiUrl();
+  if (!base) return [];
+
+  const end = Date.now();
+  const start = end - hours * 60 * 60 * 1000;
+  const step = 60 * 60 * 1000;
+
+  try {
+    const response = await fetch(
+      `${base}/loki/api/v1/query_range?query=${encodeURIComponent(`sum(count_over_time({container=~"fidscript-${projectSlug}-.*"}[1h]))`)}&start=${start}&end=${end}&step=${step}&direction=backward`,
+      { cache: 'no-store', signal: AbortSignal.timeout(8000) },
+    );
+    if (!response.ok) return [];
+
+    const body = (await response.json()) as {
+      data?: { result?: Array<{ values?: Array<[number, string]> }> };
+    };
+
+    const points = body.data?.result?.[0]?.values ?? [];
+    const buckets = new Array(hours).fill(0);
+    for (const [at, value] of points) {
+      const index = hours - 1 - Math.round((end - at * 1000) / step);
+      if (index >= 0 && index < hours) buckets[index] = Number(value);
+    }
+    return buckets;
+  } catch {
+    return [];
+  }
+}
+
+/**
  * The logs of one project's containers.
  *
  * The deployment engine names a project's containers after the project, so
@@ -206,6 +247,21 @@ export async function getProjectLogs(
   } catch {
     return [];
   }
+}
+
+/** The requests each site carried. */
+export interface SiteTraffic {
+  site: string;
+  requests: number;
+  errors: number;
+}
+
+export async function getSiteTraffic(): Promise<SiteTraffic[]> {
+  const { serverApi: api } = await import('./server');
+  const response = await api
+    .get<{ sites?: SiteTraffic[] }>('/system/traffic')
+    .catch(() => ({ sites: [] }));
+  return response.sites ?? [];
 }
 
 /** A log line from the platform. */

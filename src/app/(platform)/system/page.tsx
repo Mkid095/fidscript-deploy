@@ -4,6 +4,7 @@ import { Badge, EmptyState } from '@/components/ui/feedback';
 import {
   getMachineCpu,
   getMachineState,
+  getSiteTraffic,
   getSystemLogs,
   getSystemState,
 } from '@/lib/api/metrics';
@@ -20,11 +21,12 @@ export const metadata = { title: 'System' };
  * not from anything the console remembers.
  */
 export default async function SystemPage() {
-  const [state, machine, cpu, logs, domain] = await Promise.all([
+  const [state, machine, cpu, logs, traffic, domain] = await Promise.all([
     getSystemState(),
     getMachineState(),
     getMachineCpu(),
     getSystemLogs(),
+    getSiteTraffic(),
     getPlatformDomain(),
   ]);
 
@@ -164,6 +166,24 @@ export default async function SystemPage() {
               ))}
             </ul>
           )}
+        </Card>
+      </section>
+
+      <section>
+        <SectionHeader
+          title="The traffic"
+          description="The requests each of the platform's own sites carried in the last hour."
+        />
+        <Card className="p-4">
+          <BarList
+            samples={traffic.map((entry) => ({ name: entry.site, value: entry.requests }))}
+            format={(value) => `${value.toFixed(0)} requests`}
+          />
+          {traffic.some((entry) => entry.errors > 0) ? (
+            <p className="mt-3 text-xs text-text-dim">
+              {traffic.reduce((total, entry) => total + entry.errors, 0)} of them did not succeed.
+            </p>
+          ) : null}
         </Card>
       </section>
 
