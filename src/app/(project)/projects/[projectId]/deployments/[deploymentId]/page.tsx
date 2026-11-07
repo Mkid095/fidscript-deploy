@@ -8,6 +8,7 @@ import { Page } from '@/components/ui/page';
 import { Badge } from '@/components/ui/feedback';
 import { Button } from '@/components/ui/button';
 import { DeploymentActions } from '@/components/project/deployment-actions';
+import { DeploymentLiveLog } from '@/components/project/deployment-live-log';
 
 export const metadata = { title: 'Deployment' };
 
@@ -93,6 +94,8 @@ export default async function DeploymentPage({
             deploymentId={deployment.id}
             status={deployment.status}
             autoDeploy={project.autoDeploy ?? true}
+            gitUrl={deployment.release?.sourceUrl ?? null}
+            branch={deployment.release?.branch ?? null}
           />
           <div className="mt-4 flex flex-wrap gap-2 border-t border-rail pt-4">
             <Link href={`${base}/domains`}>
@@ -107,6 +110,14 @@ export default async function DeploymentPage({
             </Link>
           </div>
         </Card>
+      </section>
+
+      <section>
+        <SectionHeader
+          title="The application's log"
+          description="What it writes while it runs."
+        />
+        <DeploymentLiveLog projectSlug={project.slug} deploymentId={deployment.id} />
       </section>
 
       <section>

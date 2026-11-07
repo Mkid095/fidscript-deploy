@@ -169,6 +169,67 @@ export async function deleteEmailKeyAction(
   }
 }
 
+/** Register a webhook — the place the mail's story is told. */
+export async function createWebhookAction(
+  projectId: string,
+  url: string,
+  events: string[],
+): Promise<{ ok?: boolean; error?: string }> {
+  if (!url.trim()) return { error: 'The webhook needs a URL.' };
+  if (events.length === 0) return { error: 'It has to be told about something.' };
+
+  try {
+    await api.post(`/projects/${projectId}/email/webhooks`, {
+      url: url.trim(),
+      events,
+    });
+    revalidatePath(`/projects/${projectId}/email`);
+    return { ok: true };
+  } catch (err) {
+    return {
+      error: err instanceof Error ? err.message : 'The webhook could not be added.',
+    };
+  }
+}
+
+/** Remove a webhook. */
+export async function deleteWebhookAction(
+  projectId: string,
+  webhookId: string,
+): Promise<{ ok?: boolean; error?: string }> {
+  try {
+    await api.delete(`/projects/${projectId}/email/webhooks/${webhookId}`);
+    revalidatePath(`/projects/${projectId}/email`);
+    return { ok: true };
+  } catch (err) {
+    return {
+      error: err instanceof Error ? err.message : 'The webhook could not be removed.',
+    };
+  }
+}
+
+/** Where the mail goes when it arrives for an address nobody wrote to. */
+export async function setCatchAllAction(
+  projectId: string,
+  domainId: string,
+  input: {
+    targetType: 'mailbox' | 'external' | 'webhook';
+    targetId?: string;
+    targetAddress?: string;
+    webhookUrl?: string;
+  },
+): Promise<{ ok?: boolean; error?: string }> {
+  try {
+    await api.post(`/projects/${projectId}/email/domains/${domainId}/catch-all`, input);
+    revalidatePath(`/projects/${projectId}/email`);
+    return { ok: true };
+  } catch (err) {
+    return {
+      error: err instanceof Error ? err.message : 'The rule could not be set.',
+    };
+  }
+}
+
 /** Send a message, so somebody can see that sending works. */
 export async function sendTestEmailAction(
   projectId: string,

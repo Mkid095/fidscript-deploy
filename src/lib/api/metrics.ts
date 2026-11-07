@@ -274,6 +274,54 @@ export async function getSiteTraffic(): Promise<SiteTraffic[]> {
   return response.sites ?? [];
 }
 
+/**
+ * The logs of one deployment, as it writes them.
+ *
+ * The deployment engine names the container after the project and the
+ * deployment, so the machine's log store holds exactly that container's
+ * output — which is how the log can be followed while the application
+ * runs, and not only after it is built.
+ */
+export async function getDeploymentLogs(
+  projectSlug: string,
+  deploymentId: string,
+  limit = 200,
+): Promise<LogLine[]> {
+  const base = await lokiUrl();
+  if (!base) return [];
+
+  const end = Date.now() * 1_000_000;
+  const start = end - 60 * 60 * 1_000_000;
+  const selector = `{container="fidscript-${projectSlug}-${deploymentId}"}`;
+
+  try {
+    const response = await fetch(
+      `${base}/loki/api/v1/query_range?query=${encodeURIComponent(selector)}&limit=${limit}&start=${start}&end=${end}&direction=backward`,
+      { cache: 'no-store', signal: AbortSignal.timeout(8000) },
+    );
+    if (!response.ok) return [];
+
+    const body = (await response.json()) as {
+      data?: {
+        result?: Array<{
+          stream?: Record<string, string>;
+          values?: Array<[string, string]>;
+        }>;
+      };
+    };
+
+    return (body.data?.result ?? []).flatMap((entry) =>
+      (entry.values ?? []).map(([at, line]) => ({
+        at,
+        line: plain(line),
+        source: entry.stream?.service_name ?? 'the application',
+      })),
+    );
+  } catch {
+    return [];
+  }
+}
+
 /** A log line from the platform. */
 export interface LogLine {
   at: string;

@@ -10,6 +10,7 @@ import {
   getEmailMailboxes,
   getEmailMessages,
   getEmailStatus,
+  getEmailWebhooks,
 } from '@/lib/api/email';
 import { Card, PageHeader, SectionHeader } from '@/components/ui/card';
 import { Page } from '@/components/ui/page';
@@ -21,6 +22,7 @@ import { EmailKeysSection } from '@/components/project/email-keys-section';
 import { EmailSendForm } from '@/components/project/email-send-form';
 import { EmailDeliverabilitySection } from '@/components/project/email-deliverability-section';
 import { EmailLogsSection } from '@/components/project/email-logs-section';
+import { EmailInboundPanel } from '@/components/project/email-inbound-panel';
 
 export const metadata = { title: 'Email' };
 
@@ -40,17 +42,27 @@ export default async function ProjectEmailPage({
   const project = await getProject(projectId).catch(() => null);
   if (!project) redirect('/projects');
 
-  const [status, domains, mailboxes, aliases, apiKeys, messages, analytics, connection] =
-    await Promise.all([
-      getEmailStatus(project.id),
-      getEmailDomains(project.id),
-      getEmailMailboxes(project.id),
-      getEmailAliases(project.id),
-      getEmailApiKeys(project.id),
-      getEmailMessages(project.id),
-      getEmailAnalytics(project.id),
-      getDnsConnection(project.id),
-    ]);
+  const [
+    status,
+    domains,
+    mailboxes,
+    aliases,
+    apiKeys,
+    messages,
+    analytics,
+    connection,
+    webhooks,
+  ] = await Promise.all([
+    getEmailStatus(project.id),
+    getEmailDomains(project.id),
+    getEmailMailboxes(project.id),
+    getEmailAliases(project.id),
+    getEmailApiKeys(project.id),
+    getEmailMessages(project.id),
+    getEmailAnalytics(project.id),
+    getDnsConnection(project.id),
+    getEmailWebhooks(project.id),
+  ]);
 
   const domainNames = domains.map((domain) => domain.domain);
   const senders = mailboxes
@@ -121,6 +133,19 @@ export default async function ProjectEmailPage({
             <EmailSendForm projectId={project.id} senders={senders} />
           </Card>
         </div>
+      </section>
+
+      <section>
+        <SectionHeader
+          title="Inbound"
+          description="Where the mail goes when it arrives."
+        />
+        <EmailInboundPanel
+          projectId={project.id}
+          domains={domains}
+          mailboxes={mailboxes}
+          webhooks={webhooks}
+        />
       </section>
 
       <section>

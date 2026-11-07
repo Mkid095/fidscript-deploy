@@ -9,6 +9,7 @@ import { ErrorState } from '@/components/ui/feedback';
 
 import {
   destroyDeploymentAction,
+  redeployAction,
   restartDeploymentAction,
   rollbackDeploymentAction,
   setAutoDeployAction,
@@ -27,23 +28,36 @@ export function DeploymentActions({
   deploymentId,
   status,
   autoDeploy,
+  gitUrl,
+  branch,
 }: {
   projectId: string;
   deploymentId: string;
   status: string;
   autoDeploy: boolean;
+  /** The source it was built from — what a redeploy builds again. */
+  gitUrl?: string | null;
+  branch?: string | null;
 }) {
   const router = useRouter();
   const [error, setError] = useState<string | null>(null);
+  const [notice, setNotice] = useState<string | null>(null);
   const [confirming, setConfirming] = useState(false);
   const [pending, startTransition] = useTransition();
 
-  const run = (action: () => Promise<{ ok?: boolean; error?: string }>) => {
+  const run = (
+    action: () => Promise<{ ok?: boolean; error?: string }>,
+    message?: string,
+  ) => {
     setError(null);
+    setNotice(null);
     startTransition(async () => {
       const result = await action();
       if (result.error) setError(result.error);
-      else router.refresh();
+      else {
+        if (message) setNotice(message);
+        router.refresh();
+      }
     });
   };
 
@@ -80,6 +94,24 @@ export function DeploymentActions({
           onClick={() => run(() => rollbackDeploymentAction(projectId, deploymentId))}
         >
           Roll back
+        </Button>
+        <Button
+          variant="secondary"
+          size="sm"
+          loading={pending}
+          disabled={!gitUrl}
+          onClick={() =>
+            run(
+              () =>
+                redeployAction(projectId, {
+                  gitUrl: gitUrl ?? '',
+                  branch: branch ?? 'main',
+                }),
+              'It is building again.',
+            )
+          }
+        >
+          Deploy it again
         </Button>
         <Button
           variant="ghost"
@@ -121,6 +153,7 @@ export function DeploymentActions({
       />
 
       {error ? <ErrorState message={error} /> : null}
+      {notice ? <p className="text-xs text-success">{notice}</p> : null}
     </div>
   );
 }

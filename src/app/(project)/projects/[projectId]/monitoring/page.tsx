@@ -2,6 +2,9 @@ import { redirect } from 'next/navigation';
 
 import { serverApi as api } from '@/lib/api/server';
 import { getProject } from '@/lib/api/project';
+import { getAlertRules, getNotificationChannels } from '@/lib/api/monitoring';
+import { AlertRulesPanel } from '@/components/project/alert-rules-panel';
+import { NotificationChannelsPanel } from '@/components/project/notification-channels-panel';
 import { applications } from '@/lib/api/platform';
 import { Card, PageHeader, SectionHeader } from '@/components/ui/card';
 import { Page } from '@/components/ui/page';
@@ -40,7 +43,7 @@ export default async function ProjectMonitoringPage({
   );
   const grafanaUrl = observability?.url ?? null;
 
-  const [alerts, stats] = await Promise.all([
+  const [alerts, stats, rules, channels] = await Promise.all([
     api
       .get<{ alerts: Alert[] }>(`/projects/${project.id}/monitoring/alerts`)
       .catch(() => ({ alerts: [] as Alert[] })),
@@ -49,6 +52,8 @@ export default async function ProjectMonitoringPage({
         `/projects/${project.id}/monitoring/metrics/stats`,
       )
       .catch(() => null),
+    getAlertRules(project.id),
+    getNotificationChannels(project.id),
   ]);
 
   return (
@@ -85,6 +90,22 @@ export default async function ProjectMonitoringPage({
             ) : null}
           </div>
         </Card>
+      </section>
+
+      <section>
+        <SectionHeader
+          title="The rules"
+          description="When this project speaks up, and how loudly."
+        />
+        <AlertRulesPanel projectId={project.id} rules={rules} channels={channels} />
+      </section>
+
+      <section>
+        <SectionHeader
+          title="Where it goes"
+          description="The places this project's alerts are sent to."
+        />
+        <NotificationChannelsPanel projectId={project.id} channels={channels} />
       </section>
 
       <section>

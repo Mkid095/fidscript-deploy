@@ -119,6 +119,23 @@ export async function getEmailApiKeys(
     .catch(() => []);
 }
 
+export interface EmailWebhook {
+  id: string;
+  url: string;
+  events: string[];
+  isActive?: boolean;
+}
+
+/** The webhooks — the places the mail's story is told. */
+export async function getEmailWebhooks(projectId: string): Promise<EmailWebhook[]> {
+  const response = await api
+    .get<{ webhooks?: EmailWebhook[]; subscriptions?: EmailWebhook[] }>(
+      `/projects/${projectId}/email/webhooks`,
+    )
+    .catch(() => ({ webhooks: [] as EmailWebhook[], subscriptions: [] as EmailWebhook[] }));
+  return response.webhooks ?? response.subscriptions ?? [];
+}
+
 /** The aliases — an address that forwards somewhere else. */
 export async function getEmailAliases(projectId: string): Promise<EmailAlias[]> {
   return api.get<EmailAlias[]>(`/projects/${projectId}/email/aliases`).catch(() => []);

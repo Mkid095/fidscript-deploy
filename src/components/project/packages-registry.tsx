@@ -22,12 +22,15 @@ export interface PackageDetail {
 
 export function PackagesRegistry({
   registryUrl,
+  mavenUrl,
   packages,
   reachable,
   scope,
   details,
 }: {
   registryUrl: string | null;
+  /** The Maven repository — the Kotlin and Android SDKs. */
+  mavenUrl: string | null;
   packages: RegistryPackage[];
   reachable: boolean;
   scope: string;
@@ -46,7 +49,7 @@ export function PackagesRegistry({
         />
         <Card className="divide-y divide-rail">
           <Row term="npm" value={registryUrl ?? 'The platform domain is not known'} />
-          <Row term="Maven" value="Not served by this deployment" />
+          <Row term="Maven" value={mavenUrl ?? 'Not served by this deployment'} />
           <Row
             term="Reachability"
             value={reachable ? 'The registry answers' : 'The registry did not answer'}

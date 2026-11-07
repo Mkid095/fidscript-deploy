@@ -6,6 +6,7 @@ import {
   getRegistryPackage,
   getRegistryUrl,
 } from '@/lib/api/packages';
+import { getPlatformDomain } from '@/lib/api/platform';
 import { Page } from '@/components/ui/page';
 import { PageHeader } from '@/components/ui/card';
 import { PackagesRegistry } from '@/components/project/packages-registry';
@@ -31,6 +32,8 @@ export default async function ProjectPackagesPage({
   if (!project) redirect('/projects');
 
   const registryUrl = await getRegistryUrl();
+  const domain = await getPlatformDomain().catch(() => null);
+  const mavenUrl = domain ? `https://maven.${domain}` : null;
   const { packages, reachable } = registryUrl
     ? await getPublishedPackages(registryUrl)
     : { packages: [], reachable: false };
@@ -54,6 +57,7 @@ export default async function ProjectPackagesPage({
 
       <PackagesRegistry
         registryUrl={registryUrl}
+        mavenUrl={mavenUrl}
         packages={packages}
         reachable={reachable}
         scope={scope}

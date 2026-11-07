@@ -64,6 +64,46 @@ export async function destroyDeploymentAction(
   }
 }
 
+/**
+ * Deploy it again.
+ *
+ * The same source, built again — which is what somebody means when the
+ * build was right but the environment was not.
+ */
+export async function redeployAction(
+  projectId: string,
+  input: { gitUrl: string; branch: string; subdomain?: string },
+): Promise<{ ok?: boolean; deploymentId?: string; error?: string }> {
+  if (!input.gitUrl.trim()) {
+    return { error: 'The deployment has no source to deploy again.' };
+  }
+
+  try {
+    const result = await api.post<{ deployment?: { id: string }; id?: string }>(
+      `/projects/${projectId}/deployments`,
+      {
+        source: {
+          type: 'git',
+          git: {
+            url: input.gitUrl,
+            branch: input.branch || 'main',
+          },
+        },
+        branch: input.branch || 'main',
+        ...(input.subdomain ? { subdomain: input.subdomain } : {}),
+      },
+    );
+
+    revalidatePath(`/projects/${projectId}/deployments`);
+    const id = result.deployment?.id ?? result.id;
+    return id ? { ok: true, deploymentId: id } : { error: 'The deployment did not start.' };
+  } catch (err) {
+    return {
+      error: err instanceof Error ? err.message : 'The deployment could not be started again.',
+    };
+  }
+}
+
 /** Deploy on every push to the branch. */
 export async function setAutoDeployAction(
   projectId: string,
