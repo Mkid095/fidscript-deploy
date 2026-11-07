@@ -1,11 +1,13 @@
 api:
   dashboard: true
-  insecure: true
-
+  # The Traefik API is exposed unauthenticated on :8080 to every container
+  # on the platform networks. Keep it closed — the read-only dashboard is
+  # still available, but the control API is not reachable.
+  insecure: false
 entryPoints:
   # The internal entrypoint Traefik's own /ping endpoint binds to. It is
   # NOT published to the host — it exists so the healthcheck has something
-  # to probe.
+  # to probe, and so traefik healthcheck --ping works.
   traefik:
     address: ":8080"
   web:
@@ -15,13 +17,11 @@ entryPoints:
         entryPoint:
           to: websecure
           scheme: https
-
   websecure:
     address: ":443"
-
 # The ping endpoint the healthcheck probes. It is enabled here rather than
 # with a --ping flag: the image's entrypoint rewrites a flag-only command
-# line into `traefik traefik --ping=true`, and the flag is then swallowed
+# line into traefik traefik --ping=true, and the flag is then swallowed
 # as an argument instead of being applied.
 ping:
   entryPoint: traefik
@@ -29,7 +29,7 @@ ping:
 certificatesResolvers:
   letsencrypt-dns:
     acme:
-      email: admin@deploy.fidscript.com
+      email: admin@fidscript.com
       storage: /acme-dns/acme-dns.json
       dnsChallenge:
         provider: cloudflare
@@ -37,21 +37,19 @@ certificatesResolvers:
           - "1.1.1.1"
           - "1.0.0.1"
       caServer: https://acme-v02.api.letsencrypt.org/directory
-
   letsencrypt-http:
     acme:
-      email: admin@deploy.fidscript.com
+      email: admin@fidscript.com
       storage: /acme-http/acme-http.json
       httpChallenge:
         entryPoint: web
       caServer: https://acme-v02.api.letsencrypt.org/directory
-
 providers:
   file:
     # A DIRECTORY: Traefik's file provider reads every .yml/.toml file in
     # it, so the platform's routing (platform.yml) and the deployments'
     # routing (dynamic-deployments.yml) never overwrite each other.
-    # The option is `directory`, not `filename` — `filename` with a
+    # The option is directory, not filename — filename with a
     # directory path fails with "read ...: is a directory".
     directory: /etc/traefik/dynamic
     watch: true

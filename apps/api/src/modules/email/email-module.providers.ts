@@ -13,6 +13,7 @@ import { StalwartJmapService } from './stalwart/stalwart-core.service';
 import { StalwartAccountService } from './stalwart/stalwart-account.service';
 import { StalwartIdentityService } from './stalwart/stalwart-identity.service';
 import { PlatformMailService } from './platform-mail.service';
+import { MailConsoleService } from './services/mail-console.service';
 
 import { EmailDomainService } from './services/domain.service';
 import { EmailMailboxService, MailboxCrudService, MailboxAccessService } from './services/mailbox-split-index';
@@ -31,6 +32,7 @@ import { BounceParserService, BounceRuleMatcherService } from './services/bounce
 import {
   EmailWebhookSubscriptionService, EmailWebhookSubscriptionCrudService, EmailWebhookDispatchService,
 } from './services/email-webhook-split-index';
+import { WebhookSignatureService } from './services/webhook-signature.service';
 import { EmailInboundService } from './services/inbound.service';
 import { EmailCatchallCrudService } from './services/email-catchall-crud.service';
 import { EmailCatchallDeliveryService } from './services/email-catchall-delivery.service';
@@ -77,14 +79,15 @@ export const emailProviders = [
   EmailTrackingService, EmailTrackingStoreService, EmailMetricsService,
   BounceParserService, BounceRuleMatcherService,
   EmailWebhookSubscriptionService, EmailWebhookSubscriptionCrudService, EmailWebhookDispatchService,
-  EmailInboundService, EmailCatchallCrudService, EmailCatchallDeliveryService, SmtpSendService, SmtpSendPrecheckService,
+  EmailInboundService,
+  WebhookSignatureService, EmailCatchallCrudService, EmailCatchallDeliveryService, SmtpSendService, SmtpSendPrecheckService,
   BounceHandlerService, RateLimitService,
   EmailRateLimitService, EmailRateLimitStoreService, EmailRateLimitCheckerService,
   MailboxCleanupService, DomainCleanupService,
   MailDnsService, DkimService,
   StalwartJmapService, StalwartAccountService, StalwartIdentityService,
   StalwartEmailProvider, { provide: EMAIL_PROVIDER, useExisting: StalwartEmailProvider },
-  WebhookService, EmailMailboxListService, EmailBootstrapService, PlatformMailService,
+  WebhookService, EmailMailboxListService, EmailBootstrapService, PlatformMailService, MailConsoleService,
   PlatformMailboxMessageService, PlatformMailboxMessageQueryService, PlatformMailboxMessageQueryHelpers,
   PlatformMailboxMessageActionService, PlatformMailboxJmapClientService,
   AttachmentConfigService, AttachmentConfigCrudService, AttachmentConfigValidationService,

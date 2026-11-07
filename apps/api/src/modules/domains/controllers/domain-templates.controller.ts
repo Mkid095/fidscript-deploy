@@ -3,6 +3,7 @@ import {
 } from '@nestjs/common';
 import { ApiTags, ApiOperation } from '@nestjs/swagger';
 import { DomainTemplateService } from '@/modules/domains/services/domain-template.service';
+import { Public } from '@/modules/auth/decorators/public.decorator';
 
 /**
  * DomainTemplatesController
@@ -14,7 +15,7 @@ import { DomainTemplateService } from '@/modules/domains/services/domain-templat
  * These endpoints are read-only (no auth required — templates are public).
  */
 @ApiTags('domain-templates')
-@Controller('api/v1/domain-templates')
+@Controller('domain-templates')
 export class DomainTemplatesController {
   constructor(private templateService: DomainTemplateService) {}
 
@@ -22,6 +23,7 @@ export class DomainTemplatesController {
    * List all available domain templates.
    */
   @Get()
+  @Public()
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'List domain configuration templates' })
   async listTemplates(
@@ -39,6 +41,7 @@ export class DomainTemplatesController {
    * Get a single template by ID.
    */
   @Get(':id')
+  @Public()
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Get a domain template by ID' })
   async getTemplate(@Param('id') id: string) {
@@ -49,6 +52,7 @@ export class DomainTemplatesController {
    * Get the list of template categories.
    */
   @Get('meta/categories')
+  @Public()
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'List template categories' })
   async getCategories() {

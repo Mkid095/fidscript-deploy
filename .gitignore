@@ -1,6 +1,8 @@
 node_modules/
 dist/
 .turbo/
+# The browser tool's snapshots — transient, and rewritten on every run.
+.playwright-cli/
 *.tsbuildinfo
 .env
 .env.local

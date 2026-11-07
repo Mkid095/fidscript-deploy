@@ -98,6 +98,20 @@ export class DomainsController {
     return this.domainsService.getConnection(user.userId, projectId);
   }
 
+  /**
+   * One domain of the project.
+   *
+   * Declared after the literal routes (`detect`, `connection`) on purpose:
+   * a `:id` route declared first would swallow them.
+   */
+  @Get(':id')
+  @RequireScope('domains:read')
+  @ApiOperation({ summary: 'Get one domain of the project' })
+  async get(@Req() req: Request, @Param('projectId') projectId: string, @Param('id') id: string) {
+    const user = req.user as { userId: string };
+    return this.domainsService.get(user.userId, projectId, id);
+  }
+
   @Delete(':id')
   @RequireScope('domains:delete')
   @HttpCode(HttpStatus.OK)

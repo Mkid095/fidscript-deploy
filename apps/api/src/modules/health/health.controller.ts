@@ -2,6 +2,7 @@ import { Controller, Get, Inject } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse } from '@nestjs/swagger';
 import { PlatformMailService } from '@/modules/email/platform-mail.service';
 import { HealthService, HealthStatus } from './health.service';
+import { Public } from '@/modules/auth/decorators/public.decorator';
 
 @ApiTags('health')
 @Controller('health')
@@ -12,6 +13,8 @@ export class HealthController {
   ) {}
 
   @Get()
+
+  @Public()
   @ApiOperation({ summary: 'Get platform health status' })
   @ApiResponse({ status: 200, description: 'Health status' })
   async getHealth(): Promise<HealthStatus> {
@@ -19,6 +22,8 @@ export class HealthController {
   }
 
   @Get('email')
+
+  @Public()
   @ApiOperation({ summary: 'Email subsystem health — SMTP probe' })
   @ApiResponse({ status: 200, description: 'Email health status' })
   async getEmailHealth() {
@@ -33,6 +38,8 @@ export class HealthController {
   }
 
   @Get('live')
+
+  @Public()
   @ApiOperation({ summary: 'Liveness probe' })
   @ApiResponse({ status: 200 })
   async getLiveness() {
@@ -40,6 +47,8 @@ export class HealthController {
   }
 
   @Get('ready')
+
+  @Public()
   @ApiOperation({ summary: 'Readiness probe' })
   @ApiResponse({ status: 200 })
   async getReadiness() {

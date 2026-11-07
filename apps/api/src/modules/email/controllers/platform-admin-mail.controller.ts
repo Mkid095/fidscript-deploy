@@ -10,7 +10,7 @@
  * Auth: only platform admins.
  */
 import {
-  Controller, Post, Body, UseGuards, HttpCode, HttpStatus, BadRequestException, Inject,
+  Controller, Post, Get, Body, UseGuards, HttpCode, HttpStatus, BadRequestException, Inject,
 } from '@nestjs/common';
 import { ApiTags, ApiBearerAuth } from '@nestjs/swagger';
 import { JwtAuthGuard } from '@/modules/auth/jwt-auth.guard';
@@ -20,6 +20,7 @@ import { Role } from '@prisma/client';
 import { ConfigService } from '@nestjs/config';
 import { IEmailProvider, EMAIL_PROVIDER } from '@/modules/email/providers/i-email-provider';
 import { AttachmentStorageService } from '@/modules/email/services/attachment-storage.service';
+import { MailConsoleService } from '@/modules/email/services/mail-console.service';
 import * as nodemailer from 'nodemailer';
 
 interface SendAttachmentDto {
@@ -50,7 +51,22 @@ export class PlatformAdminMailController {
     private config: ConfigService,
     @Inject(EMAIL_PROVIDER) private email: IEmailProvider,
     private attachmentStorage: AttachmentStorageService,
+    private mailConsole: MailConsoleService,
   ) {}
+
+  /**
+   * The console credential and the client configuration.
+   *
+   * The operator installed the platform and was told where the mail console
+   * is — and nothing else. This is where the username, the password and the
+   * host and port a mail client needs come from. Platform admins only: it
+   * is a credential with the power of the whole mail server.
+   */
+  @Get('console')
+  @HttpCode(HttpStatus.OK)
+  async console() {
+    return this.mailConsole.clientConfiguration();
+  }
 
   @Post('send')
   @HttpCode(HttpStatus.OK)

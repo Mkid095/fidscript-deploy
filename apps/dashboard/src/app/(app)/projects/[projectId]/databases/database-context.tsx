@@ -14,7 +14,6 @@ import { useDatabaseSql } from './database-context-sql-hook';
 import { useDatabaseSavedQueries } from './database-context-saved-queries-hook';
 import { useDatabaseStatus } from './database-context-status-hook';
 import { useDatabaseMigrations } from './database-context-migrations-hook';
-import { useDatabaseBackup } from './database-context-backup-hook';
 import { useDatabaseRealtime } from './database-context-realtime-hook';
 
 const DatabaseContext = createContext<DatabaseContextValue | null>(null);
@@ -36,7 +35,6 @@ export function DatabaseProvider({
   const { savedQueries, saveQuery, deleteSavedQuery } = useDatabaseSavedQueries();
   const { dbStatus, refreshStatus } = useDatabaseStatus(databaseId);
   const { migrations, refreshMigrations, applyMigration } = useDatabaseMigrations(databaseId);
-  const { backupSchedule, refreshBackupSchedule, updateBackupSchedule } = useDatabaseBackup(databaseId);
   const { realtimeTables, refreshRealtimeTables } = useDatabaseRealtime(databaseId);
 
   // ── Auto-load on databaseId change ───────────────────────────────────────
@@ -46,7 +44,6 @@ export function DatabaseProvider({
       refreshStatus();
       refreshMigrations();
       refreshRealtimeTables();
-      refreshBackupSchedule();
     }
   }, [databaseId]); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -63,14 +60,13 @@ export function DatabaseProvider({
     savedQueries, saveQuery, deleteSavedQuery,
     dbStatus, refreshStatus,
     migrations, refreshMigrations, applyMigration,
-    backupSchedule, refreshBackupSchedule, updateBackupSchedule,
     realtimeTables, refreshRealtimeTables,
   }), [projectId, databaseId, database, schema, loadingSchema, selectedTable,
        rowsByTable, columnsCache, queryResult, queryRunning, queryHistory, savedQueries,
-       dbStatus, migrations, backupSchedule, realtimeTables, queryLogs,
+       dbStatus, migrations, realtimeTables, queryLogs,
        fetchRows, fetchColumns, insertRow, updateRow, deleteRows, runQuery,
        clearHistory, clearLogs, appendLog, saveQuery, deleteSavedQuery, refreshStatus, refreshMigrations,
-       applyMigration, refreshBackupSchedule, updateBackupSchedule, refreshRealtimeTables]);
+       applyMigration, refreshRealtimeTables]);
 
   return <DatabaseContext.Provider value={value}>{children}</DatabaseContext.Provider>;
 }

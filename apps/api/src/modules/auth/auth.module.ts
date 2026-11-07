@@ -5,10 +5,14 @@ import { ConfigModule, ConfigService } from '@nestjs/config';
 import { resolveJwtSecret } from '@/common/secrets';
 import { AuthController } from '@/modules/auth/controllers/auth.controller';
 import { OrganizationController, InvitationAcceptController } from '@/modules/auth/controllers/organization.controller';
-import { AuthApiKeysController } from '@/modules/auth/controllers/auth-api-keys.controller';
+import { AuthAccountController } from '@/modules/auth/controllers/auth-account.controller';
+import { AuthSetupPasswordController } from '@/modules/auth/controllers/auth-setup-password.controller';
+import { AuthMfaController } from '@/modules/auth/controllers/auth-mfa.controller';
 import { AuthService } from '@/modules/auth/services/auth.service';
 import { AuthSessionService } from '@/modules/auth/services/auth-session.service';
 import { AuthRegisterService } from '@/modules/auth/services/auth-register.service';
+import { AccessTokenService } from '@/modules/auth/services/access-token.service';
+import { AuthSetupPasswordService } from '@/modules/auth/services/auth-setup-password.service';
 import { AuthOnboardingService } from '@/modules/auth/services/auth-onboarding.service';
 import { AuthLoginService } from '@/modules/auth/services/auth-login.service';
 import { AuthTokenService } from '@/modules/auth/services/auth-token.service';
@@ -17,7 +21,10 @@ import { AuthSessionMgmtService } from '@/modules/auth/services/auth-session-mgm
 import { AuthApiKeyService } from '@/modules/auth/services/auth-api-key.service';
 import { AuthPasswordService } from '@/modules/auth/services/auth-password.service';
 import { AuthMagicCodeService } from '@/modules/auth/services/auth-magic-code.service';
+import { AuthMagicCodeVerifyService } from '@/modules/auth/services/auth-magic-code-verify.service';
 import { AuthVerificationService } from '@/modules/auth/services/auth-verification.service';
+import { AuthVerificationEmailService } from '@/modules/auth/services/auth-verification-email';
+import { AuthMfaService } from '@/modules/auth/services/auth-mfa.service';
 import { OrganizationService } from '@/modules/auth/services/organization.service';
 import { TeamService } from '@/modules/auth/services/team.service';
 import { EmailModule } from '@/modules/email/email.module';
@@ -49,11 +56,13 @@ import { ProjectsModule } from '@/modules/projects/projects.module';
       inject: [ConfigService],
     }),
   ],
-  controllers: [AuthController, OrganizationController, InvitationAcceptController, AuthApiKeysController],
+  controllers: [AuthController, AuthMfaController, AuthAccountController, OrganizationController, InvitationAcceptController, AuthSetupPasswordController],
   providers: [
     AuthService,
     AuthSessionService,
     AuthRegisterService,
+    AccessTokenService,
+    AuthSetupPasswordService,
     AuthOnboardingService,
     AuthLoginService,
     AuthTokenService,
@@ -62,7 +71,10 @@ import { ProjectsModule } from '@/modules/projects/projects.module';
     AuthApiKeyService,
     AuthPasswordService,
     AuthMagicCodeService,
+    AuthMagicCodeVerifyService,
     AuthVerificationService,
+    AuthVerificationEmailService,
+    AuthMfaService,
     OrganizationService,
     TeamService,
     JwtStrategy,
@@ -76,6 +88,6 @@ import { ProjectsModule } from '@/modules/projects/projects.module';
     EmailVerifiedGuard,
     ProjectApiKeyMintGuard,
   ],
-  exports: [AuthService, OrganizationService, TeamService, JwtAuthGuard, ApiKeyOrJwtGuard, ScopeGuard, ProjectApiKeyMintGuard, PlatformAdminGuard, InstallationGuard, ProjectMemberGuard, EmailVerifiedGuard, JwtModule, forwardRef(() => ProjectsModule)],
+  exports: [AuthService, OrganizationService, TeamService, AccessTokenService, AuthApiKeyService, JwtAuthGuard, ApiKeyOrJwtGuard, ScopeGuard, ProjectApiKeyMintGuard, PlatformAdminGuard, InstallationGuard, ProjectMemberGuard, EmailVerifiedGuard, JwtModule, forwardRef(() => ProjectsModule)],
 })
 export class AuthModule {}

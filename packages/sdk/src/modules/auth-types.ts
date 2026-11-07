@@ -10,6 +10,8 @@ export interface User {
   mfaEnabled: boolean;
   mustChangePassword: boolean;
   emailVerifiedAt: string | null;
+  /** When the first-time journey was finished — null when it has not been. */
+  onboardedAt: string | null;
   preferredAuthMethod: 'PASSWORD' | 'MAGIC_CODE';
   createdAt: string;
   /** The credential types the user has — PASSWORD, MAGIC_CODE, PASSKEY. */
@@ -18,9 +20,43 @@ export interface User {
 
 export interface AuthResponse {
   accessToken: string;
+  /** Present only when the account has a second factor. */
+  mfaRequired?: false;
   refreshToken: string;
   expiresIn: number;
   user: User;
+}
+
+/**
+ * What a sign-in can answer with.
+ *
+ * An account with MFA on does not get tokens at the password step: it gets
+ * a short-lived challenge, and the second factor is what turns it into a
+ * session. The type used to claim `AuthResponse` — so a client asked for
+ * tokens, received none, and stored `undefined` as if they were real.
+ */
+export interface MfaRequiredResponse {
+  mfaRequired: true;
+  mfaToken: string;
+}
+
+export type LoginResponse = AuthResponse | MfaRequiredResponse;
+
+/** The secret and the otpauth URL for an authenticator app. */
+export interface MfaSetupResponse {
+  secret: string;
+  otpauthUrl: string;
+}
+
+/** Whether MFA is on, and how many recovery codes are left. */
+export interface MfaStatusResponse {
+  enabled: boolean;
+  recoveryCodesRemaining: number;
+}
+
+/** A fresh set of recovery codes — shown once. */
+export interface MfaRecoveryCodesResponse {
+  codes: string[];
 }
 
 export interface MagicCodeSendResponse {

@@ -2,13 +2,13 @@
 
 import { type ReactNode } from 'react';
 import Link from 'next/link';
-import Image from 'next/image';
 import { usePathname } from 'next/navigation';
+import Image from 'next/image';
 import { HugeiconsIcon } from '@hugeicons/react';
 import { ArrowTurnBackwardIcon } from '@hugeicons/core-free-icons';
 
 import { AuthGuard } from '@/components/auth-guard';
-import { TopNavLink } from '@/components/layout/top-nav-link';
+import { PlatformNav } from '@/components/navigation/platform-nav';
 import { AvatarDropdown } from '@/components/layout/avatar-dropdown';
 import { ThemeToggle } from '@/components/theme/theme-toggle';
 import { ConfirmProvider } from '@/components/ui/confirm-provider';
@@ -42,10 +42,10 @@ export default function AppLayout({ children }: { children: ReactNode }) {
           <>{children}</>
         ) : (
         <div className="min-h-screen flex flex-col bg-[var(--surface-2)]">
-          <header className="h-14 bg-[var(--surface-2)] border-b border-[var(--rail)] flex items-center px-6 gap-4 flex-shrink-0">
-            {/* Logo — links home */}
+          <header className="h-14 bg-[var(--surface-2)] border-b border-[var(--rail)] flex items-center px-4 sm:px-6 gap-2 sm:gap-4 flex-shrink-0">
+            {/* Logo — links to the platform's front door */}
             <Link
-              href="/projects"
+              href="/applications"
               className="flex items-center gap-2 group"
               aria-label="FIDScript home"
             >
@@ -56,7 +56,7 @@ export default function AppLayout({ children }: { children: ReactNode }) {
                 height={28}
                 className="rounded-md"
               />
-              <span className="text-sm font-bold tracking-widest text-[var(--text)] uppercase group-hover:text-[var(--text)] transition-colors">
+              <span className="hidden sm:inline text-sm font-bold tracking-widest text-[var(--text)] uppercase group-hover:text-[var(--text)] transition-colors">
                 fidscript
               </span>
             </Link>
@@ -76,18 +76,10 @@ export default function AppLayout({ children }: { children: ReactNode }) {
 
             <div className="flex-1" />
 
-            {/* The platform's two top-level surfaces: the applications the
-                operator can have, and the projects they are working on. */}
-            {!isProjectRoute && (
-              <nav className="flex items-center gap-1">
-                <TopNavLink href="/applications" pathname={pathname}>
-                  Applications
-                </TopNavLink>
-                <TopNavLink href="/projects" pathname={pathname}>
-                  Projects
-                </TopNavLink>
-              </nav>
-            )}
+            {/* The platform's navigation: the overview, the projects, the
+                applications the platform can have, and the operator's own
+                settings. A project's resources live in the project console. */}
+            {!isProjectRoute && <PlatformNav />}
 
             {/* Theme toggle */}
             <ThemeToggle />

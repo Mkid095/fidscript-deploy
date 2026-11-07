@@ -11,6 +11,7 @@ import { ServicesHeader } from './services-header';
 import { ServicesBody } from './services-body';
 import { ServicesSkeleton } from './services-skeleton';
 import { useServicesRegistry } from './services-registry-hooks';
+import { GithubConnectDialog } from '@/components/github/github-connect-dialog';
 import { extractRepoKey, isInFlight, type ServiceGroup } from './services-utils';
 
 interface ServicesRegistryProps {
@@ -26,8 +27,8 @@ export function ServicesRegistry({ projectId }: ServicesRegistryProps) {
     error,
     githubConnected,
     connecting,
+    github,
     load,
-    handleConnectGithub,
     handleAction,
   } = useServicesRegistry({ projectId });
 
@@ -79,9 +80,19 @@ export function ServicesRegistry({ projectId }: ServicesRegistryProps) {
         githubConnected={githubConnected}
         connecting={connecting}
         expanded={expanded}
-        onConnectGithub={() => void handleConnectGithub()}
+        onConnectGithub={github.openDialog}
         onAction={(id, action) => void handleAction(id, action)}
         onToggleService={toggleService}
+      />
+
+      <GithubConnectDialog
+        isOpen={github.dialogOpen}
+        onClose={github.closeDialog}
+        oauthConfigured={github.oauthConfigured}
+        connecting={github.connecting}
+        error={github.error}
+        onSignInWithGithub={() => void github.connect()}
+        onSubmitToken={github.connectWithToken}
       />
     </div>
   );

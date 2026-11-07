@@ -49,9 +49,13 @@ export class TemplatesModule {
 
   /**
    * List template categories.
+   *
+   * The route belongs to a project, so the call names one: the categories
+   * are the platform's public templates' categories, but the platform asks
+   * which project is asking before it answers.
    */
-  async listCategories() {
-    const res = await this.client.get<{ categories: string[] }>(`/api/v1/projects/00000000-0000-0000-0000-000000000000/templates/categories`);
+  async listCategories(projectId: string) {
+    const res = await this.client.get<{ categories: string[] }>(`/api/v1/projects/${projectId}/templates/categories`);
     return res.categories ?? [];
   }
 

@@ -2,11 +2,13 @@ import { Injectable, Logger, UnauthorizedException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { PrismaService } from '@/prisma/prisma.service';
 import { DomainAccessService } from './domain-access.service';
+import { resolveEncryptionKey } from '@/common/secrets';
 import * as crypto from 'crypto';
 import axios from 'axios';
 
-const ENCRYPTION_KEY_ENV = 'ENCRYPTION_KEY';
 const SCOPES = ['zone:read', 'dns:edit', 'account:read'].join(' ');
+/** How long an OAuth state stays valid. */
+const STATE_TTL_MS = 10 * 60 * 1000;
 
 @Injectable()
 export class CloudflareOAuthService {
@@ -78,6 +80,65 @@ export class CloudflareOAuthService {
    * Build the Cloudflare OAuth authorization URL.
    * The caller should redirect the user to the returned URL.
    */
+  /**
+   * The state the platform issues for an OAuth round trip.
+   *
+   * It is a SIGNED value carrying the project it was issued for, the person
+   * it was issued to, a nonce and an expiry. The callback checks the
+   * signature and that the project matches — so a state cannot be minted
+   * for one project and used on another.
+   *
+   * It used to be a bare random string, and the callback compared the
+   * client's copy with ITSELF (`body.state` passed as both the expected and
+   * the actual value), so the check could never fail and the endpoint
+   * accepted any state at all — along with any project id.
+   */
+  createState(projectId: string, userId: string): string {
+    const payload = {
+      projectId,
+      userId,
+      nonce: crypto.randomBytes(16).toString('hex'),
+      exp: Date.now() + STATE_TTL_MS,
+    };
+    const body = Buffer.from(JSON.stringify(payload), 'utf8').toString('base64url');
+    return `${body}.${this.signState(body)}`;
+  }
+
+  /** Check a state and return what it was issued for. */
+  verifyState(state: string): { projectId: string; userId: string } {
+    const [body, signature] = String(state ?? '').split('.');
+    if (!body || !signature) {
+      throw new UnauthorizedException('Invalid OAuth state — possible CSRF attack');
+    }
+    const expected = this.signState(body);
+    const given = Buffer.from(signature);
+    const wanted = Buffer.from(expected);
+    if (given.length !== wanted.length || !crypto.timingSafeEqual(given, wanted)) {
+      throw new UnauthorizedException('Invalid OAuth state — possible CSRF attack');
+    }
+    let payload: { projectId?: string; userId?: string; exp?: number };
+    try {
+      payload = JSON.parse(Buffer.from(body, 'base64url').toString('utf8'));
+    } catch {
+      throw new UnauthorizedException('Invalid OAuth state — possible CSRF attack');
+    }
+    if (!payload.projectId || !payload.userId) {
+      throw new UnauthorizedException('Invalid OAuth state — possible CSRF attack');
+    }
+    if (typeof payload.exp === 'number' && payload.exp < Date.now()) {
+      throw new UnauthorizedException('The OAuth state has expired');
+    }
+    return { projectId: payload.projectId, userId: payload.userId };
+  }
+
+  /** Sign the state with a key derived from the platform's encryption key. */
+  private signState(body: string): string {
+    return crypto
+      .createHmac('sha256', this.getEncryptionKey())
+      .update(`state:${body}`, 'utf8')
+      .digest('base64url');
+  }
+
   async buildAuthorizationUrl(state: string): Promise<{ url: string }> {
     const { clientId, redirectUri } = await this.getOAuthCredentials();
     const params = new URLSearchParams({
@@ -96,17 +157,21 @@ export class CloudflareOAuthService {
    * Stores the encrypted token in DomainConnection.
    */
   async completeOAuth(
-    userId: string,
     projectId: string,
     code: string,
-    expectedState: string,
-    actualState: string,
+    state: string,
   ): Promise<{ id: string; projectId: string; provider: string; email: string | null; createdAt: Date }> {
-    const { clientId, clientSecret, redirectUri } = await this.getOAuthCredentials();
-
-    if (actualState !== expectedState) {
-      throw new UnauthorizedException('Invalid OAuth state — possible CSRF attack');
+    // The state is checked FIRST: it is the platform's own, signed, and it
+    // says which project and which person the round trip was started for. A
+    // state issued for one project cannot be used on another, and a forged
+    // one is refused before anything else happens.
+    const issued = this.verifyState(state);
+    if (issued.projectId !== projectId) {
+      throw new UnauthorizedException('The OAuth state was issued for a different project');
     }
+    const userId = issued.userId;
+
+    const { clientId, clientSecret, redirectUri } = await this.getOAuthCredentials();
 
     // 1. Exchange code for token
     const tokenResponse = await axios.post(
@@ -258,14 +323,7 @@ export class CloudflareOAuthService {
   }
 
   private getEncryptionKey(): Buffer {
-    const envKey = process.env[ENCRYPTION_KEY_ENV];
-    if (envKey) {
-      return Buffer.from(envKey, 'utf8').slice(0, 32);
-    }
-    const keyFile = process.env[`${ENCRYPTION_KEY_ENV}_FILE`];
-    if (keyFile) {
-      try { return Buffer.from(require('fs').readFileSync(keyFile, 'utf8').trim(), 'base64').slice(0, 32); } catch { /* fall through */ }
-    }
-    return Buffer.from('default-dev-key-32-chars-here!!', 'utf8').slice(0, 32);
+    // One resolution for the whole platform — and it fails closed.
+    return resolveEncryptionKey(this.configService);
   }
 }

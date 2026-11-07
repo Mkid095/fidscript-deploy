@@ -4,20 +4,22 @@ import { Button, Input } from '@fidscript/ui';
 
 import { PasswordStrength } from '@/components/auth/password-strength';
 import { LoginErrorBanner } from '../../login/components/login-error-banner';
-import { InviteKeywordInput } from './invite-keyword-input';
+import { SetupPasswordInput } from './setup-password-input';
 
 interface PasswordRegistrationFormProps {
-  inviteKeyword: string;
-  inviteError: string;
-  name: string;
+  setupPassword: string;
+  setupPasswordError: string;
+  firstName: string;
+  lastName: string;
   email: string;
   password: string;
   confirm: string;
   validationError: string;
   backendError: string;
   loading: boolean;
-  onInviteChange: (v: string) => void;
-  onNameChange: (v: string) => void;
+  onSetupPasswordChange: (v: string) => void;
+  onFirstNameChange: (v: string) => void;
+  onLastNameChange: (v: string) => void;
   onEmailChange: (v: string) => void;
   onPasswordChange: (v: string) => void;
   onConfirmChange: (v: string) => void;
@@ -25,24 +27,33 @@ interface PasswordRegistrationFormProps {
 }
 
 export function PasswordRegistrationForm({
-  inviteKeyword, inviteError,
-  name, email, password, confirm,
+  setupPassword, setupPasswordError,
+  firstName, lastName, email, password, confirm,
   validationError, backendError, loading,
-  onInviteChange, onNameChange, onEmailChange,
+  onSetupPasswordChange, onFirstNameChange, onLastNameChange, onEmailChange,
   onPasswordChange, onConfirmChange, onSubmit,
 }: PasswordRegistrationFormProps) {
   return (
     <form onSubmit={onSubmit} noValidate>
       <div className="flex flex-col gap-4">
-        <InviteKeywordInput value={inviteKeyword} error={inviteError} onChange={onInviteChange} />
-        <Input
-          label="Name"
-          type="text"
-          value={name}
-          onChange={e => onNameChange(e.target.value)}
-          placeholder="Your full name"
-          autoComplete="name"
-        />
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+          <Input
+            label="First name"
+            type="text"
+            value={firstName}
+            onChange={e => onFirstNameChange(e.target.value)}
+            placeholder="Ada"
+            autoComplete="given-name"
+          />
+          <Input
+            label="Last name"
+            type="text"
+            value={lastName}
+            onChange={e => onLastNameChange(e.target.value)}
+            placeholder="Lovelace"
+            autoComplete="family-name"
+          />
+        </div>
         <Input
           label="Email"
           type="email"
@@ -69,6 +80,11 @@ export function PasswordRegistrationForm({
           onChange={e => onConfirmChange(e.target.value)}
           placeholder="Re-enter password"
           autoComplete="new-password"
+        />
+        <SetupPasswordInput
+          value={setupPassword}
+          error={setupPasswordError}
+          onChange={onSetupPasswordChange}
         />
         {(validationError || backendError) && (
           <LoginErrorBanner message={validationError || backendError} />

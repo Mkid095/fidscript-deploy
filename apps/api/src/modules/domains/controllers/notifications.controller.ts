@@ -35,7 +35,7 @@ export class NotificationsController {
    * List notifications for the current user.
    * Supports filtering by unread status and project.
    */
-  @Get('api/v1/notifications')
+  @Get('notifications')
   @ApiOperation({ summary: 'List user notifications' })
   async listNotifications(
     @Req() req: Request,
@@ -63,7 +63,7 @@ export class NotificationsController {
   /**
    * Get the unread notification count (for the bell badge).
    */
-  @Get('api/v1/notifications/unread-count')
+  @Get('notifications/unread-count')
   @ApiOperation({ summary: 'Get unread notification count' })
   async getUnreadCount(@Req() req: Request) {
     const userId = (req as any).user?.userId;
@@ -79,7 +79,7 @@ export class NotificationsController {
   /**
    * Mark a notification as read.
    */
-  @Post('api/v1/notifications/:id/read')
+  @Post('notifications/:id/read')
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Mark notification as read' })
   async markAsRead(@Req() req: Request, @Param('id') id: string) {
@@ -94,7 +94,7 @@ export class NotificationsController {
   /**
    * Mark all notifications as read (optionally filtered by project).
    */
-  @Post('api/v1/notifications/mark-all-read')
+  @Post('notifications/mark-all-read')
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Mark all notifications as read' })
   async markAllAsRead(@Req() req: Request, @Body() body: { projectId?: string } = {}) {
@@ -113,7 +113,7 @@ export class NotificationsController {
   /**
    * Dismiss a notification (removes it from the inbox).
    */
-  @Post('api/v1/notifications/:id/dismiss')
+  @Post('notifications/:id/dismiss')
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Dismiss a notification' })
   async dismiss(@Req() req: Request, @Param('id') id: string) {
@@ -130,7 +130,7 @@ export class NotificationsController {
   /**
    * Get the activity feed for a specific domain.
    */
-  @Get('api/v1/projects/:projectId/domains/:domainId/activity')
+  @Get('projects/:projectId/domains/:domainId/activity')
   @ApiOperation({ summary: 'Get activity feed for a domain' })
   async getDomainActivity(
     @Param('domainId') domainId: string,
@@ -146,7 +146,7 @@ export class NotificationsController {
   /**
    * Get the activity feed for all domains in a project.
    */
-  @Get('api/v1/projects/:projectId/domains/activity')
+  @Get('projects/:projectId/domains/activity')
   @ApiOperation({ summary: 'Get activity feed for all domains in a project' })
   async getProjectDomainActivity(
     @Param('projectId') projectId: string,

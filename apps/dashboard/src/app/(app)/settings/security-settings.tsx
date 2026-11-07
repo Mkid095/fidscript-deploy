@@ -12,13 +12,13 @@ interface ApiKey {
 }
 
 interface SecuritySettingsProps {
-  onRevoke: (keyId: string) => void;
+  onRevoke: (keyId: string) => Promise<void>;
   revoking: string | null;
   revokeError: string | null;
 }
 
 export function SecuritySettings({ onRevoke, revoking, revokeError }: SecuritySettingsProps) {
-  const { apiKeys, loadingKeys } = useSecuritySettings();
+  const { apiKeys, loadingKeys, reload } = useSecuritySettings();
   const confirmFn = useConfirm();
   const { showToast } = useToast();
 
@@ -42,7 +42,7 @@ export function SecuritySettings({ onRevoke, revoking, revokeError }: SecuritySe
 
   return (
     <>
-      <Card className="border border-[var(--rail)] mb-6">
+      <Card id="api-keys" className="border border-[var(--rail)] mb-6 scroll-mt-6">
         <div className="flex items-center justify-between mb-4">
           <h2 className="text-sm font-semibold text-[var(--text)]">API Keys</h2>
         </div>
@@ -58,7 +58,19 @@ export function SecuritySettings({ onRevoke, revoking, revokeError }: SecuritySe
                   <p className="text-sm text-[var(--text)]">{key.name}</p>
                   <p className="text-xs text-[var(--text-muted)]">Created {new Date(key.createdAt).toLocaleDateString()}</p>
                 </div>
-                <Button variant="danger" size="sm" loading={revoking === key.id} onClick={() => onRevoke(key.id)}>Revoke</Button>
+                <Button
+                  variant="danger"
+                  size="sm"
+                  loading={revoking === key.id}
+                  onClick={async () => {
+                    await onRevoke(key.id);
+                    // The list is asked for again, so the card shows what the
+                    // platform holds and not what it held a moment ago.
+                    reload();
+                  }}
+                >
+                  Revoke
+                </Button>
               </div>
             ))}
           </div>

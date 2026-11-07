@@ -1,51 +1,47 @@
 import {
-  Controller, Post, Headers, Body, HttpCode, HttpStatus, UnauthorizedException,
+  Controller, Post, Headers, Body, HttpCode, HttpStatus, Req,
 } from '@nestjs/common';
 import { ApiTags, ApiOperation } from '@nestjs/swagger';
-import { ConfigService } from '@nestjs/config';
+import { Request } from 'express';
 import { EmailInboundService } from '@/modules/email/services/inbound.service';
-import * as crypto from 'crypto';
+import { WebhookSignatureService } from '@/modules/email/services/webhook-signature.service';
+import { Public } from '@/modules/auth/decorators/public.decorator';
 
 @ApiTags('email-events')
 @Controller('email/events')
 export class EmailEventsController {
   constructor(
     private inboundService: EmailInboundService,
-    private configService: ConfigService,
+    private signatures: WebhookSignatureService,
   ) {}
 
-  private verifySignature(body: string, signature: string): boolean {
-    const secret = this.configService.get<string>('STALWART_WEBHOOK_SECRET');
-    if (!secret) return false;
-    const expected = 'sha256=' + crypto.createHmac('sha256', secret).update(body, 'utf8').digest('hex');
-    return crypto.timingSafeEqual(Buffer.from(signature), Buffer.from(expected));
-  }
-
   @Post('bounce')
+
+  @Public()
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Stalwart bounce webhook — updates message status' })
   handleBounce(
-    @Headers('x-stalwart-signature') signature: string,
+    @Req() req: Request & { rawBody?: Buffer },
+    @Headers('x-stalwart-signature') signature: string | undefined,
     @Body() payload: { messageId: string; to: string; error: string; code?: string },
   ) {
-    const rawBody = JSON.stringify(payload);
-    if (signature && !this.verifySignature(rawBody, signature)) {
-      throw new UnauthorizedException('Invalid webhook signature');
-    }
+    // The signature is required, and it is over the bytes Stalwart signed.
+    this.signatures.verify(req.rawBody ?? JSON.stringify(payload), signature);
     return this.inboundService.handleBounce(payload);
   }
 
   @Post('complaint')
+
+  @Public()
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Stalwart complaint (FBL) webhook — adds recipient to suppression list' })
   handleComplaint(
-    @Headers('x-stalwart-signature') signature: string,
+    @Req() req: Request & { rawBody?: Buffer },
+    @Headers('x-stalwart-signature') signature: string | undefined,
     @Body() payload: { email: string; userAgent?: string },
   ) {
-    const rawBody = JSON.stringify(payload);
-    if (signature && !this.verifySignature(rawBody, signature)) {
-      throw new UnauthorizedException('Invalid webhook signature');
-    }
+    // The signature is required, and it is over the bytes Stalwart signed.
+    this.signatures.verify(req.rawBody ?? JSON.stringify(payload), signature);
     return this.inboundService.handleComplaint(payload);
   }
 }

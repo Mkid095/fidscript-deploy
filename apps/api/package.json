@@ -11,13 +11,15 @@
     "lint": "eslint \"src/**/*.ts\" --fix",
     "postinstall": "prisma generate",
     "typecheck": "tsc --noEmit",
-    "test": "jest --passWithNoTests",
+    "test": "jest",
     "test:watch": "jest --watch",
     "test:cov": "jest --coverage",
     "clean": "rm -rf dist",
     "db:migrate": "prisma migrate dev",
     "db:seed": "tsx prisma/seed.ts",
-    "db:studio": "prisma studio"
+    "db:studio": "prisma studio",
+    "test:integration": "./scripts/test-integration.sh",
+    "test:all": "jest && ./scripts/test-integration.sh"
   },
   "dependencies": {
     "@fidscript-deploy/events": "workspace:*",

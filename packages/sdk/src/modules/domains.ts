@@ -9,6 +9,9 @@
  * - domains-templates-webhooks.ts  — templates + webhooks
  * - domains-types.ts               — entity types (Domain, DnsConnection, …)
  * - domains-types-wizard.ts        — wizard + timeline types
+ *
+ * The types are exported from the package's entry point, straight from the
+ * files that define them.
  * - domains-host.ts                — DomainsHost interface (mixin target)
  *
  * Method groups are attached via `apply*Methods` helpers in the constructor.
@@ -30,29 +33,6 @@ import { applyDomainsAuxMethods } from './domains-templates-webhooks';
 
 export type { DomainsHost };
 
-export type {
-  Domain,
-  DnsConnection,
-  DomainHealth,
-  DomainHealthStatus,
-  DnsRecord,
-  DnsRecordCategory,
-  DnsRecordStatus,
-  DnsRecordsResponse,
-  DomainSslInfo,
-  DomainType,
-  DomainCapabilities,
-  DomainReconciliationStatus,
-  DomainVerificationRun,
-  DomainIncident,
-} from './domains-types';
-export type {
-  DomainHealthTimelineEntry,
-  DomainWizardStatus,
-  WizardStage,
-  WizardRecord,
-  WizardRecordStatus,
-} from './domains-types-wizard';
 
 export class DomainsModule implements DomainsHost {
   readonly client: FidscriptClient;
@@ -125,8 +105,14 @@ export class DomainsModule implements DomainsHost {
     return res.domains ?? [];
   }
 
-  async get(id: string): Promise<Domain> {
-    return this.client.get<Domain>(`/api/v1/domains/${id}`);
+  /**
+   * One domain of a project.
+   *
+   * The route is project-scoped: a domain belongs to a project, and the
+   * project's members are who may read it.
+   */
+  async get(projectId: string, id: string): Promise<Domain> {
+    return this.client.get<Domain>(`/api/v1/projects/${projectId}/domains/${id}`);
   }
 
   /**

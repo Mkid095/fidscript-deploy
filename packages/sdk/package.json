@@ -1,7 +1,7 @@
 {
   "name": "@fidscript-deploy/sdk",
-  "version": "1.0.2",
-  "description": "Official FIDScript Deploy TypeScript SDK — all platform modules, typed errors, async iterators, realtime",
+  "version": "1.0.5",
+  "description": "Official FIDScript Deploy TypeScript SDK \u2014 all platform modules, typed errors, async iterators, realtime",
   "type": "module",
   "main": "./dist/sdk/src/index.js",
   "types": "./dist/sdk/src/index.d.ts",
@@ -10,15 +10,29 @@
     "./client": "./dist/sdk/src/client.js",
     "./modules/*": "./dist/sdk/src/modules/*.js"
   },
+  "files": [
+    "dist",
+    "README.md"
+  ],
+  "publishConfig": {
+    "registry": "https://registry.fidscript.com",
+    "access": "public"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Mkid095/fidscript-deploy.git",
+    "directory": "packages/sdk"
+  },
+  "homepage": "https://fidscript.com/docs",
   "scripts": {
-    "build": "tsc",
+    "build": "rm -rf dist && tsc && node ../../scripts/fix-extensions.mjs",
     "dev": "tsc --watch",
     "typecheck": "tsc --noEmit",
     "clean": "rm -rf dist"
   },
   "dependencies": {
-    "@fidscript-deploy/events": "^1.0.1",
-    "@fidscript-deploy/types": "^1.0.0",
+    "@fidscript-deploy/events": "workspace:^",
+    "@fidscript-deploy/types": "workspace:^",
     "axios": "^1.6.0",
     "socket.io-client": "^4.8.3"
   },

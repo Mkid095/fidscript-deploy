@@ -1,15 +1,25 @@
 'use client';
 
-import { useState } from 'react';
+import { Suspense, useEffect, useState } from 'react';
 import { Button } from '@fidscript/ui';
 import { Input } from '@fidscript/ui';
 import { Card } from '@fidscript/ui';
 
 import { useAuth } from '@/contexts/auth-context';
 import { PasswordStrength } from '@/components/auth/password-strength';
+import { PASSWORD_POLICY_MESSAGE, isPasswordAcceptable } from '@/lib/password-policy';
 
-export default function ForceChangePasswordPage() {
+function ForceChangePasswordPageInner() {
   const { user, changePassword, loading, error } = useAuth();
+
+  // This page is for somebody who IS signed in — the platform sends them
+  // here when the account still has the installer's password. A visitor who
+  // is not signed in was shown the form and got "Not authenticated" back.
+  useEffect(() => {
+    if (user === null) {
+      window.location.href = '/login?next=%2Fforce-change-password';
+    }
+  }, [user]);
   const hasPasswordCredential = user?.credentials?.some(c => c.type === 'PASSWORD') ?? false;
   const [currentPassword, setCurrentPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
@@ -22,20 +32,8 @@ export default function ForceChangePasswordPage() {
       setValidationError('Current password is required');
       return false;
     }
-    if (newPassword.length < 12) {
-      setValidationError('New password must be at least 12 characters');
-      return false;
-    }
-    if (!/[A-Z]/.test(newPassword)) {
-      setValidationError('New password must contain an uppercase letter');
-      return false;
-    }
-    if (!/[a-z]/.test(newPassword)) {
-      setValidationError('New password must contain a lowercase letter');
-      return false;
-    }
-    if (!/[0-9]/.test(newPassword)) {
-      setValidationError('New password must contain a number');
+    if (!isPasswordAcceptable(newPassword)) {
+      setValidationError(PASSWORD_POLICY_MESSAGE);
       return false;
     }
     if (hasPasswordCredential && newPassword === currentPassword) {
@@ -131,5 +129,18 @@ export default function ForceChangePasswordPage() {
         </form>
       </Card>
     </div>
+  );
+}
+
+/**
+ * The page reads the token from the address, so it is rendered inside a
+ * boundary — Next cannot prerender a page whose query string it does not
+ * know at build time.
+ */
+export default function ForceChangePasswordPage() {
+  return (
+    <Suspense fallback={<p className="text-sm text-[var(--text-muted)] p-6">Checking…</p>}>
+      <ForceChangePasswordPageInner />
+    </Suspense>
   );
 }

@@ -7,13 +7,24 @@ interface MagicCodeInputProps {
   onComplete: (code: string) => void;
   disabled?: boolean;
   error?: boolean;
+  /** What the boxes are for — announced with the group. */
+  label?: string;
 }
 
+/**
+ * A one-time code, in boxes.
+ *
+ * The six boxes had no names: a screen reader announced six anonymous text
+ * fields, and the error was a red border and a shake with nothing to say
+ * what was wrong. Now the group is named, every box says which digit it is,
+ * and the error is announced with the group.
+ */
 export function MagicCodeInput({
   length = 6,
   onComplete,
   disabled,
   error,
+  label = 'One-time code',
 }: MagicCodeInputProps) {
   const [values, setValues] = useState<string[]>(Array(length).fill(''));
   const inputRefs = useRef<(HTMLInputElement | null)[]>([]);
@@ -52,13 +63,20 @@ export function MagicCodeInput({
   }
 
   return (
-    <div className="flex gap-2 justify-center">
+    <div
+      role="group"
+      aria-label={label}
+      aria-invalid={error ? true : undefined}
+      className="flex gap-2 justify-center"
+    >
       {values.map((val, i) => (
         <input
           key={i}
           ref={(el) => { inputRefs.current[i] = el; }}
           type="text"
           inputMode="numeric"
+          autoComplete={i === 0 ? 'one-time-code' : 'off'}
+          aria-label={`Digit ${i + 1} of ${length}`}
           maxLength={1}
           value={val}
           disabled={disabled}
@@ -70,10 +88,10 @@ export function MagicCodeInput({
             w-12 h-14 text-center text-xl font-mono rounded-lg
             bg-[var(--surface-2)] border text-[var(--text)]
             placeholder:text-[var(--text-dim)]
-            focus:outline-none focus:ring-2 focus:ring-[var(--danger)]/50
+            focus:outline-none focus-visible:shadow-[var(--focus-ring)]
             disabled:opacity-50 disabled:cursor-not-allowed
             transition-colors duration-150
-            ${error ? 'border-[var(--danger)] animate-shake' : 'border-[var(--rail-light)] focus:border-slate-500'}
+            ${error ? 'border-[var(--danger)] animate-shake' : 'border-[var(--rail-light)] focus:border-[var(--accent)]'}
           `}
           style={{ animation: error ? 'shake 0.3s ease-in-out' : undefined }}
         />

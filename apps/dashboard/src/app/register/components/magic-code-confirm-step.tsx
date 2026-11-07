@@ -8,12 +8,15 @@ interface MagicCodeConfirmStepProps {
   maskedEmail: string;
   onResend: () => Promise<void>;
   onCodeComplete: (code: string) => void;
+  /** Back to the email step — the button did nothing at all. */
+  onUseDifferentEmail: () => void;
 }
 
 export function MagicCodeConfirmStep({
   maskedEmail,
   onResend,
   onCodeComplete,
+  onUseDifferentEmail,
 }: MagicCodeConfirmStepProps) {
   const [code, setCode] = useState('');
   const [codeError, setCodeError] = useState('');
@@ -51,6 +54,7 @@ export function MagicCodeConfirmStep({
       <div className="flex justify-center">
         <button
           type="button"
+          onClick={onUseDifferentEmail}
           className="text-xs text-[var(--text-muted)] hover:text-[var(--text)] transition-colors"
         >
           Use a different email

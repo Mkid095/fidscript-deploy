@@ -29,14 +29,14 @@ export class DatabasesController {
     @Body() dto: CreateDatabaseDto,
     @CurrentUser() user: any,
   ) {
-    await this.projectAccess.findProjectWithAccess(user.userId, projectId);
+    await this.projectAccess.findProjectWithAccess(user.userId, projectId, user.projectId);
     return this.databasesService.createDatabase(projectId, dto);
   }
 
   @Get()
   @ApiOperation({ summary: 'List databases' })
   async listDatabases(@Param('projectId') projectId: string, @CurrentUser() user: any) {
-    await this.projectAccess.findProjectWithAccess(user.userId, projectId);
+    await this.projectAccess.findProjectWithAccess(user.userId, projectId, user.projectId);
     const databases = await this.databasesService.listDatabases(projectId);
     return { databases };
   }
@@ -48,7 +48,7 @@ export class DatabasesController {
     @Param('databaseId') databaseId: string,
     @CurrentUser() user: any,
   ) {
-    await this.projectAccess.findProjectWithAccess(user.userId, projectId);
+    await this.projectAccess.findProjectWithAccess(user.userId, projectId, user.projectId);
     return this.databasesService.getDatabase(projectId, databaseId);
   }
 
@@ -60,7 +60,7 @@ export class DatabasesController {
     @Body() dto: UpdateDatabaseDto,
     @CurrentUser() user: any,
   ) {
-    await this.projectAccess.findProjectWithAccess(user.userId, projectId);
+    await this.projectAccess.findProjectWithAccess(user.userId, projectId, user.projectId);
     return this.databasesService.updateDatabase(projectId, databaseId, dto);
   }
 
@@ -71,7 +71,7 @@ export class DatabasesController {
     @Param('databaseId') databaseId: string,
     @CurrentUser() user: any,
   ) {
-    await this.projectAccess.findProjectWithAccess(user.userId, projectId);
+    await this.projectAccess.findProjectWithAccess(user.userId, projectId, user.projectId);
     return this.databasesService.deleteDatabase(projectId, databaseId);
   }
 
@@ -82,7 +82,7 @@ export class DatabasesController {
     @Param('databaseId') databaseId: string,
     @CurrentUser() user: any,
   ) {
-    await this.projectAccess.findProjectWithAccess(user.userId, projectId);
+    await this.projectAccess.findProjectWithAccess(user.userId, projectId, user.projectId);
     return this.databasesService.getDatabaseStatus(projectId, databaseId);
   }
 
@@ -94,7 +94,7 @@ export class DatabasesController {
     @Query() dto: GetConnectionInfoDto,
     @CurrentUser() user: any,
   ) {
-    await this.projectAccess.findProjectWithAccess(user.userId, projectId);
+    await this.projectAccess.findProjectWithAccess(user.userId, projectId, user.projectId);
     return this.databasesService.getConnectionInfo(projectId, databaseId, dto);
   }
 
@@ -106,7 +106,7 @@ export class DatabasesController {
     @Body() dto: RotateCredentialsDto,
     @CurrentUser() user: any,
   ) {
-    await this.projectAccess.findProjectWithAccess(user.userId, projectId);
+    await this.projectAccess.findProjectWithAccess(user.userId, projectId, user.projectId);
     return this.databasesService.rotateCredentials(projectId, databaseId);
   }
 
@@ -118,7 +118,7 @@ export class DatabasesController {
     @Body() dto: CreateBackupDto,
     @CurrentUser() user: any,
   ) {
-    await this.projectAccess.findProjectWithAccess(user.userId, projectId);
+    await this.projectAccess.findProjectWithAccess(user.userId, projectId, user.projectId);
     return this.databasesService.createBackup(projectId, databaseId, dto);
   }
 
@@ -129,7 +129,7 @@ export class DatabasesController {
     @Param('databaseId') databaseId: string,
     @CurrentUser() user: any,
   ) {
-    await this.projectAccess.findProjectWithAccess(user.userId, projectId);
+    await this.projectAccess.findProjectWithAccess(user.userId, projectId, user.projectId);
     const backups = await this.databasesService.listBackups(projectId, databaseId);
     return { backups };
   }
@@ -142,7 +142,7 @@ export class DatabasesController {
     @Body() dto: RestoreBackupDto,
     @CurrentUser() user: any,
   ) {
-    await this.projectAccess.findProjectWithAccess(user.userId, projectId);
+    await this.projectAccess.findProjectWithAccess(user.userId, projectId, user.projectId);
     return this.databasesService.restoreBackup(projectId, databaseId, dto);
   }
 }

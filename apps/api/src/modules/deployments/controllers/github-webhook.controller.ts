@@ -18,6 +18,7 @@ import { GithubWebhookService } from '../services/github-webhook.service';
 import { DeploymentCrudService } from '../services/deployment-crud.service';
 import { PrismaService } from '@/prisma/prisma.service';
 import { SourceType } from '../dto/create-deployment.dto';
+import { Public } from '@/modules/auth/decorators/public.decorator';
 
 @Controller('webhooks/github')
 export class GithubWebhookController {
@@ -30,6 +31,8 @@ export class GithubWebhookController {
   ) {}
 
   @Post()
+
+  @Public()
   @HttpCode(HttpStatus.OK)
   async handleWebhook(@Req() req: Request): Promise<{ status: string }> {
     const event = req.headers['x-github-event'] as string | undefined;

@@ -43,6 +43,7 @@ import { die, loadSdk } from '../commands/cli-runtime-helpers';
 import { registerFunctionsCommands } from '../commands/functions';
 import { registerDatabasesCommands } from '../commands/databases';
 import { registerInstantCommands } from '../commands/instant';
+import { registerRegistryCommands } from '../commands/registry';
 import { registerCronCommands } from '../commands/cron';
 import { registerDomainsCommands } from '../commands/domains';
 import { registerStorageCommands } from '../commands/storage';
@@ -136,6 +137,7 @@ async function run(argv: string[]): Promise<void> {
   registerDeploymentsCommands(program, ctx);
   registerEmailCommands(program, ctx);
   registerInstantCommands(program, ctx);
+  registerRegistryCommands(program, ctx);
 
   await program.parseAsync(argv);
 }

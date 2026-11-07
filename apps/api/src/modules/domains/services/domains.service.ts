@@ -25,6 +25,11 @@ export class DomainsService {
     return this.crud.list(userId, projectId);
   }
 
+  /** One domain of the project. */
+  get(userId: string, projectId: string, domainId: string) {
+    return this.crud.get(userId, projectId, domainId);
+  }
+
   add(userId: string, projectId: string, dto: any) {
     return this.crud.add(userId, projectId, dto);
   }

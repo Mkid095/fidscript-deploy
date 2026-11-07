@@ -28,6 +28,9 @@ model User {
   mfaSecret           String?    @map("mfa_secret") @db.VarChar(255)
   mustChangePassword  Boolean    @default(false) @map("must_change_password")
   emailVerifiedAt     DateTime?  @map("email_verified_at") @db.Timestamptz
+  /// When the person finished the first-time journey. Null means they have
+  /// not — so the dashboard can offer it without forcing it.
+  onboardedAt         DateTime?  @map("onboarded_at") @db.Timestamptz
   preferredAuthMethod AuthMethod @default(PASSWORD) @map("preferred_auth_method")
   lastLoginAt                  DateTime?  @map("last_login_at") @db.Timestamptz
   verificationCode             String?    @map("verification_code") @db.VarChar(64)
@@ -44,6 +47,7 @@ model User {
   githubConnection GithubConnection?
   mailboxMemberships EmailMailboxMember[]
   verificationTokens VerificationToken[]
+  mfaRecoveryCodes   MfaRecoveryCode[]
   orgMemberships    OrganizationMember[]
   teamMemberships   TeamMember[]
 
@@ -112,6 +116,8 @@ model Organization {
   teams       Team[]
   invitations Invitation[]
   roles      OrgRole[]
+  /// The projects that live in this workspace.
+  projects   Project[]
 
   @@map("organizations")
   @@schema("identity")
@@ -333,8 +339,16 @@ model Project {
   slug               String        @unique @db.VarChar(255)
   description        String?       @db.Text
   type               ProjectType   @default(FRONTEND)
+  /// What the project is for. The console derives the project's menu from it.
+  shape              ProjectShape  @default(DEPLOYMENT)
+  /// Whether the deployment service is switched on for this project.
+  deploymentOn       Boolean       @default(true) @map("deployment_on")
   status             ProjectStatus @default(CREATING)
   ownerId            String        @map("owner_id")
+  /// The workspace this project belongs to. Null means the owner's own
+  /// workspace; set, it means a team (an organization) owns it, and the
+  /// organization's members are the project's members.
+  organizationId     String?       @map("organization_id") @db.VarChar(36)
   region             String?       @db.VarChar(100)
   subdomain          String?       @db.VarChar(255)
   customDomains      Json          @default("[]") @map("custom_domains")
@@ -352,6 +366,7 @@ model Project {
   updatedAt          DateTime      @updatedAt @map("updated_at") @db.Timestamptz
 
   owner                User                  @relation("ProjectOwner", fields: [ownerId], references: [id], onDelete: Cascade)
+  organization         Organization?         @relation(fields: [organizationId], references: [id], onDelete: SetNull)
   members              ProjectMember[]
   settings             ProjectSettings?
   buckets              Bucket[]
@@ -535,6 +550,19 @@ model Credential {
   @@schema("infrastructure")
 }
 
+/// What a project is for.
+///
+/// BACKEND — the application's data, users, permissions and files live in
+/// InstantDB. DEPLOYMENT — the platform builds and runs the application.
+/// BOTH — each of them, kept apart.
+enum ProjectShape {
+  BACKEND
+  DEPLOYMENT
+  BOTH
+
+  @@schema("public")
+}
+
 enum ProjectType {
   FRONTEND
   BACKEND
@@ -713,6 +741,10 @@ model BuildConfig {
   /// Monorepo app root for turbo/nx monorepos (e.g. "apps/web", "packages/frontend")
   buildTarget           String?  @map("build_target") @db.VarChar(255)
   startupTimeoutSeconds Int      @default(120) @map("startup_timeout_seconds")
+  /// The variables the build cannot run without. A deployment that is missing
+  /// one of these fails BEFORE the build starts, naming the variable — so a
+  /// half-configured application never reaches the build stage.
+  requiredEnvVars       String[] @default([]) @map("required_env_vars")
   createdAt             DateTime @default(now()) @map("created_at") @db.Timestamptz
   updatedAt             DateTime @updatedAt @map("updated_at") @db.Timestamptz
 
@@ -2489,6 +2521,10 @@ model InstallationSettings {
   // Auth method for the admin account: PASSWORD (email+password) or MAGIC_CODE (email-only, code per login)
   authMethod     AuthMethod @default(PASSWORD) @map("auth_method")
   dnsMode        String     @default("cloudflare_auto") @map("dns_mode") @db.VarChar(50)
+  // The company password: the shared secret that gates registration. It is
+  // set by the operator during setup, and a bcrypt hash is stored — never
+  // the password itself. Null means registration is open.
+  setupPasswordHash String? @map("setup_password_hash") @db.Text
   // Cloudflare API token lives in /run/secrets/cf_api_token — never in the database
   branding       Json?
   // Cloudflare OAuth credentials for one-click DNS (encrypted — never stored plaintext)
@@ -2538,6 +2574,22 @@ enum CredentialType {
   PASSKEY
 
   @@map("CredentialType")
+  @@schema("identity")
+}
+
+/// A single-use recovery code for TOTP MFA. Stored as a bcrypt hash — the
+/// plaintext is shown once, when the codes are generated, and never again.
+model MfaRecoveryCode {
+  id        String    @id @default(uuid())
+  userId    String    @map("user_id")
+  codeHash  String    @map("code_hash") @db.VarChar(255)
+  usedAt    DateTime? @map("used_at") @db.Timestamptz
+  createdAt DateTime  @default(now()) @map("created_at") @db.Timestamptz
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("mfa_recovery_codes")
   @@schema("identity")
 }
 

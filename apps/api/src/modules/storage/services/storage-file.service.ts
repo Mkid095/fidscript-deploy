@@ -96,6 +96,25 @@ export class StorageFileService {
     };
   }
 
+  /**
+   * One file of a bucket.
+   *
+   * The SDK's `getFile` and the file preview both read a single file, and
+   * the route did not exist — the preview had nothing to show.
+   */
+  async getFile(userId: string, projectId: string, bucketId: string, fileId: string) {
+    await this.access.checkProjectAccess(userId, projectId);
+
+    const file = await this.prisma.file.findFirst({
+      where: { id: fileId, bucketId },
+      include: { bucket: true },
+    });
+    if (!file) throw new NotFoundException('File not found');
+    if (file.bucket.projectId !== projectId) throw new ForbiddenException('Access denied');
+
+    return { ...file, sizeBytes: Number(file.sizeBytes) };
+  }
+
   async deleteFile(userId: string, projectId: string, fileId: string) {
     const project = await this.access.checkProjectAccess(userId, projectId);
 

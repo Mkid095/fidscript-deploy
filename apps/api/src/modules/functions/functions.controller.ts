@@ -6,50 +6,51 @@ import {
   Delete,
   Body,
   Param,
-  Query,
   UseGuards,
+  Req,
 } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
+import { Request } from 'express';
 import { ApiKeyOrJwtGuard } from '@/modules/auth/guards/api-key-or-jwt.guard';
 import { ScopeGuard } from '@/modules/auth/guards/scope-guard';
 import { RequireScope } from '@/modules/auth/decorators/require-scope.decorator';
 import { ProjectMemberGuard } from '@/modules/auth/guards/project-member.guard';
 import { FunctionsService } from './functions.service';
+import { FunctionsAccessService, FUNCTION_ADMIN_ROLES, FUNCTION_WRITE_ROLES } from './services/functions-access.service';
 import {
   CreateFunctionDto,
   UpdateFunctionDto,
   DeployFunctionDto,
   InvokeFunctionDto,
-  GetFunctionLogsDto,
 } from './dto/index';
 
+/**
+ * The functions console — writing.
+ *
+ * A viewer may read the console and change nothing: no creating, no
+ * editing, no deploying, no invoking. A developer may do all of that but may
+ * not delete; the deletion belongs to the owner and the admin.
+ */
 @ApiTags('functions')
 @Controller('projects/:projectId/functions')
 @UseGuards(ApiKeyOrJwtGuard, ScopeGuard, ProjectMemberGuard)
 @ApiBearerAuth()
 export class FunctionsController {
-  constructor(private functionsService: FunctionsService) {}
+  constructor(
+    private functionsService: FunctionsService,
+    private access: FunctionsAccessService,
+  ) {}
 
   @Post()
   @RequireScope('functions:write')
   @ApiOperation({ summary: 'Create function' })
-  async createFunction(@Param('projectId') projectId: string, @Body() dto: CreateFunctionDto) {
+  async createFunction(
+    @Param('projectId') projectId: string,
+    @Body() dto: CreateFunctionDto,
+    @Req() req: Request,
+  ) {
+    await this.access.require(req, projectId, FUNCTION_WRITE_ROLES);
     return this.functionsService.createFunction(projectId, dto);
-  }
-
-  @Get()
-  @RequireScope('functions:read')
-  @ApiOperation({ summary: 'List functions' })
-  async listFunctions(@Param('projectId') projectId: string) {
-    const functions = await this.functionsService.listFunctions(projectId);
-    return { functions };
-  }
-
-  @Get(':functionId')
-  @RequireScope('functions:read')
-  @ApiOperation({ summary: 'Get function' })
-  async getFunction(@Param('projectId') projectId: string, @Param('functionId') functionId: string) {
-    return this.functionsService.getFunction(projectId, functionId);
   }
 
   @Patch(':functionId')
@@ -59,14 +60,21 @@ export class FunctionsController {
     @Param('projectId') projectId: string,
     @Param('functionId') functionId: string,
     @Body() dto: UpdateFunctionDto,
+    @Req() req: Request,
   ) {
+    await this.access.require(req, projectId, FUNCTION_WRITE_ROLES);
     return this.functionsService.updateFunction(projectId, functionId, dto);
   }
 
   @Delete(':functionId')
   @RequireScope('functions:write')
   @ApiOperation({ summary: 'Delete function' })
-  async deleteFunction(@Param('projectId') projectId: string, @Param('functionId') functionId: string) {
+  async deleteFunction(
+    @Param('projectId') projectId: string,
+    @Param('functionId') functionId: string,
+    @Req() req: Request,
+  ) {
+    await this.access.require(req, projectId, FUNCTION_ADMIN_ROLES);
     return this.functionsService.deleteFunction(projectId, functionId);
   }
 
@@ -77,7 +85,9 @@ export class FunctionsController {
     @Param('projectId') projectId: string,
     @Param('functionId') functionId: string,
     @Body() dto: DeployFunctionDto,
+    @Req() req: Request,
   ) {
+    await this.access.require(req, projectId, FUNCTION_WRITE_ROLES);
     return this.functionsService.deployFunction(projectId, functionId, dto);
   }
 
@@ -88,36 +98,9 @@ export class FunctionsController {
     @Param('projectId') projectId: string,
     @Param('functionId') functionId: string,
     @Body() dto: InvokeFunctionDto,
+    @Req() req: Request,
   ) {
+    await this.access.require(req, projectId, FUNCTION_WRITE_ROLES);
     return this.functionsService.invokeFunction(projectId, functionId, dto);
-  }
-
-  @Get(':functionId/logs')
-  @RequireScope('functions:read')
-  @ApiOperation({ summary: 'Get function logs' })
-  async getFunctionLogs(
-    @Param('projectId') projectId: string,
-    @Param('functionId') functionId: string,
-    @Query() query: { limit?: number; cursor?: string },
-  ) {
-    return this.functionsService.getFunctionLogs(projectId, functionId, query.limit, query.cursor);
-  }
-
-  @Get(':functionId/versions')
-  @RequireScope('functions:read')
-  @ApiOperation({ summary: 'Get function versions' })
-  async getFunctionVersions(@Param('projectId') projectId: string, @Param('functionId') functionId: string) {
-    return this.functionsService.getFunctionVersions(projectId, functionId);
-  }
-
-  @Get(':functionId/code')
-  @RequireScope('functions:read')
-  @ApiOperation({ summary: 'Get function code (optionally at a specific version)' })
-  async getFunctionCode(
-    @Param('projectId') projectId: string,
-    @Param('functionId') functionId: string,
-    @Query() query: { version?: string },
-  ) {
-    return this.functionsService.getFunctionCode(projectId, functionId, query.version);
   }
 }

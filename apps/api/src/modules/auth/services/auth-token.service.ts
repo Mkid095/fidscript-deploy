@@ -30,6 +30,27 @@ export class AuthTokenService {
     });
     if (!session) throw new UnauthorizedException('Session revoked or expired');
 
+    // The session row holds a bcrypt hash of the refresh token. It was
+    // written and never read — so the token could be replayed until the
+    // session flipped, and the hash bought nothing. The application's own
+    // session path has always done this comparison.
+    if (session.tokenHash && session.tokenHash !== 'pending') {
+      const matches = await bcrypt.compare(refreshToken, session.tokenHash);
+      if (!matches) {
+        // A refresh token that does not match the session it names is a
+        // replay. End the session: the legitimate holder is forced to sign
+        // in again, and the replayed copy is worthless.
+        await this.prisma.session.update({
+          where: { id: session.id }, data: { expiresAt: new Date(0) },
+        });
+        await this.eventService.emit(
+          'auth.refresh_rejected', null, {},
+          { actorId: payload.sub, actorType: 'user', resourceType: 'session', resourceId: session.id },
+        );
+        throw new UnauthorizedException('Invalid or expired refresh token');
+      }
+    }
+
     const user = await this.prisma.user.findUnique({
       where: { id: payload.sub },
       select: { id: true, email: true, name: true, role: true },
@@ -48,11 +69,6 @@ export class AuthTokenService {
     );
 
     return { user, oldSession: session };
-  }
-
-  buildAccessToken(user: { id: string; email: string; role: string }): string {
-    const payload = { sub: user.id, email: user.email, role: user.role, type: 'access' as const };
-    return this.jwtService.sign(payload);
   }
 
   get accessTokenTtl() { return ACCESS_TOKEN_TTL_SECONDS; }

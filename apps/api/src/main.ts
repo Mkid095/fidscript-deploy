@@ -3,6 +3,7 @@ import { ValidationPipe } from '@nestjs/common';
 import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger';
 import type { Request, Response } from 'express';
 import { AppModule } from './app.module';
+import { API_PREFIX } from './common/api-prefix';
 import { RedisIoAdapter } from './adapters/redis-io.adapter';
 
 // Fix MaxListenersExceededWarning: the Node.js default is 10. Socket.IO clients
@@ -34,7 +35,10 @@ async function bootstrap() {
     process.exit(1);
   }
 
-  const app = await NestFactory.create(AppModule);
+  // `rawBody` keeps the bytes Stalwart signed. The webhook signature is an
+  // HMAC over the request body as it arrived; re-serializing the parsed JSON
+  // changes the bytes, so a correctly signed webhook would not match.
+  const app = await NestFactory.create(AppModule, { rawBody: true });
 
   // Serve the one-line installer at the root so `curl …/install.sh` works
   // outside the api/v1 prefix. It is the GUIDED one — the script at the
@@ -52,7 +56,7 @@ async function bootstrap() {
     });
   }
 
-  app.setGlobalPrefix('api/v1', {
+  app.setGlobalPrefix(API_PREFIX, {
     exclude: ['metrics'],
   });
 

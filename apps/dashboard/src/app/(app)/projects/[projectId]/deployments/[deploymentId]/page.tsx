@@ -2,7 +2,7 @@
 
 import { useParams } from 'next/navigation';
 import Link from 'next/link';
-import { ToastProvider, useToast } from '@/components/toast-provider';
+import { useToast } from '@/components/toast-provider';
 import { LoadingScreen } from '@/components/ui/loading-screen';
 import { useAuth } from '@/contexts/auth-context';
 import { isInFlight } from '@/components/deployments';
@@ -77,8 +77,6 @@ function DeploymentDetailInner() {
 
 export default function DeploymentDetailPage() {
   return (
-    <ToastProvider>
-      <DeploymentDetailInner />
-    </ToastProvider>
+    <DeploymentDetailInner />
   );
 }

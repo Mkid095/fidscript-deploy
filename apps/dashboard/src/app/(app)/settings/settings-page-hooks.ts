@@ -39,8 +39,8 @@ export function useSettingsPage(): UseSettingsPageReturn {
     setRevokeError(null);
     try {
       const sdk = getSdk();
-      const { projects } = await sdk.projects.list();
-      if (projects.length > 0) await sdk.projects.revokeApiKey(projects[0].id, keyId);
+      // The account's own key — the same list the card shows.
+      await sdk.auth.revokeApiKey(keyId);
     } catch (err) {
       setRevokeError(err instanceof Error ? err.message : 'Failed to revoke key');
     } finally {

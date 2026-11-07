@@ -5,12 +5,14 @@ import { InvitationsController } from '@/modules/projects/controllers/invitation
 import { ProjectsService } from '@/modules/projects/services/projects.service';
 import { ProjectCrudService } from '@/modules/projects/services/project-crud.service';
 import { ProjectAccessService } from '@/modules/projects/services/project-access.service';
+import { ProjectSecretAccessService } from '@/modules/projects/services/project-secret-access.service';
 import { ProjectMemberService } from '@/modules/projects/services/project-member.service';
 import { ProjectEnvService } from '@/modules/projects/services/project-env.service';
 import { ProjectInvitationService } from '@/modules/projects/services/project-invitation.service';
 import { ProjectApiKeyService } from '@/modules/projects/services/project-api-key.service';
 import { ProjectFormatService } from '@/modules/projects/services/project-format.service';
 import { ProjectCreateService } from '@/modules/projects/services/project-create.service';
+import { ProjectWorkspaceService } from '@/modules/projects/services/project-workspace.service';
 import { ProjectProvisionService } from '@/modules/projects/services/project-provision.service';
 import { StorageModule } from '@/modules/storage/storage.module';
 import { RealtimeModule } from '@/modules/realtime/realtime.module';
@@ -28,6 +30,7 @@ import { AuthModule } from '@/modules/auth/auth.module';
     ProjectsService,
     ProjectCrudService,
     ProjectAccessService,
+    ProjectSecretAccessService,
     ProjectMemberService,
     ProjectEnvService,
     ProjectInvitationService,
@@ -35,13 +38,18 @@ import { AuthModule } from '@/modules/auth/auth.module';
     ProjectFormatService,
     ProjectCreateService,
     ProjectProvisionService,
+    ProjectWorkspaceService,
   ],
   exports: [
     ProjectsService,
     ProjectApiKeyService,
     ProjectAccessService,
+    ProjectSecretAccessService,
     ProjectMemberService,
     ProjectProvisionService,
+    // The workspaces a person belongs to — the overview counts their
+    // projects, and a team's project is theirs to reach.
+    ProjectWorkspaceService,
   ],
 })
 export class ProjectsModule {}

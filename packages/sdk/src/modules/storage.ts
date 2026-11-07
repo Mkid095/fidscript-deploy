@@ -93,7 +93,10 @@ export class StorageModule {
     const form = new FormData();
     const blob = file instanceof Buffer ? new Blob([file]) : file;
     form.append('file', blob, name);
-    if (options?.contentType) form.append('contentType', options.contentType);
+    // The API reads "mimeType" and "originalName" — the names its upload
+    // endpoint declares. It sent "contentType", which the API ignored, so a
+    // file arrived with no name of its own.
+    if (options?.contentType) form.append('mimeType', options.contentType);
     if (options?.key) form.append('key', options.key);
     return this.client.post<StorageFile>(
       `/api/v1/projects/${projectId}/storage/buckets/${bucketId}/files`,

@@ -3,13 +3,7 @@
 import { useEffect, useState, useCallback } from 'react';
 import type { Database, FidscriptSDK } from '@fidscript-deploy/sdk';
 import { useConfirm } from '@/components/ui/confirm-provider';
-
-interface DatabaseBackup {
-  id: string;
-  databaseId: string;
-  sizeBytes: number;
-  createdAt: string;
-}
+import { useDatabaseBackups, type DatabaseBackup } from './use-database-backups';
 
 interface UseDatabaseDetailOptions {
   id: string;
@@ -24,31 +18,43 @@ export function useDatabaseDetail({ id, getSdk }: UseDatabaseDetailOptions) {
   const [error, setError] = useState<string | null>(null);
   const [showPassword, setShowPassword] = useState(false);
   const [rotating, setRotating] = useState(false);
-  const [restoringBackupId, setRestoringBackupId] = useState<string | null>(null);
   const [deleting, setDeleting] = useState(false);
-  const [takingBackup, setTakingBackup] = useState(false);
   const [connectionInfo, setConnectionInfo] = useState<{ host: string; port: number; database: string; connectionString: string } | null>(null);
   const [poolConnectionInfo, setPoolConnectionInfo] = useState<{ host: string; port: number; database: string; connectionString: string } | null>(null);
   const [sslEnabled, setSslEnabled] = useState(true);
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
+
+  const notify = useCallback((message: string, type: 'success' | 'error') => {
+    setToast(message ? { message, type } : null);
+  }, []);
+
+  const { restoringBackupId, takingBackup, handleRestore, handleTakeBackup } = useDatabaseBackups({
+    databaseId: id,
+    projectId: db?.projectId,
+    getSdk,
+    onBackups: setBackups,
+    notify,
+  });
 
   const load = useCallback(async () => {
     setLoading(true);
     setError(null);
     try {
       const sdk = getSdk();
-      const [dbData, backupData] = await Promise.all([
-        sdk.databases.get(id),
-        sdk.databases.listBackups(id) as Promise<DatabaseBackup[]>,
-      ]);
+      // The backups live under the project the database belongs to, so the
+      // database is read first and its project carries the rest.
+      const dbData = await sdk.databases.get(id);
       setDb(dbData);
+      const backupData = dbData.projectId
+        ? await (sdk.databases.listBackups(dbData.projectId, id) as Promise<DatabaseBackup[]>)
+        : [];
       setBackups(backupData);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to load database');
     } finally {
       setLoading(false);
     }
-  }, [id, getSdk]);
+  }, [id, getSdk, db?.projectId]);
 
   useEffect(() => { load(); }, [load]);
 
@@ -57,7 +63,8 @@ export function useDatabaseDetail({ id, getSdk }: UseDatabaseDetailOptions) {
     setToast(null);
     try {
       const sdk = getSdk();
-      const updated = await sdk.databases.rotatePassword<Database>(id);
+      if (!db?.projectId) return;
+      const updated = await sdk.databases.rotatePassword<Database>(db.projectId, id);
       setDb(updated);
       setToast({ message: 'Credentials rotated successfully', type: 'success' });
     } catch (err) {
@@ -65,21 +72,7 @@ export function useDatabaseDetail({ id, getSdk }: UseDatabaseDetailOptions) {
     } finally {
       setRotating(false);
     }
-  }, [id, getSdk]);
-
-  const handleRestore = useCallback(async (backupId: string) => {
-    setRestoringBackupId(backupId);
-    setToast(null);
-    try {
-      const sdk = getSdk();
-      await sdk.databases.restore(id, backupId);
-      setToast({ message: 'Restore started', type: 'success' });
-    } catch (err) {
-      setToast({ message: err instanceof Error ? err.message : 'Restore failed', type: 'error' });
-    } finally {
-      setRestoringBackupId(null);
-    }
-  }, [id, getSdk]);
+  }, [id, getSdk, db?.projectId]);
 
   const handleDelete = useCallback(async () => {
     const ok = await confirmFn({
@@ -93,13 +86,14 @@ export function useDatabaseDetail({ id, getSdk }: UseDatabaseDetailOptions) {
     setToast(null);
     try {
       const sdk = getSdk();
-      await sdk.databases.delete(id);
+      if (!db?.projectId) return;
+      await sdk.databases.delete(db.projectId, id);
       window.location.href = '/databases';
     } catch (err) {
       setToast({ message: err instanceof Error ? err.message : 'Delete failed', type: 'error' });
       setDeleting(false);
     }
-  }, [id, getSdk]);
+  }, [id, getSdk, db?.projectId]);
 
   const handleCopyConnection = useCallback(async () => {
     if (!db?.connectionString) return;
@@ -111,43 +105,29 @@ export function useDatabaseDetail({ id, getSdk }: UseDatabaseDetailOptions) {
     }
   }, [db?.connectionString]);
 
-  const handleTakeBackup = useCallback(async () => {
-    setTakingBackup(true);
-    setToast(null);
-    try {
-      const sdk = getSdk();
-      await sdk.databases.backup(id);
-      const updated = (await sdk.databases.listBackups(id)) as DatabaseBackup[];
-      setBackups(updated);
-      setToast({ message: 'Backup started', type: 'success' });
-    } catch (err) {
-      setToast({ message: err instanceof Error ? err.message : 'Backup failed', type: 'error' });
-    } finally {
-      setTakingBackup(false);
-    }
-  }, [id, getSdk]);
-
   const loadConnectionInfo = useCallback(async (poolOnly: boolean) => {
     try {
       const sdk = getSdk();
-      const info = await sdk.databases.getConnection(id, poolOnly);
+      if (!db?.projectId) return;
+      const info = await sdk.databases.getConnection(db.projectId, id, poolOnly);
       if (poolOnly) setPoolConnectionInfo(info);
       else setConnectionInfo(info);
     } catch { /* silently fail */ }
-  }, [id, getSdk]);
+  }, [id, getSdk, db?.projectId]);
 
   const handleSslToggle = useCallback(async (enabled: boolean) => {
     setSslEnabled(enabled);
     setToast(null);
     try {
       const sdk = getSdk();
-      await sdk.databases.updateSsl(id, enabled);
+      if (!db?.projectId) return;
+      await sdk.databases.updateSsl(db.projectId, id, enabled);
       setToast({ message: `SSL ${enabled ? 'enabled' : 'disabled'}`, type: 'success' });
     } catch (err) {
       setSslEnabled(!enabled);
       setToast({ message: err instanceof Error ? err.message : 'Failed to update SSL', type: 'error' });
     }
-  }, [id, getSdk]);
+  }, [id, getSdk, db?.projectId]);
 
   return {
     db, backups, loading, error, showPassword, setShowPassword,

@@ -95,6 +95,30 @@ export class GithubModule {
     return this.client.get<GithubConnectionStatus>('/api/v1/users/me/github/status');
   }
 
+  /**
+   * Whether this deployment has a GitHub OAuth app.
+   *
+   * When it does not, the popup sign-in cannot work and the dashboard
+   * offers the personal access token instead.
+   */
+  async oauthConfigured(): Promise<{ configured: boolean }> {
+    return this.client.get<{ configured: boolean }>('/api/v1/users/me/github/oauth');
+  }
+
+  /**
+   * Connects the account with a GitHub personal access token.
+   *
+   * The token is checked against GitHub and stored encrypted by the API. It
+   * is never returned in the response, and it is never kept in the browser.
+   */
+  async connectWithToken(token: string): Promise<{
+    username: string;
+    avatarUrl?: string;
+    scopes: string;
+  }> {
+    return this.client.post('/api/v1/users/me/github/token', { token });
+  }
+
   /** Remove the GitHub connection */
   async disconnect(): Promise<{ success: boolean }> {
     return this.client.delete('/api/v1/users/me/github/disconnect');

@@ -5,7 +5,7 @@ import { useEffect, useState, useCallback, type ChangeEvent, type FormEvent, use
 import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
 import { useAuth } from '@/contexts/auth-context';
-import { Button, Input, Spinner, EmptyState, Toast } from '@fidscript/ui';
+import { Button, Input, Select, Spinner, EmptyState, Toast } from '@fidscript/ui';
 import type { Database } from '@fidscript-deploy/sdk';
 
 type Environment = 'production' | 'staging' | 'preview' | 'development';
@@ -70,17 +70,18 @@ export default function ProjectDatabasesPage() {
             placeholder="db-name"
             className="bg-[var(--surface-2)] border border-[var(--rail)] text-[var(--text)] text-xs w-48"
           />
-          <select
+          <Select
+            label="Environment"
             value={environment}
-            onChange={(e: ChangeEvent<HTMLSelectElement>) => setEnvironment(e.target.value as Environment)}
-            className="bg-[var(--surface-2)] border border-[var(--rail)] text-[var(--text)] text-xs rounded px-2 py-1.5"
-            aria-label="Environment"
-          >
-            <option value="production">Production</option>
-            <option value="staging">Staging</option>
-            <option value="preview">Preview</option>
-            <option value="development">Development</option>
-          </select>
+            onChange={(e) => setEnvironment(e.target.value as Environment)}
+            className="text-xs w-48"
+            options={[
+              { value: 'production', label: 'Production' },
+              { value: 'staging', label: 'Staging' },
+              { value: 'preview', label: 'Preview' },
+              { value: 'development', label: 'Development' },
+            ]}
+          />
           <Button type="submit" variant="primary" size="sm" loading={creating} disabled={!newName.trim()}>
             + Create
           </Button>

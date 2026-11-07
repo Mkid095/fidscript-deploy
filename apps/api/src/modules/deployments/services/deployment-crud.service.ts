@@ -8,6 +8,8 @@ import { NodeBuildpackProvider } from '@/modules/deployments/providers/node-buil
 import { DockerBuildWorkspaceService } from '@/modules/deployments/providers/docker-build-workspace.service';
 import { UserGithubService } from '@/modules/app-auth/services/user-github.service';
 import { DeploymentRoutesService } from '@/modules/deployments/services/deployment-routes.service';
+import { ProjectEnvVarsService } from '@/modules/deployments/services/project-env-vars.service';
+import { ProjectAccessService } from '@/modules/projects/services/project-access.service';
 
 @Injectable()
 export class DeploymentCrudService {
@@ -22,6 +24,8 @@ export class DeploymentCrudService {
     private github: UserGithubService,
     private configService: ConfigService,
     private routes: DeploymentRoutesService,
+    private envVars: ProjectEnvVarsService,
+    private access: ProjectAccessService,
   ) {}
 
   // ─── Framework detection (pre-deploy) ──────────────────────────────────────
@@ -31,7 +35,7 @@ export class DeploymentCrudService {
    * — without deploying. Used by the wizard's "Auto-detect" step.
    */
  async detectFramework(userId: string, projectId: string, dto: { gitUrl: string; branch?: string; credentials?: string }) {
-  await this.checkAccessOrThrow(userId, projectId);
+  projectId = await this.checkAccessOrThrow(userId, projectId);
   const ws = this.workspace.prepareWorkspace();
   try {
     // Use explicit credentials if provided, otherwise fall back to the user's
@@ -57,9 +61,26 @@ export class DeploymentCrudService {
   // ─── Deployment CRUD ───────────────────────────────────────────────────────
 
   async create(userId: string, projectId: string, dto: CreateDeploymentDto) {
+    // The project is resolved first: the caller may name it by its slug, and
+    // the rest of this method needs its id.
+    projectId = await this.checkAccessOrThrow(userId, projectId);
     const project = await this.prisma.project.findUnique({ where: { id: projectId } });
     if (!project) throw new NotFoundException('Project not found');
-    await this.checkAccessOrThrow(userId, projectId);
+
+    // The environment variables are SAVED before anything is built.
+    //
+    // They used to travel only inside the deployment event, which meant they
+    // existed for exactly as long as the event did, and the project's own
+    // variables were the only ones a later build could read. An operator who
+    // typed a variable into the wizard expected it to be there for the next
+    // deploy too — and a build that needs a variable should fail when it is
+    // missing, not three deploys later.
+    if (dto.envVars && Object.keys(dto.envVars).length > 0) {
+      const saved = await this.envVars.save(projectId, dto.envVars);
+      this.logger.log(
+        `[deployments] Saved ${saved} environment variable(s) on project ${projectId} before building`,
+      );
+    }
 
     const version = this.generateVersion();
     // Encode the source into sourceUrl so the build runner can reconstruct it.
@@ -194,7 +215,7 @@ export class DeploymentCrudService {
   }
 
   async list(userId: string, projectId: string, page = 1, limit = 20, status?: string) {
-    await this.checkAccessOrThrow(userId, projectId);
+    projectId = await this.checkAccessOrThrow(userId, projectId);
     const skip = (page - 1) * limit;
     // The SDK and the MCP tool both send a `status` filter; it used to be
     // accepted and then silently ignored.
@@ -216,7 +237,7 @@ export class DeploymentCrudService {
   }
 
   async get(userId: string, projectId: string, deploymentId: string) {
-    await this.checkAccessOrThrow(userId, projectId);
+    projectId = await this.checkAccessOrThrow(userId, projectId);
     const deployment = await this.prisma.deployment.findUnique({
       where: { id: deploymentId },
       include: { release: true },
@@ -226,21 +247,21 @@ export class DeploymentCrudService {
   }
 
   async getLogs(userId: string, projectId: string, deploymentId: string) {
-    await this.checkAccessOrThrow(userId, projectId);
+    projectId = await this.checkAccessOrThrow(userId, projectId);
     const deployment = await this.prisma.deployment.findUnique({ where: { id: deploymentId }, include: { release: true } });
     if (!deployment || deployment.projectId !== projectId) throw new NotFoundException('Deployment not found');
     return { logs: deployment.release?.buildLogs || '' };
   }
 
   async getBuildConfig(userId: string, projectId: string) {
-    await this.checkAccessOrThrow(userId, projectId);
+    projectId = await this.checkAccessOrThrow(userId, projectId);
     let config = await this.prisma.buildConfig.findUnique({ where: { projectId } });
     if (!config) config = await this.prisma.buildConfig.create({ data: { projectId } });
     return this.formatBuildConfig(config);
   }
 
   async updateBuildConfig(userId: string, projectId: string, dto: UpdateBuildConfigDto) {
-    await this.checkAccessOrThrow(userId, projectId);
+    projectId = await this.checkAccessOrThrow(userId, projectId);
     let config = await this.prisma.buildConfig.findUnique({ where: { projectId } });
     if (!config) config = await this.prisma.buildConfig.create({ data: { projectId } });
     config = await this.prisma.buildConfig.update({
@@ -248,25 +269,26 @@ export class DeploymentCrudService {
       data: {
         ...(dto.buildTarget !== undefined && { buildTarget: dto.buildTarget }),
         ...(dto.startupTimeoutSeconds !== undefined && { startupTimeoutSeconds: dto.startupTimeoutSeconds }),
+        ...(dto.requiredEnvVars !== undefined && { requiredEnvVars: dto.requiredEnvVars }),
       },
     });
     return this.formatBuildConfig(config);
   }
 
   async stop(userId: string, projectId: string, deploymentId: string) {
-    await this.checkAccessOrThrow(userId, projectId, ['developer', 'admin', 'owner']);
+    projectId = await this.checkAccessOrThrow(userId, projectId, ['developer', 'admin', 'owner']);
     await this.worker.stopDeployment(deploymentId, userId);
     return this.get(userId, projectId, deploymentId);
   }
 
   async restart(userId: string, projectId: string, deploymentId: string) {
-    await this.checkAccessOrThrow(userId, projectId, ['developer', 'admin', 'owner']);
+    projectId = await this.checkAccessOrThrow(userId, projectId, ['developer', 'admin', 'owner']);
     await this.worker.restartDeployment(deploymentId, userId);
     return this.get(userId, projectId, deploymentId);
   }
 
   async destroy(userId: string, projectId: string, deploymentId: string) {
-    await this.checkAccessOrThrow(userId, projectId, ['admin', 'owner']);
+    projectId = await this.checkAccessOrThrow(userId, projectId, ['admin', 'owner']);
     await this.worker.destroyDeployment(deploymentId, userId);
     // Its custom-domain routes have to go with it, or Traefik keeps
     // routing the hostname to a container that no longer exists.
@@ -275,7 +297,7 @@ export class DeploymentCrudService {
   }
 
   async rollback(userId: string, projectId: string, deploymentId: string, targetDeploymentId?: string) {
-    await this.checkAccessOrThrow(userId, projectId, ['admin', 'owner']);
+    projectId = await this.checkAccessOrThrow(userId, projectId, ['admin', 'owner']);
     const deployment = await this.prisma.deployment.findUnique({ where: { id: deploymentId } });
     if (!deployment || deployment.projectId !== projectId) throw new NotFoundException('Deployment not found');
     if (deployment.status !== 'SUCCESS') throw new BadRequestException('Can only rollback successful deployments');
@@ -289,22 +311,33 @@ export class DeploymentCrudService {
     return this.get(userId, projectId, deploymentId);
   }
 
-  private async checkAccessOrThrow(userId: string, projectId: string, minRoles?: string[]) {
+  /**
+   * Check that the caller may act on the project, and answer with the
+   * project's **id**.
+   *
+   * A project can be named by its slug or by its id — the dashboard's
+   * project console uses the slug, because that is what the address carries.
+   * The queries below need the id, so the slug is resolved here, once, and
+   * every one of them uses the answer.
+   *
+   * The check itself is the platform's shared one (`ProjectAccessService`),
+   * which knows about the workspaces as well as the memberships — this file
+   * used to carry its own copy, and it knew only the id.
+   */
+  private async checkAccessOrThrow(userId: string, projectId: string, minRoles?: string[]): Promise<string> {
     // API-key callers already passed ProjectMemberGuard — allow through.
-    if (userId === 'api-key') return;
-    const project = await this.prisma.project.findUnique({ where: { id: projectId } });
-    if (!project) throw new NotFoundException('Project not found');
-    if (project.ownerId === userId) return;
-    const member = await this.prisma.projectMember.findUnique({ where: { projectId_userId: { projectId, userId } } });
-    if (!member) throw new ForbiddenException('Access denied');
-    if (minRoles && minRoles.length > 0) {
-      const memberRole = (member.role ?? '').toLowerCase();
-      if (!minRoles.includes(memberRole)) {
-        throw new ForbiddenException(
-          `This action requires one of: ${minRoles.join(', ')}. Your role: ${memberRole || 'unknown'}.`,
-        );
-      }
+    if (userId === 'api-key') {
+      const project = await this.prisma.project.findFirst({
+        where: { OR: [{ id: projectId }, { slug: projectId }] },
+        select: { id: true },
+      });
+      return project?.id ?? projectId;
     }
+    const project = await this.access.findProjectWithAccess(userId, projectId);
+    if (minRoles && minRoles.length > 0) {
+      await this.access.checkPermission(userId, projectId, minRoles);
+    }
+    return project.id;
   }
 
   private generateVersion() { return `${Date.now().toString(36)}-${Math.random().toString(36).substring(2, 6)}`; }
@@ -352,6 +385,7 @@ export class DeploymentCrudService {
       projectId: c.projectId,
       buildTarget: c.buildTarget || null,
       startupTimeoutSeconds: c.startupTimeoutSeconds ?? 120,
+      requiredEnvVars: c.requiredEnvVars ?? [],
       createdAt: c.createdAt,
       updatedAt: c.updatedAt,
     };

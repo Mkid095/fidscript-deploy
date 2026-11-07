@@ -5,10 +5,11 @@
 
 import type { FidscriptClient } from '../client';
 import type {
-  User, AuthResponse, MagicCodeSendResponse, MagicCodeVerifyResponse,
+  User, AuthResponse, LoginResponse, MagicCodeSendResponse, MagicCodeVerifyResponse,
   AuthMethodResponse, SessionInfo, ApiKeyInfo, SendVerificationResponse,
   VerifyEmailResponse, ConfirmPasswordResetResponse, Organization, OrgRole,
-  OrgMember, Team, Invitation,
+  OrgMember, Team, Invitation, MfaSetupResponse, MfaStatusResponse,
+  MfaRecoveryCodesResponse,
 } from './auth-types';
 
 export interface AuthCoreHost {
@@ -18,12 +19,16 @@ export interface AuthCoreHost {
     password: string | null,
     name: string,
     authMethod: 'PASSWORD' | 'MAGIC_CODE',
-    inviteKeyword?: string,
+    /** The company password — what the platform's operator set at setup. */
+    setupPassword?: string,
+    firstName?: string,
+    lastName?: string,
   ): Promise<AuthResponse>;
-  login(email: string, password: string): Promise<AuthResponse>;
+  login(email: string, password: string): Promise<LoginResponse>;
   lookupAuthMethod(email: string): Promise<AuthMethodResponse>;
   logout(): Promise<unknown>;
   me(): Promise<User>;
+  updateProfile(data: { name?: string; avatarUrl?: string }): Promise<User>;
   refreshToken(refreshToken: string): Promise<AuthResponse>;
   changePassword(currentPassword: string, newPassword: string): Promise<AuthResponse>;
   sendMagicCode(email: string): Promise<MagicCodeSendResponse>;
@@ -32,6 +37,18 @@ export interface AuthCoreHost {
   verifyEmail(token: string): Promise<VerifyEmailResponse>;
   confirmPasswordReset(token: string, newPassword: string): Promise<ConfirmPasswordResetResponse>;
   confirmMagicLink(token: string): Promise<AuthResponse>;
+  /** Marks the first-time journey as finished. */
+  completeOnboarding(): Promise<{ onboarded: boolean }>;
+}
+
+export interface AuthMfaHost {
+  readonly client: FidscriptClient;
+  mfaSetup(currentCode?: string): Promise<MfaSetupResponse>;
+  mfaVerify(code: string): Promise<{ enabled: true }>;
+  mfaStatus(): Promise<MfaStatusResponse>;
+  mfaRecoveryCodes(): Promise<MfaRecoveryCodesResponse>;
+  mfaDisable(proof: { password?: string; code?: string }): Promise<{ disabled: true }>;
+  mfaChallenge(mfaToken: string, code: string): Promise<AuthResponse>;
 }
 
 export interface AuthSessionsHost {

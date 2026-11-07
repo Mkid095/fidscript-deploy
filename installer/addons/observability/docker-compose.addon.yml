@@ -4,8 +4,10 @@
 # (installer/docker/), so a config that lives next to this fragment is
 # mounted as ../addons/observability/<path>.
 #
-# Ports are overridable so the stack can be moved off a port the host
-# already uses: put OBSERVABILITY_GRAFANA_PORT=3002 in installer/docker/.env.
+# The three services the operator opens — Grafana, Prometheus and Loki —
+# are published by HOSTNAME through Traefik's labels below, not by a port:
+# grafana.{domain}, prometheus.{domain}, loki.{domain}. Only cAdvisor keeps
+# a host port, and it can be moved with OBSERVABILITY_CADVISOR_PORT.
 
 services:
   prometheus:
@@ -20,11 +22,23 @@ services:
       - '--web.enable-admin-api'
     volumes:
       - ../addons/observability/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      # The token the platform's metrics endpoint requires. The metrics name
+      # every project, so the scrape is a credential.
+      - ./secrets/observability_prometheus_token.txt:/etc/prometheus/scrape_token:ro
       - fidscript_prometheus_data:/prometheus
-    ports:
-      - "${OBSERVABILITY_PROMETHEUS_PORT:-9090}:9090"
     networks:
       - fidscript-deployment
+    # The stack is published by hostname, not by port: prometheus.{domain}
+    # is what the operator (and a dashboard) uses. The labels are how
+    # Traefik's Docker provider learns about the container.
+    labels:
+      - traefik.enable=true
+      - traefik.docker.network=fidscript-deployment
+      - traefik.http.routers.fidscript-observability-prometheus.rule=Host(`prometheus.${DOMAIN}`)
+      - traefik.http.routers.fidscript-observability-prometheus.entrypoints=websecure
+      - traefik.http.routers.fidscript-observability-prometheus.tls=true
+      - traefik.http.routers.fidscript-observability-prometheus.tls.certresolver=letsencrypt-dns
+      - traefik.http.services.fidscript-observability-prometheus.loadbalancer.server.port=9090
     healthcheck:
       test: ["CMD", "wget", "-qO-", "http://localhost:9090/-/healthy"]
       interval: 15s
@@ -40,8 +54,11 @@ services:
     image: gcr.io/cadvisor/cadvisor:v0.51.0
     container_name: fidscript_cadvisor
     restart: unless-stopped
+    # cAdvisor is a diagnostic tool rather than a console: it stays on the
+    # host, on a port nothing else in the platform uses. Prometheus reaches it
+    # by container name, and the port can be moved with the env override.
     ports:
-      - "${OBSERVABILITY_CADVISOR_PORT:-8081}:8080"
+      - "${OBSERVABILITY_CADVISOR_PORT:-8082}:8080"
     volumes:
       - /:/rootfs:ro
       - /var/run:/var/run:ro
@@ -96,10 +113,16 @@ services:
     volumes:
       - ../addons/observability/loki/loki-config.yml:/etc/loki/loki-config.yml:ro
       - fidscript_loki_data:/loki
-    ports:
-      - "${OBSERVABILITY_LOKI_PORT:-3100}:3100"
     networks:
       - fidscript-deployment
+    labels:
+      - traefik.enable=true
+      - traefik.docker.network=fidscript-deployment
+      - traefik.http.routers.fidscript-observability-loki.rule=Host(`loki.${DOMAIN}`)
+      - traefik.http.routers.fidscript-observability-loki.entrypoints=websecure
+      - traefik.http.routers.fidscript-observability-loki.tls=true
+      - traefik.http.routers.fidscript-observability-loki.tls.certresolver=letsencrypt-dns
+      - traefik.http.services.fidscript-observability-loki.loadbalancer.server.port=3100
     healthcheck:
       test: ["CMD", "wget", "-qO-", "http://localhost:3100/ready"]
       interval: 15s
@@ -153,10 +176,17 @@ services:
       - fidscript_grafana_data:/var/lib/grafana
     secrets:
       - observability_grafana_password
-    ports:
-      - "${OBSERVABILITY_GRAFANA_PORT:-3000}:3000"
     networks:
       - fidscript-deployment
+    # Grafana is the stack's console: grafana.{domain}.
+    labels:
+      - traefik.enable=true
+      - traefik.docker.network=fidscript-deployment
+      - traefik.http.routers.fidscript-observability-grafana.rule=Host(`grafana.${DOMAIN}`)
+      - traefik.http.routers.fidscript-observability-grafana.entrypoints=websecure
+      - traefik.http.routers.fidscript-observability-grafana.tls=true
+      - traefik.http.routers.fidscript-observability-grafana.tls.certresolver=letsencrypt-dns
+      - traefik.http.services.fidscript-observability-grafana.loadbalancer.server.port=3000
     depends_on:
       - prometheus
     healthcheck:

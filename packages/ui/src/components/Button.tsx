@@ -38,15 +38,19 @@ export function Button({
   disabled,
   className = '',
   children,
+  type = 'button',
   ...props
 }: ButtonProps) {
   return (
     <button
+      // A button with no type is a **submit** button — so a "Cancel" inside a
+      // form submitted the form. The default here is the safe one.
+      type={type}
       className={`
-        inline-flex items-center justify-center gap-2 rounded-lg font-medium
+        inline-flex items-center justify-center gap-2 rounded-md font-medium
         transition-all duration-200
         disabled:opacity-50 disabled:cursor-not-allowed
-        focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)] focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--canvas)]
+        focus:outline-none focus-visible:shadow-[var(--focus-ring)]
         ${variantClasses[variant]}
         ${sizeClasses[size]}
         ${className}

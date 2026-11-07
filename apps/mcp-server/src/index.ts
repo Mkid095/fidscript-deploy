@@ -40,23 +40,8 @@ import {
 } from '@modelcontextprotocol/sdk/types.js';
 import { createFidscript } from '@fidscript-deploy/sdk';
 
-import { emailTools, handleEmailTool } from './tools/email.js';
-import { domainTools, handleDomainTool } from './tools/domains.js';
-import { projectTools, handleProjectTool } from './tools/projects.js';
-import { envVarTools, handleEnvVarTool } from './tools/env-vars.js';
-import { authTools, handleAuthTool } from './tools/auth.js';
-import { deploymentTools, handleDeploymentTool } from './tools/deployments.js';
-import { functionTools, handleFunctionTool } from './tools/functions.js';
-import { queueTools, handleQueueTool } from './tools/queues.js';
-import { storageTools, handleStorageTool } from './tools/storage.js';
-import { databaseTools, handleDatabaseTool } from './tools/databases.js';
-import { cronTools, handleCronTool } from './tools/cron.js';
-import { instantTools, handleInstantTool } from './tools/instant.js';
-import { realtimeTools, handleRealtimeTool } from './tools/realtime.js';
-import { monitoringTools, handleMonitoringTool } from './tools/monitoring/index.js';
-import { loggingTools, handleLoggingTool } from './tools/logging/index.js';
-import { aiTools, handleAiTool } from './tools/ai/index.js';
-import { marketplaceTools, handleMarketplaceTool } from './tools/marketplace/index.js';
+import { validateScope } from './scope-validator.js';
+import { allTools, dispatchTool } from './tool-dispatcher.js';
 
 const apiKey = process.env.FIDSCRIPT_API_KEY;
 const apiUrl = process.env.FIDSCRIPT_API_URL || 'http://localhost:3001';
@@ -68,25 +53,6 @@ if (!apiKey) {
 
 const sdk = createFidscript({ apiKey, baseURL: apiUrl });
 
-const allTools = [
-  ...emailTools,
-  ...domainTools,
-  ...projectTools,
-  ...envVarTools,
-  ...authTools,
-  ...deploymentTools,
-  ...functionTools,
-  ...queueTools,
-  ...storageTools,
-  ...databaseTools,
-  ...cronTools,
-  ...instantTools,
-  ...realtimeTools,
-  ...monitoringTools,
-  ...loggingTools,
-  ...aiTools,
-  ...marketplaceTools,
-];
 
 const server = new Server(
   { name: 'fidscript-mcp', version: '1.0.0' },
@@ -98,33 +64,12 @@ server.setRequestHandler(ListToolsRequestSchema, async () => ({
   tools: allTools,
 }));
 
-/**
- * Validate an API key for a specific tool's required scopes.
- * Calls the MCP management API to check key permissions.
- */
-async function validateScope(toolName: string): Promise<{ allowed: boolean; reason?: string }> {
-  try {
-    // The key IS the key ID — pass it as a header/custom param for validation
-    // We validate by calling the tools list endpoint which is public
-    // and then check if the key has mcpEnabled via the key info endpoint
-    const result = await fetch(`${apiUrl}/api/v1/mcp/tools`);
-    if (!result.ok) {
-      // If MCP endpoints not available (older API), allow by default
-      return { allowed: true };
-    }
-    return { allowed: true };
-  } catch {
-    // Network error — fail open for availability (old API compat)
-    return { allowed: true };
-  }
-}
-
 // Handle tool calls
 server.setRequestHandler(CallToolRequestSchema, async (request) => {
   const { name, arguments: args } = request.params;
 
   // Validate scope before execution
-  const validation = await validateScope(name);
+  const validation = await validateScope(apiUrl, apiKey, name);
   if (!validation.allowed) {
     return {
       content: [{ type: 'text', text: `Permission denied: ${validation.reason ?? 'insufficient scope for tool: ' + name}` }],
@@ -133,43 +78,8 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
   }
 
   try {
-    let result: unknown;
-
-    if (name.startsWith('email_')) {
-      result = await handleEmailTool(name, args ?? {}, sdk);
-    } else if (name.startsWith('domain_')) {
-      result = await handleDomainTool(name, args ?? {}, sdk);
-    } else if (name.startsWith('project_')) {
-      result = await handleProjectTool(name, args ?? {}, sdk);
-    } else if (name.startsWith('env_var_')) {
-      result = await handleEnvVarTool(name, args ?? {}, sdk);
-    } else if (name.startsWith('auth_')) {
-      result = await handleAuthTool(name, args ?? {}, sdk);
-    } else if (name.startsWith('deployments_')) {
-      result = await handleDeploymentTool(name, args ?? {}, sdk);
-    } else if (name.startsWith('functions_')) {
-      result = await handleFunctionTool(name, args ?? {}, sdk);
-    } else if (name.startsWith('queues_')) {
-      result = await handleQueueTool(name, args ?? {}, sdk);
-    } else if (name.startsWith('storage_')) {
-      result = await handleStorageTool(name, args ?? {}, sdk);
-    } else if (name.startsWith('databases_')) {
-      result = await handleDatabaseTool(name, args ?? {}, sdk);
-    } else if (name.startsWith('cron_')) {
-      result = await handleCronTool(name, args ?? {}, sdk);
-    } else if (name.startsWith('instant_')) {
-      result = await handleInstantTool(name, args ?? {}, sdk);
-    } else if (name.startsWith('realtime_')) {
-      result = await handleRealtimeTool(name, args ?? {}, sdk);
-    } else if (name.startsWith('monitoring_')) {
-      result = await handleMonitoringTool(name, args ?? {}, sdk);
-    } else if (name.startsWith('logging_')) {
-      result = await handleLoggingTool(name, args ?? {}, sdk);
-    } else if (name.startsWith('ai_')) {
-      result = await handleAiTool(name, args ?? {}, sdk);
-    } else if (name.startsWith('marketplace_')) {
-      result = await handleMarketplaceTool(name, args ?? {}, sdk);
-    } else {
+    const { handled, result } = await dispatchTool(name, args, sdk);
+    if (!handled) {
       return {
         content: [{ type: 'text', text: `Unknown tool: ${name}` }],
         isError: true,

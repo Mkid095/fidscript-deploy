@@ -7,6 +7,27 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/).
 ## [Unreleased]
 
 ### Added
+- `docs(audit): the product audited against itself` — `docs/product/UX_AUDIT.md` is the true state
+  of FIDScript: all 68 dashboard routes and 62 API controllers read, every SDK module
+  cross-referenced against the live API's actual response shapes, the six user journeys traced, and
+  the live platform driven in a browser. **Eleven blockers**, three of them reproduced against the
+  running platform: an `fpk_` project API key reads **and renames** another project (the tenant
+  boundary does not hold for project keys); a project `viewer` can mint an **admin invitation** and
+  a **write-scoped API key** (membership is enforced on all 26 project-scoped controllers, the
+  *role* on none); and the email console is **empty everywhere** while adding a domain **crashes
+  the page** — the SDK unwraps an envelope the API never sends, and the create call's response
+  envelope is pushed into the list as a row. Three entries in the technical-debt register are
+  **stale and materially wrong** (the functions runtime *is* sandboxed; the domains, email and
+  storage endpoints *do* check membership — what is missing is role enforcement). The roadmap is
+  reordered so that isolation and authorization come first, and the first automated test suite
+  lands in Phase 2 rather than at the end.
+- `feat(observability): the stack is installed by default, and it has hostnames` — the platform's own monitoring was an add-on the operator had to know about and install, and once installed it answered on a raw port: `http://the-server:3000`. It is now part of the default install (the wizard takes it unless the operator says otherwise), and each of its three consoles is published by hostname like every other application: **grafana.{domain}**, **prometheus.{domain}** and **loki.{domain}**, each with its own certificate. The host ports are gone — one edge serves them — which also settles the collisions the stack used to have with the Instant console on 3000 and the Maven repository on 8081.
+- `feat(applications): the mail application has a page of its own` — the Applications screen said "Email — send and receive mail on your own domain" and linked to the mail server's console, which is a dead end for anyone who has not used it before: no username, no password, no host and port, and no idea what to do with a domain once it is connected. The application now opens on its own page: the console and the credential to log into it with (behind a deliberate click — it is the credential to the whole mail server), the client settings for the three ways to connect (implicit TLS, STARTTLS, IMAP), and the domains the platform receives mail for with the aliases on them and whether their DNS is integrated automatically. The credential comes from the platform itself (`GET /api/v1/admin/platform-mail/console`, owners and admins only) — the installer generated it and put it in an email, and nowhere else could be found.
+- `feat(deployments): the deployment wizard starts at the platform, not at a project` — the flow an operator actually follows is "I have code, I want it running", and the wizard demanded a project before it would start. The new route (`/deployments/new`) asks for the code first: connect GitHub (or paste a git URL, or upload a zip), pick the repository and the branch, and then — in one form — where the project lives, what it is called, which folder holds the application, what the platform found in the code, and what the application needs. The project is created on the way, in the workspace the operator chose, and the deployment is the last step. GitHub is what the platform recommends, because a connected account is what makes push-to-deploy and rollback possible; the other two are there because the code does not always live on GitHub.
+- `feat(deployments): the environment variables are saved before the build starts` — the variables an operator typed into the wizard travelled inside the deployment's event and nowhere else: they were gone the moment the event had been consumed, and the next deploy did not have them. They are saved on the project, encrypted, before anything is built. A variable can be marked **required**, and a deployment that is missing one fails BEFORE the build starts and names it — instead of three minutes into a build log that says `DATABASE_URL is not defined`.
+- `feat(deployments): a repository is inspected before the project exists` — the operator sees the application preset (Next.js, Vite, a Node service, the build command, the port) while they are still choosing where the project lives, instead of after it has been created. Only a github.com repository is accepted here: the endpoint clones a URL the caller supplies, and a URL that can point anywhere on the network is not a request the server should make on someone's behalf.
+- `feat(projects): a project can live in a team` — the operator chooses the workspace the project belongs to: their own, or a team they are a member of. A project in a team is reachable by the team's members, and the team is what the project is named after in the deployment wizard.
+- `feat(auth): the sign-up asks for a company password, and the operator sets it` — creating an account meant knowing a keyword that the platform compared in the BROWSER, against a hash shipped in the bundle: the check was in the client's hands, the secret was in everyone's download, and a keyword is not a password. The gate is now the **company password** — the self-hosting operator's own secret, set on the setup form and rotatable afterwards by an owner or admin (`POST /api/v1/auth/setup-password`). It is stored as a bcrypt hash on the platform's installation settings and is never returned by any endpoint; the browser only checks that something was typed and the server decides whether it is right. A person signs up with their **first name, last name, email and password** — the name is carried on the account — and presents the company password on top, on both the password path and the magic-code path. The old invite keyword still works as a fallback for a platform that has no company password set.
 - `feat(landing): the platform's front door, with a way in` — the landing page was built and worked, but it lived at `/home`, the root redirected into the app, and the install command it showed still pointed at the old `deploy.` subdomain. A visitor saw nothing, and an operator who had just installed was handed a command for a host that no longer served it. The landing page is the root now, the install command names the domain the platform is actually on, and there is a **Log in** link in the nav and a Log in call to action in the hero — the site is served from the platform's own domain, so there is nowhere else for the operator to go. The footer's links all point somewhere real now (the docs that exist, the repository for the changelog and the licence); they were `href="#"`.
 - `feat(installer): the platform is deployed and the edge is one proxy` — the platform was installed on this host for the first time (the wizard ran against the real Cloudflare account, both images built from source, the core stack up), and **Caddy was stopped so the platform's Traefik could take 80 and 443**. Every hostname that was behind Caddy is now behind Traefik on the same name with the same upstream, and the platform's dashboard answers at `fidscript.com`. The firewall that pinned the Instant MCP bridge to Caddy's address now names the edge and resolves it from docker, so it survives a restart of either.
 - `feat(cli, mcp): the data plane is reachable from the terminal and from an agent` — `fidscript instant status | provision | config | delete` gives an operator the project's Instant app from the shell, and four MCP tools (`instant_status`, `instant_provision`, `instant_config`, `instant_delete`) give an agent the same. The CLI's `config` prints exactly what the deployment carries, so what the operator sees is what the application gets.
@@ -23,7 +44,209 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/).
 - `chore(app-auth): the app developer's auth surface is retired` — **breaking.** `POST /projects/:id/auth` and the whole `APPAUTH-01..19` cluster are gone, along with the per-project OAuth provider configuration, the role management, the three OAuth providers, and four tables (`app_roles`, `app_user_roles`, `app_oauth_accounts`, `auth_providers`) that nothing used afterwards. An application's users and permissions are Instant's job: its CEL rules are evaluated per entity per action against live data, which the platform's per-project JSON permission blobs never were — so the platform's version was the weaker duplicate of something that already existed. **Migrating:** an application gets its users from its Instant app. The endpoint IDs are retired, never recycled (rule 20), and the inventory records what replaced them. **What stayed, and why:** the module was never only an app-facing surface — the WhatsApp console signs in with it (magic code), and the deployment pipeline reads the operator's GitHub credentials through it when cloning a private repository. Removing the module wholesale would have broken both, so the app developer's auth went and the two platform products' auth stayed. The `app_users` and `app_sessions` tables remain for the same reason. `docs/CAPABILITY_OVERLAP.md` is the decision.
 - `chore(databases): the SSE live-query is retired` — **breaking.** `POST /databases/:id/live-query`, `GET /databases/:id/live-query/:table` and the SDK's `QueryBuilder.watch()` are gone. The platform had reimplemented Instant's `.watch()` on Postgres `LISTEN/NOTIFY` — a second realtime protocol, with the server sending raw row patches and the client reassembling them by array splice, no conflict handling, and **no row-level authorization** (any holder of the project API key read every row of every table). Instant's is query-scoped and permission-aware, and the platform's own Instant integration now points an application at its app. Nothing called `watch()`: no dashboard screen, no MCP tool, no CLI command, and the endpoints were never in the endpoint inventory. **Migrating:** an application that wants reactive data subscribes to its Instant app — the app id and host come from `GET /projects/:id/instant/config` — and Instant evaluates its permission rules before sending anything. The platform's own `database.row.changed` event on the managed Postgres is unchanged, so the dashboard's live feed and the SDK's `subscribe()` keep working.
 
+### Added
+- `feat(overview): the platform answers what is happening** — an operator who signs in landed on a
+  marketing page, and the questions they actually have had no answer anywhere: how many projects
+  can I reach, what is running, what failed, what is firing. There is an **overview** now, and
+  every number in it is counted over **the caller's own projects** — the ones they own, the ones
+  they are a member of, the ones their workspaces own. Nothing counts over the platform as a
+  whole, so the overview is a picture of their work and never of somebody else's, or of the
+  infrastructure. When there is nothing to show, it says so.
+
+- `feat(design-system): the dashboard has a floor to stand on` — the tokens (radii, elevation,
+  depth, motion and a focus ring), sixteen shared components in `packages/ui` — a form field, a
+  select, a textarea, a checkbox, a switch, a table, a pagination, a breadcrumb, a tooltip, a
+  dropdown menu, an error state, a page header, a search field, a code block, an icon button, a
+  status dot — and the shared **Modal** turned into a real dialog: it had no role, no name and no
+  focus trap, so the tab key walked out of the dialog into the page behind it and the focus never
+  came back. The **Button** had no `type`, so a "Cancel" submitted the form it sat in. The focus
+  ring was the accent at 12% over the surface — about 1.1:1, invisible — and `outline: none` had
+  removed the browser's own; it is the accent at 4px with a canvas-coloured gap now, above the
+  3:1 WCAG 2.2 asks for. Thirty-eight tests hold the components to it, and seven screens — the
+  platform overview, the projects list, the project overview, the database console, the functions
+  console, the email console and the settings — are on the new foundations. `docs/product/DESIGN_SYSTEM.md`
+  is the contract.
+- `feat(cli): the registry, from the command line` — `fidscript registry whoami | list | versions
+  | search | info | login | logout | publish | unpublish | remove | guide`. The CLI speaks the
+  registry's HTTP **directly**: it does not go through the MCP server, because a person at a
+  terminal should not have to speak MCP to a registry. The token is read from
+  `FIDScript_REGISTRY_TOKEN`, then `NPM_TOKEN`, then `~/.fidscript/registry.json`, then npm's own
+  npmrc — and is never written into a project. Publishing drives `npm publish` with a temporary
+  npmrc and `NODE_AUTH_TOKEN`, so npm builds and hashes the tarball rather than a
+  reimplementation of it here, and the token never touches the disk.
+- `feat(github): an account can be connected without a GitHub OAuth app` — a deployment does not
+  always have one, and the personal access token is the way in when it does not. The API checks
+  the token with GitHub, stores it **encrypted** in the same row the OAuth flow uses, and never
+  returns it; the dashboard offers both ways in one dialog and says which one this deployment
+  supports. `GET /users/me/github/oauth` tells the dashboard, and `POST /users/me/github/token`
+  does the connecting. The endpoint IDs are `AUTH-23…31` in the backend inventory.
+
 ### Fixed
+- `fix(design-system): what the compiler cannot see` — the seven screens were opened in a browser
+  at **1440×900** and at **390×844**, and three things that typechecking could never have
+  caught were found: the projects header read "**1 project** Deploy applications…" because the
+  separator the old header had was lost in the move to `PageHeader`; on a phone the header's
+  actions ran off the right edge; and the platform's navigation was clipped mid-word with
+  nothing to say it could be scrolled. The separator is back, the actions wrap, and the nav
+  scrolls. The screenshots are in `docs/implementation/screenshots/phase4/`.
+- `fix(packages): a withdrawn patch broke every dependent** — `workspace:*` is published as the
+  **exact** version, so the CLI 1.1.3 depended on the SDK 1.0.3 and stopped installing the
+  moment that version was withdrawn. The published packages now use `workspace:^`, which is
+  published as `^version`, and every package is republished: `types` 1.0.2, `events` 1.0.3,
+  `sdk` 1.0.5, `cli` 1.1.4, `mcp-server` 1.0.8.
+- `fix(github): the popup sign-in could never work, and said nothing` — the deployment carried the
+  installer's placeholders in `GITHUB_CLIENT_ID` and `GITHUB_CLIENT_SECRET`, so the API built an
+  authorize URL with `client_id=REPLACE_WITH_YOUR_GITHUB_OAUTH_CLIENT_ID` and the browser opened
+  a page GitHub would reject. The API now answers **503** and says that sign-in is not configured
+  on this deployment, and points at the token.
+- `fix(packages): the published SDK could not be imported at all` — every published package is ESM,
+  so Node needs the `.js` extension on every relative import, and `tsc` does not write them. The
+  SDK's `1.0.0`–`1.0.3` were published without them and **failed on import** (`ERR_MODULE_NOT_FOUND`);
+  they are withdrawn, and `1.0.4` replaces them. The build now runs the same extension-fixing step
+  the CLI has always run, from one script both use. Every package is also republished with a clean
+  `files` allowlist, so the tarball carries the compiled output and nothing else.
+- `fix(projects): a project could not be reached by its slug** — the dashboard's project console
+  addresses a project by its **slug** (that is what the address carries), while most of the API
+  looked the project up by its **id** alone: the project's deployments answered 404, its settings
+  answered "Project not found", and updating it by slug did the same. Every project-scoped route
+  worked when the operator arrived through the deployment wizard (which uses the id) and broke when
+  they arrived from the project list. The project's id is now resolved **once**, in the guard every
+  project-scoped route uses, and put back into the request — so every service behind it receives
+  the same thing whatever the address said.
+- `fix(navigation): the dashboard had two ways to ask for the same screen** — the project console,
+  and a flat tree of the same pages without a project in the address. The flat tree was reachable
+  from nowhere (the audit found twenty-two orphaned routes), and its links were built from the
+  project's **id** while the address carried its **slug**, so the sidebar's active state was dead
+  whichever way the operator arrived. The flat paths now send the caller to the project console —
+  for the project they were last in, or to the project picker when they have none — and the deep
+  links keep working.
+- `fix(navigation): the project's own sections were query parameters nothing linked to** — the
+  overview, the members and the activity existed as `?section=…`. They are pages now, in the
+  sidebar, and the query parameter is gone.
+- `fix(navigation): three whole screens had no way in** — the mail console, the mail settings and
+  the Cloudflare connection. They are under Settings → This platform now.
+- `fix(email): the email console's other screens were only in the flat tree** — the analytics, the
+  templates, the webhooks, the suppressions, the domain detail and the mailbox detail are in the
+  project console now, and the domain card links to them.
+- `fix(email): the email console's lists were empty everywhere** — the SDK unwrapped
+  `{ domains }`, `{ mailboxes }` and `{ aliases }`, and the API answers with the list itself, so
+  `res.domains` was `undefined` and every list came back empty. The SDK accepts either shape now,
+  so a change on either side cannot empty a list silently again.
+- `fix(email): adding a domain crashed the page** — the API answers a create with
+  `{ domain, ownershipToken, steps }` and the dashboard cast the whole envelope to a row, so the list
+  held an envelope and `domain.id.slice(...)` took the screen down. The SDK types the answer, the
+  modals use the domain, and **the DNS steps the API returns are shown** — they were being thrown
+  away, and they are the exact records a beginner has to add.
+- `fix(sdk): the database's delete, the domain's read and the file's read called routes that do
+  not exist** — the delete was not project-scoped (the dashboard's delete button answered 404),
+  and there was no route for reading one domain or one file. The two reads exist now; the delete
+  names the project.
+- `fix(sdk): the backup schedule called three routes that never existed** — and the panel
+  promised a "next run" that nothing would honour. The calls are gone and the tab says what is
+  true: the platform takes a backup when you ask it to, and does not yet run one on a schedule.
+- `fix(security): the environment variables had no scope** — a project key read the project's
+  variable **names** whatever its scopes were. The values stayed masked, but the names are the
+  half that says what to go and look for. `envvars:read` and `envvars:write` are now asked for.
+- `fix(security): a declared scope could be inert** — the projects controller applied the scope
+  guard on **one** route and declared scopes on another, so the declaration was there and nothing
+  read it. The guard is on the controller now, and a test reads every route's guard chain.
+- `fix(sdk): the SDK compiled against the published types, not the workspace's** — a type added
+  in the workspace never reached the SDK, so the two could not be trusted to agree.
+- `fix(dashboard): fifty-one of the sixty-one toasts never rendered** — the toast provider was
+  mounted in five of the application's sixty-eight pages, and `useToast` falls back to a silent
+  no-op: an operator clicked a button, the request succeeded, and the screen did not move. One
+  provider, above everything.
+- `fix(security): the platform's authorization is default-deny** — a route was protected only if
+  somebody remembered to guard it, and **twelve controllers had no guard at all**. Forgetting one
+  line of code was a security hole. A route now needs a caller unless it says it is public, and
+  the routes that are public say so explicitly: a probe, a webhook with its own signature, a link
+  whose token IS the credential, and the setup routes with their setup token.
+- `fix(security): the metrics endpoint named every project to anyone who asked** — the
+  per-project series carry the project's slug, and the endpoint was open. The scrape now carries a
+  token (the observability add-on generates it and Prometheus presents it); without one the
+  platform's own series are served and the per-project ones are not.
+- `fix(security): the Cloudflare OAuth callback could take over a tenant's DNS** — the callback
+  had **no guard**, and its CSRF check compared the client's copy of the state with **itself** (the
+  same value was passed as both the expected and the actual state), so it could never fail. Any
+  state, and any project id, was accepted — and the endpoint **replaces that project's Cloudflare
+  connection** with the caller's account. The state is now a value the platform **signs**, carrying
+  the project and the person it was issued for and an expiry; the callback checks the signature,
+  checks the project, and checks the caller. **Verified live**: a forged state answers 401, and an
+  unauthenticated call answers 401.
+- `fix(api): 21 routes were unreachable at the URL everything called** — five controllers carried a
+  literal `api/v1` in their path while the application already sets a global `api/v1` prefix, so
+  they lived at `/api/v1/api/v1/…` and nothing could reach them: the whole MCP module, the domain
+  templates, the notifications feed, the email status route and the Cloudflare OAuth routes. The
+  doubled prefix is gone. **Verified live**: those routes now answer 200.
+- `fix(security): a mail webhook could be forged** — the signature check ran **only when the
+  signature header was present**, so a caller who left the header off was let in, and the header is
+  the only thing standing between the internet and the ability to inject mail into any tenant's
+  mailbox. The comparison was also made over the **re-serialized** body rather than the bytes
+  Stalwart signed, so even a correctly signed webhook did not match. And the secret was in a file
+  the installer wrote and **nothing read**: `STALWART_WEBHOOK_SECRET_FILE` was set on the container
+  and no code looked at it, so the check could never have passed either. The signature is now
+  required, it is checked over the raw request body, and the secret is read from the file.
+  **Verified live**: an unsigned webhook answers 401, a wrongly signed one answers 401, and a
+  correctly signed one is accepted.
+- `fix(security): anyone could configure the platform and become its administrator** — the
+  installation routes had **no guard at all**, and `POST /installation/configure` writes the
+  platform's administrator, its routing, its DNS credentials and the company password that gates
+  registration. An anonymous caller could install themselves as the platform's owner. Two rules
+  stand in front of the setup now: a **configured platform has no setup** (the routes are closed
+  once the lifecycle says CONFIGURED), and before that the caller must present the **setup token**
+  the installer generates and prints once. The read-only setup routes still answer, because the
+  setup page needs them. **Verified live**: configuring without a token now answers 403.
+- `fix(registry): the private registry was a white screen, and `npm install` from it fetched tarballs from a parked domain** — the registry container was healthy the whole time, but it advertised itself at `registry.nextmavens.com`, and that name's **authoritative nameservers are Namecheap's parking servers** — the zone's records live in Cloudflare, where nothing serves them. So the console fetched its JavaScript from a domain that does not serve the registry (a white screen), and every tarball URL it handed out pointed at the same place, which meant **`npm install` from the registry could not fetch its package**. The hard-coded public URL is gone: the registry follows the hostname the caller used, so the console, the assets and the tarball URLs are all `registry.fidscript.com`. Verified: the console renders, the asset loads, the tarball downloads and `npm view` answers.
+- `fix(security): a refresh token worked as an access token, and survived logout** — the composite
+  API-key/JWT guard checked a bearer token's **signature** and nothing else, while the session
+  strategy checked its **type**, its **session** and its **revocation list**. A refresh token
+  (seven days) presented as a bearer token therefore authenticated as the user on every route the
+  guard covers — and logging out did not stop it, because the logout tombstone is only consulted
+  by the strategy. There is one implementation of "what a token is worth" now, and both callers
+  use it. **Verified live**: a refresh token answers 401 (it answered 200), and after logout both
+  the access and the refresh token answer 401.
+- `fix(security): the mail server's password and every login code were written to the log** — the
+  SMTP transport printed its whole options object, `auth.pass` included, on every message the
+  platform sent, and nodemailer's `debug` flag printed the `AUTH` line on top; the login code was
+  logged next to the address it was sent to. Anyone who could read the API log had the mail
+  server's admin password and every user's login code. The credential is redacted, the transcript
+  no longer carries it, the code is no longer logged, and a queue message's body is logged by
+  length rather than by content.
+- `fix(security): a project API key could reach any project` — the guard that decides whether a caller
+  may act on a project attached the key's project to the request and **never compared it with the
+  route's**, and the membership guard waved every API-key caller through on the strength of a
+  comment claiming the comparison had already happened. A key minted for one project could read
+  another project's record, **rename it**, and list its databases — including the connection string
+  with the password in it. The guard compares the two now, the service fails closed when a key's
+  project cannot be resolved, and the project's own `:id` routes carry the guard. **Verified live**: a
+  key on project A now answers 403 on project B (it answered 200), while still answering 200 on its
+  own project.
+- `fix(security): the project role was never enforced** — `checkPermission` returned before it had
+  looked the member up, because every call site passes `['admin','owner']` and the check tested
+  whether `'owner'` was in that list. A **viewer** could delete the project, mint an API key, write
+  environment variables, add a member as an admin and suspend the project. The role is the member's
+  own role now, and the four services that carried their own copies of the check (each with the same
+  two bugs) use the one implementation. **Verified live**: a viewer still reads the project and its
+  deployments, and is refused all five administrator operations with 403; the owner keeps them.
+- `fix(security): the API key's scopes were stored and never read** — `validateProjectApiKey`
+  selected the key's id, project, name and hash but not its `permissions`, so `@RequireScope` was a
+  no-op for every project key. The scopes travel with the key now.
+- `fix(security): an account key with scopes could mint a key without them** — that is an
+  escalation: `projects:read` became "anything". A key with scopes may now only mint a key whose
+  scopes are a subset of its own.
+- `fix(security): a non-expiring account API key could never authenticate** — the rows were created
+  with `expiresAt: null` and the lookup asked for `expiresAt > now()`, which SQL excludes for NULL.
+- `fix(security): the account key's scope allowlist lived in a controller that never ran** — another
+  controller declared the same paths and was registered first, so any string was accepted as a
+  scope. The allowlist is in the service now, where route ordering cannot bypass it.
+- `fix(sdk): the admin mail calls went to the wrong host` — every path in the SDK's admin mail module was missing the `/api/v1` prefix the platform serves on, so the dashboard's own routes answered them instead of the API and the calls failed. The mail console's credential could not be fetched at all, and neither could the platform's mailboxes, its messages, its attachment settings or its connection details.
+- `fix(deployments): the worker never picked up a deployment up` — the deployment event's payload carries the deployment's id, but the project it belongs to is on the event itself. The worker read both from the payload, never found the project, and gave up with "Missing deploymentId/projectId". Every deployment sat in PENDING for ever: the platform could create a deployment and never build one. The project's own column was read from the payload too — it is now read from the event.
+- `fix(deployments): the api image had neither git nor unzip` — the build stage of the image installed both; the runtime stage did not. Every deployment from a repository failed with "git: not found" and every uploaded archive with "unzip: not found": the deployment engine could not deploy anything at all. Both are in the runtime image now.
+- `fix(deployments): the archive was fetched with a password the object store does not speak` — the build downloaded the archive with `curl -u user:pass`, and the object store answers that with "invalid header: authorization": it speaks AWS signature V4, not HTTP basic auth. The archive is fetched through the platform's own storage service now, which signs the request the way the store expects.
+- `fix(deployments): the deployment's hostname had no certificate` — the router on the deployed container asked for TLS but named no resolver, so Traefik served its own default certificate: the application was up, healthy and answering, and every browser refused the hostname. The router names the platform's resolver now.
+- `fix(deployments): Traefik read the routes file half-written` — the platform's deployment routes were written in place, and Traefik watches the directory: it read the file mid-write, rejected it ("routers cannot be a standalone element") and dropped every route in it. The file is written to a temporary name and moved into place now.
+- `fix(deployments): a failed build left the deployment building for ever` — a build that threw was swallowed by the recovery path, and the deployment stayed in BUILDING with nothing running and nothing logged. The failure is recorded now, and a deployment that was mid-build when the API stopped is built again on the next start instead of being orphaned.
+- `fix(deployments): the uploaded archive never arrived` — the file was sent as a base64 string in a JSON body, and the API's upload endpoint takes a multipart file. It answered "Cannot read properties of undefined (reading 'buffer')", and the archive deployment could never start. The file is sent as multipart now, the dashboard's proxy forwards a multipart body with its own content type instead of reading it as text, and the SDK no longer turns a FormData body into JSON because the client defaults to `Content-Type: application/json`.
 - `fix(installation): the setup must write the platform's whole routing` — the setup flow writes platform.yml, the file Traefik's file provider reads, and it wrote only two routes: the API and the dashboard. It replaced the installer's file, so the mail console, the object-storage console, the app alias, the metrics endpoint, the one-line installer and the deployed applications' hostname all stopped answering — and `api.{domain}`, the URL the platform advertises as its API, lost its certificate. The routing has one definition now — the same eleven routes the installer writes — so the two writers cannot drift. The middlewares are Traefik v3's shape: the v2 form is rejected outright with "headers cannot be a standalone element", and one bad middleware takes every route in the file with it.
 - `fix(applications): an application could not be installed from the screen` — four separate things stood between the Applications screen and a running container. The api image had neither `python3` nor `htpasswd`, so the installer's bcrypt step died with "command not found". The api mounted the installer at a path the host did not have, and Compose resolves a relative bind path on the HOST — so the daemon was told to mount a file that was not there and the container never started. The install service could not resolve the shell runner it uses to run the installer's own commands, so the api would not start at all. And a failed install left the installer's record saying the application was installed, so a retry was refused with 409. All four are fixed; the app runtime now installs from the screen and comes up healthy.
 - `fix(installation): the setup could never complete` — a unique-constraint violation inside a Postgres transaction ABORTS it, and catching the error in JavaScript does not reset it: every statement after the failure answers "current transaction is aborted". The admin user is created inside that transaction, and the installer's wizard has already seeded it, so the create always collided, the transaction always aborted, and the setup always failed with a 500 — which means the platform could never leave UNCONFIGURED on an install that went through the wizard, and the login was blocked the whole time.
@@ -49,6 +272,101 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/).
 - `fix(dashboard): deleting an alert rule landed on another project's monitoring screen` — the delete navigated to the flat `/monitoring?project=…`, and that page ignores `?project=` and falls back to whatever project the shell holds.
 - `fix(dashboard): the deployment wizard's stepper advanced instead of jumping` — clicking an earlier step called `continueStep()` regardless of which step was clicked.
 - `fix(dashboard): a new project said its deployments had "reached a terminal state"` — with no deployments at all, the empty state claimed everything had finished and showed no button. It now distinguishes "nothing has been deployed" and carries the call to action on both tabs.
+- `fix(security): a function's variables were stored in plain text and shown to every member** — the
+  variables of an edge function are the credentials it calls with (an OpenAI key, a database URL), and
+  they were written to the database as plain text and returned to **every** member of the project,
+  whatever their role. They are encrypted on write now, like the project's own variables; a member who
+  may only read the project sees `[masked]`; the runtime — the one thing that genuinely needs them —
+  gets the decrypted values through a separate path. A page that saves the mask back does not
+  overwrite the secret with the word "masked": a masked value keeps what is stored.
+- `fix(security): the functions console had no roles at all** — membership was checked and the *role*
+  never was, so a **viewer** could create a function, write its variables, deploy it, invoke it and
+  delete it. A viewer may now read and nothing else; a developer may write, deploy and invoke but not
+  delete; the deletion is the owner's and the admin's alone.
+- `fix(security): the login could be used as a front door for somebody else's site** — the `next`
+  parameter was followed wherever it pointed, so a link like
+  `https://fidscript.com/login?next=https://elsewhere.example` sent a person who had just signed in
+  to another site, from the platform's own login. Only a path inside the platform is a destination
+  now: another site, a protocol-relative address (`//elsewhere.example`) and a backslash — which a
+  browser reads as a slash — are all refused.
+- `fix(security): the sign-in lookup said whether an address had an account** — `GET
+  /auth/auth-method/:email` answered with the account's own preference and 404 for an address with no
+  account, which is an account-enumeration oracle: anyone could ask the platform who was registered.
+  The answer now depends on the platform alone, never on the address.
+- `fix(security): the login code skipped the second factor** — an account with MFA enrolled got a
+  session straight from the emailed code, while the password path asked for the second factor. The
+  code arrives by email, so without MFA it was the *only* factor and a readable mailbox was enough to
+  sign in. The magic-code path now issues a challenge, exactly like the password path, and consumes
+  the code with it.
+- `fix(security): the MCP server's scope check failed open** — it fetched the list of tools, took the
+  scopes a tool needed, and **allowed the call whatever the key carried** — and allowed everything
+  again when the platform could not be reached. The key's own scopes are fetched and enforced now, and
+  a platform that cannot answer cannot grant. The API answers with the calling key's MCP
+  permissions (`GET /api/v1/mcp/permissions`).
+- `fix(security): four services fell back to a known encryption key** — the domain services and the
+  installation service each carried `default-dev-key-32-chars-here!!` as the key to fall back on when
+  none was configured, so a platform without an encryption key encrypted its secrets with a key that
+  is published in the source. There is one resolution of the key now, and it **fails closed** when
+  there is none.
+- `fix(dashboard): the account's API keys page showed the first project's keys** — the "API Keys"
+  card in account settings listed the keys of the first project the person happened to own, and
+  revoked them through the project's endpoint. The account's own keys are listed and revoked now; the
+  project's keys stay in the project's console, where they belong.
+- `fix(sdk): the template categories asked about a project that does not exist** — the method called
+  the platform with a nil UUID, which the project's own guard refuses, so it could never answer. It
+  names a project, like every other call in that module.
+- `fix(sdk): the database's backup calls were not scoped to a project** — they asked for a database
+  without saying which project it belonged to, so the platform had to guess. Every backup and
+  credential call now carries its project, and the MCP tool resolves the project from the database it
+  was given.
+- `fix(dashboard): the API keys card did not refresh after a revoke** — the key was gone from the
+  platform and still on the screen. The list is asked for again once the revoke is done, so the
+  card shows what the platform holds.
+- `fix(email): the mail server's credential was handed over whole** — the installer writes the admin
+  credential as `user:hash` (the SHA-256 of the admin password), and the platform sent it as the
+  *password*: the mail server was asked for `admin:admin:<hash>` and answered 401 for a credential
+  that was right. The user and the secret are split now, and the platform's own admin token is used
+  when there is one.
+- `fix(infrastructure): the platform's own secrets could not be read at all** — a platform-level
+  secret has no project, so `projectId` is null, and Prisma's compound unique lookup **cannot match
+  a NULL column**: the lookup threw `Invalid this.prisma.secret.findUnique() invocation` instead of
+  finding the row. The email bootstrap read a platform secret on every start of the API, so it
+  failed every time — the platform's domains were never connected to the mail server. A null
+  project is found with `findFirst`, written as find-then-update-or-create, and deleted with
+  `deleteMany`; a project's secret keeps the compound lookup.
+- `fix(traefik): one empty map took the whole edge down** — the platform writes the deployment
+  routers into the Traefik dynamic directory every time a deployment succeeds, and it wrote them as
+  `routers: {}` whenever no deployment had a custom domain — which is the usual case. **Traefik v3
+  rejects an empty map in a dynamic file**, and when it rejects one file it rejects the **file
+  provider**: from that moment the edge serves the configuration it had before, silently, and no
+  route written afterwards is ever applied. The sections that have nothing in them are left out now,
+  and a file with no routers at all is a file of comments.
+- `feat(applications): the package manager has a page of its own, and the token page is back** — the
+  registry's console hides the private packages (@soostori, @nextmavens) from an anonymous visitor,
+  and the page that issued a token — `/-/static/token` — went missing when Caddy stopped being the
+  edge. There was no way in, so the private half of the registry looked empty. The token page is
+  served again (by the registry's own static service, on the platform's domain), the snippets on it
+  name the registry it was served from, and the Applications screen's Package manager opens a page
+  with the console, the token page, and the packages anyone may see.
+- `fix(security): the platform's encryption secret was derived two different ways** — the domain
+  services read `ENCRYPTION_KEY` as **UTF-8, truncated to 32 characters**, while the platform's
+  `CryptoService` reads it as **base64, exactly 32 bytes**. A secret encrypted by one could not be
+  decrypted by the other, and the fail-closed resolution of the key was never reached while the
+  variable was in the environment — which it always is, because the entrypoint loads it there. The
+  domain services use the platform's cipher now, so there is one key and one derivation. Nothing
+  was encrypted under the old one (the platform holds no domain secrets).
+- `chore(api): every file this phase touched is under the 150-line limit** — the functions console
+  was split into a reading controller and a writing controller, the variables into a service of
+  their own, the MCP server's scope check and its tool dispatcher into modules of their own, the
+  code mail out of the magic-code service and the code exchange into a service of its own. Three
+  files that were already over the limit are smaller than they were; splitting them properly is
+  the next phase's work.
+- `chore(installer): the platform's secrets are no longer part of the Docker build context** — the
+  context is the repository root, and `installer/docker/secrets` sits inside it: the encryption key,
+  the database password, the mail server's password and the tokens. They are mounted into the
+  containers at RUN time; they have no business in a build context, where one stray `COPY` would
+  bake them into an image. They are excluded now — which also means the build no longer fails on a
+  machine that cannot read them.
 
 ### Improved
 - `chore(dashboard): the formatters are consolidated` — `formatBytes`, `relativeTime` and `formatDuration` existed as eight copies across the app, and they did not agree. One relative-time copy said "5 min ago", another "5m ago", a third "Just now"; one byte formatter capped at MB, so a 2 GB file was shown as "2048.0 MB". The same timestamp rendered three different ways depending on which screen you were on. `lib/format.ts` is now the only implementation, and the time-range helper is named `formatTimeRange` — it used to share the name `formatDuration` with the duration-in-milliseconds helper, which is how the two got confused in the first place.

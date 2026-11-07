@@ -9,7 +9,7 @@ import { useRouter } from 'next/navigation';
 
 import { useAuth } from '@/contexts/auth-context';
 import { useProjectContext } from '@/contexts/project-context';
-import { ToastProvider, useToast } from '@/components/toast-provider';
+import { useToast } from '@/components/toast-provider';
 import { WizardHeader } from './wizard-header';
 import { WizardFooter } from './wizard-footer';
 import { StepSource } from './step-source';
@@ -19,14 +19,13 @@ import { StepReview } from './step-review';
 import { useNewDeploy } from './use-new-deploy';
 import { useGithubRepos } from './use-githubRepos';
 import { useArchiveUpload } from './use-archive-upload';
+import { GithubConnectDialog } from '@/components/github/github-connect-dialog';
 
 export default function NewDeploymentPageWrapper() {
   const { project } = useProjectContext();
   if (!project) return <div className="p-6 text-sm text-[var(--text-muted)]">Loading project…</div>;
   return (
-    <ToastProvider>
-      <NewDeploymentPage project={project} />
-    </ToastProvider>
+    <NewDeploymentPage project={project} />
   );
 }
 
@@ -43,7 +42,7 @@ function NewDeploymentPage({ project }: { project: NonNullable<ReturnType<typeof
   const toastAdapter = (opts: { type: string; message: string }) => showToast({ type: opts.type as 'success' | 'error' | 'info' | 'warning', message: opts.message });
   const newDeploy = useNewDeploy({ project, getSdk, onShowToast: toastAdapter, onDeploySuccess: handleDeploySuccess });
   const github = useGithubRepos({ getSdk, sourceType: newDeploy.sourceType, onShowToast: toastAdapter });
-  const archive = useArchiveUpload({ project, onShowToast: toastAdapter });
+  const archive = useArchiveUpload({ project, getSdk, onShowToast: toastAdapter });
 
   function handleStepClick(i: number) {
     // Jump to the step that was clicked. It used to call continueStep()
@@ -81,7 +80,8 @@ function NewDeploymentPage({ project }: { project: NonNullable<ReturnType<typeof
               onLoadMoreRepos={() => github.loadRepos(github.repoPage + 1, true)}
               onRepoSearchChange={github.setRepoSearch} onBranchSelect={github.setSelectedBranch}
               onManualUrlChange={newDeploy.setManualGitUrl}
-              onConnectGithub={github.connect}
+              onOpenGithubDialog={github.openDialog}
+              githubOauthConfigured={github.oauthConfigured}
               onArchiveChange={archive.setArchiveFile}
               onUploadArchive={archive.uploadArchive}
               onReplaceArchive={archive.replaceArchive}
@@ -126,6 +126,16 @@ function NewDeploymentPage({ project }: { project: NonNullable<ReturnType<typeof
           )}
         </div>
       </div>
+
+      <GithubConnectDialog
+        isOpen={github.dialogOpen}
+        onClose={github.closeDialog}
+        oauthConfigured={github.oauthConfigured}
+        connecting={github.connecting}
+        error={github.error}
+        onSignInWithGithub={() => void github.connect()}
+        onSubmitToken={github.connectWithToken}
+      />
 
       <WizardFooter
         stepIndex={newDeploy.stepIndex}

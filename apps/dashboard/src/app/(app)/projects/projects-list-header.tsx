@@ -7,8 +7,10 @@ import {
   Refresh01Icon,
   EyeIcon,
   EyeOffIcon,
+  Rocket01Icon,
 } from '@hugeicons/core-free-icons';
-import { Button, Input } from '@fidscript/ui';
+import { Button, Input, PageHeader, IconButton } from '@fidscript/ui';
+import Link from 'next/link';
 
 export interface ProjectsListHeaderProps {
   userName?: string;
@@ -40,10 +42,10 @@ export function ProjectsListHeader({
   onCreate,
 }: ProjectsListHeaderProps) {
   return (
-    <div className="flex items-center justify-between gap-4 mb-6">
-      <div>
-        <h1 className="text-xl font-bold text-[var(--text)] mb-1">Projects</h1>
-        <p className="text-sm text-[var(--text-muted)]" aria-live="polite">
+    <PageHeader
+      title="Projects"
+      description={
+        <span aria-live="polite">
           {loading
             ? 'Loading…'
             : search
@@ -55,11 +57,11 @@ export function ProjectsListHeader({
               Deploy applications, databases, domains, and automation
             </span>
           )}
-        </p>
-      </div>
-
-      <div className="flex items-center gap-2 flex-1 max-w-md justify-end">
-        <div className="relative flex-1 max-w-xs">
+        </span>
+      }
+      actions={
+        <div className="flex items-center gap-2 flex-wrap justify-end w-full sm:w-auto sm:flex-1 max-w-md">
+        <div className="relative w-full sm:flex-1 sm:max-w-xs">
           <HugeiconsIcon
             icon={Search01Icon}
             size={14}
@@ -73,9 +75,9 @@ export function ProjectsListHeader({
             className="pl-9 bg-[var(--surface-2)] border border-[var(--rail)] text-[var(--text)] placeholder:text-[var(--text-dim)]"
           />
         </div>
-        <Button variant="ghost" size="sm" onClick={onRefresh} title="Refresh" aria-label="Refresh" disabled={loading}>
+        <IconButton label="Refresh" onClick={onRefresh} disabled={loading}>
           <HugeiconsIcon icon={Refresh01Icon} size={14} />
-        </Button>
+        </IconButton>
         {deletedCount > 0 && (
           <Button
             variant={showDeleted ? 'secondary' : 'ghost'}
@@ -89,6 +91,15 @@ export function ProjectsListHeader({
           </Button>
         )}
         {canCreate && (
+          <Link
+            href="/deployments/new"
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-[var(--rail)] text-xs font-medium text-[var(--text-muted)] hover:text-[var(--text)] hover:border-[var(--rail-light)] transition-colors"
+          >
+            <HugeiconsIcon icon={Rocket01Icon} size={14} />
+            New deployment
+          </Link>
+        )}
+        {canCreate && (
           <Button
             variant="primary"
             size="sm"
@@ -99,7 +110,8 @@ export function ProjectsListHeader({
             New project
           </Button>
         )}
-      </div>
-    </div>
+        </div>
+      }
+    />
   );
 }

@@ -1,5 +1,5 @@
 import {
-  Controller, Get, Post, Patch, Delete, Body, Param,
+  Controller, Get, Post, Body, Param,
   Req, UseGuards, HttpCode, HttpStatus, UnauthorizedException,
 } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
@@ -13,8 +13,9 @@ import {
   RegisterDto, LoginDto, MagicCodeDto, VerifyMagicCodeDto,
   CreateApiKeyDto, UpdateProfileDto, RefreshTokenDto, MfaCodeDto, MfaChallengeDto,
   ChangePasswordDto,
-  SendVerificationDto, VerifyEmailDto, ConfirmPasswordResetDto, ConfirmMagicLinkDto,
+  SendVerificationDto, VerifyEmailDto, ForgotPasswordDto, ConfirmPasswordResetDto, ConfirmMagicLinkDto,
 } from '@/modules/auth/dto/index';
+import { Public } from '@/modules/auth/decorators/public.decorator';
 
 @ApiTags('auth')
 @Controller('auth')
@@ -22,6 +23,8 @@ export class AuthController {
   constructor(private authService: AuthService) {}
 
   @Get('auth-method/:email')
+
+  @Public()
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Look up preferred auth method for an email (used to pre-fill login)' })
   async lookupAuthMethod(@Param('email') email: string) {
@@ -46,6 +49,8 @@ export class AuthController {
   }
 
   @Post('refresh')
+
+  @Public()
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Refresh access token' })
   async refresh(@Body() dto: RefreshTokenDto) {
@@ -111,7 +116,7 @@ export class AuthController {
   @UseGuards(InstallationGuard)
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Request a password reset email' })
-  async forgotPassword(@Body() dto: SendVerificationDto, @Req() req: Request) {
+  async forgotPassword(@Body() dto: ForgotPasswordDto, @Req() req: Request) {
     const { ipAddress, userAgent } = extractRequestContext(req);
     return this.authService.sendVerification({ ...dto, type: 'PASSWORD_RESET' as const }, ipAddress, userAgent);
   }
@@ -141,102 +146,5 @@ export class AuthController {
   async confirmMagicLink(@Body() dto: ConfirmMagicLinkDto, @Req() req: Request) {
     const { ipAddress, userAgent } = extractRequestContext(req);
     return this.authService.confirmMagicLink(dto, ipAddress, userAgent);
-  }
-
-  @Post('mfa/setup')
-  @UseGuards(JwtAuthGuard)
-  @ApiBearerAuth()
-  @ApiOperation({ summary: 'Set up TOTP MFA — returns secret + otpauth URL' })
-  async mfaSetup(@CurrentUser('userId') userId: string) {
-    return this.authService.setupMfa(userId);
-  }
-
-  @Post('mfa/verify')
-  @UseGuards(JwtAuthGuard)
-  @HttpCode(HttpStatus.OK)
-  @ApiBearerAuth()
-  @ApiOperation({ summary: 'Verify TOTP code and enable MFA' })
-  async mfaVerify(@CurrentUser('userId') userId: string, @Body() dto: MfaCodeDto) {
-    return this.authService.enableMfa(userId, dto.code);
-  }
-
-  @Post('mfa/challenge')
-  @HttpCode(HttpStatus.OK)
-  @ApiOperation({ summary: 'Complete MFA login with challenge token + code' })
-  async mfaChallenge(@Body() dto: MfaChallengeDto, @Req() req: Request) {
-    const { ipAddress, userAgent } = extractRequestContext(req);
-    return this.authService.completeMfaLogin(dto, ipAddress, userAgent);
-  }
-
-  @Get('me')
-  @UseGuards(JwtAuthGuard)
-  @ApiBearerAuth()
-  @ApiOperation({ summary: 'Get current user profile' })
-  async me(@CurrentUser('userId') userId: string) {
-    return this.authService.getProfile(userId);
-  }
-
-  @Patch('me')
-  @UseGuards(JwtAuthGuard)
-  @ApiBearerAuth()
-  @ApiOperation({ summary: 'Update current user profile' })
-  async updateProfile(@CurrentUser('userId') userId: string, @Body() dto: UpdateProfileDto) {
-    return this.authService.updateProfile(userId, dto);
-  }
-
-  @Get('sessions')
-  @UseGuards(JwtAuthGuard)
-  @ApiBearerAuth()
-  @ApiOperation({ summary: 'List all active sessions' })
-  async getSessions(@CurrentUser('userId') userId: string) {
-    const sessions = await this.authService.getSessions(userId);
-    return { sessions };
-  }
-
-  @Delete('sessions/:id')
-  @UseGuards(JwtAuthGuard)
-  @HttpCode(HttpStatus.OK)
-  @ApiBearerAuth()
-  @ApiOperation({ summary: 'Revoke a specific session' })
-  async revokeSession(@CurrentUser('userId') userId: string, @Param('id') sessionId: string) {
-    await this.authService.revokeSession(userId, sessionId);
-    return { success: true };
-  }
-
-  @Delete('sessions')
-  @UseGuards(JwtAuthGuard)
-  @HttpCode(HttpStatus.OK)
-  @ApiBearerAuth()
-  @ApiOperation({ summary: 'Revoke all sessions' })
-  async revokeAllSessions(@CurrentUser('userId') userId: string) {
-    await this.authService.revokeAllSessions(userId);
-    return { success: true };
-  }
-
-  @Get('api-keys')
-  @UseGuards(JwtAuthGuard)
-  @ApiBearerAuth()
-  @ApiOperation({ summary: 'List all API keys' })
-  async getApiKeys(@CurrentUser('userId') userId: string) {
-    const apiKeys = await this.authService.getApiKeys(userId);
-    return { apiKeys };
-  }
-
-  @Post('api-keys')
-  @UseGuards(JwtAuthGuard)
-  @ApiBearerAuth()
-  @ApiOperation({ summary: 'Create a new API key' })
-  async createApiKey(@CurrentUser('userId') userId: string, @Body() dto: CreateApiKeyDto) {
-    return this.authService.createApiKey(userId, dto);
-  }
-
-  @Delete('api-keys/:id')
-  @UseGuards(JwtAuthGuard)
-  @HttpCode(HttpStatus.OK)
-  @ApiBearerAuth()
-  @ApiOperation({ summary: 'Revoke an API key' })
-  async revokeApiKey(@CurrentUser('userId') userId: string, @Param('id') keyId: string) {
-    await this.authService.revokeApiKey(userId, keyId);
-    return { success: true };
   }
 }

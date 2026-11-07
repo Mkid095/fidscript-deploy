@@ -1,5 +1,6 @@
-import { IsEmail, IsString, IsOptional, IsIn } from 'class-validator';
+import { IsEmail, IsString, IsOptional, IsIn, ValidateIf } from 'class-validator';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import { IsStrongPassword } from '@/modules/auth/auth-password-policy';
 
 export class RegisterDto {
   @ApiProperty({ example: 'user@example.com' })
@@ -7,7 +8,9 @@ export class RegisterDto {
   email: string;
 
   @ApiPropertyOptional({ description: 'Password-based account. Omit if using magic code.' })
+  @ValidateIf((o: RegisterDto) => o.password !== undefined)
   @IsString()
+  @IsStrongPassword()
   @IsOptional()
   password?: string;
 
@@ -15,6 +18,25 @@ export class RegisterDto {
   @IsString()
   @IsOptional()
   name?: string;
+
+  @ApiPropertyOptional({ description: "The person's first name." })
+  @IsString()
+  @IsOptional()
+  firstName?: string;
+
+  @ApiPropertyOptional({ description: "The person's last name." })
+  @IsString()
+  @IsOptional()
+  lastName?: string;
+
+  @ApiPropertyOptional({
+    description:
+      'The company password — the shared secret the operator set during setup. ' +
+      'Required when the platform has one.',
+  })
+  @IsString()
+  @IsOptional()
+  setupPassword?: string;
 
   @ApiPropertyOptional({ description: 'Preferred auth method: PASSWORD or MAGIC_CODE (defaults to PASSWORD)', enum: ['PASSWORD', 'MAGIC_CODE'] })
   @IsOptional()

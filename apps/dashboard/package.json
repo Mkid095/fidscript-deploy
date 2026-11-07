@@ -9,7 +9,9 @@
     "start": "next start",
     "lint": "next lint",
     "typecheck": "tsc --noEmit",
-    "clean": "rm -rf .next"
+    "test": "vitest run",
+    "clean": "rm -rf .next",
+    "test:watch": "vitest"
   },
   "dependencies": {
     "@fidscript-deploy/sdk": "workspace:*",
@@ -20,6 +22,7 @@
     "@monaco-editor/react": "^4.7.0",
     "@tailwindcss/postcss": "^4",
     "next": "15.5.20",
+    "qrcode.react": "4.2.0",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
     "tailwindcss": "^4"
@@ -27,9 +30,13 @@
   "devDependencies": {
     "@eslint/eslintrc": "^3.0.0",
     "@tailwindcss/typography": "^0.5.20",
+    "@testing-library/dom": "10",
+    "@testing-library/react": "16",
     "@types/node": "^20.0.0",
     "@types/react": "^19.0.0",
     "@types/react-dom": "^19.0.0",
-    "typescript": "^5.4.0"
+    "jsdom": "25",
+    "typescript": "^5.4.0",
+    "vitest": "2"
   }
 }

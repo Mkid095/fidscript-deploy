@@ -1,1 +1,1 @@
-export { default } from '@/app/(app)/scheduler/page';
+export { SchedulerPage as default } from '@/app/(app)/scheduler/scheduler-page';

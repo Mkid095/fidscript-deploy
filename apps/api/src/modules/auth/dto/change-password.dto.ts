@@ -1,5 +1,6 @@
-import { IsString, MinLength, Matches } from 'class-validator';
+import { IsString } from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
+import { IsStrongPassword } from '@/modules/auth/auth-password-policy';
 
 /**
  * Body for `POST /auth/change-password` (PREREQ-AUTH-2).
@@ -15,9 +16,6 @@ export class ChangePasswordDto {
 
   @ApiProperty({ minLength: 12, description: 'The new password (≥12 chars, upper+lower+number).' })
   @IsString()
-  @MinLength(12, { message: 'Password must be at least 12 characters' })
-  @Matches(/(?=.*[a-z])(?=.*[A-Z])(?=.*[0-9])/, {
-    message: 'Password must contain upper + lower + a number',
-  })
+  @IsStrongPassword()
   newPassword: string;
 }

@@ -92,6 +92,20 @@ export class FidscriptClient {
       headers: baseHeaders,
     });
 
+    // A file upload is not JSON.
+    //
+    // The client defaults to `Content-Type: application/json`, and axios
+    // reacts to that by turning a FormData body into a JSON string — the
+    // file becomes a field in a JSON object and the server's multipart
+    // parser never sees it. Removing the header for FormData lets the
+    // browser set the multipart content type, boundary and all.
+    this.http.interceptors.request.use(config => {
+      if (typeof FormData !== 'undefined' && config.data instanceof FormData) {
+        config.headers.delete('Content-Type');
+      }
+      return config;
+    });
+
     // Transparent token refresh: on a 401, ask the host app for a fresh access
     // token and retry the original request once. Concurrent 401s share a single
     // refresh. Only meaningful for JWT credentials — API keys don't expire the

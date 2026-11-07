@@ -17,7 +17,7 @@ export function useDomainOverview(
     try {
       const sdk = getSdk();
       const [domainData, healthData] = await Promise.all([
-        sdk.domains.get(domainId).catch(() => null),
+        sdk.domains.get(projectId, domainId).catch(() => null),
         sdk.domains.getHealth(projectId, domainId).catch(() => null),
       ]);
       if (!domainData) { setError('Domain not found'); return; }

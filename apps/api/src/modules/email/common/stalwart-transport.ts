@@ -7,9 +7,10 @@
  * - Log the actual resolved nodemailer version + transport options (host, port, secure,
  *   greetingTimeout, connectionTimeout, socketTimeout, tls) so we can verify what is
  *   actually being sent to Stalwart instead of guessing.
- * - Enable `logger: true, debug: true` (nodemailer prints the full SMTP transcript) so
- *   the failure mode is visible: "Connection closed", "Timeout", "Greeting never
- *   received", "AUTH failed", etc.
+ * - Enable `logger: true` (nodemailer prints the SMTP transcript) so the failure
+ *   mode is visible: "Connection closed", "Timeout", "Greeting never received",
+ *   "AUTH failed", etc. **`debug` is off**: with it on, nodemailer prints the
+ *   AUTH line, which carries the credential.
  * - Default greeting/connection/socket timeouts to 30s (Stalwart responses on the
  *   internal docker network should be sub-second; the long timeout is insurance, not
  *   the root cause, but eliminates "default 30s timeout fired before the greeting
@@ -55,15 +56,21 @@ export async function createStalwartTransport(opts: StalwartTransportOpts): Prom
     connectionTimeout,
     greetingTimeout,
     socketTimeout,
-    // Force the SMTP transcript to the API log so we can see exactly where
-    // nodemailer stops (greeting, EHLO, AUTH, MAIL FROM, ...).
+    // The SMTP transcript goes to the log so a failure is visible. It is
+    // written by nodemailer's own logger, which redacts the credentials it
+    // sends — the debug flag below is what makes nodemailer print them, so
+    // it is off.
     logger: true,
-    debug: true,
+    debug: false,
   };
+  // The diagnostic line names the transport WITHOUT its credential. It used
+  // to print the whole options object, `auth.pass` included, so the mail
+  // server's admin password was written to the API log in the clear on
+  // every message the platform sent.
   // eslint-disable-next-line no-console
   console.log(
     '[stalwart-transport] nodemailer version', NM_VERSION,
-    'options', JSON.stringify(transportOpts),
+    'options', JSON.stringify({ ...transportOpts, auth: { user: opts.user, pass: '«redacted»' } }),
   );
   return nodemailer.createTransport(transportOpts);
 }

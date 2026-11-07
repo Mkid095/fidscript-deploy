@@ -68,7 +68,9 @@ export interface ApplicationMcp {
 export const CORE_APPLICATIONS: Record<string, ApplicationPresentation> = {
   deployment: {
     host: null, // the dashboard itself
-    path: '/projects',
+    // The wizard that starts a deployment — the operator's next action after
+    // they arrive, not a list of projects they have to go and find.
+    path: '/deployments/new',
     port: null,
     icon: 'rocket',
     installable: false,
@@ -76,8 +78,11 @@ export const CORE_APPLICATIONS: Record<string, ApplicationPresentation> = {
     mcp: null,
   },
   email: {
-    host: 'stalwart-admin',
-    path: '/admin',
+    // The application's own page in the dashboard: the console, the
+    // credential to log into it with, the client settings and the domains
+    // the platform holds. The console itself is one link away from there.
+    host: null,
+    path: '/applications/email',
     port: null,
     icon: 'mail',
     installable: false,
@@ -118,8 +123,11 @@ export const ADDON_APPLICATIONS: Record<string, ApplicationPresentation> = {
     },
   },
   'package-manager': {
-    host: 'registry',
-    path: null,
+    // The application's own page in the dashboard: the console, the token
+    // page — which is how the private packages are reached — and the
+    // packages anyone may see. The console itself is one link away.
+    host: null,
+    path: '/applications/package-manager',
     port: null,
     icon: 'package',
     installable: true,
@@ -127,13 +135,14 @@ export const ADDON_APPLICATIONS: Record<string, ApplicationPresentation> = {
     mcp: null,
   },
   observability: {
-    host: null,
+    // Grafana is the stack's console, and it has its own hostname like every
+    // other application: grafana.{domain}.
+    host: 'grafana',
     path: null,
-    // Grafana is published on the host rather than routed through the edge.
-    port: 3000,
+    port: null,
     icon: 'analytics',
     installable: true,
-    apiHost: null,
+    apiHost: 'prometheus',
     mcp: null,
   },
   'app-runtime': {

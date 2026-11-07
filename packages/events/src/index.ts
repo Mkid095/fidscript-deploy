@@ -17,6 +17,7 @@ export type EventType =
   | 'identity.user.logged_out'
   | 'identity.user.mfa_setup'
   | 'identity.user.mfa_enabled'
+  | 'identity.user.mfa_disabled'
   | 'identity.user.mfa_challenge'
   | 'identity.session.created'
   | 'identity.session.revoked'

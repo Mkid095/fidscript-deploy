@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useAuth } from '@/contexts/auth-context';
 
 type AuthMethod = 'PASSWORD' | 'MAGIC_CODE';
@@ -19,6 +19,15 @@ export function useLoginForm(platformAuthMethod: AuthMethod | null) {
   const [code, setCode] = useState('');
   const [magicError, setMagicError] = useState('');
   const [countdown, setCountdown] = useState(0);
+
+  // The resend countdown. It was set to thirty and never decremented, so the
+  // button said "Resend in 30s" for as long as the page was open — the
+  // person could never ask for a second code.
+  useEffect(() => {
+    if (countdown <= 0) return;
+    const timer = setTimeout(() => setCountdown(c => Math.max(0, c - 1)), 1000);
+    return () => clearTimeout(timer);
+  }, [countdown]);
 
   async function handleEmailChange(addr: string) {
     setEmail(addr);

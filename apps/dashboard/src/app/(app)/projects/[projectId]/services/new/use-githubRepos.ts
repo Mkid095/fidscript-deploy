@@ -3,16 +3,16 @@
 import { useState, useCallback, useEffect } from 'react';
 import type { GithubRepo, GithubBranch, GithubStatus } from './new-deploy-types';
 import type { FidscriptSDK } from '@fidscript-deploy/sdk';
+import { useGithubConnect } from '@/hooks/use-github-connect';
 
 interface UseGithubReposOptions {
   getSdk: () => FidscriptSDK;
   sourceType: 'git' | 'archive';
   onShowToast: (opts: { type: string; message: string }) => void;
-  onConnect?: () => void;
 }
 
 export function useGithubRepos({ getSdk, sourceType, onShowToast }: UseGithubReposOptions) {
-  const [status, setStatus] = useState<GithubStatus | null>(null);
+  const github = useGithubConnect({ getSdk, onShowToast });
   const [repos, setRepos] = useState<GithubRepo[]>([]);
   const [repoPage, setRepoPage] = useState(1);
   const [repoHasMore, setRepoHasMore] = useState(false);
@@ -22,11 +22,8 @@ export function useGithubRepos({ getSdk, sourceType, onShowToast }: UseGithubRep
   const [branches, setBranches] = useState<GithubBranch[]>([]);
   const [branchLoading, setBranchLoading] = useState(false);
   const [selectedBranch, setSelectedBranch] = useState('main');
-  const [connecting, setConnecting] = useState(false);
 
-  useEffect(() => {
-    getSdk().github.status().then(setStatus).catch(() => setStatus({ connected: false }));
-  }, [getSdk]);
+  const status = github.status as GithubStatus | null;
 
   useEffect(() => {
     if (status?.connected && sourceType === 'git' && repos.length === 0 && !repoLoading) {
@@ -69,25 +66,18 @@ export function useGithubRepos({ getSdk, sourceType, onShowToast }: UseGithubRep
     setBranches([]);
   }, []);
 
-  const connect = useCallback(async () => {
-    setConnecting(true);
-    try {
-      await getSdk().github.connect();
-      const s = await getSdk().github.status();
-      setStatus(s);
-      if (s.connected) onShowToast({ type: 'success', message: `Connected to GitHub as ${s.username}` });
-    } catch (err) {
-      onShowToast({ type: 'error', message: err instanceof Error ? err.message : 'GitHub connection failed' });
-    } finally {
-      setConnecting(false);
-    }
-  }, [getSdk, onShowToast]);
-
   return {
-    status, repos, repoPage, repoHasMore, repoLoading, repoSearch,
-    selectedRepo, branches, selectedBranch, branchLoading, connecting,
+    status, oauthConfigured: github.oauthConfigured,
+    repos, repoPage, repoHasMore, repoLoading, repoSearch,
+    selectedRepo, branches, selectedBranch, branchLoading,
+    connecting: github.connecting,
+    dialogOpen: github.dialogOpen,
+    error: github.error,
+    openDialog: github.openDialog,
+    closeDialog: github.closeDialog,
     loadRepos, selectRepo, clearRepo,
     setRepoPage, setRepoSearch, setSelectedBranch,
-    connect,
+    connect: github.connect,
+    connectWithToken: github.connectWithToken,
   };
 }

@@ -1,16 +1,4 @@
-# Default Traefik dynamic configuration.
-#
-# Both install paths overwrite this file before the stack starts:
-#   - installer/scripts/setup-wizard.sh writes the full domain-aware config
-#   - installer/scripts/install.sh writes an IP-fallback config
-#
-# What ships here is the safe default for anyone who runs `docker compose
-# up` directly: one catch-all router on the dashboard, with the API
-# reachable on its path prefix. It deliberately contains no hardcoded
-# hostnames — the previous version of this file was pinned to a single
-# operator's domains (deploy.fidscript.com, emails.fidscript.com,
-# whatsappapi.fidscript.com, …) and routed a fresh VPS at hosts that do
-# not exist for the person installing it.
+# Managed by FIDScript Platform — do not edit manually
 http:
   middlewares:
     security-headers:
@@ -18,52 +6,132 @@ http:
         frameDeny: true
         browserXssFilter: true
         contentTypeNosniff: true
-        sslRedirect: false
+        sslRedirect: true
         stsSeconds: 31536000
         stsIncludeSubdomains: true
         stsPreload: true
     compress:
       compress: {}
-
   routers:
-    # API path prefix — must win over the dashboard catch-all.
-    api:
-      rule: 'PathPrefix(`/api`) && !Path(`/install.sh`)'
-      service: api
+    dashboard-app:
+      rule: 'Host(`app.fidscript.com`)'
+      service: fidscript-dashboard
       middlewares:
         - security-headers
         - compress
-      priority: 10
-
-    # Install script endpoint.
+      entryPoints:
+        - websecure
+      tls:
+        certResolver: letsencrypt-dns
+    dashboard-root:
+      rule: 'Host(`fidscript.com`)'
+      service: fidscript-dashboard
+      middlewares:
+        - security-headers
+        - compress
+      entryPoints:
+        - websecure
+      tls:
+        certResolver: letsencrypt-dns
+    deployments-wildcard:
+      rule: 'HostRegexp(`^[^.]+\.[^.]+\.fidscript.com$`)'
+      service: fidscript-api
+      middlewares:
+        - security-headers
+        - compress
+      entryPoints:
+        - websecure
+      tls:
+        certResolver: letsencrypt-dns
+    fidscript-api:
+      rule: 'PathPrefix(`/api`) && !Path(`/install.sh`)'
+      service: fidscript-api
+      middlewares:
+        - security-headers
+        - compress
+      entryPoints:
+        - websecure
+      tls:
+        certResolver: letsencrypt-dns
+    fidscript-api-host:
+      rule: 'Host(`api.fidscript.com`) && PathPrefix(`/api`)'
+      service: fidscript-api
+      middlewares:
+        - security-headers
+        - compress
+      entryPoints:
+        - websecure
+      tls:
+        certResolver: letsencrypt-dns
     install-sh:
       rule: 'Path(`/install.sh`)'
-      service: api
-      priority: 200
-
-    # Prometheus metrics.
+      service: fidscript-api
+      entryPoints:
+        - websecure
+      tls:
+        certResolver: letsencrypt-dns
     metrics:
-      rule: 'PathPrefix(`/metrics`)'
-      service: api
+      rule: 'Host(`fidscript.com`) && PathPrefix(`/metrics`)'
+      service: fidscript-api
       middlewares:
         - security-headers
-      priority: 10
-
-    # Everything else — the dashboard.
-    dashboard:
-      rule: 'PathPrefix(`/`)'
-      service: dashboard
+      entryPoints:
+        - websecure
+      tls:
+        certResolver: letsencrypt-dns
+    minio-console:
+      rule: 'Host(`storage.fidscript.com`)'
+      service: fidscript-minio
       middlewares:
         - security-headers
         - compress
-      priority: 1
-
+      entryPoints:
+        - websecure
+      tls:
+        certResolver: letsencrypt-dns
+    jmap:
+      rule: 'Host(`jmap.fidscript.com`)'
+      service: fidscript-jmap
+      middlewares:
+        - security-headers
+      entryPoints:
+        - websecure
+      tls:
+        certResolver: letsencrypt-dns
+    stalwart-admin:
+      rule: 'Host(`stalwart-admin.fidscript.com`)'
+      service: fidscript-jmap
+      middlewares:
+        - security-headers
+      entryPoints:
+        - websecure
+      tls:
+        certResolver: letsencrypt-dns
+    acme-challenge:
+      rule: 'PathPrefix(`/.well-known/acme-challenge/`)'
+      service: fidscript-acme
+      middlewares:
+        - security-headers
+      entryPoints:
+        - websecure
   services:
-    dashboard:
+    fidscript-api:
       loadBalancer:
         servers:
-          - url: "http://fidscript_dashboard:3001"
-    api:
+          - url: http://fidscript_api:3001
+    fidscript-dashboard:
       loadBalancer:
         servers:
-          - url: "http://fidscript_api:3001"
+          - url: http://fidscript_dashboard:3001
+    fidscript-minio:
+      loadBalancer:
+        servers:
+          - url: http://fidscript_minio:9001
+    fidscript-jmap:
+      loadBalancer:
+        servers:
+          - url: http://fidscript_stalwart:8080
+    fidscript-acme:
+      loadBalancer:
+        servers:
+          - url: http://127.0.0.1:8080

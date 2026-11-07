@@ -7,7 +7,7 @@ import { useAuth } from '@/contexts/auth-context';
 import { useShellProjectId } from '@/contexts/project-context';
 
 import {
-  Button, EmptyState, Spinner, Toast,
+  Button, EmptyState, ErrorState, Spinner, Toast,
 } from '@fidscript/ui';
 import { DomainCard } from './domain-card';
 import { AddDomainModal } from './add-domain-modal';
@@ -24,16 +24,18 @@ export function DomainsTab() {
   const [domains, setDomains] = useState<EmailDomain[]>([]);
   const [loading, setLoading] = useState(true);
   const [flash, setFlash] = useState<Flash | null>(null);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [showAdd, setShowAdd] = useState(false);
 
   const load = useCallback(async () => {
     if (!projectId) return;
     setLoading(true);
+    setLoadError(null);
     try {
       const list = await getSdk().email.listDomains(projectId);
       setDomains(list);
     } catch (err) {
-      setFlash({ type: 'error', message: errMsg(err) });
+      setLoadError(errMsg(err));
     } finally {
       setLoading(false);
     }
@@ -74,7 +76,13 @@ export function DomainsTab() {
         <Button size="sm" onClick={() => setShowAdd(true)}>+ Add Domain</Button>
       </div>
 
-      {loading ? (
+      {loadError ? (
+        <ErrorState
+          title="The domains could not be read"
+          message={loadError}
+          action={{ label: 'Try again', onClick: () => void load() }}
+        />
+      ) : loading ? (
         <div className="flex justify-center py-12"><Spinner /></div>
       ) : domains.length === 0 ? (
         <EmptyState
@@ -87,6 +95,7 @@ export function DomainsTab() {
             <DomainCard
               key={d.id}
               domain={d}
+              projectId={projectId}
               onDelete={() => handleDelete(d.id)}
               onVerify={() => handleVerify(d.id)}
             />

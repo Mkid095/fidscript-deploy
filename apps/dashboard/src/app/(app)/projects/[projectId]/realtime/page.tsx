@@ -89,8 +89,8 @@ export default function RealtimePage() {
       {/* Header */}
       <div className="flex items-start justify-between gap-4 flex-wrap">
         <div className="flex items-center gap-3">
-          <div className="h-10 w-10 rounded-lg bg-violet-500/10 border border-violet-500/20 flex items-center justify-center flex-shrink-0">
-            <HugeiconsIcon icon={FlashIcon} size={20} className="text-violet-300" />
+          <div className="h-10 w-10 rounded-lg bg-[var(--accent-glow)] border border-[var(--accent)]/20 flex items-center justify-center flex-shrink-0">
+            <HugeiconsIcon icon={FlashIcon} size={20} className="text-[var(--accent)]" />
           </div>
           <div>
             <h1 className="text-xl font-bold text-[var(--text)] flex items-center gap-2">Realtime</h1>

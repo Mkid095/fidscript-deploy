@@ -16,6 +16,7 @@ import {
   verifyMagicCodeMethod,
   changePasswordMethod,
   forgotPasswordMethod,
+  mfaChallengeMethod,
 } from './auth-methods';
 
 export const AuthContext = createContext<AuthContextValue | null>(null);
@@ -27,11 +28,35 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   async function login(email: string, password: string): Promise<void> {
     setState(s => ({ ...s, loading: true, error: null }));
     try {
-      await loginMethod(email, password, sdkRef, buildSdk);
+      const result = await loginMethod(email, password, sdkRef, buildSdk);
+      // An account with a second factor has no session yet — the person is
+      // on their way to the challenge step. There is nothing to hydrate.
+      if (result?.mfaRequired) {
+        setState(s => ({ ...s, loading: false, error: null }));
+        return;
+      }
       const user = await sdkRef.current!.auth.me();
       setState({ user, loading: false, error: null });
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Login failed';
+      setState(s => ({ ...s, loading: false, error: message }));
+      throw err;
+    }
+  }
+
+  /**
+   * Finishes a sign-in that stopped at the second factor.
+   *
+   * The challenge token was kept from the password step; the code (from the
+   * authenticator, or a recovery code) turns it into a session.
+   */
+  async function mfaChallenge(code: string): Promise<void> {
+    setState(s => ({ ...s, loading: true, error: null }));
+    try {
+      await mfaChallengeMethod(code, sdkRef, buildSdk);
+      setState(s => ({ ...s, loading: false, error: null }));
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'That code was not accepted';
       setState(s => ({ ...s, loading: false, error: message }));
       throw err;
     }
@@ -48,11 +73,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     name: string,
     password: string,
     authMethod: 'PASSWORD' | 'MAGIC_CODE',
-    inviteKeyword: string,
+    setupPassword: string,
+    firstName: string,
+    lastName: string,
   ): Promise<void> {
     setState(s => ({ ...s, loading: true, error: null }));
     try {
-      await registerMethod(email, name, password, authMethod, inviteKeyword, sendMagicCode, login);
+      await registerMethod(email, name, password, authMethod, setupPassword, firstName, lastName, sendMagicCode, login);
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Registration failed';
       setState(s => ({ ...s, loading: false, error: message }));
@@ -123,6 +150,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       value={{
         ...state,
         login,
+        mfaChallenge,
         logout,
         register,
         sendMagicCode,

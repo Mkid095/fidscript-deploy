@@ -2,28 +2,6 @@
  * Database type definitions — split out of databases.ts for ANPAS 150-line limit.
  */
 
-export type BackupScheduleFrequency = 'hourly' | 'daily' | 'weekly' | 'monthly';
-
-export interface BackupSchedule {
-  id: string;
-  enabled: boolean;
-  frequency: BackupScheduleFrequency;
-  timeUtc: string;
-  dayOfWeek?: number;
-  dayOfMonth?: number;
-  retentionCount: number;
-  storageBucket: string;
-  lastRunAt?: string;
-  nextRunAt?: string;
-  createdAt: string;
-}
-
-export interface BackupSettings {
-  defaultBucket: string;
-  maxManualBackups: number;
-  autoBackupRetentionDays: number;
-}
-
 export interface Database {
   id: string;
   projectId: string;

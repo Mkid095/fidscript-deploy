@@ -5,6 +5,7 @@ import { useToast } from '@/components/toast-provider';
 import { useAuth } from '@/contexts/auth-context';
 import type { Deployment } from '@/types';
 import { useServicesRealtime } from './services-realtime';
+import { useGithubConnect, type GithubConnect } from '@/hooks/use-github-connect';
 
 export interface UseServicesRegistryOptions {
   projectId: string;
@@ -16,8 +17,9 @@ export interface UseServicesRegistryResult {
   error: string | null;
   githubConnected: boolean;
   connecting: boolean;
+  /** The GitHub connection — the dialog state and the two ways in. */
+  github: GithubConnect;
   load: () => Promise<void>;
-  handleConnectGithub: () => Promise<void>;
   handleAction: (id: string, action: string) => Promise<void>;
 }
 
@@ -30,15 +32,19 @@ export function useServicesRegistry({
   const [deployments, setDeployments] = useState<Deployment[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [githubConnected, setGithubConnected] = useState(false);
-  const [connecting, setConnecting] = useState(false);
+
+  const github = useGithubConnect({
+    getSdk,
+    onShowToast: opts =>
+      showToast({ type: opts.type as 'success' | 'error', message: opts.message }),
+  });
 
   const load = useCallback(async () => {
     try {
       const sdk = getSdk();
       const data = await sdk.deployments.list(projectId, { limit: 100 });
       const list = (data as { deployments?: Deployment[] }).deployments
-        ?? (Array.isArray(data) ? (data as Deployment[]) : []);
+        ?? (Array.isArray(data) ? data : []);
       setDeployments(list);
       setError(null);
     } catch (err) {
@@ -50,29 +56,7 @@ export function useServicesRegistry({
 
   useEffect(() => { void load(); }, [load]);
 
-  useEffect(() => {
-    getSdk().github.status()
-      .then(s => setGithubConnected(Boolean(s?.connected)))
-      .catch(() => setGithubConnected(false));
-  }, [getSdk]);
-
   useServicesRealtime({ projectId, onDeploymentsChange: setDeployments, onReload: load });
-
-  const handleConnectGithub = useCallback(async () => {
-    setConnecting(true);
-    try {
-      const status = await getSdk().github.connect();
-      setGithubConnected(Boolean(status?.connected));
-      showToast({
-        type: 'success',
-        message: status?.username ? `Connected to GitHub as ${status.username}` : 'GitHub connected',
-      });
-    } catch (err) {
-      showToast({ type: 'error', message: err instanceof Error ? err.message : 'Failed to connect GitHub' });
-    } finally {
-      setConnecting(false);
-    }
-  }, [getSdk, showToast]);
 
   const handleAction = useCallback(async (id: string, action: string) => {
     try {
@@ -98,10 +82,10 @@ export function useServicesRegistry({
     deployments,
     loading,
     error,
-    githubConnected,
-    connecting,
+    githubConnected: Boolean(github.status?.connected),
+    connecting: github.connecting,
+    github,
     load,
-    handleConnectGithub,
     handleAction,
   };
 }

@@ -26,7 +26,7 @@ import {
   Logger,
 } from '@nestjs/common';
 import { Reflector, ModuleRef } from '@nestjs/core';
-import { JwtService } from '@nestjs/jwt';
+import { AccessTokenService } from '@/modules/auth/services/access-token.service';
 import type { Request } from 'express';
 import { ProjectApiKeyService } from '@/modules/projects/services/project-api-key.service';
 import { AuthApiKeyService } from '@/modules/auth/services/auth-api-key.service';
@@ -38,6 +38,11 @@ export interface ApiKeyUser {
   isApiKey?: boolean;
   keyType?: 'account' | 'project';
   keyPermissions?: string[];
+  /** The person's details, when the caller is a person. */
+  email?: string;
+  role?: string;
+  sessionId?: string;
+  emailVerifiedAt?: Date | null;
 }
 
 @Injectable()
@@ -45,7 +50,6 @@ export class ApiKeyOrJwtGuard {
   private readonly logger = new Logger(ApiKeyOrJwtGuard.name);
 
   constructor(
-    private jwtService: JwtService,
     private reflector: Reflector,
     private moduleRef: ModuleRef,
   ) {}
@@ -71,6 +75,8 @@ export class ApiKeyOrJwtGuard {
           apiKeyName: result.name,
           isApiKey: true,
           keyType: 'project',
+          // The key's own scopes, so `@RequireScope` is enforced for it.
+          keyPermissions: result.permissions ?? [],
         } satisfies ApiKeyUser;
         return true;
       }
@@ -101,12 +107,27 @@ export class ApiKeyOrJwtGuard {
     }
 
     const token = authHeader.slice(7);
-    try {
-      const payload = await this.jwtService.verifyAsync(token);
-      (request as any).user = { userId: payload.sub ?? payload.userId, ...payload };
-      return true;
-    } catch {
-      throw new UnauthorizedException('Invalid or expired token');
-    }
+    // The token is verified by the same service the session strategy uses:
+    // its TYPE, its SESSION and its REVOCATION are all checked. It used to
+    // be checked for its signature alone, which meant a **refresh token**
+    // (seven days) presented as a bearer token authenticated as the user on
+    // every route this guard covers — and survived logout, because the
+    // logout tombstone is only consulted by the strategy.
+    // The token is checked by the same service the session strategy uses.
+    // It is looked up through the module reference rather than injected: this
+    // guard is used by controllers in a dozen modules, and only some of them
+    // import the auth module — a guard that cannot be constructed is a
+    // platform that does not start.
+    const accessTokens = this.moduleRef.get(AccessTokenService, { strict: false });
+    const caller = await accessTokens.verify(token);
+    (request as any).user = {
+      userId: caller.userId,
+      email: caller.email,
+      role: caller.role,
+      sessionId: caller.sessionId,
+      emailVerifiedAt: caller.emailVerifiedAt,
+      isApiKey: false,
+    } satisfies ApiKeyUser;
+    return true;
   }
 }

@@ -1,6 +1,6 @@
 'use client';
 
-import { FormField, formInputClass } from './form-field';
+import { FormField, inputClassName } from '@fidscript/ui';
 
 interface BasicConfigFieldsProps {
   platformName: string;
@@ -30,37 +30,45 @@ export function BasicConfigFields({
   return (
     <>
       <FormField label="Platform name">
-        <input
-          type="text"
-          value={platformName}
-          onChange={e => onPlatformNameChange(e.target.value)}
-          className={formInputClass}
-        />
+        {(props) => (
+          <input
+            {...props}
+            type="text"
+            value={platformName}
+            onChange={e => onPlatformNameChange(e.target.value)}
+            className={inputClassName}
+          />
+        )}
       </FormField>
       <FormField
         label="Platform domain"
         loading={validating}
-        successIcon={!validating && !!domain && !domainError}
         error={domainError}
         success={!domainError && domain ? 'Looks good' : null}
       >
-        <input
-          type="text"
-          value={domain}
-          onChange={e => onDomainChange(e.target.value)}
-          placeholder="deploy.example.com"
-          className={formInputClass}
-        />
+        {(props) => (
+          <input
+            {...props}
+            type="text"
+            value={domain}
+            onChange={e => onDomainChange(e.target.value)}
+            placeholder="deploy.example.com"
+            className={inputClassName}
+          />
+        )}
       </FormField>
       <FormField label="Administrator email" error={emailError}>
-        <input
-          type="email"
-          value={adminEmail}
-          onChange={e => { onAdminEmailChange(e.target.value); }}
-          onBlur={e => { if (e.target.value) onAdminEmailBlur(e.target.value); }}
-          placeholder="admin@example.com"
-          className={formInputClass}
-        />
+        {(props) => (
+          <input
+            {...props}
+            type="email"
+            value={adminEmail}
+            onChange={e => { onAdminEmailChange(e.target.value); }}
+            onBlur={e => { if (e.target.value) onAdminEmailBlur(e.target.value); }}
+            placeholder="admin@example.com"
+            className={inputClassName}
+          />
+        )}
       </FormField>
     </>
   );

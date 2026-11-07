@@ -229,19 +229,35 @@ step_addons() {
   fi
 
   echo ""
-  prompt "Add-ons to install (numbers, comma separated, empty for none): "
+  echo "  The observability stack is included by default — a platform you"
+  echo "  cannot see is a platform you cannot run. Press Enter to take it,"
+  echo "  or type the numbers of the others you want as well."
+  echo ""
+  prompt "Add-ons to install (numbers, comma separated): "
   read -r choice
 
   local selected=() i
-  for i in $(echo "$choice" | tr ',' ' '); do
-    [[ "$i" =~ ^[0-9]+$ ]] || continue
-    local idx=$((i - 1))
-    if [[ $idx -ge 0 && $idx -lt ${#ids[@]} ]]; then
-      selected+=("${ids[$idx]}")
-    else
-      warn "No add-on number ${i}"
+  if [[ -z "${choice// }" ]]; then
+    # Empty means the default set: the observability stack.
+    local default_idx=""
+    for i in "${!ids[@]}"; do
+      if [[ "${ids[$i]}" == "observability" ]]; then default_idx=$((i + 1)); fi
+    done
+    if [[ -n "$default_idx" ]]; then
+      selected+=("observability")
+      info "Installing the observability stack by default."
     fi
-  done
+  else
+    for i in $(echo "$choice" | tr ',' ' '); do
+      [[ "$i" =~ ^[0-9]+$ ]] || continue
+      local idx=$((i - 1))
+      if [[ $idx -ge 0 && $idx -lt ${#ids[@]} ]]; then
+        selected+=("${ids[$idx]}")
+      else
+        warn "No add-on number ${i}"
+      fi
+    done
+  fi
 
   if [[ ${#selected[@]} -eq 0 ]]; then
     info "Skipped — no optional components."
@@ -354,6 +370,11 @@ generate_secret "$SECRETS_DIR/minio_secret_key.txt"      32
 generate_secret "$SECRETS_DIR/jwt_secret.txt"            64
 generate_secret "$SECRETS_DIR/stalwart_admin_token.txt"  32
 generate_secret "$SECRETS_DIR/stalwart_webhook_secret.txt" 32
+
+# The one-time setup token. The API's setup routes refuse to configure the
+# platform without it, so an anonymous caller cannot become the platform's
+# administrator. It is printed once, in the summary below.
+generate_secret "$SECRETS_DIR/fidscript_setup_token.txt" 32
 
 # The AES-256-GCM key is NOT a hex secret. CryptoService does
 # Buffer.from(value, 'base64') and rejects anything that is not exactly
@@ -807,4 +828,16 @@ echo ""
 
 # The links. The operator is told to open the dashboard, so it comes first.
 print_summary "$DOMAIN" "${SELECTED_ADDONS[@]}"
+
+# The setup token. The platform's setup page asks for it once, and the API
+# will not configure the platform without it — which is what stops an
+# anonymous visitor from installing themselves as the administrator.
+SETUP_TOKEN="$(cat "$SECRETS_DIR/fidscript_setup_token.txt" 2>/dev/null || echo "")"
+if [[ -n "$SETUP_TOKEN" ]]; then
+  echo ""
+  echo "   Setup token — the setup page asks for it once:"
+  echo ""
+  echo "     ${SETUP_TOKEN}"
+  echo ""
+fi
 

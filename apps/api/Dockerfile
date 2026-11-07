@@ -27,6 +27,11 @@ COPY apps/api/package.json ./apps/api/
 # Layer 2: workspace packages source
 COPY packages/ ./packages/
 
+# The shared build scripts. The packages' build runs
+# scripts/fix-extensions.mjs — every published package is ESM, and Node
+# needs the .js extension on every relative import.
+COPY scripts/ ./scripts/
+
 # Layer 3: API source, schema, TypeScript config, and build helpers
 COPY apps/api/src/ ./apps/api/src/
 COPY apps/api/prisma/ ./apps/api/prisma/
@@ -68,7 +73,12 @@ RUN cd /app && pnpm deploy --filter @fidscript/api --prod /app/deploy
 FROM node:20-bookworm-slim AS runtime
 
 # Install Docker CLI for deployment worker (docker build, buildx via docker.sock)
-RUN apt-get update -y && apt-get install -y ca-certificates curl gnupg && \
+#
+# git and unzip are not optional: the deployment engine clones the operator's
+# repository and unpacks the archives they upload, and the runtime image had
+# neither. Every git deployment failed with "git: not found" and every .zip
+# with "unzip: not found" — the engine could not deploy anything.
+RUN apt-get update -y && apt-get install -y ca-certificates curl gnupg git unzip && \
     install -m 0755 -d /etc/apt/keyrings && \
     curl -fsSL https://download.docker.com/linux/debian/gpg | gpg --dearmor -o /etc/apt/keyrings/docker.gpg && \
     chmod a+r /etc/apt/keyrings/docker.gpg && \

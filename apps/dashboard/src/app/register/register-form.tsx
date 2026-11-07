@@ -9,23 +9,23 @@ import { MagicCodeRegistrationStep } from './components/magic-code-registration-
 
 type AuthMethod = 'PASSWORD' | 'MAGIC_CODE';
 
-// Pre-submit invite hash check. Read from NEXT_PUBLIC_INVITE_HASH so each
-// installation can use its own per-deploy invite. The API is the source of
-// truth (see apps/api/src/modules/auth/services/auth-register.service.ts:
-// SIGNUP_INVITE_KEYWORD) — this gate exists only to fail fast in the UI.
-const INVITE_HASH = process.env.NEXT_PUBLIC_INVITE_HASH ?? '';
-
-async function hashKeyword(kw: string): Promise<string> {
-  const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(kw.toLowerCase()));
-  return Array.from(new Uint8Array(buf)).map(b => b.toString(16).padStart(2, '0')).join('');
-}
+/**
+ * The company password is checked by the SERVER, and only by the server.
+ *
+ * The old invite keyword was compared in the browser against a hash shipped
+ * in the bundle. The company password is stored as a bcrypt hash on the
+ * platform — a bcrypt hash cannot be embedded in a bundle, and it should
+ * not be: the browser only checks that something was typed, and the server
+ * decides whether it is right.
+ */
 
 export function RegisterForm() {
   const { register, verifyMagicCode } = useAuth();
   const [authMethod, setAuthMethod] = useState<AuthMethod>('PASSWORD');
-  const [inviteKeyword, setInviteKeyword] = useState('');
-  const [inviteError, setInviteError] = useState('');
-  const [name, setName] = useState('');
+  const [setupPassword, setSetupPassword] = useState('');
+  const [setupPasswordError, setSetupPasswordError] = useState('');
+  const [firstName, setFirstName] = useState('');
+  const [lastName, setLastName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirm, setConfirm] = useState('');
@@ -33,24 +33,17 @@ export function RegisterForm() {
   const [backendError, setBackendError] = useState('');
   const [loading, setLoading] = useState(false);
 
-  async function validateInviteClientSide(): Promise<boolean> {
-    if (!inviteKeyword.trim()) { setInviteError('Invite keyword is required'); return false; }
-    // If the env var isn't configured, the client has nothing to compare
-    // against — defer to the server (which always validates against
-    // SIGNUP_INVITE_KEYWORD).
-    if (!INVITE_HASH) return true;
-    const hashed = await hashKeyword(inviteKeyword);
-    if (hashed !== INVITE_HASH) { setInviteError('Invalid invite keyword'); return false; }
+  function validateSetupPassword(): boolean {
+    if (!setupPassword) {
+      setSetupPasswordError('The company password is required');
+      return false;
+    }
     return true;
   }
 
-  function handleInviteChange(val: string) {
-    setInviteKeyword(val);
-    setInviteError('');
-  }
-
   function validatePassword(): boolean {
-    if (!name.trim()) { setValidationError('Name is required'); return false; }
+    if (!firstName.trim()) { setValidationError('First name is required'); return false; }
+    if (!lastName.trim()) { setValidationError('Last name is required'); return false; }
     if (!email.trim()) { setValidationError('Email is required'); return false; }
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) { setValidationError('Enter a valid email address'); return false; }
     if (password.length < 12) { setValidationError('Password must be at least 12 characters'); return false; }
@@ -65,11 +58,11 @@ export function RegisterForm() {
     e.preventDefault();
     setValidationError('');
     setBackendError('');
-    if (!(await validateInviteClientSide())) return;
+    if (!validateSetupPassword()) return;
     if (!validatePassword()) return;
     setLoading(true);
     try {
-      await register(email, name, password, 'PASSWORD', inviteKeyword);
+      await register(email, `${firstName.trim()} ${lastName.trim()}`, password, 'PASSWORD', setupPassword, firstName, lastName);
     } catch (err) {
       setBackendError(err instanceof Error ? err.message : 'Registration failed');
     } finally {
@@ -80,11 +73,22 @@ export function RegisterForm() {
   async function handleMagicCodeSubmit() {
     setValidationError('');
     setBackendError('');
-    if (!(await validateInviteClientSide())) return;
-    if (!name.trim()) { setValidationError('Name is required'); return; }
+    if (!validateSetupPassword()) return;
+    if (!firstName.trim()) { setValidationError('First name is required'); return; }
+    if (!lastName.trim()) { setValidationError('Last name is required'); return; }
     if (!email.trim()) { setValidationError('Email is required'); return; }
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) { setValidationError('Enter a valid email address'); return; }
-    await register(email, name, '', 'MAGIC_CODE', inviteKeyword);
+    // The register call throws when the company password is wrong — and
+    // nothing caught it, so the person saw nothing at all and the browser
+    // logged an unhandled rejection.
+    setLoading(true);
+    try {
+      await register(email, `${firstName.trim()} ${lastName.trim()}`, '', 'MAGIC_CODE', setupPassword, firstName, lastName);
+    } catch (err) {
+      setBackendError(err instanceof Error ? err.message : 'Registration failed');
+    } finally {
+      setLoading(false);
+    }
   }
 
   async function handleCodeComplete(rawCode: string) {
@@ -96,17 +100,19 @@ export function RegisterForm() {
       <AuthMethodToggle value={authMethod} onChange={setAuthMethod} />
       {authMethod === 'PASSWORD' ? (
         <PasswordRegistrationForm
-          inviteKeyword={inviteKeyword}
-          inviteError={inviteError}
-          name={name}
+          setupPassword={setupPassword}
+          setupPasswordError={setupPasswordError}
+          firstName={firstName}
+          lastName={lastName}
           email={email}
           password={password}
           confirm={confirm}
           validationError={validationError}
           backendError={backendError}
           loading={loading}
-          onInviteChange={handleInviteChange}
-          onNameChange={v => { setName(v); setValidationError(''); }}
+          onSetupPasswordChange={v => { setSetupPassword(v); setSetupPasswordError(''); }}
+          onFirstNameChange={v => { setFirstName(v); setValidationError(''); }}
+          onLastNameChange={v => { setLastName(v); setValidationError(''); }}
           onEmailChange={v => { setEmail(v); setValidationError(''); }}
           onPasswordChange={v => { setPassword(v); setValidationError(''); }}
           onConfirmChange={v => { setConfirm(v); setValidationError(''); }}
@@ -114,13 +120,18 @@ export function RegisterForm() {
         />
       ) : (
         <MagicCodeRegistrationStep
-          name={name}
+          firstName={firstName}
+          lastName={lastName}
           email={email}
+          setupPassword={setupPassword}
+          setupPasswordError={setupPasswordError}
           loading={loading}
           validationError={validationError}
           backendError={backendError}
-          onNameChange={v => { setName(v); setValidationError(''); }}
+          onFirstNameChange={v => { setFirstName(v); setValidationError(''); }}
+          onLastNameChange={v => { setLastName(v); setValidationError(''); }}
           onEmailChange={v => { setEmail(v); setValidationError(''); }}
+          onSetupPasswordChange={v => { setSetupPassword(v); setSetupPasswordError(''); }}
           onSubmit={handleMagicCodeSubmit}
           onCodeComplete={handleCodeComplete}
         />

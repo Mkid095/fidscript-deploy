@@ -67,7 +67,7 @@ function WhenToUse() {
     <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
       <div className="border border-[var(--rail)] rounded-lg p-4 bg-[var(--surface)] space-y-2">
         <div className="flex items-center gap-2">
-          <HugeiconsIcon icon={Robot02Icon} size={15} className="text-violet-400" />
+          <HugeiconsIcon icon={Robot02Icon} size={15} className="text-[var(--accent)]" />
           <p className="text-sm font-semibold text-[var(--text)]">AI Agents (MCP)</p>
         </div>
         <p className="text-xs text-[var(--text-muted)] leading-relaxed">
@@ -145,7 +145,7 @@ export function McpHub({ project }: McpHubProps) {
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
           <div className="border border-[var(--rail)] rounded-lg p-4 bg-[var(--surface-2)] space-y-2">
             <div className="flex items-center gap-2">
-              <HugeiconsIcon icon={Robot02Icon} size={14} className="text-violet-400" />
+              <HugeiconsIcon icon={Robot02Icon} size={14} className="text-[var(--accent)]" />
               <p className="text-xs font-semibold text-[var(--text)]">AI Agents (MCP)</p>
             </div>
             <p className="text-xs text-[var(--text-muted)] leading-relaxed">

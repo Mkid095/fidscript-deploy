@@ -18,6 +18,12 @@ export class ScopeGuard implements CanActivate {
     // JWT callers proceed through existing authorization.
     if (!user?.isApiKey || !Array.isArray(user.keyPermissions)) return true;
 
+    // An empty scope list means "no scope restriction" — the key may do
+    // anything its own boundary allows. A project key is bounded by its
+    // project; an account key by its owner's rights. A non-empty list is a
+    // restriction, and it is enforced.
+    if (user.keyPermissions.length === 0) return true;
+
     const missing = required.filter(s => !user.keyPermissions.includes(s));
     if (missing.length > 0) {
       throw new ForbiddenException(`Missing required scope(s): ${missing.join(', ')}`);

@@ -8,7 +8,87 @@
 
 ## In flight
 
-*None — awaiting next directive.*
+**Phase 3 — the navigation and the platform overview: ✅ COMPLETE (2026-11-06)**
+
+- One navigation, two levels: the **platform's** (overview, projects,
+  applications, API & MCP, settings) and the **project's** (its own
+  resources). A service that belongs to the platform is not offered as if it
+  were a project's.
+- The signed-in operator lands on an **overview** with real numbers —
+  counted over the caller's own projects only, and never over the platform.
+- The flat tree of duplicate paths now redirects to the project console; the
+  sidebar's active state works with the project's **slug**; the project's
+  overview, members and activity are pages instead of query parameters; the
+  mail console and the integrations have a way in.
+- The **route inventory** — every route, its owner, where it is reachable
+  from — is checked against the route tree on disk by a test.
+- The evidence is in `docs/implementation/PHASE3_NAVIGATION.md`.
+
+**Phase 4 — the design system: ✅ COMPLETE (2026-11-06)**
+
+- The **tokens** (radii, elevation, depth, motion, and a focus ring that clears 3:1 where the
+  old one sat at 1.1:1) and **sixteen shared components** in `packages/ui`.
+- The shared **Modal** is a real dialog now — named, modal, focus-trapped, focus restored — and
+  the **Button** no longer submits the form it sits in.
+- Seven screens stand on the new foundations, and they were **looked at** at 1440×900 and at
+  390×844: three things typechecking could not have caught were found and fixed.
+- The evidence is in `docs/implementation/PHASE4_DESIGN_SYSTEM.md`; the contract is
+  `docs/product/DESIGN_SYSTEM.md`.
+
+**The npm registry and the GitHub connection (2026-11-06)** — the CLI is the registry's client
+(`fidscript registry …`), every package is published from this repository to
+registry.fidscript.com, and the GitHub account can be connected with a personal access token
+when the deployment has no OAuth app. The contract is `docs/REGISTRY.md`.
+
+**Phase 2 — the contract between the layers: ✅ COMPLETE (2026-11-06)**
+
+- The objective: the API, the SDK and the dashboard must agree, the known
+  integration failures must be gone, and there must be a testing foundation
+  that proves it. **No visual redesign in this phase.**
+- The scope is the Phase 0 audit's Phase 2 (B4, B5, the SDK's wrong paths,
+  the missing test suites), plus the contract drift the audit did not name —
+  found by comparing every SDK path against the API's real routes.
+- The work is tracked in `docs/implementation/PHASE2_CONTRACTS.md` (the
+  verification matrix) and in the task list; every fix carries a test.
+- The Phase 1 security fixes stay protected by their regression tests, and
+  **KI-10** (the environment variables' scope policy) is resolved here
+  because it is an authorization question.
+- **The evidence is in `docs/implementation/PHASE2_CONTRACTS.md`** — the
+  verification matrix, the twelve defects closed, the testing foundation
+  and the deferred list.
+- **Phase 3 has not been started.**
+
+**Phase 1 — isolation and authorization: ✅ COMPLETE (2026-11-06)**
+
+- The audit's security findings are closed: the tenant boundary holds for project API keys, the
+  project **role** is enforced (not just membership), the API is **default-deny**, the tokens and
+  the secrets are handled in one place, and the installation, webhook, OAuth and metrics routes
+  carry their own rules.
+- **97 tests in 12 suites** (`pnpm test`), and the dashboard has its own runner. Every security
+  fix has a test that proves it.
+- Five further defects were found on the way and closed: a function's variables in plain text,
+  the functions console without roles, an account-enumeration oracle, the magic code skipping MFA,
+  and an open redirect in the login.
+- The evidence is in `docs/product/UX_AUDIT.md` §3.1 and `docs/implementation/IMPLEMENTATION_LOG.md`.
+
+*Phase 2 (the product and interface work) has not been started. The operator's instruction is to
+stop at the phase boundary.*
+
+**Phase 0 — the product, architecture and journey audit: ✅ COMPLETE (2026-11-06)**
+
+- `docs/product/UX_AUDIT.md` is the deliverable: 68 routes and 62 controllers read, every SDK
+  module cross-referenced against the live API, the six journeys traced, the live platform driven
+  in a browser.
+- **Eleven blockers**, three of them reproduced live: an `fpk_` key reads *and renames* another
+  project; a project `viewer` can mint an admin invitation and a write-scoped API key; the email
+  console is empty everywhere and adding a domain crashes the page.
+- Three findings in `docs/technical-debt.md` are **stale and materially wrong** — the functions
+  runtime *is* sandboxed, and the domains/email/storage endpoints *do* check project membership.
+  The real gap is that the project **role** is enforced nowhere.
+- Nothing was implemented. The roadmap in the audit is reordered to put isolation and
+  authorization first, and the first test suite lands in Phase 2.
+
+*Phase 1 was authorized and is now complete.*
 
 ## Not yet started
 

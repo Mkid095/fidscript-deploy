@@ -42,8 +42,8 @@ export class RealtimeService {
     return channel;
   }
 
-  async listChannels(projectId: string, userId: string) {
-    await this.access.findProjectWithAccess(userId, projectId);
+  async listChannels(projectId: string, userId: string, callerKeyProjectId?: string) {
+    await this.access.findProjectWithAccess(userId, projectId, callerKeyProjectId);
     return this.prisma.realtimeChannel.findMany({
       where: { projectId },
       orderBy: { createdAt: 'desc' },
@@ -95,8 +95,8 @@ export class RealtimeService {
     };
   }
 
-  async setUserPresence(projectId: string, userId: string, dto: SetPresenceDto) {
-    await this.access.findProjectWithAccess(userId, projectId);
+  async setUserPresence(projectId: string, userId: string, dto: SetPresenceDto, callerKeyProjectId?: string) {
+    await this.access.findProjectWithAccess(userId, projectId, callerKeyProjectId);
     const presence = await this.prisma.realtimePresence.upsert({
       where: { projectId_userId_channelId: {
         projectId,
@@ -115,18 +115,18 @@ export class RealtimeService {
     return presence;
   }
 
-  async getChannelPresence(projectId: string, channelId: string, userId: string) {
-    await this.access.findProjectWithAccess(userId, projectId);
+  async getChannelPresence(projectId: string, channelId: string, userId: string, callerKeyProjectId?: string) {
+    await this.access.findProjectWithAccess(userId, projectId, callerKeyProjectId);
     return this.prisma.realtimePresence.findMany({
       where: { projectId, channelId },
     });
   }
 
-  async generateChannelToken(projectId: string, channelId: string, userId: string): Promise<string> {
+  async generateChannelToken(projectId: string, channelId: string, userId: string, callerKeyProjectId?: string): Promise<string> {
     // Require project membership before issuing a channel-scoped secret.
     // The body of the request no longer accepts a userId — the caller must
     // be a member, and identity is bound at presentation time.
-    await this.access.findProjectWithAccess(userId, projectId);
+    await this.access.findProjectWithAccess(userId, projectId, callerKeyProjectId);
     const channel = await this.prisma.realtimeChannel.findFirst({
       where: { id: channelId, projectId },
     });

@@ -19,19 +19,21 @@ import { applyAuthCoreMethods } from './auth-core';
 import { applyAuthSessionsMethods } from './auth-sessions';
 import { applyAuthOrgsMethods } from './auth-orgs';
 import { applyAuthTeamsMethods } from './auth-teams';
-import type { AuthCoreHost, AuthSessionsHost, AuthOrgsHost, AuthTeamsHost } from './auth-host';
+import { applyAuthMfaMethods } from './auth-mfa';
+import type { AuthCoreHost, AuthSessionsHost, AuthOrgsHost, AuthTeamsHost, AuthMfaHost } from './auth-host';
 
-interface AuthModuleHost extends AuthCoreHost, AuthSessionsHost, AuthOrgsHost, AuthTeamsHost {}
+interface AuthModuleHost extends AuthCoreHost, AuthSessionsHost, AuthOrgsHost, AuthTeamsHost, AuthMfaHost {}
 
-export class AuthModule implements AuthCoreHost, AuthSessionsHost, AuthOrgsHost, AuthTeamsHost {
+export class AuthModule implements AuthCoreHost, AuthSessionsHost, AuthOrgsHost, AuthTeamsHost, AuthMfaHost {
   readonly client: FidscriptClient;
 
   // AuthCoreHost
-  register!: (email: string, password: string | null, name: string, authMethod: 'PASSWORD' | 'MAGIC_CODE', inviteKeyword?: string) => Promise<import('./auth-types').AuthResponse>;
-  login!: (email: string, password: string) => Promise<import('./auth-types').AuthResponse>;
+  register!: (email: string, password: string | null, name: string, authMethod: 'PASSWORD' | 'MAGIC_CODE', setupPassword?: string, firstName?: string, lastName?: string) => Promise<import('./auth-types').AuthResponse>;
+  login!: (email: string, password: string) => Promise<import('./auth-types').LoginResponse>;
   lookupAuthMethod!: (email: string) => Promise<import('./auth-types').AuthMethodResponse>;
   logout!: () => Promise<unknown>;
   me!: () => Promise<import('./auth-types').User>;
+  updateProfile!: (data: { name?: string; avatarUrl?: string }) => Promise<import('./auth-types').User>;
   refreshToken!: (refreshToken: string) => Promise<import('./auth-types').AuthResponse>;
   changePassword!: (currentPassword: string, newPassword: string) => Promise<import('./auth-types').AuthResponse>;
   sendMagicCode!: (email: string) => Promise<import('./auth-types').MagicCodeSendResponse>;
@@ -40,6 +42,15 @@ export class AuthModule implements AuthCoreHost, AuthSessionsHost, AuthOrgsHost,
   verifyEmail!: (token: string) => Promise<import('./auth-types').VerifyEmailResponse>;
   confirmPasswordReset!: (token: string, newPassword: string) => Promise<import('./auth-types').ConfirmPasswordResetResponse>;
   confirmMagicLink!: (token: string) => Promise<import('./auth-types').AuthResponse>;
+  completeOnboarding!: () => Promise<{ onboarded: boolean }>;
+
+  // AuthMfaHost
+  mfaSetup!: (currentCode?: string) => Promise<import('./auth-types').MfaSetupResponse>;
+  mfaVerify!: (code: string) => Promise<{ enabled: true }>;
+  mfaStatus!: () => Promise<import('./auth-types').MfaStatusResponse>;
+  mfaRecoveryCodes!: () => Promise<import('./auth-types').MfaRecoveryCodesResponse>;
+  mfaDisable!: (proof: { password?: string; code?: string }) => Promise<{ disabled: true }>;
+  mfaChallenge!: (mfaToken: string, code: string) => Promise<import('./auth-types').AuthResponse>;
 
   // AuthSessionsHost
   sessions!: () => Promise<{ sessions: import('./auth-types').SessionInfo[] }>;
@@ -78,6 +89,7 @@ export class AuthModule implements AuthCoreHost, AuthSessionsHost, AuthOrgsHost,
     applyAuthSessionsMethods(host as unknown as AuthSessionsHost);
     applyAuthOrgsMethods(host as unknown as AuthOrgsHost);
     applyAuthTeamsMethods(host as unknown as AuthTeamsHost);
+    applyAuthMfaMethods(host as unknown as AuthMfaHost);
   }
 }
 
@@ -85,6 +97,11 @@ export class AuthModule implements AuthCoreHost, AuthSessionsHost, AuthOrgsHost,
 export type {
   User,
   AuthResponse,
+  LoginResponse,
+  MfaRequiredResponse,
+  MfaSetupResponse,
+  MfaStatusResponse,
+  MfaRecoveryCodesResponse,
   MagicCodeSendResponse,
   MagicCodeVerifyResponse,
   AuthMethodResponse,

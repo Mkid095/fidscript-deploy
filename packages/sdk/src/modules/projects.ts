@@ -1,27 +1,8 @@
 import { FidscriptClient } from '../client';
 import type { Project, ProjectMember, EnvVar } from './projects-types';
+import { paginate } from './projects-paginate';
 
 export type { Project, ProjectMember, Organization, EnvVar } from './projects-types';
-
-/** Async iterator for cursor-paginated list endpoints */
-export async function* paginate<T>(
-  client: FidscriptClient,
-  path: string,
-  params: Record<string, unknown> = {},
-  pageSize = 100,
-): AsyncGenerator<T> {
-  let cursor: string | undefined;
-  while (true) {
-    const res = await client.get<{ items: T[]; nextCursor?: string }>(path, {
-      ...params,
-      ...(cursor ? { cursor } : {}),
-      limit: pageSize,
-    });
-    for (const item of res.items) yield item;
-    cursor = res.nextCursor;
-    if (!cursor) break;
-  }
-}
 
 export class ProjectsModule {
   constructor(private client: FidscriptClient) {}
@@ -41,7 +22,14 @@ export class ProjectsModule {
     return this.client.get<Project>(`/api/v1/projects/${id}`);
   }
 
-  async create(data: { name: string; type?: string; slug?: string; description?: string }) {
+  async create(data: {
+    name: string;
+    type?: string;
+    slug?: string;
+    description?: string;
+    /** The workspace (organization / team) the project belongs to. */
+    organizationId?: string;
+  }) {
     return this.client.post<Project>('/api/v1/projects', data);
   }
 
@@ -133,7 +121,7 @@ export class ProjectsModule {
   }
 
   async acceptInvitation(token: string) {
-    return this.client.post(`/api/v1/projects/invitations/accept`, { token });
+    return this.client.post(`/api/v1/invitations/accept`, { token });
   }
 
   async revokeInvitation(projectId: string, invitationId: string) {

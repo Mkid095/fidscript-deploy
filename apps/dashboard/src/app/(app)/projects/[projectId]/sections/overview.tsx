@@ -1,6 +1,6 @@
 'use client';
 
-import { Card, Spinner } from '@fidscript/ui';
+import { Card, Spinner, SectionHeader } from '@fidscript/ui';
 
 import type { Project } from '@/types';
 import { useAuth } from '@/contexts/auth-context';
@@ -15,7 +15,12 @@ export function OverviewSection({ project }: Props) {
   if (loading) return <Spinner size="md" />;
 
   return (
-    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+    <div>
+      <SectionHeader
+        title="At a glance"
+        description="What this project is holding right now."
+      />
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
       <Card className="border border-[var(--rail)]">
         <p className="text-xs text-[var(--text-muted)] mb-2">Env Variables</p>
         <p className="text-3xl font-bold text-[var(--text)]">{envVars.length}</p>
@@ -38,6 +43,7 @@ export function OverviewSection({ project }: Props) {
           {new Date(project.createdAt).toLocaleDateString()}
         </p>
       </Card>
+      </div>
     </div>
   );
 }

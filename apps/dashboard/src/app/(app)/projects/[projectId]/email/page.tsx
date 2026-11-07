@@ -1,20 +1,22 @@
 'use client';
 
 import { useState } from 'react';
+import Link from 'next/link';
 
+import { useProjectContext } from '@/contexts/project-context';
+import { PageHeader } from '@fidscript/ui';
 import { EmailTabs, type EmailTab } from './email-tabs';
 
 export default function ProjectEmailPage() {
   const [active, setActive] = useState<EmailTab>('domains');
+  const { projectId } = useProjectContext();
 
   return (
     <div className="p-6 max-w-5xl space-y-5">
-      <header>
-        <h1 className="text-lg font-semibold text-[var(--text)]">Email</h1>
-        <p className="text-xs text-[var(--text-dim)] mt-0.5">
-          Self-hosted mail: domains, mailboxes, aliases, sender identities, API keys, and messages.
-        </p>
-      </header>
+      <PageHeader
+        title="Email"
+        description="Self-hosted mail: domains, mailboxes, aliases, sender identities, API keys, and messages."
+      />
 
       <aside
         role="note"
@@ -29,6 +31,24 @@ export default function ProjectEmailPage() {
       </aside>
 
       <EmailTabs active={active} onChange={setActive} />
+
+      {projectId && (
+        <nav aria-label="More about the email" className="flex flex-wrap items-center gap-3 text-xs">
+          <span className="text-[var(--text-dim)]">More:</span>
+          <Link href={`/projects/${projectId}/email/analytics`} className="text-[var(--text-muted)] hover:text-[var(--text)]">
+            Analytics
+          </Link>
+          <Link href={`/projects/${projectId}/email/templates`} className="text-[var(--text-muted)] hover:text-[var(--text)]">
+            Templates
+          </Link>
+          <Link href={`/projects/${projectId}/email/webhooks`} className="text-[var(--text-muted)] hover:text-[var(--text)]">
+            Webhooks
+          </Link>
+          <Link href={`/projects/${projectId}/email/suppressions`} className="text-[var(--text-muted)] hover:text-[var(--text)]">
+            Suppressions
+          </Link>
+        </nav>
+      )}
     </div>
   );
 }

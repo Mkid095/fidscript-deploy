@@ -13,6 +13,11 @@ export class DomainCrudService {
     return this.listService.list(userId, projectId);
   }
 
+  /** One domain of the project. */
+  get(userId: string, projectId: string, domainId: string) {
+    return this.listService.get(userId, projectId, domainId);
+  }
+
   add(userId: string, projectId: string, dto: any) {
     return this.addService.add(userId, projectId, dto);
   }

@@ -37,25 +37,55 @@ export class DeploymentStateService implements OnModuleInit {
   }
 
   private async recoverStuckDeployments() {
+    // A deployment that was mid-build when the API stopped is orphaned: the
+    // build died with it. The API is the only builder, so anything still
+    // marked BUILDING at startup is a leftover — it is put back to PENDING
+    // and built again.
     const stuck = await this.prisma.deployment.findMany({
-      where: { status: 'PENDING' },
-      select: { id: true, projectId: true },
+      where: { status: { in: ['PENDING', 'BUILDING'] } },
+      select: { id: true, projectId: true, status: true },
     });
     if (!stuck.length) return;
-    this.logger.log(`[worker] Recovering ${stuck.length} stuck PENDING deployment(s)`);
+    this.logger.log(`[worker] Recovering ${stuck.length} stuck deployment(s)`);
+    for (const d of stuck) {
+      if (d.status === 'BUILDING') {
+        await this.prisma.deployment.update({
+          where: { id: d.id },
+          data: { status: 'PENDING' },
+        });
+      }
+    }
     await Promise.allSettled(
-      stuck.map(d => this.runDeployment(d.id, d.projectId, '')),
+      stuck.map(d =>
+        this.runDeployment(d.id, d.projectId, '').catch(async (err) => {
+          // A recovery that fails must SAY so. Swallowed, the deployment sat
+          // in BUILDING for ever with nothing running and nothing logged.
+          const msg = err instanceof Error ? err.message : String(err);
+          this.logger.error(`[worker] Deployment ${d.id} could not be recovered: ${msg}`);
+          await this.markFailed(d.id, d.projectId, msg);
+        }),
+      ),
     );
   }
 
   private async handleDeploymentCreated(event: any) {
-    // The emit() call wraps the PlatformEvent in metadata, so the actual payload
-    // (with deploymentId/projectId) lives at event.metadata.metadata
-    const { deploymentId, projectId, userId, envVars } = event.metadata?.metadata || event.metadata || {};
-    if (!deploymentId || !projectId) { this.logger.warn('[worker] Missing deploymentId/projectId'); return; }
+    // The payload IS the event's metadata — `emit(type, projectId, payload)`
+    // puts it there. The project the deployment belongs to is on the event
+    // itself, not in the payload, and reading it from the payload meant the
+    // worker never had both halves: every deployment sat in PENDING for
+    // ever, and nothing was ever built.
+    const payload = event?.metadata ?? {};
+    const deploymentId = payload.deploymentId;
+    const projectId = payload.projectId ?? event?.projectId;
+    const userId = payload.userId ?? event?.actorId ?? '';
+    const envVars = payload.envVars as Record<string, string> | undefined;
+    if (!deploymentId || !projectId) {
+      this.logger.warn('[worker] Missing deploymentId/projectId');
+      return;
+    }
     this.logger.log(`[worker] Processing deployment ${deploymentId}`);
     try {
-      await this.runDeployment(deploymentId, projectId, userId as string || '', envVars as Record<string, string> | undefined);
+      await this.runDeployment(deploymentId, projectId, userId as string || '', envVars);
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
       this.logger.error(`[worker] Deployment ${deploymentId} threw: ${msg}`);
@@ -133,6 +163,22 @@ export class DeploymentStateService implements OnModuleInit {
         runtimeEnv.push(...merged);
       }
       const buildConfig = await this.prisma.buildConfig.findUnique({ where: { projectId } });
+
+      // A build that cannot run without a variable fails BEFORE it starts,
+      // naming the variable. Otherwise the operator reads a build log that
+      // says "DATABASE_URL is not defined" three hundred lines in, after
+      // three minutes of compiling.
+      const missing = (buildConfig?.requiredEnvVars ?? []).filter(
+        (key) => !runtimeEnv.some((e) => e.key === key),
+      );
+      if (missing.length > 0) {
+        const names = missing.join(', ');
+        const message = `Missing required environment variable${missing.length === 1 ? '' : 's'}: ${names}`;
+        this.logger.error(`[worker] Deployment ${deploymentId} cannot build — ${message}`);
+        await this.markFailed(deploymentId, projectId, message);
+        return;
+      }
+
       // Resolve the project owner's connected GitHub token so private repos clone
       // without prompting (parseSource reconstructs the URL from release.sourceUrl
       // but carries no credentials). Anonymous clone still works for public repos.

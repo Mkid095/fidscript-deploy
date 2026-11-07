@@ -86,7 +86,20 @@ export class SecretsService {
       metadata: opts.metadata ?? {},
     };
     // Prisma upsert requires the where clause to be present; we build
-    // it dynamically because the field is nullable.
+    // it dynamically because the field is nullable. A NULL project cannot
+    // be part of a compound lookup, so a platform secret is written as
+    // "find it, then update or create".
+    if (projectId === null) {
+      const existing = await (this.prisma.secret as any).findFirst({
+        where: { projectId: null, key },
+      });
+      if (existing) {
+        await (this.prisma.secret as any).update({ where: { id: existing.id }, data: update });
+      } else {
+        await (this.prisma.secret as any).create({ data: create });
+      }
+      return;
+    }
     await (this.prisma.secret as any).upsert({ where, create, update });
   }
 
@@ -95,6 +108,13 @@ export class SecretsService {
    */
   async delete(projectId: string | null, key: string): Promise<boolean> {
     try {
+      if (projectId === null) {
+        // A NULL project cannot be part of a compound lookup either.
+        const deleted = await (this.prisma.secret as any).deleteMany({
+          where: { projectId: null, key },
+        });
+        return deleted.count > 0;
+      }
       await (this.prisma.secret as any).delete({ where: this.compoundKey(projectId, key) });
       return true;
     } catch {
@@ -106,7 +126,19 @@ export class SecretsService {
     return { projectId_key: { projectId: projectId ?? null, key } };
   }
 
+  /**
+   * Find one secret.
+   *
+   * Prisma's compound unique lookup cannot match a NULL column, and a
+   * platform-level secret has `projectId = null` — so the lookup that
+   * worked for a project's secret threw for the platform's, and the email
+   * bootstrap failed on every start. A null project is found with
+   * `findFirst`; a project's secret keeps the compound lookup.
+   */
   private async findUnique(projectId: string | null, key: string) {
+    if (projectId === null) {
+      return (this.prisma.secret as any).findFirst({ where: { projectId: null, key } });
+    }
     return (this.prisma.secret as any).findUnique({ where: this.compoundKey(projectId, key) });
   }
 

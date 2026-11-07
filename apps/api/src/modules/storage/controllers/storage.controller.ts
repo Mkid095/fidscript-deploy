@@ -83,6 +83,18 @@ export class StorageController {
     );
   }
 
+  @Get('buckets/:bucketId/files/:fileId')
+  @ApiOperation({ summary: 'Get one file of a bucket' })
+  async getFile(
+    @Req() req: Request,
+    @Param('projectId') projectId: string,
+    @Param('bucketId') bucketId: string,
+    @Param('fileId') fileId: string,
+  ) {
+    const user = req.user as { userId: string };
+    return this.storageService.getFile(user.userId, projectId, bucketId, fileId);
+  }
+
   @Post('buckets/:bucketId/files')
   @HttpCode(HttpStatus.OK)
   @UseInterceptors(FileInterceptor('file'))
