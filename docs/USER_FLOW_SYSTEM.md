@@ -1,7 +1,10 @@
-# The user-flow system
+# The user-flow system — the audit
 
 > **What this platform is, what every file in it is for, how a person is
 > supposed to move through it, and where the wiring is wrong.**
+>
+> This is the **audit** — the state of the flows as they are today. The
+> prescription that answers it is `docs/USER_FLOW_GUIDE.md`.
 >
 > This is the map the product was missing. The application is large — it has
 > five installed applications, thirty-one API modules and eighty-four
@@ -239,7 +242,7 @@ Files: `apps/dashboard/src/app/(app)/projects/[projectId]/services/new/**`,
 
 ### F7 — The project's services
 
-The sidebar offers fourteen destinations, and the mode decides which set:
+The sidebar offers **fifteen** destinations in deploy mode and **sixteen** in BaaS mode, and the mode decides which set:
 
 | Group | Deploy mode | BaaS mode |
 |---|---|---|
@@ -299,9 +302,9 @@ route in the inventory, but the bare project URL does not reach it.
 **The fix:** the project opens on its **overview** — which is also the screen
 that has to answer "what is this project and what do I do in it".
 
-### C4 — The sidebar shows fourteen things, none of which the project has
+### C4 — The sidebar shows fifteen things, none of which the project has
 
-Every project gets the same fourteen items. A project with one deployment and
+Every project gets the same fifteen items (sixteen in BaaS mode). A project with one deployment and
 no database is offered Databases, Queues, Realtime, Storage, Email,
 Scheduler, Monitoring and Logs.
 
