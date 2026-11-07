@@ -203,6 +203,71 @@ them had. When it is a thing each screen remembers to add, some screens
 forget; when it is the frame's own doing, a screen cannot have a body
 without a bar, and two screens cannot disagree about what a bar looks like.
 
+### D16 — The platform's applications answer to one identity
+
+**What:** the console, Grafana, the mail server (Stalwart) and InstantDB all
+answer to the platform's own identity —
+`kennedygithinjioffice@gmail.com` / the platform's password — and the
+decision lives in **Settings → Credentials**, not in a secrets file
+somebody finds.
+
+| Application | What it answers with                                                                                                                                     | How it changes                                                                                                                         |
+| ----------- | -------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------- |
+| The console | the platform account                                                                                                                                     | Settings → Account                                                                                                                     |
+| Grafana     | the platform email + password (env `GF_SECURITY_ADMIN_USER` + the secret file)                                                                           | **applied by the platform** over Grafana's own admin API, from Settings → Credentials                                                  |
+| Stalwart    | the platform email + password as the **recovery administrator** (`STALWART_RECOVERY_ADMIN`)                                                              | **with the installer and a restart** — it is env-defined, and the SMTP submission credential changes with it (both are one credential) |
+| InstantDB   | an account under the platform email, signed in by **magic code**; the platform holds that account's personal access token as its provisioning credential | the token lives in `secrets/instant_superuser_token.txt`                                                                               |
+
+**Why:** "one email, one password" was a fact to discover — the mail
+administrator answered to `admin` and a machine token, the Instant token did
+not exist at all (the platform said "no Instant credential"), and nobody
+could say what each application answered with without trying. Now the
+Settings screen reads each application's account, checks a candidate
+password against every one live, and applies where an application takes its
+credential from the platform.
+
+**What the work taught (the traps inside the decision):**
+
+- `STALWART_RECOVERY_ADMIN` is `name:password`, **not** `name:sha256` — the
+  old reading only worked because the token happened to be 64 hex chars, and
+  `parseJmapCredential` splits on exactly that shape. A non-hex password
+  needs its own `STALWART_JMAP_USER`/`STALWART_JMAP_PASSWORD` pair, which is
+  what the compose now sets.
+- The mail administrator is the **recovery administrator** — there are no
+  directory accounts in this Stalwart yet (the email capability is still
+  unconfigured: `fidscript.com`'s MX points at the registrar's forwarding).
+- Instant's superuser token is a **personal access token of the platform's
+  account**; the account existed since September — only the token was never
+  written where the platform reads it.
+
+### D17 — A project's resources are made when the project is made
+
+**What:** creating a project provisions its Instant app (when the shape has
+a backend) and its WhatsApp identity — an instance on the WhatsApp platform
+named after the project — in the same fire-and-forget pass as the database,
+the bucket, the channel and the API key. Both are re-tried from the screens
+when they fail, and neither failure leaves the project half-made: the
+project still becomes active, with the reason recorded.
+
+**Why:** the links on the Databases page landed on nothing — the Instant app
+was a later, separate step a person had to find, and the WhatsApp identity
+came only when somebody pasted a key. A project that says it has a backend
+must have one.
+
+**What holds it up:**
+
+- the **platform's own keys** — the Instant superuser token and the WhatsApp
+  platform's key — live in the secrets dir and are read from files, like
+  every other credential; without them the provisioning records the reason
+  and the screen offers the retry.
+- the **Instant BaaS is reached where it actually is**: the self-hosting
+  stack's own network (`http://server:8888`), not the add-on container name
+  the installer assumes. The compose joins that network as external.
+- the WhatsApp instance is created on the **shared** Evolution API with the
+  platform's key; instances are named by the project's slug, so they are
+  identifiable, and deleting a project's instance is a separate, deliberate
+  act.
+
 ---
 
 ## 2. Still owed — the organization model

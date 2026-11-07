@@ -5,8 +5,8 @@ _The console, rebuilt from the user-flow guide, and the platform behind it._
 Written 2026-11-07. This is the whole of it: what was asked, what was
 built, what is live, what was found by using it, and what is still open.
 
-**§6 is the newest part** — the faults that only a person using the
-platform would find, what is fixed, and the five things that are not.
+**§6 is the faults a person found; §7 is the hand-over session that closed
+them** — the five open items, what each took, and what was found on the way.
 
 ---
 
@@ -229,13 +229,122 @@ sticky, above the scrolling body. Twenty-four screens were migrated.
 
 ### 6.4 What is still open — the short list
 
-|                                                                                                                             | Where it is written |
-| --------------------------------------------------------------------------------------------------------------------------- | ------------------- |
-| **One set of credentials** — Stalwart's admin, InstantDB's account, and the **Settings screen** that decides it             | P5.2, P5.4          |
-| **The Databases page reaches the database** — the links to the project's InstantDB app and its backend-as-a-service console | P5.5                |
-| **The project's resources are created with the project** — an Instant app, the WhatsApp identity                            | P5.6                |
-| **A domain the project may own** — `app.fidscript.com` is the console's alias and stays that way                            | P5.7                |
-| **The console's deployment** — the page bars are built and tested, not yet in front of anybody                              | P5.3                |
+_Closed by the hand-over session — see §7._
+
+|                                                                                               | Where it is written |
+| --------------------------------------------------------------------------------------------- | ------------------- |
+| ~~One set of credentials~~ — **done, verified live**                                          | P5.2, P5.4          |
+| ~~The Databases page reaches the database~~ — **done**                                        | P5.5                |
+| ~~The project's resources are created with the project~~ — **done, verified by creating one** | P5.6                |
+| ~~A domain the project may own~~ — **done: `demo.fidscript.com` is in Cloudflare**            | P5.7                |
+| ~~The console's deployment~~ — **done, deployed, and looked at on a phone**                   | P5.3                |
+
+---
+
+## 7. The hand-over session — the five, closed
+
+_Everything in §6.4 was open at the start of this session. Here is what each
+took, and what was found on the way. The decisions are **D16** and **D17**._
+
+### 7.1 The page bars went out — and the phone look mattered (P5.3)
+
+Deployed (`docker compose build dashboard && up -d dashboard`), then looked
+at — desktop and phone, six screens each. The desktop was right. The phone
+was not: the shell's sidebar is `w-64 flex-shrink-0` and would not move, so
+on a 390px screen the menu took the width and the work got ~100px — badges
+sat on top of row titles and names truncated to nothing.
+
+The fix is the frame's, not the screens': `ResponsiveSidebar` — a column on
+a wide screen, a drawer over the page on a small one, opened by a button the
+page bar makes room for. Looked at again after: clean.
+
+### 7.2 One set of credentials (P5.2, P5.4)
+
+- **Stalwart**: the recovery administrator is now the platform's email with
+  the platform's password, and the SMTP submission credential changed with
+  it. Verified: JMAP auth as the email, `transporter.verify()` on 465, the
+  old token refused with a 401.
+- **InstantDB**: the platform's superuser token — a personal access token of
+  the platform's own account — is now `secrets/instant_superuser_token.txt`,
+  and the platform reads it from the file without a restart.
+  `GET /projects/:id/instant` says `available: true`.
+- **Grafana** was already done; the credentials screen reads and applies it
+  over its own API.
+- **Settings → Credentials** (P5.4) holds the decision: the identity, the
+  toggle, the four applications and what each answers with, **Check every
+  application** (live — a 401 reads as "refuses"), and **Apply** where it
+  can be applied.
+
+### 7.3 The platform could not reach Instant at all (found during P5.6)
+
+`INSTANT_API_HOST` pointed at `fidscript_instant_server:8888` — an add-on
+container that does not exist in this deployment. The Instant BaaS here is
+the self-hosting stack (`self-hosting-server-1`), which publishes nothing
+the api could reach. The api now joins the self-hosting stack's network and
+reaches the server as `http://server:8888`. Without this, P5.5 and P5.6 had
+nothing to land on.
+
+### 7.4 The Databases page reaches the database (P5.5)
+
+The project's Instant app opens in Instant's own console with the app id in
+the link (`/dash?app={appId}` — the shape Instant's own source uses); the
+backend-as-a-service console is named beside it. The Backend screen's door
+and the overview's console link carry the app id too.
+
+The Fidscript project was given its backend through the platform's own
+provisioning path — the same one P5.6 runs at creation.
+
+### 7.5 A project is born with its resources (P5.6)
+
+Verified by creating a project of shape `BOTH`: its Instant app came up
+ACTIVE and its WhatsApp instance was created on the platform's own key,
+connected and reachable — no pasted key. The proof project was then removed
+completely: Evolution instance deleted, Instant app unlinked, project and
+children hard-deleted. Nothing test-shaped is left.
+
+### 7.6 A domain the project owns (P5.7)
+
+The stale row (`app.fidscript.com`) was removed; **`demo.fidscript.com`**
+was added through the console and **Write the records** pressed. The record
+is in Cloudflare and resolves on the public internet:
+
+```
+_fidscript-verification.demo.fidscript.com  TXT  "FIDScript verified acb71195…"
+demo.fidscript.com                          CNAME fidscript-6d39d5fa.apps.fidscript.com
+```
+
+The CNAME points at the **project's host** — and the look caught that the
+READ path still pointed at `demo.apps.fidscript.com` (the domain's first
+label) in three places even though the write was right. All three take the
+project's slug now.
+
+### 7.7 What was found and not taken — the honest list
+
+| Found                                                                                                                                                                                                   | Where it stands                                            |
+| ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------- |
+| The domain card's badge says **"failed"** when the truth is "the records are right; nothing is deployed on it yet"                                                                                      | the verify's HTTP-routing step has no deployment to find   |
+| The domain rows' per-record status stays **"pending"** — no live check for deployment records (the email records have one)                                                                              | `GET …/dns-records` returns the required list, not a check |
+| The console has **no remove-domain button** — the stale row was removed through the API                                                                                                                 | `DELETE /projects/:id/domains/:id` exists                  |
+| The WhatsApp screen lists **every instance the platform's key can see**, not just the project's                                                                                                         | `WhatsappState.instances` is the platform-wide list        |
+| The project sidebar never shows a **WhatsApp** item (`capabilities.whatsapp` is hardcoded `false` in the layout); the screen is reachable from the overview's Capabilities                              | `projects/[projectId]/layout.tsx`                          |
+| The **email capability is still unconfigured**: `fidscript.com`'s MX points at the registrar's forwarding, Stalwart holds no mailboxes, and a full system-mail send was not tested (auth verified only) | the guide's Stalwart configuration checklist               |
+| The zone picker's default zone is whichever the API lists first, not the project's likeliest                                                                                                            | cosmetic                                                   |
+
+### 7.8 The secrets that changed — for the operator's own record
+
+| Secret                                           | Now holds                                                                                                                                                           |
+| ------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `secrets/stalwart_admin_token.txt`               | the platform password (the mail administrator's)                                                                                                                    |
+| `secrets/smtp_submission_pass.txt` / `_user.txt` | the platform password / the platform email                                                                                                                          |
+| `secrets/stalwart_credentials.txt`               | the email and the password, as a pair                                                                                                                               |
+| `secrets/instant_superuser_token.txt`            | the Instant account's personal access token (moved from the operator's own MCP config)                                                                              |
+| `secrets/evolution_api_key.txt`                  | the WhatsApp platform's key, so the platform can give a project its identity                                                                                        |
+| `.env`                                           | `STALWART_RECOVERY_ADMIN`, `STALWART_JMAP_USER`, `STALWART_JMAP_PASSWORD`, `SMTP_SUBMISSION_*`, `INSTANT_SUPERUSER_EMAIL`, `INSTANT_API_HOST`, `GRAFANA_ADMIN_USER` |
+
+The old values are gone by design — the old token was refused with a 401
+before anything else was verified, and a rollback is still possible: the
+current `.env` and `secrets/` show every value that was set, and the mail
+administrator accepts whatever `STALWART_RECOVERY_ADMIN` says at startup.
 
 ---
 
@@ -259,13 +368,14 @@ are fixed in.
 
 ## 8. Where to pick it up
 
-| The task                        | The files                                                                                                                                                                                                                                                                                                                                   |
-| ------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **The domain's records**        | `apps/api/src/modules/domains/services/{domain-dns,domain-cloudflare-auto,domain-health,domain-add}.service.ts`, `apps/api/src/modules/infrastructure/primitives/project-cloudflare-provider.ts`, `apps/api/src/modules/domains/services/reserved-hosts.ts`                                                                                 |
-| **The page bars**               | `apps/console/src/components/ui/page.tsx` (the frame), `apps/console/src/components/ui/card.tsx` (`PageHeader`)                                                                                                                                                                                                                             |
-| **One set of credentials**      | `apps/api/src/modules/email/services/mail-console.service.ts` (what the mail server answers with), `apps/api/src/modules/email/providers/stalwart-email.provider.ts` (how the platform authenticates to it), `installer/docker/secrets/stalwart_admin_token.txt` and `smtp_submission_pass.txt` (the two secrets that must change together) |
-| **The credentials in Settings** | `apps/console/src/app/(platform)/settings/` — the hub, and the new section                                                                                                                                                                                                                                                                  |
-| **The Databases page**          | `apps/console/src/app/(project)/projects/[projectId]/databases/page.tsx`, and the InstantDB client in `apps/console/src/lib/api/project.ts`                                                                                                                                                                                                 |
-| **The project's resources**     | `apps/api/src/modules/projects/services/project-create.service.ts`                                                                                                                                                                                                                                                                          |
+P5 is closed. What is open, and the files that hold it:
 
-_Written 2026-11-07._
+| The task                                                                                                                   | The files                                                                                                                   |
+| -------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------- |
+| **The email capability** — the Stalwart configuration checklist (§8.3 of the guide), mailboxes, a full send                | `apps/api/src/modules/email/`, the guide's checklist; the MX for `fidscript.com` still points at the registrar's forwarding |
+| **The domain card's truths** — "nothing deployed yet" instead of "failed"; live per-record statuses; a remove button       | `apps/api/src/modules/domains/services/domain-health.service.ts`, `apps/console/src/components/project/domain-card.tsx`     |
+| **WhatsApp scoping** — the project's screen lists the project's instance first, the others could be named "the platform's" | `apps/api/src/modules/whatsapp/whatsapp.service.ts`                                                                         |
+| **The sidebar's WhatsApp item** — derived from the project's identity instead of hardcoded off                             | `apps/console/src/app/(project)/projects/[projectId]/layout.tsx`                                                            |
+| **The page bars for the remaining screens** — the next pass of the same rule                                               | `apps/console/src/components/ui/page.tsx`                                                                                   |
+
+_Written 2026-11-07. The hand-over session's part is §7._

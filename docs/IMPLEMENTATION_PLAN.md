@@ -208,81 +208,120 @@ API, all found the same way:
 **Still to do by hand:** add a domain the project can own (see D12), press
 **Write the records**, and see the record appear in Cloudflare.
 
-### P5.2 One set of credentials — **PARTLY DONE**
+### P5.2 One set of credentials — **DONE, verified live**
 
 The platform's own identity is `kennedygithinjioffice@gmail.com` with the
-password `Elishiba@95`. The applications the platform runs should open with
-the same.
+password `Elishiba@95`. Every application answers to it now.
 
-| Application                | Where it stands                                                                                                                                                                                                                                          |
-| -------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **The console**            | ✅ `kennedygithinjioffice@gmail.com` / `Elishiba@95` — verified working                                                                                                                                                                                  |
-| **Grafana**                | ✅ **DONE** — the admin's login and email are now the platform's, and the password is the platform's. Verified: the login returns 200                                                                                                                    |
-| **Stalwart**               | ⬜ The admin is `admin` + the machine token (`secrets/stalwart_admin_token.txt`), and that same token is the platform's **SMTP submission password**. Changing it means changing both together — the API's JMAP client, the SMTP client, and the secrets |
-| **InstantDB**              | ⬜ It signs in with a **magic code**, not a password. It still needs an account under the same email, so the person is not two people                                                                                                                    |
-| **The console's Settings** | ⬜ **P5.4** below — the place where this is decided rather than hard-coded                                                                                                                                                                               |
+| Application     | Where it stands                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          |
+| --------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **The console** | ✅ verified working                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      |
+| **Grafana**     | ✅ the admin's login and email are the platform's, and the password is the platform's. Verified: the login returns 200                                                                                                                                                                                                                                                                                                                                                                                   |
+| **Stalwart**    | ✅ **DONE** — the recovery administrator is now `kennedygithinjioffice@gmail.com` / the platform password (`STALWART_RECOVERY_ADMIN`), and the SMTP submission credential changed with it. Verified: JMAP Basic auth as the email, `transporter.verify()` on 465, the old token refused with 401. The `admin:<sha256>` reading of the recovery pair was wrong — the secret after the colon is the password itself; `parseJmapCredential` only split it because the old token happened to be 64 hex chars |
+| **InstantDB**   | ✅ the account exists under the platform email (it has since September), and the platform now holds that account's **personal access token** as `secrets/instant_superuser_token.txt` — the install step that was never finished. `GET /projects/:id/instant` says `available: true`                                                                                                                                                                                                                     |
 
-### P5.3 The page bars — **DONE, not yet deployed**
+The decisions are written down as **D16**.
 
-Every screen had a sidebar and a body, and no bar: no place that carried the
-screen's name and what could be done with it, and no way out of a screen
-that stayed in the same place.
+### P5.3 The page bars — **DONE, deployed, and looked at**
 
-The bar is now **part of the frame**, not a thing each screen remembers:
-`Page` takes `title`, `description`, `actions` and `eyebrow`, and renders the
-bar itself — sticky, over the scrolling body. A screen cannot have a body
-without a bar above it, and two screens cannot disagree about what a bar
-looks like.
+Every screen had a sidebar and a body, and no bar. The bar is **part of the
+frame** (D15), and it is now deployed and **looked at** — desktop and phone —
+and the look caught what the build could not:
 
-Twenty-four screens were migrated. The rest of the product follows the same
-rule in the next pass.
+- the shell's sidebar is `w-64` and would not move: on a phone it took the
+  screen's width and the work got what was left — badges sat on top of row
+  titles and names truncated to nothing. The sidebar is now the frame's own
+  `ResponsiveSidebar` (a drawer below `lg`, opened by a button the bar makes
+  room for, closed by a choice, the overlay, or Escape), and the look was
+  repeated: the same screens at 390px read clean.
+- Twenty-four screens were migrated; the rest of the product follows the same
+  rule in the next pass.
 
-### P5.4 The credentials section in Settings — **TO DO**
+### P5.4 The credentials section in Settings — **DONE, deployed**
 
-`/settings` must hold the credentials for the applications the platform
-runs, so that "one email, one password" is a **decision the operator makes**
-rather than a fact they discover:
+`/settings/credentials` — the place where "one email, one password" is
+**decided**:
 
-- the platform's email and password, and a **toggle**: _use the same
-  password for the applications_;
-- per application: the account it answers with, and whether the password is
-  the platform's or its own;
-- InstantDB: the email it is registered under, and the magic-code note;
-- what is applied, what is pending, and **the way to apply it**.
+- the platform's email, and the **toggle**: _use the same password for the
+  applications_;
+- per application: the account it answers with, and how it signs in
+  (password or magic code);
+- **Check every application** — asks each one live whether the platform's
+  password opens it (the console by bcrypt, Grafana and Stalwart over their
+  own front doors; a 401 reads as "refuses", not as "could not check");
+- **Apply the platform's identity** — Grafana is applied over its own admin
+  API; Stalwart's answer says where it changes instead of pretending (it is
+  the recovery administrator, defined by the installer); InstantDB's says the
+  magic-code note.
 
-The API needs the matching surface: a platform-admin endpoint that reads
-the application's own credential, one that applies the platform's, and one
-that says what each application currently answers with.
+The API surface: `GET/POST /admin/platform-credentials{,/verify,/apply}`
+(platform admins only), following the shape of
+`admin/platform-mail/console`.
 
-### P5.5 The Databases page reaches the database — **TO DO**
+### P5.5 The Databases page reaches the database — **DONE, deployed**
 
-The project's **Databases** page has no way to reach the database that
-actually holds the project's data. It must link to:
+The project's **Databases** page links to:
 
-- the project's **InstantDB** project — its data, its schema, its console;
-- the **backend as a service** console for the project (the `backend` screen
-  is a page of words; it needs the door);
-- and each of those must carry the right **project id**, so the link lands on
-  _this_ project's app and not on the platform's.
+- the project's **InstantDB app** — deep-linked into Instant's own console
+  with the app id in it (`{dash}/dash?app={appId}`, the shape Instant's own
+  source uses), so it opens on _this_ project's app;
+- the **backend-as-a-service console** — named in the page beside it.
 
-### P5.6 The project's resources are created with the project — **TO DO**
+The Backend screen's door and the project overview's console link carry the
+app id too.
 
-Creating a project must also create it in the systems it will use — an
-InstantDB app, the project's WhatsApp identity — so the links in P5.5 land
-on something that exists.
+### P5.6 The project's resources are created with the project — **DONE, verified live**
 
-Today the project's Instant app is created by a later, separate step, and
-the WhatsApp identity is created when somebody connects WhatsApp. Both
-should happen when the project is made, and both should be re-tried when
-they fail, without leaving the project half-made.
+Creating a project provisions it in the systems it will use:
 
-### P5.7 The project needs a domain it may own — **TO DO (D12)**
+- an **InstantDB app**, when the shape has a backend (`BACKEND`/`BOTH`) — an
+  app that is already there counts as the last attempt's success;
+- the project's **WhatsApp identity** — its own instance on the WhatsApp
+  platform, named after the project, held by the **platform's own key**
+  (`secrets/evolution_api_key.txt`); no key is pasted, pairing happens from
+  the project's screen.
 
-`app.fidscript.com` is the **console's** alias, and it stays that way. The
-project "Fidscript" therefore needs another name — one of the zones in the
-operator's Cloudflare account, or a subdomain of one that is not the
-platform's own. The zone picker already lists the account's zones; what is
-missing is a domain the project can take.
+Both run in the fire-and-forget provisioning the create path already had,
+both are recorded in the provisioning event, and both can be **re-tried**:
+the backend from the settings and the next step (the path that already
+existed), the instance from a button on the WhatsApp screen
+(`POST /projects/:id/whatsapp/identity`, idempotent about an instance that
+is already there).
+
+Verified by creating a project of shape `BOTH`: its Instant app came up
+ACTIVE and its WhatsApp instance was created and reachable — and the proof
+project was then removed completely (Evolution instance deleted, Instant app
+unlinked, project hard-deleted).
+
+Also fixed on the way: the platform could not reach Instant at all —
+`INSTANT_API_HOST` pointed at an add-on container that is not how the
+Instant BaaS is deployed here; the api now joins the self-hosting stack's
+own network and reaches the server as `http://server:8888`.
+
+### P5.7 The project needs a domain it may own — **DONE, the record is in Cloudflare**
+
+`app.fidscript.com` stays the console's (D12). What was done by hand:
+
+1. the **stale domain row** (`app.fidscript.com` on the project) was removed
+   through the API;
+2. **`demo.fidscript.com`** was added through the console (zone
+   `fidscript.com`, "a subdomain of it") and **Write the records** pressed —
+   the proof:
+
+   - `dig TXT _fidscript-verification.demo.fidscript.com` answers with the
+     platform's verification string,
+   - `dig CNAME demo.fidscript.com` answers
+     `fidscript-6d39d5fa.apps.fidscript.com` — **the project's host** (D14) —
+   - and it resolves to the server.
+
+   The domain does not answer HTTP yet, and the platform says so truthfully:
+   nothing is deployed on it. The check's "failed" badge for "nothing is
+   deployed on it yet" is a refinement listed below.
+
+Also fixed while proving it: three places still built the CNAME target from
+the **domain's first label** on the READ path — the records the screen asks
+for, the repair executor and the wizard. The write was right; the screen was
+wrong. All three take the project's slug now.
 
 ---
 
