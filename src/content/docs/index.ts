@@ -7,6 +7,7 @@ import { configuration } from './configuration';
 import { databases } from './databases';
 import { email } from './email';
 import { storage } from './storage';
+import { packages } from './packages';
 import { domains } from './domains';
 import { edgeFunctions } from './edge-functions';
 import { queues } from './queues';
@@ -24,6 +25,7 @@ export const DOC_PAGES: DocPage[] = [
   databases,
   email,
   storage,
+  packages,
   domains,
   edgeFunctions,
   queues,

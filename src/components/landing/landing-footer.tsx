@@ -23,6 +23,7 @@ export const COLS: { title: string; links: { label: string; href: string }[] }[]
       { label: 'Databases', href: '/docs/databases' },
       { label: 'Email', href: '/docs/email' },
       { label: 'Storage', href: '/docs/storage' },
+      { label: 'Packages', href: '/docs/packages' },
       { label: 'Domains & TLS', href: '/docs/domains' },
     ],
   },

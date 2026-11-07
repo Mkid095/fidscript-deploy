@@ -1,3 +1,5 @@
+import Link from 'next/link';
+
 import { applications } from '@/lib/api/platform';
 import { Card, PageHeader, SectionHeader } from '@/components/ui/card';
 import { Page } from '@/components/ui/page';
@@ -9,7 +11,13 @@ import { SettingsNav } from '@/components/platform/settings-nav';
  *
  * The one-time thing, revisited: what this platform has, and whether it is
  * healthy. It is not in the top bar — it is a setting.
+ *
+ * Three of them are the console's own capabilities — the deployment
+ * engine, the mail and the registry. They have no console of their own:
+ * they live inside every project, and the screen says where they are.
  */
+
+const IN_THE_CONSOLE = ['deployment', 'email', 'package-manager'];
 export const metadata = { title: 'Applications · Settings' };
 
 export default async function ApplicationsSettingsPage() {
@@ -45,8 +53,25 @@ export default async function ApplicationsSettingsPage() {
                   </Badge>
                 </div>
                 <p className="mt-1.5 text-xs leading-relaxed text-text-muted">{app.summary}</p>
-                <div className="mt-3 flex items-center gap-3">
-                  {app.url ? (
+                <div className="mt-3 flex flex-wrap items-center gap-3">
+                  {IN_THE_CONSOLE.includes(app.id) ? (
+                    <>
+                      <Link
+                        href="/projects"
+                        className="text-xs text-accent hover:underline"
+                      >
+                        It is in every project
+                      </Link>
+                      {app.url ? (
+                        <a
+                          href={app.url}
+                          className="text-xs text-text-dim hover:text-text"
+                        >
+                          Read about it
+                        </a>
+                      ) : null}
+                    </>
+                  ) : app.url ? (
                     <a
                       href={app.url}
                       target="_blank"
