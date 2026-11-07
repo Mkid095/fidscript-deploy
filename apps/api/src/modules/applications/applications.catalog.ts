@@ -67,10 +67,11 @@ export interface ApplicationMcp {
  */
 export const CORE_APPLICATIONS: Record<string, ApplicationPresentation> = {
   deployment: {
-    host: null, // the dashboard itself
-    // The wizard that starts a deployment — the operator's next action after
-    // they arrive, not a list of projects they have to go and find.
-    path: '/deployments/new',
+    host: null, // the console itself
+    // The deployment engine has no console of its own: it is inside every
+    // project, and the guide that explains it is the honest place to send
+    // somebody who asks where it is.
+    path: '/docs/deploy-an-app',
     port: null,
     icon: 'rocket',
     installable: false,
@@ -78,11 +79,11 @@ export const CORE_APPLICATIONS: Record<string, ApplicationPresentation> = {
     mcp: null,
   },
   email: {
-    // The application's own page in the dashboard: the console, the
-    // credential to log into it with, the client settings and the domains
-    // the platform holds. The console itself is one link away from there.
+    // The mail server is behind the project's Email screen — the console,
+    // the mailboxes and the domains all live there. The guide is where
+    // somebody who asks what it is goes.
     host: null,
-    path: '/applications/email',
+    path: '/docs/email',
     port: null,
     icon: 'mail',
     installable: false,
@@ -123,11 +124,10 @@ export const ADDON_APPLICATIONS: Record<string, ApplicationPresentation> = {
     },
   },
   'package-manager': {
-    // The application's own page in the dashboard: the console, the token
-    // page — which is how the private packages are reached — and the
-    // packages anyone may see. The console itself is one link away.
+    // The registry is reached from the project's Packages screen, and the
+    // guide explains how to publish to it.
     host: null,
-    path: '/applications/package-manager',
+    path: '/docs/packages',
     port: null,
     icon: 'package',
     installable: true,
