@@ -9,6 +9,9 @@ export class ProjectFormatService {
       description: project.description, type: project.type?.toLowerCase(),
       shape: project.shape, deploymentOn: project.deploymentOn,
       status: project.status?.toLowerCase(), ownerId: project.ownerId,
+      // Whether a push to the branch makes a new deployment. The console
+      // shows this as a switch, so it has to be able to read it.
+      autoDeploy: project.autoDeploy ?? true,
       owner: project.owner, region: project.region, subdomain: project.subdomain,
       // The workspace the project lives in: null is the owner's own.
       organizationId: project.organizationId ?? null,
