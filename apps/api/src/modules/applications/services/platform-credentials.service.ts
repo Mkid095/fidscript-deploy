@@ -214,36 +214,56 @@ export class PlatformCredentialsService {
         opens: null,
         detail: 'Grafana is not configured.',
       };
-    const response = await axios.get(`${url}/api/user`, {
-      auth: { username: email, password },
-      timeout: 8_000,
-    });
-    return {
-      id: 'grafana' as ApplicationCredentialId,
-      opens: response.status === 200,
-    };
+    try {
+      const response = await axios.get(`${url}/api/user`, {
+        auth: { username: email, password },
+        timeout: 8_000,
+      });
+      return {
+        id: 'grafana' as ApplicationCredentialId,
+        opens: response.status === 200,
+      };
+    } catch (err) {
+      // A refusal IS an answer: the credential does not open it. Anything
+      // else — unreachable, a timeout — is a check that could not run.
+      const status = (err as { response?: { status?: number } }).response
+        ?.status;
+      if (status === 401 || status === 403) {
+        return { id: 'grafana' as ApplicationCredentialId, opens: false };
+      }
+      throw err;
+    }
   }
 
   /** Stalwart: the JMAP endpoint, asked with the candidate credential. */
   private async verifyStalwart(email: string, password: string) {
     const url = this.stalwartJmapUrl();
     const credentials = Buffer.from(`${email}:${password}`).toString('base64');
-    const response = await axios.post(
-      `${url}/jmap`,
-      {
-        using: ['urn:ietf:params:jmap:core'],
-        methodCalls: [['Core/echo', {}, '0']],
-      },
-      {
-        headers: {
-          Authorization: `Basic ${credentials}`,
-          'Content-Type': 'application/json',
+    try {
+      const response = await axios.post(
+        `${url}/jmap`,
+        {
+          using: ['urn:ietf:params:jmap:core'],
+          methodCalls: [['Core/echo', {}, '0']],
         },
-        timeout: 8_000,
-      },
-    );
-    const ok = Array.isArray(response.data?.methodResponses);
-    return { id: 'stalwart' as ApplicationCredentialId, opens: ok };
+        {
+          headers: {
+            Authorization: `Basic ${credentials}`,
+            'Content-Type': 'application/json',
+          },
+          timeout: 8_000,
+        },
+      );
+      const ok = Array.isArray(response.data?.methodResponses);
+      return { id: 'stalwart' as ApplicationCredentialId, opens: ok };
+    } catch (err) {
+      const status = (err as { response?: { status?: number } }).response
+        ?.status;
+      if (status === 401 || status === 403) {
+        return { id: 'stalwart' as ApplicationCredentialId, opens: false };
+      }
+      throw err;
+    }
   }
 
   // ── Applying ────────────────────────────────────────────────────────

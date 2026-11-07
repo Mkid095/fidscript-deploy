@@ -538,6 +538,16 @@ services:
       - fidscript-whatsapp
       - fidscript-app
       - fidscript-instant
+      # The WhatsApp platform's own network, so the Evolution API is one
+      # hop away instead of a round trip through the internet.
+      - evolution
+      # The Instant BaaS as it is actually deployed here: the self-hosting
+      # stack's own network (declared external below), where its server
+      # answers as `server` on port 8888. The api provisions apps and reads
+      # configs from it directly — the server publishes nothing the api
+      # could reach otherwise, so without this the platform reports Instant
+      # as unreachable.
+      - self-hosting
     depends_on:
       postgres:
         condition: service_healthy

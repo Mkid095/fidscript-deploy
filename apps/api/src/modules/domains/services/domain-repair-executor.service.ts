@@ -5,9 +5,18 @@ import { EventService } from '@/modules/events/event.service';
 import { DnsProvider } from '@/modules/domains/providers/dns-provider.interface';
 import { DomainSslService } from './domain-ssl.service';
 import { DomainEmailKeyService } from './domain-email-key.service';
-import { DomainRepairPlannerService, RepairType } from './domain-repair-planner.service';
+import {
+  DomainRepairPlannerService,
+  RepairType,
+} from './domain-repair-planner.service';
 
-export type RepairStatus = 'planned' | 'approved' | 'running' | 'completed' | 'failed' | 'requires_approval';
+export type RepairStatus =
+  | 'planned'
+  | 'approved'
+  | 'running'
+  | 'completed'
+  | 'failed'
+  | 'requires_approval';
 
 export interface RepairResult {
   repairRunId: string;
@@ -57,7 +66,13 @@ export class DomainRepairExecutorService {
   ): Promise<RepairResult> {
     const domain = await this.prisma.domain.findUnique({
       where: { id: domainId },
-      include: { dnsConnection: true, deployment: { select: { deploymentUrl: true } } },
+      include: {
+        dnsConnection: true,
+        deployment: { select: { deploymentUrl: true } },
+        // The CNAME's target is the project's host (D14) — the slug comes
+        // with the domain.
+        project: { select: { slug: true } },
+      },
     });
     if (!domain) throw new Error(`Domain ${domainId} not found`);
 
@@ -66,7 +81,7 @@ export class DomainRepairExecutorService {
       data: {
         domainId,
         incidentId: incidentId ?? null,
-        repairType: plan.actions.map(a => a.type).join(','),
+        repairType: plan.actions.map((a) => a.type).join(','),
         status: 'running',
         beforeState: {},
       },
@@ -75,7 +90,7 @@ export class DomainRepairExecutorService {
     await this.emit(domainId, domain.projectId, 'domains.repair.started', {
       repairRunId: repairRun.id,
       domain: domain.domain,
-      actions: plan.actions.map(a => a.type),
+      actions: plan.actions.map((a) => a.type),
     });
 
     const actionsPerformed: RepairType[] = [];
@@ -89,7 +104,9 @@ export class DomainRepairExecutorService {
       } catch (err) {
         success = false;
         error = err instanceof Error ? err.message : String(err);
-        this.logger.error(`[repair-executor] action ${action.type} failed: ${error}`);
+        this.logger.error(
+          `[repair-executor] action ${action.type} failed: ${error}`,
+        );
         break;
       }
     }
@@ -117,11 +134,16 @@ export class DomainRepairExecutorService {
           where: { id: incidentId },
           data: { status: 'resolved', resolvedAt: new Date() },
         });
-        await this.emit(domainId, domain.projectId, 'domains.incident.resolved', {
-          domain: domain.domain,
-          incidentId,
-          repairedBy: repairRun.id,
-        });
+        await this.emit(
+          domainId,
+          domain.projectId,
+          'domains.incident.resolved',
+          {
+            domain: domain.domain,
+            incidentId,
+            repairedBy: repairRun.id,
+          },
+        );
       }
     } else {
       await this.emit(domainId, domain.projectId, 'domains.repair.failed', {
@@ -132,13 +154,26 @@ export class DomainRepairExecutorService {
       });
     }
 
-    return { repairRunId: repairRun.id, status, actionsPerformed, success, error };
+    return {
+      repairRunId: repairRun.id,
+      status,
+      actionsPerformed,
+      success,
+      error,
+    };
   }
 
   // ── Action dispatch ─────────────────────────────────────────────────────────
 
   private async executeAction(
-    domain: { id: string; domain: string; projectId: string; dnsMode: string; dnsConnection: { provider: string } | null; deployment: { deploymentUrl: string | null } | null },
+    domain: {
+      id: string;
+      domain: string;
+      projectId: string;
+      dnsMode: string;
+      dnsConnection: { provider: string } | null;
+      deployment: { deploymentUrl: string | null } | null;
+    },
     actionType: RepairType,
   ): Promise<void> {
     const systemUser = 'system';
@@ -187,24 +222,47 @@ export class DomainRepairExecutorService {
   // ── DNS repairs ─────────────────────────────────────────────────────────────
 
   private async repairDnsRecord(
-    domain: { id: string; domain: string; dnsMode: string; dnsConnection: { provider: string } | null; deployment: { deploymentUrl: string | null } | null },
+    domain: {
+      id: string;
+      domain: string;
+      dnsMode: string;
+      dnsConnection: { provider: string } | null;
+      deployment: { deploymentUrl: string | null } | null;
+    },
     actionType: RepairType,
   ) {
     if (domain.dnsMode !== 'cloudflare_auto' || !domain.dnsConnection) {
-      throw new Error('Auto-DNS not configured for this domain — cannot auto-repair');
+      throw new Error(
+        'Auto-DNS not configured for this domain — cannot auto-repair',
+      );
     }
 
     const zoneId = await this.dnsProvider.getZoneId(domain.domain);
     if (!zoneId) throw new Error(`No zone found for ${domain.domain}`);
 
-    const recordType = actionType.replace('dns_', '').replace('_recreated', '').toUpperCase();
-    const recordName = actionType === 'dns_txt_recreated' ? `_fidscript-verification.${domain.domain}` : domain.domain;
-    const recordContent = this.getRecordContent(domain, recordType as 'A' | 'AAAA' | 'CNAME' | 'TXT');
+    const recordType = actionType
+      .replace('dns_', '')
+      .replace('_recreated', '')
+      .toUpperCase();
+    const recordName =
+      actionType === 'dns_txt_recreated'
+        ? `_fidscript-verification.${domain.domain}`
+        : domain.domain;
+    const recordContent = this.getRecordContent(
+      domain,
+      recordType as 'A' | 'AAAA' | 'CNAME' | 'TXT',
+    );
 
     // Check if record already exists
-    const existing = await this.dnsProvider.listRecords({ zoneId, name: domain.domain, type: recordType as any });
+    const existing = await this.dnsProvider.listRecords({
+      zoneId,
+      name: domain.domain,
+      type: recordType as any,
+    });
     if (existing.length > 0) {
-      this.logger.log(`[repair] ${recordType} record already exists for ${domain.domain}, skipping recreation`);
+      this.logger.log(
+        `[repair] ${recordType} record already exists for ${domain.domain}, skipping recreation`,
+      );
       return;
     }
 
@@ -217,11 +275,17 @@ export class DomainRepairExecutorService {
       proxied: recordType === 'A' || recordType === 'AAAA',
     });
 
-    this.logger.log(`[repair] Created ${recordType} record for ${domain.domain}`);
+    this.logger.log(
+      `[repair] Created ${recordType} record for ${domain.domain}`,
+    );
   }
 
   private getRecordContent(
-    domain: { domain: string; deployment: { deploymentUrl: string | null } | null },
+    domain: {
+      domain: string;
+      deployment: { deploymentUrl: string | null } | null;
+      project?: { slug: string } | null;
+    },
     type: 'A' | 'AAAA' | 'CNAME' | 'TXT',
   ): string {
     switch (type) {
@@ -232,16 +296,24 @@ export class DomainRepairExecutorService {
       case 'AAAA':
         return this.config.get<string>('SERVER_IPV6', '');
       case 'CNAME':
+        // The project's host is the target (D14) — the deployment's own host
+        // when there is one, the project's slug-published host otherwise.
+        // The domain's first label says nothing about the project.
         return (
           domain.deployment?.deploymentUrl ??
-          `${domain.domain.split('.')[0]}.apps.${this.config.get<string>('PLATFORM_DOMAIN', 'apps.local')}`
+          `${domain.project?.slug ?? domain.domain.split('.')[0]}.apps.${this.config.get<string>('PLATFORM_DOMAIN', 'apps.local')}`
         );
       case 'TXT':
         return `FIDScript verified ${domain.domain}`;
     }
   }
 
-  private async repairMxRecord(domain: { id: string; domain: string; dnsMode: string; dnsConnection: { provider: string } | null }) {
+  private async repairMxRecord(domain: {
+    id: string;
+    domain: string;
+    dnsMode: string;
+    dnsConnection: { provider: string } | null;
+  }) {
     if (domain.dnsMode !== 'cloudflare_auto' || !domain.dnsConnection) {
       throw new Error('Auto-DNS not configured — cannot auto-repair MX');
     }
@@ -249,45 +321,99 @@ export class DomainRepairExecutorService {
     if (!zoneId) throw new Error(`No zone for ${domain.domain}`);
 
     // Delete any stale MX records
-    const existing = await this.dnsProvider.listRecords({ zoneId, name: domain.domain, type: 'MX' });
-    await Promise.all(existing.map(r => this.dnsProvider.deleteRecord({ zoneId, recordId: r.id })));
+    const existing = await this.dnsProvider.listRecords({
+      zoneId,
+      name: domain.domain,
+      type: 'MX',
+    });
+    await Promise.all(
+      existing.map((r) =>
+        this.dnsProvider.deleteRecord({ zoneId, recordId: r.id }),
+      ),
+    );
 
     // Create fresh MX records
-    await this.dnsProvider.createRecord({ zoneId, type: 'MX', name: domain.domain, content: `mx1.${domain.domain}`, ttl: 300, priority: 10 });
-    await this.dnsProvider.createRecord({ zoneId, type: 'MX', name: domain.domain, content: `mx2.${domain.domain}`, ttl: 300, priority: 20 });
+    await this.dnsProvider.createRecord({
+      zoneId,
+      type: 'MX',
+      name: domain.domain,
+      content: `mx1.${domain.domain}`,
+      ttl: 300,
+      priority: 10,
+    });
+    await this.dnsProvider.createRecord({
+      zoneId,
+      type: 'MX',
+      name: domain.domain,
+      content: `mx2.${domain.domain}`,
+      ttl: 300,
+      priority: 20,
+    });
     this.logger.log(`[repair] MX records recreated for ${domain.domain}`);
   }
 
-  private async repairSpfRecord(domain: { id: string; domain: string; dnsMode: string; dnsConnection: { provider: string } | null }) {
+  private async repairSpfRecord(domain: {
+    id: string;
+    domain: string;
+    dnsMode: string;
+    dnsConnection: { provider: string } | null;
+  }) {
     if (domain.dnsMode !== 'cloudflare_auto' || !domain.dnsConnection) {
       throw new Error('Auto-DNS not configured — cannot auto-repair SPF');
     }
     const zoneId = await this.dnsProvider.getZoneId(domain.domain);
     if (!zoneId) throw new Error(`No zone for ${domain.domain}`);
 
-    const existing = await this.dnsProvider.listRecords({ zoneId, name: domain.domain, type: 'TXT' });
-    await Promise.all(existing.map(r => this.dnsProvider.deleteRecord({ zoneId, recordId: r.id })));
+    const existing = await this.dnsProvider.listRecords({
+      zoneId,
+      name: domain.domain,
+      type: 'TXT',
+    });
+    await Promise.all(
+      existing.map((r) =>
+        this.dnsProvider.deleteRecord({ zoneId, recordId: r.id }),
+      ),
+    );
 
     await this.dnsProvider.createRecord({
-      zoneId, type: 'TXT', name: domain.domain,
-      content: `v=spf1 mx include:${domain.domain} ~all`, ttl: 300,
+      zoneId,
+      type: 'TXT',
+      name: domain.domain,
+      content: `v=spf1 mx include:${domain.domain} ~all`,
+      ttl: 300,
     });
     this.logger.log(`[repair] SPF record recreated for ${domain.domain}`);
   }
 
-  private async repairDmarcRecord(domain: { id: string; domain: string; dnsMode: string; dnsConnection: { provider: string } | null }) {
+  private async repairDmarcRecord(domain: {
+    id: string;
+    domain: string;
+    dnsMode: string;
+    dnsConnection: { provider: string } | null;
+  }) {
     if (domain.dnsMode !== 'cloudflare_auto' || !domain.dnsConnection) {
       throw new Error('Auto-DNS not configured — cannot auto-repair DMARC');
     }
     const zoneId = await this.dnsProvider.getZoneId(domain.domain);
     if (!zoneId) throw new Error(`No zone for ${domain.domain}`);
 
-    const existing = await this.dnsProvider.listRecords({ zoneId, name: `_dmarc.${domain.domain}`, type: 'TXT' });
-    await Promise.all(existing.map(r => this.dnsProvider.deleteRecord({ zoneId, recordId: r.id })));
+    const existing = await this.dnsProvider.listRecords({
+      zoneId,
+      name: `_dmarc.${domain.domain}`,
+      type: 'TXT',
+    });
+    await Promise.all(
+      existing.map((r) =>
+        this.dnsProvider.deleteRecord({ zoneId, recordId: r.id }),
+      ),
+    );
 
     await this.dnsProvider.createRecord({
-      zoneId, type: 'TXT', name: `_dmarc.${domain.domain}`,
-      content: `v=DMARC1; p=quarantine; rua=mailto:dmarc@${domain.domain}`, ttl: 300,
+      zoneId,
+      type: 'TXT',
+      name: `_dmarc.${domain.domain}`,
+      content: `v=DMARC1; p=quarantine; rua=mailto:dmarc@${domain.domain}`,
+      ttl: 300,
     });
     this.logger.log(`[repair] DMARC record recreated for ${domain.domain}`);
   }
@@ -298,17 +424,26 @@ export class DomainRepairExecutorService {
    * if it's missing or corrupted. Key regeneration requires explicit
    * rotation via the DKIM rotate endpoint (preserves receiver continuity).
    */
-  private async repairDkimRecord(domain: { id: string; domain: string; dnsMode: string; dnsConnection: { provider: string } | null }) {
+  private async repairDkimRecord(domain: {
+    id: string;
+    domain: string;
+    dnsMode: string;
+    dnsConnection: { provider: string } | null;
+  }) {
     if (domain.dnsMode !== 'cloudflare_auto' || !domain.dnsConnection) {
       throw new Error('Auto-DNS not configured — cannot auto-repair DKIM');
     }
 
     // Get the DNS record info from the existing key (NO regeneration)
-    const dkimDns = await this.emailKeyService.getDnsRecord(domain.id, 'default', domain.domain);
+    const dkimDns = await this.emailKeyService.getDnsRecord(
+      domain.id,
+      'default',
+      domain.domain,
+    );
     if (!dkimDns) {
       throw new Error(
         'No DKIM key found for this domain. Use the DKIM rotate endpoint to generate a new key — ' +
-        'auto-repair cannot create keys (would break DKIM continuity for existing mail receivers).',
+          'auto-repair cannot create keys (would break DKIM continuity for existing mail receivers).',
       );
     }
 
@@ -316,8 +451,16 @@ export class DomainRepairExecutorService {
     if (!zoneId) throw new Error(`No zone for ${domain.domain}`);
 
     // Delete any stale DKIM TXT records
-    const existing = await this.dnsProvider.listRecords({ zoneId, name: dkimDns.name, type: 'TXT' });
-    await Promise.all(existing.map(r => this.dnsProvider.deleteRecord({ zoneId, recordId: r.id })));
+    const existing = await this.dnsProvider.listRecords({
+      zoneId,
+      name: dkimDns.name,
+      type: 'TXT',
+    });
+    await Promise.all(
+      existing.map((r) =>
+        this.dnsProvider.deleteRecord({ zoneId, recordId: r.id }),
+      ),
+    );
 
     // Recreate using the existing public key
     await this.dnsProvider.createRecord({
@@ -327,16 +470,28 @@ export class DomainRepairExecutorService {
       content: dkimDns.content,
       ttl: 3600,
     });
-    this.logger.log(`[repair] DKIM record recreated for ${domain.domain} (using existing key)`);
+    this.logger.log(
+      `[repair] DKIM record recreated for ${domain.domain} (using existing key)`,
+    );
   }
 
   // ── Event helper ──────────────────────────────────────────────────────────
 
-  private async emit(domainId: string, projectId: string, type: string, payload: Record<string, unknown>) {
-    this.eventService.emit(type as any, projectId, { domainId, ...payload }, {
-      actorType: 'system',
-      resourceType: 'domain',
-      resourceId: domainId,
-    });
+  private async emit(
+    domainId: string,
+    projectId: string,
+    type: string,
+    payload: Record<string, unknown>,
+  ) {
+    this.eventService.emit(
+      type as any,
+      projectId,
+      { domainId, ...payload },
+      {
+        actorType: 'system',
+        resourceType: 'domain',
+        resourceId: domainId,
+      },
+    );
   }
 }
