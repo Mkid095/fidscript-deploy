@@ -79,6 +79,12 @@ export const ROUTE_INVENTORY: RouteEntry[] = [
     canonical: true,
     purpose: 'The installer password has to be changed.',
   },
+  {
+    path: '/invitations/accept',
+    level: 'auth',
+    canonical: true,
+    purpose: 'Accept an invitation into a project.',
+  },
 
   // ── The platform ──────────────────────────────────────────────────────────
   {
@@ -110,6 +116,92 @@ export const ROUTE_INVENTORY: RouteEntry[] = [
     level: 'platform',
     canonical: true,
     purpose: 'The keys that act as the operator.',
+  },
+
+  // ── The project ───────────────────────────────────────────────────────────
+  {
+    path: '/projects/[projectId]',
+    level: 'project',
+    canonical: true,
+    purpose: "The project's front door — it always opens on the overview.",
+  },
+  {
+    path: '/projects/[projectId]/overview',
+    level: 'project',
+    canonical: true,
+    purpose: 'What this project is, what it has, and what to do next.',
+  },
+  {
+    path: '/projects/[projectId]/members',
+    level: 'project',
+    canonical: true,
+    purpose: 'Who is in the project, and the way to bring somebody in.',
+  },
+  {
+    path: '/projects/[projectId]/activity',
+    level: 'project',
+    canonical: true,
+    purpose: 'Everything that has happened in the project.',
+  },
+  {
+    path: '/projects/[projectId]/backend',
+    level: 'project',
+    canonical: true,
+    purpose: "The project's backend, and where its console is.",
+  },
+  {
+    path: '/projects/[projectId]/connect',
+    level: 'project',
+    canonical: true,
+    purpose: 'What an application needs to talk to this project.',
+  },
+  {
+    path: '/projects/[projectId]/deployments',
+    level: 'project',
+    canonical: true,
+    purpose: 'The deployments of the project.',
+  },
+  {
+    path: '/projects/[projectId]/deployments/new',
+    level: 'project',
+    canonical: true,
+    purpose: 'From a repository to a running application.',
+  },
+  {
+    path: '/projects/[projectId]/domains',
+    level: 'project',
+    canonical: true,
+    purpose: 'Where the project answers.',
+  },
+  {
+    path: '/projects/[projectId]/functions',
+    level: 'project',
+    canonical: true,
+    purpose: 'The code the platform runs for the project.',
+  },
+  {
+    path: '/projects/[projectId]/databases',
+    level: 'project',
+    canonical: true,
+    purpose: 'The databases the project has.',
+  },
+  {
+    path: '/projects/[projectId]/monitoring',
+    level: 'project',
+    canonical: true,
+    purpose: 'What the platform is watching in the project.',
+  },
+  {
+    path: '/projects/[projectId]/logs',
+    level: 'project',
+    canonical: true,
+    purpose: 'What the project has written down.',
+  },
+  {
+    path: '/projects/[projectId]/settings',
+    level: 'project',
+    canonical: true,
+    purpose: 'What this project is, and everything about it.',
   },
 ];
 

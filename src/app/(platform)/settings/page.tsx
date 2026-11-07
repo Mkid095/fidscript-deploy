@@ -2,8 +2,7 @@ import Link from 'next/link';
 
 import { mfaStatus, sessions, sessionUser } from '@/lib/api/platform';
 import { Card, PageHeader, SectionHeader } from '@/components/ui/card';
-import { Badge, ErrorState } from '@/components/ui/feedback';
-import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/feedback';
 import { SettingsNav } from '@/components/platform/settings-nav';
 import { DefinitionRow } from '@/components/ui/input';
 
