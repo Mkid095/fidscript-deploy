@@ -3,6 +3,7 @@ import { redirect } from 'next/navigation';
 import { getProject, getProjectResources } from '@/lib/api/project';
 import { buildProjectMenu, type ProjectRole } from '@/lib/project/menu';
 import { ProjectSidebar } from '@/components/project/project-sidebar';
+import { ResponsiveSidebar } from '@/components/shell/responsive-sidebar';
 
 /**
  * The project console.
@@ -58,11 +59,13 @@ export default async function ProjectLayout({
 
   return (
     <div className="flex h-screen overflow-hidden bg-canvas">
-      <ProjectSidebar
-        projectName={project.name}
-        projectStatus={project.status}
-        items={items}
-      />
+      <ResponsiveSidebar>
+        <ProjectSidebar
+          projectName={project.name}
+          projectStatus={project.status}
+          items={items}
+        />
+      </ResponsiveSidebar>
       <div className="flex min-w-0 flex-1 flex-col overflow-hidden">
         <main className="scroll-area flex-1 overflow-y-auto">{children}</main>
       </div>

@@ -4,6 +4,7 @@ import { headers } from 'next/headers';
 import { sessionUser } from '@/lib/api/platform';
 import { listProjects } from '@/lib/api/projects';
 import { PlatformSidebar } from '@/components/platform/platform-sidebar';
+import { ResponsiveSidebar } from '@/components/shell/responsive-sidebar';
 
 /**
  * The platform's shell.
@@ -42,8 +43,12 @@ export default async function PlatformLayout({
 
   return (
     <div className="flex h-screen overflow-hidden bg-canvas">
-      <PlatformSidebar name={user.name} email={user.email} />
-      <main className="scroll-area min-w-0 flex-1 overflow-y-auto">{children}</main>
+      <ResponsiveSidebar>
+        <PlatformSidebar name={user.name} email={user.email} />
+      </ResponsiveSidebar>
+      <main className="scroll-area min-w-0 flex-1 overflow-y-auto">
+        {children}
+      </main>
     </div>
   );
 }

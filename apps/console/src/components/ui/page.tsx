@@ -57,7 +57,10 @@ export function Page({
   return (
     <>
       <div className="sticky top-0 z-20 border-b border-rail bg-surface/95 backdrop-blur supports-[backdrop-filter]:bg-surface/80">
-        <div className={`mx-auto w-full ${max} px-4 py-3.5 sm:px-6`}>
+        {/* The left padding makes room for the shell's menu button on a
+            small screen; on a wide one the sidebar is back and it is not
+            there. */}
+        <div className={`mx-auto w-full ${max} py-3.5 pl-16 pr-4 lg:px-6`}>
           <PageHeader
             title={title}
             description={description}
