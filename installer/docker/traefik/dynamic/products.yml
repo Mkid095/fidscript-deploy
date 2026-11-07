@@ -75,6 +75,31 @@ http:
       entryPoints: [websecure]
       tls: { certResolver: letsencrypt-dns }
 
+    # ── The observability stack ─────────────────────────────────────────────
+    #
+    # Prometheus and Grafana are on hosts of their own, and the platform's
+    # own routing swallowed them: the wildcard that sends every two-level
+    # subdomain to the API was longer than these rules, so
+    # prometheus.fidscript.com answered with the API's 404.
+    observability-prometheus:
+      rule: 'Host(`prometheus.fidscript.com`)'
+      service: observability-prometheus
+      priority: 100
+      entryPoints: [websecure]
+      tls: { certResolver: letsencrypt-dns }
+    observability-grafana:
+      rule: 'Host(`grafana.fidscript.com`)'
+      service: observability-grafana
+      priority: 100
+      entryPoints: [websecure]
+      tls: { certResolver: letsencrypt-dns }
+    observability-loki:
+      rule: 'Host(`loki.fidscript.com`)'
+      service: observability-loki
+      priority: 100
+      entryPoints: [websecure]
+      tls: { certResolver: letsencrypt-dns }
+
     # ── npm registry ────────────────────────────────────────────────────────
     npm-registry:
       rule: 'Host(`registry.fidscript.com`)'
@@ -165,3 +190,15 @@ http:
       loadBalancer:
         servers:
           - url: "http://host.docker.internal:4877"
+    observability-prometheus:
+      loadBalancer:
+        servers:
+          - url: "http://fidscript_prometheus:9090"
+    observability-grafana:
+      loadBalancer:
+        servers:
+          - url: "http://fidscript_grafana:3000"
+    observability-loki:
+      loadBalancer:
+        servers:
+          - url: "http://fidscript_loki:3100"
