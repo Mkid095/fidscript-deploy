@@ -19,6 +19,23 @@ is its own project with its own history. What lives here is the platform's
 integration with it — the part that makes it part of FIDScript rather than a
 program that happens to be running.
 
+## Where each application's source is
+
+The applications are separate projects with their own histories. This is
+where each of them lives on this machine, and where it came from.
+
+| Application | Where the source is | What it is |
+|---|---|---|
+| **Instant BaaS** | `/home/ken/projects/core/instant` — `git@github.com:Mkid095/instant.git`, branch `main` | The fork the platform runs: the Instant server, the console, the Kotlin SDK and the Maven repository |
+| **Evolution (WhatsApp)** | The WhatsApp platform's own repository — `next-mavens-evolution-api` | The Evolution API and the console that sits in front of it |
+| **Stalwart** | [stalwartlabs/stalwart](https://github.com/stalwartlabs/stalwart) | The mail server, run from its image — the platform wraps it and never changes it |
+| **Verdaccio** | [verdaccio/verdaccio](https://github.com/verdaccio/verdaccio) | The private registry, run from its image |
+| **Observability** | `applications/observability/` — here | Prometheus, Grafana, Loki, cAdvisor and the Postgres exporter, with the platform's own configuration |
+| **App runtime** | The registry image the platform runs | Where the built application images are kept |
+
+The platform's own code — the API, the console, the CLI, the MCP server
+and the packages — is in the repository beside this directory.
+
 ---
 
 # FIDScript add-ons

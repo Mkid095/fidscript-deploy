@@ -163,6 +163,16 @@ export async function getMachineState(): Promise<{
 }
 
 /**
+ * A log line, without the colour codes.
+ *
+ * The services write their logs with ANSI colours — the escape sequences
+ * are noise in a page, and they make the line unreadable.
+ */
+function plain(line: string): string {
+  return line.replace(/\u001b\[[0-9;]*m/g, '');
+}
+
+/**
  * What a project has been doing, over the last day.
  *
  * The count of what its containers wrote, an hour at a time — the honest
@@ -240,7 +250,7 @@ export async function getProjectLogs(
     return (body.data?.result ?? []).flatMap((entry) =>
       (entry.values ?? []).map(([at, line]) => ({
         at,
-        line,
+        line: plain(line),
         source: entry.stream?.service_name ?? entry.stream?.container ?? 'the project',
       })),
     );
@@ -298,7 +308,7 @@ export async function getSystemLogs(limit = 60): Promise<LogLine[]> {
     return (body.data?.result ?? []).flatMap((entry) =>
       (entry.values ?? []).map(([at, line]) => ({
         at,
-        line,
+        line: plain(line),
         source: entry.stream?.service_name ?? entry.stream?.container ?? 'the platform',
       })),
     );
