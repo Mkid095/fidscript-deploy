@@ -1,5 +1,5 @@
 import { getProjectSummaries } from '@/lib/api/projects';
-import { Card, PageHeader } from '@/components/ui/card';
+import { Card } from '@/components/ui/card';
 import { Page } from '@/components/ui/page';
 import { EmptyState } from '@/components/ui/feedback';
 import { ProjectCard } from '@/components/project/project-card';
@@ -18,13 +18,12 @@ export default async function ProjectsPage() {
   const projects = await getProjectSummaries();
 
   return (
-    <Page width="wide">
-      <PageHeader
-        title="Projects"
-        description="A project is a directory for one application — when you have a new one, make a project and name it after it."
-        actions={<NewProjectDialog />}
-      />
-
+    <Page
+      width="wide"
+      title="Projects"
+      description="A project is a directory for one application — when you have a new one, make a project and name it after it."
+      actions={<NewProjectDialog />}
+    >
       {projects.length === 0 ? (
         <Card>
           <EmptyState

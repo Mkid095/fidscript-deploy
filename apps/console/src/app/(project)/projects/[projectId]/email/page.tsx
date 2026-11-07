@@ -12,7 +12,7 @@ import {
   getEmailStatus,
   getEmailWebhooks,
 } from '@/lib/api/email';
-import { Card, PageHeader, SectionHeader } from '@/components/ui/card';
+import { Card, SectionHeader } from '@/components/ui/card';
 import { Page } from '@/components/ui/page';
 import { EmailStatusCard } from '@/components/project/email-status-card';
 import { EmailDomainsSection } from '@/components/project/email-domains-section';
@@ -68,17 +68,16 @@ export default async function ProjectEmailPage({
   const senders = mailboxes
     .filter((mailbox) => mailbox.isActive)
     .map((mailbox) => {
-      const domain = domains.find((candidate) => candidate.id === mailbox.domainId);
-      return domain ? `${mailbox.localPart}@${domain.domain}` : mailbox.localPart;
+      const domain = domains.find(
+        (candidate) => candidate.id === mailbox.domainId,
+      );
+      return domain
+        ? `${mailbox.localPart}@${domain.domain}`
+        : mailbox.localPart;
     });
 
   return (
-    <Page>
-      <PageHeader
-        title="Email"
-        description="Send and receive mail for this project."
-      />
-
+    <Page title="Email" description="Send and receive mail for this project.">
       <section>
         <SectionHeader
           title="How it stands"
@@ -100,21 +99,32 @@ export default async function ProjectEmailPage({
       </section>
 
       <section>
-        <SectionHeader title="Mailboxes" description="The addresses the mail arrives at." />
+        <SectionHeader
+          title="Mailboxes"
+          description="The addresses the mail arrives at."
+        />
         <EmailMailboxesSection
           projectId={project.id}
           mailboxes={mailboxes.map((mailbox) => ({
             ...mailbox,
             domain:
-              domains.find((candidate) => candidate.id === mailbox.domainId)?.domain ?? '',
+              domains.find((candidate) => candidate.id === mailbox.domainId)
+                ?.domain ?? '',
           }))}
           domains={domainNames}
         />
       </section>
 
       <section>
-        <SectionHeader title="Aliases" description="Addresses that forward somewhere else." />
-        <EmailAliasesSection projectId={project.id} aliases={aliases} domains={domainNames} />
+        <SectionHeader
+          title="Aliases"
+          description="Addresses that forward somewhere else."
+        />
+        <EmailAliasesSection
+          projectId={project.id}
+          aliases={aliases}
+          domains={domainNames}
+        />
       </section>
 
       <section>
@@ -157,7 +167,10 @@ export default async function ProjectEmailPage({
       </section>
 
       <section>
-        <SectionHeader title="Messages" description="What left, and what arrived." />
+        <SectionHeader
+          title="Messages"
+          description="What left, and what arrived."
+        />
         <EmailLogsSection messages={messages} />
       </section>
     </Page>

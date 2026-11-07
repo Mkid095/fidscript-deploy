@@ -3,7 +3,7 @@ import { redirect } from 'next/navigation';
 import { getProject } from '@/lib/api/project';
 import { getWhatsappState } from '@/lib/api/whatsapp';
 import { applications } from '@/lib/api/platform';
-import { Card, PageHeader, SectionHeader } from '@/components/ui/card';
+import { Card, SectionHeader } from '@/components/ui/card';
 import { Page } from '@/components/ui/page';
 import { WhatsappPanel } from '@/components/project/whatsapp-panel';
 
@@ -30,15 +30,15 @@ export default async function ProjectWhatsAppPage({
     applications().catch(() => []),
   ]);
 
-  const whatsapp = catalogue.find((application) => application.id === 'whatsapp');
+  const whatsapp = catalogue.find(
+    (application) => application.id === 'whatsapp',
+  );
 
   return (
-    <Page>
-      <PageHeader
-        title="WhatsApp"
-        description="The messaging side of this project — the instances it holds, and how they stand."
-      />
-
+    <Page
+      title="WhatsApp"
+      description="The messaging side of this project — the instances it holds, and how they stand."
+    >
       <section>
         <SectionHeader
           title="The connection"
@@ -59,8 +59,9 @@ export default async function ProjectWhatsAppPage({
         <Card className="p-4">
           <div className="flex flex-wrap items-center justify-between gap-3">
             <p className="text-sm text-text-muted">
-              The channels, the tokens and the webhooks live in the WhatsApp platform&apos;s own
-              console. Nothing is duplicated here — this screen is the project&apos;s view of them.
+              The channels, the tokens and the webhooks live in the WhatsApp
+              platform&apos;s own console. Nothing is duplicated here — this
+              screen is the project&apos;s view of them.
             </p>
             {whatsapp?.url ? (
               <a

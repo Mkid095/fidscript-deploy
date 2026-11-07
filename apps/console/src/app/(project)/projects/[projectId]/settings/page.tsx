@@ -7,7 +7,7 @@ import {
   getProjectMembers,
   getProjectResources,
 } from '@/lib/api/project';
-import { Card, PageHeader, SectionHeader } from '@/components/ui/card';
+import { Card, SectionHeader } from '@/components/ui/card';
 import { DefinitionRow } from '@/components/ui/input';
 import { Page } from '@/components/ui/page';
 import { ErrorState } from '@/components/ui/feedback';
@@ -39,7 +39,7 @@ export default async function ProjectSettingsPage({
   const role = (project.role ?? 'viewer').toLowerCase();
   if (role !== 'owner' && role !== 'admin') {
     return (
-      <Page>
+      <Page title="Settings" description={project.name}>
         <ErrorState
           title="This is not your settings to change"
           message="Only the owner and the admins of a project can change it."
@@ -62,8 +62,7 @@ export default async function ProjectSettingsPage({
   ]);
 
   return (
-    <Page>
-      <PageHeader title="Settings" description={project.name} />
+    <Page title="Settings" description={project.name}>
 
       {project.organization ? (
         <section>

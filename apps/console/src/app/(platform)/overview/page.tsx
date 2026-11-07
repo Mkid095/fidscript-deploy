@@ -1,7 +1,7 @@
 import Link from 'next/link';
 
 import { applications, platformOverview } from '@/lib/api/platform';
-import { Card, PageHeader, SectionHeader } from '@/components/ui/card';
+import { Card, SectionHeader } from '@/components/ui/card';
 import { Page, PageColumns } from '@/components/ui/page';
 import { Badge, EmptyState, ErrorState } from '@/components/ui/feedback';
 import { Button } from '@/components/ui/button';
@@ -29,26 +29,31 @@ export default async function OverviewPage() {
   ]);
 
   const containers = system?.containers ?? [];
-  const memoryUsed = containers.reduce((total, entry) => total + entry.memoryBytes, 0);
-  const cpuUsed = containers.reduce((total, entry) => total + entry.cpuPercent, 0);
+  const memoryUsed = containers.reduce(
+    (total, entry) => total + entry.memoryBytes,
+    0,
+  );
+  const cpuUsed = containers.reduce(
+    (total, entry) => total + entry.cpuPercent,
+    0,
+  );
 
   const installed = apps.filter((app) => app.installed);
   const hasProjects = (overview?.projects.total ?? 0) > 0;
 
   return (
-    <Page width="wide">
-      <PageHeader
-        title="Overview"
-        description="Your projects, and what this platform is running."
-        actions={
-          <Link href="/projects">
-            <Button variant="primary" size="sm">
-              New project
-            </Button>
-          </Link>
-        }
-      />
-
+    <Page
+      width="wide"
+      title="Overview"
+      description="Your projects, and what this platform is running."
+      actions={
+        <Link href="/projects">
+          <Button variant="primary" size="sm">
+            New project
+          </Button>
+        </Link>
+      }
+    >
       {!overview ? (
         <ErrorState
           title="The platform did not answer"
@@ -82,7 +87,9 @@ export default async function OverviewPage() {
                       {installed.map((app) => (
                         <li key={app.id} className="flex items-center gap-2">
                           <span className="size-1.5 shrink-0 rounded-full bg-success" />
-                          <span className="truncate text-sm text-text">{app.title}</span>
+                          <span className="truncate text-sm text-text">
+                            {app.title}
+                          </span>
                         </li>
                       ))}
                     </ul>
@@ -118,8 +125,9 @@ export default async function OverviewPage() {
                     format={(value) => `${(value / 1024 ** 3).toFixed(1)} GB`}
                   />
                   <p className="text-xs text-text-dim">
-                    {cpuUsed.toFixed(0)}% of {machine.cpuCores.toFixed(0)} cores ·{' '}
-                    {containers.length} container{containers.length === 1 ? '' : 's'}
+                    {cpuUsed.toFixed(0)}% of {machine.cpuCores.toFixed(0)} cores
+                    · {containers.length} container
+                    {containers.length === 1 ? '' : 's'}
                   </p>
                 </Card>
               </section>
@@ -132,8 +140,8 @@ export default async function OverviewPage() {
                     {overview.alerts.firing > 0 ? (
                       <div className="flex items-center justify-between gap-3 px-4 py-3">
                         <span className="text-sm text-text">
-                          {overview.alerts.firing} alert{overview.alerts.firing === 1 ? '' : 's'}{' '}
-                          firing
+                          {overview.alerts.firing} alert
+                          {overview.alerts.firing === 1 ? '' : 's'} firing
                         </span>
                         <Badge tone="warning">Across your projects</Badge>
                       </div>
@@ -153,7 +161,10 @@ export default async function OverviewPage() {
 
               {/* What has happened lately. */}
               <section>
-                <SectionHeader title="Lately" description="What has happened here." />
+                <SectionHeader
+                  title="Lately"
+                  description="What has happened here."
+                />
                 <Card>
                   {overview.activity.length === 0 ? (
                     <EmptyState
@@ -164,9 +175,12 @@ export default async function OverviewPage() {
                     <ul className="divide-y divide-rail">
                       {overview.activity.slice(0, 6).map((entry) => (
                         <li key={entry.id} className="px-4 py-2.5">
-                          <p className="text-sm text-text">{sayEvent(entry.eventType)}</p>
+                          <p className="text-sm text-text">
+                            {sayEvent(entry.eventType)}
+                          </p>
                           <p className="mt-0.5 truncate text-xs text-text-dim">
-                            {entry.projectName ?? 'The platform'} · {sayWhen(entry.timestamp)}
+                            {entry.projectName ?? 'The platform'} ·{' '}
+                            {sayWhen(entry.timestamp)}
                           </p>
                         </li>
                       ))}
@@ -180,11 +194,13 @@ export default async function OverviewPage() {
           {/* The next action. One thing, the highest-value one. */}
           {!hasProjects ? (
             <Card className="border-accent/40 bg-accent/5 p-6">
-              <h2 className="text-sm font-semibold text-text">Create your first project</h2>
+              <h2 className="text-sm font-semibold text-text">
+                Create your first project
+              </h2>
               <p className="mt-1 max-w-md text-sm leading-relaxed text-text-muted">
-                A project holds the applications, the data and the domains for one thing you are
-                building. You will be asked what it is for: a backend, something you deploy, or
-                both.
+                A project holds the applications, the data and the domains for
+                one thing you are building. You will be asked what it is for: a
+                backend, something you deploy, or both.
               </p>
               <Link href="/projects" className="mt-4 inline-block">
                 <Button variant="primary" size="sm">
@@ -229,7 +245,9 @@ export default async function OverviewPage() {
                       </span>
                       <StatusBadge status={project.status} />
                     </div>
-                    <p className="mt-1 truncate font-mono text-xs text-text-dim">{project.slug}</p>
+                    <p className="mt-1 truncate font-mono text-xs text-text-dim">
+                      {project.slug}
+                    </p>
                   </Link>
                 ))}
               </div>
@@ -245,11 +263,15 @@ export default async function OverviewPage() {
             <Card className="divide-y divide-rail">
               <div className="flex items-center justify-between gap-3 px-4 py-3">
                 <span className="text-sm text-text">Running</span>
-                <span className="text-sm text-text">{overview.deployments.running}</span>
+                <span className="text-sm text-text">
+                  {overview.deployments.running}
+                </span>
               </div>
               <div className="flex items-center justify-between gap-3 px-4 py-3">
                 <span className="text-sm text-text">Failed</span>
-                <span className="text-sm text-text">{overview.deployments.failed}</span>
+                <span className="text-sm text-text">
+                  {overview.deployments.failed}
+                </span>
               </div>
               {overview.deployments.recent.length === 0 ? (
                 <p className="px-4 py-3 text-xs text-text-dim">
@@ -262,7 +284,9 @@ export default async function OverviewPage() {
                     className="flex items-center justify-between gap-3 px-4 py-3"
                   >
                     <div className="min-w-0">
-                      <p className="truncate text-sm text-text">{deployment.projectName}</p>
+                      <p className="truncate text-sm text-text">
+                        {deployment.projectName}
+                      </p>
                       <p className="mt-0.5 truncate text-xs text-text-dim">
                         {sayWhen(deployment.createdAt)}
                       </p>

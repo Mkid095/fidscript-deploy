@@ -12,23 +12,28 @@ export class DomainCloudflareAutoService {
   ) {}
 
   async cloudflareAutoSetup(
+    projectId: string,
     domainId: string,
     domain: string,
-    deploymentUrl: string,
     isApex: boolean,
   ): Promise<void> {
     try {
+      // The project's OWN Cloudflare account — the one the person connected
+      // with. The platform's token is a last resort, and a person who has
+      // connected an account must not have their records written with
+      // somebody else's token.
+      const provider = (await this.domainDnsService.getProjectProvider(projectId)) ?? this.dnsProvider;
+
+      // The host the project's application is published on — the record
+      // points there, whatever the domain is called.
+      const targetHost = await this.domainDnsService.targetHost(projectId);
+
       await this.domainDnsService.cloudflareAutoSetup(
         domainId,
         domain,
-        deploymentUrl,
+        targetHost,
         isApex,
-        async (d) => {
-          const zoneId = await this.dnsProvider.getZoneId(d);
-          if (!zoneId) throw new Error(`Cloudflare zone for ${d} not found`);
-          return zoneId;
-        },
-        (opts) => this.dnsProvider.createRecord(opts),
+        provider,
       );
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);

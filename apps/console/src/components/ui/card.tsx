@@ -12,7 +12,10 @@ export function Card({
   ...rest
 }: HTMLAttributes<HTMLDivElement> & { children: ReactNode }) {
   return (
-    <div className={`rounded-lg border border-rail bg-surface ${className}`} {...rest}>
+    <div
+      className={`rounded-lg border border-rail bg-surface ${className}`}
+      {...rest}
+    >
       {children}
     </div>
   );
@@ -32,6 +35,7 @@ export function PageHeader({
   description,
   actions,
   eyebrow,
+  compact = false,
   className = '',
 }: {
   title: string;
@@ -39,18 +43,36 @@ export function PageHeader({
   actions?: ReactNode;
   /** A small line above the title — the level, or the state. */
   eyebrow?: ReactNode;
+  /** The bar's own size — the title is smaller and the line is one line. */
+  compact?: boolean;
   className?: string;
 }) {
   return (
-    <div className={`flex flex-wrap items-start justify-between gap-x-6 gap-y-4 ${className}`}>
+    <div
+      className={`flex flex-wrap items-start justify-between gap-x-6 gap-y-4 ${className}`}
+    >
       <div className="min-w-0">
         {eyebrow ? <div className="mb-1.5">{eyebrow}</div> : null}
-        <h1 className="truncate text-xl font-semibold tracking-tight text-text">{title}</h1>
+        <h1
+          className={`truncate font-semibold tracking-tight text-text ${
+            compact ? 'text-base' : 'text-xl'
+          }`}
+        >
+          {title}
+        </h1>
         {description ? (
-          <p className="mt-1 max-w-2xl text-sm leading-relaxed text-text-muted">{description}</p>
+          <p
+            className={`mt-1 max-w-2xl leading-relaxed text-text-muted ${
+              compact ? 'truncate text-xs' : 'text-sm'
+            }`}
+          >
+            {description}
+          </p>
         ) : null}
       </div>
-      {actions ? <div className="flex flex-shrink-0 items-center gap-2">{actions}</div> : null}
+      {actions ? (
+        <div className="flex flex-shrink-0 items-center gap-2">{actions}</div>
+      ) : null}
     </div>
   );
 }
@@ -70,10 +92,14 @@ export function SectionHeader({
       <div className="min-w-0">
         <h2 className="text-sm font-semibold text-text">{title}</h2>
         {description ? (
-          <p className="mt-0.5 max-w-2xl text-xs leading-relaxed text-text-dim">{description}</p>
+          <p className="mt-0.5 max-w-2xl text-xs leading-relaxed text-text-dim">
+            {description}
+          </p>
         ) : null}
       </div>
-      {actions ? <div className="flex flex-shrink-0 items-center gap-2">{actions}</div> : null}
+      {actions ? (
+        <div className="flex flex-shrink-0 items-center gap-2">{actions}</div>
+      ) : null}
     </div>
   );
 }

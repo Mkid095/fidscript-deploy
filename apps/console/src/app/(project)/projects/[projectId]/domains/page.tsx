@@ -3,7 +3,7 @@ import { redirect } from 'next/navigation';
 import { getProject } from '@/lib/api/project';
 import { getDnsConnection, getDnsRecords } from '@/lib/api/domains';
 import { getDomains } from '@/lib/api/resources';
-import { Card, PageHeader, SectionHeader } from '@/components/ui/card';
+import { Card, SectionHeader } from '@/components/ui/card';
 import { Page } from '@/components/ui/page';
 import { EmptyState } from '@/components/ui/feedback';
 import { DnsConnectionCard } from '@/components/project/dns-connection-card';
@@ -38,18 +38,18 @@ export default async function ProjectDomainsPage({
   ]);
 
   const records = await Promise.all(
-    domains.map((domain) => getDnsRecords(project.id, domain.id).catch(() => null)),
+    domains.map((domain) =>
+      getDnsRecords(project.id, domain.id).catch(() => null),
+    ),
   );
 
   const canWrite = connection !== null;
 
   return (
-    <Page>
-      <PageHeader
-        title="Domains"
-        description="Where this project answers, and the DNS that makes it answer."
-      />
-
+    <Page
+      title="Domains"
+      description="Where this project answers, and the DNS that makes it answer."
+    >
       <section>
         <SectionHeader
           title="Your DNS account"

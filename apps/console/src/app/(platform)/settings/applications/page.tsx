@@ -1,7 +1,7 @@
 import Link from 'next/link';
 
 import { applications } from '@/lib/api/platform';
-import { Card, PageHeader, SectionHeader } from '@/components/ui/card';
+import { Card, SectionHeader } from '@/components/ui/card';
 import { Page } from '@/components/ui/page';
 import { Badge, EmptyState, ErrorState } from '@/components/ui/feedback';
 import { SettingsNav } from '@/components/platform/settings-nav';
@@ -24,11 +24,10 @@ export default async function ApplicationsSettingsPage() {
   const apps = await applications().catch(() => null);
 
   return (
-    <Page>
-      <PageHeader
-        title="Applications"
-        description="What this platform has, and whether it is healthy."
-      />
+    <Page
+      title="Applications"
+      description="What this platform has, and whether it is healthy."
+    >
       <SettingsNav />
 
       {!apps ? (
@@ -38,7 +37,10 @@ export default async function ApplicationsSettingsPage() {
         />
       ) : apps.length === 0 ? (
         <Card>
-          <EmptyState title="No applications" body="The platform reports none." />
+          <EmptyState
+            title="No applications"
+            body="The platform reports none."
+          />
         </Card>
       ) : (
         <section>
@@ -47,12 +49,16 @@ export default async function ApplicationsSettingsPage() {
             {apps.map((app) => (
               <Card key={app.id} className="p-4">
                 <div className="flex items-center justify-between gap-2">
-                  <span className="truncate text-sm font-medium text-text">{app.title}</span>
+                  <span className="truncate text-sm font-medium text-text">
+                    {app.title}
+                  </span>
                   <Badge tone={app.installed ? 'success' : 'neutral'}>
                     {app.installed ? 'Installed' : 'Not installed'}
                   </Badge>
                 </div>
-                <p className="mt-1.5 text-xs leading-relaxed text-text-muted">{app.summary}</p>
+                <p className="mt-1.5 text-xs leading-relaxed text-text-muted">
+                  {app.summary}
+                </p>
                 <div className="mt-3 flex flex-wrap items-center gap-3">
                   {IN_THE_CONSOLE.includes(app.id) ? (
                     <>
@@ -81,7 +87,9 @@ export default async function ApplicationsSettingsPage() {
                       Open the console
                     </a>
                   ) : app.installed ? (
-                    <span className="text-xs text-text-dim">No console — health only</span>
+                    <span className="text-xs text-text-dim">
+                      No console — health only
+                    </span>
                   ) : null}
                   {app.requires.length > 0 ? (
                     <span className="text-xs text-text-dim">

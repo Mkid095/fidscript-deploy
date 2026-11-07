@@ -3,7 +3,7 @@ import { redirect } from 'next/navigation';
 import { Page } from '@/components/ui/page';
 
 import { getProject } from '@/lib/api/project';
-import { Card, PageHeader } from '@/components/ui/card';
+import { Card } from '@/components/ui/card';
 import { DeploymentWizard } from '@/components/project/deployment-wizard';
 
 export const metadata = { title: 'New deployment' };
@@ -28,11 +28,10 @@ export default async function NewDeploymentPage({
   }
 
   return (
-    <Page>
-      <PageHeader
-        title="New deployment"
-        description={`Deploying into ${project.name}.`}
-      />
+    <Page
+      title="New deployment"
+      description={`Deploying into ${project.name}.`}
+    >
       <Card className="p-4">
         <DeploymentWizard projectId={project.id} projectSlug={project.slug} />
       </Card>

@@ -6,7 +6,7 @@ import { getAlertRules, getNotificationChannels } from '@/lib/api/monitoring';
 import { AlertRulesPanel } from '@/components/project/alert-rules-panel';
 import { NotificationChannelsPanel } from '@/components/project/notification-channels-panel';
 import { applications } from '@/lib/api/platform';
-import { Card, PageHeader, SectionHeader } from '@/components/ui/card';
+import { Card, SectionHeader } from '@/components/ui/card';
 import { Page } from '@/components/ui/page';
 import { Badge, EmptyState } from '@/components/ui/feedback';
 import { Button } from '@/components/ui/button';
@@ -48,25 +48,31 @@ export default async function ProjectMonitoringPage({
       .get<{ alerts: Alert[] }>(`/projects/${project.id}/monitoring/alerts`)
       .catch(() => ({ alerts: [] as Alert[] })),
     api
-      .get<{ activeAlerts: number; totalMetrics: number; notificationChannels: number }>(
-        `/projects/${project.id}/monitoring/metrics/stats`,
-      )
+      .get<{
+        activeAlerts: number;
+        totalMetrics: number;
+        notificationChannels: number;
+      }>(`/projects/${project.id}/monitoring/metrics/stats`)
       .catch(() => null),
     getAlertRules(project.id),
     getNotificationChannels(project.id),
   ]);
 
   return (
-    <Page>
-      <PageHeader title="Monitoring" description="What the platform is watching in this project." />
-
+    <Page
+      title="Monitoring"
+      description="What the platform is watching in this project."
+    >
       {stats ? (
         <section>
           <SectionHeader title="The numbers" />
           <Card className="divide-y divide-rail">
             <Row term="Alerts firing" value={stats.activeAlerts} />
             <Row term="Metrics" value={stats.totalMetrics} />
-            <Row term="Notification channels" value={stats.notificationChannels} />
+            <Row
+              term="Notification channels"
+              value={stats.notificationChannels}
+            />
           </Card>
         </section>
       ) : null}
@@ -79,7 +85,8 @@ export default async function ProjectMonitoringPage({
         <Card className="p-4">
           <div className="flex flex-wrap items-center justify-between gap-3">
             <p className="text-sm text-text-muted">
-              Metrics, logs and container stats, collected from everything this project runs.
+              Metrics, logs and container stats, collected from everything this
+              project runs.
             </p>
             {grafanaUrl ? (
               <a href={grafanaUrl} target="_blank" rel="noreferrer">
@@ -97,7 +104,11 @@ export default async function ProjectMonitoringPage({
           title="The rules"
           description="When this project speaks up, and how loudly."
         />
-        <AlertRulesPanel projectId={project.id} rules={rules} channels={channels} />
+        <AlertRulesPanel
+          projectId={project.id}
+          rules={rules}
+          channels={channels}
+        />
       </section>
 
       <section>
@@ -119,10 +130,19 @@ export default async function ProjectMonitoringPage({
           ) : (
             <ul className="divide-y divide-rail">
               {alerts.alerts.map((alert) => (
-                <li key={alert.id} className="flex flex-wrap items-center justify-between gap-3 px-4 py-3">
-                  <p className="min-w-0 flex-1 text-sm text-text">{alert.message}</p>
+                <li
+                  key={alert.id}
+                  className="flex flex-wrap items-center justify-between gap-3 px-4 py-3"
+                >
+                  <p className="min-w-0 flex-1 text-sm text-text">
+                    {alert.message}
+                  </p>
                   <div className="flex items-center gap-2">
-                    <Badge tone={alert.severity === 'critical' ? 'danger' : 'warning'}>
+                    <Badge
+                      tone={
+                        alert.severity === 'critical' ? 'danger' : 'warning'
+                      }
+                    >
                       {alert.severity}
                     </Badge>
                     <Badge tone="neutral">{alert.status}</Badge>

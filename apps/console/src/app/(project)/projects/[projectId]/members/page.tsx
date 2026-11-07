@@ -1,7 +1,7 @@
 import { redirect } from 'next/navigation';
 
 import { getProject, getProjectMembers } from '@/lib/api/project';
-import { Card, PageHeader, SectionHeader } from '@/components/ui/card';
+import { Card, SectionHeader } from '@/components/ui/card';
 import { Page } from '@/components/ui/page';
 import { Badge, EmptyState, ErrorState } from '@/components/ui/feedback';
 import { ProjectInviteForm } from '@/components/project/project-invite-form';
@@ -29,12 +29,10 @@ export default async function ProjectMembersPage({
   const members = await getProjectMembers(project.id).catch(() => []);
 
   return (
-    <Page>
-      <PageHeader
-        title="Members"
-        description={`${members.length + 1} in this project, including the owner.`}
-      />
-
+    <Page
+      title="Members"
+      description={`${members.length + 1} in this project, including the owner.`}
+    >
       <section>
         <SectionHeader title="Who is here" />
         <Card>
@@ -46,13 +44,18 @@ export default async function ProjectMembersPage({
           ) : (
             <ul className="divide-y divide-rail">
               {members.map((member) => (
-                <li key={member.id} className="flex items-center justify-between gap-4 px-4 py-3">
+                <li
+                  key={member.id}
+                  className="flex items-center justify-between gap-4 px-4 py-3"
+                >
                   <div className="min-w-0">
                     <p className="truncate text-sm text-text">
                       {member.user.name ?? member.user.email}
                     </p>
                     {member.user.name ? (
-                      <p className="truncate text-xs text-text-dim">{member.user.email}</p>
+                      <p className="truncate text-xs text-text-dim">
+                        {member.user.email}
+                      </p>
                     ) : null}
                   </div>
                   <Badge tone={member.role === 'admin' ? 'success' : 'neutral'}>

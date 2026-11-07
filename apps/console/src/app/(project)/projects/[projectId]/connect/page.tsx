@@ -2,7 +2,7 @@ import Link from 'next/link';
 import { redirect } from 'next/navigation';
 
 import { getInstantConfig, getProject } from '@/lib/api/project';
-import { Card, PageHeader, SectionHeader } from '@/components/ui/card';
+import { Card, SectionHeader } from '@/components/ui/card';
 import { Page } from '@/components/ui/page';
 import { EmptyState } from '@/components/ui/feedback';
 import { Button } from '@/components/ui/button';
@@ -59,12 +59,10 @@ export default async function ProjectConnectPage({
   );
 
   return (
-    <Page>
-      <PageHeader
-        title="Connect an application"
-        description="What an application needs to talk to this project."
-      />
-
+    <Page
+      title="Connect an application"
+      description="What an application needs to talk to this project."
+    >
       {!config ? (
         <Card>
           <EmptyState

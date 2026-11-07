@@ -1,4 +1,4 @@
-import { Card, PageHeader, SectionHeader } from '@/components/ui/card';
+import { Card, SectionHeader } from '@/components/ui/card';
 import { Page } from '@/components/ui/page';
 import { Badge, EmptyState } from '@/components/ui/feedback';
 import {
@@ -33,23 +33,28 @@ export default async function SystemPage() {
   const grafanaUrl = domain ? `https://grafana.${domain}` : null;
   const containers = state?.containers ?? [];
 
-  const memoryUsed = containers.reduce((total, entry) => total + entry.memoryBytes, 0);
-  const cpuUsed = containers.reduce((total, entry) => total + entry.cpuPercent, 0);
+  const memoryUsed = containers.reduce(
+    (total, entry) => total + entry.memoryBytes,
+    0,
+  );
+  const cpuUsed = containers.reduce(
+    (total, entry) => total + entry.cpuPercent,
+    0,
+  );
 
   return (
-    <Page width="wide">
-      <PageHeader
-        title="System"
-        description="What this machine is running, and what each of it is using."
-        actions={
-          grafanaUrl ? (
-            <a href={grafanaUrl} target="_blank" rel="noreferrer">
-              <Badge tone="accent">Open in Grafana</Badge>
-            </a>
-          ) : null
-        }
-      />
-
+    <Page
+      width="wide"
+      title="System"
+      description="What this machine is running, and what each of it is using."
+      actions={
+        grafanaUrl ? (
+          <a href={grafanaUrl} target="_blank" rel="noreferrer">
+            <Badge tone="accent">Open in Grafana</Badge>
+          </a>
+        ) : null
+      }
+    >
       <section>
         <SectionHeader title="The machine" />
         <Card className="grid grid-cols-1 gap-6 p-4 sm:grid-cols-3">
@@ -73,7 +78,8 @@ export default async function SystemPage() {
               </span>
             </div>
             <p className="mt-1 text-[11px] text-text-dim">
-              {containers.length} container{containers.length === 1 ? '' : 's'} running
+              {containers.length} container{containers.length === 1 ? '' : 's'}{' '}
+              running
             </p>
           </div>
         </Card>
@@ -85,7 +91,10 @@ export default async function SystemPage() {
           description="What the machine itself has been using."
         />
         <Card className="p-4">
-          <AreaChart series={cpu} format={(value) => `${value.toFixed(2)} cores`} />
+          <AreaChart
+            series={cpu}
+            format={(value) => `${value.toFixed(2)} cores`}
+          />
         </Card>
       </section>
 
@@ -144,18 +153,27 @@ export default async function SystemPage() {
         />
         <Card>
           {containers.length === 0 ? (
-            <EmptyState title="Nothing is running" body="The platform reads the containers itself." />
+            <EmptyState
+              title="Nothing is running"
+              body="The platform reads the containers itself."
+            />
           ) : (
             <ul className="divide-y divide-rail">
               {containers.map((entry) => (
                 <li key={entry.name} className="px-4 py-3">
                   <div className="flex flex-wrap items-center justify-between gap-3">
                     <div className="min-w-0">
-                      <p className="truncate font-mono text-xs text-text">{entry.name}</p>
-                      <p className="truncate text-xs text-text-dim">{entry.image}</p>
+                      <p className="truncate font-mono text-xs text-text">
+                        {entry.name}
+                      </p>
+                      <p className="truncate text-xs text-text-dim">
+                        {entry.image}
+                      </p>
                     </div>
                     <div className="flex items-center gap-3">
-                      <span className="text-xs text-text-dim">{entry.cpuPercent.toFixed(1)}% cpu</span>
+                      <span className="text-xs text-text-dim">
+                        {entry.cpuPercent.toFixed(1)}% cpu
+                      </span>
                       <span className="text-xs text-text-dim">
                         {(entry.memoryBytes / 1024 ** 2).toFixed(0)} MB
                       </span>
@@ -176,12 +194,16 @@ export default async function SystemPage() {
         />
         <Card className="p-4">
           <BarList
-            samples={traffic.map((entry) => ({ name: entry.site, value: entry.requests }))}
+            samples={traffic.map((entry) => ({
+              name: entry.site,
+              value: entry.requests,
+            }))}
             format={(value) => `${value.toFixed(0)} requests`}
           />
           {traffic.some((entry) => entry.errors > 0) ? (
             <p className="mt-3 text-xs text-text-dim">
-              {traffic.reduce((total, entry) => total + entry.errors, 0)} of them did not succeed.
+              {traffic.reduce((total, entry) => total + entry.errors, 0)} of
+              them did not succeed.
             </p>
           ) : null}
         </Card>
@@ -203,7 +225,8 @@ export default async function SystemPage() {
               {logs.slice(0, 80).map((entry, index) => (
                 <li key={`${entry.at}-${index}`} className="px-4 py-2">
                   <p className="font-mono text-xs leading-relaxed text-text-muted">
-                    <span className="text-text-dim">{entry.source}</span> {entry.line}
+                    <span className="text-text-dim">{entry.source}</span>{' '}
+                    {entry.line}
                   </p>
                 </li>
               ))}

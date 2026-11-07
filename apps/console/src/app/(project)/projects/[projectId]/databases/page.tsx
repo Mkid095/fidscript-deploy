@@ -4,7 +4,7 @@ import { Page } from '@/components/ui/page';
 
 import { getProject } from '@/lib/api/project';
 import { getDatabases } from '@/lib/api/resources';
-import { Card, PageHeader } from '@/components/ui/card';
+import { Card } from '@/components/ui/card';
 import { Badge, EmptyState } from '@/components/ui/feedback';
 
 export const metadata = { title: 'Databases' };
@@ -28,12 +28,10 @@ export default async function ProjectDatabasesPage({
   const databases = await getDatabases(project.id).catch(() => []);
 
   return (
-    <Page>
-      <PageHeader
-        title="Databases"
-        description={`${databases.length} in this project.`}
-      />
-
+    <Page
+      title="Databases"
+      description={`${databases.length} in this project.`}
+    >
       <Card>
         {databases.length === 0 ? (
           <EmptyState
@@ -46,12 +44,17 @@ export default async function ProjectDatabasesPage({
               <li key={database.id} className="px-4 py-3">
                 <div className="flex flex-wrap items-center justify-between gap-3">
                   <div className="min-w-0">
-                    <p className="truncate text-sm text-text">{database.name}</p>
+                    <p className="truncate text-sm text-text">
+                      {database.name}
+                    </p>
                     <p className="mt-0.5 truncate text-xs text-text-dim">
-                      {database.type} {database.version} · {database.environment} · {database.size}
+                      {database.type} {database.version} ·{' '}
+                      {database.environment} · {database.size}
                     </p>
                   </div>
-                  <Badge tone={database.status === 'ready' ? 'success' : 'warning'}>
+                  <Badge
+                    tone={database.status === 'ready' ? 'success' : 'warning'}
+                  >
                     {database.status}
                   </Badge>
                 </div>

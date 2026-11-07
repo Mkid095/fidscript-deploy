@@ -36,19 +36,21 @@ export default async function ProjectOverviewPage({
     );
   }
 
-  const [instant, deployments, members, resources, buckets] = await Promise.all([
-    getInstantApp(project.id).catch(() => null),
-    getDeployments(project.id).catch(() => []),
-    getProjectMembers(project.id).catch(() => []),
-    getProjectResources(project.id).catch(() => ({
-      databases: 0,
-      functions: 0,
-      deployments: 0,
-      domains: 0,
-      emailDomains: 0,
-    })),
-    getProjectBuckets(project.id),
-  ]);
+  const [instant, deployments, members, resources, buckets] = await Promise.all(
+    [
+      getInstantApp(project.id).catch(() => null),
+      getDeployments(project.id).catch(() => []),
+      getProjectMembers(project.id).catch(() => []),
+      getProjectResources(project.id).catch(() => ({
+        databases: 0,
+        functions: 0,
+        deployments: 0,
+        domains: 0,
+        emailDomains: 0,
+      })),
+      getProjectBuckets(project.id),
+    ],
+  );
 
   // What the project has, and what it is still waiting for. Each piece
   // says for itself — nothing here is assumed.
@@ -64,18 +66,24 @@ export default async function ProjectOverviewPage({
     {
       name: 'Storage',
       ready: buckets.length > 0,
-      detail: buckets.length > 0 ? `${buckets.length} bucket(s)` : 'No bucket yet',
+      detail:
+        buckets.length > 0 ? `${buckets.length} bucket(s)` : 'No bucket yet',
     },
     {
       name: 'A domain',
       ready: resources.domains > 0,
-      detail: resources.domains > 0 ? `${resources.domains} pointing here` : 'Nothing points here yet',
+      detail:
+        resources.domains > 0
+          ? `${resources.domains} pointing here`
+          : 'Nothing points here yet',
     },
     {
       name: 'A deployment',
       ready: resources.deployments > 0,
       detail:
-        resources.deployments > 0 ? `${resources.deployments} built` : 'Nothing has been built',
+        resources.deployments > 0
+          ? `${resources.deployments} built`
+          : 'Nothing has been built',
     },
     {
       name: 'Mail',
@@ -93,11 +101,10 @@ export default async function ProjectOverviewPage({
   const shape = project.shape ?? 'DEPLOYMENT';
 
   return (
-    <Page>
-      <PageHeader
-        title={project.name}
-        description={`${shapeLabel(shape)} · ${project.status.toLowerCase()}`}
-      />
+    <Page
+      title={project.name}
+      description={`${shapeLabel(shape)} · ${project.status.toLowerCase()}`}
+    >
       <ProjectOverview
         projectSlug={project.slug}
         shape={shape}

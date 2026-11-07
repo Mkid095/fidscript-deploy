@@ -1,5 +1,7 @@
 import type { ReactNode } from 'react';
 
+import { PageHeader } from './card';
+
 /**
  * The frame a screen sits in.
  *
@@ -11,22 +13,67 @@ import type { ReactNode } from 'react';
  * column beside it. The default is for the project level, where a screen is
  * one column and the eye should stay in it.
  */
+function maxWidth(width: 'default' | 'wide' | 'narrow'): string {
+  return width === 'wide'
+    ? 'max-w-6xl'
+    : width === 'narrow'
+      ? 'max-w-3xl'
+      : 'max-w-5xl';
+}
+
+/**
+ * A screen: its bar, and its body.
+ *
+ * The bar is the screen's name and what can be done with it, and it stays
+ * with the top of the screen while the body scrolls — so the way out of a
+ * screen is always in the same place, whatever has been scrolled away.
+ *
+ * The bar is part of the frame rather than a thing each screen remembers
+ * to add: a screen cannot have a body without a bar above it, and two
+ * screens cannot disagree about what a bar looks like.
+ */
 export function Page({
   children,
+  title,
+  description,
+  actions,
+  eyebrow,
   width = 'default',
   className = '',
 }: {
   children: ReactNode;
+  /** The screen's name — the bar says what this is. */
+  title: string;
+  description?: string;
+  /** What can be done with this screen — the bar carries the buttons. */
+  actions?: ReactNode;
+  /** A small line above the title — the level, or the state. */
+  eyebrow?: ReactNode;
   width?: 'default' | 'wide' | 'narrow';
   className?: string;
 }) {
-  const max =
-    width === 'wide' ? 'max-w-6xl' : width === 'narrow' ? 'max-w-3xl' : 'max-w-5xl';
+  const max = maxWidth(width);
 
   return (
-    <div className={`mx-auto w-full ${max} space-y-8 px-4 py-6 sm:px-6 sm:py-8 ${className}`}>
-      {children}
-    </div>
+    <>
+      <div className="sticky top-0 z-20 border-b border-rail bg-surface/95 backdrop-blur supports-[backdrop-filter]:bg-surface/80">
+        <div className={`mx-auto w-full ${max} px-4 py-3.5 sm:px-6`}>
+          <PageHeader
+            title={title}
+            description={description}
+            actions={actions}
+            eyebrow={eyebrow}
+            compact
+          />
+        </div>
+      </div>
+
+      <div
+        className={`mx-auto w-full ${max} space-y-8 px-4 py-6 sm:px-6 sm:py-8 ${className}`}
+      >
+        {children}
+      </div>
+    </>
   );
 }
 

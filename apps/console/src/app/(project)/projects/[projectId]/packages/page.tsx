@@ -41,7 +41,10 @@ export default async function ProjectPackagesPage({
   // What the registry knows about the packages under the platform's scope.
   const scope = '@fidscript-deploy';
   const inScope = packages.filter((entry) => entry.name.startsWith(scope));
-  const details: Record<string, Awaited<ReturnType<typeof getRegistryPackage>>> = {};
+  const details: Record<
+    string,
+    Awaited<ReturnType<typeof getRegistryPackage>>
+  > = {};
   if (registryUrl) {
     for (const entry of inScope.slice(0, 12)) {
       details[entry.name] = await getRegistryPackage(registryUrl, entry.name);
@@ -49,12 +52,10 @@ export default async function ProjectPackagesPage({
   }
 
   return (
-    <Page>
-      <PageHeader
-        title="Packages"
-        description="Publish a package, and use the ones that are published."
-      />
-
+    <Page
+      title="Packages"
+      description="Publish a package, and use the ones that are published."
+    >
       <PackagesRegistry
         registryUrl={registryUrl}
         mavenUrl={mavenUrl}
@@ -74,12 +75,14 @@ export default async function ProjectPackagesPage({
             <li>
               <span className="text-text">1.</span> Sign in to the registry —{' '}
               <code className="font-mono text-xs text-text">
-                npm login --registry {registryUrl ?? 'https://registry.example.com'}
+                npm login --registry{' '}
+                {registryUrl ?? 'https://registry.example.com'}
               </code>
             </li>
             <li>
-              <span className="text-text">2.</span> Point the scope at it, in the package&apos;s
-              own <code className="font-mono text-xs text-text">.npmrc</code>.
+              <span className="text-text">2.</span> Point the scope at it, in
+              the package&apos;s own{' '}
+              <code className="font-mono text-xs text-text">.npmrc</code>.
             </li>
             <li>
               <span className="text-text">3.</span> Publish it —{' '}
@@ -87,9 +90,10 @@ export default async function ProjectPackagesPage({
             </li>
           </ol>
           <p className="mt-4 text-xs leading-relaxed text-text-dim">
-            The token is read from the environment — <code className="font-mono">NPM_TOKEN</code> or{' '}
-            <code className="font-mono">FIDScript_REGISTRY_TOKEN</code> — so a CI job publishes
-            without ever holding it in a file.
+            The token is read from the environment —{' '}
+            <code className="font-mono">NPM_TOKEN</code> or{' '}
+            <code className="font-mono">FIDScript_REGISTRY_TOKEN</code> — so a
+            CI job publishes without ever holding it in a file.
           </p>
         </Card>
       </section>

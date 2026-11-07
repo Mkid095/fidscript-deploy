@@ -20,7 +20,7 @@ vocabulary, the menus, the journeys. The API is 31 modules of hardened,
 deployed, tested code. Rewriting it would destroy working security work for
 no product gain, and the console can be built against a running API today.
 
-**Consequence:** the old dashboard's code is not ported. Its *decisions* are
+**Consequence:** the old dashboard's code is not ported. Its _decisions_ are
 (D2–D8); its screens are not.
 
 ### D2 — One Next.js app; not a monorepo
@@ -64,8 +64,8 @@ expired" flash when it happens.
 a `deploymentOn` switch. The shape is asked when the project is created and
 is changed in the project's settings.
 
-**Why:** the guide's rule 2 — *a menu is derived from what the thing
-really has* — needs something to derive it from that is not a browser
+**Why:** the guide's rule 2 — _a menu is derived from what the thing
+really has_ — needs something to derive it from that is not a browser
 toggle. The old `localStorage` mode was per-browser, invisible to the API,
 and lost on another device.
 
@@ -87,8 +87,8 @@ each other in the same sidebar, listing the same objects under two names.
 platform's overview carries one line about them. They are not in the top
 bar.
 
-**Why:** the guide's rule 3 — *a one-time thing never sits in a permanent
-menu*. The applications are chosen once, at the install.
+**Why:** the guide's rule 3 — _a one-time thing never sits in a permanent
+menu_. The applications are chosen once, at the install.
 
 ### D8 — The route inventory is a test
 
@@ -127,28 +127,88 @@ show.
 projects, members and roles. A person has a personal workspace by default;
 a team shares one.
 
-| The question | The answer |
-|---|---|
-| Does a person have a personal workspace? | **Yes.** Every account has one, and it holds the projects it owns. It is what makes "my projects" and "our projects" the same thing when a team grows. |
-| What is a workspace for? | **Sharing.** It owns projects, the people who may work on them, and their roles. It is not a billing entity and it is not a folder. |
-| Who owns a project that belongs to a workspace? | **Both, and they are different.** The project keeps its maker (`ownerId` — a person); the workspace says who it belongs to (`organizationId`). Access is the union: the owner always has it, the workspace's members have it through their role. |
-| What happens to the auto-provisioned personal workspace? | **It stays, and it stops being named after the email.** It is called *Personal*, it can be renamed, and renaming it changes nothing else — which is why the migration is safe. |
-| Is there a billing or plan relationship? | **No, not here.** The plan column stays for a hosted variant; nothing on this platform reads it, and nothing should. |
-| What does "invite somebody to my platform" mean? | **Nothing — the platform is not a thing you are invited to.** An invitation says *come and work on this project* or *come and work in this workspace*. |
+| The question                                             | The answer                                                                                                                                                                                                                                       |
+| -------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Does a person have a personal workspace?                 | **Yes.** Every account has one, and it holds the projects it owns. It is what makes "my projects" and "our projects" the same thing when a team grows.                                                                                           |
+| What is a workspace for?                                 | **Sharing.** It owns projects, the people who may work on them, and their roles. It is not a billing entity and it is not a folder.                                                                                                              |
+| Who owns a project that belongs to a workspace?          | **Both, and they are different.** The project keeps its maker (`ownerId` — a person); the workspace says who it belongs to (`organizationId`). Access is the union: the owner always has it, the workspace's members have it through their role. |
+| What happens to the auto-provisioned personal workspace? | **It stays, and it stops being named after the email.** It is called _Personal_, it can be renamed, and renaming it changes nothing else — which is why the migration is safe.                                                                   |
+| Is there a billing or plan relationship?                 | **No, not here.** The plan column stays for a hosted variant; nothing on this platform reads it, and nothing should.                                                                                                                             |
+| What does "invite somebody to my platform" mean?         | **Nothing — the platform is not a thing you are invited to.** An invitation says _come and work on this project_ or _come and work in this workspace_.                                                                                           |
 
 **Why it is safe now:** the console's menus are derived from the project's
 shape and what it has — never from who owns it. The project's settings show
 the workspace it belongs to, and nothing else changes.
 
-**What is still owed:** the *hosted* variant's billing, and whether a
+**What is still owed:** the _hosted_ variant's billing, and whether a
 workspace may be nested. Neither is read by this platform.
+
+### D12 — `app.fidscript.com` is the console's, and stays the console's
+
+**What:** the console answers on **two** names — `fidscript.com` (the root)
+and `app.fidscript.com` (the alias) — and the alias is **not** available to
+a project. A project's domain must be a name the platform does not already
+answer on.
+
+**Why:** the alias is written into the platform's own routing (`products.yml`)
+and its own certificate. A project that took it would have two routers for
+one host, and the console would answer on the same address as the customer's
+application — with the console's certificate. The alias is a convenience;
+the root is the platform's real address.
+
+**How it is enforced:** `reservedHostReason()` in
+`apps/api/src/modules/domains/services/reserved-hosts.ts` — the platform's
+root domain, and the subdomains the platform's own services use (`app`,
+`api`, `grafana`, `prometheus`, `loki`, `maven`, `registry`, `files`,
+`storage`, `whatsapp`, `instant`, …) — refuses a domain at the moment it is
+added, **and** at the moment its records would be written, so a domain added
+before this rule cannot take a platform name either. The refusal says what
+the name is and what to do instead.
+
+**What the project uses instead:** a zone from the operator's own Cloudflare
+account, or a subdomain of one that is not the platform's.
+
+### D13 — A DNS record is written, not created
+
+**What:** the platform's auto-DNS **upserts**. It looks the record up first
+and writes only the difference, and it says which happened: `created`,
+`updated`, or `unchanged`.
+
+**Why:** Cloudflare refuses a record that already exists ("an identical
+record already exists"), and refuses a CNAME where an A record stands ("an
+A, AAAA, or CNAME record with that host already exists"). Both are the
+ordinary state of a domain somebody has already pointed at the platform — so
+the old behaviour was a 500 on the common case, not on the rare one. A
+record that already points at the platform (an A to the server's address, or
+a CNAME to the project's own host) counts as **right** and is left alone.
+
+### D14 — The CNAME points at the project's host, not at the domain's first label
+
+**What:** a project's domain is pointed at `{project.slug}.apps.{platformDomain}`
+— the host Traefik publishes the project on. It is never guessed from the
+domain's name.
+
+**Why:** `app.example.com` says nothing about a project called `fidscript`.
+The old rule produced `app.apps.fidscript.com`, which is nobody's host, and
+the domain could never answer.
+
+### D15 — The page bar is part of the frame
+
+**What:** `Page` carries the bar. A screen passes its `title`, `description`,
+`actions` and `eyebrow` to the frame; the frame renders the sticky bar above
+the scrolling body.
+
+**Why:** the bar was the one thing every screen had in common and none of
+them had. When it is a thing each screen remembers to add, some screens
+forget; when it is the frame's own doing, a screen cannot have a body
+without a bar, and two screens cannot disagree about what a bar looks like.
 
 ---
 
 ## 2. Still owed — the organization model
 
-*This is now answered — see D11 above. What follows is the record of the
-questions as they were, and of what the schema does today.*
+_This is now answered — see D11 above. What follows is the record of the
+questions as they were, and of what the schema does today._
 
 **The decisions are made — see D11 above.** What follows is the record of
 the questions as they were, and of what the schema does today, so the
@@ -156,13 +216,13 @@ reasoning is not lost.
 
 ### What exists today
 
-| Thing | Where | What it means |
-|---|---|---|
-| `Organization` + `OrganizationMember` + `OrgRole` | `identity` schema | A **workspace**: a project can belong to one, or to its owner's own workspace when the column is null. |
-| `Team` + `TeamMember` | `identity` schema | A group inside a workspace. |
-| `Invitation` | `identity` schema | An invitation to a workspace, accepted by token. |
-| **Auto-provisioning** | the register path | Every new account gets a personal workspace ("\<email\>'s Organization", role OWNER) and a first project ("My First Project"). |
-| `Project.ownerId` | `projects` schema | A project has an owner — a person. `Project.organizationId` says which workspace holds it. |
+| Thing                                             | Where             | What it means                                                                                                                  |
+| ------------------------------------------------- | ----------------- | ------------------------------------------------------------------------------------------------------------------------------ |
+| `Organization` + `OrganizationMember` + `OrgRole` | `identity` schema | A **workspace**: a project can belong to one, or to its owner's own workspace when the column is null.                         |
+| `Team` + `TeamMember`                             | `identity` schema | A group inside a workspace.                                                                                                    |
+| `Invitation`                                      | `identity` schema | An invitation to a workspace, accepted by token.                                                                               |
+| **Auto-provisioning**                             | the register path | Every new account gets a personal workspace ("\<email\>'s Organization", role OWNER) and a first project ("My First Project"). |
+| `Project.ownerId`                                 | `projects` schema | A project has an owner — a person. `Project.organizationId` says which workspace holds it.                                     |
 
 ### The questions
 
@@ -181,7 +241,7 @@ reasoning is not lost.
    is a migration, not a code change.
 5. **Is there a billing or plan relationship?** `Organization.plan` exists
    as a column. Nothing reads it. Whether a workspace is a billable entity
-   changes what an organization *is*.
+   changes what an organization _is_.
 6. **What does "invite somebody to my platform" mean** — to a workspace, to
    a project, or to the platform? The invitation model today is
    workspace-scoped; the deployment wizard's invitation flow is
@@ -199,13 +259,13 @@ reasoning is not lost.
 
 ## 3. Still owed — everything else
 
-| The question | Where it will be decided |
-|---|---|
-| Whether the API's key validation stays O(n) bcrypt per request | P4, with the API's move home |
-| Whether the verification and reset tokens get hashed | P4 |
-| Whether the email-verification gate is switched on | With the organization model — it needs a column that says "this account must verify" |
-| Whether Instant's provisioning failure is retried in the background | P3, with the capabilities |
+| The question                                                        | Where it will be decided                                                             |
+| ------------------------------------------------------------------- | ------------------------------------------------------------------------------------ |
+| Whether the API's key validation stays O(n) bcrypt per request      | P4, with the API's move home                                                         |
+| Whether the verification and reset tokens get hashed                | P4                                                                                   |
+| Whether the email-verification gate is switched on                  | With the organization model — it needs a column that says "this account must verify" |
+| Whether Instant's provisioning failure is retried in the background | P3, with the capabilities                                                            |
 
 ---
 
-*Written 2026-11-07.*
+_Written 2026-11-07._

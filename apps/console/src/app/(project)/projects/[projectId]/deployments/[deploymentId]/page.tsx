@@ -3,7 +3,7 @@ import { redirect } from 'next/navigation';
 
 import { getProject } from '@/lib/api/project';
 import { getDeployment, getDeploymentLogs } from '@/lib/api/resources';
-import { Card, PageHeader, SectionHeader } from '@/components/ui/card';
+import { Card, SectionHeader } from '@/components/ui/card';
 import { Page } from '@/components/ui/page';
 import { Badge } from '@/components/ui/feedback';
 import { Button } from '@/components/ui/button';
@@ -28,7 +28,9 @@ export default async function DeploymentPage({
   const project = await getProject(projectId).catch(() => null);
   if (!project) redirect('/projects');
 
-  const deployment = await getDeployment(project.id, deploymentId).catch(() => null);
+  const deployment = await getDeployment(project.id, deploymentId).catch(
+    () => null,
+  );
   if (!deployment) {
     redirect(`/projects/${project.slug}/deployments`);
   }
@@ -37,14 +39,12 @@ export default async function DeploymentPage({
   const base = `/projects/${project.slug}`;
 
   return (
-    <Page>
-      <PageHeader
-        title={deployment.release?.version ?? 'The deployment'}
-        description={`${deployment.status.toLowerCase()} · ${
-          deployment.release?.branch ?? 'no branch'
-        }`}
-      />
-
+    <Page
+      title={deployment.release?.version ?? 'The deployment'}
+      description={`${deployment.status.toLowerCase()} · ${
+        deployment.release?.branch ?? 'no branch'
+      }`}
+    >
       <section>
         <SectionHeader title="What it is" />
         <Card className="divide-y divide-rail">
@@ -68,7 +68,9 @@ export default async function DeploymentPage({
           </Row>
           <Row term="Message">{deployment.release?.commitMessage ?? '—'}</Row>
           <Row term="Repository">{deployment.release?.sourceUrl ?? '—'}</Row>
-          <Row term="Made">{new Date(deployment.createdAt).toLocaleString()}</Row>
+          <Row term="Made">
+            {new Date(deployment.createdAt).toLocaleString()}
+          </Row>
           <Row term="Answers at">
             {deployment.deploymentUrl ? (
               <a
@@ -117,7 +119,10 @@ export default async function DeploymentPage({
           title="The application's log"
           description="What it writes while it runs."
         />
-        <DeploymentLiveLog projectSlug={project.slug} deploymentId={deployment.id} />
+        <DeploymentLiveLog
+          projectSlug={project.slug}
+          deploymentId={deployment.id}
+        />
       </section>
 
       <section>
@@ -128,7 +133,9 @@ export default async function DeploymentPage({
               {logs}
             </pre>
           ) : (
-            <p className="text-sm text-text-muted">There is no build log for this deployment.</p>
+            <p className="text-sm text-text-muted">
+              There is no build log for this deployment.
+            </p>
           )}
         </Card>
       </section>

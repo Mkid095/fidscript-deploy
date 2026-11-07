@@ -4,7 +4,7 @@ import { Page } from '@/components/ui/page';
 
 import { getProject } from '@/lib/api/project';
 import { getProjectEvents } from '@/lib/api/resources';
-import { Card, PageHeader } from '@/components/ui/card';
+import { Card } from '@/components/ui/card';
 import { EmptyState } from '@/components/ui/feedback';
 import { sayEvent, sayWhen } from '@/lib/events';
 
@@ -28,9 +28,7 @@ export default async function ProjectActivityPage({
   const events = await getProjectEvents(project.id).catch(() => []);
 
   return (
-    <Page>
-      <PageHeader title="Activity" description="Everything that has happened here." />
-
+    <Page title="Activity" description="Everything that has happened here.">
       <Card>
         {events.length === 0 ? (
           <EmptyState
@@ -42,7 +40,9 @@ export default async function ProjectActivityPage({
             {events.map((event) => (
               <li key={event.id} className="px-4 py-3">
                 <p className="text-sm text-text">{sayEvent(event.type)}</p>
-                <p className="mt-0.5 text-xs text-text-dim">{sayWhen(event.createdAt)}</p>
+                <p className="mt-0.5 text-xs text-text-dim">
+                  {sayWhen(event.createdAt)}
+                </p>
               </li>
             ))}
           </ul>

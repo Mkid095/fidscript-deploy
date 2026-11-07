@@ -1,7 +1,7 @@
 import Link from 'next/link';
 
 import { mfaStatus, sessions, sessionUser } from '@/lib/api/platform';
-import { Card, PageHeader, SectionHeader } from '@/components/ui/card';
+import { Card, SectionHeader } from '@/components/ui/card';
 import { Page } from '@/components/ui/page';
 import { DefinitionRow } from '@/components/ui/input';
 import { SettingsNav } from '@/components/platform/settings-nav';
@@ -25,12 +25,17 @@ export default async function SettingsPage() {
   ]);
 
   return (
-    <Page>
-      <PageHeader title="Settings" description="Your account, and this platform’s own surfaces." />
+    <Page
+      title="Settings"
+      description="Your account, and this platform’s own surfaces."
+    >
       <SettingsNav />
 
       <section>
-        <SectionHeader title="Account" description="Who you are on this platform." />
+        <SectionHeader
+          title="Account"
+          description="Who you are on this platform."
+        />
         <Card className="px-4 py-2">
           <dl className="divide-y divide-rail">
             <DefinitionRow term="Email">{user?.email ?? '—'}</DefinitionRow>
@@ -54,7 +59,10 @@ export default async function SettingsPage() {
       </section>
 
       <section>
-        <SectionHeader title="Sessions" description="Where this account is signed in." />
+        <SectionHeader
+          title="Sessions"
+          description="Where this account is signed in."
+        />
         <SessionList sessions={open} />
       </section>
 

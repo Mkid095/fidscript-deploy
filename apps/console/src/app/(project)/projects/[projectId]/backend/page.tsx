@@ -2,7 +2,7 @@ import Link from 'next/link';
 import { redirect } from 'next/navigation';
 
 import { getInstantApp, getProject } from '@/lib/api/project';
-import { Card, PageHeader, SectionHeader } from '@/components/ui/card';
+import { Card, SectionHeader } from '@/components/ui/card';
 import { Page } from '@/components/ui/page';
 import { Badge, EmptyState } from '@/components/ui/feedback';
 import { Button } from '@/components/ui/button';
@@ -30,18 +30,20 @@ export default async function ProjectBackendPage({
   const base = `/projects/${project.slug}`;
 
   return (
-    <Page>
-      <PageHeader
-        title="Backend"
-        description="Where this project's data, users and files live."
-      />
-
+    <Page
+      title="Backend"
+      description="Where this project's data, users and files live."
+    >
       {instant?.app ? (
         <Card className="p-4">
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div className="min-w-0">
-              <p className="text-sm font-medium text-text">{instant.app.title}</p>
-              <p className="mt-0.5 font-mono text-xs text-text-dim">{instant.app.appId}</p>
+              <p className="text-sm font-medium text-text">
+                {instant.app.title}
+              </p>
+              <p className="mt-0.5 font-mono text-xs text-text-dim">
+                {instant.app.appId}
+              </p>
             </div>
             <div className="flex items-center gap-2">
               <Badge tone="success">{instant.app.status}</Badge>

@@ -3,7 +3,7 @@ import { redirect } from 'next/navigation';
 import { serverApi as api } from '@/lib/api/server';
 import { getProject } from '@/lib/api/project';
 import { getProjectLogs } from '@/lib/api/metrics';
-import { Card, PageHeader, SectionHeader } from '@/components/ui/card';
+import { Card, SectionHeader } from '@/components/ui/card';
 import { Page } from '@/components/ui/page';
 import { Badge, EmptyState, ErrorState } from '@/components/ui/feedback';
 
@@ -35,12 +35,18 @@ export default async function ProjectLogsPage({
 
   const [streams, stats, entries, machine] = await Promise.all([
     api
-      .get<{ streams: Array<{ name: string; count?: number }> }>(`/projects/${project.id}/logs/streams`)
-      .catch(() => ({ streams: [] as Array<{ name: string; count?: number }> })),
+      .get<{
+        streams: Array<{ name: string; count?: number }>;
+      }>(`/projects/${project.id}/logs/streams`)
+      .catch(() => ({
+        streams: [] as Array<{ name: string; count?: number }>,
+      })),
     api
-      .get<{ total: number; byLevel: Record<string, number>; streamCount: number }>(
-        `/projects/${project.id}/logs/stats`,
-      )
+      .get<{
+        total: number;
+        byLevel: Record<string, number>;
+        streamCount: number;
+      }>(`/projects/${project.id}/logs/stats`)
       .catch(() => null),
     api
       .get<{ logs: LogEntry[] }>(`/projects/${project.id}/logs`)
@@ -49,9 +55,7 @@ export default async function ProjectLogsPage({
   ]);
 
   return (
-    <Page>
-      <PageHeader title="Logs" description="What this project has written down." />
-
+    <Page title="Logs" description="What this project has written down.">
       {stats ? (
         <section>
           <SectionHeader title="The numbers" />
@@ -76,8 +80,13 @@ export default async function ProjectLogsPage({
           ) : (
             <ul className="divide-y divide-rail">
               {streams.streams.map((stream) => (
-                <li key={stream.name} className="flex items-center justify-between gap-4 px-4 py-2.5">
-                  <span className="font-mono text-sm text-text">{stream.name}</span>
+                <li
+                  key={stream.name}
+                  className="flex items-center justify-between gap-4 px-4 py-2.5"
+                >
+                  <span className="font-mono text-sm text-text">
+                    {stream.name}
+                  </span>
                   {typeof stream.count === 'number' ? (
                     <Badge tone="neutral">{stream.count}</Badge>
                   ) : null}
@@ -104,7 +113,8 @@ export default async function ProjectLogsPage({
               {machine.slice(0, 80).map((entry, index) => (
                 <li key={`${entry.at}-${index}`} className="px-4 py-2">
                   <p className="font-mono text-xs leading-relaxed text-text-muted">
-                    <span className="text-text-dim">{entry.source}</span> {entry.line}
+                    <span className="text-text-dim">{entry.source}</span>{' '}
+                    {entry.line}
                   </p>
                 </li>
               ))}
@@ -122,7 +132,10 @@ export default async function ProjectLogsPage({
           />
         ) : entries.logs.length === 0 ? (
           <Card>
-            <EmptyState title="No entries" body="Nothing has been written to the logs yet." />
+            <EmptyState
+              title="No entries"
+              body="Nothing has been written to the logs yet."
+            />
           </Card>
         ) : (
           <Card>
@@ -130,8 +143,16 @@ export default async function ProjectLogsPage({
               {entries.logs.map((entry) => (
                 <li key={entry.id} className="px-4 py-2.5">
                   <div className="flex items-center justify-between gap-3">
-                    <span className="font-mono text-xs text-text-dim">{entry.stream}</span>
-                    <Badge tone={entry.level === 'error' || entry.level === 'fatal' ? 'danger' : 'neutral'}>
+                    <span className="font-mono text-xs text-text-dim">
+                      {entry.stream}
+                    </span>
+                    <Badge
+                      tone={
+                        entry.level === 'error' || entry.level === 'fatal'
+                          ? 'danger'
+                          : 'neutral'
+                      }
+                    >
                       {entry.level}
                     </Badge>
                   </div>

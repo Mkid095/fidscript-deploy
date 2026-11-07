@@ -3,7 +3,7 @@ import Link from 'next/link';
 import { getGithubConnection } from '@/lib/api/integrations';
 import { listProjects } from '@/lib/api/projects';
 import { getDnsConnection } from '@/lib/api/domains';
-import { Card, PageHeader, SectionHeader } from '@/components/ui/card';
+import { Card, SectionHeader } from '@/components/ui/card';
 import { Page } from '@/components/ui/page';
 import { Badge, EmptyState } from '@/components/ui/feedback';
 import { SettingsNav } from '@/components/platform/settings-nav';
@@ -32,11 +32,10 @@ export default async function IntegrationsSettingsPage() {
   );
 
   return (
-    <Page>
-      <PageHeader
-        title="Integrations"
-        description="The accounts the platform holds for you — kept privately, and used for you."
-      />
+    <Page
+      title="Integrations"
+      description="The accounts the platform holds for you — kept privately, and used for you."
+    >
       <SettingsNav />
 
       <section>
@@ -59,13 +58,21 @@ export default async function IntegrationsSettingsPage() {
         />
         <Card>
           {projects.length === 0 ? (
-            <EmptyState title="No projects yet" body="A project's domains are connected from the project itself." />
+            <EmptyState
+              title="No projects yet"
+              body="A project's domains are connected from the project itself."
+            />
           ) : (
             <ul className="divide-y divide-rail">
               {dns.map((entry) => (
-                <li key={entry.project.id} className="flex items-center justify-between gap-4 px-4 py-3">
+                <li
+                  key={entry.project.id}
+                  className="flex items-center justify-between gap-4 px-4 py-3"
+                >
                   <div className="min-w-0">
-                    <p className="truncate text-sm text-text">{entry.project.name}</p>
+                    <p className="truncate text-sm text-text">
+                      {entry.project.name}
+                    </p>
                     <p className="truncate text-xs text-text-dim">
                       {entry.connection
                         ? entry.connection.email

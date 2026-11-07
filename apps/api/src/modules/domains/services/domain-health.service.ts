@@ -5,6 +5,7 @@ import { EventService } from '@/modules/events/event.service';
 import { DomainChecksService } from './domain-checks.service';
 import { DomainAccessService } from './domain-access.service';
 import { DomainDnsService } from './domain-dns.service';
+import { reservedHostReason } from './reserved-hosts';
 
 @Injectable()
 export class DomainHealthService {
@@ -260,16 +261,31 @@ export class DomainHealthService {
       include: { deployment: { select: { deploymentUrl: true } }, dnsConnection: true },
     });
     if (!domain) throw new NotFoundException('Domain not found');
-    if (domain.dnsMode !== 'cloudflare_auto') throw new ConflictException('Domain is not in Cloudflare auto mode');
-    if (!domain.dnsConnection) throw new ConflictException('No Cloudflare connection found for this domain');
+    if (domain.dnsMode !== 'cloudflare_auto') {
+      throw new ConflictException('Domain is not in Cloudflare auto mode');
+    }
+
+    // A name the platform answers on is not a project's to write records for.
+    const reason = reservedHostReason(
+      domain.domain,
+      this.config.get<string>('PLATFORM_DOMAIN', 'apps.local'),
+    );
+    if (reason) throw new ConflictException(reason);
+
+    // The project's own account — the one the person connected with.
+    const provider = await this.dns.getProjectProvider(projectId);
+    if (!provider) {
+      throw new ConflictException(
+        'This project has no DNS account connected — connect one and the records can be written for you.',
+      );
+    }
 
     return this.dns.cloudflareAutoSetup(
       domainId,
       domain.domain,
-      domain.deployment?.deploymentUrl ?? null,
+      await this.dns.targetHost(projectId),
       domain.apexDomain,
-      async (d: string) => { return ''; },
-      async () => { return {}; },
+      provider,
     );
   }
 
