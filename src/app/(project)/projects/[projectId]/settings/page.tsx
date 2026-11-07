@@ -82,7 +82,10 @@ export default async function ProjectSettingsPage({
         instant={instant}
       />
 
-      <ProjectCapabilities emailDomains={resources.emailDomains} />
+      <ProjectCapabilities
+        emailDomains={resources.emailDomains}
+        projectSlug={project.slug}
+      />
 
       <section>
         <SectionHeader

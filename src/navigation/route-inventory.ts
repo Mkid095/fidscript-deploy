@@ -186,6 +186,24 @@ export const ROUTE_INVENTORY: RouteEntry[] = [
     purpose: 'The databases the project has.',
   },
   {
+    path: '/projects/[projectId]/email',
+    level: 'project',
+    canonical: true,
+    purpose: 'The mail of this project — domains, mailboxes, sending.',
+  },
+  {
+    path: '/projects/[projectId]/packages',
+    level: 'project',
+    canonical: true,
+    purpose: 'The registry, and how to publish to it.',
+  },
+  {
+    path: '/projects/[projectId]/whatsapp',
+    level: 'project',
+    canonical: true,
+    purpose: 'The messaging side of the project, and the console that has it.',
+  },
+  {
     path: '/projects/[projectId]/monitoring',
     level: 'project',
     canonical: true,
