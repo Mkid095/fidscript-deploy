@@ -34,6 +34,14 @@ export async function sessionUser(): Promise<User | null> {
   }
 }
 
+/** The platform's domain — the anchor every service address hangs from. */
+export async function getPlatformDomain(): Promise<string | null> {
+  const response = await api
+    .get<{ platformDomain?: string }>('/installation/status')
+    .catch(() => null);
+  return response?.platformDomain ?? null;
+}
+
 /** The overview — the caller's own projects, deployments, alerts and activity. */
 export async function platformOverview(): Promise<PlatformOverview> {
   return api.get<PlatformOverview>('/overview');

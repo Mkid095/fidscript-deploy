@@ -1,6 +1,6 @@
 import 'server-only';
 
-import { serverApi as api } from './server';
+import { getPlatformDomain } from './platform';
 
 /**
  * The package registry.
@@ -15,14 +15,6 @@ export interface RegistryPackage {
   description?: string;
   latest?: string;
   versions: string[];
-}
-
-/** The platform's domain — the anchor every service address hangs from. */
-export async function getPlatformDomain(): Promise<string | null> {
-  const response = await api
-    .get<{ platformDomain?: string }>('/installation/status')
-    .catch(() => null);
-  return response?.platformDomain ?? null;
 }
 
 /** The registry's address. */

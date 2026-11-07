@@ -5,7 +5,7 @@
  * applications — products the operator installs once — and each one is
  * either linked out to, wrapped, or both.
  */
-const APPLICATIONS = [
+export const APPLICATIONS = [
   {
     name: 'Instant BaaS',
     treatment: 'Link out',

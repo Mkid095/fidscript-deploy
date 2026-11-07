@@ -37,6 +37,13 @@ export const ROUTE_INVENTORY: RouteEntry[] = [
     purpose: 'The one setup wizard — from an empty machine to a platform that serves.',
   },
 
+  {
+    path: '/docs',
+    level: 'public',
+    canonical: true,
+    purpose: 'The documentation — the applications, the CLI, the API, the SDK, the MCP.',
+  },
+
   // ── Signing in ────────────────────────────────────────────────────────────
   {
     path: '/login',
