@@ -5,6 +5,7 @@ import { Badge, EmptyState } from '@/components/ui/feedback';
 import { Button } from '@/components/ui/button';
 import type { InstantApp, ProjectShape } from '@/lib/api/types';
 import type { Deployment } from '@/lib/api/resources';
+import { sayWhen } from '@/lib/events';
 
 /**
  * The project overview.
@@ -15,9 +16,7 @@ import type { Deployment } from '@/lib/api/resources';
  */
 export function ProjectOverview({
   projectSlug,
-  name,
   shape,
-  status,
   deploymentOn,
   instant,
   deployments,
@@ -25,9 +24,7 @@ export function ProjectOverview({
   capabilities,
 }: {
   projectSlug: string;
-  name: string;
   shape: ProjectShape;
-  status: string;
   deploymentOn: boolean;
   instant: { available: boolean; dashboardUrl: string | null; app: InstantApp | null } | null;
   deployments: Deployment[];
@@ -51,14 +48,7 @@ export function ProjectOverview({
   });
 
   return (
-    <div className="mx-auto max-w-3xl space-y-6">
-      <header>
-        <h1 className="text-xl font-semibold tracking-tight text-text">{name}</h1>
-        <p className="mt-1 text-sm text-text-muted">
-          {shapeLabel(shape)} · {status.toLowerCase()}
-        </p>
-      </header>
-
+    <>
       {hasBackend ? (
         <section>
           <SectionHeader title="The backend" />
@@ -103,27 +93,72 @@ export function ProjectOverview({
 
       {deploymentOn ? (
         <section>
-          <SectionHeader title="Deployments" />
-          <Card className="p-4">
-            <p className="text-sm text-text">
-              <span className="font-medium">{running.length}</span> running
-              {failed.length > 0 ? (
-                <>
-                  {' · '}
-                  <span className="font-medium">{failed.length}</span> failed
-                </>
-              ) : null}
-              {lastDeployment ? (
-                <span className="text-text-dim"> · last {relativeTime(lastDeployment.createdAt)}</span>
-              ) : null}
-            </p>
-            <div className="mt-3 flex flex-wrap gap-2">
-              <Link href={`${base}/deployments`}>
-                <Button variant="secondary" size="sm">
-                  View deployments
-                </Button>
+          <SectionHeader
+            title="Deployments"
+            actions={
+              <Link
+                href={`${base}/deployments`}
+                className="text-xs text-text-muted transition-colors hover:text-text"
+              >
+                All deployments
               </Link>
+            }
+          />
+          <Card className="divide-y divide-rail">
+            <div className="flex items-center justify-between gap-3 px-4 py-3">
+              <span className="text-sm text-text">
+                <span className="font-medium">{running.length}</span> running
+              </span>
+              {failed.length > 0 ? (
+                <Badge tone="danger">{failed.length} failed</Badge>
+              ) : lastDeployment ? (
+                <span className="text-xs text-text-dim">
+                  last {sayWhen(lastDeployment.createdAt)}
+                </span>
+              ) : (
+                <span className="text-xs text-text-dim">nothing deployed yet</span>
+              )}
             </div>
+
+            {deployments.slice(0, 3).map((deployment) => (
+              <div key={deployment.id} className="flex items-center justify-between gap-3 px-4 py-3">
+                <div className="min-w-0">
+                  <Link
+                    href={`${base}/deployments/${deployment.id}`}
+                    className="truncate text-sm text-text hover:text-accent"
+                  >
+                    {deployment.release?.version ?? 'A deployment'}
+                  </Link>
+                  <p className="mt-0.5 truncate text-xs text-text-dim">
+                    {deployment.release?.branch ?? 'no branch'}
+                    {deployment.release?.commitSha
+                      ? ` · ${deployment.release.commitSha.slice(0, 7)}`
+                      : ''}
+                  </p>
+                </div>
+                <Badge
+                  tone={
+                    deployment.status === 'SUCCESS'
+                      ? 'success'
+                      : deployment.status === 'FAILED'
+                        ? 'danger'
+                        : 'neutral'
+                  }
+                >
+                  {deployment.status.toLowerCase()}
+                </Badge>
+              </div>
+            ))}
+
+            {deployments.length === 0 ? (
+              <div className="px-4 py-3">
+                <Link href={`${base}/deployments/new`}>
+                  <Button variant="secondary" size="sm">
+                    Deploy your application
+                  </Button>
+                </Link>
+              </div>
+            ) : null}
           </Card>
         </section>
       ) : null}
@@ -131,9 +166,24 @@ export function ProjectOverview({
       <section>
         <SectionHeader title="Capabilities" />
         <Card className="divide-y divide-rail">
-          <Capability name="Email" on={capabilities.email} />
-          <Capability name="WhatsApp" on={capabilities.whatsapp} />
-          <Capability name="Packages" on={capabilities.packages} />
+          <Capability
+            name="Email"
+            on={capabilities.email}
+            href={`${base}/email`}
+            action={capabilities.email ? 'Open' : 'Turn on'}
+          />
+          <Capability
+            name="WhatsApp"
+            on={capabilities.whatsapp}
+            href={`${base}/whatsapp`}
+            action="Open"
+          />
+          <Capability
+            name="Packages"
+            on={capabilities.packages}
+            href={`${base}/packages`}
+            action="Open"
+          />
         </Card>
       </section>
 
@@ -157,7 +207,7 @@ export function ProjectOverview({
           )}
         </Card>
       </section>
-    </div>
+    </>
   );
 }
 
@@ -181,7 +231,7 @@ export function nextStep(input: {
     return { label: 'Create the application backend', href: `${href}/settings` };
   }
   if (deploymentOn && deploymentCount === 0) {
-    return { label: 'Deploy your application', href: `${href}/deployments` };
+    return { label: 'Deploy your application', href: `${href}/deployments/new` };
   }
   if (deploymentOn && deploymentCount > 0) {
     return { label: 'Connect a domain', href: `${href}/domains` };
@@ -192,29 +242,27 @@ export function nextStep(input: {
   return null;
 }
 
-function Capability({ name, on }: { name: string; on: boolean }) {
+function Capability({
+  name,
+  on,
+  href,
+  action,
+}: {
+  name: string;
+  on: boolean;
+  href: string;
+  action: string;
+}) {
   return (
-    <div className="flex items-center justify-between gap-3 px-4 py-2.5">
+    <div className="flex items-center justify-between gap-3 px-4 py-3">
       <span className="text-sm text-text">{name}</span>
-      <Badge tone={on ? 'success' : 'neutral'}>{on ? 'On' : 'Off'}</Badge>
+      <div className="flex items-center gap-3">
+        <Link href={href} className="text-xs text-accent hover:underline">
+          {action}
+        </Link>
+        <Badge tone={on ? 'success' : 'neutral'}>{on ? 'On' : 'Off'}</Badge>
+      </div>
     </div>
   );
 }
 
-function shapeLabel(shape: ProjectShape): string {
-  if (shape === 'BACKEND') return 'Backend as a service';
-  if (shape === 'BOTH') return 'Backend and deployments';
-  return 'Deployments';
-}
-
-function relativeTime(iso: string): string {
-  const then = new Date(iso).getTime();
-  if (Number.isNaN(then)) return 'recently';
-  const minutes = Math.max(0, Math.round((Date.now() - then) / 60000));
-  if (minutes < 1) return 'just now';
-  if (minutes < 60) return `${minutes} minute${minutes === 1 ? '' : 's'} ago`;
-  const hours = Math.round(minutes / 60);
-  if (hours < 24) return `${hours} hour${hours === 1 ? '' : 's'} ago`;
-  const days = Math.round(hours / 24);
-  return `${days} day${days === 1 ? '' : 's'} ago`;
-}

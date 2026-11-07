@@ -1,5 +1,7 @@
 import { redirect } from 'next/navigation';
 
+import { Page } from '@/components/ui/page';
+
 import { getProject } from '@/lib/api/project';
 import { Card, PageHeader } from '@/components/ui/card';
 import { DeploymentWizard } from '@/components/project/deployment-wizard';
@@ -26,7 +28,7 @@ export default async function NewDeploymentPage({
   }
 
   return (
-    <div className="mx-auto max-w-3xl space-y-6">
+    <Page>
       <PageHeader
         title="New deployment"
         description={`Deploying into ${project.name}.`}
@@ -34,6 +36,6 @@ export default async function NewDeploymentPage({
       <Card className="p-4">
         <DeploymentWizard projectId={project.id} projectSlug={project.slug} />
       </Card>
-    </div>
+    </Page>
   );
 }

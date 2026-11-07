@@ -42,7 +42,7 @@ export function EmailSendForm({ projectId, senders }: { projectId: string; sende
   }
 
   return (
-    <div className="space-y-4 p-4">
+    <div className="max-w-xl space-y-4 p-4">
       <Input label="From" value={from} onChange={(event) => setFrom(event.target.value)} />
       <Input
         label="To"

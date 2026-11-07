@@ -3,6 +3,7 @@ import { redirect } from 'next/navigation';
 
 import { getInstantConfig, getProject } from '@/lib/api/project';
 import { Card, PageHeader, SectionHeader } from '@/components/ui/card';
+import { Page } from '@/components/ui/page';
 import { EmptyState } from '@/components/ui/feedback';
 import { Button } from '@/components/ui/button';
 import { CodeBlock } from '@/components/ui/code-block';
@@ -58,7 +59,7 @@ export default async function ProjectConnectPage({
   );
 
   return (
-    <div className="mx-auto max-w-3xl space-y-6">
+    <Page>
       <PageHeader
         title="Connect an application"
         description="What an application needs to talk to this project."
@@ -110,6 +111,6 @@ export default async function ProjectConnectPage({
         />
         <CodeBlock label="MCP" code={mcp} />
       </section>
-    </div>
+    </Page>
   );
 }

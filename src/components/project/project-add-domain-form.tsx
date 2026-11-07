@@ -11,12 +11,20 @@ import { addDomainAction } from '@/app/(project)/projects/[projectId]/domains/ac
 /**
  * Adding a domain.
  *
- * The domain is added to the project; the DNS records that have to be set
- * at the registrar come back from the platform.
+ * The question is not "what is the domain" — it is **who points it at the
+ * platform**. Either the connected account does, or the person does, by
+ * hand, from the records the platform shows.
  */
-export function ProjectAddDomainForm({ projectId }: { projectId: string }) {
+export function ProjectAddDomainForm({
+  projectId,
+  canWrite,
+}: {
+  projectId: string;
+  canWrite: boolean;
+}) {
   const [domain, setDomain] = useState('');
   const [type, setType] = useState('DEPLOYMENT');
+  const [mode, setMode] = useState<'auto' | 'manual'>(canWrite ? 'auto' : 'manual');
   const [error, setError] = useState<string | null>(null);
   const [added, setAdded] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
@@ -25,42 +33,78 @@ export function ProjectAddDomainForm({ projectId }: { projectId: string }) {
     setError(null);
     setAdded(null);
     startTransition(async () => {
-      const result = await addDomainAction(projectId, { domain, type: [type] });
-      if (result.error) setError(result.error);
-      else {
-        setAdded(domain.trim().toLowerCase());
-        setDomain('');
+      const result = await addDomainAction(projectId, {
+        domain,
+        type: [type],
+        mode,
+      });
+      if (result.error) {
+        setError(result.error);
+        return;
       }
+      setAdded(domain.trim().toLowerCase());
+      setDomain('');
     });
   };
 
   return (
-    <div className="space-y-4 p-4">
-      <div className="grid gap-3 sm:grid-cols-[1fr_auto]">
-        <Input
-          label="Domain"
-          placeholder="store.example.com"
-          value={domain}
-          onChange={(event) => setDomain(event.target.value)}
-        />
-        <Select
-          label="Purpose"
-          value={type}
-          onChange={(event) => setType(event.target.value)}
-          options={[
-            { value: 'DEPLOYMENT', label: 'Deployments' },
-            { value: 'EMAIL', label: 'Email' },
-            { value: 'INBOUND_EMAIL', label: 'Inbound email' },
-            { value: 'API', label: 'API' },
-            { value: 'REDIRECT', label: 'Redirect' },
-          ]}
-          className="sm:w-44"
-        />
-      </div>
+    <div className="max-w-xl space-y-4 p-4">
+      <Input
+        label="Domain"
+        placeholder="store.example.com"
+        value={domain}
+        onChange={(event) => setDomain(event.target.value)}
+        hint="The domain the project answers on."
+      />
 
-      <Button variant="primary" onClick={add} loading={pending} disabled={!domain.trim()}>
-        Add the domain
-      </Button>
+      <Select
+        label="What it is for"
+        value={type}
+        onChange={(event) => setType(event.target.value)}
+        options={[
+          { value: 'DEPLOYMENT', label: 'Deployments' },
+          { value: 'EMAIL', label: 'Email' },
+          { value: 'INBOUND_EMAIL', label: 'Inbound email' },
+          { value: 'API', label: 'API' },
+          { value: 'REDIRECT', label: 'Redirect' },
+        ]}
+      />
+
+      {canWrite ? (
+        <fieldset className="space-y-2">
+          <legend className="text-xs font-medium text-text-muted">Who points it at the platform</legend>
+          <label className="flex cursor-pointer items-start gap-2 rounded-lg border border-rail bg-surface-2 p-3">
+            <input
+              type="radio"
+              name="mode"
+              className="mt-0.5 size-3.5 accent-[var(--accent)]"
+              checked={mode === 'auto'}
+              onChange={() => setMode('auto')}
+            />
+            <span>
+              <span className="block text-sm text-text">The platform writes the records</span>
+              <span className="mt-0.5 block text-xs text-text-dim">
+                Your connected account is used. The domain must be in it.
+              </span>
+            </span>
+          </label>
+          <label className="flex cursor-pointer items-start gap-2 rounded-lg border border-rail bg-surface-2 p-3">
+            <input
+              type="radio"
+              name="mode"
+              className="mt-0.5 size-3.5 accent-[var(--accent)]"
+              checked={mode === 'manual'}
+              onChange={() => setMode('manual')}
+            />
+            <span>
+              <span className="block text-sm text-text">I will set the records</span>
+              <span className="mt-0.5 block text-xs text-text-dim">
+                The records are shown, and you copy them into your registrar.
+              </span>
+            </span>
+          </label>
+        </fieldset>
+      ) : null}
 
       {error ? <ErrorState message={error} /> : null}
 
@@ -68,10 +112,16 @@ export function ProjectAddDomainForm({ projectId }: { projectId: string }) {
         <div className="rounded-md border border-success/40 bg-success/5 p-3">
           <p className="text-xs font-medium text-success">{added} was added.</p>
           <p className="mt-1 text-xs text-text-muted">
-            Now point it at the platform — the records are in the list beside it.
+            {mode === 'auto'
+              ? 'The platform is writing its records now — check the status in a moment.'
+              : 'Now set the records it shows, and then check them.'}
           </p>
         </div>
       ) : null}
+
+      <Button variant="primary" onClick={add} loading={pending} disabled={!domain.trim()}>
+        Add the domain
+      </Button>
     </div>
   );
 }

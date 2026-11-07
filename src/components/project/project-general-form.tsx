@@ -42,7 +42,7 @@ export function ProjectGeneralForm({
   };
 
   return (
-    <div className="space-y-4">
+    <div className="max-w-xl space-y-4">
       <Input
         label="Name"
         value={values.name}

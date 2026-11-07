@@ -164,3 +164,47 @@ body {
     scroll-behavior: auto !important;
   }
 }
+
+/* ── The scroll areas ─────────────────────────────────────────────────────── */
+
+/*
+ * A scroll area that looks like a scroll area.
+ *
+ * The browser's own bar is wide and pale and disappears against the dark
+ * surfaces; this one is thin, and its thumb is the rail colour so it reads
+ * as part of the panel rather than as something the page forgot to style.
+ */
+.scroll-area {
+  scrollbar-width: thin;
+  scrollbar-color: var(--rail-light) transparent;
+}
+
+.scroll-area::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+
+.scroll-area::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.scroll-area::-webkit-scrollbar-thumb {
+  background-color: var(--rail);
+  border: 3px solid transparent;
+  background-clip: content-box;
+  border-radius: var(--radius-full);
+}
+
+.scroll-area:hover::-webkit-scrollbar-thumb {
+  background-color: var(--rail-light);
+}
+
+/*
+ * The fade at the edge of a scroll area.
+ *
+ * It says "there is more below" without a scrollbar having to say it, and
+ * it disappears when there is nothing more.
+ */
+.scroll-fade {
+  mask-image: linear-gradient(to bottom, transparent 0, black 12px, black calc(100% - 20px), transparent 100%);
+}

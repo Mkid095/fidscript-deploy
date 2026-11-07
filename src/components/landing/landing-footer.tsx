@@ -7,7 +7,7 @@ import Link from 'next/link';
  * "Services" — the word the guide retires — so the links here are the
  * platform's own vocabulary.
  */
-const COLS: { title: string; links: { label: string; href: string }[] }[] = [
+export const COLS: { title: string; links: { label: string; href: string }[] }[] = [
   {
     title: 'Build',
     links: [

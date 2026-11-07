@@ -1,5 +1,7 @@
 import { getInstantApp, getProject, getProjectMembers, getProjectResources } from '@/lib/api/project';
 import { getDeployments } from '@/lib/api/resources';
+import { PageHeader } from '@/components/ui/card';
+import { Page } from '@/components/ui/page';
 import { ErrorState } from '@/components/ui/feedback';
 import { ProjectOverview } from '@/components/project/project-overview';
 
@@ -44,21 +46,34 @@ export default async function ProjectOverviewPage({
   // The owner is in the project whether or not they are on the members list.
   const memberCount = members.length + 1;
 
+  const shape = project.shape ?? 'DEPLOYMENT';
+
   return (
-    <ProjectOverview
-      projectSlug={project.slug}
-      name={project.name}
-      shape={project.shape ?? 'DEPLOYMENT'}
-      status={project.status}
-      deploymentOn={project.deploymentOn ?? true}
-      instant={instant}
-      deployments={deployments}
-      memberCount={memberCount}
-      capabilities={{
-        email: resources.emailDomains > 0,
-        whatsapp: false,
-        packages: true,
-      }}
-    />
+    <Page>
+      <PageHeader
+        title={project.name}
+        description={`${shapeLabel(shape)} · ${project.status.toLowerCase()}`}
+      />
+      <ProjectOverview
+        projectSlug={project.slug}
+        shape={shape}
+        deploymentOn={project.deploymentOn ?? true}
+        instant={instant}
+        deployments={deployments}
+        memberCount={memberCount}
+        capabilities={{
+          email: resources.emailDomains > 0,
+          whatsapp: false,
+          packages: true,
+        }}
+      />
+    </Page>
   );
+}
+
+/** The shape, said the way a person would say it. */
+function shapeLabel(shape: string): string {
+  if (shape === 'BACKEND') return 'Backend as a service';
+  if (shape === 'BOTH') return 'Backend and deployments';
+  return 'Deployments';
 }

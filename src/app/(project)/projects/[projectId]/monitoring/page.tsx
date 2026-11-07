@@ -4,6 +4,7 @@ import { serverApi as api } from '@/lib/api/server';
 import { getProject } from '@/lib/api/project';
 import { applications } from '@/lib/api/platform';
 import { Card, PageHeader, SectionHeader } from '@/components/ui/card';
+import { Page } from '@/components/ui/page';
 import { Badge, EmptyState } from '@/components/ui/feedback';
 import { Button } from '@/components/ui/button';
 
@@ -51,7 +52,7 @@ export default async function ProjectMonitoringPage({
   ]);
 
   return (
-    <div className="mx-auto max-w-3xl space-y-6">
+    <Page>
       <PageHeader title="Monitoring" description="What the platform is watching in this project." />
 
       {stats ? (
@@ -111,7 +112,7 @@ export default async function ProjectMonitoringPage({
           )}
         </Card>
       </section>
-    </div>
+    </Page>
   );
 }
 

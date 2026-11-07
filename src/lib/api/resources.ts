@@ -31,9 +31,16 @@ export interface Domain {
   domain: string;
   isCustom: boolean;
   isPrimary: boolean;
+  apexDomain: boolean;
   type: string[];
+  capabilities: Record<string, boolean>;
+  dnsMode: string;
   sslEnabled: boolean;
   sslStatus: string;
+  /** Where the DNS stands: pending, active, broken… */
+  dnsStatus: string;
+  dnsVerifiedAt: string | null;
+  deploymentUrl: string | null;
   createdAt: string;
 }
 

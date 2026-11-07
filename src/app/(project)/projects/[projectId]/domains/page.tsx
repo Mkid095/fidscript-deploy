@@ -1,9 +1,13 @@
 import { redirect } from 'next/navigation';
 
 import { getProject } from '@/lib/api/project';
-import { getDomainInstructions, getDomains } from '@/lib/api/resources';
+import { getDnsConnection, getDnsRecords } from '@/lib/api/domains';
+import { getDomains } from '@/lib/api/resources';
 import { Card, PageHeader, SectionHeader } from '@/components/ui/card';
-import { Badge, EmptyState } from '@/components/ui/feedback';
+import { Page } from '@/components/ui/page';
+import { EmptyState } from '@/components/ui/feedback';
+import { DnsConnectionCard } from '@/components/project/dns-connection-card';
+import { DomainCard } from '@/components/project/domain-card';
 import { ProjectAddDomainForm } from '@/components/project/project-add-domain-form';
 
 export const metadata = { title: 'Domains' };
@@ -11,8 +15,11 @@ export const metadata = { title: 'Domains' };
 /**
  * The project's domains.
  *
- * What the project answers on. A domain that is added needs its DNS
- * pointed at the platform — the records come from the API.
+ * Where the project answers — and the DNS that makes it answer.
+ *
+ * The account that holds the domain can be connected, and then the
+ * platform writes the records itself. Without it, the records are shown
+ * and the person sets them.
  */
 export default async function ProjectDomainsPage({
   params,
@@ -24,75 +31,64 @@ export default async function ProjectDomainsPage({
   const project = await getProject(projectId).catch(() => null);
   if (!project) redirect('/projects');
 
-  const domains = await getDomains(project.id).catch(() => []);
+  const [domains, connection] = await Promise.all([
+    getDomains(project.id).catch(() => []),
+    getDnsConnection(project.id),
+  ]);
+
   const records = await Promise.all(
-    domains.map((domain) => getDomainInstructions(project.id, domain.id).catch(() => [])),
+    domains.map((domain) => getDnsRecords(project.id, domain.id).catch(() => null)),
   );
 
+  const canWrite = connection !== null;
+
   return (
-    <div className="mx-auto max-w-3xl space-y-6">
-      <PageHeader title="Domains" description="Where this project answers." />
+    <Page>
+      <PageHeader
+        title="Domains"
+        description="Where this project answers, and the DNS that makes it answer."
+      />
+
+      <section>
+        <SectionHeader
+          title="Your DNS account"
+          description="Connect it, and the platform writes the records for you."
+        />
+        <DnsConnectionCard projectId={project.id} connection={connection} />
+      </section>
 
       <section>
         <SectionHeader title="The domains" />
-        <Card>
-          {domains.length === 0 ? (
+        {domains.length === 0 ? (
+          <Card>
             <EmptyState
               title="No domain yet"
               body="A deployment can answer on a subdomain. A domain of your own needs its DNS pointed here."
             />
-          ) : (
-            <ul className="divide-y divide-rail">
-              {domains.map((domain, index) => (
-                <li key={domain.id} className="px-4 py-3">
-                  <div className="flex flex-wrap items-center justify-between gap-3">
-                    <div className="min-w-0">
-                      <p className="truncate text-sm text-text">{domain.domain}</p>
-                      <p className="mt-0.5 truncate text-xs text-text-dim">
-                        {domain.isCustom ? 'your domain' : 'a subdomain of the platform'}
-                        {domain.type.length > 0 ? ` · ${domain.type.join(', ').toLowerCase()}` : ''}
-                      </p>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      {domain.isPrimary ? <Badge tone="accent">primary</Badge> : null}
-                      <Badge tone={domain.sslEnabled ? 'success' : 'neutral'}>
-                        {domain.sslEnabled ? `ssl ${domain.sslStatus.toLowerCase()}` : 'no ssl'}
-                      </Badge>
-                    </div>
-                  </div>
-
-                  {records[index].length > 0 ? (
-                    <div className="mt-3 rounded-md border border-rail bg-surface-2 p-3">
-                      <p className="text-xs font-medium text-text-muted">
-                        Point it here — at your registrar:
-                      </p>
-                      <ul className="mt-2 space-y-1.5">
-                        {records[index].map((record, position) => (
-                          <li key={position} className="font-mono text-xs text-text">
-                            <span className="text-accent">{record.type}</span>{' '}
-                            <span className="text-text-muted">{record.name}</span>{' '}
-                            <span className="text-text-dim">→</span> {record.value}
-                            {record.ttl ? (
-                              <span className="text-text-dim"> · ttl {record.ttl}</span>
-                            ) : null}
-                          </li>
-                        ))}
-                      </ul>
-                    </div>
-                  ) : null}
-                </li>
-              ))}
-            </ul>
-          )}
-        </Card>
+          </Card>
+        ) : (
+          <div className="space-y-3">
+            {domains.map((domain, index) => (
+              <DomainCard
+                key={domain.id}
+                projectId={project.id}
+                domainId={domain.id}
+                domain={domain.domain}
+                status={domain.dnsStatus ?? 'pending'}
+                records={records[index]?.records ?? []}
+                canWrite={canWrite}
+              />
+            ))}
+          </div>
+        )}
       </section>
 
       <section>
         <SectionHeader title="Add a domain" />
         <Card>
-          <ProjectAddDomainForm projectId={project.id} />
+          <ProjectAddDomainForm projectId={project.id} canWrite={canWrite} />
         </Card>
       </section>
-    </div>
+    </Page>
   );
 }

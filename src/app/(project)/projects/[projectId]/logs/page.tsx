@@ -3,6 +3,7 @@ import { redirect } from 'next/navigation';
 import { serverApi as api } from '@/lib/api/server';
 import { getProject } from '@/lib/api/project';
 import { Card, PageHeader, SectionHeader } from '@/components/ui/card';
+import { Page } from '@/components/ui/page';
 import { Badge, EmptyState, ErrorState } from '@/components/ui/feedback';
 
 export const metadata = { title: 'Logs' };
@@ -46,7 +47,7 @@ export default async function ProjectLogsPage({
   ]);
 
   return (
-    <div className="mx-auto max-w-3xl space-y-6">
+    <Page>
       <PageHeader title="Logs" description="What this project has written down." />
 
       {stats ? (
@@ -114,7 +115,7 @@ export default async function ProjectLogsPage({
           </Card>
         )}
       </section>
-    </div>
+    </Page>
   );
 }
 

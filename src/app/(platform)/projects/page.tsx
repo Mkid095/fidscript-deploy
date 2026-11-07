@@ -2,6 +2,7 @@ import Link from 'next/link';
 
 import { listProjects } from '@/lib/api/projects';
 import { Card, PageHeader, SectionHeader } from '@/components/ui/card';
+import { Page } from '@/components/ui/page';
 import { Badge, EmptyState, ErrorState } from '@/components/ui/feedback';
 import { NewProjectForm } from '@/components/platform/new-project-form';
 
@@ -18,7 +19,7 @@ export default async function ProjectsPage() {
   const projects = await listProjects().catch(() => null);
 
   return (
-    <div className="mx-auto max-w-4xl space-y-6">
+    <Page width="wide">
       <PageHeader
         title="Projects"
         description="The workspaces you can reach."
@@ -74,7 +75,7 @@ export default async function ProjectsPage() {
           </section>
         </>
       )}
-    </div>
+    </Page>
   );
 }
 

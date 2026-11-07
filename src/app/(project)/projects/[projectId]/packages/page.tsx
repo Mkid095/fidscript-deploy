@@ -2,9 +2,10 @@ import { redirect } from 'next/navigation';
 
 import { getProject } from '@/lib/api/project';
 import { getPublishedPackages, getRegistryUrl } from '@/lib/api/packages';
-import { Card, PageHeader, SectionHeader } from '@/components/ui/card';
-import { Badge, EmptyState } from '@/components/ui/feedback';
-import { PackagesConnect } from '@/components/project/packages-connect';
+import { Page } from '@/components/ui/page';
+import { PageHeader } from '@/components/ui/card';
+import { PackagesRegistry } from '@/components/project/packages-registry';
+import { Card } from '@/components/ui/card';
 
 export const metadata = { title: 'Packages' };
 
@@ -12,8 +13,8 @@ export const metadata = { title: 'Packages' };
  * The project's packages.
  *
  * The registry is the platform's, and it answers the same way to everybody.
- * What this screen gives is the address, the way to publish to it, and what
- * is published in it already.
+ * This screen gives the address, the way to publish to it, and what is
+ * published in it already.
  */
 export default async function ProjectPackagesPage({
   params,
@@ -31,65 +32,48 @@ export default async function ProjectPackagesPage({
     : { packages: [], reachable: false };
 
   return (
-    <div className="mx-auto max-w-3xl space-y-8">
+    <Page>
       <PageHeader
         title="Packages"
         description="Publish a package, and use the ones that are published."
       />
 
-      <section>
-        <SectionHeader title="The registry" />
-        <Card className="divide-y divide-rail">
-          <Row term="npm" value={registryUrl ?? 'The platform domain is not known'} />
-          <Row term="Maven" value="Not served by this deployment" />
-          <Row
-            term="Reachability"
-            value={reachable ? 'The registry answers' : 'The registry did not answer'}
-          />
-        </Card>
-      </section>
-
-      <PackagesConnect registryUrl={registryUrl} />
+      <PackagesRegistry
+        registryUrl={registryUrl}
+        packages={packages}
+        reachable={reachable}
+        scope="@fidscript-deploy"
+      />
 
       <section>
-        <SectionHeader title="Published" description="What the registry holds right now." />
-        <Card>
-          {packages.length === 0 ? (
-            <EmptyState
-              title="Nothing is published"
-              body="The registry answers with what it holds — including the packages published to it."
-            />
-          ) : (
-            <ul className="divide-y divide-rail">
-              {packages.slice(0, 40).map((entry) => (
-                <li key={entry.name} className="flex items-center justify-between gap-4 px-4 py-3">
-                  <div className="min-w-0">
-                    <p className="truncate font-mono text-sm text-text">{entry.name}</p>
-                    {entry.description ? (
-                      <p className="truncate text-xs text-text-dim">{entry.description}</p>
-                    ) : null}
-                  </div>
-                  <Badge tone="neutral">{entry.latest ?? 'no version'}</Badge>
-                </li>
-              ))}
-            </ul>
-          )}
-        </Card>
-        {packages.length > 40 ? (
-          <p className="mt-2 text-xs text-text-dim">
-            Showing 40 of {packages.length}. The registry holds the rest.
+        <PageHeader
+          title="Publish"
+          description="How a package leaves this machine."
+        />
+        <Card className="p-4">
+          <ol className="space-y-2 text-sm text-text-muted">
+            <li>
+              <span className="text-text">1.</span> Sign in to the registry —{' '}
+              <code className="font-mono text-xs text-text">
+                npm login --registry {registryUrl ?? 'https://registry.example.com'}
+              </code>
+            </li>
+            <li>
+              <span className="text-text">2.</span> Point the scope at it, in the package&apos;s
+              own <code className="font-mono text-xs text-text">.npmrc</code>.
+            </li>
+            <li>
+              <span className="text-text">3.</span> Publish it —{' '}
+              <code className="font-mono text-xs text-text">npm publish</code>
+            </li>
+          </ol>
+          <p className="mt-4 text-xs leading-relaxed text-text-dim">
+            The token is read from the environment — <code className="font-mono">NPM_TOKEN</code> or{' '}
+            <code className="font-mono">FIDScript_REGISTRY_TOKEN</code> — so a CI job publishes
+            without ever holding it in a file.
           </p>
-        ) : null}
+        </Card>
       </section>
-    </div>
-  );
-}
-
-function Row({ term, value }: { term: string; value: string }) {
-  return (
-    <div className="flex items-center justify-between gap-4 px-4 py-2.5">
-      <span className="text-sm text-text-muted">{term}</span>
-      <span className="truncate text-sm text-text">{value}</span>
-    </div>
+    </Page>
   );
 }

@@ -1,9 +1,12 @@
 import { redirect } from 'next/navigation';
 
+import { Page } from '@/components/ui/page';
+
 import { getProject } from '@/lib/api/project';
 import { getProjectEvents } from '@/lib/api/resources';
 import { Card, PageHeader } from '@/components/ui/card';
 import { EmptyState } from '@/components/ui/feedback';
+import { sayEvent, sayWhen } from '@/lib/events';
 
 export const metadata = { title: 'Activity' };
 
@@ -25,7 +28,7 @@ export default async function ProjectActivityPage({
   const events = await getProjectEvents(project.id).catch(() => []);
 
   return (
-    <div className="mx-auto max-w-3xl space-y-6">
+    <Page>
       <PageHeader title="Activity" description="Everything that has happened here." />
 
       <Card>
@@ -38,37 +41,13 @@ export default async function ProjectActivityPage({
           <ul className="divide-y divide-rail">
             {events.map((event) => (
               <li key={event.id} className="px-4 py-3">
-                <p className="text-sm text-text">{describe(event.type)}</p>
-                <p className="mt-0.5 text-xs text-text-dim">{when(event.createdAt)}</p>
+                <p className="text-sm text-text">{sayEvent(event.type)}</p>
+                <p className="mt-0.5 text-xs text-text-dim">{sayWhen(event.createdAt)}</p>
               </li>
             ))}
           </ul>
         )}
       </Card>
-    </div>
+    </Page>
   );
-}
-
-/** The event's type, said in words. */
-function describe(type: string): string {
-  const known: Record<string, string> = {
-    'projects.created': 'The project was created.',
-    'projects.updated': 'The project was changed.',
-    'projects.deleted': 'The project was deleted.',
-    'projects.archived': 'The project was archived.',
-    'projects.invitation.created': 'An invitation was made.',
-    'projects.invitation.accepted': 'An invitation was accepted.',
-    'projects.invitation.revoked': 'An invitation was withdrawn.',
-    'projects.member.added': 'Somebody was added to the project.',
-    'projects.member.removed': 'Somebody was removed from the project.',
-    'projects.env_var.updated': 'The environment variables were changed.',
-    'projects.env_var.deleted': 'An environment variable was removed.',
-  };
-  return known[type] ?? type;
-}
-
-function when(iso: string): string {
-  const date = new Date(iso);
-  if (Number.isNaN(date.getTime())) return iso;
-  return date.toISOString().replace('T', ' ').slice(0, 16) + ' UTC';
 }

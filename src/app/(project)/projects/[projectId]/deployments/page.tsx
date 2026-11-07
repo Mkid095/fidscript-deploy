@@ -1,6 +1,8 @@
 import Link from 'next/link';
 import { redirect } from 'next/navigation';
 
+import { Page } from '@/components/ui/page';
+
 import { getProject } from '@/lib/api/project';
 import { getDeployments } from '@/lib/api/resources';
 import { Card, PageHeader } from '@/components/ui/card';
@@ -28,7 +30,7 @@ export default async function ProjectDeploymentsPage({
   const deployments = await getDeployments(project.id).catch(() => []);
 
   return (
-    <div className="mx-auto max-w-3xl space-y-6">
+    <Page>
       <PageHeader
         title="Deployments"
         description={`${deployments.length} so far.`}
@@ -95,7 +97,7 @@ export default async function ProjectDeploymentsPage({
           </ul>
         )}
       </Card>
-    </div>
+    </Page>
   );
 }
 

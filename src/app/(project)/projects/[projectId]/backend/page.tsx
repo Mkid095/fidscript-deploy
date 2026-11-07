@@ -3,6 +3,7 @@ import { redirect } from 'next/navigation';
 
 import { getInstantApp, getProject } from '@/lib/api/project';
 import { Card, PageHeader, SectionHeader } from '@/components/ui/card';
+import { Page } from '@/components/ui/page';
 import { Badge, EmptyState } from '@/components/ui/feedback';
 import { Button } from '@/components/ui/button';
 
@@ -29,7 +30,7 @@ export default async function ProjectBackendPage({
   const base = `/projects/${project.slug}`;
 
   return (
-    <div className="mx-auto max-w-3xl space-y-6">
+    <Page>
       <PageHeader
         title="Backend"
         description="Where this project's data, users and files live."
@@ -89,6 +90,6 @@ export default async function ProjectBackendPage({
           </ul>
         </Card>
       </section>
-    </div>
+    </Page>
   );
 }

@@ -10,6 +10,9 @@ import { ProjectSidebar } from '@/components/project/project-sidebar';
  * Its menu is **derived** — from the project's shape, its capabilities, what
  * it actually has, and what this person may use. Nothing here is a fixed
  * list of fourteen items.
+ *
+ * The shell is two columns that each scroll on their own: the menu stays
+ * where it is, and the work scrolls beside it.
  */
 export default async function ProjectLayout({
   children,
@@ -54,14 +57,14 @@ export default async function ProjectLayout({
   });
 
   return (
-    <div className="flex min-h-screen bg-canvas">
+    <div className="flex h-screen overflow-hidden bg-canvas">
       <ProjectSidebar
         projectName={project.name}
         projectStatus={project.status}
         items={items}
       />
-      <div className="flex min-w-0 flex-1 flex-col">
-        <main className="flex-1 overflow-y-auto p-4 sm:p-6">{children}</main>
+      <div className="flex min-w-0 flex-1 flex-col overflow-hidden">
+        <main className="scroll-area flex-1 overflow-y-auto">{children}</main>
       </div>
     </div>
   );

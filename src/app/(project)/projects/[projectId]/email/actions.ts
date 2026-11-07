@@ -7,8 +7,8 @@ import { serverApi as api } from '@/lib/api/server';
 /**
  * The project's mail.
  *
- * Adding a domain, proving it, and making a mailbox. The platform answers
- * with the DNS records that have to be set; the console shows them.
+ * Domains, mailboxes, aliases, keys and the sending of a message. All of it
+ * is the platform's — the console asks, and says plainly what happened.
  */
 
 /** Add a mail domain. The platform answers with the records to set. */
@@ -34,7 +34,7 @@ export async function addEmailDomainAction(
   }
 }
 
-/** Check the domain's DNS records. */
+/** Check a mail domain's records. */
 export async function verifyEmailDomainAction(
   projectId: string,
   domainId: string,
@@ -50,7 +50,7 @@ export async function verifyEmailDomainAction(
   }
 }
 
-/** Make a mailbox. */
+/** Make a mailbox. The password is set here and never shown again. */
 export async function createMailboxAction(
   projectId: string,
   input: { domain: string; localPart: string; password: string; name?: string },
@@ -68,6 +68,104 @@ export async function createMailboxAction(
     return {
       error: err instanceof Error ? err.message : 'The mailbox could not be created.',
     };
+  }
+}
+
+/** Give a mailbox a new password. */
+export async function resetMailboxPasswordAction(
+  projectId: string,
+  mailboxId: string,
+  password: string,
+): Promise<{ ok?: boolean; error?: string }> {
+  try {
+    await api.post(`/projects/${projectId}/email/mailboxes/${mailboxId}/reset-password`, {
+      password,
+    });
+    revalidatePath(`/projects/${projectId}/email`);
+    return { ok: true };
+  } catch (err) {
+    return {
+      error: err instanceof Error ? err.message : 'The password could not be changed.',
+    };
+  }
+}
+
+/** Remove a mailbox. */
+export async function deleteMailboxAction(
+  projectId: string,
+  mailboxId: string,
+): Promise<{ ok?: boolean; error?: string }> {
+  try {
+    await api.delete(`/projects/${projectId}/email/mailboxes/${mailboxId}`);
+    revalidatePath(`/projects/${projectId}/email`);
+    return { ok: true };
+  } catch (err) {
+    return {
+      error: err instanceof Error ? err.message : 'The mailbox could not be removed.',
+    };
+  }
+}
+
+/** Make an alias: an address that forwards somewhere else. */
+export async function createAliasAction(
+  projectId: string,
+  input: { domain: string; localPart: string; destination: string },
+): Promise<{ ok?: boolean; error?: string }> {
+  try {
+    await api.post(`/projects/${projectId}/email/aliases`, {
+      domain: input.domain,
+      localPart: input.localPart,
+      destination: input.destination,
+    });
+    revalidatePath(`/projects/${projectId}/email`);
+    return { ok: true };
+  } catch (err) {
+    return { error: err instanceof Error ? err.message : 'The alias could not be created.' };
+  }
+}
+
+/** Remove an alias. */
+export async function deleteAliasAction(
+  projectId: string,
+  aliasId: string,
+): Promise<{ ok?: boolean; error?: string }> {
+  try {
+    await api.delete(`/projects/${projectId}/email/aliases/${aliasId}`);
+    revalidatePath(`/projects/${projectId}/email`);
+    return { ok: true };
+  } catch (err) {
+    return { error: err instanceof Error ? err.message : 'The alias could not be removed.' };
+  }
+}
+
+/** Make a key that sends mail on this project's behalf. */
+export async function createEmailKeyAction(
+  projectId: string,
+  name: string,
+): Promise<{ ok?: boolean; key?: string; error?: string }> {
+  try {
+    const response = await api.post<{ key?: string; apiKey?: { key?: string } }>(
+      `/projects/${projectId}/email/api-keys`,
+      { name },
+    );
+    revalidatePath(`/projects/${projectId}/email`);
+    return { ok: true, key: response.key ?? response.apiKey?.key };
+  } catch (err) {
+    return { error: err instanceof Error ? err.message : 'The key could not be made.' };
+  }
+}
+
+/** Remove a key. */
+export async function deleteEmailKeyAction(
+  projectId: string,
+  apiKeyId: string,
+): Promise<{ ok?: boolean; error?: string }> {
+  try {
+    await api.delete(`/projects/${projectId}/email/api-keys/${apiKeyId}`);
+    revalidatePath(`/projects/${projectId}/email`);
+    return { ok: true };
+  } catch (err) {
+    return { error: err instanceof Error ? err.message : 'The key could not be removed.' };
   }
 }
 

@@ -4,6 +4,7 @@ import { redirect } from 'next/navigation';
 import { getProject } from '@/lib/api/project';
 import { getDeployment, getDeploymentLogs } from '@/lib/api/resources';
 import { Card, PageHeader, SectionHeader } from '@/components/ui/card';
+import { Page } from '@/components/ui/page';
 import { Badge } from '@/components/ui/feedback';
 import { Button } from '@/components/ui/button';
 import { DeploymentActions } from '@/components/project/deployment-actions';
@@ -35,7 +36,7 @@ export default async function DeploymentPage({
   const base = `/projects/${project.slug}`;
 
   return (
-    <div className="mx-auto max-w-3xl space-y-6">
+    <Page>
       <PageHeader
         title={deployment.release?.version ?? 'The deployment'}
         description={`${deployment.status.toLowerCase()} · ${
@@ -120,7 +121,7 @@ export default async function DeploymentPage({
           )}
         </Card>
       </section>
-    </div>
+    </Page>
   );
 }
 

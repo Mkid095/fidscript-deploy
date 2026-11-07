@@ -1,5 +1,6 @@
 import { apiKeys } from '@/lib/api/platform';
 import { Card, PageHeader, SectionHeader } from '@/components/ui/card';
+import { Page } from '@/components/ui/page';
 import { Badge, EmptyState, ErrorState } from '@/components/ui/feedback';
 import { SettingsNav } from '@/components/platform/settings-nav';
 
@@ -15,7 +16,7 @@ export default async function ApiKeysSettingsPage() {
   const keys = await apiKeys().catch(() => null);
 
   return (
-    <div className="mx-auto max-w-3xl space-y-6">
+    <Page>
       <PageHeader
         title="API keys & MCP"
         description="The keys that act as you, and the agent connections."
@@ -59,6 +60,6 @@ export default async function ApiKeysSettingsPage() {
           </Card>
         )}
       </section>
-    </div>
+    </Page>
   );
 }

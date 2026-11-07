@@ -38,7 +38,7 @@ export function ProjectInviteForm({ projectId }: { projectId: string }) {
   };
 
   return (
-    <div className="space-y-4 p-4">
+    <div className="max-w-xl space-y-4 p-4">
       <div className="grid gap-3 sm:grid-cols-[1fr_auto]">
         <Input
           label="Email"

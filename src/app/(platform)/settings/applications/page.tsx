@@ -1,5 +1,6 @@
 import { applications } from '@/lib/api/platform';
 import { Card, PageHeader, SectionHeader } from '@/components/ui/card';
+import { Page } from '@/components/ui/page';
 import { Badge, EmptyState, ErrorState } from '@/components/ui/feedback';
 import { SettingsNav } from '@/components/platform/settings-nav';
 
@@ -15,7 +16,7 @@ export default async function ApplicationsSettingsPage() {
   const apps = await applications().catch(() => null);
 
   return (
-    <div className="mx-auto max-w-3xl space-y-6">
+    <Page>
       <PageHeader
         title="Applications"
         description="What this platform has, and whether it is healthy."
@@ -68,6 +69,6 @@ export default async function ApplicationsSettingsPage() {
           </div>
         </section>
       )}
-    </div>
+    </Page>
   );
 }

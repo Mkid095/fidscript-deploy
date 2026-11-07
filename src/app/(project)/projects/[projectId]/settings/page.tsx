@@ -8,6 +8,7 @@ import {
   getProjectResources,
 } from '@/lib/api/project';
 import { Card, PageHeader, SectionHeader } from '@/components/ui/card';
+import { Page } from '@/components/ui/page';
 import { ErrorState } from '@/components/ui/feedback';
 import { ProjectGeneralForm } from '@/components/project/project-general-form';
 import { ProjectShapeSection } from '@/components/project/project-shape-section';
@@ -37,12 +38,12 @@ export default async function ProjectSettingsPage({
   const role = (project.role ?? 'viewer').toLowerCase();
   if (role !== 'owner' && role !== 'admin') {
     return (
-      <div className="mx-auto max-w-3xl">
+      <Page>
         <ErrorState
           title="This is not your settings to change"
           message="Only the owner and the admins of a project can change it."
         />
-      </div>
+      </Page>
     );
   }
 
@@ -60,7 +61,7 @@ export default async function ProjectSettingsPage({
   ]);
 
   return (
-    <div className="mx-auto max-w-3xl space-y-8">
+    <Page>
       <PageHeader title="Settings" description={project.name} />
 
       <section>
@@ -110,6 +111,6 @@ export default async function ProjectSettingsPage({
           <ProjectDangerZone projectId={project.id} name={project.name} status={project.status} />
         </Card>
       </section>
-    </div>
+    </Page>
   );
 }

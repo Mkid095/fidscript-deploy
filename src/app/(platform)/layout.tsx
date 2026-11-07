@@ -37,9 +37,9 @@ export default async function PlatformLayout({
   }
 
   return (
-    <div className="flex min-h-screen flex-col bg-canvas">
+    <div className="flex h-screen flex-col overflow-hidden bg-canvas">
       <TopBar pathname={pathname} name={user.name} email={user.email} />
-      <main className="flex-1 overflow-y-auto p-4 sm:p-6">{children}</main>
+      <main className="scroll-area flex-1 overflow-y-auto">{children}</main>
     </div>
   );
 }

@@ -2,6 +2,7 @@ import { redirect } from 'next/navigation';
 
 import { getProject, getProjectMembers } from '@/lib/api/project';
 import { Card, PageHeader, SectionHeader } from '@/components/ui/card';
+import { Page } from '@/components/ui/page';
 import { Badge, EmptyState, ErrorState } from '@/components/ui/feedback';
 import { ProjectInviteForm } from '@/components/project/project-invite-form';
 
@@ -28,7 +29,7 @@ export default async function ProjectMembersPage({
   const members = await getProjectMembers(project.id).catch(() => []);
 
   return (
-    <div className="mx-auto max-w-3xl space-y-6">
+    <Page>
       <PageHeader
         title="Members"
         description={`${members.length + 1} in this project, including the owner.`}
@@ -80,6 +81,6 @@ export default async function ProjectMembersPage({
           message="Ask one of them to bring somebody in."
         />
       )}
-    </div>
+    </Page>
   );
 }

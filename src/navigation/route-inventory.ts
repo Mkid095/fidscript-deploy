@@ -46,6 +46,12 @@ export const ROUTE_INVENTORY: RouteEntry[] = [
 
   // ── Signing in ────────────────────────────────────────────────────────────
   {
+    path: '/docs/[slug]',
+    level: 'public',
+    canonical: true,
+    purpose: 'A page of the guide.',
+  },
+  {
     path: '/login',
     level: 'auth',
     canonical: true,

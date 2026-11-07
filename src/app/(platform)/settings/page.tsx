@@ -2,6 +2,7 @@ import Link from 'next/link';
 
 import { mfaStatus, sessions, sessionUser } from '@/lib/api/platform';
 import { Card, PageHeader, SectionHeader } from '@/components/ui/card';
+import { Page } from '@/components/ui/page';
 import { Badge } from '@/components/ui/feedback';
 import { SettingsNav } from '@/components/platform/settings-nav';
 import { DefinitionRow } from '@/components/ui/input';
@@ -22,7 +23,7 @@ export default async function SettingsPage() {
   ]);
 
   return (
-    <div className="mx-auto max-w-3xl space-y-6">
+    <Page>
       <PageHeader title="Settings" description="Your account, and this platform’s own surfaces." />
       <SettingsNav />
 
@@ -105,6 +106,6 @@ export default async function SettingsPage() {
           </Link>
         </div>
       </section>
-    </div>
+    </Page>
   );
 }

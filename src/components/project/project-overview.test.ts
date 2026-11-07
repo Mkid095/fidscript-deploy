@@ -55,6 +55,6 @@ describe('the next step', () => {
 
   it('points at the project it belongs to', () => {
     const step = nextStep({ ...BASE });
-    expect(step?.href).toBe('/projects/abc/deployments');
+    expect(step?.href).toBe('/projects/abc/deployments/new');
   });
 });

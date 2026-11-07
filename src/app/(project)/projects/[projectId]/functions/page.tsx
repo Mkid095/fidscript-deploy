@@ -1,5 +1,7 @@
 import { redirect } from 'next/navigation';
 
+import { Page } from '@/components/ui/page';
+
 import { getProject } from '@/lib/api/project';
 import { getFunctions } from '@/lib/api/resources';
 import { Card, PageHeader } from '@/components/ui/card';
@@ -26,7 +28,7 @@ export default async function ProjectFunctionsPage({
   const functions = await getFunctions(project.id).catch(() => []);
 
   return (
-    <div className="mx-auto max-w-3xl space-y-6">
+    <Page>
       <PageHeader
         title="Functions"
         description={`${functions.length} in this project.`}
@@ -54,6 +56,6 @@ export default async function ProjectFunctionsPage({
           </ul>
         )}
       </Card>
-    </div>
+    </Page>
   );
 }
