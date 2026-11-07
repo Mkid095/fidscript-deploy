@@ -534,22 +534,25 @@ services:
         max-file: '3'
 
   dashboard:
+    # The console is its own project now — it was rebuilt from the user-flow
+    # guide, in its own repository, and it is built from there. The name of
+    # the service and the container are left as they are so the routing in
+    # traefik/dynamic/platform.yml (and the install scripts that write it)
+    # keeps pointing at the same place.
     build:
-      context: ../..
-      dockerfile: apps/dashboard/Dockerfile
+      context: /home/ken/projects/apps/fidscript-deploy
+      dockerfile: Dockerfile
       args:
-        NEXT_PUBLIC_PLATFORM_DOMAIN: ${DOMAIN}
         NEXT_PUBLIC_API_URL: https://api.${DOMAIN}
     # Explicit tag so the image has a stable name (matching the API
     # service) instead of Compose's project-prefixed default — an
     # operator can pre-build it and `docker compose up` will reuse it.
-    image: fidscript-dashboard:latest
+    image: fidscript-console:latest
     container_name: fidscript_dashboard
     restart: unless-stopped
-    # NEXT_PUBLIC_* vars are read at runtime by client components (see
-    # apps/dashboard/src/lib/sdk.ts). Build args alone are NOT enough — Next.js
-    # standalone doesn't bake them into the client bundle for runtime reads.
-    # Mirror them as runtime env so the SDK can resolve the API base URL.
+    # NEXT_PUBLIC_API_URL is baked into the bundle at build time, so it is
+    # an ARG above. It is mirrored here as runtime env as well, so a
+    # container started by hand still knows where the API is.
     environment:
       NEXT_PUBLIC_PLATFORM_DOMAIN: ${DOMAIN}
       NEXT_PUBLIC_API_URL: https://api.${DOMAIN}
