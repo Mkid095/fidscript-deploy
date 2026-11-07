@@ -30,6 +30,13 @@ export const ROUTE_INVENTORY: RouteEntry[] = [
     purpose: 'What the platform is, and the way in.',
   },
 
+  {
+    path: '/setup',
+    level: 'public',
+    canonical: true,
+    purpose: 'The one setup wizard — from an empty machine to a platform that serves.',
+  },
+
   // ── Signing in ────────────────────────────────────────────────────────────
   {
     path: '/login',
@@ -78,6 +85,12 @@ export const ROUTE_INVENTORY: RouteEntry[] = [
     level: 'auth',
     canonical: true,
     purpose: 'The installer password has to be changed.',
+  },
+  {
+    path: '/welcome',
+    level: 'auth',
+    canonical: true,
+    purpose: 'The first-time journey — once per person, and never forced.',
   },
   {
     path: '/invitations/accept',

@@ -39,7 +39,15 @@ const KINDS = [
   { value: 'frontend', title: 'A website or an app', body: 'Something that is served as files.' },
 ];
 
-export function NewProjectForm({ onCreated }: { onCreated?: (project: Project) => void }) {
+export function NewProjectForm({
+  onCreated,
+  redirectOnCreate = true,
+}: {
+  /** Called with the project that was made. */
+  onCreated?: (project: Project) => void;
+  /** Whether to open the project afterwards. The welcome flow does not. */
+  redirectOnCreate?: boolean;
+}) {
   const router = useRouter();
   const [name, setName] = useState('');
   const [shape, setShape] = useState<ProjectShape>('DEPLOYMENT');
@@ -72,8 +80,10 @@ export function NewProjectForm({ onCreated }: { onCreated?: (project: Project) =
       return;
     }
     onCreated?.(result.project);
-    router.push(`/projects/${result.project.slug}`);
-    router.refresh();
+    if (!onCreated || redirectOnCreate) {
+      router.push(`/projects/${result.project.slug}`);
+      router.refresh();
+    }
   }
 
   return (

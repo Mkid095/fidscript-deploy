@@ -2,6 +2,7 @@ import { redirect } from 'next/navigation';
 import { headers } from 'next/headers';
 
 import { sessionUser } from '@/lib/api/platform';
+import { listProjects } from '@/lib/api/projects';
 import { TopBar } from '@/components/platform/top-bar';
 
 /**
@@ -26,6 +27,14 @@ export default async function PlatformLayout({
   }
 
   const pathname = (await headers()).get('x-pathname') ?? '';
+
+  // The first-time journey is **offered** to somebody who has nothing yet.
+  // The projects page is left alone — it is where a project is made, and
+  // the journey makes one too.
+  if (!user.onboardedAt && pathname !== '/projects') {
+    const projects = await listProjects().catch(() => []);
+    if (projects.length === 0) redirect('/welcome');
+  }
 
   return (
     <div className="flex min-h-screen flex-col bg-canvas">

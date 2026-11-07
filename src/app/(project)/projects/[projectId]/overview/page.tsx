@@ -54,7 +54,11 @@ export default async function ProjectOverviewPage({
       instant={instant}
       deployments={deployments}
       memberCount={memberCount}
-      emailOn={resources.emailDomains > 0}
+      capabilities={{
+        email: resources.emailDomains > 0,
+        whatsapp: false,
+        packages: true,
+      }}
     />
   );
 }

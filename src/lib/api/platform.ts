@@ -78,6 +78,23 @@ export async function revokeApiKey(keyId: string): Promise<void> {
   await api.delete(`/auth/api-keys/${keyId}`);
 }
 
+/** The person's name. */
+export async function updateProfile(name: string): Promise<User> {
+  const response = await api.patch<{ user: User }>('/auth/me', { name });
+  return response.user;
+}
+
+/**
+ * The first-time journey is finished.
+ *
+ * The flag is what lets the console **offer** the journey rather than force
+ * it: an account that has finished it — or that already has projects — is
+ * never made to go through it again.
+ */
+export async function completeOnboarding(): Promise<void> {
+  await api.post('/auth/onboarding/complete');
+}
+
 /** Whether MFA is on, and how many recovery codes are left. */
 export async function mfaStatus(): Promise<{ enabled: boolean; recoveryCodesRemaining: number }> {
   return api.get<{ enabled: boolean; recoveryCodesRemaining: number }>('/auth/mfa/status');

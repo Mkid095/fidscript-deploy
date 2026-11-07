@@ -22,7 +22,7 @@ export function ProjectOverview({
   instant,
   deployments,
   memberCount,
-  emailOn,
+  capabilities,
 }: {
   projectSlug: string;
   name: string;
@@ -32,7 +32,7 @@ export function ProjectOverview({
   instant: { available: boolean; dashboardUrl: string | null; app: InstantApp | null } | null;
   deployments: Deployment[];
   memberCount: number;
-  emailOn: boolean;
+  capabilities: { email: boolean; whatsapp: boolean; packages: boolean };
 }) {
   const base = `/projects/${projectSlug}`;
   const hasBackend = shape === 'BACKEND' || shape === 'BOTH';
@@ -131,9 +131,9 @@ export function ProjectOverview({
       <section>
         <SectionHeader title="Capabilities" />
         <Card className="divide-y divide-rail">
-          <Capability name="Email" on={emailOn} />
-          <Capability name="WhatsApp" on={false} />
-          <Capability name="Packages" on={false} />
+          <Capability name="Email" on={capabilities.email} />
+          <Capability name="WhatsApp" on={capabilities.whatsapp} />
+          <Capability name="Packages" on={capabilities.packages} />
         </Card>
       </section>
 

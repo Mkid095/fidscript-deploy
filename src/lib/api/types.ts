@@ -17,6 +17,8 @@ export interface User {
   mfaEnabled: boolean;
   mustChangePassword: boolean;
   preferredAuthMethod: 'PASSWORD' | 'MAGIC_CODE';
+  /** When the first-time journey was finished. Null until it is. */
+  onboardedAt: string | null;
   createdAt: string;
 }
 
