@@ -175,6 +175,12 @@ export const ROUTE_INVENTORY: RouteEntry[] = [
     purpose: 'The deployments of the project.',
   },
   {
+    path: '/projects/[projectId]/deployments/[deploymentId]',
+    level: 'project',
+    canonical: true,
+    purpose: 'One deployment — its state, its build log, what can be done to it.',
+  },
+  {
     path: '/projects/[projectId]/deployments/new',
     level: 'project',
     canonical: true,

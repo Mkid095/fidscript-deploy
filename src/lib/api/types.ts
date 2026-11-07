@@ -36,6 +36,8 @@ export interface Project {
   shape?: ProjectShape;
   /** Whether the deployment service is on for it. */
   deploymentOn?: boolean;
+  /** Whether a push to the branch makes a new deployment. */
+  autoDeploy?: boolean;
   lastActivityAt?: string | null;
   createdAt: string;
   updatedAt: string;

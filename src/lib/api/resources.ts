@@ -72,6 +72,25 @@ export async function getDeployments(projectId: string): Promise<Deployment[]> {
   return response.deployments;
 }
 
+/** One deployment, with its release. */
+export async function getDeployment(
+  projectId: string,
+  deploymentId: string,
+): Promise<Deployment> {
+  return api.get<Deployment>(`/projects/${projectId}/deployments/${deploymentId}`);
+}
+
+/** The build log of a deployment. */
+export async function getDeploymentLogs(
+  projectId: string,
+  deploymentId: string,
+): Promise<string> {
+  const response = await api
+    .get<{ logs: string }>(`/projects/${projectId}/deployments/${deploymentId}/logs`)
+    .catch(() => ({ logs: '' }));
+  return response.logs;
+}
+
 /** The project's domains. */
 export async function getDomains(projectId: string): Promise<Domain[]> {
   const response = await api.get<{ domains: Domain[] }>(`/projects/${projectId}/domains`);

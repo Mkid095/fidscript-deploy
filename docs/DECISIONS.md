@@ -99,6 +99,26 @@ two disagree.
 **Why:** it is what stops the next twenty-two orphans. The old repository
 had this test, and it caught every orphan it was pointed at.
 
+### D9 — The console's proxy has a path of its own
+
+**What:** the browser's calls go to `/console/api/v1/*`, not `/api/v1/*`.
+
+**Why:** the platform's API answers on `/api/*` at the root domain too —
+that is where the old dashboard reached it from — and the console's proxy
+was being mistaken for it. The sign-in answered, the tokens never became
+cookies, and the browser was sent back to the sign-in. The API's public
+surface is exactly what it was; only the console's own path moved.
+
+### D10 — The console is built as an image; the API's answer grows one field
+
+**What:** the console is an image that carries only the standalone output,
+and `NEXT_PUBLIC_API_URL` is baked into it at build time.
+
+**Why:** the machine that runs the console needs neither the source nor the
+build tools. The one field the API grew is `autoDeploy` — the console shows
+"deploy on every push" as a switch, and a switch needs a real state to
+show.
+
 ---
 
 ## 2. Still owed — the organization model

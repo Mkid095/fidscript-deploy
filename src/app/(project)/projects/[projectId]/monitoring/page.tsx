@@ -2,8 +2,10 @@ import { redirect } from 'next/navigation';
 
 import { serverApi as api } from '@/lib/api/server';
 import { getProject } from '@/lib/api/project';
+import { applications } from '@/lib/api/platform';
 import { Card, PageHeader, SectionHeader } from '@/components/ui/card';
 import { Badge, EmptyState } from '@/components/ui/feedback';
+import { Button } from '@/components/ui/button';
 
 export const metadata = { title: 'Monitoring' };
 
@@ -32,6 +34,11 @@ export default async function ProjectMonitoringPage({
   const project = await getProject(projectId).catch(() => null);
   if (!project) redirect('/projects');
 
+  const observability = (await applications().catch(() => [])).find(
+    (application) => application.id === 'observability',
+  );
+  const grafanaUrl = observability?.url ?? null;
+
   const [alerts, stats] = await Promise.all([
     api
       .get<{ alerts: Alert[] }>(`/projects/${project.id}/monitoring/alerts`)
@@ -57,6 +64,27 @@ export default async function ProjectMonitoringPage({
           </Card>
         </section>
       ) : null}
+
+      <section>
+        <SectionHeader
+          title="The dashboards"
+          description="Grafana has the whole picture — this is where the power users go."
+        />
+        <Card className="p-4">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <p className="text-sm text-text-muted">
+              Metrics, logs and container stats, collected from everything this project runs.
+            </p>
+            {grafanaUrl ? (
+              <a href={grafanaUrl} target="_blank" rel="noreferrer">
+                <Button variant="outline" size="sm">
+                  Open in Grafana
+                </Button>
+              </a>
+            ) : null}
+          </div>
+        </Card>
+      </section>
 
       <section>
         <SectionHeader title="Alerts" />

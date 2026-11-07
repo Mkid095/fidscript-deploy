@@ -59,9 +59,12 @@ export default async function ProjectDeploymentsPage({
             {deployments.map((deployment) => (
               <li key={deployment.id} className="flex flex-wrap items-center justify-between gap-3 px-4 py-3">
                 <div className="min-w-0">
-                  <p className="truncate text-sm text-text">
+                  <Link
+                    href={`/projects/${project.slug}/deployments/${deployment.id}`}
+                    className="block truncate text-sm text-text hover:text-accent"
+                  >
                     {deployment.release?.version ?? deployment.id}
-                  </p>
+                  </Link>
                   <p className="mt-0.5 truncate text-xs text-text-dim">
                     {deployment.release?.branch ?? 'no branch'}
                     {deployment.release?.commitSha
