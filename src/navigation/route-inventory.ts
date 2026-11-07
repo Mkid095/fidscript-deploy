@@ -138,6 +138,12 @@ export const ROUTE_INVENTORY: RouteEntry[] = [
     purpose: 'The applications the platform has.',
   },
   {
+    path: '/system',
+    level: 'platform',
+    canonical: true,
+    purpose: 'What the machine is doing, and what is using it.',
+  },
+  {
     path: '/settings/api-keys',
     level: 'platform',
     canonical: true,

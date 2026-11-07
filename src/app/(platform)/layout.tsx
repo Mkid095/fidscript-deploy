@@ -3,14 +3,18 @@ import { headers } from 'next/headers';
 
 import { sessionUser } from '@/lib/api/platform';
 import { listProjects } from '@/lib/api/projects';
-import { TopBar } from '@/components/platform/top-bar';
+import { PlatformSidebar } from '@/components/platform/platform-sidebar';
 
 /**
  * The platform's shell.
  *
  * Every screen here belongs to the **platform** level: the operator's own
- * account, their projects, and the settings. A project's own screens live
- * under `/projects/[projectId]` and have their own shell.
+ * account, their projects, the settings, and the machine itself. A
+ * project's own screens live under `/projects/[projectId]` and have their
+ * own shell.
+ *
+ * The navigation is a column on the left — the way the project console has
+ * one — and each column scrolls on its own.
  *
  * A person with no session is sent to sign in, and the page they were
  * going to is remembered.
@@ -37,9 +41,9 @@ export default async function PlatformLayout({
   }
 
   return (
-    <div className="flex h-screen flex-col overflow-hidden bg-canvas">
-      <TopBar pathname={pathname} name={user.name} email={user.email} />
-      <main className="scroll-area flex-1 overflow-y-auto">{children}</main>
+    <div className="flex h-screen overflow-hidden bg-canvas">
+      <PlatformSidebar name={user.name} email={user.email} />
+      <main className="scroll-area min-w-0 flex-1 overflow-y-auto">{children}</main>
     </div>
   );
 }
