@@ -6,7 +6,7 @@ import { useSearchParams } from 'next/navigation';
 
 import { browserApi } from '@/lib/api/browser';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
+import { PasswordInput } from '@/components/ui/password-input';
 import { ErrorState } from '@/components/ui/feedback';
 import { passwordProblems } from './register-form';
 
@@ -82,9 +82,9 @@ export function ResetPasswordForm() {
         </p>
       </div>
 
-      <Input
+      <PasswordInput
         label="New password"
-        type="password"
+        placeholder="••••••••"
         value={password}
         onChange={(event) => setPassword(event.target.value)}
         hint="At least 12 characters, with an uppercase letter, a lowercase letter and a number"
@@ -93,9 +93,9 @@ export function ResetPasswordForm() {
         required
       />
 
-      <Input
+      <PasswordInput
         label="Confirm password"
-        type="password"
+        placeholder="••••••••"
         value={confirm}
         onChange={(event) => setConfirm(event.target.value)}
         autoComplete="new-password"

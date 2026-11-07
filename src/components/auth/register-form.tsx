@@ -7,6 +7,7 @@ import { useRouter } from 'next/navigation';
 import { browserApi } from '@/lib/api/browser';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { PasswordInput } from '@/components/ui/password-input';
 import { ErrorState } from '@/components/ui/feedback';
 
 /**
@@ -116,9 +117,9 @@ export function RegisterForm() {
         required
       />
 
-      <Input
+      <PasswordInput
         label="Password"
-        type="password"
+        placeholder="••••••••"
         value={password}
         onChange={(event) => setPassword(event.target.value)}
         hint={`At least ${PASSWORD_MIN_LENGTH} characters, with an uppercase letter, a lowercase letter and a number`}
@@ -126,18 +127,18 @@ export function RegisterForm() {
         required
       />
 
-      <Input
+      <PasswordInput
         label="Confirm password"
-        type="password"
+        placeholder="••••••••"
         value={confirm}
         onChange={(event) => setConfirm(event.target.value)}
         autoComplete="new-password"
         required
       />
 
-      <Input
+      <PasswordInput
         label="Company password"
-        type="password"
+        placeholder="••••••••"
         value={companyPassword}
         onChange={(event) => setCompanyPassword(event.target.value)}
         hint="If this platform has one. The platform checks it, not the browser."

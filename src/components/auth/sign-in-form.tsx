@@ -7,6 +7,7 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { browserApi } from '@/lib/api/browser';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { PasswordInput } from '@/components/ui/password-input';
 import { ErrorState } from '@/components/ui/feedback';
 
 /**
@@ -58,7 +59,7 @@ export function SignInForm() {
   }
 
   return (
-    <form onSubmit={submit} className="space-y-4">
+    <form onSubmit={submit} className="space-y-5">
       <div>
         <h1 className="text-xl font-semibold tracking-tight text-text">Sign in</h1>
         <p className="mt-1 text-sm text-text-muted">To your platform.</p>
@@ -75,11 +76,11 @@ export function SignInForm() {
         required
       />
 
-      <Input
+      <PasswordInput
         label="Password"
-        type="password"
         value={password}
         onChange={(event) => setPassword(event.target.value)}
+        placeholder="••••••••"
         autoComplete="current-password"
         required
       />

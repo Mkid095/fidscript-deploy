@@ -9,6 +9,8 @@ export interface InputProps extends InputHTMLAttributes<HTMLInputElement> {
   label?: string;
   hint?: string;
   error?: string;
+  /** Something that sits inside the field, on the right. */
+  adornment?: ReactNode;
 }
 
 /**
@@ -18,7 +20,15 @@ export interface InputProps extends InputHTMLAttributes<HTMLInputElement> {
  * under it is announced **with** the control (`aria-describedby`). Two fields
  * with the same label get two different ids.
  */
-export function Input({ label, hint, error, className = '', id, ...rest }: InputProps) {
+export function Input({
+  label,
+  hint,
+  error,
+  adornment,
+  className = '',
+  id,
+  ...rest
+}: InputProps) {
   const generated = useId();
   const inputId = id ?? generated;
   const messageId = `${inputId}-message`;
@@ -31,13 +41,18 @@ export function Input({ label, hint, error, className = '', id, ...rest }: Input
           {label}
         </label>
       ) : null}
-      <input
-        id={inputId}
-        aria-invalid={error ? true : undefined}
-        aria-describedby={message ? messageId : undefined}
-        className={`${FIELD_CLASS} ${error ? 'border-danger' : ''} ${className}`}
-        {...rest}
-      />
+      <div className="relative">
+        <input
+          id={inputId}
+          aria-invalid={error ? true : undefined}
+          aria-describedby={message ? messageId : undefined}
+          className={`${FIELD_CLASS} ${adornment ? 'pr-16' : ''} ${error ? 'border-danger' : ''} ${className}`}
+          {...rest}
+        />
+        {adornment ? (
+          <div className="absolute inset-y-0 right-2 flex items-center">{adornment}</div>
+        ) : null}
+      </div>
       {message ? (
         <p id={messageId} className={`text-xs ${error ? 'text-danger' : 'text-text-dim'}`}>
           {message}

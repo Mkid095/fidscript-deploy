@@ -5,7 +5,7 @@ import { useRouter, useSearchParams } from 'next/navigation';
 
 import { browserApi } from '@/lib/api/browser';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
+import { PasswordInput } from '@/components/ui/password-input';
 import { ErrorState } from '@/components/ui/feedback';
 import { passwordProblems } from './register-form';
 
@@ -61,9 +61,9 @@ export function ForceChangePasswordForm() {
         </p>
       </div>
 
-      <Input
+      <PasswordInput
         label="Your current password"
-        type="password"
+        placeholder="••••••••"
         value={currentPassword}
         onChange={(event) => setCurrentPassword(event.target.value)}
         autoComplete="current-password"
@@ -71,9 +71,9 @@ export function ForceChangePasswordForm() {
         required
       />
 
-      <Input
+      <PasswordInput
         label="New password"
-        type="password"
+        placeholder="••••••••"
         value={password}
         onChange={(event) => setPassword(event.target.value)}
         hint="At least 12 characters, with an uppercase letter, a lowercase letter and a number"
@@ -81,9 +81,9 @@ export function ForceChangePasswordForm() {
         required
       />
 
-      <Input
+      <PasswordInput
         label="Confirm new password"
-        type="password"
+        placeholder="••••••••"
         value={confirm}
         onChange={(event) => setConfirm(event.target.value)}
         autoComplete="new-password"
