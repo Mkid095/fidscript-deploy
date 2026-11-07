@@ -1,9 +1,8 @@
-import { Injectable, UnauthorizedException, HttpException, HttpStatus } from '@nestjs/common';
+import { Injectable, Logger, UnauthorizedException, HttpException, HttpStatus } from '@nestjs/common';
 import { PrismaService } from '@/prisma/prisma.service';
 import { EventService } from '@/modules/events/event.service';
 import { AuthRateLimiter } from '@/common/auth-rate-limiter.service';
-import { JwtBlocklistService } from '@/common/jwt-blocklist.service';
-import { MfaService } from '@/modules/auth/mfa/mfa.service';
+import { MfaChallengeService } from '@/modules/auth/mfa/mfa-challenge.service';
 import * as bcrypt from 'bcrypt';
 import * as crypto from 'crypto';
 
@@ -12,9 +11,6 @@ const BCRYPT_ROUNDS = 12;
 const LOGIN_IP_LIMIT = 100; // max attempts per IP within the window
 const LOGIN_ACCT_LIMIT = 20; // max failed attempts per account within the window
 const LOGIN_WINDOW_SEC = 5 * 60; // 5 minutes (was 15 — too long for dev)
-// Access JWT TTL — must match JwtModule.signOptions.expiresIn in auth.module.ts.
-// Used to set the blocklist tombstone so it expires when the token would have.
-const ACCESS_TOKEN_TTL_SEC = 15 * 60;
 
 interface LoginResult {
   user: { id: string; email: string; name: string | null; role: string };
@@ -24,18 +20,17 @@ interface LoginResult {
 
 @Injectable()
 export class AuthLoginService {
+  private readonly logger = new Logger(AuthLoginService.name);
+
   constructor(
     private prisma: PrismaService,
     private eventService: EventService,
     private rateLimiter: AuthRateLimiter,
-    private mfaService: MfaService,
-    private jwtBlocklist: JwtBlocklistService,
+    private mfaService: MfaChallengeService,
   ) {}
 
   async login(dto: { email: string; password: string }, ipAddress?: string, userAgent?: string): Promise<LoginResult> {
-    // Rate limiting: per-IP attempt cap (always). Per-account lockout is checked
-    // only after confirming the user exists — this prevents probing valid emails
-    // via the lockout threshold (user-not-found must NOT consume the account counter).
+    // Rate limiting: a per-IP cap, always, and a per-account counter.
     const acctKey = `rl:login:fail:${dto.email.toLowerCase()}`;
     if (ipAddress) {
       const ipRl = await this.rateLimiter.consume(
@@ -48,50 +43,47 @@ export class AuthLoginService {
 
     // Emails are stored and looked up lowercased, everywhere else in the
     // platform. This lookup was the one that did not — so an account whose
-    // address was saved with capitals could never sign in, and the
-    // auth-method lookup (which does lowercase) could not find it either.
+    // address was saved with capitals could never sign in.
     const email = dto.email.toLowerCase().trim();
     const user = await this.prisma.user.findUnique({ where: { email } });
 
-    if (!user) {
-      // User-not-found must NOT consume the account lockout counter.
-      await this.eventService.emit(
-        'identity.user.login_failed', null,
-        { email: dto.email, reason: 'user_not_found' },
-        { actorType: 'user', resourceType: 'user', resourceId: 'unknown', ipAddress, userAgent },
+    // The counter is keyed on the address that was typed, whether or not it
+    // belongs to anybody. It used to be consumed only for addresses that DO
+    // have an account — so an address nobody owns never locked out, and one
+    // that does locked out after twenty tries. The difference was an oracle
+    // with a twenty-try head start. The cost: a known address can be locked
+    // for five minutes by somebody guessing it.
+    if ((await this.rateLimiter.count(acctKey)) >= LOGIN_ACCT_LIMIT) {
+      throw new HttpException(
+        'Too many attempts. Try again later.', HttpStatus.TOO_MANY_REQUESTS,
       );
+    }
+
+    if (!user) {
+      await this.fail(acctKey, dto.email, 'user_not_found', 'unknown', ipAddress, userAgent);
       throw new UnauthorizedException('Invalid credentials');
     }
 
-    // Account lockout check runs AFTER confirming user exists — non-existent
-    // emails cannot trigger lockout on real accounts via email-probing.
-    if ((await this.rateLimiter.count(acctKey)) >= LOGIN_ACCT_LIMIT) {
-      throw new HttpException('Account temporarily locked after repeated failures. Try again later.', HttpStatus.TOO_MANY_REQUESTS);
-    }
-
-    // If user prefers magic code, allow password login anyway when the user has
-    // explicitly added a PASSWORD credential (preferredAuthMethod is just the
-    // default surface in the UI; the credential table is the source of truth).
+    // A magic-code account may still have a PASSWORD credential — the
+    // credential table is the source of truth, not the preference.
+    //
+    // The answer is the same one an unknown address gets. It used to say
+    // "this account uses magic code login" — telling an unauthenticated
+    // caller that the address HAS an account, before the password was even
+    // looked at. An enumeration oracle, wearing a helpful message.
     if (user.preferredAuthMethod === 'MAGIC_CODE') {
       const hasPasswordCredential = await this.prisma.userCredential.findFirst({
         where: { userId: user.id, type: 'PASSWORD' },
         select: { id: true },
       });
       if (!hasPasswordCredential) {
-        await this.rateLimiter.consume(acctKey, LOGIN_ACCT_LIMIT, LOGIN_WINDOW_SEC);
-        throw new UnauthorizedException(
-          'This account uses magic code login. Use the magic code option instead.',
-        );
+        await this.fail(acctKey, dto.email, 'magic_code_account', user.id, ipAddress, userAgent);
+        throw new UnauthorizedException('Invalid credentials');
       }
     }
 
     if (!user.passwordHash) {
-      await this.rateLimiter.consume(acctKey, LOGIN_ACCT_LIMIT, LOGIN_WINDOW_SEC);
-      await this.eventService.emit(
-        'identity.user.login_failed', null,
-        { email: dto.email, reason: 'no_password' },
-        { actorType: 'user', resourceType: 'user', resourceId: user.id, ipAddress, userAgent },
-      );
+      await this.fail(acctKey, dto.email, 'no_password', user.id, ipAddress, userAgent);
       throw new UnauthorizedException('Invalid credentials');
     }
 
@@ -128,21 +120,27 @@ export class AuthLoginService {
     return loginResult;
   }
 
-  async logout(sessionId: string, userId: string): Promise<void> {
-    await this.prisma.session.update({
-      where: { id: sessionId },
-      data: { expiresAt: new Date(0) },
-    }).catch(() => {});
-
-    // Revoke the in-flight access JWT. The blocklist TTL is bounded by the
-    // JWT's max lifetime — if the token is older, the JWT signature/expiry
-    // check already rejects it; if newer, the tombstone lives just past the
-    // token's natural expiry. Either way the token can no longer be replayed.
-    await this.jwtBlocklist.revoke(sessionId, ACCESS_TOKEN_TTL_SEC);
-
+  /**
+   * A failed attempt: the counter, and the audit trail.
+   *
+   * Every failure counts against the address that was typed — whether or not
+   * it belongs to anybody — so the lockout cannot be used to find out who
+   * has an account.
+   */
+  private async fail(
+    acctKey: string,
+    email: string,
+    reason: string,
+    userId: string,
+    ipAddress?: string,
+    userAgent?: string,
+  ): Promise<void> {
+    await this.rateLimiter.consume(acctKey, LOGIN_ACCT_LIMIT, LOGIN_WINDOW_SEC);
     await this.eventService.emit(
-      'identity.user.logged_out', null, {},
-      { actorId: userId, actorType: 'user', resourceType: 'session', resourceId: sessionId },
+      'identity.user.login_failed', null,
+      { email, reason },
+      { actorId: userId, actorType: 'user', resourceType: 'user', resourceId: userId, ipAddress, userAgent },
     );
   }
+
 }

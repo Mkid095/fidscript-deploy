@@ -3,6 +3,7 @@ import { PrismaService } from '@/prisma/prisma.service';
 import { AuthSessionService } from '@/modules/auth/services/auth-session.service';
 import { AuthRegisterService } from '@/modules/auth/services/auth-register.service';
 import { AuthLoginService } from '@/modules/auth/services/auth-login.service';
+import { AuthLogoutService } from '@/modules/auth/services/auth-logout.service';
 import { AuthTokenService } from '@/modules/auth/services/auth-token.service';
 import { AuthProfileService } from '@/modules/auth/services/auth-profile.service';
 import { AuthSessionMgmtService } from '@/modules/auth/services/auth-session-mgmt.service';
@@ -11,7 +12,7 @@ import { AuthPasswordService } from '@/modules/auth/services/auth-password.servi
 import { AuthMagicCodeService } from '@/modules/auth/services/auth-magic-code.service';
 import { AuthMagicCodeVerifyService } from '@/modules/auth/services/auth-magic-code-verify.service';
 import { AuthVerificationService } from '@/modules/auth/services/auth-verification.service';
-import { MfaService } from '@/modules/auth/mfa/mfa.service';
+import { AuthPasswordResetService } from '@/modules/auth/services/auth-password-reset.service';
 
 export { AuthSessionService, AuthResponse } from '@/modules/auth/services/auth-session.service';
 
@@ -22,6 +23,7 @@ export class AuthService {
     private session: AuthSessionService,
     private authRegister: AuthRegisterService,
     private authLogin: AuthLoginService,
+    private authLogout: AuthLogoutService,
     private authToken: AuthTokenService,
     private profile: AuthProfileService,
     private sessions: AuthSessionMgmtService,
@@ -30,7 +32,7 @@ export class AuthService {
     private magicCodeService: AuthMagicCodeService,
     private magicCodeVerify: AuthMagicCodeVerifyService,
     private verification: AuthVerificationService,
-    private mfa: MfaService,
+    private passwordReset: AuthPasswordResetService,
   ) {}
 
   async register(dto: any, ip?: string, ua?: string) {
@@ -55,16 +57,7 @@ export class AuthService {
     return this.session.buildAuthResponse(result.user, sess);
   }
 
-  async completeMfaLogin(dto: { mfaToken: string; code: string }, ip?: string, ua?: string) {
-    const user = await this.mfa.completeChallenge(dto.mfaToken, dto.code, ip, ua);
-    const sess = await this.session.createSession(user.id, ip, ua);
-    return this.session.buildAuthResponse(user, sess);
-  }
-
-  setupMfa(userId: string) { return this.mfa.setup(userId); }
-  enableMfa(userId: string, code: string) { return this.mfa.enable(userId, code); }
-
-  logout(sessionId: string, userId: string) { return this.authLogin.logout(sessionId, userId); }
+  logout(sessionId: string, userId: string) { return this.authLogout.logout(sessionId, userId); }
 
   changePassword(userId: string, sessionId: string | undefined, dto: { currentPassword: string; newPassword: string }, ip?: string, ua?: string) {
     return this.password.changePassword(userId, sessionId, dto, ip, ua);
@@ -88,6 +81,21 @@ export class AuthService {
   buildAuthResponse(user: any, session: any) { return this.session.buildAuthResponse(user, session); }
 
   getProfile(userId: string) { return this.profile.getProfile(userId); }
+
+  /**
+   * Marks the first-time journey as finished.
+   *
+   * The flag is what lets the dashboard OFFER the journey rather than force
+   * it: an account that has already finished it — or that already has
+   * projects — is never made to go through it again.
+   */
+  async completeOnboarding(userId: string) {
+    await this.prisma.user.update({
+      where: { id: userId },
+      data: { onboardedAt: new Date() },
+    });
+    return { onboarded: true };
+  }
   updateProfile(userId: string, dto: any) { return this.profile.updateProfile(userId, dto); }
 
   getSessions(userId: string) { return this.sessions.getSessions(userId); }
@@ -132,10 +140,10 @@ export class AuthService {
   }
 
   confirmPasswordReset(dto: { token: string; newPassword: string }, ip?: string, ua?: string) {
-    return this.verification.confirmPasswordReset(dto, ip, ua);
+    return this.passwordReset.confirm(dto, ip, ua);
   }
 
   confirmMagicLink(dto: { token: string }, ip?: string, ua?: string) {
-    return this.verification.confirmMagicLink(dto, ip, ua);
+    return this.passwordReset.confirmMagicLink(dto, ip, ua);
   }
 }

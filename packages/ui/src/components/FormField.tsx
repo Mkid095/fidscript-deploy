@@ -24,11 +24,15 @@ export interface FormFieldProps {
     'aria-invalid'?: boolean;
   }) => React.ReactNode;
   /** What is wrong. It is announced with the control. */
-  error?: string;
+  error?: string | null;
   /** What to expect. It is announced with the control, and is hidden when there is an error. */
-  hint?: string;
+  hint?: string | null;
   /** Whether the field is required — it is announced as such. */
   required?: boolean;
+  /** What went right. Shown instead of the hint, and announced with the control. */
+  success?: string | null;
+  /** Whether something is being checked — the field says so while it waits. */
+  loading?: boolean;
   className?: string;
 }
 
@@ -38,11 +42,13 @@ export function FormField({
   error,
   hint,
   required,
+  success,
+  loading,
   className = '',
 }: FormFieldProps) {
   const id = useId();
   const messageId = `${id}-message`;
-  const message = error ?? hint;
+  const message = error ?? success ?? hint;
 
   return (
     <div className={`space-y-1.5 ${className}`}>
@@ -51,6 +57,11 @@ export function FormField({
         {required && (
           <span className="text-[var(--danger)] ml-0.5" aria-hidden="true">
             *
+          </span>
+        )}
+        {loading && (
+          <span className="ml-2 text-[var(--text-dim)]" aria-live="polite">
+            checking…
           </span>
         )}
       </label>
@@ -62,7 +73,13 @@ export function FormField({
       {message && (
         <p
           id={messageId}
-          className={`text-xs ${error ? 'text-[var(--danger)]' : 'text-[var(--text-dim)]'}`}
+          className={`text-xs ${
+            error
+              ? 'text-[var(--danger)]'
+              : success
+                ? 'text-[var(--success)]'
+                : 'text-[var(--text-dim)]'
+          }`}
         >
           {message}
         </p>

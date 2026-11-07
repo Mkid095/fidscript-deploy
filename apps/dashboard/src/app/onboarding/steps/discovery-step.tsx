@@ -5,7 +5,7 @@ import { Button } from '@fidscript/ui';
 import { HugeiconsIcon } from '@hugeicons/react';
 import { AlertCircleIcon, Tick02Icon } from '@hugeicons/core-free-icons';
 import { HealthRow } from '../components/health-row';
-import { FormField, formInputClass } from '../components/form-field';
+import { FormField, inputClassName } from '@fidscript/ui';
 import { OnboardingShell } from '../components/onboarding-shell';
 import { useDiscovery } from '../hooks/use-discovery';
 
@@ -63,13 +63,16 @@ export function DiscoveryStep({ onComplete }: DiscoveryStepProps) {
       {needsManual && (
         <div className="mb-5">
           <FormField label="Server IP (auto-detect failed)">
-            <input
-              type="text"
-              value={manualIp}
-              onChange={e => handleManualChange(e.target.value)}
-              placeholder="203.0.113.42"
-              className={formInputClass}
-            />
+            {(props) => (
+              <input
+                {...props}
+                type="text"
+                value={manualIp}
+                onChange={e => handleManualChange(e.target.value)}
+                placeholder="203.0.113.42"
+                className={inputClassName}
+              />
+            )}
           </FormField>
         </div>
       )}

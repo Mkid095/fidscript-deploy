@@ -54,7 +54,20 @@ export class AuthApiKeyService {
 
     await this.eventService.emit('identity.api_key.created', null, { name: dto.name, apiKeyId: apiKey.id });
 
-    return { apiKey, key };
+    // The row is returned WITHOUT its hash. It used to be returned whole,
+    // which put the bcrypt hash of the key — and the internal columns the
+    // platform's own key management uses — into the response body.
+    return {
+      apiKey: {
+        id: apiKey.id,
+        name: apiKey.name,
+        permissions: apiKey.permissions,
+        lastUsedAt: apiKey.lastUsedAt,
+        expiresAt: apiKey.expiresAt,
+        createdAt: apiKey.createdAt,
+      },
+      key,
+    };
   }
 
   async getApiKeys(userId: string) {

@@ -11,8 +11,10 @@ export class AuthSessionMgmtService {
   ) {}
 
   async getSessions(userId: string) {
+    // Only the live ones. A revoked session has `expiresAt` set to the epoch,
+    // so it used to be listed as if it were still open.
     return this.prisma.session.findMany({
-      where: { userId },
+      where: { userId, expiresAt: { gt: new Date() } },
       select: { id: true, expiresAt: true, ipAddress: true, userAgent: true, createdAt: true },
       orderBy: { createdAt: 'desc' },
     });

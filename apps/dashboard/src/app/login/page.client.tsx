@@ -1,5 +1,6 @@
 'use client';
 
+import { useEffect } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
 import { useLoginForm } from './hooks/use-login-form';
@@ -9,6 +10,8 @@ import { MagicCodeForm } from './components/magic-code-form';
 import { AuthPageShell } from './components/auth-page-shell';
 import { LoginThemeToggle } from './login-theme-toggle';
 import { PlatformAuthBadge } from './components/platform-auth-badge';
+import { useAuth } from '@/contexts/auth-context';
+import { getNextRoute } from '@/contexts/auth-token-utils';
 
 type AuthMethod = 'PASSWORD' | 'MAGIC_CODE';
 
@@ -18,7 +21,16 @@ interface LoginClientProps {
 
 export function LoginClient({ platformAuthMethod }: LoginClientProps) {
   const form = useLoginForm(platformAuthMethod);
+  const { user, loading } = useAuth();
   const showTabs = platformAuthMethod === null;
+
+  // Somebody who is already signed in has no business on the sign-in screen.
+  // They used to be shown the form, sign in again, and be sent on.
+  useEffect(() => {
+    if (!loading && user) {
+      window.location.href = getNextRoute();
+    }
+  }, [loading, user]);
 
   const footer = (
     <p className="text-center text-sm text-[var(--text-muted)] mt-6">

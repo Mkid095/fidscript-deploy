@@ -16,7 +16,7 @@ export class AuthProfileService {
       select: {
         id: true, email: true, name: true, avatarUrl: true, role: true,
         mfaEnabled: true, mustChangePassword: true, preferredAuthMethod: true,
-        lastLoginAt: true, createdAt: true,
+        lastLoginAt: true, createdAt: true, onboardedAt: true,
         // The credential TYPES, never the secrets. The dashboard needs to
         // know whether the user has a password: a magic-code-only user
         // creates one, and a user with a password must prove it. Without

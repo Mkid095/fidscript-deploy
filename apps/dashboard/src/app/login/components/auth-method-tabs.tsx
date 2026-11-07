@@ -13,9 +13,15 @@ interface AuthMethodTabsProps {
 
 export function AuthMethodTabs({ value, onChange, onSelect }: AuthMethodTabsProps) {
   return (
-    <div className="flex p-1 mb-6 bg-[var(--surface-2)] rounded-lg border border-[var(--rail-light)]">
+    <div
+      role="tablist"
+      aria-label="How to sign in"
+      className="flex p-1 mb-6 bg-[var(--surface-2)] rounded-lg border border-[var(--rail-light)]"
+    >
       <button
         type="button"
+        role="tab"
+        aria-selected={value === 'PASSWORD'}
         onClick={() => { onChange('PASSWORD'); onSelect(); }}
         className={`flex-1 flex items-center justify-center gap-1.5 py-2 text-sm font-medium rounded-md transition-all ${
           value === 'PASSWORD'
@@ -27,6 +33,8 @@ export function AuthMethodTabs({ value, onChange, onSelect }: AuthMethodTabsProp
       </button>
       <button
         type="button"
+        role="tab"
+        aria-selected={value === 'MAGIC_CODE'}
         onClick={() => { onChange('MAGIC_CODE'); onSelect(); }}
         className={`flex-1 flex items-center justify-center gap-1.5 py-2 text-sm font-medium rounded-md transition-all ${
           value === 'MAGIC_CODE'

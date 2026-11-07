@@ -23,7 +23,7 @@ function makeService(platformAuthMethod: string | null) {
   const service = new AuthService(
     prisma as any,
     null as any, null as any, null as any, null as any, null as any, null as any,
-    null as any, null as any, null as any, null as any, null as any, null as any,
+    null as any, null as any, null as any, null as any, null as any, null as any, null as any,
   );
   return { service, prisma };
 }

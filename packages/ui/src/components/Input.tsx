@@ -1,5 +1,21 @@
 import React, { useId } from 'react';
 
+/**
+ * The input's own styling, shared.
+ *
+ * A screen that builds its own control — a number field, a search box — needs
+ * the same look as the shared `Input`, without copying the class list into
+ * a second place where it can drift.
+ */
+export const inputClassName = [
+  'w-full h-10 rounded-md px-3 py-2 text-sm text-[var(--text)]',
+  'bg-[var(--surface-2)] border border-[var(--rail)]',
+  'placeholder:text-[var(--text-dim)]',
+  'focus:outline-none focus:border-[var(--accent)] focus-visible:shadow-[var(--focus-ring)]',
+  'transition-colors duration-200',
+  'disabled:opacity-50 disabled:cursor-not-allowed',
+].join(' ');
+
 interface InputProps extends React.InputHTMLAttributes<HTMLInputElement> {
   label?: React.ReactNode;
   error?: string;
@@ -36,12 +52,7 @@ export const Input = React.forwardRef<HTMLInputElement, InputProps>(function Inp
         ref={ref}
         id={inputId}
         className={`
-          w-full h-10 rounded-md px-3 py-2 text-sm text-[var(--text)]
-          bg-[var(--surface-2)] border border-[var(--rail)]
-          placeholder:text-[var(--text-dim)]
-          focus:outline-none focus:border-[var(--accent)] focus-visible:shadow-[var(--focus-ring)]
-          transition-colors duration-200
-          disabled:opacity-50 disabled:cursor-not-allowed
+          ${inputClassName}
           ${error ? 'border-[var(--danger)]' : ''}
           ${className}
         `}

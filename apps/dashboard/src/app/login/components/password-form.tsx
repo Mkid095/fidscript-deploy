@@ -1,5 +1,6 @@
 'use client';
 
+import Link from 'next/link';
 import { Button, Input } from '@fidscript/ui';
 import { LoginErrorBanner } from './login-error-banner';
 
@@ -54,6 +55,13 @@ export function PasswordForm({
       >
         {loading ? 'Signing in…' : 'Sign in'}
       </Button>
+      {/* The reset screen existed, with nothing pointing at it. */}
+      <Link
+        href="/forgot-password"
+        className="text-xs text-[var(--text-muted)] hover:text-[var(--text)] transition-colors text-center"
+      >
+        Forgotten your password?
+      </Link>
     </form>
   );
 }

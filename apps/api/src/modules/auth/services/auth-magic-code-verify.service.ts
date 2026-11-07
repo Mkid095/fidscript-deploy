@@ -2,7 +2,7 @@ import { Injectable, UnauthorizedException } from '@nestjs/common';
 import { PrismaService } from '@/prisma/prisma.service';
 import { EventService } from '@/modules/events/event.service';
 import { AuthSessionService, AuthResponse } from '@/modules/auth/services/auth-session.service';
-import { MfaService } from '@/modules/auth/mfa/mfa.service';
+import { MfaChallengeService } from '@/modules/auth/mfa/mfa-challenge.service';
 import * as bcrypt from 'bcrypt';
 
 const MAX_ATTEMPTS = 5;
@@ -19,7 +19,7 @@ export class AuthMagicCodeVerifyService {
     private prisma: PrismaService,
     private eventService: EventService,
     private session: AuthSessionService,
-    private mfa: MfaService,
+    private mfa: MfaChallengeService,
   ) {}
 
   /**

@@ -45,11 +45,16 @@ export const ROUTE_INVENTORY: RouteEntry[] = [
 
   // ── Signing in ────────────────────────────────────────────────────────────
   ['/login', 'auth', 'landing', true],
+  ['/login/mfa', 'auth', null, true],
   ['/register', 'auth', 'landing', true],
-  ['/forgot-password', 'auth', null, true],
+  ['/forgot-password', 'auth', 'login', true],
+  ['/reset-password', 'auth', null, true],
+  ['/verify-email', 'auth', null, true],
+  ['/magic-link', 'auth', null, true],
   ['/invitations/accept', 'auth', null, true],
   ['/setup', 'auth', null, true],
   ['/onboarding', 'auth', null, true],
+  ['/welcome', 'auth', 'landing', true],
   ['/force-change-password', 'auth', null, true],
 
   // ── The platform ──────────────────────────────────────────────────────────

@@ -8,6 +8,7 @@ import { OrganizationService } from '@/modules/auth/services/organization.servic
 import { TeamService } from '@/modules/auth/services/team.service';
 import { JwtAuthGuard } from '@/modules/auth/jwt-auth.guard';
 import { CurrentUser } from '@/modules/auth/current-user.decorator';
+import { Public } from '@/modules/auth/decorators/public.decorator';
 import { extractRequestContext } from '@/common/request-context';
 import {
   CreateOrganizationDto, UpdateOrganizationDto,
@@ -265,6 +266,7 @@ export class InvitationAcceptController {
   constructor(private orgs: OrganizationService) {}
 
   @Post('accept')
+  @Public()
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Accept an organization invitation by token' })
   async acceptInvitation(@Body() dto: AcceptInvitationDto, @Req() req: Request) {

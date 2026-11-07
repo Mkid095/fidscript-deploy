@@ -15,13 +15,25 @@ import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { Response, Request } from 'express';
 import { JwtAuthGuard } from '@/modules/auth/jwt-auth.guard';
 import { CurrentUser, AuthUser } from '@/modules/auth/current-user.decorator';
+import { ConfigService } from '@nestjs/config';
 import { UserGithubService } from '../services/user-github.service';
 import { Public } from '@/modules/auth/decorators/public.decorator';
 
 @ApiTags('github')
 @Controller('users/me/github')
 export class UserGithubController {
-  constructor(private readonly githubService: UserGithubService) {}
+  /** Where the message goes — the dashboard's origin, not '*'. */
+  private readonly dashboardOrigin: string;
+
+  constructor(
+    private readonly githubService: UserGithubService,
+    configService: ConfigService,
+  ) {
+    const domain = configService.get<string>('PLATFORM_DOMAIN') ?? '';
+    this.dashboardOrigin =
+      configService.get<string>('DASHBOARD_PUBLIC_URL') ??
+      (domain ? `https://${domain}` : 'http://localhost:3000');
+  }
 
   /**
    * GET /users/me/github/connect
@@ -67,11 +79,21 @@ export class UserGithubController {
     const error = req.query.error as string | undefined;
     const errorDescription = req.query.error_description as string | undefined;
 
+    // The payload is JSON, not string concatenation. It used to be built by
+    // pasting the query values into a JavaScript object literal — so a crafted
+    // `error_description` could break out of the string and run. And the
+    // message was posted to '*', which hands the OAuth code to whatever
+    // origin the opener happens to be.
+    const payload = JSON.stringify({
+      type: 'github-oauth-callback',
+      ...(code ? { code } : {}),
+      ...(error ? { error, errorDescription: errorDescription ?? '' } : {}),
+      ...(state ? { state } : {}),
+    }).replace(/</g, '\\u003c');
+
     const html = `<!DOCTYPE html><html><body><script>
       try {
-        window.opener.postMessage({
-          type: 'github-oauth-callback'${code ? `, code: '${code}'` : ''}${error ? `, error: '${error}', errorDescription: '${errorDescription || ''}'` : ''}${state ? `, state: '${state}'` : ''}
-        }, '*');
+        window.opener.postMessage(${payload}, ${JSON.stringify(this.dashboardOrigin)});
       } catch(e) {}
       setTimeout(() => window.close(), 500);
     </script><p style="font-family:sans-serif;font-size:14px;color:#666;padding:20px">

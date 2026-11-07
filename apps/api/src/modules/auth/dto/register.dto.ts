@@ -1,5 +1,6 @@
-import { IsEmail, IsString, IsOptional, IsIn } from 'class-validator';
+import { IsEmail, IsString, IsOptional, IsIn, ValidateIf } from 'class-validator';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import { IsStrongPassword } from '@/modules/auth/auth-password-policy';
 
 export class RegisterDto {
   @ApiProperty({ example: 'user@example.com' })
@@ -7,7 +8,9 @@ export class RegisterDto {
   email: string;
 
   @ApiPropertyOptional({ description: 'Password-based account. Omit if using magic code.' })
+  @ValidateIf((o: RegisterDto) => o.password !== undefined)
   @IsString()
+  @IsStrongPassword()
   @IsOptional()
   password?: string;
 

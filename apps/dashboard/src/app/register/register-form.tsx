@@ -78,7 +78,17 @@ export function RegisterForm() {
     if (!lastName.trim()) { setValidationError('Last name is required'); return; }
     if (!email.trim()) { setValidationError('Email is required'); return; }
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) { setValidationError('Enter a valid email address'); return; }
-    await register(email, `${firstName.trim()} ${lastName.trim()}`, '', 'MAGIC_CODE', setupPassword, firstName, lastName);
+    // The register call throws when the company password is wrong — and
+    // nothing caught it, so the person saw nothing at all and the browser
+    // logged an unhandled rejection.
+    setLoading(true);
+    try {
+      await register(email, `${firstName.trim()} ${lastName.trim()}`, '', 'MAGIC_CODE', setupPassword, firstName, lastName);
+    } catch (err) {
+      setBackendError(err instanceof Error ? err.message : 'Registration failed');
+    } finally {
+      setLoading(false);
+    }
   }
 
   async function handleCodeComplete(rawCode: string) {

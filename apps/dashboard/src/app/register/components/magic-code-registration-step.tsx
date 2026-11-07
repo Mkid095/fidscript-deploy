@@ -52,6 +52,7 @@ export function MagicCodeRegistrationStep({
         maskedEmail={maskedEmail}
         onResend={onSubmit}
         onCodeComplete={onCodeComplete}
+        onUseDifferentEmail={() => setStep('form')}
       />
     );
   }
