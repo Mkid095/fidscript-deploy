@@ -1,7 +1,0 @@
-:8081 {
-    root * /srv/maven
-    file_server
-    header {
-        Access-Control-Allow-Origin *
-    }
-}
