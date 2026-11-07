@@ -68,7 +68,9 @@ export default async function IntegrationsSettingsPage() {
                     <p className="truncate text-sm text-text">{entry.project.name}</p>
                     <p className="truncate text-xs text-text-dim">
                       {entry.connection
-                        ? `${entry.connection.email ?? entry.connection.provider} · connected`
+                        ? entry.connection.email
+                          ? `${entry.connection.email} · connected`
+                          : 'Connected — the domains are written by the platform'
                         : 'Not connected — the domains are set by hand'}
                     </p>
                   </div>

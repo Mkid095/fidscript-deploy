@@ -30,7 +30,9 @@ export function SetupWizard({
   configured: boolean;
   applications: Array<{ id: string; title: string; summary: string; installed: boolean }>;
 }) {
-  const [step, setStep] = useState(configured ? 3 : 0);
+  // A configured platform has no setup to do — what is left is what it
+  // provides, so the wizard starts at the applications.
+  const [step, setStep] = useState(configured ? 2 : 0);
   const [values, setValues] = useState({
     domain: '',
     cloudflareToken: '',
@@ -138,7 +140,7 @@ export function SetupWizard({
           applications={applications}
           chosen={chosen}
           onChosen={setChosen}
-          onNext={() => setStep(3)}
+          onNext={() => setStep(configured ? 4 : 3)}
           onBack={() => setStep(1)}
         />
       ) : null}
