@@ -43,7 +43,31 @@ export class WhatsappController {
     @Body() body: { apiKey?: string; instanceName?: string },
   ) {
     const user = req.user as { userId: string };
-    return this.whatsapp.connect(user.userId, projectId, body.apiKey ?? '', body.instanceName);
+    return this.whatsapp.connect(
+      user.userId,
+      projectId,
+      body.apiKey ?? '',
+      body.instanceName,
+    );
+  }
+
+  /**
+   * The project's WhatsApp identity, created or re-tried.
+   *
+   * It is provisioned with the project; this is the way back when that
+   * attempt failed or the platform had no key yet — the screen offers it
+   * when the project has no instance of its own.
+   */
+  @Post('identity')
+  @ApiOperation({
+    summary: "Create (or create again) the project's own WhatsApp instance",
+  })
+  async provisionIdentity(
+    @Req() req: Request,
+    @Param('projectId') projectId: string,
+  ) {
+    const user = req.user as { userId: string };
+    return this.whatsapp.provisionIdentity(user.userId, projectId);
   }
 
   @Delete()

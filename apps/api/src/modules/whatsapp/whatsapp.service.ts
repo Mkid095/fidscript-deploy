@@ -1,5 +1,11 @@
-import { Injectable, Logger, NotFoundException, BadRequestException } from '@nestjs/common';
+import {
+  Injectable,
+  Logger,
+  NotFoundException,
+  BadRequestException,
+} from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
+import * as fs from 'fs';
 import axios from 'axios';
 
 import { PrismaService } from '@/prisma/prisma.service';
@@ -61,6 +67,32 @@ export class WhatsappService {
     ).replace(/\/+$/, '');
   }
 
+  /**
+   * The platform's own key to the WhatsApp platform, when it holds one.
+   *
+   * Read from a FILE when one is configured — like every other credential
+   * the platform holds — so the installer can write it after the stack is
+   * up and the platform picks it up without a restart.
+   */
+  private platformKey(): string | null {
+    const file = this.config.get<string>('EVOLUTION_API_KEY_FILE', '');
+    if (file) {
+      try {
+        const key = fs.readFileSync(file, 'utf8').trim();
+        if (key) return key;
+      } catch {
+        // The file is not there yet. Try the env, then nothing.
+      }
+    }
+    const key = this.config.get<string>('EVOLUTION_API_KEY', '');
+    return key?.trim() || null;
+  }
+
+  /** Whether the platform can give a project its WhatsApp identity by itself. */
+  hasPlatformKey(): boolean {
+    return this.platformKey() !== null;
+  }
+
   /** What this project holds of the WhatsApp platform. */
   async state(userId: string, projectId: string): Promise<WhatsappState> {
     const settings = await this.settings(projectId);
@@ -89,7 +121,9 @@ export class WhatsappService {
     }
 
     const mine = connection.instanceName
-      ? instances.instances.find((entry) => entry.name === connection.instanceName) ?? null
+      ? (instances.instances.find(
+          (entry) => entry.name === connection.instanceName,
+        ) ?? null)
       : null;
 
     return {
@@ -153,7 +187,10 @@ export class WhatsappService {
   }
 
   /** Let the WhatsApp platform go. */
-  async disconnect(userId: string, projectId: string): Promise<{ disconnected: boolean }> {
+  async disconnect(
+    userId: string,
+    projectId: string,
+  ): Promise<{ disconnected: boolean }> {
     const settings = await this.settings(projectId);
     const connection = settings?.whatsapp;
     if (!connection?.encryptedKey) return { disconnected: false };
@@ -166,8 +203,104 @@ export class WhatsappService {
       data: { settings: next as unknown as object },
     });
 
-    await this.eventService.emit('projects.whatsapp.disconnected', projectId, {});
+    await this.eventService.emit(
+      'projects.whatsapp.disconnected',
+      projectId,
+      {},
+    );
     return { disconnected: true };
+  }
+
+  /**
+   * The project's WhatsApp identity: its own instance on the WhatsApp
+   * platform, named after the project.
+   *
+   * It is created **with the project** (P5.6) — so the project's WhatsApp
+   * screen has its own instance waiting for pairing, rather than borrowing
+   * the first instance a pasted key can see. The platform's own key is what
+   * holds it; the person pairs it from the project's screen when they are
+   * ready. An instance that is already there is not an error — that is the
+   * state the last attempt left, and it is the state this one asked for.
+   */
+  async provisionIdentity(
+    userId: string,
+    projectId: string,
+  ): Promise<{ instanceName: string; created: boolean; reason?: string }> {
+    const project = await this.prisma.project.findUnique({
+      where: { id: projectId },
+      select: { id: true, slug: true, name: true },
+    });
+    if (!project) throw new NotFoundException(`Project ${projectId} not found`);
+
+    const instanceName = project.slug;
+    const key = this.platformKey();
+    if (!key) {
+      return {
+        instanceName,
+        created: false,
+        reason:
+          'The platform holds no key to the WhatsApp platform, so the instance cannot be created here.',
+      };
+    }
+
+    let created = true;
+    try {
+      await axios.post(
+        `${this.baseUrl()}/instance/create`,
+        { instanceName, integration: 'WHATSAPP-BAILEYS' },
+        { headers: { apikey: key }, timeout: 15_000 },
+      );
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err);
+      const body = (err as { response?: { data?: unknown } }).response?.data;
+      const bodyText =
+        typeof body === 'string' ? body : JSON.stringify(body ?? '');
+      if (/already exist/i.test(message) || /already exist/i.test(bodyText)) {
+        created = false;
+      } else {
+        this.logger.warn(
+          `Could not create the WhatsApp instance for ${projectId}: ${message} ${bodyText}`.trim(),
+        );
+        throw err;
+      }
+    }
+
+    // The project holds the platform's key and names its instance — the
+    // same shape `connect` leaves, without the pasted-key ceremony.
+    await this.prisma.projectSettings.upsert({
+      where: { projectId },
+      create: {
+        projectId,
+        settings: {
+          whatsapp: {
+            encryptedKey: this.crypto.encrypt(key),
+            instanceName,
+          },
+        } as unknown as object,
+      },
+      update: {
+        settings: {
+          whatsapp: {
+            encryptedKey: this.crypto.encrypt(key),
+            instanceName,
+          },
+        } as unknown as object,
+      },
+    });
+
+    await this.eventService.emit(
+      'projects.whatsapp.identity_provisioned',
+      projectId,
+      {
+        instanceName,
+        created,
+      },
+    );
+
+    this.logger.log(
+      `[whatsapp] ${created ? 'Created' : 'Found'} instance ${instanceName} for project ${projectId}`,
+    );
+    return { instanceName, created };
   }
 
   /** The project's settings, and the WhatsApp part of them. */
@@ -182,12 +315,17 @@ export class WhatsappService {
   /** The instances the key can see. */
   private async fetchInstances(
     key: string,
-  ): Promise<{ ok: true; instances: WhatsappInstance[] } | { ok: false; error: string }> {
+  ): Promise<
+    { ok: true; instances: WhatsappInstance[] } | { ok: false; error: string }
+  > {
     try {
-      const response = await axios.get(`${this.baseUrl()}/instance/fetchInstances`, {
-        headers: { apikey: key },
-        timeout: 10_000,
-      });
+      const response = await axios.get(
+        `${this.baseUrl()}/instance/fetchInstances`,
+        {
+          headers: { apikey: key },
+          timeout: 10_000,
+        },
+      );
       const list = Array.isArray(response.data) ? response.data : [];
       return {
         ok: true,
@@ -200,7 +338,9 @@ export class WhatsappService {
       };
     } catch (err) {
       const message =
-        err instanceof Error ? err.message : 'The WhatsApp platform could not be reached.';
+        err instanceof Error
+          ? err.message
+          : 'The WhatsApp platform could not be reached.';
       this.logger.warn(`Could not read the WhatsApp instances: ${message}`);
       return { ok: false, error: message };
     }

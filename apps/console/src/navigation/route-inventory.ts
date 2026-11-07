@@ -34,14 +34,16 @@ export const ROUTE_INVENTORY: RouteEntry[] = [
     path: '/setup',
     level: 'public',
     canonical: true,
-    purpose: 'The one setup wizard — from an empty machine to a platform that serves.',
+    purpose:
+      'The one setup wizard — from an empty machine to a platform that serves.',
   },
 
   {
     path: '/docs',
     level: 'public',
     canonical: true,
-    purpose: 'The documentation — the applications, the CLI, the API, the SDK, the MCP.',
+    purpose:
+      'The documentation — the applications, the CLI, the API, the SDK, the MCP.',
   },
 
   // ── Signing in ────────────────────────────────────────────────────────────
@@ -138,6 +140,13 @@ export const ROUTE_INVENTORY: RouteEntry[] = [
     purpose: 'The applications the platform has.',
   },
   {
+    path: '/settings/credentials',
+    level: 'platform',
+    canonical: true,
+    purpose:
+      'The email and password the applications answer with — one set, decided here.',
+  },
+  {
     path: '/settings/integrations',
     level: 'platform',
     canonical: true,
@@ -203,7 +212,8 @@ export const ROUTE_INVENTORY: RouteEntry[] = [
     path: '/projects/[projectId]/deployments/[deploymentId]',
     level: 'project',
     canonical: true,
-    purpose: 'One deployment — its state, its build log, what can be done to it.',
+    purpose:
+      'One deployment — its state, its build log, what can be done to it.',
   },
   {
     path: '/projects/[projectId]/deployments/new',

@@ -82,6 +82,16 @@ export default async function SettingsPage() {
             </p>
           </Link>
           <Link
+            href="/settings/credentials"
+            className="rounded-lg border border-rail bg-surface p-4 transition-colors hover:border-rail-light"
+          >
+            <p className="text-sm font-medium text-text">Credentials</p>
+            <p className="mt-1 text-xs text-text-muted">
+              The email and password the applications answer with — one set,
+              decided here.
+            </p>
+          </Link>
+          <Link
             href="/settings/api-keys"
             className="rounded-lg border border-rail bg-surface p-4 transition-colors hover:border-rail-light"
           >

@@ -29,6 +29,13 @@ export default async function ProjectBackendPage({
   const instant = await getInstantApp(project.id).catch(() => null);
   const base = `/projects/${project.slug}`;
 
+  // The door opens on THIS project's app — Instant's dashboard takes the
+  // app id as its `app` query parameter.
+  const appConsoleUrl =
+    instant?.dashboardUrl && instant.app
+      ? `${instant.dashboardUrl.replace(/\/+$/, '')}/dash?app=${instant.app.appId}`
+      : null;
+
   return (
     <Page
       title="Backend"
@@ -47,8 +54,8 @@ export default async function ProjectBackendPage({
             </div>
             <div className="flex items-center gap-2">
               <Badge tone="success">{instant.app.status}</Badge>
-              {instant.dashboardUrl ? (
-                <a href={instant.dashboardUrl} target="_blank" rel="noreferrer">
+              {appConsoleUrl ? (
+                <a href={appConsoleUrl} target="_blank" rel="noreferrer">
                   <Button variant="primary" size="sm">
                     Open the console
                   </Button>

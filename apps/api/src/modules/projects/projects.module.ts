@@ -18,6 +18,8 @@ import { StorageModule } from '@/modules/storage/storage.module';
 import { RealtimeModule } from '@/modules/realtime/realtime.module';
 import { DatabasesModule } from '@/modules/databases/databases.module';
 import { AuthModule } from '@/modules/auth/auth.module';
+import { InstantModule } from '@/modules/instant/instant.module';
+import { WhatsappModule } from '@/modules/whatsapp/whatsapp.module';
 
 @Module({
   controllers: [
@@ -25,7 +27,16 @@ import { AuthModule } from '@/modules/auth/auth.module';
     ProjectsMembersController,
     InvitationsController,
   ],
-  imports: [forwardRef(() => StorageModule), forwardRef(() => RealtimeModule), forwardRef(() => DatabasesModule), forwardRef(() => AuthModule)],
+  imports: [
+    forwardRef(() => StorageModule),
+    forwardRef(() => RealtimeModule),
+    forwardRef(() => DatabasesModule),
+    forwardRef(() => AuthModule),
+    // The data plane and the WhatsApp identity are provisioned with the
+    // project (P5.6), so the project's create path needs both services.
+    forwardRef(() => InstantModule),
+    forwardRef(() => WhatsappModule),
+  ],
   providers: [
     ProjectsService,
     ProjectCrudService,

@@ -78,6 +78,7 @@ export type EventType =
   | 'projects.project.provisioned'
   | 'projects.project.provision_failed'
   | 'projects.whatsapp.connected'
+  | 'projects.whatsapp.identity_provisioned'
   | 'projects.whatsapp.disconnected'
   | 'projects.member.added'
   | 'projects.member.removed'
@@ -359,4 +360,9 @@ export interface EventFilter {
 }
 
 // ── Event emitter utilities ──────────────────────────────────────────────────
-export { resolveEventType, isKnownEventType, validatePayload, buildPlatformEvent } from './event-emitter.js';
+export {
+  resolveEventType,
+  isKnownEventType,
+  validatePayload,
+  buildPlatformEvent,
+} from './event-emitter.js';

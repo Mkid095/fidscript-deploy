@@ -44,7 +44,45 @@ export async function disconnectWhatsappAction(
     return { ok: true };
   } catch (err) {
     return {
-      error: err instanceof Error ? err.message : 'The WhatsApp platform could not be let go.',
+      error:
+        err instanceof Error
+          ? err.message
+          : 'The WhatsApp platform could not be let go.',
+    };
+  }
+}
+
+/**
+ * The project's own WhatsApp instance — created with the project, and
+ * created again here when that attempt failed. No key to paste: the
+ * platform's own key holds it.
+ */
+export async function provisionWhatsappIdentityAction(
+  projectId: string,
+): Promise<{
+  ok?: boolean;
+  instanceName?: string;
+  reason?: string;
+  error?: string;
+}> {
+  try {
+    const response = await api.post<{
+      instanceName: string;
+      created: boolean;
+      reason?: string;
+    }>(`/projects/${projectId}/whatsapp/identity`);
+    revalidatePath(`/projects/${projectId}/whatsapp`);
+    return {
+      ok: true,
+      instanceName: response.instanceName,
+      reason: response.reason,
+    };
+  } catch (err) {
+    return {
+      error:
+        err instanceof Error
+          ? err.message
+          : 'The WhatsApp platform would not create the project\u2019s instance.',
     };
   }
 }

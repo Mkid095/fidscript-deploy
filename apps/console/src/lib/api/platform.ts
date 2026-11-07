@@ -49,7 +49,9 @@ export async function platformOverview(): Promise<PlatformOverview> {
 
 /** Every application the platform can have, and which are installed. */
 export async function applications(): Promise<Application[]> {
-  const response = await api.get<{ applications: Application[] }>('/applications');
+  const response = await api.get<{ applications: Application[] }>(
+    '/applications',
+  );
   return response.applications;
 }
 
@@ -76,8 +78,13 @@ export async function apiKeys(): Promise<ApiKey[]> {
 }
 
 /** Mints a key. The key itself is shown once. */
-export async function createApiKey(name: string): Promise<ApiKey & { key: string }> {
-  const response = await api.post<{ apiKey: ApiKey & { key: string } }>('/auth/api-keys', { name });
+export async function createApiKey(
+  name: string,
+): Promise<ApiKey & { key: string }> {
+  const response = await api.post<{ apiKey: ApiKey & { key: string } }>(
+    '/auth/api-keys',
+    { name },
+  );
   return response.apiKey;
 }
 
@@ -104,6 +111,58 @@ export async function completeOnboarding(): Promise<void> {
 }
 
 /** Whether MFA is on, and how many recovery codes are left. */
-export async function mfaStatus(): Promise<{ enabled: boolean; recoveryCodesRemaining: number }> {
-  return api.get<{ enabled: boolean; recoveryCodesRemaining: number }>('/auth/mfa/status');
+export async function mfaStatus(): Promise<{
+  enabled: boolean;
+  recoveryCodesRemaining: number;
+}> {
+  return api.get<{ enabled: boolean; recoveryCodesRemaining: number }>(
+    '/auth/mfa/status',
+  );
+}
+
+// ── The applications' credentials (P5.4) ────────────────────────────────
+// "One email, one password" is a decision the operator makes. These are the
+// reads and the levers behind that decision.
+
+export interface ApplicationCredential {
+  id: string;
+  label: string;
+  account: string | null;
+  authType: 'password' | 'magic-code';
+  passwordSource: 'platform' | 'own' | 'machine' | 'none';
+  canApply: boolean;
+  consoleUrl: string | null;
+  available: boolean;
+  note: string | null;
+}
+
+/** The account each application answers with, as it is configured now. */
+export async function getPlatformCredentials(): Promise<{
+  platformEmail: string | null;
+  applications: ApplicationCredential[];
+}> {
+  return api.get<{
+    platformEmail: string | null;
+    applications: ApplicationCredential[];
+  }>('/admin/platform-credentials');
+}
+
+/** Does that password open each application? Asked live. */
+export async function verifyPlatformCredentials(
+  email: string,
+  password: string,
+): Promise<{
+  results: Array<{ id: string; opens: boolean | null; detail?: string }>;
+}> {
+  return api.post('/admin/platform-credentials/verify', { email, password });
+}
+
+/** Push the platform's identity onto the applications that take it. */
+export async function applyPlatformCredentials(
+  email: string,
+  password: string,
+): Promise<{
+  results: Array<{ id: string; applied: boolean | 'manual'; detail?: string }>;
+}> {
+  return api.post('/admin/platform-credentials/apply', { email, password });
 }

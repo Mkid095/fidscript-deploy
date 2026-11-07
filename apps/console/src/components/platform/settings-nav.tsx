@@ -12,6 +12,7 @@ import { usePathname } from 'next/navigation';
 const SECTIONS = [
   { href: '/settings', label: 'Account' },
   { href: '/settings/applications', label: 'Applications' },
+  { href: '/settings/credentials', label: 'Credentials' },
   { href: '/settings/api-keys', label: 'API keys & MCP' },
   { href: '/settings/integrations', label: 'Integrations' },
 ];
@@ -20,7 +21,10 @@ export function SettingsNav() {
   const pathname = usePathname();
 
   return (
-    <nav aria-label="Settings" className="flex gap-1 overflow-x-auto border-b border-rail pb-px">
+    <nav
+      aria-label="Settings"
+      className="flex gap-1 overflow-x-auto border-b border-rail pb-px"
+    >
       {SECTIONS.map((section) => {
         const active =
           section.href === '/settings'

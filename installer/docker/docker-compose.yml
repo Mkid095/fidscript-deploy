@@ -421,9 +421,14 @@ services:
       # so the base must be the HTTP listener root (port 8080),
       # NOT the /jmap path. The trailing slash is required.
       STALWART_JMAP_URL: http://fidscript_stalwart:8080/
-      # JMAP auth: the SHA-256 hash of the admin password (from STALWART_RECOVERY_ADMIN).
-      # The API sends this as Basic Auth password on the /jmap endpoint.
-      STALWART_JMAP_PASSWORD: ${STALWART_RECOVERY_ADMIN}
+      # JMAP auth: the mail administrator's name and password — the platform's
+      # own identity (the same credential the operator signs into the mail
+      # console with). STALWART_JMAP_PASSWORD is the plain password; it is
+      # separate from STALWART_RECOVERY_ADMIN because the recovery pair is
+      # "name:password" and a password that is not 64 hex chars would not
+      # split out of it.
+      STALWART_JMAP_USER: ${STALWART_JMAP_USER:-}
+      STALWART_JMAP_PASSWORD: ${STALWART_JMAP_PASSWORD:-}
       STALWART_ADMIN_TOKEN_FILE: /run/secrets/stalwart_admin_token
       STALWART_SMTP_HOST: fidscript_stalwart
       STALWART_SMTP_PORT: "465"
@@ -473,6 +478,22 @@ services:
       # The superuser's personal access token. It is OPTIONAL — without it
       # the api reports Instant as unavailable rather than failing to start.
       INSTANT_SUPERUSER_TOKEN_FILE: /run/secrets/instant_superuser_token
+      # The Instant account the superuser token belongs to — what the
+      # credentials screen shows, and the account magic codes go to.
+      INSTANT_SUPERUSER_EMAIL: ${INSTANT_SUPERUSER_EMAIL:-}
+      # ── The credentials screen ───────────────────────────────────────────
+      # What the operator's applications answer with, and what the platform
+      # can reach them with. Grafana is applied over its own API with the
+      # credential below; Stalwart's administrator is the recovery pair and
+      # changes with the installer (see STALWART_* above).
+      GRAFANA_URL: ${GRAFANA_URL:-http://fidscript_grafana:3000}
+      GRAFANA_ADMIN_USER: ${GRAFANA_ADMIN_USER:-}
+      GRAFANA_ADMIN_PASSWORD_FILE: /run/secrets/observability_grafana_password
+      # ── WhatsApp — the platform's own key ───────────────────────────────
+      # With it, a project's WhatsApp identity (its own instance) is created
+      # with the project rather than when somebody pastes a key. Optional:
+      # without it, provisioning records why and the screen offers the retry.
+      EVOLUTION_API_KEY_FILE: /run/secrets/evolution_api_key
     # NOTE: no Docker-secrets block for the api. The Docker-secrets mechanism
     # mounts the secret files with root-0400 perms, which the api (running as
     # `node`, uid 1000) cannot read ("Permission denied"). Instead, we bind-

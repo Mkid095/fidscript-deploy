@@ -27,7 +27,11 @@ export function ProjectOverview({
   projectSlug: string;
   shape: ProjectShape;
   deploymentOn: boolean;
-  instant: { available: boolean; dashboardUrl: string | null; app: InstantApp | null } | null;
+  instant: {
+    available: boolean;
+    dashboardUrl: string | null;
+    app: InstantApp | null;
+  } | null;
   deployments: Deployment[];
   memberCount: number;
   capabilities: { email: boolean; whatsapp: boolean; packages: boolean };
@@ -37,8 +41,12 @@ export function ProjectOverview({
   const base = `/projects/${projectSlug}`;
   const hasBackend = shape === 'BACKEND' || shape === 'BOTH';
 
-  const running = deployments.filter((deployment) => deployment.status === 'SUCCESS');
-  const failed = deployments.filter((deployment) => deployment.status === 'FAILED');
+  const running = deployments.filter(
+    (deployment) => deployment.status === 'SUCCESS',
+  );
+  const failed = deployments.filter(
+    (deployment) => deployment.status === 'FAILED',
+  );
   const lastDeployment = deployments[0];
 
   const next = nextStep({
@@ -66,7 +74,7 @@ export function ProjectOverview({
                   <Badge tone="success">{instant.app.status}</Badge>
                   {instant.dashboardUrl ? (
                     <a
-                      href={instant.dashboardUrl}
+                      href={`${instant.dashboardUrl.replace(/\/+$/, '')}/dash?app=${instant.app.appId}`}
                       target="_blank"
                       rel="noreferrer"
                       className="text-xs text-accent hover:underline"
@@ -101,7 +109,10 @@ export function ProjectOverview({
         />
         <Card className="divide-y divide-rail">
           {readiness.map((item) => (
-            <div key={item.name} className="flex items-center justify-between gap-3 px-4 py-2.5">
+            <div
+              key={item.name}
+              className="flex items-center justify-between gap-3 px-4 py-2.5"
+            >
               <div className="min-w-0">
                 <p className="text-sm text-text">{item.name}</p>
                 <p className="truncate text-xs text-text-dim">{item.detail}</p>
@@ -139,12 +150,17 @@ export function ProjectOverview({
                   last {sayWhen(lastDeployment.createdAt)}
                 </span>
               ) : (
-                <span className="text-xs text-text-dim">nothing deployed yet</span>
+                <span className="text-xs text-text-dim">
+                  nothing deployed yet
+                </span>
               )}
             </div>
 
             {deployments.slice(0, 3).map((deployment) => (
-              <div key={deployment.id} className="flex items-center justify-between gap-3 px-4 py-3">
+              <div
+                key={deployment.id}
+                className="flex items-center justify-between gap-3 px-4 py-3"
+              >
                 <div className="min-w-0">
                   <Link
                     href={`${base}/deployments/${deployment.id}`}
@@ -248,13 +264,26 @@ export function nextStep(input: {
   memberCount: number;
   href: string;
 }): { label: string; href: string } | null {
-  const { hasBackend, hasApp, deploymentOn, deploymentCount, memberCount, href } = input;
+  const {
+    hasBackend,
+    hasApp,
+    deploymentOn,
+    deploymentCount,
+    memberCount,
+    href,
+  } = input;
 
   if (hasBackend && !hasApp) {
-    return { label: 'Create the application backend', href: `${href}/settings` };
+    return {
+      label: 'Create the application backend',
+      href: `${href}/settings`,
+    };
   }
   if (deploymentOn && deploymentCount === 0) {
-    return { label: 'Deploy your application', href: `${href}/deployments/new` };
+    return {
+      label: 'Deploy your application',
+      href: `${href}/deployments/new`,
+    };
   }
   if (deploymentOn && deploymentCount > 0) {
     return { label: 'Connect a domain', href: `${href}/domains` };
@@ -288,4 +317,3 @@ function Capability({
     </div>
   );
 }
-
