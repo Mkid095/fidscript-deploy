@@ -359,7 +359,9 @@ services:
     # context (it copies package.json, pnpm-lock.yaml, packages/ and
     # apps/api/), which is why the context is ../.. and not .
     build:
-      context: ../..
+      # The platform's home is the console's repository — the API, the
+      # packages, the CLI and the installer all live there.
+      context: /home/ken/projects/apps/fidscript-deploy
       dockerfile: apps/api/Dockerfile
     image: fidscript-api:latest
     container_name: fidscript_api
@@ -557,7 +559,7 @@ services:
     # keeps pointing at the same place.
     build:
       context: /home/ken/projects/apps/fidscript-deploy
-      dockerfile: Dockerfile
+      dockerfile: apps/console/Dockerfile
       args:
         NEXT_PUBLIC_API_URL: https://api.${DOMAIN}
     # Explicit tag so the image has a stable name (matching the API

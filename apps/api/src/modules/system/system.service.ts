@@ -1,5 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { execFileSync } from 'child_process';
+import axios from 'axios';
 
 /**
  * What the machine is running, and what each of them is using.
@@ -100,6 +101,34 @@ export class SystemService {
     }
 
     return [...counts.values()].sort((a, b) => b.requests - a.requests);
+  }
+
+  /**
+   * The log of one container.
+   *
+   * The machine keeps every log in Loki; this asks it for the lines of
+   * one container — which is how a deployment's output is followed while
+   * it runs.
+   */
+  async containerLogs(container: string, limit = 200): Promise<Array<{ at: string; line: string }>> {
+    const base = this.config.get<string>('LOKI_URL', 'http://fidscript_loki:3100').replace(/\/+$/, '');
+    const end = Date.now() * 1_000_000;
+    const start = end - 60 * 60 * 1_000_000;
+
+    try {
+      const query = `{container="${container}"}`;
+      const response = await axios.get(
+        `${base}/loki/api/v1/query_range?query=${encodeURIComponent(query)}&limit=${limit}&start=${start}&end=${end}&direction=backward`,
+        { timeout: 10_000 },
+      );
+      const result = (response.data?.data?.result ?? []) as Array<{ values?: Array<[string, string]> }>;
+      return result.flatMap((entry) =>
+        (entry.values ?? []).map(([at, line]) => ({ at, line: stripColour(line) })),
+      );
+    } catch (err) {
+      this.logger.warn(`Could not read the logs of ${container}: ${(err as Error).message}`);
+      return [];
+    }
   }
 
   async state(): Promise<SystemState> {
@@ -234,4 +263,10 @@ function bytes(value?: string): number {
   };
 
   return parsed * (units[unit ?? 'B'] ?? 1);
+}
+
+/** A log line without the colour codes the services write. */
+function stripColour(line: string): string {
+  // eslint-disable-next-line no-control-regex
+  return line.replace(/\u001b\[[0-9;]*m/g, '');
 }
