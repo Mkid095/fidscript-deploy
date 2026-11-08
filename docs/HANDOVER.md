@@ -152,6 +152,9 @@ The API at `https://api.fidscript.com/api/v1`.
   recreated.
 - **The Instant dashboard's deep link is `/dash?app=<appId>`** — confirmed
   from Instant's own source (`server/src/instant/config.clj`), not guessed.
+- **Two `transformAlgorithm` errors in the dashboard's boot log are
+  known noise** (a Next.js internal stream error, stable digest, not
+  tied to any request; nothing fails because of it). Do not chase them.
 
 ---
 
