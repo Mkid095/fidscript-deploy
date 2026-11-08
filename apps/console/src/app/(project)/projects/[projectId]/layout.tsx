@@ -41,10 +41,13 @@ export default async function ProjectLayout({
     shape: project.shape ?? 'DEPLOYMENT',
     deploymentOn: project.deploymentOn ?? true,
     capabilities: {
-      // Email is on when the project has a mail domain; the registry is the
-      // platform's and every project may publish to it; the platform keeps
-      // no WhatsApp instances yet.
-      email: resources.emailDomains > 0,
+      // Email and packages are capabilities, not contents: the menu offers
+      // the door and the page says what is inside it. A project without a
+      // mail domain still gets the item — the page is where it adds one.
+      // (Gating the door on the room being furnished made the capability
+      // unreachable for a new project.) The platform keeps no WhatsApp
+      // instances yet.
+      email: true,
       whatsapp: false,
       packages: true,
     },
