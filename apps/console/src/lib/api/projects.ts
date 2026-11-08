@@ -44,21 +44,27 @@ export interface ProjectSummary {
   domains: number;
   databases: number;
   /** The project's activity over the last day — one point an hour. */
+  /** When a deployment of this project last succeeded. */
+  lastDeployAt?: string | null;
   activity: number[];
 }
 
-export async function getProjectSummaries(limit = 24): Promise<ProjectSummary[]> {
+export async function getProjectSummaries(
+  limit = 24,
+): Promise<ProjectSummary[]> {
   const projects = await listProjects().catch(() => []);
 
   return Promise.all(
     projects.slice(0, limit).map(async (project) => {
       const [deployments, domains, databases, activity] = await Promise.all([
         api
-          .get<{ deployments: Array<{ status?: string }> }>(
-            `/projects/${project.id}/deployments`,
-          )
+          .get<{
+            deployments: Array<{ status?: string }>;
+          }>(`/projects/${project.id}/deployments`)
           .catch(() => ({ deployments: [] })),
-        api.get<{ domains: unknown[] }>(`/projects/${project.id}/domains`).catch(() => ({ domains: [] })),
+        api
+          .get<{ domains: unknown[] }>(`/projects/${project.id}/domains`)
+          .catch(() => ({ domains: [] })),
         api
           .get<{ databases: unknown[] }>(`/projects/${project.id}/databases`)
           .catch(() => ({ databases: [] })),
@@ -68,9 +74,12 @@ export async function getProjectSummaries(limit = 24): Promise<ProjectSummary[]>
       return {
         project,
         deployments: deployments.deployments.length,
-        running: deployments.deployments.filter((deployment) => deployment.status === 'SUCCESS').length,
+        running: deployments.deployments.filter(
+          (deployment) => deployment.status === 'SUCCESS',
+        ).length,
         domains: domains.domains.length,
         databases: databases.databases.length,
+        lastDeployAt: project.lastDeployAt ?? null,
         activity,
       };
     }),

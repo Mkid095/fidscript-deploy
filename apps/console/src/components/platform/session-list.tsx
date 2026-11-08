@@ -6,7 +6,10 @@ import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { EmptyState, ErrorState } from '@/components/ui/feedback';
 
-import { revokeSessionAction } from '@/app/(platform)/settings/actions';
+import {
+  revokeOtherSessionsAction,
+  revokeSessionAction,
+} from '@/app/(platform)/settings/actions';
 
 interface OpenSession {
   id: string;
@@ -24,6 +27,7 @@ interface OpenSession {
 export function SessionList({ sessions }: { sessions: OpenSession[] }) {
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
+  const [ended, setEnded] = useState<number | null>(null);
 
   const end = (sessionId: string) => {
     setError(null);
@@ -33,20 +37,50 @@ export function SessionList({ sessions }: { sessions: OpenSession[] }) {
     });
   };
 
+  const endOthers = () => {
+    setError(null);
+    startTransition(async () => {
+      const result = await revokeOtherSessionsAction();
+      if (result.error) setError(result.error);
+      else setEnded(result.revoked ?? 0);
+    });
+  };
+
   if (sessions.length === 0) {
     return (
       <Card>
-        <EmptyState title="No other sessions" body="This account is signed in here, and nowhere else." />
+        <EmptyState
+          title="No other sessions"
+          body="This account is signed in here, and nowhere else."
+        />
       </Card>
     );
   }
 
   return (
     <div className="space-y-2">
+      <div className="flex items-center justify-between gap-2">
+        <p className="text-xs text-text-dim">
+          {ended !== null
+            ? `${ended} other session${ended === 1 ? '' : 's'} ended.`
+            : 'The list below is the newest of this account’s open sessions.'}
+        </p>
+        <Button
+          variant="secondary"
+          size="sm"
+          onClick={endOthers}
+          loading={pending}
+        >
+          End the others
+        </Button>
+      </div>
       <Card>
         <ul className="divide-y divide-rail">
           {sessions.map((session) => (
-            <li key={session.id} className="flex items-center justify-between gap-4 px-4 py-3">
+            <li
+              key={session.id}
+              className="flex items-center justify-between gap-4 px-4 py-3"
+            >
               <div className="min-w-0">
                 <p className="truncate text-sm text-text">
                   {describe(session.userAgent)}
@@ -56,7 +90,12 @@ export function SessionList({ sessions }: { sessions: OpenSession[] }) {
                   {new Date(session.createdAt).toLocaleDateString()}
                 </p>
               </div>
-              <Button variant="ghost" size="sm" onClick={() => end(session.id)} loading={pending}>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => end(session.id)}
+                loading={pending}
+              >
                 End it
               </Button>
             </li>

@@ -2,6 +2,7 @@ import Link from 'next/link';
 
 import { Badge } from '@/components/ui/feedback';
 import { Sparkline } from '@/components/project/sparkline';
+import { sayWhen } from '@/lib/events';
 import type { ProjectSummary } from '@/lib/api/projects';
 
 /**
@@ -24,7 +25,9 @@ export function ProjectCard({ summary }: { summary: ProjectSummary }) {
           <p className="truncate text-sm font-medium text-text group-hover:text-accent">
             {project.name}
           </p>
-          <p className="mt-0.5 truncate font-mono text-xs text-text-dim">{project.slug}</p>
+          <p className="mt-0.5 truncate font-mono text-xs text-text-dim">
+            {project.slug}
+          </p>
         </div>
         <Badge
           tone={
@@ -41,6 +44,12 @@ export function ProjectCard({ summary }: { summary: ProjectSummary }) {
         </Badge>
       </div>
 
+      {project.description ? (
+        <p className="mt-2 line-clamp-2 text-xs leading-relaxed text-text-muted">
+          {project.description}
+        </p>
+      ) : null}
+
       <p className="mt-2 text-xs text-text-dim">{shapeLabel(project.shape)}</p>
 
       <dl className="mt-3 grid grid-cols-3 gap-2 border-t border-rail pt-3">
@@ -51,9 +60,11 @@ export function ProjectCard({ summary }: { summary: ProjectSummary }) {
 
       <div className="mt-3 flex items-end justify-between gap-3 border-t border-rail pt-3">
         <p className="text-[11px] text-text-dim">
-          {summary.activity.some((value) => value > 0)
-            ? 'Activity over the last day'
-            : 'Nothing has run yet'}
+          {summary.lastDeployAt
+            ? `last deployed ${sayWhen(summary.lastDeployAt)}`
+            : summary.activity.some((value) => value > 0)
+              ? 'Activity over the last day'
+              : 'Nothing has run yet'}
         </p>
         <Sparkline values={summary.activity} />
       </div>
@@ -64,7 +75,9 @@ export function ProjectCard({ summary }: { summary: ProjectSummary }) {
 function Count({ term, value }: { term: string; value: number }) {
   return (
     <div>
-      <dt className="text-[10px] uppercase tracking-wide text-text-dim">{term}</dt>
+      <dt className="text-[10px] uppercase tracking-wide text-text-dim">
+        {term}
+      </dt>
       <dd className="text-sm text-text">{value}</dd>
     </div>
   );

@@ -12,7 +12,9 @@ import { serverApi as api } from '@/lib/api/server';
  */
 
 /** Change the name the platform shows beside everything you do. */
-export async function updateNameAction(name: string): Promise<{ ok?: boolean; error?: string }> {
+export async function updateNameAction(
+  name: string,
+): Promise<{ ok?: boolean; error?: string }> {
   const trimmed = name.trim();
   if (!trimmed) return { error: 'Tell us what to call you.' };
 
@@ -21,19 +23,51 @@ export async function updateNameAction(name: string): Promise<{ ok?: boolean; er
     revalidatePath('/settings');
     return { ok: true };
   } catch (err) {
-    return { error: err instanceof Error ? err.message : 'The name could not be saved.' };
+    return {
+      error:
+        err instanceof Error ? err.message : 'The name could not be saved.',
+    };
   }
 }
 
 /** End one session — the one on another machine, or an old one. */
-export async function revokeSessionAction(sessionId: string): Promise<{ ok?: boolean; error?: string }> {
+export async function revokeSessionAction(
+  sessionId: string,
+): Promise<{ ok?: boolean; error?: string }> {
   try {
     await api.delete(`/auth/sessions/${sessionId}`);
     revalidatePath('/settings');
     return { ok: true };
   } catch (err) {
     return {
-      error: err instanceof Error ? err.message : 'The session could not be ended.',
+      error:
+        err instanceof Error ? err.message : 'The session could not be ended.',
+    };
+  }
+}
+
+/**
+ * End every session except this one — the agent's old curl sessions, the
+ * machine that was lost — in one press, with the session doing the asking
+ * left alive.
+ */
+export async function revokeOtherSessionsAction(): Promise<{
+  ok?: boolean;
+  revoked?: number;
+  error?: string;
+}> {
+  try {
+    const result = await api.delete<{ success: boolean; revoked: number }>(
+      '/auth/sessions/others',
+    );
+    revalidatePath('/settings');
+    return { ok: true, revoked: result.revoked };
+  } catch (err) {
+    return {
+      error:
+        err instanceof Error
+          ? err.message
+          : 'The other sessions could not be ended.',
     };
   }
 }
@@ -50,9 +84,12 @@ export async function connectGithubAction(
   if (!token.trim()) return { error: 'The token is needed.' };
 
   try {
-    const response = await api.post<{ username?: string }>('/users/me/github/token', {
-      token: token.trim(),
-    });
+    const response = await api.post<{ username?: string }>(
+      '/users/me/github/token',
+      {
+        token: token.trim(),
+      },
+    );
     revalidatePath('/settings/integrations');
     return { ok: true, username: response.username };
   } catch (err) {
@@ -66,14 +103,20 @@ export async function connectGithubAction(
 }
 
 /** Let the GitHub account go. The token goes with it. */
-export async function disconnectGithubAction(): Promise<{ ok?: boolean; error?: string }> {
+export async function disconnectGithubAction(): Promise<{
+  ok?: boolean;
+  error?: string;
+}> {
   try {
     await api.delete('/users/me/github/disconnect');
     revalidatePath('/settings/integrations');
     return { ok: true };
   } catch (err) {
     return {
-      error: err instanceof Error ? err.message : 'The account could not be disconnected.',
+      error:
+        err instanceof Error
+          ? err.message
+          : 'The account could not be disconnected.',
     };
   }
 }
@@ -86,24 +129,34 @@ export async function createApiKeyAction(
   if (!trimmed) return { error: 'The key needs a name.' };
 
   try {
-    const response = await api.post<{ key?: string; apiKey?: { key?: string } }>('/auth/api-keys', {
+    const response = await api.post<{
+      key?: string;
+      apiKey?: { key?: string };
+    }>('/auth/api-keys', {
       name: trimmed,
     });
     revalidatePath('/settings/api-keys');
     return { ok: true, key: response.key ?? response.apiKey?.key };
   } catch (err) {
-    return { error: err instanceof Error ? err.message : 'The key could not be made.' };
+    return {
+      error: err instanceof Error ? err.message : 'The key could not be made.',
+    };
   }
 }
 
 /** End a key. Whatever it was doing stops working. */
-export async function revokeApiKeyAction(keyId: string): Promise<{ ok?: boolean; error?: string }> {
+export async function revokeApiKeyAction(
+  keyId: string,
+): Promise<{ ok?: boolean; error?: string }> {
   try {
     await api.delete(`/auth/api-keys/${keyId}`);
     revalidatePath('/settings/api-keys');
     return { ok: true };
   } catch (err) {
-    return { error: err instanceof Error ? err.message : 'The key could not be revoked.' };
+    return {
+      error:
+        err instanceof Error ? err.message : 'The key could not be revoked.',
+    };
   }
 }
 
@@ -120,8 +173,15 @@ export async function startMfaSetupAction(): Promise<{
   error?: string;
 }> {
   try {
-    const response = await api.post<{ secret: string; otpauthUrl: string }>('/auth/mfa/setup', {});
-    return { ok: true, secret: response.secret, otpauthUrl: response.otpauthUrl };
+    const response = await api.post<{ secret: string; otpauthUrl: string }>(
+      '/auth/mfa/setup',
+      {},
+    );
+    return {
+      ok: true,
+      secret: response.secret,
+      otpauthUrl: response.otpauthUrl,
+    };
   } catch (err) {
     return {
       error:
@@ -133,7 +193,9 @@ export async function startMfaSetupAction(): Promise<{
 }
 
 /** Confirm the first code, and two-factor is on. */
-export async function enableMfaAction(code: string): Promise<{ ok?: boolean; error?: string }> {
+export async function enableMfaAction(
+  code: string,
+): Promise<{ ok?: boolean; error?: string }> {
   try {
     await api.post('/auth/mfa/verify', { code: code.trim() });
     revalidatePath('/settings');
@@ -160,7 +222,9 @@ export async function disableMfaAction(input: {
   } catch (err) {
     return {
       error:
-        err instanceof Error ? err.message : 'The second factor could not be turned off.',
+        err instanceof Error
+          ? err.message
+          : 'The second factor could not be turned off.',
     };
   }
 }
@@ -172,15 +236,16 @@ export async function newRecoveryCodesAction(): Promise<{
   error?: string;
 }> {
   try {
-    const response = await api.post<{ recoveryCodes?: string[]; codes?: string[] }>(
-      '/auth/mfa/recovery-codes',
-      {},
-    );
+    const response = await api.post<{
+      recoveryCodes?: string[];
+      codes?: string[];
+    }>('/auth/mfa/recovery-codes', {});
     revalidatePath('/settings');
     return { ok: true, codes: response.recoveryCodes ?? response.codes ?? [] };
   } catch (err) {
     return {
-      error: err instanceof Error ? err.message : 'The codes could not be made.',
+      error:
+        err instanceof Error ? err.message : 'The codes could not be made.',
     };
   }
 }

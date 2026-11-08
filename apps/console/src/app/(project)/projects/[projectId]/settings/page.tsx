@@ -9,7 +9,7 @@ import {
 } from '@/lib/api/project';
 import { Card, SectionHeader } from '@/components/ui/card';
 import { DefinitionRow } from '@/components/ui/input';
-import { Page } from '@/components/ui/page';
+import { Page, PageColumns } from '@/components/ui/page';
 import { ErrorState } from '@/components/ui/feedback';
 import { ProjectGeneralForm } from '@/components/project/project-general-form';
 import { ProjectShapeSection } from '@/components/project/project-shape-section';
@@ -25,6 +25,10 @@ export const metadata = { title: 'Settings' };
  *
  * Everything here is a **real** setting on a real project. What the
  * platform cannot yet do is said plainly, rather than dressed up.
+ *
+ * Two columns: the work — what the project is called and what it is — on
+ * the left; the people, the variables and the ways out beside it, where
+ * they are found without scrolling past everything else.
  */
 export default async function ProjectSettingsPage({
   params,
@@ -63,69 +67,85 @@ export default async function ProjectSettingsPage({
 
   return (
     <Page title="Settings" description={project.name}>
+      <PageColumns
+        aside={
+          <>
+            <section>
+              <SectionHeader
+                title="Members"
+                description="Who may work in this project, and what they may do."
+              />
+              <Card>
+                <ProjectMembers members={members} />
+              </Card>
+            </section>
 
-      {project.organization ? (
+            <section>
+              <SectionHeader
+                title="Environment"
+                description="The variables this project ships with."
+              />
+              <Card>
+                <ProjectEnvVars variables={envVars} />
+              </Card>
+            </section>
+
+            <section>
+              <SectionHeader title="Danger zone" />
+              <Card className="border-danger/30 p-4">
+                <ProjectDangerZone
+                  projectId={project.id}
+                  name={project.name}
+                  status={project.status}
+                />
+              </Card>
+            </section>
+          </>
+        }
+      >
+        {project.organization ? (
+          <section>
+            <SectionHeader
+              title="The workspace"
+              description="Who this project belongs to, when it belongs to somebody."
+            />
+            <Card className="px-4 py-2">
+              <dl className="divide-y divide-rail">
+                <DefinitionRow term="Workspace">
+                  {project.organization.name}
+                </DefinitionRow>
+                <DefinitionRow term="Owner">
+                  {project.ownerId ? 'A person' : '—'}
+                </DefinitionRow>
+              </dl>
+            </Card>
+          </section>
+        ) : null}
+
         <section>
-          <SectionHeader
-            title="The workspace"
-            description="Who this project belongs to, when it belongs to somebody."
-          />
-          <Card className="px-4 py-2">
-            <dl className="divide-y divide-rail">
-              <DefinitionRow term="Workspace">{project.organization.name}</DefinitionRow>
-              <DefinitionRow term="Owner">{project.ownerId ? 'A person' : '—'}</DefinitionRow>
-            </dl>
+          <SectionHeader title="General" />
+          <Card className="p-4">
+            <ProjectGeneralForm
+              projectId={project.id}
+              name={project.name}
+              description={project.description ?? ''}
+              slug={project.slug}
+            />
           </Card>
         </section>
-      ) : null}
 
-      <section>
-        <SectionHeader title="General" />
-        <Card className="p-4">
-          <ProjectGeneralForm
-            projectId={project.id}
-            name={project.name}
-            description={project.description ?? ''}
-            slug={project.slug}
-          />
-        </Card>
-      </section>
-
-      <ProjectShapeSection
-        projectId={project.id}
-        shape={project.shape ?? 'DEPLOYMENT'}
-        deploymentOn={project.deploymentOn ?? true}
-        instant={instant}
-      />
-
-      <ProjectCapabilities
-        emailDomains={resources.emailDomains}
-        projectSlug={project.slug}
-      />
-
-      <section>
-        <SectionHeader
-          title="Members"
-          description="Who may work in this project, and what they may do."
+        <ProjectShapeSection
+          projectId={project.id}
+          shape={project.shape ?? 'DEPLOYMENT'}
+          deploymentOn={project.deploymentOn ?? true}
+          instant={instant}
         />
-        <Card>
-          <ProjectMembers members={members} />
-        </Card>
-      </section>
 
-      <section>
-        <SectionHeader title="Environment" description="The variables this project ships with." />
-        <Card>
-          <ProjectEnvVars variables={envVars} />
-        </Card>
-      </section>
-
-      <section>
-        <SectionHeader title="Danger zone" />
-        <Card className="p-4">
-          <ProjectDangerZone projectId={project.id} name={project.name} status={project.status} />
-        </Card>
-      </section>
+        <ProjectCapabilities
+          emailDomains={resources.emailDomains}
+          projectSlug={project.slug}
+        />
+      </PageColumns>
     </Page>
   );
 }

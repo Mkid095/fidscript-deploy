@@ -66,16 +66,10 @@ export default async function ProjectDeploymentsPage({
                     href={`/projects/${project.slug}/deployments/${deployment.id}`}
                     className="block truncate text-sm text-text hover:text-accent"
                   >
-                    {deployment.release?.version ?? deployment.id}
+                    {deploymentLabel(deployment)}
                   </Link>
                   <p className="mt-0.5 truncate text-xs text-text-dim">
-                    {deployment.release?.branch ?? 'no branch'}
-                    {deployment.release?.commitSha
-                      ? ` · ${deployment.release.commitSha.slice(0, 7)}`
-                      : ''}
-                    {deployment.release?.commitMessage
-                      ? ` · ${deployment.release.commitMessage}`
-                      : ''}
+                    {deploymentSubline(deployment)}
                   </p>
                 </div>
                 <div className="flex items-center gap-2">
@@ -110,4 +104,54 @@ function statusTone(
   if (status === 'BUILDING' || status === 'DEPLOYING' || status === 'QUEUED')
     return 'warning';
   return 'neutral';
+}
+
+/** A deployment's name: its release when there is one, its date when not. */
+function deploymentLabel(deployment: {
+  id: string;
+  createdAt: string;
+  release?: { version: string | null } | null;
+}): string {
+  return (
+    deployment.release?.version ??
+    `Deploy · ${new Date(deployment.createdAt).toLocaleDateString(undefined, {
+      month: 'short',
+      day: 'numeric',
+    })} ${new Date(deployment.createdAt).toLocaleTimeString(undefined, {
+      hour: '2-digit',
+      minute: '2-digit',
+    })}`
+  );
+}
+
+/** The line under the name: branch and commit when they exist, the source when they do not. */
+function deploymentSubline(deployment: {
+  createdAt: string;
+  release?: {
+    branch: string | null;
+    commitSha: string | null;
+    commitMessage: string | null;
+    sourceUrl: string | null;
+  } | null;
+}): string {
+  const release = deployment.release;
+  if (release?.branch || release?.commitSha) {
+    return [
+      release.branch ?? 'no branch',
+      release.commitSha ? release.commitSha.slice(0, 7) : null,
+      release.commitMessage,
+    ]
+      .filter(Boolean)
+      .join(' · ');
+  }
+  const source = release?.sourceUrl ?? '';
+  const repo = source
+    .replace(/^https?:\/\//, '')
+    .replace(/\.git$/, '')
+    .split('/')
+    .slice(-2)
+    .join('/');
+  return repo
+    ? `from ${repo}`
+    : new Date(deployment.createdAt).toLocaleString();
 }

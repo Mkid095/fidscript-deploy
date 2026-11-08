@@ -378,4 +378,70 @@ P5 is closed. What is open, and the files that hold it:
 | **The sidebar's WhatsApp item** — derived from the project's identity instead of hardcoded off                             | `apps/console/src/app/(project)/projects/[projectId]/layout.tsx`                                                            |
 | **The page bars for the remaining screens** — the next pass of the same rule                                               | `apps/console/src/components/ui/page.tsx`                                                                                   |
 
-_Written 2026-11-07. The hand-over session's part is §7._
+## 9. The deployment and the interface — the second session
+
+_The deployment was followed end to end — a real application, from git to
+answering on its own domain — and the screens a person lives in were redrawn._
+
+### 9.1 What the deployment was hiding
+
+A deployment was created from git and followed to the end. Four faults fell
+out of it, all fixed:
+
+- **A failure never reached the build log.** The clone error lived only in
+  the api's own logs; the screen showed an empty box for ever. Now the
+  failure is appended to the release's log (scrubbed), and the build's
+  lines are flushed the moment the build dies.
+- **A GitHub token leaked.** The owner's credential was embedded into the
+  clone URL of _any_ git source — a `file://` remote included — and a clone
+  failure quoted the whole URL into the log. Credentials ride only on
+  https remotes now, and every log line passes a scrubber
+  (`runner/scrub-secrets.ts`).
+- **git refused to clone a repository owned by another user** — the image
+  now marks directories safe at the system level, where git honours it
+  (`-c safe.directory` is ignored by design).
+- **The deployment container's name was 65 characters** — past DNS's
+  63-character limit — so every custom-domain route pointed at a name that
+  could not resolve and answered 502. One naming helper
+  (`runner/container-name.ts`), eight characters of id, all constructors.
+
+### 9.2 What works now, verified live
+
+A demo application was deployed, and:
+
+- the build log **appears while the build runs** and tells the truth when it
+  fails — error lines marked, the window opening on the tail, copy with one
+  press, long logs truncated from the top with the count said out loud;
+- the deployment answered on **its own subdomain**
+  (`https://{slug}.apps.fidscript.com`) with a valid certificate the moment
+  it was healthy;
+- **`demo.fidscript.com` was pointed at it** — a new
+  `POST …/domains/:id/attach` endpoint, an "End the others"-style control on
+  the deployment page — and answered 200 with a valid cert;
+- a **monorepo** repository is detected as several applications
+  (libraries filtered out), the wizard picks the one to build, the plan
+  falls through to the first app that runs when the root is not an
+  application, and the finish screen offers the rest in turn.
+
+### 9.3 The interface
+
+- **One dialog primitive** (`ui/dialog.tsx`) — every panel that opens over
+  the page behaves the same way now; the new-project dialog uses it.
+- **/settings** is two columns: the account, two-factor and the sessions on
+  the left; the platform's surfaces beside them. The sessions list gained
+  **End the others** (`DELETE /auth/sessions/others`) — one press ends the
+  130-odd stale sessions an agent's work leaves behind, and keeps the one
+  that pressed.
+- **/projects** cards carry the project's description and when it last
+  deployed.
+- **The project's settings** are two columns: what the project is called
+  and what it is on the left; the members, the variables and a visually
+  distinct danger zone beside them.
+- **/system** puts memory and CPU side by side; the deployments list shows
+  a human name ("Deploy · Nov 8, 04:20", or the repo it came from) instead
+  of a raw UUID.
+
+---
+
+_Written 2026-11-07. The hand-over session's part is §7; the deployment and
+the interface are §9._

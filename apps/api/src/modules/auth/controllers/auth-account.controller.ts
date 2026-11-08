@@ -1,4 +1,15 @@
-import { Controller, Get, Post, Patch, Delete, Body, Param, UseGuards, HttpCode, HttpStatus } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  Post,
+  Patch,
+  Delete,
+  Body,
+  Param,
+  UseGuards,
+  HttpCode,
+  HttpStatus,
+} from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { JwtAuthGuard } from '@/modules/auth/jwt-auth.guard';
 import { CurrentUser } from '@/modules/auth/current-user.decorator';
@@ -29,7 +40,10 @@ export class AuthAccountController {
   @UseGuards(JwtAuthGuard)
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Update current user profile' })
-  async updateProfile(@CurrentUser('userId') userId: string, @Body() dto: UpdateProfileDto) {
+  async updateProfile(
+    @CurrentUser('userId') userId: string,
+    @Body() dto: UpdateProfileDto,
+  ) {
     return this.authService.updateProfile(userId, dto);
   }
 
@@ -61,9 +75,32 @@ export class AuthAccountController {
   @HttpCode(HttpStatus.OK)
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Revoke a specific session' })
-  async revokeSession(@CurrentUser('userId') userId: string, @Param('id') sessionId: string) {
+  async revokeSession(
+    @CurrentUser('userId') userId: string,
+    @Param('id') sessionId: string,
+  ) {
     await this.authService.revokeSession(userId, sessionId);
     return { success: true };
+  }
+
+  /**
+   * Every session except the one making this call. The old curl sessions of
+   * an agent's work, the machine that was lost — one press, and the account
+   * keeps only the session that pressed.
+   */
+  @Delete('sessions/others')
+  @UseGuards(JwtAuthGuard)
+  @HttpCode(HttpStatus.OK)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Revoke every session except this one' })
+  async revokeOtherSessions(
+    @CurrentUser() caller: { userId: string; sessionId?: string },
+  ) {
+    const result = await this.authService.revokeOtherSessions(
+      caller.userId,
+      caller.sessionId,
+    );
+    return { success: true, revoked: result.revoked };
   }
 
   @Delete('sessions')
@@ -89,7 +126,10 @@ export class AuthAccountController {
   @UseGuards(JwtAuthGuard)
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Create a new API key' })
-  async createApiKey(@CurrentUser('userId') userId: string, @Body() dto: CreateApiKeyDto) {
+  async createApiKey(
+    @CurrentUser('userId') userId: string,
+    @Body() dto: CreateApiKeyDto,
+  ) {
     return this.authService.createApiKey(userId, dto);
   }
 
@@ -98,7 +138,10 @@ export class AuthAccountController {
   @HttpCode(HttpStatus.OK)
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Revoke an API key' })
-  async revokeApiKey(@CurrentUser('userId') userId: string, @Param('id') keyId: string) {
+  async revokeApiKey(
+    @CurrentUser('userId') userId: string,
+    @Param('id') keyId: string,
+  ) {
     await this.authService.revokeApiKey(userId, keyId);
     return { success: true };
   }

@@ -21,7 +21,7 @@ export default async function ProjectsPage() {
     <Page
       width="wide"
       title="Projects"
-      description="A project is a directory for one application — when you have a new one, make a project and name it after it."
+      description="One application per project — its code, its domains, its data."
       actions={<NewProjectDialog />}
     >
       {projects.length === 0 ? (
@@ -32,7 +32,7 @@ export default async function ProjectsPage() {
           />
         </Card>
       ) : (
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3">
+        <div className="grid grid-cols-1 content-start gap-3 sm:grid-cols-2 xl:grid-cols-3">
           {projects.map((summary) => (
             <ProjectCard key={summary.project.id} summary={summary} />
           ))}

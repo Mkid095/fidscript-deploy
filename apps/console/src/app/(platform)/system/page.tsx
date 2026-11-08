@@ -98,37 +98,41 @@ export default async function SystemPage() {
         </Card>
       </section>
 
-      <section>
-        <SectionHeader
-          title="What is using the most"
-          description="The memory each container is holding."
-        />
-        <Card className="p-4">
-          <BarList
-            samples={containers.map((entry) => ({
-              name: entry.name,
-              value: entry.memoryBytes,
-            }))}
-            format={(value) => `${(value / 1024 ** 2).toFixed(0)} MB`}
+      {/* Memory and CPU sit beside each other — the two questions about a
+          machine are "how full" and "how busy", and they answer together. */}
+      <div className="grid grid-cols-1 gap-8 xl:grid-cols-2">
+        <section>
+          <SectionHeader
+            title="What is using the most"
+            description="The memory each container is holding."
           />
-        </Card>
-      </section>
+          <Card className="p-4">
+            <BarList
+              samples={containers.map((entry) => ({
+                name: entry.name,
+                value: entry.memoryBytes,
+              }))}
+              format={(value) => `${(value / 1024 ** 2).toFixed(0)} MB`}
+            />
+          </Card>
+        </section>
 
-      <section>
-        <SectionHeader
-          title="The CPU"
-          description="What each container is using, as a share of a core."
-        />
-        <Card className="p-4">
-          <BarList
-            samples={containers.map((entry) => ({
-              name: entry.name,
-              value: entry.cpuPercent,
-            }))}
-            format={(value) => `${value.toFixed(1)}%`}
+        <section>
+          <SectionHeader
+            title="The CPU"
+            description="What each container is using, as a share of a core."
           />
-        </Card>
-      </section>
+          <Card className="p-4">
+            <BarList
+              samples={containers.map((entry) => ({
+                name: entry.name,
+                value: entry.cpuPercent,
+              }))}
+              format={(value) => `${value.toFixed(1)}%`}
+            />
+          </Card>
+        </section>
+      </div>
 
       <section>
         <SectionHeader

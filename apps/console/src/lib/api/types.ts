@@ -42,6 +42,8 @@ export interface Project {
   organizationId?: string | null;
   organization?: { id: string; name: string; slug: string } | null;
   lastActivityAt?: string | null;
+  /** When a deployment of this project last succeeded. */
+  lastDeployAt?: string | null;
   createdAt: string;
   updatedAt: string;
 }

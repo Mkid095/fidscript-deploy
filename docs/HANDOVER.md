@@ -26,12 +26,11 @@ configuration, and the honest list of small things found and not taken
 
 ## 1. The state you are inheriting
 
-|                   |                                                                                                                                                                                                                                                                                                                                              |
-| ----------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **Last commits**  | `089b738` the sidebar steps aside; the resources and the credentials (P5.4–P5.6); `3a5cf97` the domain read path points at the project too                                                                                                                                                                                                   |
-| **Deployed**      | the API and the console — both rebuilt from this repository with all of P5                                                                                                                                                                                                                                                                   |
-| **Verified live** | the console's page bars on desktop and phone; one set of credentials (console · Grafana · Stalwart · InstantDB all answer to the platform's identity); the Databases page's deep links; project creation provisions the Instant app and the WhatsApp identity; `demo.fidscript.com`'s records in Cloudflare, resolving to the project's host |
-| **Working tree**  | clean                                                                                                                                                                                                                                                                                                                                        |
+|                   |                                                                                                                                                                                                                                                                                                                                     |
+| ----------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Deployed**      | the API and the console — all of P5, plus the deployment fixes and the interface work of the second session (`docs/PROGRESS.md` §9)                                                                                                                                                                                                 |
+| **Verified live** | one set of credentials (console · Grafana · Stalwart · InstantDB); project creation provisions the Instant app and the WhatsApp identity; `demo.fidscript.com` in Cloudflare; a deployment from git answering on its own subdomain and on an attached domain with a valid certificate; the build log appearing while the build runs |
+| **Working tree**  | clean                                                                                                                                                                                                                                                                                                                               |
 
 ---
 
@@ -62,12 +61,16 @@ so a project's identity is made when the project is made (D17).
    for `fidscript.com` points at the registrar's forwarding, Stalwart holds
    no mailboxes, and a full system-mail send has not been tested. The guide's
    Stalwart configuration checklist (§8.3) is the work.
-2. **The honest list** (`docs/PROGRESS.md` §7.7) — the domain card's
-   "failed" that means "nothing deployed yet", the static per-record
-   statuses, the missing remove-domain button, the WhatsApp instance
-   scoping, the sidebar's hardcoded-off WhatsApp item.
+2. **The honest lists** (`docs/PROGRESS.md` §7.7 and §9.1) — the domain
+   card's "failed" that means "nothing deployed yet", the static per-record
+   statuses, the WhatsApp instance scoping, the sidebar's hardcoded-off
+   WhatsApp item, and the build log's remaining refinements.
 3. **The remaining page-bar pass** — twenty-four screens have the bar; the
    rest of the product follows the same rule.
+4. **The demo deployment** — `fidscript-6d39d5fa` carries a small test
+   application deployed to prove the pipeline (it answers on the project's
+   subdomain and on `demo.fidscript.com`). Remove it when it has served its
+   purpose; the container, the image and the record go with it.
 
 ---
 
