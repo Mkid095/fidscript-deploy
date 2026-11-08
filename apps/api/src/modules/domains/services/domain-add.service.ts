@@ -38,27 +38,75 @@ export class DomainAddService {
     const existing = await this.prisma.domain.findFirst({ where: { projectId, domain: dto.domain } });
     if (existing) throw new ConflictException('Domain already added to this project');
 
-    // Cross-project conflict check: same domain cannot be the primary in two
-    // projects at once. Apex domains (e.g. example.com) are the natural primary
-    // and must be unique platform-wide. Subdomains can coexist across projects
-    // because they target different deployments.
+    // One project, one name.
+    //
+    // The platform is multi-tenant by project: a project's application, its
+    // mail, and its numbers all live under that project's single name. A
+    // project that already answers on a name cannot start answering on a
+    // second — the second is blocked until the first is released. (Re-adding
+    // the *same* name is the "existing" check above.)
+    const activeCount = await this.prisma.domain.count({ where: { projectId } });
+    if (activeCount > 0) {
+      const current = await this.prisma.domain.findFirst({
+        where: { projectId },
+        select: { domain: true },
+      });
+      throw new ConflictException(
+        `This project already answers on "${current?.domain}". ` +
+        `A project has a single name — release that domain before registering another.`,
+      );
+    }
+
     const isPlatform = dto.domain.endsWith(`.${this.platformDomain}`);
     const isApex = !dto.domain.startsWith('www.') && dto.domain.split('.').length === 2;
     const isPrimaryRequested = dto.type?.includes('DEPLOYMENT') ?? true;
-    if (isApex && isPrimaryRequested) {
-      const primaryElsewhere = await this.prisma.domain.findFirst({
-        where: {
-          domain: dto.domain,
-          isPrimary: true,
-          projectId: { not: projectId },
-        },
+
+    // Cross-project conflict: the same name is registered on another
+    // project. The default answer is a conflict — never a silent takeover.
+    // With `takeOver` the name is moved: released from the other project
+    // and claimed here.
+    const takenElsewhere = await this.prisma.domain.findFirst({
+      where: { domain: dto.domain, projectId: { not: projectId } },
+      select: {
+        id: true,
+        projectId: true,
+        project: { select: { name: true, slug: true } },
+      },
+    });
+    if (takenElsewhere && !dto.takeOver) {
+      throw new ConflictException(
+        `The name "${dto.domain}" is already assigned to the project ` +
+        `"${takenElsewhere.project?.name ?? takenElsewhere.projectId}". ` +
+        `Confirm to move it here.`,
+      );
+    }
+    if (takenElsewhere && dto.takeOver) {
+      // Release the name from the other project, then claim it here: the
+      // old row's routing pointer drops, its linked mail is stood down, and
+      // the row is released. The create below registers the name under this
+      // project and re-points its records to this project's host.
+      await this.prisma.domain.update({
+        where: { id: takenElsewhere.id },
+        data: { deploymentId: null, isPrimary: false },
       });
-      if (primaryElsewhere) {
-        throw new ConflictException(
-          `Domain "${dto.domain}" is already the primary domain of another project. ` +
-          `Detach it from the other project before adding here.`,
-        );
-      }
+      await this.prisma.emailDomain
+        .updateMany({
+          where: { projectId: takenElsewhere.projectId, domain: dto.domain },
+          data: { status: 'PENDING', verifiedAt: null },
+        })
+        .catch(() => undefined);
+      await this.prisma.domain.delete({ where: { id: takenElsewhere.id } });
+      await this.eventService.emit(
+        'domain.taken_over',
+        projectId,
+        {
+          domain: dto.domain,
+          fromProjectId: takenElsewhere.projectId,
+          toProjectId: projectId,
+        },
+        { actorId: userId, actorType: 'user', resourceType: 'domain', resourceId: takenElsewhere.id },
+      );
+      // fall through: register the name under this project (create below)
     }
 
     const mx = await this.domainMxService.checkMxRecords(dto.domain);

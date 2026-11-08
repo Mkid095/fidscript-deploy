@@ -3,7 +3,7 @@ import { redirect } from 'next/navigation';
 import { Page } from '@/components/ui/page';
 
 import { getProject } from '@/lib/api/project';
-import { getDomains } from '@/lib/api/resources';
+import { getDomains, getDeployments } from '@/lib/api/resources';
 import { Card } from '@/components/ui/card';
 import { DeploymentWizard } from '@/components/project/deployment-wizard';
 
@@ -28,7 +28,21 @@ export default async function NewDeploymentPage({
     redirect(`/projects/${project.slug}/overview`);
   }
 
-  const domains = await getDomains(project.id).catch(() => []);
+  const [domains, deployments] = await Promise.all([
+    getDomains(project.id).catch(() => []),
+    getDeployments(project.id).catch(() => []),
+  ]);
+
+  // What is up right now, if anything. A new deployment replaces it, so the
+  // wizard says so and asks for the plain yes before it takes the name.
+  const live = deployments.find(
+    (deployment) => deployment.status.toUpperCase() === 'SUCCESS',
+  );
+  const liveDeploymentLabel = live
+    ? live.release?.version
+      ? `the deployment ${live.release.version}`
+      : 'your live deployment'
+    : null;
 
   return (
     <Page
@@ -45,6 +59,7 @@ export default async function NewDeploymentPage({
             dnsStatus: domain.dnsStatus ?? 'pending',
             attached: Boolean(domain.deploymentId),
           }))}
+          liveDeploymentLabel={liveDeploymentLabel}
         />
       </Card>
     </Page>

@@ -59,13 +59,15 @@ export function ProjectOverview({
   const hasBackend = shape === 'BACKEND' || shape === 'BOTH';
 
   const running = deployments.filter(
-    (deployment) => deployment.status === 'SUCCESS',
+    (deployment) => deployment.status.toUpperCase() === 'SUCCESS',
   );
   const failed = deployments.filter(
-    (deployment) => deployment.status === 'FAILED',
+    (deployment) => deployment.status.toUpperCase() === 'FAILED',
   );
   const live = running[0];
-  const activeDomains = domains.filter((domain) => domain.dnsStatus === 'ACTIVE');
+  const activeDomains = domains.filter(
+    (domain) => (domain.dnsStatus ?? '').toUpperCase() === 'ACTIVE',
+  );
   const readyDatabases = databases.filter(
     (database) => database.status === 'ready',
   );
@@ -252,9 +254,9 @@ export function ProjectOverview({
                 </div>
                 <Badge
                   tone={
-                    deployment.status === 'SUCCESS'
+                    deployment.status.toUpperCase() === 'SUCCESS'
                       ? 'success'
-                      : deployment.status === 'FAILED'
+                      : deployment.status.toUpperCase() === 'FAILED'
                         ? 'danger'
                         : 'neutral'
                   }

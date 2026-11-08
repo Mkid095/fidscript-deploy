@@ -4,7 +4,7 @@ import { PrismaService } from '@/prisma/prisma.service';
 import axios from 'axios';
 import * as crypto from 'crypto';
 
-import type { CreateRecordOpts, DnsProvider } from '@/modules/domains/providers/dns-provider.interface';
+import type { CreateRecordOpts, DnsProvider, DnsRecord } from '@/modules/domains/providers/dns-provider.interface';
 
 @Injectable()
 export class DomainDnsService {
@@ -125,6 +125,7 @@ export class DomainDnsService {
       name: `_fidscript-verification.${domain}`,
       content: `FIDScript verified ${domainId}`,
       ttl: 300,
+      domainId,
     });
 
     const routing = await this.writeRecord(provider, zoneId, isApex
@@ -132,11 +133,13 @@ export class DomainDnsService {
           zoneId, type: 'A', name: domain,
           content: this.configService.get<string>('SERVER_IP', ''),
           ttl: 300, proxied: false,
+          domainId,
         }
       : {
           zoneId, type: 'CNAME', name: domain,
           content: targetHost,
           ttl: 300, proxied: false,
+          domainId,
         });
 
     await this.prisma.domain.update({
@@ -165,13 +168,17 @@ export class DomainDnsService {
   async writeRecord(
     provider: DnsProvider,
     zoneId: string,
-    opts: CreateRecordOpts,
+    opts: CreateRecordOpts & { domainId?: string },
   ): Promise<'created' | 'updated' | 'unchanged'> {
     const same = await provider.listRecords({ zoneId, name: opts.name, type: opts.type });
     if (same.length > 0) {
       const record = same[0];
-      if (record.content === opts.content) return 'unchanged';
+      if (record.content === opts.content) {
+        await this.trackRecord(opts, record);
+        return 'unchanged';
+      }
       await provider.updateRecord({ ...opts, recordId: record.id });
+      await this.trackRecord(opts, record);
       return 'updated';
     }
 
@@ -187,13 +194,101 @@ export class DomainDnsService {
       const pointsAtPlatform =
         (blocking.type === 'A' && blocking.content === serverIp) ||
         (blocking.type === 'CNAME' && blocking.content === opts.content);
-      if (pointsAtPlatform) return 'unchanged';
+      if (pointsAtPlatform) {
+        await this.trackRecord(opts, blocking);
+        return 'unchanged';
+      }
       await provider.updateRecord({ ...opts, recordId: blocking.id });
+      await this.trackRecord(opts, blocking);
       return 'updated';
     }
 
-    await provider.createRecord(opts);
+    await provider.createRecord({
+      zoneId: opts.zoneId,
+      type: opts.type,
+      name: opts.name,
+      content: opts.content,
+      ttl: opts.ttl,
+      proxied: opts.proxied,
+      priority: opts.priority,
+    });
+    await this.trackRecord(opts, null);
     return 'created';
+  }
+
+  /**
+   * Remember what stood at (type, name) before the platform put its value
+   * there.
+   *
+   * The first time the platform writes a name it captures the customer's
+   * record (or "there was nothing") into the tracking row's original_*
+   * fields; a later write does not clobber a recorded original, so a
+   * release always restores the *first* pre-takeover state.
+   */
+  private async trackRecord(
+    opts: CreateRecordOpts & { domainId?: string },
+    replacedFrom: DnsRecord | null,
+  ) {
+    if (!opts.domainId) return;
+    const checksum = crypto
+      .createHash('sha256')
+      .update(`${opts.type}:${opts.name}:${opts.content}`)
+      .digest('hex');
+
+    const existing = await this.prisma.managedDnsRecord.findUnique({
+      where: {
+        domainId_type_name: {
+          domainId: opts.domainId,
+          type: opts.type,
+          name: opts.name,
+        },
+      },
+    });
+
+    if (!existing) {
+      await this.prisma.managedDnsRecord.create({
+        data: {
+          domainId: opts.domainId,
+          type: opts.type,
+          name: opts.name,
+          value: opts.content,
+          ttl: opts.ttl ?? 300,
+          priority: opts.priority ?? null,
+          proxied: opts.proxied ?? false,
+          managedBy: 'platform',
+          source: 'deployment',
+          checksum,
+          // The first write remembers what stood there before (or nothing).
+          originalValue: replacedFrom ? replacedFrom.content : null,
+          originalTtl: replacedFrom?.ttl ?? null,
+          originalPriority: replacedFrom?.priority ?? null,
+          originalProxied: replacedFrom?.proxied ?? null,
+          lastSyncedAt: new Date(),
+        },
+      });
+      return;
+    }
+
+    // Update the tracked value; only fill an empty original when this is a
+    // true replacement we had not captured before.
+    const patch: Record<string, unknown> = {
+      value: opts.content,
+      ttl: opts.ttl ?? 300,
+      priority: opts.priority ?? null,
+      proxied: opts.proxied ?? false,
+      checksum,
+      lastSyncedAt: new Date(),
+    };
+    if (replacedFrom && existing.originalValue === null) {
+      patch.originalValue = replacedFrom.content;
+      patch.originalTtl = replacedFrom.ttl ?? null;
+      patch.originalPriority = replacedFrom.priority ?? null;
+      patch.originalProxied = replacedFrom.proxied ?? null;
+    }
+    await this.prisma.managedDnsRecord.update({
+      where: { id: existing.id },
+      data: patch,
+    });
   }
 
   private getEncryptionKey(): Buffer {

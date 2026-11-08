@@ -57,6 +57,40 @@ export async function verifyEmailDomainAction(
   }
 }
 
+/**
+ * The one-click set up.
+ *
+ * The mail follows the project's own name, and this writes its four records
+ * — MX, SPF, DKIM, DMARC — through the project's DNS connection in a single
+ * act. The screen then shows which of the four are confirmed.
+ */
+export async function setupEmailAction(
+  projectId: string,
+  domain?: string,
+): Promise<{ ok?: boolean; status?: string; error?: string }> {
+  try {
+    const response = await api.post<{
+      domain: string;
+      status: string;
+      mx: boolean;
+      spf: boolean;
+      dkim: boolean;
+      dmarc: boolean;
+    }>(`/projects/${projectId}/email/setup`, {
+      ...(domain?.trim() ? { domain: domain.trim().toLowerCase() } : {}),
+    });
+    revalidatePath(`/projects/${projectId}/email`);
+    return { ok: true, status: response.status };
+  } catch (err) {
+    return {
+      error:
+        err instanceof Error
+          ? err.message
+          : 'The records could not be set up.',
+    };
+  }
+}
+
 /** Make a mailbox. The password is set here and never shown again. */
 export async function createMailboxAction(
   projectId: string,

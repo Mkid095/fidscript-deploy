@@ -102,9 +102,10 @@ export default async function ProjectDeploymentsPage({
 function statusTone(
   status: string,
 ): 'success' | 'danger' | 'warning' | 'neutral' {
-  if (status === 'SUCCESS') return 'success';
-  if (status === 'FAILED') return 'danger';
-  if (status === 'BUILDING' || status === 'DEPLOYING' || status === 'QUEUED')
+  const s = status.toUpperCase();
+  if (s === 'SUCCESS') return 'success';
+  if (s === 'FAILED') return 'danger';
+  if (s === 'BUILDING' || s === 'DEPLOYING' || s === 'QUEUED')
     return 'warning';
   return 'neutral';
 }

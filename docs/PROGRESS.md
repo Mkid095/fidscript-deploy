@@ -587,3 +587,43 @@ behaviour is §11; the project's numbers are §12. The platform is live._
 _Written 2026-11-07 through 11-08. §12 is the project's numbers; §13 is
 the short way round to the registry and the machine's own numbers. The
 platform is live._
+
+## 14. One name per project — the domain, the mail, and the machine's own loop
+
+- **A project has a single name.** The domains page leads with "the name it
+  answers on", and the platform now refuses a second name for a project
+  that already has one — so each project's app, mail, and numbers all ride
+  on the one name the project registered, the way multi-tenancy intends.
+- **Deleting a name releases it.** Taking a domain off a project now puts
+  the customer's zone back the way it was: the records the platform wrote
+  are restored to the originals it captured at takeover (or removed where
+  there was nothing), and the mail that rode on the name is stood down.
+- **Originals are remembered.** Before the platform overwrites a record it
+  stores what stood there (`original_*` on the managed record), so "release"
+  can actually restore instead of leave the zone empty.
+- **A name another project holds is a conflict, not a takeover.** The
+  answer is "already assigned to project X"; only a confirmed take-over
+  moves it, and the other project is released.
+- **The mail's one click.** "Set up" on the email page writes the project's
+  MX/SPF/DKIM/DMARC for its own registered name through the project's own
+  DNS connection, and the page shows each record's true state — pending
+  until it is confirmed, never "written" on faith.
+- **A new deployment replaces the live one.** The wizard says so plainly and
+  asks for the yes, so one application answers on a project's name at a
+  time.
+- **The machine stopped burning on a dead job.** The domain-reconciliation
+  worker re-enqueued a released domain forever (the attempt count never
+  advanced), spinning a core and dragging the platform's health. A gone
+  domain now ends the job, and retries count up to their cap.
+
+---
+
+_Written 2026-11-07 through 11-08. §14 is one name per project. The
+platform is live._
+
+  - **The status spelling.** The API answers deployment states in lower case
+    (`success`), and the interface compared them against upper case
+    (`SUCCESS`) — so "is the app running" and the "this replaces your live
+    deployment" warning were silently always false. The comparisons now
+    read the state case-insensitively, so a finished build reads as
+    finished.

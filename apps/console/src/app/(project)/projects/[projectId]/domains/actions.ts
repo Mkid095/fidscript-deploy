@@ -68,8 +68,13 @@ export async function disconnectDnsProviderAction(
  */
 export async function addDomainAction(
   projectId: string,
-  input: { domain: string; type: string[]; mode: 'auto' | 'manual' },
-): Promise<{ ok?: boolean; domainId?: string; error?: string }> {
+  input: {
+    domain: string;
+    type: string[];
+    mode: 'auto' | 'manual';
+    takeOver?: boolean;
+  },
+): Promise<{ ok?: boolean; domainId?: string; error?: string; conflict?: boolean }> {
   const domain = input.domain.trim().toLowerCase();
   if (!domain) return { error: 'A domain needs a name.' };
 
@@ -81,15 +86,20 @@ export async function addDomainAction(
         type: input.type,
         dnsMode: input.mode === 'auto' ? 'cloudflare_auto' : 'manual',
         sslEnabled: true,
+        ...(input.takeOver ? { takeOver: true } : {}),
       },
     );
     revalidatePath(`/projects/${projectId}/domains`);
     return { ok: true, domainId: response.domain.id };
   } catch (err) {
-    return {
-      error:
-        err instanceof Error ? err.message : 'The domain could not be added.',
-    };
+    const message =
+      err instanceof Error ? err.message : 'The domain could not be added.';
+    // A name another project holds comes back as a conflict; the screen
+    // offers the take-over rather than treating it as a dead end.
+    const conflict = /already assigned|already the primary|another project/i.test(
+      message,
+    );
+    return { error: message, conflict };
   }
 }
 

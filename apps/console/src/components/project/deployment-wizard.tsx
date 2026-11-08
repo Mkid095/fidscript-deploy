@@ -27,6 +27,7 @@ export function DeploymentWizard({
   projectId,
   projectSlug,
   domains = [],
+  liveDeploymentLabel,
 }: {
   projectId: string;
   projectSlug: string;
@@ -37,6 +38,8 @@ export function DeploymentWizard({
     dnsStatus: string;
     attached: boolean;
   }>;
+  /** What is up right now, if anything. A new deployment replaces it. */
+  liveDeploymentLabel?: string | null;
 }) {
   const [step, setStep] = useState(0);
   const [gitUrl, setGitUrl] = useState('');
@@ -50,6 +53,7 @@ export function DeploymentWizard({
   const [domainId, setDomainId] = useState<string | null>(null);
   const [deploymentId, setDeploymentId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [confirmReplace, setConfirmReplace] = useState(false);
   const [pending, startTransition] = useTransition();
 
   const detect = () => {
@@ -66,6 +70,12 @@ export function DeploymentWizard({
   };
 
   const deploy = () => {
+    // A new deployment takes over the one that is up. The person has to
+    // say so plainly when there is something to replace.
+    if (liveDeploymentLabel && !confirmReplace) {
+      setConfirmReplace(true);
+      return;
+    }
     setError(null);
     startTransition(async () => {
       const variables: Record<string, string> = {};
@@ -170,9 +180,38 @@ export function DeploymentWizard({
             onEnvVars={setEnvVars}
             onSubdomain={setSubdomain}
           />
+          {liveDeploymentLabel ? (
+            <div
+              className={`rounded-lg border px-4 py-3 text-sm ${
+                confirmReplace
+                  ? 'border-danger/40 bg-danger/5 text-danger'
+                  : 'border-warning/40 bg-warning/5 text-text'
+              }`}
+            >
+              {confirmReplace ? (
+                <p>
+                  This replaces <span className="font-medium">{liveDeploymentLabel}</span> —
+                  the live application comes down while the new one builds.
+                  Press the button again to take it over.
+                </p>
+              ) : (
+                <p>
+                  <span className="font-medium">{liveDeploymentLabel}</span> is up
+                  now. This deployment takes its place — one application answers on
+                  the project&apos;s name at a time.
+                </p>
+              )}
+            </div>
+          ) : null}
           <div className="flex items-center gap-2">
-            <Button variant="primary" onClick={deploy} loading={pending}>
-              Deploy
+            <Button
+              variant={confirmReplace ? 'danger' : 'primary'}
+              onClick={deploy}
+              loading={pending}
+            >
+              {confirmReplace
+                ? `Replace ${liveDeploymentLabel}`
+                : 'Deploy'}
             </Button>
             <Button variant="ghost" onClick={() => setStep(0)}>
               Back

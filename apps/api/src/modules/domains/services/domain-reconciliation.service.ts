@@ -2,7 +2,7 @@ import { Injectable, Logger } from '@nestjs/common';
 import { PrismaService } from '@/prisma/prisma.service';
 import { EventService } from '@/modules/events/event.service';
 import { DomainChecksService } from './domain-checks.service';
-import { VerificationReason } from './domain-reconciliation-queue.service';
+import { VerificationReason, DomainGoneError } from './domain-reconciliation-queue.service';
 import { createHash } from 'crypto';
 
 type HealthStatus = 'PENDING' | 'HEALTHY' | 'DEGRADED' | 'FAILED';
@@ -74,7 +74,7 @@ export class DomainReconciliationService {
         deployment: { select: { deploymentUrl: true, status: true } },
       },
     });
-    if (!domain) throw new Error(`Domain ${domainId} not found`);
+    if (!domain) throw new DomainGoneError(domainId);
 
     // A domain pointed at a running deployment deserves its certificate
     // before the first visitor. One tolerant request starts Traefik's ACME

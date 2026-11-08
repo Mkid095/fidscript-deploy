@@ -5,7 +5,6 @@ import { getDnsConnection, getDnsRecords } from '@/lib/api/domains';
 import { getDomains } from '@/lib/api/resources';
 import { Card, SectionHeader } from '@/components/ui/card';
 import { Page } from '@/components/ui/page';
-import { EmptyState } from '@/components/ui/feedback';
 import { DnsConnectionCard } from '@/components/project/dns-connection-card';
 import { DomainCard } from '@/components/project/domain-card';
 import { ProjectAddDomainForm } from '@/components/project/project-add-domain-form';
@@ -52,20 +51,26 @@ export default async function ProjectDomainsPage({
     >
       <section>
         <SectionHeader
-          title="Your DNS account"
-          description="Connect it, and the platform writes the records for you."
+          title="The name it answers on"
+          description="A project has a single name. What is registered here is what the app, the mail, and the numbers all ride on."
         />
-        <DnsConnectionCard projectId={project.id} connection={connection} />
-      </section>
-
-      <section>
-        <SectionHeader title="The domains" />
         {domains.length === 0 ? (
           <Card>
-            <EmptyState
-              title="No domain yet"
-              body="A deployment can answer on a subdomain. A domain of your own needs its DNS pointed here."
-            />
+            <div className="mb-3 flex items-center justify-between gap-4 px-4 py-2">
+              <p className="text-sm text-text-muted">
+                No name yet. Register the project&apos;s one name — the
+                platform writes the DNS for it.
+              </p>
+            </div>
+            {canWrite ? (
+              <div className="border-t border-rail">
+                <DomainZonePicker projectId={project.id} />
+              </div>
+            ) : (
+              <div className="border-t border-rail">
+                <ProjectAddDomainForm projectId={project.id} canWrite={canWrite} />
+              </div>
+            )}
           </Card>
         ) : (
           <div className="space-y-3">
@@ -87,26 +92,21 @@ export default async function ProjectDomainsPage({
                 hasDeployment={Boolean(domain.deploymentId)}
               />
             ))}
+            <p className="px-1 text-xs leading-relaxed text-text-dim">
+              One name per project. To answer on a different one, release this
+              one first — deleting it takes the platform&apos;s records back to
+              how they were and stands the mail down.
+            </p>
           </div>
         )}
       </section>
 
       <section>
         <SectionHeader
-          title="Add a domain"
-          description={
-            canWrite
-              ? 'Pick the domain out of the connected account, and the platform writes the records.'
-              : 'The records are shown, and you set them yourself.'
-          }
+          title="Your DNS account"
+          description="Connect it, and the platform writes the records for you."
         />
-        <Card>
-          {canWrite ? (
-            <DomainZonePicker projectId={project.id} />
-          ) : (
-            <ProjectAddDomainForm projectId={project.id} canWrite={canWrite} />
-          )}
-        </Card>
+        <DnsConnectionCard projectId={project.id} connection={connection} />
       </section>
     </Page>
   );

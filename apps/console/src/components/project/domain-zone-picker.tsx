@@ -30,6 +30,7 @@ export function DomainZonePicker({ projectId }: { projectId: string }) {
   const [kind, setKind] = useState<'domain' | 'subdomain'>('domain');
   const [subdomain, setSubdomain] = useState('');
   const [error, setError] = useState<string | null>(null);
+  const [conflict, setConflict] = useState<string | null>(null);
   const [added, setAdded] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [pending, startTransition] = useTransition();
@@ -66,19 +67,27 @@ export function DomainZonePicker({ projectId }: { projectId: string }) {
   const domain =
     kind === 'domain' ? zone : subdomain ? `${subdomain}.${zone}` : '';
 
-  const add = () => {
+  const submit = (takeOver: boolean) => {
     setError(null);
+    setConflict(null);
     setAdded(null);
     startTransition(async () => {
       const result = await addDomainAction(projectId, {
         domain,
         type: ['DEPLOYMENT'],
         mode: 'auto',
+        takeOver,
       });
+      if (result.conflict) {
+        setConflict(result.error ?? 'The name is assigned to another project.');
+        return;
+      }
       if (result.error) setError(result.error);
       else setAdded(domain);
     });
   };
+
+  const add = () => submit(false);
 
   if (loading) {
     return (
@@ -158,6 +167,24 @@ export function DomainZonePicker({ projectId }: { projectId: string }) {
         />
       ) : null}
 
+      {conflict ? (
+        <div className="space-y-2 rounded-lg border border-warning/40 bg-warning/5 p-3">
+          <p className="text-xs leading-relaxed text-text">{conflict}</p>
+          <div className="flex flex-wrap gap-2">
+            <Button
+              variant="danger"
+              size="sm"
+              onClick={() => submit(true)}
+              loading={pending}
+            >
+              Take it over
+            </Button>
+            <Button variant="ghost" size="sm" onClick={() => setConflict(null)}>
+              Keep it there
+            </Button>
+          </div>
+        </div>
+      ) : null}
       {error ? <ErrorState message={error} /> : null}
       {added ? (
         <p className="rounded-md border border-success/40 bg-success/5 p-3 text-xs text-success">
@@ -165,14 +192,16 @@ export function DomainZonePicker({ projectId }: { projectId: string }) {
         </p>
       ) : null}
 
-      <Button
-        variant="primary"
-        onClick={add}
-        loading={pending}
-        disabled={!domain}
-      >
-        Add it
-      </Button>
+      {!conflict ? (
+        <Button
+          variant="primary"
+          onClick={add}
+          loading={pending}
+          disabled={!domain}
+        >
+          Add it
+        </Button>
+      ) : null}
     </div>
   );
 }

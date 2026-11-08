@@ -55,9 +55,9 @@ export default async function DeploymentPage({
           <Row term="Status">
             <Badge
               tone={
-                deployment.status === 'SUCCESS'
+                deployment.status.toUpperCase() === 'SUCCESS'
                   ? 'success'
-                  : deployment.status === 'FAILED'
+                  : deployment.status.toUpperCase() === 'FAILED'
                     ? 'danger'
                     : 'warning'
               }

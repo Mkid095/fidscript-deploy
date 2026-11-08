@@ -91,6 +91,8 @@ http:
         certResolver: letsencrypt-dns
     jmap:
       rule: 'Host(`jmap.fidscript.com`)'
+      # The API router claims /api on every host; this wins for its own.
+      priority: 100
       service: fidscript-jmap
       middlewares:
         - security-headers
@@ -100,6 +102,8 @@ http:
         certResolver: letsencrypt-dns
     stalwart-admin:
       rule: 'Host(`stalwart-admin.fidscript.com`)'
+      # The API router claims /api on every host; this wins for its own.
+      priority: 100
       service: fidscript-jmap
       middlewares:
         - security-headers

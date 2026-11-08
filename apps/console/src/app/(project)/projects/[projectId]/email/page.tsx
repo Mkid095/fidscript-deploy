@@ -83,7 +83,7 @@ export default async function ProjectEmailPage({
           title="How it stands"
           description="What has to be true before a message leaves."
         />
-        <EmailStatusCard status={status} />
+        <EmailStatusCard status={status} projectId={project.id} />
       </section>
 
       <section>

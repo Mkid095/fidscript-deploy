@@ -138,6 +138,7 @@ export type EventType =
   | 'domain.verified'
   | 'domain.failed'
   | 'domain.deleted'
+  | 'domain.taken_over'
   // Function events
   | 'function.created'
   | 'function.deployed'
@@ -200,6 +201,7 @@ export type EventType =
   | 'email.domain_added'
   | 'email.domain_deleted'
   | 'email.domain_verified'
+  | 'email.domain_setup'
   | 'email.domain_recovery_started'
   | 'email.alias_created'
   | 'email.alias_deleted'

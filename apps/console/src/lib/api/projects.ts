@@ -75,7 +75,8 @@ export async function getProjectSummaries(
         project,
         deployments: deployments.deployments.length,
         running: deployments.deployments.filter(
-          (deployment) => deployment.status === 'SUCCESS',
+          (deployment) =>
+            (deployment.status ?? '').toUpperCase() === 'SUCCESS',
         ).length,
         domains: domains.domains.length,
         databases: databases.databases.length,

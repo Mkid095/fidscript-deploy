@@ -28,6 +28,19 @@ export interface DomainVerificationJob {
   attempt?: number;
 }
 
+/**
+ * A terminal failure: the domain the job was about no longer exists (it was
+ * released). Retrying a job for a gone domain is what burned a CPU core and
+ * dragged the platform's health — so the worker drops these instead of
+ * re-enqueuing them forever.
+ */
+export class DomainGoneError extends Error {
+  constructor(domainId: string) {
+    super(`Domain ${domainId} no longer exists`);
+    this.name = 'DomainGoneError';
+  }
+}
+
 @Injectable()
 export class DomainReconciliationQueueService implements OnModuleInit {
   private readonly logger = new Logger(DomainReconciliationQueueService.name);
@@ -125,13 +138,14 @@ export class DomainReconciliationQueueService implements OnModuleInit {
     domainId: string,
     reason: VerificationReason,
     delaySeconds?: number,
+    attempt = 1,
   ): Promise<{ seq: number }> {
     if (!this.js) throw new Error('JetStream not connected');
     const job: DomainVerificationJob = {
       domainId,
       reason,
       enqueuedAt: new Date().toISOString(),
-      attempt: 1,
+      attempt,
     };
     const body = JSON.stringify(job);
     const h = headers();

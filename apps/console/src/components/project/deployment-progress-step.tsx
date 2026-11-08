@@ -65,10 +65,11 @@ export function DeploymentProgressStep({
             (log.logs ?? '').length > current.length ? log.logs : current,
           );
 
+        const finishedStatus = (result.status ?? '').toUpperCase();
         if (
-          result.status === 'SUCCESS' ||
-          result.status === 'FAILED' ||
-          result.status === 'STOPPED'
+          finishedStatus === 'SUCCESS' ||
+          finishedStatus === 'FAILED' ||
+          finishedStatus === 'STOPPED'
         ) {
           return;
         }
@@ -92,7 +93,7 @@ export function DeploymentProgressStep({
     };
   }, [projectId, deploymentId]);
 
-  const status = deployment?.status ?? 'PENDING';
+  const status = (deployment?.status ?? 'PENDING').toUpperCase();
   const finished =
     status === 'SUCCESS' || status === 'FAILED' || status === 'STOPPED';
 

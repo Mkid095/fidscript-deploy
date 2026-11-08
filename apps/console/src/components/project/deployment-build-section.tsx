@@ -64,7 +64,7 @@ export function DeploymentBuildSection({
           );
         }
         const done = ['SUCCESS', 'FAILED', 'STOPPED', 'CANCELLED'].includes(
-          deployment.status,
+          deployment.status.toUpperCase(),
         );
         if (!done) timer = setTimeout(poll, 2500);
       } catch {
@@ -80,9 +80,9 @@ export function DeploymentBuildSection({
   }, [projectId, deploymentId]);
 
   const tone =
-    status === 'SUCCESS'
+    status.toUpperCase() === 'SUCCESS'
       ? 'success'
-      : status === 'FAILED'
+      : status.toUpperCase() === 'FAILED'
         ? 'danger'
         : 'warning';
 
@@ -90,7 +90,7 @@ export function DeploymentBuildSection({
     <div className="space-y-3">
       <div className="flex items-center gap-2">
         <Badge tone={tone}>{status.toLowerCase()}</Badge>
-        {status === 'SUCCESS' && durationMs ? (
+        {status.toUpperCase() === 'SUCCESS' && durationMs ? (
           <span className="text-xs text-text-dim">
             built in {Math.round(durationMs / 100) / 10}s
           </span>

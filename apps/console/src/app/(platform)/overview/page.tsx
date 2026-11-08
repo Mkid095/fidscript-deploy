@@ -293,9 +293,9 @@ export default async function OverviewPage() {
                     </div>
                     <Badge
                       tone={
-                        deployment.status === 'SUCCESS'
+                        deployment.status.toUpperCase() === 'SUCCESS'
                           ? 'success'
-                          : deployment.status === 'FAILED'
+                          : deployment.status.toUpperCase() === 'FAILED'
                             ? 'danger'
                             : 'neutral'
                       }

@@ -65,8 +65,11 @@ export function DeploymentActions({
   };
 
   const running =
-    status === 'SUCCESS' || status === 'DEPLOYING' || status === 'BUILDING';
-  const stopped = status === 'STOPPED' || status === 'FAILED';
+    status.toUpperCase() === 'SUCCESS' ||
+    status.toUpperCase() === 'DEPLOYING' ||
+    status.toUpperCase() === 'BUILDING';
+  const stopped =
+    status.toUpperCase() === 'STOPPED' || status.toUpperCase() === 'FAILED';
 
   return (
     <div className="space-y-4">
