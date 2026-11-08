@@ -132,8 +132,12 @@ The API at `https://api.fidscript.com/api/v1`.
   domain services were churned once, in `3a5cf97`, because they had drifted.)
 - **Memory is tight** (~600 MB free of 8 GB, swap full). One heavy build at
   a time; the console's Dockerfile caps the heap at 2 GB for that reason.
-- **The API's image is built from this repository**, not from
-  `/opt/fidscript-deploy/apps/` — that copy is stale. Edit here.
+- **The images build from different places.** The console builds from
+  **this repository**; the API builds from `/opt/fidscript-deploy` — the
+  installer's checkout. An API fix that is not in that checkout is not in
+  the running platform: sync the files over before rebuilding. That
+  checkout has carried its own uncommitted edits, and its `SystemService`
+  needed the config it was already calling injected (§12).
 - **Traefik's metrics** are served on the entrypoint named `traefik` with
   `--metrics.prometheus=true --entrypoints.traefik.observability.metrics=true`.
   The YAML form (`observability: { metrics: ... }`) is **invalid** and takes
@@ -178,7 +182,7 @@ The API at `https://api.fidscript.com/api/v1`.
 | `docs/ARCHITECTURE.md`        | how it is put together                                    |
 | `docs/IMPLEMENTATION_PLAN.md` | the work — **P5 is closed; the email capability is next** |
 | `docs/DECISIONS.md`           | the decisions taken (D1–D17) and the ones owed            |
-| `docs/PROGRESS.md`            | where we are — **§7 is the newest**                       |
+| `docs/PROGRESS.md`            | where we are — **§12 is the newest**                     |
 | `docs/HANDOVER.md`            | this file                                                 |
 
 Write the record as you go: a decision that is not written down is a
@@ -186,4 +190,5 @@ decision somebody will make again, differently.
 
 ---
 
-_Written 2026-11-07; updated the same day by the hand-over session._
+_Written 2026-11-07; updated the same day by the hand-over session; the
+images' build places and §12's record on 2026-11-08._

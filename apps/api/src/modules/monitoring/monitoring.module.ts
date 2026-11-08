@@ -4,6 +4,7 @@ import { AlertsController } from './controllers/alerts.controller';
 import { NotificationChannelsController } from './controllers/notification-channels.controller';
 import { PrometheusController } from './controllers/prometheus.controller';
 import { MetricsService } from './services/metrics.service';
+import { MetricsSamplerService } from './services/metrics-sampler.service';
 import { AlertRuleService } from './services/alert-rule.service';
 import { AlertService } from './services/alert.service';
 import { NotificationChannelService } from './services/notification-channel.service';
@@ -26,6 +27,7 @@ import { AuthModule } from '@/modules/auth/auth.module';
   ],
   providers: [
     MetricsService,
+    MetricsSamplerService,
     AlertRuleService,
     AlertService,
     NotificationChannelService,

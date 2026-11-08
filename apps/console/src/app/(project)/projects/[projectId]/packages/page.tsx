@@ -3,6 +3,7 @@ import { redirect } from 'next/navigation';
 import { getProject } from '@/lib/api/project';
 import {
   getPublishedPackages,
+  getRegistryFetchUrl,
   getRegistryPackage,
   getRegistryUrl,
 } from '@/lib/api/packages';
@@ -32,10 +33,13 @@ export default async function ProjectPackagesPage({
   if (!project) redirect('/projects');
 
   const registryUrl = await getRegistryUrl();
+  // The fetch goes where the deployment says the registry is; the address a
+  // person copies for their own npm is the public one.
+  const fetchUrl = await getRegistryFetchUrl();
   const domain = await getPlatformDomain().catch(() => null);
   const mavenUrl = domain ? `https://maven.${domain}` : null;
-  const { packages, reachable } = registryUrl
-    ? await getPublishedPackages(registryUrl)
+  const { packages, reachable } = fetchUrl
+    ? await getPublishedPackages(fetchUrl)
     : { packages: [], reachable: false };
 
   // What the registry knows about the packages under the platform's scope.
@@ -45,9 +49,9 @@ export default async function ProjectPackagesPage({
     string,
     Awaited<ReturnType<typeof getRegistryPackage>>
   > = {};
-  if (registryUrl) {
+  if (fetchUrl) {
     for (const entry of inScope.slice(0, 12)) {
-      details[entry.name] = await getRegistryPackage(registryUrl, entry.name);
+      details[entry.name] = await getRegistryPackage(fetchUrl, entry.name);
     }
   }
 

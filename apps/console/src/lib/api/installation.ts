@@ -77,7 +77,13 @@ export async function configureInstallation(
   },
   setupToken: string,
 ): Promise<{ operationId?: string; error?: string }> {
-  const API_URL = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3001';
+  // Read through an opaque alias so the internal route (`API_INTERNAL_URL`)
+  // survives the build instead of folding to the baked-in public literal.
+  const env = process.env;
+  const API_URL =
+    env.API_INTERNAL_URL ??
+    env.NEXT_PUBLIC_API_URL ??
+    'http://localhost:3001';
 
   try {
     const response = await fetch(`${API_URL}/api/v1/installation/configure`, {

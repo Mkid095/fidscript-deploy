@@ -22,7 +22,14 @@ const ACCESS_COOKIE = 'fidscript_access';
 const REFRESH_COOKIE = 'fidscript_refresh';
 const ACCESS_MAX_AGE = 15 * 60;
 const REFRESH_MAX_AGE = 7 * 24 * 60 * 60;
-const API_URL = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3001';
+// Read through an opaque alias: `NEXT_PUBLIC_*` is baked into the bundle
+// at build time, so a plain chain folds to that literal and the internal
+// route (`API_INTERNAL_URL`) is never seen at runtime.
+const env = process.env;
+const API_URL =
+  env.API_INTERNAL_URL ??
+  env.NEXT_PUBLIC_API_URL ??
+  'http://localhost:3001';
 
 export async function middleware(request: NextRequest) {
   if (request.nextUrl.pathname.startsWith('/console/api/')) {

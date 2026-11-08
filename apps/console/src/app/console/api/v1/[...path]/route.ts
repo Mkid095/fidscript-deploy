@@ -24,7 +24,16 @@ const REFRESH_COOKIE = 'fidscript_refresh';
 // second factor is still outstanding. It is a bearer token too, so it never
 // reaches the browser: the proxy keeps it and attaches it to the challenge.
 const MFA_COOKIE = 'fidscript_mfa';
-const API_URL = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3001';
+// The fetch happens on this server, so the internal route wins when the
+// deployment knows one. Read through an opaque alias: `NEXT_PUBLIC_*` is
+// baked into the bundle at build time, and a plain `process.env.X ?? …`
+// chain folds to that literal — which is how an earlier build lost the
+// internal lookup. Through the alias, the read survives to runtime.
+const env = process.env;
+const API_URL =
+  env.API_INTERNAL_URL ??
+  env.NEXT_PUBLIC_API_URL ??
+  'http://localhost:3001';
 
 const ACCESS_MAX_AGE = 15 * 60;
 const REFRESH_MAX_AGE = 7 * 24 * 60 * 60;

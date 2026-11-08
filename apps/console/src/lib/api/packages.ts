@@ -17,10 +17,34 @@ export interface RegistryPackage {
   versions: string[];
 }
 
+// The registry's name resolves to IPv6 first, and a container without an
+// IPv6 route times out on every fetch — so the answer order is set where
+// the fetch happens, not left to the runtime's default.
+import dns from 'node:dns';
+dns.setDefaultResultOrder('ipv4first');
+
 /** The registry's address. */
 export async function getRegistryUrl(): Promise<string | null> {
   const domain = await getPlatformDomain();
   return domain ? `https://registry.${domain}` : null;
+}
+
+/**
+ * The address the server **fetches** from.
+ *
+ * The public name goes out through the edge and back, and its catalogue
+ * answer trickles — so when the deployment knows the registry's own address
+ * on the shared network (`REGISTRY_INTERNAL_URL`, e.g.
+ * `http://nextmavens-verdaccio:4873`) that is the one the fetch uses. The
+ * public name is still what a person copies for their own `npm`; that is
+ * what `getRegistryUrl` is for. Read through an opaque alias, the same way
+ * the API's address is: a plain `process.env.X ?? …` chain would fold to
+ * the build-time literal and the internal route would never be seen.
+ */
+export async function getRegistryFetchUrl(): Promise<string | null> {
+  const env = process.env;
+  if (env.REGISTRY_INTERNAL_URL) return env.REGISTRY_INTERNAL_URL;
+  return getRegistryUrl();
 }
 
 /**

@@ -512,3 +512,53 @@ _The layer that makes every page and every action feel the same._
 _Written 2026-11-07. The hand-over session's part is §7; the deployment and
 the interface are §9; the SSL lifecycle is §10; the interface's behaviour
 is §11._
+
+## 12. The numbers on the project — logs, monitoring, and the way the server reaches the API
+
+- **The log filters were refused wholesale.** The platform's validation
+  pipe runs with `forbidNonWhitelisted`, and an undecorated DTO field is a
+  property that "should not exist" — so any log query carrying even one
+  filter came back 400, and the page read "The entries could not be
+  read." Every logging DTO (streams, the log read, the writes, the batch)
+  now declares every field it accepts, and the monitoring metrics DTO
+  took the same treatment. Dates are transformed with `@Type(() => Date)`
+  and validated with `@IsDate()`: the transform runs before the
+  validators, so an `@IsDateString()` after it would refuse every range.
+- **The metrics were zero by construction.** Nothing ever wrote to the
+  metric table, so a busy, healthy application read as zero.
+  `MetricsSamplerService` reads `docker stats` for every running
+  deployment container once a minute and records
+  `container.cpu_percent` and `container.memory_bytes`, labelled by
+  container and deployment; the window is a day, and the pruner keeps it
+  so. A project's monitoring page is a measurement now.
+- **The switch's knob sat outside its track.** An absolutely-positioned
+  element with no `left` takes its static position, which moves with the
+  surrounding text alignment — inside a centred context the knob
+  escaped the 36-pixel track entirely. It is anchored at `left-0` now.
+- **The server reached the API the long way round.** Every server-side
+  fetch — the pages' data, the browser's proxy, the sign-in, the token
+  renewal, the installation — went out through the public edge and back,
+  and a slow round-trip on each page's fetch is the whole interface
+  feeling slow; a flaky one is the sign-in redirect loop. The deployment
+  tells the console the internal address (`API_INTERNAL_URL`), but the
+  build was folding the `process.env.X ?? …` chain to the baked-in
+  public literal, so the runtime variable was never read. Reading it
+  through an opaque alias makes the access survive to runtime; the pages
+  now answer over the shared network instead of the edge.
+- **The project's dashboard became a dashboard.** The overview is the
+  project's services: the app (what is up, its address, the way in), the
+  domains and which of them are live, the databases and which are
+  broken, the functions, the mail, the storage, the packages, and the
+  machine's WhatsApp — each with its real number, each a link to the
+  page that does it — and the recent activity beside them. The guide's
+  next step keeps its tested order.
+- **The deployment's checkout carries the fixes.** The installer builds
+  the API from its own checkout; the logging and monitoring fixes were
+  synced there, and its `SystemService` learned to inject the config it
+  was already calling.
+
+---
+
+_Written 2026-11-07. The hand-over session's part is §7; the deployment
+and the interface are §9; the SSL lifecycle is §10; the interface's
+behaviour is §11; the project's numbers are §12. The platform is live._

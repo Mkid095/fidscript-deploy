@@ -51,8 +51,12 @@ export function Switch({
           checked ? 'bg-accent' : 'bg-rail-light'
         }`}
       >
+        {/* left-0 anchors the knob to the track: an absolutely-positioned
+            element with no `left` sits at its static position, which moves
+            with the surrounding layout's text alignment — a switch inside a
+            centred context put the knob outside the track entirely. */}
         <span
-          className={`absolute top-0.5 size-4 rounded-full bg-white transition-transform ${
+          className={`absolute left-0 top-0.5 block size-4 rounded-full bg-white transition-transform ${
             checked ? 'translate-x-4' : 'translate-x-0.5'
           }`}
         />

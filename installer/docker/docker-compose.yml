@@ -596,8 +596,22 @@ services:
     environment:
       NEXT_PUBLIC_PLATFORM_DOMAIN: ${DOMAIN}
       NEXT_PUBLIC_API_URL: https://api.${DOMAIN}
+      # The dashboard's server-side fetches (the registry, the API) resolve
+      # to IPv6 first from inside the container, and the container has no
+      # IPv6 route — every such fetch timed out. IPv4 first, at the runtime.
+      NODE_OPTIONS: --max-old-space-size=2048 --dns-result-order=ipv4first
+      # The console's server components call the API over the shared
+      # network instead of through the edge: a page's fetches stop paying
+      # the public round-trip.
+      API_INTERNAL_URL: http://fidscript_api:3001
+      # The npm registry's own address on the shared network: the page's
+      # catalogue fetch takes the short way round instead of the public edge.
+      REGISTRY_INTERNAL_URL: http://nextmavens-verdaccio:4873
     networks:
       - fidscript-deployment
+      # The registry runs on the other product's network; the dashboard
+      # joins it so it can ask the registry directly.
+      - registry
     depends_on:
       - api
     healthcheck:

@@ -6,6 +6,8 @@ import { getAlertRules, getNotificationChannels } from '@/lib/api/monitoring';
 import { AlertRulesPanel } from '@/components/project/alert-rules-panel';
 import { NotificationChannelsPanel } from '@/components/project/notification-channels-panel';
 import { applications } from '@/lib/api/platform';
+import { AreaChart } from '@/components/system/system-charts';
+import type { Series } from '@/lib/api/metrics';
 import { Card, SectionHeader } from '@/components/ui/card';
 import { Page } from '@/components/ui/page';
 import { Badge, EmptyState } from '@/components/ui/feedback';
@@ -43,20 +45,71 @@ export default async function ProjectMonitoringPage({
   );
   const grafanaUrl = observability?.url ?? null;
 
-  const [alerts, stats, rules, channels] = await Promise.all([
-    api
-      .get<{ alerts: Alert[] }>(`/projects/${project.id}/monitoring/alerts`)
-      .catch(() => ({ alerts: [] as Alert[] })),
-    api
-      .get<{
-        activeAlerts: number;
-        totalMetrics: number;
-        notificationChannels: number;
-      }>(`/projects/${project.id}/monitoring/metrics/stats`)
-      .catch(() => null),
-    getAlertRules(project.id),
-    getNotificationChannels(project.id),
-  ]);
+  const hourAgo = new Date(Date.now() - 60 * 60_000).toISOString();
+
+  const [alerts, stats, rules, channels, cpuSamples, memorySamples] =
+    await Promise.all([
+      api
+        .get<{ alerts: Alert[] }>(`/projects/${project.id}/monitoring/alerts`)
+        .catch(() => ({ alerts: [] as Alert[] })),
+      api
+        .get<{
+          activeAlerts: number;
+          totalMetrics: number;
+          notificationChannels: number;
+        }>(`/projects/${project.id}/monitoring/metrics/stats`)
+        .catch(() => null),
+      getAlertRules(project.id),
+      getNotificationChannels(project.id),
+      // The containers' own numbers, sampled by the platform every minute.
+      api
+        .get<{
+          metrics: Array<{
+            value: number;
+            timestamp: string;
+            labels: Record<string, string>;
+          }>;
+        }>(`/projects/${project.id}/monitoring/metrics?metric=container.cpu_percent&startTime=${hourAgo}`)
+        .catch(() => ({ metrics: [] })),
+      api
+        .get<{
+          metrics: Array<{
+            value: number;
+            timestamp: string;
+            labels: Record<string, string>;
+          }>;
+        }>(`/projects/${project.id}/monitoring/metrics?metric=container.memory_bytes&startTime=${hourAgo}`)
+        .catch(() => ({ metrics: [] })),
+    ]);
+
+  // One line per container: the sampler labels every point with it.
+  const toSeries = (
+    metrics: Array<{
+      value: number;
+      timestamp: string;
+      labels: Record<string, string>;
+    }>,
+  ): Series[] => {
+    const byContainer = new Map<string, Array<{ at: number; value: number }>>();
+    for (const entry of metrics) {
+      const name = entry.labels?.container ?? 'the deployment';
+      const points = byContainer.get(name) ?? [];
+      points.push({
+        at: new Date(entry.timestamp).getTime(),
+        value: entry.value,
+      });
+      byContainer.set(name, points);
+    }
+    return Array.from(byContainer.entries())
+      .map(([name, points]) => ({
+        name,
+        points: points.sort((a, b) => a.at - b.at).slice(-60),
+      }))
+      .filter((series) => series.points.length >= 2);
+  };
+
+  const cpuSeries = toSeries(cpuSamples.metrics);
+  const memorySeries = toSeries(memorySamples.metrics);
 
   return (
     <Page
@@ -76,6 +129,33 @@ export default async function ProjectMonitoringPage({
           </Card>
         </section>
       ) : null}
+
+      <section>
+        <SectionHeader
+          title="The deployment, measured"
+          description="CPU and memory of the running containers, sampled every minute."
+        />
+        <div className="space-y-4">
+          <Card className="p-4">
+            <p className="mb-3 text-xs font-medium text-text-muted">
+              CPU, as a share of a core
+            </p>
+            <AreaChart
+              series={cpuSeries}
+              format={(value) => value.toFixed(1) + '%'}
+              empty="Nothing sampled yet — the numbers appear about a minute after a deployment is healthy."
+            />
+          </Card>
+          <Card className="p-4">
+            <p className="mb-3 text-xs font-medium text-text-muted">Memory</p>
+            <AreaChart
+              series={memorySeries}
+              format={(value) => (value / 1024 ** 2).toFixed(0) + ' MB'}
+              empty="Nothing sampled yet — the numbers appear about a minute after a deployment is healthy."
+            />
+          </Card>
+        </div>
+      </section>
 
       <section>
         <SectionHeader

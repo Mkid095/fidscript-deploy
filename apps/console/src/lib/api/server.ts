@@ -13,7 +13,24 @@ import { ApiError, messageFrom } from './errors';
  */
 
 const ACCESS_COOKIE = 'fidscript_access';
-const API_URL = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3001';
+/**
+ * The server-side calls prefer the **internal** route when the platform
+ * knows one (`API_INTERNAL_URL`, e.g. `http://fidscript_api:3001`): the
+ * public name goes out through the edge and back, and a slow round-trip
+ * on every server component's fetch is the whole interface feeling slow.
+ *
+ * The read goes through a local alias on purpose: `process.env.NEXT_PUBLIC_*`
+ * is baked into the bundle at build time, and a plain `process.env.X ?? …`
+ * chain with an unknown build-time value gets folded by the minifier to the
+ * baked-in literal — which is how a previous build lost the internal-route
+ * lookup entirely. Through an opaque identifier, the env read survives to
+ * runtime, where `API_INTERNAL_URL` is set by the deployment.
+ */
+const env = process.env;
+const API_URL =
+  env.API_INTERNAL_URL ??
+  env.NEXT_PUBLIC_API_URL ??
+  'http://localhost:3001';
 
 async function serverRequest<T>(
   path: string,
