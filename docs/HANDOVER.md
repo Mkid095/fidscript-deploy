@@ -71,6 +71,11 @@ so a project's identity is made when the project is made (D17).
    application deployed to prove the pipeline (it answers on the project's
    subdomain and on `demo.fidscript.com`). Remove it when it has served its
    purpose; the container, the image and the record go with it.
+5. **The universal-deployment audit** — `docs/DEPLOYMENT_AUDIT.md` holds
+   the Phase 1 audit and the Phase 2 architecture for the
+   universal-deployment brief (SSL lifecycle, universal buildpacks, one
+   live deployment, databases). It awaits the operator's review; **Phase 4
+   (the domain/SSL lifecycle) is the first implementation** once approved.
 
 ---
 
