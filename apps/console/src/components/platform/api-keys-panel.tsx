@@ -66,11 +66,17 @@ export function ApiKeysPanel({
         ) : (
           <ul className="divide-y divide-rail">
             {keys.map((key) => (
-              <li key={key.id} className="flex items-center justify-between gap-4 px-4 py-3">
+              <li
+                key={key.id}
+                className="flex items-center justify-between gap-4 px-4 py-3"
+              >
                 <div className="min-w-0">
                   <p className="truncate text-sm text-text">{key.name}</p>
                   <p className="truncate text-xs text-text-dim">
-                    {key.permissions.length > 0 ? key.permissions.join(', ') : 'No scopes'} ·{' '}
+                    {key.permissions.length > 0
+                      ? key.permissions.join(', ')
+                      : 'No scopes'}{' '}
+                    ·{' '}
                     {key.lastUsedAt
                       ? `used ${new Date(key.lastUsedAt).toLocaleDateString()}`
                       : 'never used'}
@@ -80,7 +86,12 @@ export function ApiKeysPanel({
                   <Badge tone={key.lastUsedAt ? 'neutral' : 'neutral'}>
                     {key.lastUsedAt ? 'in use' : 'unused'}
                   </Badge>
-                  <Button variant="ghost" size="sm" onClick={() => revoke(key.id)} loading={pending}>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => revoke(key.id)}
+                    loading={pending}
+                  >
                     Revoke
                   </Button>
                 </div>
@@ -105,10 +116,18 @@ export function ApiKeysPanel({
               <p className="text-xs font-medium text-success">
                 The key is shown once. Copy it now.
               </p>
-              <p className="mt-1 break-all font-mono text-xs text-text">{made}</p>
+              <p className="mt-1 break-all font-mono text-xs text-text">
+                {made}
+              </p>
             </div>
           ) : null}
-          <Button variant="primary" size="sm" onClick={create} loading={pending} disabled={!name.trim()}>
+          <Button
+            variant="primary"
+            size="sm"
+            onClick={create}
+            loading={pending}
+            disabled={!name.trim()}
+          >
             Make a key
           </Button>
         </div>

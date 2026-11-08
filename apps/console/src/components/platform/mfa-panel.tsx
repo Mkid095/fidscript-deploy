@@ -39,7 +39,10 @@ export function MfaPanel({
   const [notice, setNotice] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
 
-  const run = (action: () => Promise<{ ok?: boolean; error?: string }>, message?: string) => {
+  const run = (
+    action: () => Promise<{ ok?: boolean; error?: string }>,
+    message?: string,
+  ) => {
     setError(null);
     setNotice(null);
     startTransition(async () => {
@@ -54,10 +57,12 @@ export function MfaPanel({
       <Card className="p-4">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div className="min-w-0">
-            <p className="text-sm font-medium text-text">Two-factor is not on</p>
+            <p className="text-sm font-medium text-text">
+              Two-factor is not on
+            </p>
             <p className="mt-0.5 max-w-xl text-xs leading-relaxed text-text-dim">
-              With it on, a stolen password is not enough to sign in — the authenticator app
-              answers as well.
+              With it on, a stolen password is not enough to sign in — the
+              authenticator app answers as well.
             </p>
           </div>
           <Button
@@ -92,9 +97,12 @@ export function MfaPanel({
     return (
       <Card className="space-y-5 p-4">
         <div>
-          <p className="text-sm font-medium text-text">Scan this with your authenticator app</p>
+          <p className="text-sm font-medium text-text">
+            Scan this with your authenticator app
+          </p>
           <p className="mt-0.5 text-xs text-text-dim">
-            1Password, Google Authenticator, Authy — anything that reads an otpauth link.
+            1Password, Google Authenticator, Authy — anything that reads an
+            otpauth link.
           </p>
         </div>
 
@@ -151,7 +159,8 @@ export function MfaPanel({
         <div className="min-w-0">
           <p className="text-sm font-medium text-text">Two-factor is on</p>
           <p className="mt-0.5 text-xs text-text-dim">
-            {recoveryCodesRemaining} recovery code{recoveryCodesRemaining === 1 ? '' : 's'} left.
+            {recoveryCodesRemaining} recovery code
+            {recoveryCodesRemaining === 1 ? '' : 's'} left.
           </p>
         </div>
         <Badge tone="success">on</Badge>

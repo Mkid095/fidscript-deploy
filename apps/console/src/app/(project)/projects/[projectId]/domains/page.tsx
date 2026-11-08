@@ -78,6 +78,13 @@ export default async function ProjectDomainsPage({
                 status={domain.dnsStatus ?? 'pending'}
                 records={records[index]?.records ?? []}
                 canWrite={canWrite}
+                sslStatus={domain.sslStatus}
+                sslExpiresAt={domain.sslExpiresAt}
+                proxy={
+                  (domain.capabilities as Record<string, unknown> | undefined)
+                    ?.proxy as 'proxied' | 'dns_only' | 'unknown' | undefined
+                }
+                hasDeployment={Boolean(domain.deploymentId)}
               />
             ))}
           </div>

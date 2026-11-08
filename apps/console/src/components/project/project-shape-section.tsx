@@ -19,7 +19,11 @@ export function ProjectShapeSection({
   projectId: string;
   shape: ProjectShape;
   deploymentOn: boolean;
-  instant: { available: boolean; dashboardUrl: string | null; app: InstantApp | null } | null;
+  instant: {
+    available: boolean;
+    dashboardUrl: string | null;
+    app: InstantApp | null;
+  } | null;
 }) {
   const wantsBackend = shape === 'BACKEND' || shape === 'BOTH';
 
@@ -68,7 +72,8 @@ export function ProjectShapeSection({
             )
           ) : (
             <p className="mt-2 text-sm text-text-muted">
-              This project has no backend. If it had one, the app and its data would be kept.
+              This project has no backend. If it had one, the app and its data
+              would be kept.
             </p>
           )}
         </div>

@@ -34,7 +34,10 @@ export async function updateGeneralAction(
     revalidatePath(`/projects/${projectId}`);
     return { ok: true };
   } catch (err) {
-    return { error: err instanceof Error ? err.message : 'The project could not be saved.' };
+    return {
+      error:
+        err instanceof Error ? err.message : 'The project could not be saved.',
+    };
   }
 }
 
@@ -57,7 +60,8 @@ export async function updateShapeAction(
       const instant = await provisionInstantApp(projectId).catch(() => null);
       if (!instant) {
         // The shape still moves — but say plainly that there is no app yet.
-        warning = 'The shape was saved, but no application backend could be created.';
+        warning =
+          'The shape was saved, but no application backend could be created.';
       }
     }
 
@@ -65,28 +69,45 @@ export async function updateShapeAction(
     revalidatePath(`/projects/${projectId}`);
     return warning ? { ok: true, warning } : { ok: true };
   } catch (err) {
-    return { error: err instanceof Error ? err.message : 'The shape could not be changed.' };
+    return {
+      error:
+        err instanceof Error ? err.message : 'The shape could not be changed.',
+    };
   }
 }
 
 /** Archive the project. It stops; it keeps everything it has. */
-export async function archiveProjectAction(projectId: string): Promise<{ ok?: boolean; error?: string }> {
+export async function archiveProjectAction(
+  projectId: string,
+): Promise<{ ok?: boolean; error?: string }> {
   try {
     await archiveProject(projectId);
     revalidatePath('/projects');
     return { ok: true };
   } catch (err) {
-    return { error: err instanceof Error ? err.message : 'The project could not be archived.' };
+    return {
+      error:
+        err instanceof Error
+          ? err.message
+          : 'The project could not be archived.',
+    };
   }
 }
 
 /** Delete the project, and everything in it. */
-export async function deleteProjectAction(projectId: string): Promise<{ ok?: boolean; error?: string }> {
+export async function deleteProjectAction(
+  projectId: string,
+): Promise<{ ok?: boolean; error?: string }> {
   try {
     await deleteProject(projectId);
     revalidatePath('/projects');
     return { ok: true };
   } catch (err) {
-    return { error: err instanceof Error ? err.message : 'The project could not be deleted.' };
+    return {
+      error:
+        err instanceof Error
+          ? err.message
+          : 'The project could not be deleted.',
+    };
   }
 }

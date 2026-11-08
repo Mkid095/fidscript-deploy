@@ -25,13 +25,14 @@ export function LandingHero() {
         </h1>
 
         <p className="mx-auto mt-6 max-w-2xl text-center text-base leading-relaxed text-text-muted">
-          FIDScript installs best-in-class applications once — a realtime backend, mail, a private
-          package registry, WhatsApp, observability — and lets every project switch on only what
-          it needs.
+          FIDScript installs best-in-class applications once — a realtime
+          backend, mail, a private package registry, WhatsApp, observability —
+          and lets every project switch on only what it needs.
         </p>
         <p className="mx-auto mt-3 max-w-2xl text-center text-sm leading-relaxed text-text-dim">
-          The deployment engine and the mail server are part of the platform. Everything else you
-          install from the applications screen, one at a time.
+          The deployment engine and the mail server are part of the platform.
+          Everything else you install from the applications screen, one at a
+          time.
         </p>
 
         <div className="mt-8">

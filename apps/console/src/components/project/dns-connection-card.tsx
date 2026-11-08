@@ -27,7 +27,11 @@ export function DnsConnectionCard({
   connection,
 }: {
   projectId: string;
-  connection: { provider: string; email: string | null; lastVerifiedAt: string | null } | null;
+  connection: {
+    provider: string;
+    email: string | null;
+    lastVerifiedAt: string | null;
+  } | null;
 }) {
   const [token, setToken] = useState('');
   const [error, setError] = useState<string | null>(null);
@@ -67,7 +71,9 @@ export function DnsConnectionCard({
       <Card className="p-4">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div className="min-w-0">
-            <p className="text-sm font-medium text-text">Your DNS account is connected</p>
+            <p className="text-sm font-medium text-text">
+              Your DNS account is connected
+            </p>
             <p className="mt-0.5 text-xs text-text-dim">
               {connection.email ?? connection.provider} ·{' '}
               {connection.lastVerifiedAt
@@ -77,12 +83,21 @@ export function DnsConnectionCard({
           </div>
           <div className="flex items-center gap-3">
             <Badge tone="success">connected</Badge>
-            <Button variant="ghost" size="sm" onClick={disconnect} loading={pending}>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={disconnect}
+              loading={pending}
+            >
               Disconnect
             </Button>
           </div>
         </div>
-        {error ? <div className="mt-3"><ErrorState message={error} /></div> : null}
+        {error ? (
+          <div className="mt-3">
+            <ErrorState message={error} />
+          </div>
+        ) : null}
         {notice ? <p className="mt-3 text-xs text-success">{notice}</p> : null}
       </Card>
     );
@@ -91,16 +106,27 @@ export function DnsConnectionCard({
   return (
     <Card className="p-4">
       <div className="max-w-2xl">
-        <p className="text-sm font-medium text-text">Connect your DNS account</p>
+        <p className="text-sm font-medium text-text">
+          Connect your DNS account
+        </p>
         <p className="mt-1 text-xs leading-relaxed text-text-muted">
-          With the account connected, the platform writes the records for you — it finds the
-          domain in your account, creates the records, and checks them afterwards. Without it, the
-          records are listed below and you set them yourself.
+          With the account connected, the platform writes the records for you —
+          it finds the domain in your account, creates the records, and checks
+          them afterwards. Without it, the records are listed below and you set
+          them yourself.
         </p>
         <ul className="mt-3 space-y-1 text-xs text-text-dim">
-          <li>· The token needs <strong className="font-medium text-text-muted">Zone:Read</strong> and{' '}
-            <strong className="font-medium text-text-muted">DNS:Edit</strong> for the zone.</li>
-          <li>· It is stored encrypted, and it is only used for this project&apos;s domains.</li>
+          <li>
+            · The token needs{' '}
+            <strong className="font-medium text-text-muted">Zone:Read</strong>{' '}
+            and{' '}
+            <strong className="font-medium text-text-muted">DNS:Edit</strong>{' '}
+            for the zone.
+          </li>
+          <li>
+            · It is stored encrypted, and it is only used for this
+            project&apos;s domains.
+          </li>
           <li>
             ·{' '}
             <a
@@ -127,7 +153,12 @@ export function DnsConnectionCard({
         />
         {error ? <ErrorState message={error} /> : null}
         {notice ? <p className="text-xs text-success">{notice}</p> : null}
-        <Button variant="primary" onClick={connect} loading={pending} disabled={!token.trim()}>
+        <Button
+          variant="primary"
+          onClick={connect}
+          loading={pending}
+          disabled={!token.trim()}
+        >
           Connect the account
         </Button>
       </div>

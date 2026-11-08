@@ -31,7 +31,9 @@ export function ProjectInviteForm({ projectId }: { projectId: string }) {
         return;
       }
       if (result.token) {
-        setLink(`${window.location.origin}/invitations/accept?token=${result.token}`);
+        setLink(
+          `${window.location.origin}/invitations/accept?token=${result.token}`,
+        );
         setEmail('');
       }
     });
@@ -60,7 +62,12 @@ export function ProjectInviteForm({ projectId }: { projectId: string }) {
         />
       </div>
 
-      <Button variant="primary" onClick={invite} loading={pending} disabled={!email.trim()}>
+      <Button
+        variant="primary"
+        onClick={invite}
+        loading={pending}
+        disabled={!email.trim()}
+      >
         Invite
       </Button>
 
@@ -68,10 +75,15 @@ export function ProjectInviteForm({ projectId }: { projectId: string }) {
 
       {link ? (
         <div className="rounded-md border border-success/40 bg-success/5 p-3">
-          <p className="text-xs font-medium text-success">The invitation is ready.</p>
-          <p className="mt-1 break-all font-mono text-xs text-text-muted">{link}</p>
+          <p className="text-xs font-medium text-success">
+            The invitation is ready.
+          </p>
+          <p className="mt-1 break-all font-mono text-xs text-text-muted">
+            {link}
+          </p>
           <p className="mt-1 text-xs text-text-dim">
-            It is valid for seven days. The platform does not send mail — send it yourself.
+            It is valid for seven days. The platform does not send mail — send
+            it yourself.
           </p>
         </div>
       ) : null}

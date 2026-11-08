@@ -24,7 +24,9 @@ export interface WhatsappState {
   error?: string;
 }
 
-export async function getWhatsappState(projectId: string): Promise<WhatsappState | null> {
+export async function getWhatsappState(
+  projectId: string,
+): Promise<WhatsappState | null> {
   return api
     .get<WhatsappState>(`/projects/${projectId}/whatsapp`)
     .catch(() => null);

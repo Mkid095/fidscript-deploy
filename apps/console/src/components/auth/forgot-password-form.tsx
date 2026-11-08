@@ -34,7 +34,9 @@ export function ForgotPasswordForm() {
       await browserApi.post('/auth/forgot-password', { email: email.trim() });
       setSent(true);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'The link could not be sent.');
+      setError(
+        err instanceof Error ? err.message : 'The link could not be sent.',
+      );
     } finally {
       setSubmitting(false);
     }
@@ -43,10 +45,13 @@ export function ForgotPasswordForm() {
   if (sent) {
     return (
       <div className="space-y-4 text-center">
-        <h1 className="text-xl font-semibold tracking-tight text-text">Check your inbox</h1>
+        <h1 className="text-xl font-semibold tracking-tight text-text">
+          Check your inbox
+        </h1>
         <p className="text-sm leading-relaxed text-text-muted">
-          If <span className="text-text">{email}</span> is registered on this platform, a reset
-          link is on its way. The link works once, and for an hour.
+          If <span className="text-text">{email}</span> is registered on this
+          platform, a reset link is on its way. The link works once, and for an
+          hour.
         </p>
         <p className="text-xs text-text-dim">
           Nothing there? Check the spam folder, or{' '}
@@ -59,7 +64,10 @@ export function ForgotPasswordForm() {
           </button>
           .
         </p>
-        <Link href="/login" className="inline-block text-xs text-text-muted transition hover:text-text">
+        <Link
+          href="/login"
+          className="inline-block text-xs text-text-muted transition hover:text-text"
+        >
           Back to sign in
         </Link>
       </div>
@@ -69,7 +77,9 @@ export function ForgotPasswordForm() {
   return (
     <form onSubmit={submit} className="space-y-4">
       <div>
-        <h1 className="text-xl font-semibold tracking-tight text-text">Reset your password</h1>
+        <h1 className="text-xl font-semibold tracking-tight text-text">
+          Reset your password
+        </h1>
         <p className="mt-1 text-sm text-text-muted">
           We will send you a link to choose a new one.
         </p>
@@ -92,7 +102,12 @@ export function ForgotPasswordForm() {
         </p>
       ) : null}
 
-      <Button type="submit" variant="primary" loading={submitting} className="w-full">
+      <Button
+        type="submit"
+        variant="primary"
+        loading={submitting}
+        className="w-full"
+      >
         {submitting ? 'Sending…' : 'Send the link'}
       </Button>
 

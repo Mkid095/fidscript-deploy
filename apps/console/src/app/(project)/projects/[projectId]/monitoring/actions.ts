@@ -49,19 +49,26 @@ export async function deleteAlertRuleAction(
   ruleId: string,
 ): Promise<{ ok?: boolean; error?: string }> {
   try {
-    await api.delete(`/projects/${projectId}/monitoring/alerts/rules/${ruleId}`);
+    await api.delete(
+      `/projects/${projectId}/monitoring/alerts/rules/${ruleId}`,
+    );
     revalidatePath(`/projects/${projectId}/monitoring`);
     return { ok: true };
   } catch (err) {
     return {
-      error: err instanceof Error ? err.message : 'The rule could not be removed.',
+      error:
+        err instanceof Error ? err.message : 'The rule could not be removed.',
     };
   }
 }
 
 export async function createNotificationChannelAction(
   projectId: string,
-  input: { name: string; type: 'email' | 'slack' | 'webhook'; config: Record<string, string> },
+  input: {
+    name: string;
+    type: 'email' | 'slack' | 'webhook';
+    config: Record<string, string>;
+  },
 ): Promise<{ ok?: boolean; error?: string }> {
   if (!input.name.trim()) return { error: 'The channel needs a name.' };
 
@@ -75,7 +82,8 @@ export async function createNotificationChannelAction(
     return { ok: true };
   } catch (err) {
     return {
-      error: err instanceof Error ? err.message : 'The channel could not be made.',
+      error:
+        err instanceof Error ? err.message : 'The channel could not be made.',
     };
   }
 }
@@ -90,7 +98,10 @@ export async function deleteNotificationChannelAction(
     return { ok: true };
   } catch (err) {
     return {
-      error: err instanceof Error ? err.message : 'The channel could not be removed.',
+      error:
+        err instanceof Error
+          ? err.message
+          : 'The channel could not be removed.',
     };
   }
 }

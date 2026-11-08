@@ -32,14 +32,18 @@ export default function Error({
           This screen could not be shown
         </h1>
         <p className="mt-2 text-sm leading-relaxed text-text-muted">
-          The rest of the platform is still there. Try this screen again, and if it keeps
-          failing, the platform’s logs have the reason.
+          The rest of the platform is still there. Try this screen again, and if
+          it keeps failing, the platform’s logs have the reason.
         </p>
         <div className="mt-6 flex items-center justify-center gap-2">
           <Button variant="primary" size="sm" onClick={reset}>
             Try again
           </Button>
-          <Button variant="ghost" size="sm" onClick={() => window.location.assign('/overview')}>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => window.location.assign('/overview')}
+          >
             Go to the overview
           </Button>
         </div>

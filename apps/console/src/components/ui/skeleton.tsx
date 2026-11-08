@@ -37,7 +37,9 @@ export function SkeletonText({
 /** A panel that is not there yet. */
 export function SkeletonCard({ className = '' }: { className?: string }) {
   return (
-    <div className={`rounded-lg border border-rail bg-surface p-4 ${className}`}>
+    <div
+      className={`rounded-lg border border-rail bg-surface p-4 ${className}`}
+    >
       <Skeleton className="h-4 w-1/3" />
       <SkeletonText lines={2} className="mt-3" />
     </div>

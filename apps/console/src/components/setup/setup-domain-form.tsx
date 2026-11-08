@@ -19,15 +19,19 @@ export function SetupDomainForm({
   domain: string;
   cloudflareToken: string;
   setupToken: string;
-  onChange: (next: { domain?: string; cloudflareToken?: string; setupToken?: string }) => void;
+  onChange: (next: {
+    domain?: string;
+    cloudflareToken?: string;
+    setupToken?: string;
+  }) => void;
 }) {
   return (
     <Card className="max-w-xl space-y-4 p-5">
       <div>
         <h2 className="text-sm font-semibold text-text">The domain</h2>
         <p className="mt-1 text-xs leading-relaxed text-text-muted">
-          The address this platform answers on. Everything — the dashboard, the API, the mail — is
-          a subdomain of it.
+          The address this platform answers on. Everything — the dashboard, the
+          API, the mail — is a subdomain of it.
         </p>
       </div>
 

@@ -42,11 +42,18 @@ export function ForceChangePasswordForm() {
 
     setSubmitting(true);
     try {
-      await browserApi.post('/auth/change-password', { currentPassword, newPassword: password });
+      await browserApi.post('/auth/change-password', {
+        currentPassword,
+        newPassword: password,
+      });
       router.replace(next);
       router.refresh();
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'The password could not be changed.');
+      setError(
+        err instanceof Error
+          ? err.message
+          : 'The password could not be changed.',
+      );
       setSubmitting(false);
     }
   }
@@ -54,10 +61,12 @@ export function ForceChangePasswordForm() {
   return (
     <form onSubmit={submit} className="space-y-4">
       <div>
-        <h1 className="text-xl font-semibold tracking-tight text-text">Choose a permanent password</h1>
+        <h1 className="text-xl font-semibold tracking-tight text-text">
+          Choose a permanent password
+        </h1>
         <p className="mt-1 text-sm text-text-muted">
-          The password you signed up with was printed once by the installer. Replace it before you
-          go any further.
+          The password you signed up with was printed once by the installer.
+          Replace it before you go any further.
         </p>
       </div>
 
@@ -92,7 +101,12 @@ export function ForceChangePasswordForm() {
 
       {error ? <ErrorState message={error} /> : null}
 
-      <Button type="submit" variant="primary" loading={submitting} className="w-full">
+      <Button
+        type="submit"
+        variant="primary"
+        loading={submitting}
+        className="w-full"
+      >
         {submitting ? 'Saving…' : 'Set my password'}
       </Button>
     </form>

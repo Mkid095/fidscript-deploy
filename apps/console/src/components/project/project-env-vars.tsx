@@ -37,19 +37,32 @@ export function ProjectEnvVars({
         const shown = revealed[variable.key];
         const masked = variable.value === '[masked]';
         return (
-          <li key={variable.key} className="flex items-center justify-between gap-4 px-4 py-3">
+          <li
+            key={variable.key}
+            className="flex items-center justify-between gap-4 px-4 py-3"
+          >
             <div className="min-w-0">
-              <p className="truncate font-mono text-xs text-text">{variable.key}</p>
+              <p className="truncate font-mono text-xs text-text">
+                {variable.key}
+              </p>
               <p className="truncate text-xs text-text-dim">
-                {masked ? 'hidden — you may not see this value' : shown ? variable.value : '••••••••'}
+                {masked
+                  ? 'hidden — you may not see this value'
+                  : shown
+                    ? variable.value
+                    : '••••••••'}
               </p>
             </div>
             <div className="flex items-center gap-2">
-              {variable.encrypted ? <Badge tone="neutral">Encrypted</Badge> : null}
+              {variable.encrypted ? (
+                <Badge tone="neutral">Encrypted</Badge>
+              ) : null}
               {masked ? null : (
                 <button
                   type="button"
-                  onClick={() => setRevealed({ ...revealed, [variable.key]: !shown })}
+                  onClick={() =>
+                    setRevealed({ ...revealed, [variable.key]: !shown })
+                  }
                   className="text-[11px] text-text-muted transition-colors hover:text-text"
                 >
                   {shown ? 'Hide' : 'Show'}

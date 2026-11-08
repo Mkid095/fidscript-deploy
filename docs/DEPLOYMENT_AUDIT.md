@@ -300,6 +300,55 @@ omission.
 
 ---
 
-_This document is the review gate the brief asks for. Implementation of
-Phase 4 (the domain/SSL lifecycle) starts on the operator's word — it is
-the smallest phase that removes the loudest pain._
+---
+
+## Part IV — implementation status
+
+**Phase 4 (the domain/SSL lifecycle) — IMPLEMENTED and verified live** on
+the operator's go-ahead. What landed:
+
+- **Promote from any state**: the reconciler's `updateDomainState` promotes
+  a domain to `ACTIVE`/`ACTIVE` from `TLS_PENDING`, `ISSUING`, `FAILED` —
+  and from `ACTIVE` with a stale certificate status — whenever the real
+  HTTPS check (certificate-validated) passes. `demo.fidscript.com`, stuck
+  at `FAILED`/`ISSUING` for a day, reached `ACTIVE`/`ACTIVE` with the
+  certificate's true expiry the first run after the fix.
+- **Pre-warm**: a domain pointed at a healthy deployment gets one
+  self-signed-tolerant request at the start of each reconciliation — the
+  ACME dance starts the moment the route exists.
+- **Real expiry recorded**: the peer certificate's `valid_to` is read
+  (from the TLS socket, where it actually lives) and written to
+  `sslExpiresAt` — `demo.fidscript.com` reads 2027-02-06, the truth.
+- **Renewal watch**: a certificate crossing 30 days emits
+  `domains.ssl_renewal_due` once — on the crossing, not every run.
+- **Proxy detection**: the reconciliation detects Cloudflare proxying
+  (`cf-ray` / `server` headers) and persists it in the domain's
+  capabilities; the card shows "Cloudflare proxied" or "DNS only".
+- **Deploy success → verification**: a successful deployment enqueues its
+  attached domains for immediate verification (no schedule wait), and the
+  project's domain attachments **follow the live deployment** — a replaced
+  deployment takes its names with the new container.
+- **The verify is honest**: a routing failure with nothing deployed is
+  "waiting for a deployment" (`VALIDATING`), not "failed"; the console card
+  says which.
+- **The stub endpoints are gone**: `renewSsl`/`reissueSsl` now pre-warm and
+  enqueue the real verification; no fabricated `ACTIVE` anywhere.
+- **The reconciliation worker actually worked now for the first time**: its
+  JetStream consumer filtered on the bare subject while jobs publish to
+  `subject.<id>` — it had never processed a job. The consumer self-heals
+  (missing → created) and a wrong filter is replaced on boot.
+
+**Phase 3 partials landed with it**: the wizard offers the project's
+existing domains when deploying (`domainId`); the deployments list marks
+the **live** deployment and reads `BLOCKED` as "queued behind the live
+build"; the container health gate accepts the root path as a fallback (most
+applications have never heard of `/health`); and the **Python builder**
+detects Django/Flask/FastAPI/plain-Python repositories (requirements.txt,
+pyproject.toml, Pipfile) and builds them on `python:3.12-slim` with
+gunicorn/uvicorn bound to the platform's port — verified live with a
+FastAPI application deployed from git, healthy, and answering on the
+project's subdomain, replacing the previous deployment as the one live
+target.
+
+_Still open from the plan: compose/multi-container, the database services
+phase, staging/preview, build-worker isolation, and the docs phase._

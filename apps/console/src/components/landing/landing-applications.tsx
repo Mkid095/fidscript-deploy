@@ -45,15 +45,19 @@ export const APPLICATIONS = [
 
 export function LandingApplications() {
   return (
-    <section id="applications" className="border-b border-rail bg-surface py-20">
+    <section
+      id="applications"
+      className="border-b border-rail bg-surface py-20"
+    >
       <div className="mx-auto max-w-6xl px-6">
         <div className="max-w-2xl">
           <h2 className="text-2xl font-semibold tracking-tight text-text">
             The applications you install once
           </h2>
           <p className="mt-3 text-sm leading-relaxed text-text-muted">
-            The platform does not re-implement what these do well. It installs them, keeps them
-            healthy, and gives every project a consistent way to use them.
+            The platform does not re-implement what these do well. It installs
+            them, keeps them healthy, and gives every project a consistent way
+            to use them.
           </p>
         </div>
 
@@ -69,7 +73,9 @@ export function LandingApplications() {
                   {app.treatment}
                 </span>
               </div>
-              <p className="mt-2 text-[13px] leading-relaxed text-text-muted">{app.body}</p>
+              <p className="mt-2 text-[13px] leading-relaxed text-text-muted">
+                {app.body}
+              </p>
             </div>
           ))}
         </div>

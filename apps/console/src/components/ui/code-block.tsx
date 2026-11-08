@@ -24,7 +24,9 @@ export function CodeBlock({ code, label }: { code: string; label?: string }) {
   return (
     <div className="overflow-hidden rounded-lg border border-rail bg-surface-2">
       <div className="flex items-center justify-between gap-2 border-b border-rail px-3 py-1.5">
-        <span className="text-[11px] font-medium text-text-dim">{label ?? 'Code'}</span>
+        <span className="text-[11px] font-medium text-text-dim">
+          {label ?? 'Code'}
+        </span>
         <button
           type="button"
           onClick={copy}

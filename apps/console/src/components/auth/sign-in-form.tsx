@@ -40,10 +40,13 @@ export function SignInForm() {
 
     setSubmitting(true);
     try {
-      const result = await browserApi.post<{ mfaRequired?: boolean }>('/auth/login', {
-        email: email.trim(),
-        password,
-      });
+      const result = await browserApi.post<{ mfaRequired?: boolean }>(
+        '/auth/login',
+        {
+          email: email.trim(),
+          password,
+        },
+      );
 
       if (result.mfaRequired) {
         router.push(`/login/mfa?next=${encodeURIComponent(next)}`);
@@ -61,7 +64,9 @@ export function SignInForm() {
   return (
     <form onSubmit={submit} className="space-y-5">
       <div>
-        <h1 className="text-xl font-semibold tracking-tight text-text">Sign in</h1>
+        <h1 className="text-xl font-semibold tracking-tight text-text">
+          Sign in
+        </h1>
         <p className="mt-1 text-sm text-text-muted">To your platform.</p>
       </div>
 
@@ -87,15 +92,26 @@ export function SignInForm() {
 
       {error ? <ErrorState message={error} /> : null}
 
-      <Button type="submit" variant="primary" loading={submitting} className="w-full">
+      <Button
+        type="submit"
+        variant="primary"
+        loading={submitting}
+        className="w-full"
+      >
         {submitting ? 'Signing in…' : 'Sign in'}
       </Button>
 
       <div className="flex items-center justify-between pt-1 text-xs">
-        <Link href="/forgot-password" className="text-text-muted transition hover:text-text">
+        <Link
+          href="/forgot-password"
+          className="text-text-muted transition hover:text-text"
+        >
           Forgotten your password?
         </Link>
-        <Link href="/register" className="text-text-muted transition hover:text-text">
+        <Link
+          href="/register"
+          className="text-text-muted transition hover:text-text"
+        >
           Create an account
         </Link>
       </div>

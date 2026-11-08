@@ -35,7 +35,10 @@ export function EmailDeliverabilitySection({
 
   const delivered = analytics.byStatus.delivered;
   const bounced = analytics.byStatus.bounced;
-  const rate = delivered + bounced > 0 ? Math.round((delivered / (delivered + bounced)) * 100) : null;
+  const rate =
+    delivered + bounced > 0
+      ? Math.round((delivered / (delivered + bounced)) * 100)
+      : null;
 
   return (
     <Card className="divide-y divide-rail">
@@ -46,7 +49,10 @@ export function EmailDeliverabilitySection({
         </div>
       ) : null}
       {rows.map(([label, value]) => (
-        <div key={label} className="flex items-center justify-between gap-4 px-4 py-2.5">
+        <div
+          key={label}
+          className="flex items-center justify-between gap-4 px-4 py-2.5"
+        >
           <span className="text-sm text-text-muted">{label}</span>
           <span className="text-sm text-text">{value}</span>
         </div>

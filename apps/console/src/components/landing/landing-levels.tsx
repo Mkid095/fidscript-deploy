@@ -32,17 +32,25 @@ export function LandingLevels() {
             Three levels, and you always know which one you are in
           </h2>
           <p className="mt-3 text-sm leading-relaxed text-text-muted">
-            A screen belongs to exactly one level. A menu is derived from what the thing really
-            has. And a one-time thing never sits in a permanent menu.
+            A screen belongs to exactly one level. A menu is derived from what
+            the thing really has. And a one-time thing never sits in a permanent
+            menu.
           </p>
         </div>
 
         <div className="mt-10 grid grid-cols-1 gap-4 md:grid-cols-3">
           {LEVELS.map((level) => (
-            <div key={level.level} className="rounded-xl border border-rail bg-surface p-5">
+            <div
+              key={level.level}
+              className="rounded-xl border border-rail bg-surface p-5"
+            >
               <h3 className="text-sm font-semibold text-text">{level.level}</h3>
-              <p className="mt-1 text-[13px] italic text-text-dim">“{level.question}”</p>
-              <p className="mt-2 text-[13px] leading-relaxed text-text-muted">{level.body}</p>
+              <p className="mt-1 text-[13px] italic text-text-dim">
+                “{level.question}”
+              </p>
+              <p className="mt-2 text-[13px] leading-relaxed text-text-muted">
+                {level.body}
+              </p>
             </div>
           ))}
         </div>

@@ -9,7 +9,11 @@ import { Badge } from '@/components/ui/feedback';
 export function ProjectMembers({
   members,
 }: {
-  members: Array<{ id: string; role: string; user: { id: string; email: string; name: string | null } }>;
+  members: Array<{
+    id: string;
+    role: string;
+    user: { id: string; email: string; name: string | null };
+  }>;
 }) {
   if (members.length === 0) {
     return (
@@ -23,16 +27,23 @@ export function ProjectMembers({
   return (
     <ul className="divide-y divide-rail">
       {members.map((member) => (
-        <li key={member.id} className="flex items-center justify-between gap-4 px-4 py-3">
+        <li
+          key={member.id}
+          className="flex items-center justify-between gap-4 px-4 py-3"
+        >
           <div className="min-w-0">
             <p className="truncate text-sm text-text">
               {member.user.name ?? member.user.email}
             </p>
             {member.user.name ? (
-              <p className="truncate text-xs text-text-dim">{member.user.email}</p>
+              <p className="truncate text-xs text-text-dim">
+                {member.user.email}
+              </p>
             ) : null}
           </div>
-          <Badge tone={roleTone(member.role)}>{member.role.toLowerCase()}</Badge>
+          <Badge tone={roleTone(member.role)}>
+            {member.role.toLowerCase()}
+          </Badge>
         </li>
       ))}
     </ul>

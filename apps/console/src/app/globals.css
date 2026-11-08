@@ -1,4 +1,4 @@
-@import "tailwindcss";
+@import 'tailwindcss';
 
 /*
  * The tokens.
@@ -52,7 +52,7 @@
 
   /* The elevations. */
   --elevation-sm: 0 1px 2px rgb(16 24 40 / 0.06);
-  --elevation-md: 0 4px 12px rgb(16 24 40 / 0.10);
+  --elevation-md: 0 4px 12px rgb(16 24 40 / 0.1);
   --elevation-lg: 0 16px 40px rgb(16 24 40 / 0.16);
 
   /* The depths. */
@@ -206,5 +206,11 @@ body {
  * it disappears when there is nothing more.
  */
 .scroll-fade {
-  mask-image: linear-gradient(to bottom, transparent 0, black 12px, black calc(100% - 20px), transparent 100%);
+  mask-image: linear-gradient(
+    to bottom,
+    transparent 0,
+    black 12px,
+    black calc(100% - 20px),
+    transparent 100%
+  );
 }

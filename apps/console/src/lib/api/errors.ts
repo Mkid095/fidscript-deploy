@@ -16,8 +16,14 @@ export class ApiError extends Error {
 }
 
 /** The message the platform sent, whichever shape it came in. */
-export function messageFrom(payload: unknown, status: number): { message: string; code?: string } {
-  const body = payload as { message?: string | string[]; error?: string } | null;
+export function messageFrom(
+  payload: unknown,
+  status: number,
+): { message: string; code?: string } {
+  const body = payload as {
+    message?: string | string[];
+    error?: string;
+  } | null;
   const raw = body?.message;
   return {
     message: Array.isArray(raw)

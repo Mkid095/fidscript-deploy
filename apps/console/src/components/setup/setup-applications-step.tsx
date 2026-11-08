@@ -39,7 +39,9 @@ export function SetupApplicationsStep({
 
   const toggle = (id: string) => {
     onChosen(
-      chosen.includes(id) ? chosen.filter((entry) => entry !== id) : [...chosen, id],
+      chosen.includes(id)
+        ? chosen.filter((entry) => entry !== id)
+        : [...chosen, id],
     );
   };
 
@@ -73,12 +75,16 @@ export function SetupApplicationsStep({
               <input
                 type="checkbox"
                 className="mt-1 size-3.5 accent-[var(--accent)]"
-                checked={application.installed || chosen.includes(application.id)}
+                checked={
+                  application.installed || chosen.includes(application.id)
+                }
                 onChange={() => toggle(application.id)}
                 disabled={application.installed}
               />
               <span className="min-w-0">
-                <span className="block text-sm text-text">{application.title}</span>
+                <span className="block text-sm text-text">
+                  {application.title}
+                </span>
                 <span className="mt-0.5 block text-xs leading-relaxed text-text-dim">
                   {application.summary}
                 </span>
@@ -107,7 +113,12 @@ export function SetupApplicationsStep({
             Back
           </Button>
         ) : null}
-        <Button variant="primary" onClick={install} loading={pending} disabled={chosen.length === 0}>
+        <Button
+          variant="primary"
+          onClick={install}
+          loading={pending}
+          disabled={chosen.length === 0}
+        >
           Install {chosen.length > 0 ? chosen.length : ''} application
           {chosen.length === 1 ? '' : 's'}
         </Button>

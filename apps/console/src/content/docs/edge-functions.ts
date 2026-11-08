@@ -3,7 +3,8 @@ import type { DocPage } from './types';
 export const edgeFunctions: DocPage = {
   slug: 'edge-functions',
   title: 'Edge functions',
-  description: 'The code the platform runs for you — a webhook, a job, a handler.',
+  description:
+    'The code the platform runs for you — a webhook, a job, a handler.',
   group: 'Build',
   blocks: [
     {

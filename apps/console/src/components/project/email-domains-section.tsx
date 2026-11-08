@@ -70,7 +70,9 @@ export function EmailDomainsSection({
           <Card key={entry.id} className="p-4">
             <div className="flex flex-wrap items-center justify-between gap-3">
               <div className="min-w-0">
-                <p className="truncate text-sm font-medium text-text">{entry.domain}</p>
+                <p className="truncate text-sm font-medium text-text">
+                  {entry.domain}
+                </p>
                 <p className="mt-0.5 text-xs text-text-dim">
                   {entry.status === 'ACTIVE'
                     ? 'It sends and receives.'
@@ -145,7 +147,12 @@ export function EmailDomainsSection({
             </div>
           ) : null}
 
-          <Button variant="primary" onClick={add} loading={pending} disabled={!domain.trim()}>
+          <Button
+            variant="primary"
+            onClick={add}
+            loading={pending}
+            disabled={!domain.trim()}
+          >
             Add the domain
           </Button>
         </div>

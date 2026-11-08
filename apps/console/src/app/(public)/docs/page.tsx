@@ -23,17 +23,21 @@ export default async function DocsPage() {
       <LandingNav />
       <main className="mx-auto max-w-6xl px-4 py-10 sm:px-6">
         <header className="max-w-2xl">
-          <h1 className="text-2xl font-semibold tracking-tight text-text">The guide</h1>
+          <h1 className="text-2xl font-semibold tracking-tight text-text">
+            The guide
+          </h1>
           <p className="mt-2 text-sm leading-relaxed text-text-muted">
-            What the platform is made of, and how to reach it. Every path here leads to a page
-            that exists.
+            What the platform is made of, and how to reach it. Every path here
+            leads to a page that exists.
           </p>
         </header>
 
         <div className="mt-10 grid grid-cols-1 gap-10 lg:grid-cols-[220px_minmax(0,1fr)]">
           <nav aria-label="The guide">
             {DOC_GROUPS.map((group) => {
-              const pages = DOC_PAGES.filter((candidate) => candidate.group === group);
+              const pages = DOC_PAGES.filter(
+                (candidate) => candidate.group === group,
+              );
               if (pages.length === 0) return null;
               return (
                 <div key={group} className="mb-5 last:mb-0">
@@ -59,9 +63,12 @@ export default async function DocsPage() {
 
           <div className="min-w-0 max-w-3xl space-y-10">
             <section>
-              <h2 className="mb-3 text-base font-semibold text-text">From a terminal</h2>
+              <h2 className="mb-3 text-base font-semibold text-text">
+                From a terminal
+              </h2>
               <p className="mb-3 text-sm leading-relaxed text-text-muted">
-                The command line does everything the console does, and it does it from a script.
+                The command line does everything the console does, and it does
+                it from a script.
               </p>
               <CodeBlock
                 label="Sign in, then look around"
@@ -72,7 +79,9 @@ npx @fidscript-deploy/cli projects list`}
             </section>
 
             <section>
-              <h2 className="mb-3 text-base font-semibold text-text">From a script</h2>
+              <h2 className="mb-3 text-base font-semibold text-text">
+                From a script
+              </h2>
               <p className="mb-3 text-sm leading-relaxed text-text-muted">
                 The API, with a key that acts as you.
               </p>
@@ -100,9 +109,12 @@ const projects = await fs.projects.list();`}
             </section>
 
             <section>
-              <h2 className="mb-3 text-base font-semibold text-text">From an agent</h2>
+              <h2 className="mb-3 text-base font-semibold text-text">
+                From an agent
+              </h2>
               <p className="mb-3 text-sm leading-relaxed text-text-muted">
-                The MCP server, so an agent can act with your key and your scopes.
+                The MCP server, so an agent can act with your key and your
+                scopes.
               </p>
               <CodeBlock
                 label="MCP"
@@ -114,7 +126,8 @@ const projects = await fs.projects.list();`}
                         args: ['-y', '@fidscript-deploy/mcp-server'],
                         env: {
                           FIDSCRIPT_API_KEY: '<your API key>',
-                          FIDSCRIPT_API_URL: apiUrl ?? 'https://api.example.com',
+                          FIDSCRIPT_API_URL:
+                            apiUrl ?? 'https://api.example.com',
                         },
                       },
                     },
@@ -126,18 +139,29 @@ const projects = await fs.projects.list();`}
             </section>
 
             <section>
-              <h2 className="mb-3 text-base font-semibold text-text">Where to go next</h2>
+              <h2 className="mb-3 text-base font-semibold text-text">
+                Where to go next
+              </h2>
               <Card className="p-4">
                 <p className="text-sm text-text-muted">
-                  <Link href="/projects" className="text-accent hover:underline">
+                  <Link
+                    href="/projects"
+                    className="text-accent hover:underline"
+                  >
                     Your projects
                   </Link>{' '}
                   ·{' '}
-                  <Link href="/settings/api-keys" className="text-accent hover:underline">
+                  <Link
+                    href="/settings/api-keys"
+                    className="text-accent hover:underline"
+                  >
                     An API key
                   </Link>{' '}
                   ·{' '}
-                  <Link href="/settings/applications" className="text-accent hover:underline">
+                  <Link
+                    href="/settings/applications"
+                    className="text-accent hover:underline"
+                  >
                     The applications
                   </Link>
                 </p>

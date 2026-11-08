@@ -15,7 +15,12 @@ import { serverApi as api } from '@/lib/api/server';
 export async function addEmailDomainAction(
   projectId: string,
   domain: string,
-): Promise<{ ok?: boolean; domainId?: string; steps?: string[]; error?: string }> {
+): Promise<{
+  ok?: boolean;
+  domainId?: string;
+  steps?: string[];
+  error?: string;
+}> {
   const name = domain.trim().toLowerCase();
   if (!name) return { error: 'A domain needs a name.' };
 
@@ -29,7 +34,8 @@ export async function addEmailDomainAction(
     return { ok: true, domainId: response.domain.id, steps: response.steps };
   } catch (err) {
     return {
-      error: err instanceof Error ? err.message : 'The domain could not be added.',
+      error:
+        err instanceof Error ? err.message : 'The domain could not be added.',
     };
   }
 }
@@ -45,7 +51,8 @@ export async function verifyEmailDomainAction(
     return { ok: true };
   } catch (err) {
     return {
-      error: err instanceof Error ? err.message : 'The domain could not be checked.',
+      error:
+        err instanceof Error ? err.message : 'The domain could not be checked.',
     };
   }
 }
@@ -66,7 +73,10 @@ export async function createMailboxAction(
     return { ok: true };
   } catch (err) {
     return {
-      error: err instanceof Error ? err.message : 'The mailbox could not be created.',
+      error:
+        err instanceof Error
+          ? err.message
+          : 'The mailbox could not be created.',
     };
   }
 }
@@ -78,14 +88,20 @@ export async function resetMailboxPasswordAction(
   password: string,
 ): Promise<{ ok?: boolean; error?: string }> {
   try {
-    await api.post(`/projects/${projectId}/email/mailboxes/${mailboxId}/reset-password`, {
-      password,
-    });
+    await api.post(
+      `/projects/${projectId}/email/mailboxes/${mailboxId}/reset-password`,
+      {
+        password,
+      },
+    );
     revalidatePath(`/projects/${projectId}/email`);
     return { ok: true };
   } catch (err) {
     return {
-      error: err instanceof Error ? err.message : 'The password could not be changed.',
+      error:
+        err instanceof Error
+          ? err.message
+          : 'The password could not be changed.',
     };
   }
 }
@@ -101,7 +117,10 @@ export async function deleteMailboxAction(
     return { ok: true };
   } catch (err) {
     return {
-      error: err instanceof Error ? err.message : 'The mailbox could not be removed.',
+      error:
+        err instanceof Error
+          ? err.message
+          : 'The mailbox could not be removed.',
     };
   }
 }
@@ -120,7 +139,10 @@ export async function createAliasAction(
     revalidatePath(`/projects/${projectId}/email`);
     return { ok: true };
   } catch (err) {
-    return { error: err instanceof Error ? err.message : 'The alias could not be created.' };
+    return {
+      error:
+        err instanceof Error ? err.message : 'The alias could not be created.',
+    };
   }
 }
 
@@ -134,7 +156,10 @@ export async function deleteAliasAction(
     revalidatePath(`/projects/${projectId}/email`);
     return { ok: true };
   } catch (err) {
-    return { error: err instanceof Error ? err.message : 'The alias could not be removed.' };
+    return {
+      error:
+        err instanceof Error ? err.message : 'The alias could not be removed.',
+    };
   }
 }
 
@@ -144,14 +169,16 @@ export async function createEmailKeyAction(
   name: string,
 ): Promise<{ ok?: boolean; key?: string; error?: string }> {
   try {
-    const response = await api.post<{ key?: string; apiKey?: { key?: string } }>(
-      `/projects/${projectId}/email/api-keys`,
-      { name },
-    );
+    const response = await api.post<{
+      key?: string;
+      apiKey?: { key?: string };
+    }>(`/projects/${projectId}/email/api-keys`, { name });
     revalidatePath(`/projects/${projectId}/email`);
     return { ok: true, key: response.key ?? response.apiKey?.key };
   } catch (err) {
-    return { error: err instanceof Error ? err.message : 'The key could not be made.' };
+    return {
+      error: err instanceof Error ? err.message : 'The key could not be made.',
+    };
   }
 }
 
@@ -165,7 +192,10 @@ export async function deleteEmailKeyAction(
     revalidatePath(`/projects/${projectId}/email`);
     return { ok: true };
   } catch (err) {
-    return { error: err instanceof Error ? err.message : 'The key could not be removed.' };
+    return {
+      error:
+        err instanceof Error ? err.message : 'The key could not be removed.',
+    };
   }
 }
 
@@ -176,7 +206,8 @@ export async function createWebhookAction(
   events: string[],
 ): Promise<{ ok?: boolean; error?: string }> {
   if (!url.trim()) return { error: 'The webhook needs a URL.' };
-  if (events.length === 0) return { error: 'It has to be told about something.' };
+  if (events.length === 0)
+    return { error: 'It has to be told about something.' };
 
   try {
     await api.post(`/projects/${projectId}/email/webhooks`, {
@@ -187,7 +218,8 @@ export async function createWebhookAction(
     return { ok: true };
   } catch (err) {
     return {
-      error: err instanceof Error ? err.message : 'The webhook could not be added.',
+      error:
+        err instanceof Error ? err.message : 'The webhook could not be added.',
     };
   }
 }
@@ -203,7 +235,10 @@ export async function deleteWebhookAction(
     return { ok: true };
   } catch (err) {
     return {
-      error: err instanceof Error ? err.message : 'The webhook could not be removed.',
+      error:
+        err instanceof Error
+          ? err.message
+          : 'The webhook could not be removed.',
     };
   }
 }
@@ -220,7 +255,10 @@ export async function setCatchAllAction(
   },
 ): Promise<{ ok?: boolean; error?: string }> {
   try {
-    await api.post(`/projects/${projectId}/email/domains/${domainId}/catch-all`, input);
+    await api.post(
+      `/projects/${projectId}/email/domains/${domainId}/catch-all`,
+      input,
+    );
     revalidatePath(`/projects/${projectId}/email`);
     return { ok: true };
   } catch (err) {
@@ -246,7 +284,8 @@ export async function sendTestEmailAction(
     return { ok: true };
   } catch (err) {
     return {
-      error: err instanceof Error ? err.message : 'The message could not be sent.',
+      error:
+        err instanceof Error ? err.message : 'The message could not be sent.',
     };
   }
 }

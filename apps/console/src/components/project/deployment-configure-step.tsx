@@ -1,7 +1,7 @@
 'use client';
 
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
+import { Input, Select } from '@/components/ui/input';
 import type { BuildPlan } from '@/app/(project)/projects/[projectId]/deployments/new/actions';
 
 /**
@@ -16,6 +16,9 @@ export function DeploymentConfigureStep({
   subdomain,
   buildTarget,
   onBuildTarget,
+  domains = [],
+  domainId,
+  onDomainId,
   onEnvVars,
   onSubdomain,
 }: {
@@ -25,6 +28,15 @@ export function DeploymentConfigureStep({
   /** The monorepo app this deployment builds, when the repository holds several. */
   buildTarget: string | null;
   onBuildTarget: (next: string | null) => void;
+  /** The project's own domains — a name that is already the project's can answer here. */
+  domains?: Array<{
+    id: string;
+    domain: string;
+    dnsStatus: string;
+    attached: boolean;
+  }>;
+  domainId: string | null;
+  onDomainId: (next: string | null) => void;
   onEnvVars: (next: Array<{ key: string; value: string }>) => void;
   onSubdomain: (next: string) => void;
 }) {
@@ -92,13 +104,33 @@ export function DeploymentConfigureStep({
         </fieldset>
       ) : null}
 
-      <Input
-        label="Subdomain"
-        hint="Optional. The deployment answers on this address under the platform's domain."
-        value={subdomain}
-        placeholder="store"
-        onChange={(event) => onSubdomain(event.target.value)}
-      />
+      {domains.filter((entry) => !entry.attached).length > 0 ? (
+        <Select
+          label="A name of the project's"
+          hint="Optional. A domain that was added to this project — its records already written — answers for this deployment. The platform secures it with a certificate once the deployment is healthy."
+          value={domainId ?? ''}
+          onChange={(event) => onDomainId(event.target.value || null)}
+          options={[
+            {
+              value: '',
+              label: 'None — the deployment’s own address is enough',
+            },
+            ...domains
+              .filter((entry) => !entry.attached)
+              .map((entry) => ({ value: entry.id, label: entry.domain })),
+          ]}
+        />
+      ) : null}
+
+      {!domainId ? (
+        <Input
+          label="Subdomain"
+          hint="Optional. The deployment answers on this address under the platform's domain."
+          value={subdomain}
+          placeholder="store"
+          onChange={(event) => onSubdomain(event.target.value)}
+        />
+      ) : null}
 
       <div className="space-y-2">
         <p className="text-xs font-medium text-text-muted">

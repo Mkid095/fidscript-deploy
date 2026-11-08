@@ -29,7 +29,11 @@ export function AccountNameForm({ name }: { name: string | null }) {
 
   return (
     <div className="max-w-sm space-y-3">
-      <Input label="Name" value={value} onChange={(event) => setValue(event.target.value)} />
+      <Input
+        label="Name"
+        value={value}
+        onChange={(event) => setValue(event.target.value)}
+      />
       {error ? <ErrorState message={error} /> : null}
       {saved ? <p className="text-xs text-success">Saved.</p> : null}
       <Button

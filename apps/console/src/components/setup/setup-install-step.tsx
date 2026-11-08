@@ -37,7 +37,9 @@ export function SetupInstallStep({ operationId }: { operationId: string }) {
         if (cancelled) return;
         setStatus(body);
 
-        const done = body.lastOperation?.status === 'COMPLETED' || body.lastOperation?.status === 'FAILED';
+        const done =
+          body.lastOperation?.status === 'COMPLETED' ||
+          body.lastOperation?.status === 'FAILED';
         if (!done) timer = setTimeout(poll, 2000);
       } catch {
         if (!cancelled) timer = setTimeout(poll, 4000);
@@ -53,13 +55,22 @@ export function SetupInstallStep({ operationId }: { operationId: string }) {
 
   const operation = status?.lastOperation;
   const steps = operation?.steps ?? [];
-  const running = operation?.status === 'RUNNING' || operation?.status === 'PENDING';
+  const running =
+    operation?.status === 'RUNNING' || operation?.status === 'PENDING';
 
   return (
     <Card className="max-w-xl space-y-3 p-5">
       <div className="flex items-center justify-between gap-3">
         <h2 className="text-sm font-semibold text-text">The install</h2>
-        <Badge tone={operation?.status === 'FAILED' ? 'danger' : running ? 'warning' : 'success'}>
+        <Badge
+          tone={
+            operation?.status === 'FAILED'
+              ? 'danger'
+              : running
+                ? 'warning'
+                : 'success'
+          }
+        >
           {(operation?.status ?? 'starting').toLowerCase()}
         </Badge>
       </div>
@@ -69,14 +80,25 @@ export function SetupInstallStep({ operationId }: { operationId: string }) {
           <li className="text-xs text-text-dim">Starting…</li>
         ) : (
           steps.map((step) => (
-            <li key={step.step} className="flex items-center justify-between gap-3">
+            <li
+              key={step.step}
+              className="flex items-center justify-between gap-3"
+            >
               <span className="text-sm capitalize text-text">{step.step}</span>
               <span
                 className={`text-xs ${
-                  step.success ? 'text-success' : step.success === false ? 'text-danger' : 'text-text-dim'
+                  step.success
+                    ? 'text-success'
+                    : step.success === false
+                      ? 'text-danger'
+                      : 'text-text-dim'
                 }`}
               >
-                {step.success ? 'done' : step.success === false ? 'failed' : 'waiting'}
+                {step.success
+                  ? 'done'
+                  : step.success === false
+                    ? 'failed'
+                    : 'waiting'}
               </span>
             </li>
           ))

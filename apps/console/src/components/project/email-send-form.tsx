@@ -14,11 +14,19 @@ import { sendTestEmailAction } from '@/app/(project)/projects/[projectId]/email/
  * The point is not the message — it is that the platform's mail really
  * carries it.
  */
-export function EmailSendForm({ projectId, senders }: { projectId: string; senders: string[] }) {
+export function EmailSendForm({
+  projectId,
+  senders,
+}: {
+  projectId: string;
+  senders: string[];
+}) {
   const [from, setFrom] = useState(senders[0] ?? '');
   const [to, setTo] = useState('');
   const [subject, setSubject] = useState('A test from FIDScript');
-  const [text, setText] = useState('This message was sent by the FIDScript console.');
+  const [text, setText] = useState(
+    'This message was sent by the FIDScript console.',
+  );
   const [error, setError] = useState<string | null>(null);
   const [sent, setSent] = useState(false);
   const [pending, startTransition] = useTransition();
@@ -27,7 +35,12 @@ export function EmailSendForm({ projectId, senders }: { projectId: string; sende
     setError(null);
     setSent(false);
     startTransition(async () => {
-      const result = await sendTestEmailAction(projectId, { from, to, subject, text });
+      const result = await sendTestEmailAction(projectId, {
+        from,
+        to,
+        subject,
+        text,
+      });
       if (result.error) setError(result.error);
       else setSent(true);
     });
@@ -43,7 +56,11 @@ export function EmailSendForm({ projectId, senders }: { projectId: string; sende
 
   return (
     <div className="max-w-xl space-y-4 p-4">
-      <Input label="From" value={from} onChange={(event) => setFrom(event.target.value)} />
+      <Input
+        label="From"
+        value={from}
+        onChange={(event) => setFrom(event.target.value)}
+      />
       <Input
         label="To"
         type="email"
@@ -51,13 +68,30 @@ export function EmailSendForm({ projectId, senders }: { projectId: string; sende
         onChange={(event) => setTo(event.target.value)}
         placeholder="you@example.com"
       />
-      <Input label="Subject" value={subject} onChange={(event) => setSubject(event.target.value)} />
-      <Input label="Message" value={text} onChange={(event) => setText(event.target.value)} />
+      <Input
+        label="Subject"
+        value={subject}
+        onChange={(event) => setSubject(event.target.value)}
+      />
+      <Input
+        label="Message"
+        value={text}
+        onChange={(event) => setText(event.target.value)}
+      />
 
       {error ? <ErrorState message={error} /> : null}
-      {sent ? <p className="text-xs text-success">The message was handed to the platform.</p> : null}
+      {sent ? (
+        <p className="text-xs text-success">
+          The message was handed to the platform.
+        </p>
+      ) : null}
 
-      <Button variant="primary" onClick={send} loading={pending} disabled={!from || !to}>
+      <Button
+        variant="primary"
+        onClick={send}
+        loading={pending}
+        disabled={!from || !to}
+      >
         Send it
       </Button>
     </div>

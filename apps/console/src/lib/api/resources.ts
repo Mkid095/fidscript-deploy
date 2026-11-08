@@ -33,13 +33,18 @@ export interface Domain {
   isPrimary: boolean;
   apexDomain: boolean;
   type: string[];
-  capabilities: Record<string, boolean>;
+  /** The mode bag — `proxy` says whether the name answers through Cloudflare. */
+  capabilities: Record<string, unknown>;
   dnsMode: string;
   sslEnabled: boolean;
   sslStatus: string;
-  /** Where the DNS stands: pending, active, broken… */
+  /** Where the DNS stands: pending, validating, active, broken… */
   dnsStatus: string;
   dnsVerifiedAt: string | null;
+  /** The deployment this name answers for, when it is pointed at one. */
+  deploymentId: string | null;
+  /** When the certificate really expires, as the HTTPS check read it. */
+  sslExpiresAt: string | null;
   deploymentUrl: string | null;
   createdAt: string;
 }
@@ -75,7 +80,9 @@ export interface ProjectEvent {
 
 /** The project's deployments, newest first. */
 export async function getDeployments(projectId: string): Promise<Deployment[]> {
-  const response = await api.get<{ deployments: Deployment[] }>(`/projects/${projectId}/deployments`);
+  const response = await api.get<{ deployments: Deployment[] }>(
+    `/projects/${projectId}/deployments`,
+  );
   return response.deployments;
 }
 
@@ -84,7 +91,9 @@ export async function getDeployment(
   projectId: string,
   deploymentId: string,
 ): Promise<Deployment> {
-  return api.get<Deployment>(`/projects/${projectId}/deployments/${deploymentId}`);
+  return api.get<Deployment>(
+    `/projects/${projectId}/deployments/${deploymentId}`,
+  );
 }
 
 /** The build log of a deployment. */
@@ -93,26 +102,34 @@ export async function getDeploymentLogs(
   deploymentId: string,
 ): Promise<string> {
   const response = await api
-    .get<{ logs: string }>(`/projects/${projectId}/deployments/${deploymentId}/logs`)
+    .get<{
+      logs: string;
+    }>(`/projects/${projectId}/deployments/${deploymentId}/logs`)
     .catch(() => ({ logs: '' }));
   return response.logs;
 }
 
 /** The project's domains. */
 export async function getDomains(projectId: string): Promise<Domain[]> {
-  const response = await api.get<{ domains: Domain[] }>(`/projects/${projectId}/domains`);
+  const response = await api.get<{ domains: Domain[] }>(
+    `/projects/${projectId}/domains`,
+  );
   return response.domains;
 }
 
 /** The project's managed databases. */
 export async function getDatabases(projectId: string): Promise<Database[]> {
-  const response = await api.get<{ databases: Database[] }>(`/projects/${projectId}/databases`);
+  const response = await api.get<{ databases: Database[] }>(
+    `/projects/${projectId}/databases`,
+  );
   return response.databases;
 }
 
 /** The project's functions. */
 export async function getFunctions(projectId: string): Promise<Function[]> {
-  const response = await api.get<{ functions: Function[] }>(`/projects/${projectId}/functions`);
+  const response = await api.get<{ functions: Function[] }>(
+    `/projects/${projectId}/functions`,
+  );
   return response.functions;
 }
 
@@ -120,15 +137,33 @@ export async function getFunctions(projectId: string): Promise<Function[]> {
 export async function getDomainInstructions(
   projectId: string,
   domainId: string,
-): Promise<Array<{ type: string; name: string; value: string; ttl?: number; notes?: string }>> {
+): Promise<
+  Array<{
+    type: string;
+    name: string;
+    value: string;
+    ttl?: number;
+    notes?: string;
+  }>
+> {
   const response = await api.get<{
-    instructions: Array<{ type: string; name: string; value: string; ttl?: number; notes?: string }>;
+    instructions: Array<{
+      type: string;
+      name: string;
+      value: string;
+      ttl?: number;
+      notes?: string;
+    }>;
   }>(`/projects/${projectId}/domains/${domainId}/instructions`);
   return response.instructions;
 }
 
 /** What has happened in this project. */
-export async function getProjectEvents(projectId: string): Promise<ProjectEvent[]> {
-  const response = await api.get<ProjectEvent[]>(`/projects/${projectId}/events`);
+export async function getProjectEvents(
+  projectId: string,
+): Promise<ProjectEvent[]> {
+  const response = await api.get<ProjectEvent[]>(
+    `/projects/${projectId}/events`,
+  );
   return response;
 }

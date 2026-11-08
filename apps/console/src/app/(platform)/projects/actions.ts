@@ -29,7 +29,10 @@ export async function createProjectAction(input: {
     return { project };
   } catch (err) {
     return {
-      error: err instanceof Error ? err.message : 'The project could not be created.',
+      error:
+        err instanceof Error
+          ? err.message
+          : 'The project could not be created.',
     };
   }
 }

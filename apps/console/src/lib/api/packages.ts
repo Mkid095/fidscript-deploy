@@ -41,7 +41,12 @@ export async function getPublishedPackages(
 
     const body = (await response.json()) as Record<
       string,
-      { name?: string; description?: string; 'dist-tags'?: { latest?: string }; versions?: Record<string, unknown> }
+      {
+        name?: string;
+        description?: string;
+        'dist-tags'?: { latest?: string };
+        versions?: Record<string, unknown>;
+      }
     >;
 
     const packages: RegistryPackage[] = Object.values(body)

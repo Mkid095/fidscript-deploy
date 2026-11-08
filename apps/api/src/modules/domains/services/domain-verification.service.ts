@@ -1,4 +1,9 @@
-import { Injectable, Logger, NotFoundException, ForbiddenException } from '@nestjs/common';
+import {
+  Injectable,
+  Logger,
+  NotFoundException,
+  ForbiddenException,
+} from '@nestjs/common';
 import { PrismaService } from '@/prisma/prisma.service';
 import { EventService } from '@/modules/events/event.service';
 import { DomainVerificationChecksService } from './domain-verification-checks.service';
@@ -32,8 +37,16 @@ export class DomainVerificationService {
           where: { id: domainId },
           data: { dnsStatus: 'OWNERSHIP_PENDING' },
         });
-        await this.emit(domainId, projectId, userId, 'domain.pending_ownership', { domain: domain.domain });
-        const updated = await this.prisma.domain.findUnique({ where: { id: domainId } });
+        await this.emit(
+          domainId,
+          projectId,
+          userId,
+          'domain.pending_ownership',
+          { domain: domain.domain },
+        );
+        const updated = await this.prisma.domain.findUnique({
+          where: { id: domainId },
+        });
         return this.formatDomain(updated!);
       }
       await this.prisma.domain.update({
@@ -42,20 +55,56 @@ export class DomainVerificationService {
       });
     }
 
-    if (currentStatus === 'OWNERSHIP_PENDING' || currentStatus === 'VALIDATING') {
+    if (
+      currentStatus === 'OWNERSHIP_PENDING' ||
+      currentStatus === 'VALIDATING'
+    ) {
       const [dnsPropagation, dnsResolution] = await Promise.all([
         this.checks.checkDnsPropagation(domain),
         this.checks.checkDnsResolution(domain),
       ]);
       if (!dnsPropagation || !dnsResolution) {
-        await this.failDomain(domainId, projectId, 'DNS propagation or resolution check failed');
-        const updated = await this.prisma.domain.findUnique({ where: { id: domainId } });
+        await this.failDomain(
+          domainId,
+          projectId,
+          'DNS propagation or resolution check failed',
+        );
+        const updated = await this.prisma.domain.findUnique({
+          where: { id: domainId },
+        });
         return this.formatDomain(updated!);
       }
     }
 
     const routingOk = await this.checks.checkHttpRouting(domain);
     if (!routingOk) {
+      // Two different facts share this symptom, and they must not share a
+      // verdict. With no deployment attached there is nothing that SHOULD
+      // answer yet - the records are pointed here, waiting; that is not a
+      // failure, and the background reconciliation will finish the story
+      // the moment something is deployed. With a deployment attached, a
+      // routing failure is real.
+      if (!domain.deploymentId) {
+        await this.prisma.domain.update({
+          where: { id: domainId },
+          data: { dnsStatus: 'VALIDATING', routingVerifiedAt: null },
+        });
+        await this.emit(
+          domainId,
+          projectId,
+          userId,
+          'domain.pending_ownership',
+          {
+            domain: domain.domain,
+            reason:
+              'The records point here; nothing is deployed on this domain yet.',
+          },
+        );
+        const updated = await this.prisma.domain.findUnique({
+          where: { id: domainId },
+        });
+        return this.formatDomain(updated!);
+      }
       await this.prisma.domain.update({
         where: { id: domainId },
         data: { dnsStatus: 'FAILED', routingVerifiedAt: null },
@@ -64,7 +113,9 @@ export class DomainVerificationService {
         reason: 'HTTP routing check failed',
         domain: domain.domain,
       });
-      const updated = await this.prisma.domain.findUnique({ where: { id: domainId } });
+      const updated = await this.prisma.domain.findUnique({
+        where: { id: domainId },
+      });
       return this.formatDomain(updated!);
     }
 
@@ -79,13 +130,20 @@ export class DomainVerificationService {
     });
     await this.emit(domainId, projectId, userId, 'domain.tls_pending', {
       domain: domain.domain,
-      message: 'DNS + routing confirmed. SSL certificate in flight via Traefik ACME.',
+      message:
+        'DNS + routing confirmed. SSL certificate in flight via Traefik ACME.',
     });
 
-    return this.formatDomain(await this.prisma.domain.findUnique({ where: { id: domainId } }));
+    return this.formatDomain(
+      await this.prisma.domain.findUnique({ where: { id: domainId } }),
+    );
   }
 
-  private async failDomain(domainId: string, projectId: string, reason: string) {
+  private async failDomain(
+    domainId: string,
+    projectId: string,
+    reason: string,
+  ) {
     await this.prisma.domain.update({
       where: { id: domainId },
       data: { dnsStatus: 'FAILED' },
@@ -93,9 +151,14 @@ export class DomainVerificationService {
     await this.emit(domainId, projectId, '', 'domain.failed', { reason });
   }
 
-  private async checkAccess(userId: string, projectId: string): Promise<boolean> {
+  private async checkAccess(
+    userId: string,
+    projectId: string,
+  ): Promise<boolean> {
     if (userId === 'api-key') return true;
-    const project = await this.prisma.project.findUnique({ where: { id: projectId } });
+    const project = await this.prisma.project.findUnique({
+      where: { id: projectId },
+    });
     if (!project) return false;
     if (project.ownerId === userId) return true;
     const member = await this.prisma.projectMember.findUnique({
@@ -124,12 +187,23 @@ export class DomainVerificationService {
     };
   }
 
-  private async emit(domainId: string, projectId: string, userId: string, type: string, payload: Record<string, unknown>) {
+  private async emit(
+    domainId: string,
+    projectId: string,
+    userId: string,
+    type: string,
+    payload: Record<string, unknown>,
+  ) {
     await this.eventService.emit(
       type as any,
       projectId,
       { domainId, ...payload },
-      { actorId: userId || undefined, actorType: 'user', resourceType: 'domain', resourceId: domainId },
+      {
+        actorId: userId || undefined,
+        actorType: 'user',
+        resourceType: 'domain',
+        resourceId: domainId,
+      },
     );
   }
 }

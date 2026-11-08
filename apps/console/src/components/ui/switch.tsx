@@ -31,7 +31,10 @@ export function Switch({
           {label}
         </label>
         {description ? (
-          <p id={descriptionId} className="mt-0.5 text-xs leading-relaxed text-text-dim">
+          <p
+            id={descriptionId}
+            className="mt-0.5 text-xs leading-relaxed text-text-dim"
+          >
             {description}
           </p>
         ) : null}

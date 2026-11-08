@@ -45,7 +45,9 @@ export function GithubConnection({
       if (result.error) setError(result.error);
       else {
         setToken('');
-        setNotice('The account is connected. It is used by every deployment you make.');
+        setNotice(
+          'The account is connected. It is used by every deployment you make.',
+        );
       }
     });
   };
@@ -82,7 +84,12 @@ export function GithubConnection({
           </div>
           <div className="flex items-center gap-3">
             <Badge tone="success">connected</Badge>
-            <Button variant="ghost" size="sm" onClick={disconnect} loading={pending}>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={disconnect}
+              loading={pending}
+            >
               Disconnect
             </Button>
           </div>
@@ -101,9 +108,10 @@ export function GithubConnection({
     <Card className="p-4">
       <div className="max-w-xl space-y-3">
         <p className="text-sm text-text-muted">
-          Connect the GitHub account your code lives in. The platform keeps the token — encrypted,
-          and never shown again — and uses it to read the repositories you may deploy, and to
-          register the webhook that deploys on a push.
+          Connect the GitHub account your code lives in. The platform keeps the
+          token — encrypted, and never shown again — and uses it to read the
+          repositories you may deploy, and to register the webhook that deploys
+          on a push.
         </p>
         <Input
           label="A personal access token"
@@ -117,7 +125,12 @@ export function GithubConnection({
         {error ? <ErrorState message={error} /> : null}
         {notice ? <p className="text-xs text-success">{notice}</p> : null}
         <div className="flex flex-wrap items-center gap-3">
-          <Button variant="primary" onClick={connect} loading={pending} disabled={!token.trim()}>
+          <Button
+            variant="primary"
+            onClick={connect}
+            loading={pending}
+            disabled={!token.trim()}
+          >
             Connect the account
           </Button>
           <a

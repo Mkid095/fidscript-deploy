@@ -35,15 +35,23 @@ export function PackageRow({
         <div className="min-w-0">
           <p className="truncate font-mono text-sm text-text">{entry.name}</p>
           {entry.description ? (
-            <p className="mt-0.5 truncate text-xs text-text-dim">{entry.description}</p>
+            <p className="mt-0.5 truncate text-xs text-text-dim">
+              {entry.description}
+            </p>
           ) : null}
         </div>
         <div className="flex items-center gap-2">
           <span className="text-xs text-text-dim">
-            {entry.versions.length} version{entry.versions.length === 1 ? '' : 's'}
+            {entry.versions.length} version
+            {entry.versions.length === 1 ? '' : 's'}
           </span>
           {entry.latest ? <Badge tone="neutral">{entry.latest}</Badge> : null}
-          <Button variant="ghost" size="sm" onClick={() => setOpen(!open)} loading={pending}>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => setOpen(!open)}
+            loading={pending}
+          >
             {open ? 'Close' : 'Open'}
           </Button>
         </div>
@@ -59,7 +67,8 @@ export function PackageRow({
                   <div className="mt-1.5 flex flex-wrap gap-2">
                     {Object.entries(detail.tags).map(([tag, version]) => (
                       <span key={tag} className="text-xs text-text-dim">
-                        <span className="font-mono text-text">{tag}</span> → {version}
+                        <span className="font-mono text-text">{tag}</span> →{' '}
+                        {version}
                       </span>
                     ))}
                   </div>
@@ -79,7 +88,9 @@ export function PackageRow({
 
               {detail.readme ? (
                 <div>
-                  <p className="text-xs font-medium text-text-muted">The README</p>
+                  <p className="text-xs font-medium text-text-muted">
+                    The README
+                  </p>
                   <pre className="mt-1.5 max-h-64 overflow-auto whitespace-pre-wrap text-xs leading-relaxed text-text-muted">
                     {detail.readme.slice(0, 2000)}
                   </pre>

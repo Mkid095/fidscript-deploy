@@ -78,15 +78,17 @@ export function WelcomeWizard({ name }: { name: string | null }) {
               What FIDScript is
             </h1>
             <p className="mt-2 text-sm leading-relaxed text-text-muted">
-              It is one machine that runs the parts of an application that are not the
-              application: the data, the mail, the messages, the packages.
+              It is one machine that runs the parts of an application that are
+              not the application: the data, the mail, the messages, the
+              packages.
             </p>
             <p className="mt-2 text-sm leading-relaxed text-text-muted">
-              You bring the code; it runs it, keeps it, and gives it a place on the
-              internet.
+              You bring the code; it runs it, keeps it, and gives it a place on
+              the internet.
             </p>
             <p className="mt-2 text-sm leading-relaxed text-text-muted">
-              Everything here belongs to a project, and a project belongs to you.
+              Everything here belongs to a project, and a project belongs to
+              you.
             </p>
           </div>
           <div className="flex justify-end gap-2">
@@ -111,7 +113,9 @@ export function WelcomeWizard({ name }: { name: string | null }) {
       {step === 1 ? (
         <div className="space-y-5">
           <div>
-            <h1 className="text-lg font-semibold tracking-tight text-text">What to call you</h1>
+            <h1 className="text-lg font-semibold tracking-tight text-text">
+              What to call you
+            </h1>
             <p className="mt-1 text-sm text-text-muted">
               It is shown beside everything you do on this platform.
             </p>
@@ -165,8 +169,13 @@ export function WelcomeWizard({ name }: { name: string | null }) {
             </p>
           </div>
           <ol className="space-y-2 text-sm text-text-muted">
-            <li>· Open the overview — it says what the project has and what to do next.</li>
-            <li>· Connect a domain, so the project answers somewhere of your own.</li>
+            <li>
+              · Open the overview — it says what the project has and what to do
+              next.
+            </li>
+            <li>
+              · Connect a domain, so the project answers somewhere of your own.
+            </li>
             <li>· Deploy something, or give the project a backend.</li>
           </ol>
           {error ? <ErrorState message={error} /> : null}
@@ -197,8 +206,12 @@ function Steps({ current }: { current: number }) {
           >
             {index + 1}
           </span>
-          <span className={index === current ? 'text-text' : 'text-text-dim'}>{label}</span>
-          {index < STEP_LABELS.length - 1 ? <span className="text-text-dim">·</span> : null}
+          <span className={index === current ? 'text-text' : 'text-text-dim'}>
+            {label}
+          </span>
+          {index < STEP_LABELS.length - 1 ? (
+            <span className="text-text-dim">·</span>
+          ) : null}
         </li>
       ))}
     </ol>

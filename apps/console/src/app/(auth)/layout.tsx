@@ -7,7 +7,11 @@ import Link from 'next/link';
  * One thing to do, nothing else to look at: the logo, the card, and the
  * way back to the front door.
  */
-export default function AuthLayout({ children }: { children: React.ReactNode }) {
+export default function AuthLayout({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
   return (
     <div className="flex min-h-screen flex-col bg-canvas">
       <header className="flex-shrink-0 border-b border-rail px-4 py-4 sm:px-6">
@@ -16,8 +20,16 @@ export default function AuthLayout({ children }: { children: React.ReactNode }) 
           className="inline-flex items-center gap-2.5"
           aria-label="FIDScript — the front door"
         >
-          <Image src="/logo.png" alt="" width={26} height={26} className="rounded-md" />
-          <span className="text-sm font-bold uppercase tracking-widest text-text">fidscript</span>
+          <Image
+            src="/logo.png"
+            alt=""
+            width={26}
+            height={26}
+            className="rounded-md"
+          />
+          <span className="text-sm font-bold uppercase tracking-widest text-text">
+            fidscript
+          </span>
         </Link>
       </header>
 
@@ -27,8 +39,8 @@ export default function AuthLayout({ children }: { children: React.ReactNode }) 
             {children}
           </div>
           <p className="mt-6 text-center text-xs text-text-dim">
-            Your own application cloud — the data, the mail, the messages and the packages, on
-            your own hardware.
+            Your own application cloud — the data, the mail, the messages and
+            the packages, on your own hardware.
           </p>
         </div>
       </main>

@@ -44,4 +44,9 @@ export function docGroup(group: DocPage['group']): DocPage[] {
 }
 
 /** The groups, in the order they are read. */
-export const DOC_GROUPS: DocPage['group'][] = ['Start', 'Build', 'Platform', 'Operate'];
+export const DOC_GROUPS: DocPage['group'][] = [
+  'Start',
+  'Build',
+  'Platform',
+  'Operate',
+];

@@ -1,6 +1,11 @@
 'use client';
 
-import { useId, type InputHTMLAttributes, type ReactNode, type SelectHTMLAttributes } from 'react';
+import {
+  useId,
+  type InputHTMLAttributes,
+  type ReactNode,
+  type SelectHTMLAttributes,
+} from 'react';
 
 const FIELD_CLASS =
   'w-full rounded-md border border-rail bg-surface-2 px-3 py-2 text-sm text-text placeholder:text-text-dim transition-colors focus:border-accent focus:outline-none disabled:cursor-not-allowed disabled:opacity-50';
@@ -37,7 +42,10 @@ export function Input({
   return (
     <div className="space-y-2">
       {label ? (
-        <label htmlFor={inputId} className="block text-xs font-medium text-text-muted">
+        <label
+          htmlFor={inputId}
+          className="block text-xs font-medium text-text-muted"
+        >
           {label}
         </label>
       ) : null}
@@ -50,11 +58,16 @@ export function Input({
           {...rest}
         />
         {adornment ? (
-          <div className="absolute inset-y-0 right-2 flex items-center">{adornment}</div>
+          <div className="absolute inset-y-0 right-2 flex items-center">
+            {adornment}
+          </div>
         ) : null}
       </div>
       {message ? (
-        <p id={messageId} className={`text-xs ${error ? 'text-danger' : 'text-text-dim'}`}>
+        <p
+          id={messageId}
+          className={`text-xs ${error ? 'text-danger' : 'text-text-dim'}`}
+        >
           {message}
         </p>
       ) : null}
@@ -70,7 +83,15 @@ export interface SelectProps extends SelectHTMLAttributes<HTMLSelectElement> {
 }
 
 /** A choice from a known list. */
-export function Select({ label, hint, error, options, className = '', id, ...rest }: SelectProps) {
+export function Select({
+  label,
+  hint,
+  error,
+  options,
+  className = '',
+  id,
+  ...rest
+}: SelectProps) {
   const generated = useId();
   const selectId = id ?? generated;
   const messageId = `${selectId}-message`;
@@ -79,7 +100,10 @@ export function Select({ label, hint, error, options, className = '', id, ...res
   return (
     <div className="space-y-2">
       {label ? (
-        <label htmlFor={selectId} className="block text-xs font-medium text-text-muted">
+        <label
+          htmlFor={selectId}
+          className="block text-xs font-medium text-text-muted"
+        >
           {label}
         </label>
       ) : null}
@@ -97,7 +121,10 @@ export function Select({ label, hint, error, options, className = '', id, ...res
         ))}
       </select>
       {message ? (
-        <p id={messageId} className={`text-xs ${error ? 'text-danger' : 'text-text-dim'}`}>
+        <p
+          id={messageId}
+          className={`text-xs ${error ? 'text-danger' : 'text-text-dim'}`}
+        >
           {message}
         </p>
       ) : null}
@@ -126,7 +153,9 @@ export function ChoiceGroup({
 }) {
   return (
     <fieldset className="space-y-2">
-      <legend className="mb-2 text-xs font-medium text-text-muted">{legend}</legend>
+      <legend className="mb-2 text-xs font-medium text-text-muted">
+        {legend}
+      </legend>
       <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
         {options.map((option) => {
           const selected = value === option.value;
@@ -148,9 +177,13 @@ export function ChoiceGroup({
                   onChange={() => onChange(option.value)}
                   className="size-3.5 accent-[var(--accent)]"
                 />
-                <span className="text-sm font-medium text-text">{option.title}</span>
+                <span className="text-sm font-medium text-text">
+                  {option.title}
+                </span>
               </span>
-              <span className="mt-1.5 text-xs leading-relaxed text-text-muted">{option.body}</span>
+              <span className="mt-1.5 text-xs leading-relaxed text-text-muted">
+                {option.body}
+              </span>
             </label>
           );
         })}
@@ -160,7 +193,13 @@ export function ChoiceGroup({
 }
 
 /** A read-only value, shown the way a definition list shows it. */
-export function DefinitionRow({ term, children }: { term: string; children: ReactNode }) {
+export function DefinitionRow({
+  term,
+  children,
+}: {
+  term: string;
+  children: ReactNode;
+}) {
   return (
     <div className="flex items-baseline justify-between gap-4 py-1.5">
       <dt className="text-xs text-text-dim">{term}</dt>

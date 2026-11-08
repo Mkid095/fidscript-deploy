@@ -32,7 +32,10 @@ export function ProjectDangerZone({
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
 
-  const run = (action: () => Promise<{ ok?: boolean; error?: string }>, gone = false) => {
+  const run = (
+    action: () => Promise<{ ok?: boolean; error?: string }>,
+    gone = false,
+  ) => {
     setError(null);
     startTransition(async () => {
       const result = await action();
@@ -47,7 +50,8 @@ export function ProjectDangerZone({
         <div className="min-w-0">
           <p className="text-sm font-medium text-text">Archive this project</p>
           <p className="mt-0.5 text-xs leading-relaxed text-text-dim">
-            It stops where it is. Everything it has is kept, and it can be restored.
+            It stops where it is. Everything it has is kept, and it can be
+            restored.
           </p>
         </div>
         <Button

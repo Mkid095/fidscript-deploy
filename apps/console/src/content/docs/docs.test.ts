@@ -11,7 +11,9 @@ import { COLS } from '@/components/landing/landing-footer';
  */
 describe('the guide', () => {
   it('has a page for every slug in the footer', () => {
-    const promised = COLS.flatMap((column) => column.links.map((link) => link.href));
+    const promised = COLS.flatMap((column) =>
+      column.links.map((link) => link.href),
+    );
 
     for (const href of promised) {
       const slug = href.replace('/docs/', '');
@@ -33,7 +35,9 @@ describe('the guide', () => {
   });
 
   it('covers every footer link and no more', () => {
-    const promised = new Set(COLS.flatMap((column) => column.links.map((link) => link.href)));
+    const promised = new Set(
+      COLS.flatMap((column) => column.links.map((link) => link.href)),
+    );
     expect(promised.size).toBe(DOC_PAGES.length);
   });
 });

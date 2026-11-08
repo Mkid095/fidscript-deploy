@@ -68,11 +68,9 @@ function safeJson(text: string): unknown {
 export const serverApi = {
   get: <T>(path: string, query?: Record<string, string | undefined>) =>
     serverRequest<T>(path, { query }),
-  post: <T>(
-    path: string,
-    body?: unknown,
-    headers?: Record<string, string>,
-  ) => serverRequest<T>(path, { method: 'POST', body, headers }),
-  patch: <T>(path: string, body?: unknown) => serverRequest<T>(path, { method: 'PATCH', body }),
+  post: <T>(path: string, body?: unknown, headers?: Record<string, string>) =>
+    serverRequest<T>(path, { method: 'POST', body, headers }),
+  patch: <T>(path: string, body?: unknown) =>
+    serverRequest<T>(path, { method: 'PATCH', body }),
   delete: <T>(path: string) => serverRequest<T>(path, { method: 'DELETE' }),
 };

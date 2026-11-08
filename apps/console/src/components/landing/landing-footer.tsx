@@ -7,7 +7,10 @@ import Link from 'next/link';
  * "Services" — the word the guide retires — so the links here are the
  * platform's own vocabulary.
  */
-export const COLS: { title: string; links: { label: string; href: string }[] }[] = [
+export const COLS: {
+  title: string;
+  links: { label: string; href: string }[];
+}[] = [
   {
     title: 'Build',
     links: [
@@ -44,9 +47,12 @@ export function LandingFooter() {
       <div className="mx-auto max-w-6xl px-6">
         <div className="grid grid-cols-2 gap-8 sm:grid-cols-4">
           <div>
-            <p className="text-sm font-bold uppercase tracking-widest text-text">fidscript</p>
+            <p className="text-sm font-bold uppercase tracking-widest text-text">
+              fidscript
+            </p>
             <p className="mt-2 max-w-xs text-[13px] leading-relaxed text-text-dim">
-              A control plane for your own hardware. Self-hosted, open source, and yours.
+              A control plane for your own hardware. Self-hosted, open source,
+              and yours.
             </p>
             <a
               href="https://github.com/Mkid095/fidscript-deploy"
@@ -83,7 +89,10 @@ export function LandingFooter() {
           <p className="text-[12px] text-text-dim">
             FIDScript Deploy — open source, self-hosted.
           </p>
-          <Link href="/login" className="text-[12px] text-text-muted transition hover:text-text">
+          <Link
+            href="/login"
+            className="text-[12px] text-text-muted transition hover:text-text"
+          >
             Log in
           </Link>
         </div>

@@ -27,7 +27,9 @@ export function EmailLogsSection({ messages }: { messages: EmailMessage[] }) {
           <li key={message.id} className="px-4 py-3">
             <div className="flex flex-wrap items-center justify-between gap-3">
               <div className="min-w-0">
-                <p className="truncate text-sm text-text">{message.subject || '(no subject)'}</p>
+                <p className="truncate text-sm text-text">
+                  {message.subject || '(no subject)'}
+                </p>
                 <p className="mt-0.5 truncate text-xs text-text-dim">
                   {message.from} → {message.to} · {sayWhen(message.createdAt)}
                 </p>

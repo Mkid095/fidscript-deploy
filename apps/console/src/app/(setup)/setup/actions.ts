@@ -27,16 +27,22 @@ export async function configurePlatformAction(
   if (!input.platformDomain.trim()) return { error: 'The domain is needed.' };
 
   try {
-    const response = await api.post<{ operationId: string }>('/installation/configure', {
-      platformName: input.platformName,
-      platformDomain: input.platformDomain.trim().toLowerCase(),
-      serverIp: input.serverIp,
-      adminEmail: input.adminEmail.trim(),
-      authMethod: input.authMethod,
-      ...(input.adminPassword ? { adminPassword: input.adminPassword } : {}),
-      ...(input.cloudflareApiToken ? { cloudflareApiToken: input.cloudflareApiToken } : {}),
-      ...(input.dnsMode ? { dnsMode: input.dnsMode } : {}),
-    }, { 'x-setup-token': setupToken.trim() });
+    const response = await api.post<{ operationId: string }>(
+      '/installation/configure',
+      {
+        platformName: input.platformName,
+        platformDomain: input.platformDomain.trim().toLowerCase(),
+        serverIp: input.serverIp,
+        adminEmail: input.adminEmail.trim(),
+        authMethod: input.authMethod,
+        ...(input.adminPassword ? { adminPassword: input.adminPassword } : {}),
+        ...(input.cloudflareApiToken
+          ? { cloudflareApiToken: input.cloudflareApiToken }
+          : {}),
+        ...(input.dnsMode ? { dnsMode: input.dnsMode } : {}),
+      },
+      { 'x-setup-token': setupToken.trim() },
+    );
 
     revalidatePath('/setup');
     return { ok: true, operationId: response.operationId };
@@ -60,7 +66,10 @@ export async function installApplicationAction(
     return { ok: true };
   } catch (err) {
     return {
-      error: err instanceof Error ? err.message : 'The application could not be installed.',
+      error:
+        err instanceof Error
+          ? err.message
+          : 'The application could not be installed.',
     };
   }
 }

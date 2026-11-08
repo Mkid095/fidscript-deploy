@@ -52,7 +52,10 @@ export async function disconnectDnsProviderAction(
     return { ok: true };
   } catch (err) {
     return {
-      error: err instanceof Error ? err.message : 'The account could not be disconnected.',
+      error:
+        err instanceof Error
+          ? err.message
+          : 'The account could not be disconnected.',
     };
   }
 }
@@ -84,7 +87,8 @@ export async function addDomainAction(
     return { ok: true, domainId: response.domain.id };
   } catch (err) {
     return {
-      error: err instanceof Error ? err.message : 'The domain could not be added.',
+      error:
+        err instanceof Error ? err.message : 'The domain could not be added.',
     };
   }
 }
@@ -100,7 +104,9 @@ export async function autoConfigureDnsAction(
   domainId: string,
 ): Promise<{ ok?: boolean; error?: string }> {
   try {
-    await api.post(`/projects/${projectId}/domains/${domainId}/dns-records/auto-configure`);
+    await api.post(
+      `/projects/${projectId}/domains/${domainId}/dns-records/auto-configure`,
+    );
     revalidatePath(`/projects/${projectId}/domains`);
     return { ok: true };
   } catch (err) {
@@ -124,7 +130,8 @@ export async function verifyDomainAction(
     return { ok: true };
   } catch (err) {
     return {
-      error: err instanceof Error ? err.message : 'The domain could not be checked.',
+      error:
+        err instanceof Error ? err.message : 'The domain could not be checked.',
     };
   }
 }

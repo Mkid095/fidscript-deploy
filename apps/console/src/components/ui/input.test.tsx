@@ -37,11 +37,15 @@ describe('the input', () => {
 
   it('marks the control as invalid when it is wrong', () => {
     render(<Input label="Email" error="That address is taken" />);
-    expect(screen.getByLabelText('Email').getAttribute('aria-invalid')).toBe('true');
+    expect(screen.getByLabelText('Email').getAttribute('aria-invalid')).toBe(
+      'true',
+    );
   });
 
   it('hides the hint when there is an error', () => {
-    render(<Input label="Email" hint="Work address" error="That address is taken" />);
+    render(
+      <Input label="Email" hint="Work address" error="That address is taken" />,
+    );
     expect(screen.queryByText('Work address')).toBeNull();
   });
 });
@@ -63,7 +67,9 @@ describe('the button', () => {
         <Button type="submit">Save</Button>
       </form>,
     );
-    expect(screen.getByRole('button', { name: 'Save' }).getAttribute('type')).toBe('submit');
+    expect(
+      screen.getByRole('button', { name: 'Save' }).getAttribute('type'),
+    ).toBe('submit');
   });
 
   it('cannot be pressed while it is loading', () => {

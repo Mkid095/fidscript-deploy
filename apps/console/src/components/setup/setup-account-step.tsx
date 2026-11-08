@@ -33,8 +33,8 @@ export function SetupAccountStep({
       <div>
         <h2 className="text-sm font-semibold text-text">The administrator</h2>
         <p className="mt-1 text-xs leading-relaxed text-text-muted">
-          The account the platform is entered with. It is the account that owns the first project,
-          and it is the one the recovery mail goes to.
+          The account the platform is entered with. It is the account that owns
+          the first project, and it is the one the recovery mail goes to.
         </p>
       </div>
 

@@ -19,7 +19,8 @@ export default function NotFound() {
           There is nothing at this address
         </h1>
         <p className="mt-2 text-sm leading-relaxed text-text-muted">
-          The page may have moved, or the link that brought you here was never right.
+          The page may have moved, or the link that brought you here was never
+          right.
         </p>
         <div className="mt-6 flex items-center justify-center gap-2">
           <Link href="/">

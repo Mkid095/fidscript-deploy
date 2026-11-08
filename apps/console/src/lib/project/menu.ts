@@ -61,27 +61,69 @@ export interface MenuGroup {
 
 /** Builds the menu for one project, for one person, right now. */
 export function buildProjectMenu(input: MenuInput): MenuItem[] {
-  const { projectPath: base, shape, deploymentOn, capabilities, resources, role } = input;
+  const {
+    projectPath: base,
+    shape,
+    deploymentOn,
+    capabilities,
+    resources,
+    role,
+  } = input;
 
   const items: MenuItem[] = [
-    { id: 'overview', label: 'Overview', href: `${base}/overview`, group: 'Project' },
-    { id: 'members', label: 'Members', href: `${base}/members`, group: 'Project' },
-    { id: 'activity', label: 'Activity', href: `${base}/activity`, group: 'Project' },
+    {
+      id: 'overview',
+      label: 'Overview',
+      href: `${base}/overview`,
+      group: 'Project',
+    },
+    {
+      id: 'members',
+      label: 'Members',
+      href: `${base}/members`,
+      group: 'Project',
+    },
+    {
+      id: 'activity',
+      label: 'Activity',
+      href: `${base}/activity`,
+      group: 'Project',
+    },
   ];
 
   // The backend — InstantDB's app for this project.
   if (shape === 'BACKEND' || shape === 'BOTH') {
     items.push(
-      { id: 'backend', label: 'Backend', href: `${base}/backend`, group: 'Backend' },
-      { id: 'connect', label: 'Connect', href: `${base}/connect`, group: 'Backend' },
+      {
+        id: 'backend',
+        label: 'Backend',
+        href: `${base}/backend`,
+        group: 'Backend',
+      },
+      {
+        id: 'connect',
+        label: 'Connect',
+        href: `${base}/connect`,
+        group: 'Backend',
+      },
     );
   }
 
   // The deployment service — only when it is switched on.
   if (deploymentOn) {
     items.push(
-      { id: 'deployments', label: 'Deployments', href: `${base}/deployments`, group: 'Deploy' },
-      { id: 'domains', label: 'Domains', href: `${base}/domains`, group: 'Deploy' },
+      {
+        id: 'deployments',
+        label: 'Deployments',
+        href: `${base}/deployments`,
+        group: 'Deploy',
+      },
+      {
+        id: 'domains',
+        label: 'Domains',
+        href: `${base}/domains`,
+        group: 'Deploy',
+      },
     );
     if (resources.functions > 0) {
       items.push({
@@ -103,7 +145,12 @@ export function buildProjectMenu(input: MenuInput): MenuItem[] {
 
   // The capabilities the project has switched on.
   if (capabilities.email) {
-    items.push({ id: 'email', label: 'Email', href: `${base}/email`, group: 'Capabilities' });
+    items.push({
+      id: 'email',
+      label: 'Email',
+      href: `${base}/email`,
+      group: 'Capabilities',
+    });
   }
   if (capabilities.whatsapp) {
     items.push({
@@ -123,9 +170,18 @@ export function buildProjectMenu(input: MenuInput): MenuItem[] {
   }
 
   // What can be observed: something has to be emitting.
-  if (resources.deployments > 0 || capabilities.email || capabilities.whatsapp) {
+  if (
+    resources.deployments > 0 ||
+    capabilities.email ||
+    capabilities.whatsapp
+  ) {
     items.push(
-      { id: 'monitoring', label: 'Monitoring', href: `${base}/monitoring`, group: 'Observe' },
+      {
+        id: 'monitoring',
+        label: 'Monitoring',
+        href: `${base}/monitoring`,
+        group: 'Observe',
+      },
       { id: 'logs', label: 'Logs', href: `${base}/logs`, group: 'Observe' },
     );
   }

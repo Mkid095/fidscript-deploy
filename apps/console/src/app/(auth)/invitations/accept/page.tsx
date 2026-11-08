@@ -17,7 +17,9 @@ export default async function AcceptInvitationPage({
 
   return (
     <div>
-      <h1 className="text-lg font-semibold tracking-tight text-text">Accept the invitation</h1>
+      <h1 className="text-lg font-semibold tracking-tight text-text">
+        Accept the invitation
+      </h1>
       <p className="mt-1 text-sm text-text-muted">
         You have been invited to work in a FIDScript project.
       </p>

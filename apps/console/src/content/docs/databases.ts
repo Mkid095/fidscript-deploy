@@ -3,7 +3,8 @@ import type { DocPage } from './types';
 export const databases: DocPage = {
   slug: 'databases',
   title: 'Databases',
-  description: 'The managed Postgres a project holds, and how an application reaches it.',
+  description:
+    'The managed Postgres a project holds, and how an application reaches it.',
   group: 'Build',
   blocks: [
     {
@@ -19,7 +20,10 @@ export const databases: DocPage = {
         rows: [
           ['The database', 'A Postgres database, named after the project'],
           ['The user', 'A user that may use only that database'],
-          ['The variables', 'DATABASE_URL, DB_HOST, DB_PORT, DB_NAME, DB_USER and DB_PASSWORD'],
+          [
+            'The variables',
+            'DATABASE_URL, DB_HOST, DB_PORT, DB_NAME, DB_USER and DB_PASSWORD',
+          ],
         ],
       },
       note: {

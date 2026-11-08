@@ -6,11 +6,18 @@ import Link from 'next/link';
  * Wider than the sign-in card — the setup is a list of applications and
  * their state, and it needs the room.
  */
-export default function SetupLayout({ children }: { children: React.ReactNode }) {
+export default function SetupLayout({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
   return (
     <div className="min-h-screen bg-canvas">
       <header className="border-b border-rail px-4 py-3">
-        <Link href="/" className="text-sm font-bold uppercase tracking-widest text-text">
+        <Link
+          href="/"
+          className="text-sm font-bold uppercase tracking-widest text-text"
+        >
           fidscript
         </Link>
       </header>

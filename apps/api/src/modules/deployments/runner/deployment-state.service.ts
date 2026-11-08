@@ -10,6 +10,7 @@ import { UserGithubService } from '@/modules/app-auth/services/user-github.servi
 import { BuildConcurrencyService } from './build-concurrency.service';
 import { InstantAppConfigService } from '@/modules/instant/services/instant-app-config.service';
 import { scrubSecrets } from './scrub-secrets';
+import { DomainReconciliationQueueService } from '@/modules/domains/services/domain-reconciliation-queue.service';
 import { deploymentContainerName } from './container-name';
 
 @Injectable()
@@ -27,6 +28,7 @@ export class DeploymentStateService implements OnModuleInit {
     private github: UserGithubService,
     private buildQueue: BuildConcurrencyService,
     private instantConfig: InstantAppConfigService,
+    private domainVerification: DomainReconciliationQueueService,
   ) {}
 
   onModuleInit() {
@@ -385,6 +387,29 @@ export class DeploymentStateService implements OnModuleInit {
         // hostname is published by Traefik's Docker provider from the
         // container labels; this covers the rest.
         await this.routes.sync();
+
+        // The project has ONE production target: the names that pointed at
+        // the previous deployment follow the new one — that is what "the
+        // deployment replaced the live one" means to a person's domain.
+        await this.prisma.domain.updateMany({
+          where: { projectId, deploymentId: { not: deploymentId } },
+          data: { deploymentId },
+        });
+
+        // And ask for their verification now: the routes exist, the
+        // container is healthy — the certificate pre-warm and the HTTPS
+        // check should run this minute, not on the next schedule tick.
+        const attachedDomains = await this.prisma.domain.findMany({
+          where: { projectId, deploymentId },
+          select: { id: true },
+        });
+        for (const domain of attachedDomains) {
+          try {
+            await this.domainVerification.enqueue(domain.id, 'recovery');
+          } catch {
+            /* the queue is best-effort — the schedule still runs */
+          }
+        }
 
         // Clean up the previous deployment's container + image to prevent disk bloat.
         // We keep the container name convention from docker-run.service.ts: fidscript-{slug}-{deploymentId}

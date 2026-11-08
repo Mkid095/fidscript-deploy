@@ -43,7 +43,9 @@ export function MfaChallengeForm() {
       router.replace(next);
       router.refresh();
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'That code was not accepted.');
+      setError(
+        err instanceof Error ? err.message : 'That code was not accepted.',
+      );
       setCode('');
       setSubmitting(false);
     }
@@ -75,7 +77,12 @@ export function MfaChallengeForm() {
 
       {error ? <ErrorState message={error} /> : null}
 
-      <Button type="submit" variant="primary" loading={submitting} className="w-full">
+      <Button
+        type="submit"
+        variant="primary"
+        loading={submitting}
+        className="w-full"
+      >
         {submitting ? 'Checking…' : 'Verify'}
       </Button>
 
@@ -91,7 +98,10 @@ export function MfaChallengeForm() {
         >
           {useRecovery ? 'Use your authenticator app' : 'Use a recovery code'}
         </button>
-        <Link href="/login" className="text-text-muted transition hover:text-text">
+        <Link
+          href="/login"
+          className="text-text-muted transition hover:text-text"
+        >
           Use a different account
         </Link>
       </div>

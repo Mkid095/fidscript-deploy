@@ -22,13 +22,25 @@ export function EmailStatusCard({ status }: { status: EmailStatus | null }) {
 
   return (
     <Card className="divide-y divide-rail">
-      <Row term="MX" detail={status.mx.host ?? 'the mail exchanger'} state={status.mx.verified} />
+      <Row
+        term="MX"
+        detail={status.mx.host ?? 'the mail exchanger'}
+        state={status.mx.verified}
+      />
       <Row term="SPF" detail="the sender policy" state={status.spf.verified} />
       <Row term="DKIM" detail="the signing key" state={status.dkim.verified} />
-      <Row term="DMARC" detail="the reporting policy" state={status.dmarc.verified} />
+      <Row
+        term="DMARC"
+        detail="the reporting policy"
+        state={status.dmarc.verified}
+      />
       <Row
         term="Cloudflare"
-        detail={status.cloudflare.connected ? 'connected — the records can be fixed for you' : 'not connected'}
+        detail={
+          status.cloudflare.connected
+            ? 'connected — the records can be fixed for you'
+            : 'not connected'
+        }
         state={status.cloudflare.connected}
         neutral
       />
@@ -54,7 +66,13 @@ function Row({
         <p className="truncate text-xs text-text-dim">{detail}</p>
       </div>
       <Badge tone={neutral ? 'neutral' : state ? 'success' : 'warning'}>
-        {neutral ? (state ? 'connected' : 'not connected') : state ? 'verified' : 'pending'}
+        {neutral
+          ? state
+            ? 'connected'
+            : 'not connected'
+          : state
+            ? 'verified'
+            : 'pending'}
       </Badge>
     </div>
   );

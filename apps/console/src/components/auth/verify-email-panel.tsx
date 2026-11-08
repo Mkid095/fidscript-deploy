@@ -19,7 +19,9 @@ export function VerifyEmailPanel() {
   const params = useSearchParams();
   const token = params.get('token') ?? '';
 
-  const [state, setState] = useState<'checking' | 'verified' | 'failed'>('checking');
+  const [state, setState] = useState<'checking' | 'verified' | 'failed'>(
+    'checking',
+  );
   const [message, setMessage] = useState('');
   const [email, setEmail] = useState('');
   const [resent, setResent] = useState(false);
@@ -39,12 +41,16 @@ export function VerifyEmailPanel() {
       } catch (err) {
         if (cancelled) return;
         setState('failed');
-        setMessage(err instanceof Error ? err.message : 'That link is no longer valid.');
+        setMessage(
+          err instanceof Error ? err.message : 'That link is no longer valid.',
+        );
       }
     }
 
     void verify();
-    return () => { cancelled = true; };
+    return () => {
+      cancelled = true;
+    };
   }, [token]);
 
   async function resend() {
@@ -60,7 +66,9 @@ export function VerifyEmailPanel() {
       setResent(true);
       setMessage('');
     } catch (err) {
-      setMessage(err instanceof Error ? err.message : 'The link could not be sent.');
+      setMessage(
+        err instanceof Error ? err.message : 'The link could not be sent.',
+      );
     }
   }
 
@@ -71,7 +79,9 @@ export function VerifyEmailPanel() {
   if (state === 'verified') {
     return (
       <div className="space-y-4 text-center">
-        <h1 className="text-xl font-semibold tracking-tight text-text">Your email is confirmed</h1>
+        <h1 className="text-xl font-semibold tracking-tight text-text">
+          Your email is confirmed
+        </h1>
         <Link
           href="/login"
           className="inline-flex rounded-md bg-accent px-4 py-2 text-sm font-medium text-white transition hover:bg-accent-hover"
@@ -84,7 +94,9 @@ export function VerifyEmailPanel() {
 
   return (
     <div className="space-y-4">
-      <h1 className="text-xl font-semibold tracking-tight text-text">Confirm your email</h1>
+      <h1 className="text-xl font-semibold tracking-tight text-text">
+        Confirm your email
+      </h1>
       <ErrorState message={message} />
       {resent ? (
         <p className="text-sm text-text-muted">

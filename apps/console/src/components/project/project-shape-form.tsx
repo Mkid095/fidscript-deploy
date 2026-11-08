@@ -39,7 +39,8 @@ export function ProjectShapeForm({
   const [saved, setSaved] = useState(false);
   const [pending, startTransition] = useTransition();
 
-  const changed = values.shape !== shape || values.deploymentOn !== deploymentOn;
+  const changed =
+    values.shape !== shape || values.deploymentOn !== deploymentOn;
 
   const save = () => {
     setError(null);
@@ -61,7 +62,9 @@ export function ProjectShapeForm({
         legend="Shape"
         name="shape"
         value={values.shape}
-        onChange={(next) => setValues({ ...values, shape: next as ProjectShape })}
+        onChange={(next) =>
+          setValues({ ...values, shape: next as ProjectShape })
+        }
         options={[
           {
             value: 'BACKEND',
@@ -96,7 +99,12 @@ export function ProjectShapeForm({
       ) : null}
       {saved ? <p className="text-xs text-success">Saved.</p> : null}
 
-      <Button variant="primary" onClick={save} loading={pending} disabled={!changed}>
+      <Button
+        variant="primary"
+        onClick={save}
+        loading={pending}
+        disabled={!changed}
+      >
         Save
       </Button>
     </div>

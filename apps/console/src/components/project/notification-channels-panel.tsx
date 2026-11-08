@@ -58,7 +58,10 @@ export function NotificationChannelsPanel({
   const remove = (channelId: string) => {
     setError(null);
     startTransition(async () => {
-      const result = await deleteNotificationChannelAction(projectId, channelId);
+      const result = await deleteNotificationChannelAction(
+        projectId,
+        channelId,
+      );
       if (result.error) setError(result.error);
     });
   };
@@ -74,7 +77,10 @@ export function NotificationChannelsPanel({
         ) : (
           <ul className="divide-y divide-rail">
             {channels.map((channel) => (
-              <li key={channel.id} className="flex items-center justify-between gap-4 px-4 py-3">
+              <li
+                key={channel.id}
+                className="flex items-center justify-between gap-4 px-4 py-3"
+              >
                 <div className="min-w-0">
                   <p className="truncate text-sm text-text">{channel.name}</p>
                   <p className="truncate text-xs text-text-dim">
@@ -83,7 +89,12 @@ export function NotificationChannelsPanel({
                 </div>
                 <div className="flex items-center gap-2">
                   <Badge tone="neutral">{channel.type}</Badge>
-                  <Button variant="ghost" size="sm" onClick={() => remove(channel.id)} loading={pending}>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => remove(channel.id)}
+                    loading={pending}
+                  >
                     Remove
                   </Button>
                 </div>
@@ -121,7 +132,11 @@ export function NotificationChannelsPanel({
             type={type === 'email' ? 'email' : 'url'}
             value={target}
             onChange={(event) => setTarget(event.target.value)}
-            placeholder={type === 'email' ? 'team@example.com' : 'https://hooks.example.com/…'}
+            placeholder={
+              type === 'email'
+                ? 'team@example.com'
+                : 'https://hooks.example.com/…'
+            }
           />
 
           {error ? <ErrorState message={error} /> : null}

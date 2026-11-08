@@ -21,9 +21,21 @@ export const gettingStarted: DocPage = {
       table: {
         head: ['Level', 'Where it lives', 'The question it answers'],
         rows: [
-          ['Platform', '/overview · /projects · /settings', 'What is installed, and who am I?'],
-          ['Project', '/projects/[id]/…', 'What does this project do, and what does it have?'],
-          ['Application', '/settings/applications', 'Is the tooling this platform relies on healthy?'],
+          [
+            'Platform',
+            '/overview · /projects · /settings',
+            'What is installed, and who am I?',
+          ],
+          [
+            'Project',
+            '/projects/[id]/…',
+            'What does this project do, and what does it have?',
+          ],
+          [
+            'Application',
+            '/settings/applications',
+            'Is the tooling this platform relies on healthy?',
+          ],
         ],
       },
     },

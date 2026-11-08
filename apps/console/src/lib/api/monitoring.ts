@@ -28,7 +28,9 @@ export interface NotificationChannel {
 
 export async function getAlertRules(projectId: string): Promise<AlertRule[]> {
   const response = await api
-    .get<{ rules?: AlertRule[] }>(`/projects/${projectId}/monitoring/alerts/rules`)
+    .get<{
+      rules?: AlertRule[];
+    }>(`/projects/${projectId}/monitoring/alerts/rules`)
     .catch(() => ({ rules: [] }));
   return response.rules ?? [];
 }
@@ -37,7 +39,9 @@ export async function getNotificationChannels(
   projectId: string,
 ): Promise<NotificationChannel[]> {
   const response = await api
-    .get<{ channels?: NotificationChannel[] }>(`/projects/${projectId}/monitoring/channels`)
+    .get<{
+      channels?: NotificationChannel[];
+    }>(`/projects/${projectId}/monitoring/channels`)
     .catch(() => ({ channels: [] }));
   return response.channels ?? [];
 }

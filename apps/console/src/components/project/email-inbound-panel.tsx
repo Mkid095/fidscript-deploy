@@ -38,7 +38,12 @@ export function EmailInboundPanel({
   projectId: string;
   domains: EmailDomain[];
   mailboxes: EmailMailbox[];
-  webhooks: Array<{ id: string; url: string; events: string[]; isActive?: boolean }>;
+  webhooks: Array<{
+    id: string;
+    url: string;
+    events: string[];
+    isActive?: boolean;
+  }>;
 }) {
   const [url, setUrl] = useState('');
   const [events, setEvents] = useState<string[]>(['message.received']);
@@ -89,8 +94,8 @@ export function EmailInboundPanel({
           <div className="space-y-4 p-4">
             <p className="text-sm font-medium text-text">The catch-all</p>
             <p className="text-xs leading-relaxed text-text-muted">
-              The mail that arrives for an address nobody wrote to. It goes to one place — a
-              mailbox, an address of your own, or a webhook.
+              The mail that arrives for an address nobody wrote to. It goes to
+              one place — a mailbox, an address of your own, or a webhook.
             </p>
 
             <div className="grid gap-3 sm:grid-cols-2">
@@ -130,11 +135,17 @@ export function EmailInboundPanel({
               />
             ) : (
               <Input
-                label={target === 'external' ? 'The address' : 'The webhook URL'}
+                label={
+                  target === 'external' ? 'The address' : 'The webhook URL'
+                }
                 type={target === 'external' ? 'email' : 'url'}
                 value={targetValue}
                 onChange={(event) => setTargetValue(event.target.value)}
-                placeholder={target === 'external' ? 'you@example.com' : 'https://hooks.example.com/…'}
+                placeholder={
+                  target === 'external'
+                    ? 'you@example.com'
+                    : 'https://hooks.example.com/…'
+                }
               />
             )}
 
@@ -165,15 +176,22 @@ export function EmailInboundPanel({
         ) : (
           <ul className="divide-y divide-rail">
             {webhooks.map((webhook) => (
-              <li key={webhook.id} className="flex items-center justify-between gap-4 px-4 py-3">
+              <li
+                key={webhook.id}
+                className="flex items-center justify-between gap-4 px-4 py-3"
+              >
                 <div className="min-w-0">
-                  <p className="truncate font-mono text-xs text-text">{webhook.url}</p>
+                  <p className="truncate font-mono text-xs text-text">
+                    {webhook.url}
+                  </p>
                   <p className="mt-0.5 truncate text-xs text-text-dim">
                     {webhook.events.join(', ')}
                   </p>
                 </div>
                 <div className="flex items-center gap-2">
-                  <Badge tone={webhook.isActive === false ? 'neutral' : 'success'}>
+                  <Badge
+                    tone={webhook.isActive === false ? 'neutral' : 'success'}
+                  >
                     {webhook.isActive === false ? 'paused' : 'on'}
                   </Badge>
                   <Button
@@ -200,7 +218,9 @@ export function EmailInboundPanel({
           />
 
           <fieldset className="space-y-2">
-            <legend className="text-xs font-medium text-text-muted">What it is told</legend>
+            <legend className="text-xs font-medium text-text-muted">
+              What it is told
+            </legend>
             <div className="flex flex-wrap gap-2">
               {EVENTS.map((event) => {
                 const on = events.includes(event);
@@ -210,7 +230,9 @@ export function EmailInboundPanel({
                     type="button"
                     onClick={() =>
                       setEvents(
-                        on ? events.filter((entry) => entry !== event) : [...events, event],
+                        on
+                          ? events.filter((entry) => entry !== event)
+                          : [...events, event],
                       )
                     }
                     className={`rounded-md border px-2 py-1 text-xs transition-colors ${

@@ -29,14 +29,27 @@ import { DockerBuildWorkspaceService } from './providers/docker-build-workspace.
 import { StorageModule } from '@/modules/storage/storage.module';
 import { AppAuthModule } from '@/modules/app-auth/app-auth.module';
 import { AuthModule } from '@/modules/auth/auth.module';
+import { DomainsModule } from '@/modules/domains/domains.module';
 
 @Module({
   // AppAuthModule gives us UserGithubService so the build pipeline can inject
   // the connected GitHub token when cloning private repos (detect + deploy).
   // The Instant module links a deployment to the project's data plane: the
   // application gets its Instant app id and hosts in its environment.
-  imports: [InstantModule, StorageModule, AppAuthModule, forwardRef(() => AuthModule)],
-  controllers: [DeploymentsController, GithubWebhookController, DeploymentDetectController],
+  imports: [
+    InstantModule,
+    StorageModule,
+    AppAuthModule,
+    forwardRef(() => AuthModule),
+    // When a deployment succeeds, its domains are verified immediately —
+    // the certificate should not wait for the reconciliation schedule.
+    forwardRef(() => DomainsModule),
+  ],
+  controllers: [
+    DeploymentsController,
+    GithubWebhookController,
+    DeploymentDetectController,
+  ],
   providers: [
     DeploymentsService,
     DeploymentCrudService,

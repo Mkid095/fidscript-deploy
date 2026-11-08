@@ -23,20 +23,28 @@ const ids = (input: Partial<MenuInput>) =>
 
 describe('the project menu', () => {
   it('always has the project itself', () => {
-    expect(ids({})).toEqual(expect.arrayContaining(['overview', 'members', 'activity']));
+    expect(ids({})).toEqual(
+      expect.arrayContaining(['overview', 'members', 'activity']),
+    );
   });
 
   it('opens on the overview, not on a section', () => {
-    const overview = buildProjectMenu(BASE).find((item) => item.id === 'overview');
+    const overview = buildProjectMenu(BASE).find(
+      (item) => item.id === 'overview',
+    );
     expect(overview?.href).toBe('/projects/acme/overview');
   });
 
   it('shows the backend for a backend project', () => {
-    expect(ids({ shape: 'BACKEND' })).toEqual(expect.arrayContaining(['backend', 'connect']));
+    expect(ids({ shape: 'BACKEND' })).toEqual(
+      expect.arrayContaining(['backend', 'connect']),
+    );
   });
 
   it('shows the backend for a project that is both', () => {
-    expect(ids({ shape: 'BOTH' })).toEqual(expect.arrayContaining(['backend', 'connect']));
+    expect(ids({ shape: 'BOTH' })).toEqual(
+      expect.arrayContaining(['backend', 'connect']),
+    );
   });
 
   it('hides the backend for a deployment-only project', () => {
@@ -52,27 +60,37 @@ describe('the project menu', () => {
   });
 
   it('shows functions only when the project has one', () => {
-    expect(ids({ resources: { ...BASE.resources, functions: 0 } })).not.toContain('functions');
-    expect(ids({ resources: { ...BASE.resources, functions: 2 } })).toContain('functions');
+    expect(
+      ids({ resources: { ...BASE.resources, functions: 0 } }),
+    ).not.toContain('functions');
+    expect(ids({ resources: { ...BASE.resources, functions: 2 } })).toContain(
+      'functions',
+    );
   });
 
   it('shows databases only when the project has one', () => {
-    expect(ids({ resources: { ...BASE.resources, databases: 0 } })).not.toContain('databases');
-    expect(ids({ resources: { ...BASE.resources, databases: 1 } })).toContain('databases');
+    expect(
+      ids({ resources: { ...BASE.resources, databases: 0 } }),
+    ).not.toContain('databases');
+    expect(ids({ resources: { ...BASE.resources, databases: 1 } })).toContain(
+      'databases',
+    );
   });
 
   it('shows a capability only when it is switched on', () => {
-    expect(ids({ capabilities: { email: true, whatsapp: false, packages: false } })).toContain(
-      'email',
-    );
-    expect(ids({ capabilities: { email: true, whatsapp: false, packages: false } })).not.toContain(
-      'whatsapp',
-    );
+    expect(
+      ids({ capabilities: { email: true, whatsapp: false, packages: false } }),
+    ).toContain('email');
+    expect(
+      ids({ capabilities: { email: true, whatsapp: false, packages: false } }),
+    ).not.toContain('whatsapp');
   });
 
   it('shows what can be observed only when something is emitting', () => {
     expect(ids({})).not.toContain('monitoring');
-    expect(ids({ resources: { ...BASE.resources, deployments: 1 } })).toContain('monitoring');
+    expect(ids({ resources: { ...BASE.resources, deployments: 1 } })).toContain(
+      'monitoring',
+    );
   });
 
   it('hides the settings from anybody who cannot use it', () => {

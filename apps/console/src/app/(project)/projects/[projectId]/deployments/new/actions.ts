@@ -79,6 +79,7 @@ export async function createDeploymentAction(
     branch: string;
     envVars: Record<string, string>;
     subdomain?: string;
+    domainId?: string;
   },
 ): Promise<{ ok?: boolean; deploymentId?: string; error?: string }> {
   try {
@@ -94,6 +95,7 @@ export async function createDeploymentAction(
           ? { envVars: input.envVars }
           : {}),
         ...(input.subdomain ? { subdomain: input.subdomain } : {}),
+        ...(input.domainId ? { domainId: input.domainId } : {}),
       },
     );
     revalidatePath(`/projects/${projectId}/deployments`);

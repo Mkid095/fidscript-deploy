@@ -42,11 +42,19 @@ export function AreaChart({
   const lines = series.map((entry) => ({
     name: entry.name,
     path: entry.points
-      .map((point, index) => `${index === 0 ? 'M' : 'L'} ${x(point.at).toFixed(1)} ${y(point.value).toFixed(1)}`)
+      .map(
+        (point, index) =>
+          `${index === 0 ? 'M' : 'L'} ${x(point.at).toFixed(1)} ${y(point.value).toFixed(1)}`,
+      )
       .join(' '),
     area: `${entry.points
-      .map((point, index) => `${index === 0 ? 'M' : 'L'} ${x(point.at).toFixed(1)} ${y(point.value).toFixed(1)}`)
-      .join(' ')} L ${x(entry.points[entry.points.length - 1].at).toFixed(1)} ${height - 12} L ${x(entry.points[0].at).toFixed(1)} ${height - 12} Z`,
+      .map(
+        (point, index) =>
+          `${index === 0 ? 'M' : 'L'} ${x(point.at).toFixed(1)} ${y(point.value).toFixed(1)}`,
+      )
+      .join(
+        ' ',
+      )} L ${x(entry.points[entry.points.length - 1].at).toFixed(1)} ${height - 12} L ${x(entry.points[0].at).toFixed(1)} ${height - 12} Z`,
     last: entry.points[entry.points.length - 1]?.value ?? 0,
   }));
 
@@ -87,10 +95,15 @@ export function AreaChart({
 
       <ul className="mt-2 flex flex-wrap gap-x-4 gap-y-1">
         {lines.slice(0, 6).map((line) => (
-          <li key={line.name} className="flex items-center gap-1.5 text-xs text-text-dim">
+          <li
+            key={line.name}
+            className="flex items-center gap-1.5 text-xs text-text-dim"
+          >
             <span className="size-1.5 rounded-full bg-accent" />
             <span className="truncate">{line.name}</span>
-            <span className="font-mono text-text-muted">{format(line.last)}</span>
+            <span className="font-mono text-text-muted">
+              {format(line.last)}
+            </span>
           </li>
         ))}
       </ul>
@@ -124,8 +137,12 @@ export function BarList({
       {sorted.map((sample) => (
         <li key={sample.name}>
           <div className="flex items-baseline justify-between gap-3">
-            <span className="truncate text-xs text-text-muted">{sample.name}</span>
-            <span className="shrink-0 font-mono text-xs text-text">{format(sample.value)}</span>
+            <span className="truncate text-xs text-text-muted">
+              {sample.name}
+            </span>
+            <span className="shrink-0 font-mono text-xs text-text">
+              {format(sample.value)}
+            </span>
           </div>
           <div className="mt-1 h-1.5 overflow-hidden rounded-full bg-surface-3">
             <div
@@ -159,7 +176,9 @@ export function Meter({
         <span className="text-sm text-text-muted">{label}</span>
         <span className="text-sm text-text">
           {format(used)}
-          {total > 0 ? <span className="text-text-dim"> of {format(total)}</span> : null}
+          {total > 0 ? (
+            <span className="text-text-dim"> of {format(total)}</span>
+          ) : null}
         </span>
       </div>
       <div className="mt-2 h-2 overflow-hidden rounded-full bg-surface-3">

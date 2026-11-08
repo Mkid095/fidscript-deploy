@@ -57,7 +57,11 @@ export function EmailMailboxesSection({
   const resetPassword = (mailboxId: string) => {
     setError(null);
     startTransition(async () => {
-      const result = await resetMailboxPasswordAction(projectId, mailboxId, newPassword);
+      const result = await resetMailboxPasswordAction(
+        projectId,
+        mailboxId,
+        newPassword,
+      );
       if (result.error) setError(result.error);
       else {
         setResetting(null);
@@ -89,7 +93,10 @@ export function EmailMailboxesSection({
     <div className="space-y-3">
       <Card>
         {mailboxes.length === 0 ? (
-          <EmptyState title="No mailbox yet" body="A mailbox is an address the mail arrives at." />
+          <EmptyState
+            title="No mailbox yet"
+            body="A mailbox is an address the mail arrives at."
+          />
         ) : (
           <ul className="divide-y divide-rail">
             {mailboxes.map((mailbox) => (
@@ -101,7 +108,9 @@ export function EmailMailboxesSection({
                       {mailbox.domain ? `@${mailbox.domain}` : ''}
                     </p>
                     {mailbox.name ? (
-                      <p className="truncate text-xs text-text-dim">{mailbox.name}</p>
+                      <p className="truncate text-xs text-text-dim">
+                        {mailbox.name}
+                      </p>
                     ) : null}
                   </div>
                   <div className="flex items-center gap-3">
@@ -111,7 +120,11 @@ export function EmailMailboxesSection({
                     <Button
                       variant="ghost"
                       size="sm"
-                      onClick={() => setResetting(resetting === mailbox.id ? null : mailbox.id)}
+                      onClick={() =>
+                        setResetting(
+                          resetting === mailbox.id ? null : mailbox.id,
+                        )
+                      }
                     >
                       New password
                     </Button>

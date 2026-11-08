@@ -37,6 +37,10 @@ export type DetectedFramework =
   | 'sveltekit'
   | 'vite'
   | 'node'
+  | 'django'
+  | 'flask'
+  | 'fastapi'
+  | 'python'
   | 'static'
   | 'unknown';
 
@@ -50,6 +54,8 @@ export interface BuildPlan {
   frameworkLabel: string;
   frameworkVersion?: string;
   buildCommand: string;
+  /** The dependency install for the Python family. */
+  installCommand?: string;
   startCommand: string;
   outputDirectory: string;
   port: number;
@@ -70,6 +76,8 @@ export interface BuildPlan {
 interface FrameworkInfo {
   framework: DetectedFramework;
   buildCommand?: string;
+  /** The dependency install the repository asks for (Python builders). */
+  installCommand?: string;
   startCommand: string;
   port: number;
   outputDir: string;
@@ -88,6 +96,10 @@ const FRAMEWORK_META: Record<string, { label: string; pkg: string }> = {
   vite: { label: 'Vite', pkg: 'vite' },
   node: { label: 'Node.js', pkg: '' },
   static: { label: 'Static', pkg: '' },
+  django: { label: 'Django', pkg: 'django' },
+  flask: { label: 'Flask', pkg: 'flask' },
+  fastapi: { label: 'FastAPI', pkg: 'fastapi' },
+  python: { label: 'Python', pkg: '' },
   unknown: { label: 'Unknown', pkg: '' },
 };
 
@@ -119,6 +131,7 @@ export class NodeBuildpackProvider implements BuildProvider {
       frameworkLabel: meta.label,
       frameworkVersion: info.version,
       buildCommand: info.buildCommand || 'npm run build',
+      installCommand: info.installCommand,
       startCommand: info.startCommand,
       outputDirectory: info.outputDir,
       port: info.port,
@@ -350,6 +363,12 @@ export class NodeBuildpackProvider implements BuildProvider {
     // 5. Vite
     if (this.hasConfigFile(ws, 'vite.config')) return this.detectVite(ws);
 
+    // 5b. Python — requirements.txt, pyproject.toml, Pipfile. A repository
+    // that carries any of them is a Python application even when a stray
+    // package.json sits beside it.
+    const python = this.detectPythonMarker(ws);
+    if (python) return python;
+
     // 6. Fall back to package.json script inspection
     if (existsSync(join(ws, 'package.json'))) {
       const pkg = this.readPackage(ws);
@@ -518,6 +537,147 @@ export class NodeBuildpackProvider implements BuildProvider {
     };
   }
 
+  /** The Python application a workspace holds, if it holds one. */
+  private detectPythonMarker(ws: string): FrameworkInfo | null {
+    const hasRequirements = existsSync(join(ws, 'requirements.txt'));
+    const hasPyproject = existsSync(join(ws, 'pyproject.toml'));
+    const hasPipfile = existsSync(join(ws, 'Pipfile'));
+    const hasManage = existsSync(join(ws, 'manage.py'));
+    if (!hasRequirements && !hasPyproject && !hasPipfile) return null;
+
+    const deps = this.readPythonDeps(ws);
+    const isDjango = hasManage || deps.some((d) => d.startsWith('django'));
+    const isFlask = deps.some((d) => d === 'flask');
+    const isFastapi = deps.some((d) => d === 'fastapi' || d === 'uvicorn');
+
+    const install = hasRequirements
+      ? 'pip install --no-cache-dir -r requirements.txt'
+      : hasPyproject
+        ? 'pip install --no-cache-dir .'
+        : 'pip install --no-cache-dir pipenv && pipenv install --system --deploy';
+    const setInstall = (info: FrameworkInfo): FrameworkInfo => ({
+      ...info,
+      installCommand: install,
+    });
+
+    if (isDjango) {
+      const wsgi = this.guessDjangoModule(ws);
+      return setInstall({
+        framework: 'django',
+        startCommand: `gunicorn --workers 2 --threads 4 --bind 0.0.0.0:${'${PORT:-8000}'} ${wsgi}.wsgi:application`,
+        port: 8000,
+        outputDir: '.',
+      });
+    }
+    if (isFastapi) {
+      const module = this.guessPythonModule(ws, ['main', 'app']);
+      const app = this.pythonHasText(join(ws, `${module}.py`), '@app.')
+        ? module
+        : 'main';
+      return setInstall({
+        framework: 'fastapi',
+        startCommand: `uvicorn ${app}:app --host 0.0.0.0 --port ${'${PORT:-8000}'}`,
+        port: 8000,
+        outputDir: '.',
+      });
+    }
+    if (isFlask) {
+      const module = this.guessPythonModule(ws, ['app', 'wsgi', 'server']);
+      return setInstall({
+        framework: 'flask',
+        startCommand: `gunicorn --workers 2 --threads 4 --bind 0.0.0.0:${'${PORT:-8000}'} ${module}:app`,
+        port: 8000,
+        outputDir: '.',
+      });
+    }
+    return setInstall({
+      framework: 'python',
+      startCommand: `sh -c "python main.py || python app.py"`,
+      port: 8000,
+      outputDir: '.',
+    });
+  }
+
+  /** The dependency names a requirements.txt / pyproject.toml / Pipfile declares. */
+  private readPythonDeps(ws: string): string[] {
+    const deps: string[] = [];
+    try {
+      const req = readFileSync(join(ws, 'requirements.txt'), 'utf-8');
+      for (const line of req.split('\n')) {
+        const name = line
+          .trim()
+          .split(/[=<>~!\[\s]/)[0]
+          .toLowerCase();
+        if (name && !name.startsWith('#') && !name.startsWith('-'))
+          deps.push(name);
+      }
+    } catch {
+      /* no requirements.txt */
+    }
+    try {
+      const pyproject = readFileSync(join(ws, 'pyproject.toml'), 'utf-8');
+      for (const match of pyproject.matchAll(
+        /"(?:django|flask|fastapi|uvicorn)[=<>~!][^"]*"/gi,
+      )) {
+        deps.push(match[0].replace(/["=<>~!].*/, '').toLowerCase());
+      }
+    } catch {
+      /* no pyproject.toml */
+    }
+    try {
+      const pipfile = readFileSync(join(ws, 'Pipfile'), 'utf-8');
+      for (const match of pipfile.matchAll(
+        /^(?:django|flask|fastapi|uvicorn)\s*=/gim,
+      )) {
+        deps.push(match[0].split('=')[0].trim().toLowerCase());
+      }
+    } catch {
+      /* no Pipfile */
+    }
+    return deps;
+  }
+
+  /** The Django settings module: the directory whose settings.py sits next to manage.py. */
+  private guessDjangoModule(ws: string): string {
+    try {
+      const entries = readdirSync(ws, { withFileTypes: true });
+      for (const entry of entries) {
+        if (
+          entry.isDirectory() &&
+          existsSync(join(ws, entry.name, 'settings.py'))
+        ) {
+          return entry.name;
+        }
+      }
+      // manage.py names it: `os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'x.wsgi...')`
+      const manage = readFileSync(join(ws, 'manage.py'), 'utf-8');
+      const match =
+        /DJANGO_SETTINGS_MODULE['"],\s*['"]([A-Za-z0-9_.]+)\.wsgi/.exec(manage);
+      if (match) return match[1];
+    } catch {
+      /* fall through */
+    }
+    return 'app';
+  }
+
+  /** The most likely application module, by the names Python servers use. */
+  private guessPythonModule(ws: string, candidates: string[]): string {
+    for (const candidate of candidates) {
+      for (const ext of ['.py', '/__init__.py']) {
+        if (existsSync(join(ws, `${candidate}${ext}`))) return candidate;
+      }
+    }
+    return candidates[0];
+  }
+
+  private pythonHasText(path: string, needle: string): boolean {
+    try {
+      return readFileSync(path, 'utf-8').includes(needle);
+    } catch {
+      return false;
+    }
+  }
+
   /**
    * Detect monorepo tool from workspace root files.
    * Priority: pnpm-lock.yaml > turbo.json > nx.json > lerna > npm workspaces.
@@ -563,6 +723,11 @@ export class NodeBuildpackProvider implements BuildProvider {
         return this.dockerfileVite(info);
       case 'static':
         return this.dockerfileStatic();
+      case 'django':
+      case 'flask':
+      case 'fastapi':
+      case 'python':
+        return this.dockerfilePython(info);
       case 'node':
       default:
         return this.dockerfileNode(info);
@@ -813,6 +978,36 @@ HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \\
   CMD wget -qO- http://localhost:${info.port}/ || exit 1
 CMD ["sh", "-c", "${info.startCommand}"]
 `;
+  }
+
+  // ── Python — Django, Flask, FastAPI, and plain services ──
+
+  /**
+   * One runtime for the Python family. The start command differs (gunicorn
+   * for the WSGI pair, uvicorn for FastAPI); the shape is the same: slim
+   * image, dependencies, the process bound to the port the platform
+   * health-checks.
+   */
+  private dockerfilePython(info: FrameworkInfo): string {
+    return `
+FROM python:3.12-slim
+WORKDIR /app
+ENV PYTHONUNBUFFERED=1 PYTHONDONTWRITEBYTECODE=1 PORT=${info.port}
+COPY requirements.txt* pyproject.toml* Pipfile* ./
+RUN ${info.installCommand ?? 'pip install --no-cache-dir -r requirements.txt'}
+COPY . .
+EXPOSE ${info.port}
+HEALTHCHECK --interval=30s --timeout=5s --start-period=15s --retries=3 \
+  CMD python -c "import urllib.request; urllib.request.urlopen('http://localhost:${'${PORT:-8000}'}')" || exit 1
+CMD ["sh", "-c", "${info.startCommand}"]
+`;
+  }
+
+  /** The dependency install the repository asks for, in the order it asks. */
+  private pythonInstallCommand(): string {
+    // The workspace was copied whole: requirements.txt wins when present,
+    // pyproject next, Pipfile last — the same order detection read them.
+    return 'pip install --no-cache-dir -r requirements.txt 2>/dev/null || pip install --no-cache-dir . 2>/dev/null || pip install --no-cache-dir pipenv && pipenv install --system --deploy';
   }
 
   // ── Static HTML ──

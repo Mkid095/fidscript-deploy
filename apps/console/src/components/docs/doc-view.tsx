@@ -15,9 +15,14 @@ export function DocView({ page }: { page: DocPage }) {
   return (
     <div className="mx-auto w-full max-w-6xl px-4 py-8 sm:px-6">
       <div className="grid grid-cols-1 gap-10 lg:grid-cols-[220px_minmax(0,1fr)]">
-        <nav aria-label="The guide" className="lg:sticky lg:top-6 lg:self-start">
+        <nav
+          aria-label="The guide"
+          className="lg:sticky lg:top-6 lg:self-start"
+        >
           {DOC_GROUPS.map((group) => {
-            const pages = DOC_PAGES.filter((candidate) => candidate.group === group);
+            const pages = DOC_PAGES.filter(
+              (candidate) => candidate.group === group,
+            );
             if (pages.length === 0) return null;
             return (
               <div key={group} className="mb-5 last:mb-0">
@@ -29,7 +34,9 @@ export function DocView({ page }: { page: DocPage }) {
                     <li key={candidate.slug}>
                       <Link
                         href={`/docs/${candidate.slug}`}
-                        aria-current={candidate.slug === page.slug ? 'page' : undefined}
+                        aria-current={
+                          candidate.slug === page.slug ? 'page' : undefined
+                        }
                         className={`block rounded-md px-2 py-1 text-sm transition-colors ${
                           candidate.slug === page.slug
                             ? 'bg-surface-3 font-medium text-text'
@@ -54,14 +61,18 @@ export function DocView({ page }: { page: DocPage }) {
             <h1 className="mt-1.5 text-2xl font-semibold tracking-tight text-text">
               {page.title}
             </h1>
-            <p className="mt-2 text-sm leading-relaxed text-text-muted">{page.description}</p>
+            <p className="mt-2 text-sm leading-relaxed text-text-muted">
+              {page.description}
+            </p>
           </header>
 
           <div className="space-y-8 pt-8">
             {page.blocks.map((block, index) => (
               <section key={index}>
                 {block.heading ? (
-                  <h2 className="mb-3 text-base font-semibold text-text">{block.heading}</h2>
+                  <h2 className="mb-3 text-base font-semibold text-text">
+                    {block.heading}
+                  </h2>
                 ) : null}
 
                 {block.paragraphs?.map((paragraph, position) => (
@@ -101,7 +112,10 @@ export function DocView({ page }: { page: DocPage }) {
                       </thead>
                       <tbody>
                         {block.table.rows.map((row, position) => (
-                          <tr key={position} className="border-b border-rail last:border-0">
+                          <tr
+                            key={position}
+                            className="border-b border-rail last:border-0"
+                          >
                             {row.map((cell, column) => (
                               <td
                                 key={column}
@@ -137,12 +151,16 @@ export function DocView({ page }: { page: DocPage }) {
                   >
                     <p
                       className={`text-sm font-medium ${
-                        block.note.kind === 'warning' ? 'text-warning' : 'text-info'
+                        block.note.kind === 'warning'
+                          ? 'text-warning'
+                          : 'text-info'
                       }`}
                     >
                       {block.note.title}
                     </p>
-                    <p className="mt-1 text-sm leading-relaxed text-text-muted">{block.note.body}</p>
+                    <p className="mt-1 text-sm leading-relaxed text-text-muted">
+                      {block.note.body}
+                    </p>
                   </div>
                 ) : null}
               </section>
@@ -156,7 +174,10 @@ export function DocView({ page }: { page: DocPage }) {
             <Link href="/docs" className="text-sm text-accent hover:underline">
               The whole guide
             </Link>
-            <Link href="/login" className="text-sm text-text-muted hover:text-text">
+            <Link
+              href="/login"
+              className="text-sm text-text-muted hover:text-text"
+            >
               Sign in
             </Link>
           </nav>

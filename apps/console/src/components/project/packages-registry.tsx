@@ -48,11 +48,19 @@ export function PackagesRegistry({
           description="A private registry, so your packages have a home that does not depend on a public one."
         />
         <Card className="divide-y divide-rail">
-          <Row term="npm" value={registryUrl ?? 'The platform domain is not known'} />
-          <Row term="Maven" value={mavenUrl ?? 'Not served by this deployment'} />
+          <Row
+            term="npm"
+            value={registryUrl ?? 'The platform domain is not known'}
+          />
+          <Row
+            term="Maven"
+            value={mavenUrl ?? 'Not served by this deployment'}
+          />
           <Row
             term="Reachability"
-            value={reachable ? 'The registry answers' : 'The registry did not answer'}
+            value={
+              reachable ? 'The registry answers' : 'The registry did not answer'
+            }
           />
           <Row term="Packages" value={String(packages.length)} />
         </Card>
@@ -102,14 +110,19 @@ export function PackagesRegistry({
           ) : (
             <ul className="divide-y divide-rail">
               {shown.map((entry) => (
-                <PackageRow key={entry.name} entry={entry} detail={details[entry.name] ?? null} />
+                <PackageRow
+                  key={entry.name}
+                  entry={entry}
+                  detail={details[entry.name] ?? null}
+                />
               ))}
             </ul>
           )}
         </Card>
         {packages.length > shown.length ? (
           <p className="mt-2 text-xs text-text-dim">
-            Showing {shown.length} of {packages.length}. The registry holds the rest.
+            Showing {shown.length} of {packages.length}. The registry holds the
+            rest.
           </p>
         ) : null}
       </section>

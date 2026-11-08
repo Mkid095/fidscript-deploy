@@ -44,6 +44,8 @@ export interface Project {
   lastActivityAt?: string | null;
   /** When a deployment of this project last succeeded. */
   lastDeployAt?: string | null;
+  /** The deployment currently answering for this project. */
+  activeDeploymentId?: string | null;
   createdAt: string;
   updatedAt: string;
 }

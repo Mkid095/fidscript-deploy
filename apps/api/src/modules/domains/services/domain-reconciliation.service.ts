@@ -12,7 +12,14 @@ interface ReconciliationResult {
   score: number;
   breakdown: { dns: number; ssl: number; email: number; routing: number };
   status: HealthStatus;
-  checks: { dnsOk: boolean; sslOk: boolean; emailOk: boolean; routingOk: boolean };
+  checks: {
+    dnsOk: boolean;
+    sslOk: boolean;
+    emailOk: boolean;
+    routingOk: boolean;
+  };
+  proxy: 'proxied' | 'dns_only' | 'unknown';
+  sslExpiresInDays: number | null;
   errors: string[];
   durationMs: number;
   previousStatus: HealthStatus | null;
@@ -57,21 +64,38 @@ export class DomainReconciliationService {
 
   // ── Public entry point ──────────────────────────────────────────────────────
 
-  async reconcile(domainId: string, reason: VerificationReason): Promise<ReconciliationResult> {
+  async reconcile(
+    domainId: string,
+    reason: VerificationReason,
+  ): Promise<ReconciliationResult> {
     const domain = await this.prisma.domain.findUnique({
       where: { id: domainId },
-      include: { deployment: { select: { deploymentUrl: true } } },
+      include: {
+        deployment: { select: { deploymentUrl: true, status: true } },
+      },
     });
     if (!domain) throw new Error(`Domain ${domainId} not found`);
+
+    // A domain pointed at a running deployment deserves its certificate
+    // before the first visitor. One tolerant request starts Traefik's ACME
+    // dance; the checks below then say whether it landed.
+    if (domain.deploymentId && domain.deployment?.status === 'SUCCESS') {
+      await this.checks.prewarmCertificate(domain.domain);
+    }
 
     const start = Date.now();
     const previousStatus = (domain.healthStatus ?? 'PENDING') as HealthStatus;
     const previousScore = domain.lastHealthScore ?? null;
 
-    await this.emit(domainId, domain.projectId, 'domains.verification.started', {
-      domain: domain.domain,
-      reason,
-    });
+    await this.emit(
+      domainId,
+      domain.projectId,
+      'domains.verification.started',
+      {
+        domain: domain.domain,
+        reason,
+      },
+    );
 
     // DNS fingerprint check (before running checks)
     const fingerprintResult = await this.detectDnsFingerprint(domain);
@@ -82,10 +106,21 @@ export class DomainReconciliationService {
     const durationMs = Date.now() - start;
 
     // Persist all outcomes
-    await this.recordRun(domain, { ...result, durationMs, previousStatus, previousScore, reason });
+    await this.recordRun(domain, {
+      ...result,
+      durationMs,
+      previousStatus,
+      previousScore,
+      reason,
+    });
     await this.persistHealthResult(domain, result);
     await this.manageIncidents(domain, result, previousStatus);
-    await this.updateDomainState(domain, result, reason, fingerprintResult.changed);
+    await this.updateDomainState(
+      domain,
+      result,
+      reason,
+      fingerprintResult.changed,
+    );
     await this.scheduleNext(domain, result);
 
     return { ...result, durationMs, previousStatus, previousScore };
@@ -98,42 +133,60 @@ export class DomainReconciliationService {
    * Compares against lastDnsFingerprint to detect changes.
    */
   async computeDnsFingerprint(domainId: string): Promise<string> {
-    const records = await this.checks.getDnsRecordsForFingerprint(domainId as any);
-    const normalized = JSON.stringify(records.sort((a, b) => a.type.localeCompare(b.type)));
+    const records = await this.checks.getDnsRecordsForFingerprint(
+      domainId as any,
+    );
+    const normalized = JSON.stringify(
+      records.sort((a, b) => a.type.localeCompare(b.type)),
+    );
     return createHash('sha256').update(normalized).digest('hex');
   }
 
-  private async detectDnsFingerprint(domain: { id: string; lastDnsFingerprint: string | null }) {
+  private async detectDnsFingerprint(domain: {
+    id: string;
+    lastDnsFingerprint: string | null;
+  }) {
     const current = await this.computeDnsFingerprint(domain.id);
-    const changed = !!domain.lastDnsFingerprint && current !== domain.lastDnsFingerprint;
+    const changed =
+      !!domain.lastDnsFingerprint && current !== domain.lastDnsFingerprint;
     return { fingerprint: current, changed };
   }
 
   // ── Check pipeline ───────────────────────────────────────────────────────────
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  private async runChecks(domain: any): Promise<Omit<ReconciliationResult, 'durationMs' | 'previousStatus' | 'previousScore'>> {
+  private async runChecks(
+    domain: any,
+  ): Promise<
+    Omit<
+      ReconciliationResult,
+      'durationMs' | 'previousStatus' | 'previousScore'
+    >
+  > {
     const errors: string[] = [];
     let dnsOk = false;
     let routingOk = false;
     let sslOk = false;
     let emailOk = false;
     let sslExpiresInDays: number | null = null;
+    let proxy: 'proxied' | 'dns_only' | 'unknown' = 'unknown';
     const start = Date.now();
 
     try {
-      const [dns, routing, ssl, sslExp, email] = await Promise.all([
+      const [dns, routing, ssl, sslExp, email, proxied] = await Promise.all([
         this.checks.checkDnsPropagation(domain),
         this.checks.checkHttpRouting(domain),
         this.checks.checkSsl(domain),
         this.checks.getSslExpiresInDays(domain),
         this.checks.checkEmailRecords(domain),
+        this.checks.detectProxy(domain.domain),
       ]);
       dnsOk = dns;
       routingOk = routing;
       sslOk = ssl;
       sslExpiresInDays = sslExp;
       emailOk = email;
+      proxy = proxied;
     } catch (err) {
       errors.push(err instanceof Error ? err.message : String(err));
     }
@@ -146,7 +199,8 @@ export class DomainReconciliationService {
       email: emailOk ? 20 : 0,
       routing: routingOk ? 20 : 0,
     };
-    const score = breakdown.dns + breakdown.ssl + breakdown.email + breakdown.routing;
+    const score =
+      breakdown.dns + breakdown.ssl + breakdown.email + breakdown.routing;
     const status = this.deriveStatus(score, dnsOk, routingOk, sslOk);
 
     // Write health check record
@@ -161,7 +215,12 @@ export class DomainReconciliationService {
         breakdown,
         responseTimeMs,
         sslExpiresInDays,
-        status: status === 'HEALTHY' ? 'ok' : status === 'DEGRADED' ? 'degraded' : 'broken',
+        status:
+          status === 'HEALTHY'
+            ? 'ok'
+            : status === 'DEGRADED'
+              ? 'degraded'
+              : 'broken',
       },
     });
 
@@ -170,17 +229,32 @@ export class DomainReconciliationService {
       where: { id: domain.id },
       data: {
         sslLastCheckedAt: new Date(),
-        sslExpiresAt: sslExpiresInDays != null
-          ? new Date(Date.now() + sslExpiresInDays * 86_400_000)
-          : undefined,
+        sslExpiresAt:
+          sslExpiresInDays != null
+            ? new Date(Date.now() + sslExpiresInDays * 86_400_000)
+            : undefined,
         sslLastError: sslOk ? null : (errors[0] ?? 'SSL check failed'),
       },
     });
 
-    return { domainId: domain.id, score, breakdown, status, checks: { dnsOk, sslOk, emailOk, routingOk }, errors };
+    return {
+      domainId: domain.id,
+      score,
+      breakdown,
+      status,
+      checks: { dnsOk, sslOk, emailOk, routingOk },
+      proxy,
+      sslExpiresInDays,
+      errors,
+    };
   }
 
-  private deriveStatus(score: number, dnsOk: boolean, routingOk: boolean, sslOk: boolean): HealthStatus {
+  private deriveStatus(
+    score: number,
+    dnsOk: boolean,
+    routingOk: boolean,
+    sslOk: boolean,
+  ): HealthStatus {
     if (!dnsOk || !routingOk) return 'FAILED';
     if (score >= 80) return 'HEALTHY';
     if (score >= 50) return 'DEGRADED';
@@ -239,23 +313,31 @@ export class DomainReconciliationService {
 
   private async manageIncidents(
     domain: { id: string; domain: string; projectId: string },
-    result: { status: HealthStatus; score: number; checks: { dnsOk: boolean; sslOk: boolean; routingOk: boolean } },
+    result: {
+      status: HealthStatus;
+      score: number;
+      checks: { dnsOk: boolean; sslOk: boolean; routingOk: boolean };
+    },
     previousStatus: HealthStatus,
   ) {
     // Open incidents if domain just entered FAILED/DEGRADED
-    if ((result.status === 'FAILED' || result.status === 'DEGRADED') && previousStatus !== result.status) {
+    if (
+      (result.status === 'FAILED' || result.status === 'DEGRADED') &&
+      previousStatus !== result.status
+    ) {
       const incidentType = !result.checks.routingOk
         ? 'routing_failure'
         : !result.checks.dnsOk
-        ? 'dns_missing'
-        : !result.checks.sslOk
-        ? 'ssl_expired'
-        : 'mx_invalid';
+          ? 'dns_missing'
+          : !result.checks.sslOk
+            ? 'ssl_expired'
+            : 'mx_invalid';
 
       const severity = result.status === 'FAILED' ? 'critical' : 'warning';
-      const title = result.status === 'FAILED'
-        ? `${domain.domain}: ${incidentType.replace('_', ' ')}`
-        : `${domain.domain}: degraded health (score ${result.score})`;
+      const title =
+        result.status === 'FAILED'
+          ? `${domain.domain}: ${incidentType.replace('_', ' ')}`
+          : `${domain.domain}: degraded health (score ${result.score})`;
 
       await this.prisma.domainIncident.create({
         data: {
@@ -289,13 +371,18 @@ export class DomainReconciliationService {
       });
 
       for (const incident of openIncidents) {
-        await this.emit(domain.id, domain.projectId, 'domains.incident.resolved', {
-          domain: domain.domain,
-          type: incident.type,
-          title: incident.title,
-          openedAt: incident.openedAt.toISOString(),
-          resolvedAt: new Date().toISOString(),
-        });
+        await this.emit(
+          domain.id,
+          domain.projectId,
+          'domains.incident.resolved',
+          {
+            domain: domain.domain,
+            type: incident.type,
+            title: incident.title,
+            openedAt: incident.openedAt.toISOString(),
+            resolvedAt: new Date().toISOString(),
+          },
+        );
       }
     }
   }
@@ -303,8 +390,23 @@ export class DomainReconciliationService {
   // ── State transitions ───────────────────────────────────────────────────────
 
   private async updateDomainState(
-    domain: { id: string; domain: string; projectId: string; dnsStatus: string; sslStatus: string },
-    result: { status: HealthStatus; score: number; checks: { sslOk: boolean; routingOk: boolean } },
+    domain: {
+      id: string;
+      domain: string;
+      projectId: string;
+      dnsStatus: string;
+      sslStatus: string;
+      sslIssuedAt: Date | null;
+      sslExpiresAt: Date | null;
+      capabilities: unknown;
+    },
+    result: {
+      status: HealthStatus;
+      score: number;
+      checks: { sslOk: boolean; routingOk: boolean };
+      proxy: 'proxied' | 'dns_only' | 'unknown';
+      sslExpiresInDays: number | null;
+    },
     reason: VerificationReason,
     dnsChanged: boolean,
   ) {
@@ -316,20 +418,90 @@ export class DomainReconciliationService {
         domain: domain.domain,
         reason,
       });
-      this.logger.log(`[domain-recon] DNS fingerprint changed for ${domain.domain}`);
+      this.logger.log(
+        `[domain-recon] DNS fingerprint changed for ${domain.domain}`,
+      );
     }
 
-    // TLS_PENDING → ACTIVE when SSL confirmed
-    if (checks.sslOk && domain.sslStatus === 'TLS_PENDING') {
+    // The proxy answer is persisted whenever it is an answer at all — the
+    // domain card says which mode the name is in, because the instructions
+    // differ (proxied: Cloudflare terminates first, origin cert still
+    // needed, HTTP-01 impossible).
+    if (result.proxy !== 'unknown') {
+      const capabilities = (domain.capabilities ?? {}) as Record<
+        string,
+        unknown
+      >;
+      if (capabilities.proxy !== result.proxy) {
+        await this.prisma.domain.update({
+          where: { id: domain.id },
+          data: { capabilities: { ...capabilities, proxy: result.proxy } },
+        });
+      }
+    }
+
+    // The renewal watch: a certificate that will expire is a fact worth
+    // saying once, when it crosses the line — not on every run.
+    if (result.sslExpiresInDays != null) {
+      const expiryDate =
+        domain.sslExpiresAt ?? (undefined as unknown as Date | undefined);
+      const wasDue = expiryDate
+        ? (expiryDate.getTime() - Date.now()) / 86_400_000 < 30
+        : false;
+      const nowDue = result.sslExpiresInDays < 30;
+      if (nowDue && !wasDue) {
+        await this.emit(
+          domain.id,
+          domain.projectId,
+          'domains.ssl_renewal_due',
+          {
+            domain: domain.domain,
+            expiresInDays: result.sslExpiresInDays,
+          },
+        );
+        this.logger.warn(
+          `[domain-recon] Certificate for ${domain.domain} expires in ${result.sslExpiresInDays} days`,
+        );
+      }
+    }
+
+    // **ACTIVE from any state.** The honest HTTPS check is the only gate: a
+    // domain that answers over HTTPS with a valid certificate is active —
+    // whether the database said TLS_PENDING, ISSUING, FAILED, or "ACTIVE"
+    // with a stale certificate status beside it. A verify that ran too
+    // early is history, not a gate.
+    if (
+      checks.routingOk &&
+      checks.sslOk &&
+      (domain.dnsStatus !== 'ACTIVE' || domain.sslStatus !== 'ACTIVE')
+    ) {
+      const wasBroken = domain.dnsStatus === 'BROKEN';
+      const alreadyLive = domain.dnsStatus === 'ACTIVE';
       await this.prisma.domain.update({
         where: { id: domain.id },
-        data: { dnsStatus: 'ACTIVE', sslStatus: 'ACTIVE', sslIssuedAt: new Date() },
+        data: {
+          dnsStatus: 'ACTIVE',
+          sslStatus: 'ACTIVE',
+          sslIssuedAt: domain.sslIssuedAt ?? new Date(),
+        },
       });
-      await this.emit(domain.id, domain.projectId, 'domains.verified', {
-        domain: domain.domain,
-        score: result.score,
-      });
-      this.logger.log(`[domain-recon] Domain ${domain.domain} reached ACTIVE`);
+      await this.emit(
+        domain.id,
+        domain.projectId,
+        wasBroken
+          ? 'domains.recovered'
+          : alreadyLive
+            ? 'domains.ssl_issued'
+            : 'domains.verified',
+        {
+          domain: domain.domain,
+          score: result.score,
+          expiresAt: domain.sslExpiresAt?.toISOString(),
+        },
+      );
+      this.logger.log(
+        `[domain-recon] Domain ${domain.domain} reached ACTIVE (was ${domain.dnsStatus}/${domain.sslStatus})`,
+      );
       return;
     }
 
@@ -349,20 +521,6 @@ export class DomainReconciliationService {
       return;
     }
 
-    // BROKEN → ACTIVE (recovery)
-    if (checks.routingOk && checks.sslOk && domain.dnsStatus === 'BROKEN') {
-      await this.prisma.domain.update({
-        where: { id: domain.id },
-        data: { dnsStatus: 'ACTIVE' },
-      });
-      await this.emit(domain.id, domain.projectId, 'domains.recovered', {
-        domain: domain.domain,
-        score: result.score,
-      });
-      this.logger.log(`[domain-recon] Domain ${domain.domain} recovered to ACTIVE`);
-      return;
-    }
-
     // Generic health_changed
     await this.emit(domain.id, domain.projectId, 'domains.health_changed', {
       domain: domain.domain,
@@ -375,10 +533,19 @@ export class DomainReconciliationService {
   // ── Adaptive next-verification scheduling ────────────────────────────────────
 
   private async scheduleNext(
-    domain: { id: string; createdAt: Date; priority: number; lastVerifiedAt: Date | null },
+    domain: {
+      id: string;
+      createdAt: Date;
+      priority: number;
+      lastVerifiedAt: Date | null;
+    },
     result: { status: HealthStatus },
   ) {
-    const minutes = this.getAdaptiveInterval(domain.priority, result.status, domain.createdAt);
+    const minutes = this.getAdaptiveInterval(
+      domain.priority,
+      result.status,
+      domain.createdAt,
+    );
     await this.prisma.domain.update({
       where: { id: domain.id },
       data: { nextVerificationAt: new Date(Date.now() + minutes * 60 * 1000) },
@@ -388,7 +555,11 @@ export class DomainReconciliationService {
   /**
    * Adaptive interval in minutes based on priority, health status, and domain age.
    */
-  getAdaptiveInterval(priority: number, status: HealthStatus, createdAt: Date): number {
+  getAdaptiveInterval(
+    priority: number,
+    status: HealthStatus,
+    createdAt: Date,
+  ): number {
     const ageDays = (Date.now() - createdAt.getTime()) / 86_400_000;
     const ageMultiplier = ageDays > 90 ? 2 : ageDays > 30 ? 1.5 : 1;
 
@@ -414,13 +585,17 @@ export class DomainReconciliationService {
     });
 
     return domains
-      .filter(d => {
+      .filter((d) => {
         if (!d.sslExpiresAt) return false;
-        const daysLeft = Math.ceil((d.sslExpiresAt.getTime() - now.getTime()) / 86_400_000);
+        const daysLeft = Math.ceil(
+          (d.sslExpiresAt.getTime() - now.getTime()) / 86_400_000,
+        );
         return daysThreshold.includes(daysLeft);
       })
-      .map(d => {
-        const daysLeft = Math.ceil((d.sslExpiresAt!.getTime() - now.getTime()) / 86_400_000);
+      .map((d) => {
+        const daysLeft = Math.ceil(
+          (d.sslExpiresAt!.getTime() - now.getTime()) / 86_400_000,
+        );
         return { ...d, daysLeft };
       });
   }
@@ -458,11 +633,21 @@ export class DomainReconciliationService {
 
   // ── Event helper ────────────────────────────────────────────────────────────
 
-  private async emit(domainId: string, projectId: string, type: string, payload: Record<string, unknown>) {
-    this.eventService.emit(type as any, projectId, { domainId, ...payload }, {
-      actorType: 'system',
-      resourceType: 'domain',
-      resourceId: domainId,
-    });
+  private async emit(
+    domainId: string,
+    projectId: string,
+    type: string,
+    payload: Record<string, unknown>,
+  ) {
+    this.eventService.emit(
+      type as any,
+      projectId,
+      { domainId, ...payload },
+      {
+        actorType: 'system',
+        resourceType: 'domain',
+        resourceId: domainId,
+      },
+    );
   }
 }

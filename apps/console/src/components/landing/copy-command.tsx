@@ -25,7 +25,9 @@ export function CopyCommand() {
 
   return (
     <div className="mx-auto flex w-full max-w-xl items-center justify-between gap-3 rounded-xl border border-rail bg-surface-2 p-2 pl-4 shadow-lg">
-      <code className="truncate font-mono text-sm text-text-muted">{COMMAND}</code>
+      <code className="truncate font-mono text-sm text-text-muted">
+        {COMMAND}
+      </code>
       <button
         type="button"
         onClick={copy}

@@ -49,8 +49,13 @@ async function callApi(
   access: string | undefined,
   body: string | undefined,
 ): Promise<Response> {
-  const url = new URL(`/api/v1/${path.map(encodeURIComponent).join('/')}`, API_URL);
-  request.nextUrl.searchParams.forEach((value, key) => url.searchParams.append(key, value));
+  const url = new URL(
+    `/api/v1/${path.map(encodeURIComponent).join('/')}`,
+    API_URL,
+  );
+  request.nextUrl.searchParams.forEach((value, key) =>
+    url.searchParams.append(key, value),
+  );
 
   return fetch(url, {
     method: request.method,
@@ -74,7 +79,10 @@ async function refresh(refreshToken: string): Promise<TokenPair | null> {
   if (!response.ok) return null;
   const body = (await response.json()) as Partial<TokenPair>;
   if (!body.accessToken) return null;
-  return { accessToken: body.accessToken, refreshToken: body.refreshToken ?? refreshToken };
+  return {
+    accessToken: body.accessToken,
+    refreshToken: body.refreshToken ?? refreshToken,
+  };
 }
 
 /**
@@ -89,23 +97,36 @@ function toResponse(
   tokens: TokenPair | null,
   mfaToken: string | null = null,
 ): NextResponse {
-  const contentType = upstream.headers.get('content-type') ?? 'application/json';
+  const contentType =
+    upstream.headers.get('content-type') ?? 'application/json';
   const result = new NextResponse(body, {
     status: upstream.status,
     headers: { 'Content-Type': contentType },
   });
   if (tokens) {
-    result.cookies.set(ACCESS_COOKIE, tokens.accessToken, { ...cookieOptions, maxAge: ACCESS_MAX_AGE });
-    result.cookies.set(REFRESH_COOKIE, tokens.refreshToken, { ...cookieOptions, maxAge: REFRESH_MAX_AGE });
+    result.cookies.set(ACCESS_COOKIE, tokens.accessToken, {
+      ...cookieOptions,
+      maxAge: ACCESS_MAX_AGE,
+    });
+    result.cookies.set(REFRESH_COOKIE, tokens.refreshToken, {
+      ...cookieOptions,
+      maxAge: REFRESH_MAX_AGE,
+    });
   }
   if (mfaToken) {
-    result.cookies.set(MFA_COOKIE, mfaToken, { ...cookieOptions, maxAge: MFA_MAX_AGE });
+    result.cookies.set(MFA_COOKIE, mfaToken, {
+      ...cookieOptions,
+      maxAge: MFA_MAX_AGE,
+    });
   }
   return result;
 }
 
 /** Splits the tokens out of a JSON body. */
-function splitTokens(text: string, contentType: string): {
+function splitTokens(
+  text: string,
+  contentType: string,
+): {
   body: string;
   tokens: TokenPair | null;
   mfaToken: string | null;
@@ -118,13 +139,20 @@ function splitTokens(text: string, contentType: string): {
 
     // A sign-in that stops at the second factor carries a challenge token.
     // It is a bearer token, so it is kept here and not in the page.
-    const mfaToken = typeof parsed.mfaToken === 'string' ? parsed.mfaToken : null;
+    const mfaToken =
+      typeof parsed.mfaToken === 'string' ? parsed.mfaToken : null;
     if (mfaToken) delete parsed.mfaToken;
 
-    if (typeof parsed.accessToken !== 'string' || typeof parsed.refreshToken !== 'string') {
+    if (
+      typeof parsed.accessToken !== 'string' ||
+      typeof parsed.refreshToken !== 'string'
+    ) {
       return { body: JSON.stringify(parsed), tokens: null, mfaToken };
     }
-    const tokens = { accessToken: parsed.accessToken, refreshToken: parsed.refreshToken };
+    const tokens = {
+      accessToken: parsed.accessToken,
+      refreshToken: parsed.refreshToken,
+    };
     delete parsed.accessToken;
     delete parsed.refreshToken;
     return { body: JSON.stringify(parsed), tokens, mfaToken };
@@ -133,8 +161,14 @@ function splitTokens(text: string, contentType: string): {
   }
 }
 
-async function handler(request: NextRequest, path: string[]): Promise<NextResponse> {
-  const raw = request.method === 'GET' || request.method === 'HEAD' ? undefined : await request.text();
+async function handler(
+  request: NextRequest,
+  path: string[],
+): Promise<NextResponse> {
+  const raw =
+    request.method === 'GET' || request.method === 'HEAD'
+      ? undefined
+      : await request.text();
   const body = raw && raw.length > 0 ? raw : undefined;
 
   const access = request.cookies.get(ACCESS_COOKIE)?.value;
@@ -146,7 +180,10 @@ async function handler(request: NextRequest, path: string[]): Promise<NextRespon
   if (path[0] === 'auth' && path[1] === 'mfa' && path[2] === 'challenge') {
     const mfaToken = request.cookies.get(MFA_COOKIE)?.value;
     if (mfaToken) {
-      outgoing = JSON.stringify({ ...(body ? (JSON.parse(body) as object) : {}), mfaToken });
+      outgoing = JSON.stringify({
+        ...(body ? (JSON.parse(body) as object) : {}),
+        mfaToken,
+      });
     }
   }
 
@@ -170,7 +207,8 @@ async function handler(request: NextRequest, path: string[]): Promise<NextRespon
   }
 
   const text = await upstream.text();
-  const contentType = upstream.headers.get('content-type') ?? 'application/json';
+  const contentType =
+    upstream.headers.get('content-type') ?? 'application/json';
   const split = splitTokens(text, contentType);
   return toResponse(upstream, split.body, split.tokens, split.mfaToken);
 }

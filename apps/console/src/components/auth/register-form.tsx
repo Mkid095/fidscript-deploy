@@ -79,7 +79,11 @@ export function RegisterForm() {
       router.replace('/overview');
       router.refresh();
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'The account could not be created.');
+      setError(
+        err instanceof Error
+          ? err.message
+          : 'The account could not be created.',
+      );
       setSubmitting(false);
     }
   }
@@ -87,7 +91,9 @@ export function RegisterForm() {
   return (
     <form onSubmit={submit} className="space-y-4">
       <div>
-        <h1 className="text-xl font-semibold tracking-tight text-text">Create an account</h1>
+        <h1 className="text-xl font-semibold tracking-tight text-text">
+          Create an account
+        </h1>
         <p className="mt-1 text-sm text-text-muted">On this platform.</p>
       </div>
 
@@ -147,7 +153,12 @@ export function RegisterForm() {
 
       {error ? <ErrorState message={error} /> : null}
 
-      <Button type="submit" variant="primary" loading={submitting} className="w-full">
+      <Button
+        type="submit"
+        variant="primary"
+        loading={submitting}
+        className="w-full"
+      >
         {submitting ? 'Creating…' : 'Create the account'}
       </Button>
 

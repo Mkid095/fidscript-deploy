@@ -48,11 +48,13 @@ export async function getGithubRepos(): Promise<GithubRepo[]> {
 }
 
 /** The zones in the connected Cloudflare account. */
-export async function getCloudflareZones(projectId: string): Promise<CloudflareZone[]> {
+export async function getCloudflareZones(
+  projectId: string,
+): Promise<CloudflareZone[]> {
   const response = await api
-    .get<{ zones?: CloudflareZone[] }>(
-      `/projects/${projectId}/domains/connect-cloudflare/zones`,
-    )
+    .get<{
+      zones?: CloudflareZone[];
+    }>(`/projects/${projectId}/domains/connect-cloudflare/zones`)
     .catch(() => ({ zones: [] }));
   return response.zones ?? [];
 }

@@ -30,19 +30,27 @@ export function MagicLinkPanel() {
         if (!cancelled) window.location.replace('/overview');
       } catch (err) {
         if (!cancelled) {
-          setError(err instanceof Error ? err.message : 'That link is no longer valid.');
+          setError(
+            err instanceof Error
+              ? err.message
+              : 'That link is no longer valid.',
+          );
         }
       }
     }
 
     void signIn();
-    return () => { cancelled = true; };
+    return () => {
+      cancelled = true;
+    };
   }, [token]);
 
   if (error) {
     return (
       <div className="space-y-4 text-center">
-        <h1 className="text-xl font-semibold tracking-tight text-text">That link has expired</h1>
+        <h1 className="text-xl font-semibold tracking-tight text-text">
+          That link has expired
+        </h1>
         <p role="alert" className="text-sm text-danger">
           {error}
         </p>

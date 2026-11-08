@@ -34,11 +34,16 @@ export default async function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
-  const theme = (await cookies()).get('fidscript_theme')?.value === 'light' ? 'light' : 'dark';
+  const theme =
+    (await cookies()).get('fidscript_theme')?.value === 'light'
+      ? 'light'
+      : 'dark';
 
   return (
     <html lang="en" className={theme === 'light' ? 'light' : 'dark'}>
-      <body className={`${geistSans.variable} ${geistMono.variable} antialiased`}>
+      <body
+        className={`${geistSans.variable} ${geistMono.variable} antialiased`}
+      >
         {children}
       </body>
     </html>

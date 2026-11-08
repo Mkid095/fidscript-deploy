@@ -12,7 +12,13 @@ import { SetupApplicationsStep } from '@/components/setup/setup-applications-ste
 import { SetupInstallStep } from '@/components/setup/setup-install-step';
 import { configurePlatformAction } from '@/app/(setup)/setup/actions';
 
-const STEPS = ['The domain', 'The administrator', 'The applications', 'The install', 'Done'];
+const STEPS = [
+  'The domain',
+  'The administrator',
+  'The applications',
+  'The install',
+  'Done',
+];
 
 /**
  * The setup.
@@ -28,7 +34,12 @@ export function SetupWizard({
 }: {
   serverIp: string;
   configured: boolean;
-  applications: Array<{ id: string; title: string; summary: string; installed: boolean }>;
+  applications: Array<{
+    id: string;
+    title: string;
+    summary: string;
+    installed: boolean;
+  }>;
 }) {
   // A configured platform has no setup to do — what is left is what it
   // provides, so the wizard starts at the applications.
@@ -45,7 +56,8 @@ export function SetupWizard({
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
 
-  const set = (next: Partial<typeof values>) => setValues({ ...values, ...next });
+  const set = (next: Partial<typeof values>) =>
+    setValues({ ...values, ...next });
 
   const configure = () => {
     setError(null);
@@ -90,7 +102,9 @@ export function SetupWizard({
             >
               {index + 1}
             </span>
-            <span className={index === step ? 'text-text' : 'text-text-dim'}>{label}</span>
+            <span className={index === step ? 'text-text' : 'text-text-dim'}>
+              {label}
+            </span>
           </li>
         ))}
       </ol>
@@ -158,7 +172,9 @@ export function SetupWizard({
 
       {step === 4 ? (
         <Card className="max-w-xl space-y-3 p-6 text-center">
-          <p className="text-sm font-medium text-text">The platform is ready.</p>
+          <p className="text-sm font-medium text-text">
+            The platform is ready.
+          </p>
           <p className="text-xs text-text-muted">
             The first thing it does is hold a project.
           </p>

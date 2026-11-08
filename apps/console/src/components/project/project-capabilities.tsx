@@ -22,7 +22,10 @@ export function ProjectCapabilities({
 }) {
   return (
     <section>
-      <SectionHeader title="Capabilities" description="What else this project can use." />
+      <SectionHeader
+        title="Capabilities"
+        description="What else this project can use."
+      />
       <Card className="divide-y divide-rail">
         <Capability
           name="Email"

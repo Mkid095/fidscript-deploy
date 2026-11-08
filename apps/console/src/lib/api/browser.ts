@@ -47,7 +47,9 @@ function safeJson(text: string): unknown {
 
 export const browserApi = {
   get: <T>(path: string) => browserRequest<T>(path),
-  post: <T>(path: string, body?: unknown) => browserRequest<T>(path, { method: 'POST', body }),
-  patch: <T>(path: string, body?: unknown) => browserRequest<T>(path, { method: 'PATCH', body }),
+  post: <T>(path: string, body?: unknown) =>
+    browserRequest<T>(path, { method: 'POST', body }),
+  patch: <T>(path: string, body?: unknown) =>
+    browserRequest<T>(path, { method: 'PATCH', body }),
   delete: <T>(path: string) => browserRequest<T>(path, { method: 'DELETE' }),
 };

@@ -45,12 +45,21 @@ async function query(expression: string): Promise<Sample[]> {
     if (!response.ok) return [];
 
     const body = (await response.json()) as {
-      data?: { result?: Array<{ metric?: Record<string, string>; value?: [number, string] }> };
+      data?: {
+        result?: Array<{
+          metric?: Record<string, string>;
+          value?: [number, string];
+        }>;
+      };
     };
 
     return (body.data?.result ?? [])
       .map((entry) => ({
-        name: entry.metric?.name ?? entry.metric?.container ?? entry.metric?.service ?? 'the platform',
+        name:
+          entry.metric?.name ??
+          entry.metric?.container ??
+          entry.metric?.service ??
+          'the platform',
         value: Number(entry.value?.[1] ?? 0),
       }))
       .filter((entry) => Number.isFinite(entry.value));
@@ -88,7 +97,10 @@ async function queryRange(
 
     return (body.data?.result ?? []).map((entry) => ({
       name: entry.metric?.name ?? entry.metric?.container ?? 'the platform',
-      points: (entry.values ?? []).map(([at, value]) => ({ at, value: Number(value) })),
+      points: (entry.values ?? []).map(([at, value]) => ({
+        at,
+        value: Number(value),
+      })),
     }));
   } catch {
     return [];
@@ -153,7 +165,8 @@ export async function getMachineState(): Promise<{
     query('machine_swap_bytes'),
   ]);
 
-  const sum = (samples: Sample[]) => samples.reduce((total, sample) => total + sample.value, 0);
+  const sum = (samples: Sample[]) =>
+    samples.reduce((total, sample) => total + sample.value, 0);
 
   return {
     cpuCores: sum(cores),
@@ -251,7 +264,10 @@ export async function getProjectLogs(
       (entry.values ?? []).map(([at, line]) => ({
         at,
         line: plain(line),
-        source: entry.stream?.service_name ?? entry.stream?.container ?? 'the project',
+        source:
+          entry.stream?.service_name ??
+          entry.stream?.container ??
+          'the project',
       })),
     );
   } catch {
@@ -309,7 +325,10 @@ export async function getSystemLogs(limit = 60): Promise<LogLine[]> {
       (entry.values ?? []).map(([at, line]) => ({
         at,
         line: plain(line),
-        source: entry.stream?.service_name ?? entry.stream?.container ?? 'the platform',
+        source:
+          entry.stream?.service_name ??
+          entry.stream?.container ??
+          'the platform',
       })),
     );
   } catch {

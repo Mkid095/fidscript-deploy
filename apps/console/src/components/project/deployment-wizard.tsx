@@ -26,9 +26,17 @@ const STEPS = ['Source', 'Detect', 'Configure', 'Deploy'] as const;
 export function DeploymentWizard({
   projectId,
   projectSlug,
+  domains = [],
 }: {
   projectId: string;
   projectSlug: string;
+  /** The project's own domains — one of them can answer for this deployment. */
+  domains?: Array<{
+    id: string;
+    domain: string;
+    dnsStatus: string;
+    attached: boolean;
+  }>;
 }) {
   const [step, setStep] = useState(0);
   const [gitUrl, setGitUrl] = useState('');
@@ -39,6 +47,7 @@ export function DeploymentWizard({
   );
   const [subdomain, setSubdomain] = useState('');
   const [buildTarget, setBuildTarget] = useState<string | null>(null);
+  const [domainId, setDomainId] = useState<string | null>(null);
   const [deploymentId, setDeploymentId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
@@ -79,7 +88,8 @@ export function DeploymentWizard({
         gitUrl,
         branch,
         envVars: variables,
-        subdomain: subdomain.trim() || undefined,
+        subdomain: domainId ? undefined : subdomain.trim() || undefined,
+        domainId: domainId ?? undefined,
       });
       if (result.error || !result.deploymentId) {
         setError(result.error ?? 'The deployment did not start.');
@@ -154,6 +164,9 @@ export function DeploymentWizard({
             subdomain={subdomain}
             buildTarget={buildTarget}
             onBuildTarget={setBuildTarget}
+            domains={domains}
+            domainId={domainId}
+            onDomainId={setDomainId}
             onEnvVars={setEnvVars}
             onSubdomain={setSubdomain}
           />

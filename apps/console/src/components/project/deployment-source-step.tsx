@@ -43,19 +43,26 @@ export function DeploymentSourceStep({
 
     (async () => {
       try {
-        const status = await browserApi.get<{ connected: boolean; username?: string }>(
-          '/users/me/github/status',
-        );
+        const status = await browserApi.get<{
+          connected: boolean;
+          username?: string;
+        }>('/users/me/github/status');
         if (cancelled) return;
-        setAccount(status.connected ? (status.username ?? 'your account') : null);
+        setAccount(
+          status.connected ? (status.username ?? 'your account') : null,
+        );
 
         if (status.connected) {
-          const response = await browserApi.get<{ repos?: Repo[] }>('/users/me/github/repos');
+          const response = await browserApi.get<{ repos?: Repo[] }>(
+            '/users/me/github/repos',
+          );
           if (!cancelled) setRepos(response.repos ?? []);
         }
       } catch (err) {
         if (!cancelled) {
-          setError(err instanceof Error ? err.message : 'GitHub could not be reached.');
+          setError(
+            err instanceof Error ? err.message : 'GitHub could not be reached.',
+          );
         }
       } finally {
         if (!cancelled) setLoading(false);
@@ -84,19 +91,27 @@ export function DeploymentSourceStep({
       {account ? (
         <div className="flex flex-wrap items-center justify-between gap-3">
           <p className="text-xs text-text-dim">
-            The repositories of <span className="text-text-muted">{account}</span>.
+            The repositories of{' '}
+            <span className="text-text-muted">{account}</span>.
           </p>
-          <Link href="/settings/integrations" className="text-xs text-accent hover:underline">
+          <Link
+            href="/settings/integrations"
+            className="text-xs text-accent hover:underline"
+          >
             Another account
           </Link>
         </div>
       ) : (
         <p className="text-xs text-text-dim">
           No GitHub account is connected —{' '}
-          <Link href="/settings/integrations" className="text-accent hover:underline">
+          <Link
+            href="/settings/integrations"
+            className="text-accent hover:underline"
+          >
             connect one
           </Link>{' '}
-          to pick from your repositories. A public repository needs no connection.
+          to pick from your repositories. A public repository needs no
+          connection.
         </p>
       )}
 
@@ -125,11 +140,15 @@ export function DeploymentSourceStep({
                       })
                     }
                     className={`flex w-full items-center justify-between gap-3 px-3 py-2 text-left transition-colors hover:bg-surface-2 ${
-                      gitUrl === `https://github.com/${repo.full_name}` ? 'bg-surface-3' : ''
+                      gitUrl === `https://github.com/${repo.full_name}`
+                        ? 'bg-surface-3'
+                        : ''
                     }`}
                   >
                     <span className="min-w-0">
-                      <span className="block truncate text-sm text-text">{repo.full_name}</span>
+                      <span className="block truncate text-sm text-text">
+                        {repo.full_name}
+                      </span>
                       {repo.description ? (
                         <span className="block truncate text-xs text-text-dim">
                           {repo.description}
@@ -163,7 +182,9 @@ export function DeploymentSourceStep({
       />
 
       {error ? <ErrorState message={error} /> : null}
-      {loading ? <p className="text-xs text-text-dim">Looking for your repositories…</p> : null}
+      {loading ? (
+        <p className="text-xs text-text-dim">Looking for your repositories…</p>
+      ) : null}
     </div>
   );
 }

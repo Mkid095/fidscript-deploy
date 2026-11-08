@@ -443,5 +443,41 @@ A demo application was deployed, and:
 
 ---
 
+## 10. The SSL lifecycle — the domain finally says the truth
+
+_The universal-deployment brief (`docs/DEPLOYMENT_AUDIT.md`) was audited,
+proposed, and its first phase implemented on the operator's go-ahead._
+
+The reconciliation worker **had never processed a job**: its JetStream
+consumer filtered on the bare subject while every job published to
+`subject.<domainId>`. Fixed (self-healing consumer, filter corrected,
+replaced on boot), and then the SSL lifecycle works:
+
+- a domain pointed at a healthy deployment gets its **certificate pre-warmed**
+  (one tolerant request starts Traefik's ACME immediately);
+- the honest HTTPS check **promotes a domain to ACTIVE/ACTIVE from any
+  state** — the `FAILED`/`ISSUING` dead-end is gone;
+- the **real certificate expiry** is recorded (read from the TLS socket);
+- a certificate crossing 30 days emits a renewal event, once;
+- Cloudflare **proxy detection** is persisted and shown ("Cloudflare
+  proxied" / "DNS only");
+- a successful deployment **enqueues its domains' verification** and the
+  project's domain attachments **follow the live deployment**;
+- the verify's "nothing deployed" is not a failure; the SSL renew/reissue
+  endpoints do the real work or say so.
+
+Verified live: `demo.fidscript.com` reads `ACTIVE / ACTIVE / HEALTHY` with
+`SSL · expires 2027-02-06` on its card, after a day stuck at FAILED/ISSUING.
+
+Also landed with it: the deployment wizard offers the project's existing
+domains; the deployments list marks the **live** deployment and renames
+BLOCKED to "queued behind the live build"; the container health gate falls
+back to the root path; and a **Python builder** (Django/Flask/FastAPI/
+plain-Python on `python:3.12-slim`) was verified live with a FastAPI
+application deployed from git — it replaced the previous deployment as the
+one live target, exactly as the one-production-target rule says.
+
+---
+
 _Written 2026-11-07. The hand-over session's part is §7; the deployment and
-the interface are §9._
+the interface are §9; the SSL lifecycle is §10._

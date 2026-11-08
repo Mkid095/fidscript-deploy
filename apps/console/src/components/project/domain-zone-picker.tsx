@@ -38,7 +38,9 @@ export function DomainZonePicker({ projectId }: { projectId: string }) {
     let cancelled = false;
 
     browserApi
-      .get<{ zones?: Zone[] }>(`/projects/${projectId}/domains/connect-cloudflare/zones`)
+      .get<{ zones?: Zone[] }>(
+        `/projects/${projectId}/domains/connect-cloudflare/zones`,
+      )
       .then((response) => {
         if (cancelled) return;
         const found = response.zones ?? [];
@@ -47,7 +49,9 @@ export function DomainZonePicker({ projectId }: { projectId: string }) {
       })
       .catch((err) => {
         if (!cancelled) {
-          setError(err instanceof Error ? err.message : 'The zones could not be read.');
+          setError(
+            err instanceof Error ? err.message : 'The zones could not be read.',
+          );
         }
       })
       .finally(() => {
@@ -59,7 +63,8 @@ export function DomainZonePicker({ projectId }: { projectId: string }) {
     };
   }, [projectId]);
 
-  const domain = kind === 'domain' ? zone : subdomain ? `${subdomain}.${zone}` : '';
+  const domain =
+    kind === 'domain' ? zone : subdomain ? `${subdomain}.${zone}` : '';
 
   const add = () => {
     setError(null);
@@ -76,15 +81,20 @@ export function DomainZonePicker({ projectId }: { projectId: string }) {
   };
 
   if (loading) {
-    return <p className="px-4 py-6 text-sm text-text-muted">Looking at your domains…</p>;
+    return (
+      <p className="px-4 py-6 text-sm text-text-muted">
+        Looking at your domains…
+      </p>
+    );
   }
 
   if (zones.length === 0) {
     return (
       <div className="px-4 py-6">
         <p className="text-sm text-text-muted">
-          The connected account has no domains in it — or the token cannot see them. A domain has
-          to be in the account for the platform to write its records.
+          The connected account has no domains in it — or the token cannot see
+          them. A domain has to be in the account for the platform to write its
+          records.
         </p>
       </div>
     );
@@ -96,11 +106,16 @@ export function DomainZonePicker({ projectId }: { projectId: string }) {
         label="The domain"
         value={zone}
         onChange={(event) => setZone(event.target.value)}
-        options={zones.map((entry) => ({ value: entry.name, label: entry.name }))}
+        options={zones.map((entry) => ({
+          value: entry.name,
+          label: entry.name,
+        }))}
       />
 
       <fieldset className="space-y-2">
-        <legend className="text-xs font-medium text-text-muted">What answers on it</legend>
+        <legend className="text-xs font-medium text-text-muted">
+          What answers on it
+        </legend>
         <label className="flex cursor-pointer items-start gap-2 rounded-lg border border-rail bg-surface-2 p-3">
           <input
             type="radio"
@@ -150,7 +165,12 @@ export function DomainZonePicker({ projectId }: { projectId: string }) {
         </p>
       ) : null}
 
-      <Button variant="primary" onClick={add} loading={pending} disabled={!domain}>
+      <Button
+        variant="primary"
+        onClick={add}
+        loading={pending}
+        disabled={!domain}
+      >
         Add it
       </Button>
     </div>

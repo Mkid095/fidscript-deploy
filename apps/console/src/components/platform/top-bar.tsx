@@ -27,8 +27,18 @@ export function TopBar({
 }) {
   return (
     <header className="flex h-14 flex-shrink-0 items-center gap-4 border-b border-rail bg-surface px-4 sm:px-6">
-      <Link href="/" className="flex items-center gap-2" aria-label="FIDScript home">
-        <Image src="/logo.png" alt="" width={28} height={28} className="rounded-md" />
+      <Link
+        href="/"
+        className="flex items-center gap-2"
+        aria-label="FIDScript home"
+      >
+        <Image
+          src="/logo.png"
+          alt=""
+          width={28}
+          height={28}
+          className="rounded-md"
+        />
         <span className="hidden text-sm font-bold uppercase tracking-widest text-text sm:inline">
           fidscript
         </span>
@@ -36,7 +46,8 @@ export function TopBar({
 
       <nav aria-label="Platform" className="flex items-center gap-1">
         {NAV.map((item) => {
-          const active = pathname === item.href || pathname.startsWith(`${item.href}/`);
+          const active =
+            pathname === item.href || pathname.startsWith(`${item.href}/`);
           return (
             <Link
               key={item.href}

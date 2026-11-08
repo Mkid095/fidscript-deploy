@@ -73,8 +73,11 @@ export default async function ProjectDeploymentsPage({
                   </p>
                 </div>
                 <div className="flex items-center gap-2">
+                  {project.activeDeploymentId === deployment.id ? (
+                    <Badge tone="accent">live</Badge>
+                  ) : null}
                   <Badge tone={statusTone(deployment.status)}>
-                    {deployment.status.toLowerCase()}
+                    {statusLabel(deployment.status)}
                   </Badge>
                   {deployment.deploymentUrl ? (
                     <a
@@ -154,4 +157,10 @@ function deploymentSubline(deployment: {
   return repo
     ? `from ${repo}`
     : new Date(deployment.createdAt).toLocaleString();
+}
+
+/** The words a status earns: a blocked build is waiting its turn, not broken. */
+function statusLabel(status: string): string {
+  if (status === 'BLOCKED') return 'queued behind the live build';
+  return status.toLowerCase();
 }

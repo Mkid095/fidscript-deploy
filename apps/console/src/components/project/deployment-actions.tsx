@@ -61,7 +61,8 @@ export function DeploymentActions({
     });
   };
 
-  const running = status === 'SUCCESS' || status === 'DEPLOYING' || status === 'BUILDING';
+  const running =
+    status === 'SUCCESS' || status === 'DEPLOYING' || status === 'BUILDING';
   const stopped = status === 'STOPPED' || status === 'FAILED';
 
   return (
@@ -72,7 +73,9 @@ export function DeploymentActions({
             variant="outline"
             size="sm"
             loading={pending}
-            onClick={() => run(() => stopDeploymentAction(projectId, deploymentId))}
+            onClick={() =>
+              run(() => stopDeploymentAction(projectId, deploymentId))
+            }
           >
             Stop it
           </Button>
@@ -82,7 +85,9 @@ export function DeploymentActions({
             variant="outline"
             size="sm"
             loading={pending}
-            onClick={() => run(() => restartDeploymentAction(projectId, deploymentId))}
+            onClick={() =>
+              run(() => restartDeploymentAction(projectId, deploymentId))
+            }
           >
             Start it again
           </Button>
@@ -91,7 +96,9 @@ export function DeploymentActions({
           variant="outline"
           size="sm"
           loading={pending}
-          onClick={() => run(() => rollbackDeploymentAction(projectId, deploymentId))}
+          onClick={() =>
+            run(() => rollbackDeploymentAction(projectId, deploymentId))
+          }
         >
           Roll back
         </Button>
@@ -125,18 +132,25 @@ export function DeploymentActions({
       {confirming ? (
         <div className="rounded-md border border-danger/40 bg-danger/5 p-3">
           <p className="text-xs text-text-muted">
-            The container, the image and the record are gone. This cannot be undone.
+            The container, the image and the record are gone. This cannot be
+            undone.
           </p>
           <div className="mt-2 flex items-center gap-2">
             <Button
               variant="danger"
               size="sm"
               loading={pending}
-              onClick={() => run(() => destroyDeploymentAction(projectId, deploymentId))}
+              onClick={() =>
+                run(() => destroyDeploymentAction(projectId, deploymentId))
+              }
             >
               Remove it for good
             </Button>
-            <Button variant="ghost" size="sm" onClick={() => setConfirming(false)}>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => setConfirming(false)}
+            >
               Keep it
             </Button>
           </div>
@@ -147,9 +161,7 @@ export function DeploymentActions({
         label="Deploy on every push"
         description="When the branch is pushed to, a new deployment is made."
         checked={autoDeploy}
-        onChange={(next) =>
-          run(() => setAutoDeployAction(projectId, next))
-        }
+        onChange={(next) => run(() => setAutoDeployAction(projectId, next))}
       />
 
       {error ? <ErrorState message={error} /> : null}

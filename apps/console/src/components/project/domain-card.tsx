@@ -23,9 +23,13 @@ export function DomainCard({
   projectId,
   domainId,
   domain,
-  status,
+  status: statusRaw,
   records,
   canWrite,
+  sslStatus: sslStatusRaw,
+  sslExpiresAt,
+  proxy,
+  hasDeployment,
 }: {
   projectId: string;
   domainId: string;
@@ -33,7 +37,18 @@ export function DomainCard({
   status: string;
   records: DnsRecord[];
   canWrite: boolean;
+  /** Where the certificate stands: pending, issuing, active, failed. */
+  sslStatus?: string;
+  /** When the certificate really expires, as the HTTPS check read it. */
+  sslExpiresAt?: string | null;
+  /** Whether the name answers through Cloudflare, straight, or unknown. */
+  proxy?: 'proxied' | 'dns_only' | 'unknown';
+  /** Whether a deployment is attached — a name without one cannot answer yet. */
+  hasDeployment?: boolean;
 }) {
+  // The API returns these lowercase; the checks want a shape they can trust.
+  const status = statusRaw?.toLowerCase() ?? 'pending';
+  const sslStatus = sslStatusRaw?.toLowerCase() ?? 'pending';
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
@@ -51,8 +66,12 @@ export function DomainCard({
     });
   };
 
-  const deployment = records.filter((record) => record.category === 'deployment');
-  const verification = records.filter((record) => record.category === 'verification');
+  const deployment = records.filter(
+    (record) => record.category === 'deployment',
+  );
+  const verification = records.filter(
+    (record) => record.category === 'verification',
+  );
   const shown = [...deployment, ...verification];
 
   return (
@@ -61,11 +80,31 @@ export function DomainCard({
         <div className="min-w-0">
           <p className="truncate text-sm font-medium text-text">{domain}</p>
           <p className="mt-0.5 text-xs text-text-dim">
-            {status === 'ACTIVE' ? 'It answers.' : 'It is not answering yet.'}
+            {headline(status, sslStatus, hasDeployment)}
           </p>
         </div>
-        <div className="flex items-center gap-2">
-          <Badge tone={status === 'ACTIVE' ? 'success' : 'warning'}>{status.toLowerCase()}</Badge>
+        <div className="flex flex-wrap items-center gap-2">
+          {proxy && proxy !== 'unknown' ? (
+            <Badge tone="info">
+              {proxy === 'proxied' ? 'Cloudflare proxied' : 'DNS only'}
+            </Badge>
+          ) : null}
+          {sslStatus === 'active' && sslExpiresAt ? (
+            <Badge tone="success">
+              SSL · expires {new Date(sslExpiresAt).toLocaleDateString()}
+            </Badge>
+          ) : null}
+          <Badge
+            tone={
+              status === 'ACTIVE'
+                ? 'success'
+                : status === 'FAILED'
+                  ? 'danger'
+                  : 'warning'
+            }
+          >
+            {statusLabel(status, hasDeployment)}
+          </Badge>
         </div>
       </div>
 
@@ -100,7 +139,11 @@ export function DomainCard({
                         : 'neutral'
                   }
                 >
-                  {record.status === 'ok' ? 'right' : record.status === 'missing' ? 'wrong' : 'pending'}
+                  {record.status === 'ok'
+                    ? 'right'
+                    : record.status === 'missing'
+                      ? 'wrong'
+                      : 'pending'}
                 </Badge>
               </li>
             ))}
@@ -147,4 +190,33 @@ export function DomainCard({
       {notice ? <p className="mt-3 text-xs text-success">{notice}</p> : null}
     </Card>
   );
+}
+
+/** What the domain's state means, in the words of the situation. */
+function headline(
+  status: string,
+  ssl: string | undefined,
+  hasDeployment?: boolean,
+): string {
+  if (status === 'active' && ssl === 'active') {
+    return 'It answers, over HTTPS, with a valid certificate.';
+  }
+  if (status === 'active') return 'It answers.';
+  if (status === 'broken')
+    return 'It stopped answering — is the deployment running?';
+  if (status === 'failed')
+    return 'It is not answering, though something is deployed on it.';
+  if (!hasDeployment && (status === 'validating' || status === 'pending')) {
+    return 'The records point here. Deploy something on it, and it answers.';
+  }
+  return 'It is not answering yet.';
+}
+
+/** A state badge that says the situation, not the database value. */
+function statusLabel(status: string, hasDeployment?: boolean): string {
+  const s = status.toLowerCase();
+  if (s === 'ownership_pending') return 'awaiting DNS';
+  if (s === 'validating' && !hasDeployment) return 'waiting for a deployment';
+  if (s === 'tls_pending') return 'securing';
+  return s;
 }

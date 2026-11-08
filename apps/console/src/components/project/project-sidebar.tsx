@@ -37,7 +37,10 @@ export function ProjectSidebar({
         >
           <span aria-hidden>←</span> All projects
         </Link>
-        <p className="mt-2 truncate text-sm font-semibold text-text" title={projectName}>
+        <p
+          className="mt-2 truncate text-sm font-semibold text-text"
+          title={projectName}
+        >
           {projectName}
         </p>
         <p className="mt-0.5 text-[11px] uppercase tracking-wider text-text-dim">

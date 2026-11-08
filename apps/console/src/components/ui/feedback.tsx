@@ -43,7 +43,11 @@ export function EmptyState({
   return (
     <div className="flex flex-col items-center gap-3 px-6 py-12 text-center">
       <p className="text-sm font-medium text-text">{title}</p>
-      {body ? <p className="max-w-sm text-xs leading-relaxed text-text-muted">{body}</p> : null}
+      {body ? (
+        <p className="max-w-sm text-xs leading-relaxed text-text-muted">
+          {body}
+        </p>
+      ) : null}
       {action ? <div className="mt-1">{action}</div> : null}
     </div>
   );
@@ -60,7 +64,10 @@ export function ErrorState({
   action?: ReactNode;
 }) {
   return (
-    <div role="alert" className="rounded-lg border border-danger/40 bg-danger/5 px-4 py-3">
+    <div
+      role="alert"
+      className="rounded-lg border border-danger/40 bg-danger/5 px-4 py-3"
+    >
       <p className="text-sm font-medium text-danger">{title}</p>
       <p className="mt-1 text-xs leading-relaxed text-text-muted">{message}</p>
       {action ? <div className="mt-3">{action}</div> : null}

@@ -1,13 +1,21 @@
 import type { ButtonHTMLAttributes, ReactNode } from 'react';
 
-export type ButtonVariant = 'primary' | 'secondary' | 'outline' | 'ghost' | 'danger';
+export type ButtonVariant =
+  | 'primary'
+  | 'secondary'
+  | 'outline'
+  | 'ghost'
+  | 'danger';
 export type ButtonSize = 'sm' | 'md' | 'lg';
 
 const VARIANTS: Record<ButtonVariant, string> = {
-  primary: 'bg-accent text-white hover:bg-accent-hover border border-transparent',
+  primary:
+    'bg-accent text-white hover:bg-accent-hover border border-transparent',
   secondary: 'bg-surface-3 text-text hover:bg-rail border border-transparent',
-  outline: 'bg-transparent text-text border border-rail hover:border-rail-light',
-  ghost: 'bg-transparent text-text-muted hover:text-text hover:bg-surface-2 border border-transparent',
+  outline:
+    'bg-transparent text-text border border-rail hover:border-rail-light',
+  ghost:
+    'bg-transparent text-text-muted hover:text-text hover:bg-surface-2 border border-transparent',
   danger: 'bg-danger text-white hover:opacity-90 border border-transparent',
 };
 
@@ -59,7 +67,10 @@ export function IconButton({
   className = '',
   children,
   ...rest
-}: ButtonHTMLAttributes<HTMLButtonElement> & { label: string; children: ReactNode }) {
+}: ButtonHTMLAttributes<HTMLButtonElement> & {
+  label: string;
+  children: ReactNode;
+}) {
   return (
     <button
       type="button"

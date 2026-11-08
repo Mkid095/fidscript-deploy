@@ -32,14 +32,22 @@ export interface DnsRecord {
 }
 
 /** The account the platform writes DNS through, if there is one. */
-export async function getDnsConnection(projectId: string): Promise<DnsConnection | null> {
-  return api.get<DnsConnection | null>(`/projects/${projectId}/domains/connection`).catch(() => null);
+export async function getDnsConnection(
+  projectId: string,
+): Promise<DnsConnection | null> {
+  return api
+    .get<DnsConnection | null>(`/projects/${projectId}/domains/connection`)
+    .catch(() => null);
 }
 
 /** The account is let go — the token goes with it. */
-export async function disconnectDnsProvider(projectId: string): Promise<boolean> {
+export async function disconnectDnsProvider(
+  projectId: string,
+): Promise<boolean> {
   const response = await api
-    .delete<{ disconnected: boolean }>(`/projects/${projectId}/domains/connection`)
+    .delete<{
+      disconnected: boolean;
+    }>(`/projects/${projectId}/domains/connection`)
     .catch(() => ({ disconnected: false }));
   return response.disconnected;
 }
@@ -50,9 +58,10 @@ export async function getDnsRecords(
   domainId: string,
 ): Promise<{ domain: string; records: DnsRecord[] } | null> {
   return api
-    .get<{ domain: string; records: DnsRecord[] }>(
-      `/projects/${projectId}/domains/${domainId}/dns-records`,
-    )
+    .get<{
+      domain: string;
+      records: DnsRecord[];
+    }>(`/projects/${projectId}/domains/${domainId}/dns-records`)
     .catch(() => null);
 }
 
@@ -62,9 +71,9 @@ export async function detectDnsProvider(
   domain: string,
 ): Promise<{ provider?: string; nameservers?: string[] } | null> {
   return api
-    .get<{ provider?: string; nameservers?: string[] }>(
-      `/projects/${projectId}/domains/detect`,
-      { domain },
-    )
+    .get<{
+      provider?: string;
+      nameservers?: string[];
+    }>(`/projects/${projectId}/domains/detect`, { domain })
     .catch(() => null);
 }

@@ -3,7 +3,8 @@ import type { DocPage } from './types';
 export const configuration: DocPage = {
   slug: 'configuration',
   title: 'Configuration',
-  description: 'The variables a project carries, and the ones a deployment adds.',
+  description:
+    'The variables a project carries, and the ones a deployment adds.',
   group: 'Build',
   blocks: [
     {
@@ -35,8 +36,14 @@ DELETE /api/v1/projects/:id/env-vars/:key`,
         head: ['Setting', 'What it is'],
         rows: [
           ['buildTarget', 'What is built — the thing the platform packs'],
-          ['startupTimeoutSeconds', 'How long the platform waits for the application to answer'],
-          ['requiredEnvVars', 'The variables a deployment must have before it is built'],
+          [
+            'startupTimeoutSeconds',
+            'How long the platform waits for the application to answer',
+          ],
+          [
+            'requiredEnvVars',
+            'The variables a deployment must have before it is built',
+          ],
         ],
       },
     },

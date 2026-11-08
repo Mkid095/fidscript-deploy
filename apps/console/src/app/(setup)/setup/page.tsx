@@ -23,7 +23,9 @@ export default async function SetupPage() {
   return (
     <div className="mx-auto w-full max-w-3xl space-y-6 px-4 py-8">
       <header>
-        <h1 className="text-xl font-semibold tracking-tight text-text">Set up FIDScript</h1>
+        <h1 className="text-xl font-semibold tracking-tight text-text">
+          Set up FIDScript
+        </h1>
         <p className="mt-1 text-sm text-text-muted">
           {configured
             ? 'This platform is already set up. What is left is what it provides.'

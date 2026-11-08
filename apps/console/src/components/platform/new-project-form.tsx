@@ -35,8 +35,16 @@ const SHAPES = [
 ];
 
 const KINDS = [
-  { value: 'backend', title: 'A service or an API', body: 'A server: Node, Python, Go.' },
-  { value: 'frontend', title: 'A website or an app', body: 'Something that is served as files.' },
+  {
+    value: 'backend',
+    title: 'A service or an API',
+    body: 'A server: Node, Python, Go.',
+  },
+  {
+    value: 'frontend',
+    title: 'A website or an app',
+    body: 'Something that is served as files.',
+  },
 ];
 
 export function NewProjectForm({

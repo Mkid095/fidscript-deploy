@@ -72,7 +72,12 @@ export function EmailKeysSection({
                     made {new Date(key.createdAt).toLocaleDateString()}
                   </p>
                 </div>
-                <Button variant="ghost" size="sm" onClick={() => remove(key.id)} loading={pending}>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => remove(key.id)}
+                  loading={pending}
+                >
                   Remove
                 </Button>
               </li>
@@ -98,11 +103,18 @@ export function EmailKeysSection({
               <p className="text-xs font-medium text-success">
                 The key is shown once. Copy it now.
               </p>
-              <p className="mt-1 break-all font-mono text-xs text-text">{made}</p>
+              <p className="mt-1 break-all font-mono text-xs text-text">
+                {made}
+              </p>
             </div>
           ) : null}
 
-          <Button variant="primary" onClick={create} loading={pending} disabled={!name.trim()}>
+          <Button
+            variant="primary"
+            onClick={create}
+            loading={pending}
+            disabled={!name.trim()}
+          >
             Make a key
           </Button>
         </div>

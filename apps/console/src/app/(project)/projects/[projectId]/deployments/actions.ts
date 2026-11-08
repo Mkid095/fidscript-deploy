@@ -15,7 +15,11 @@ export async function stopDeploymentAction(
   projectId: string,
   deploymentId: string,
 ): Promise<{ ok?: boolean; error?: string }> {
-  return act(projectId, deploymentId, `/projects/${projectId}/deployments/${deploymentId}/stop`);
+  return act(
+    projectId,
+    deploymentId,
+    `/projects/${projectId}/deployments/${deploymentId}/stop`,
+  );
 }
 
 export async function restartDeploymentAction(
@@ -36,14 +40,20 @@ export async function rollbackDeploymentAction(
   targetDeploymentId?: string,
 ): Promise<{ ok?: boolean; error?: string }> {
   try {
-    await api.post(`/projects/${projectId}/deployments/${deploymentId}/rollback`, {
-      ...(targetDeploymentId ? { targetDeploymentId } : {}),
-    });
+    await api.post(
+      `/projects/${projectId}/deployments/${deploymentId}/rollback`,
+      {
+        ...(targetDeploymentId ? { targetDeploymentId } : {}),
+      },
+    );
     revalidatePath(`/projects/${projectId}/deployments`);
     return { ok: true };
   } catch (err) {
     return {
-      error: err instanceof Error ? err.message : 'The rollback could not be started.',
+      error:
+        err instanceof Error
+          ? err.message
+          : 'The rollback could not be started.',
     };
   }
 }
@@ -59,7 +69,10 @@ export async function destroyDeploymentAction(
     return { ok: true };
   } catch (err) {
     return {
-      error: err instanceof Error ? err.message : 'The deployment could not be removed.',
+      error:
+        err instanceof Error
+          ? err.message
+          : 'The deployment could not be removed.',
     };
   }
 }
@@ -96,10 +109,15 @@ export async function redeployAction(
 
     revalidatePath(`/projects/${projectId}/deployments`);
     const id = result.deployment?.id ?? result.id;
-    return id ? { ok: true, deploymentId: id } : { error: 'The deployment did not start.' };
+    return id
+      ? { ok: true, deploymentId: id }
+      : { error: 'The deployment did not start.' };
   } catch (err) {
     return {
-      error: err instanceof Error ? err.message : 'The deployment could not be started again.',
+      error:
+        err instanceof Error
+          ? err.message
+          : 'The deployment could not be started again.',
     };
   }
 }
@@ -115,7 +133,8 @@ export async function setAutoDeployAction(
     return { ok: true };
   } catch (err) {
     return {
-      error: err instanceof Error ? err.message : 'The setting could not be saved.',
+      error:
+        err instanceof Error ? err.message : 'The setting could not be saved.',
     };
   }
 }
@@ -131,7 +150,10 @@ async function act(
     return { ok: true };
   } catch (err) {
     return {
-      error: err instanceof Error ? err.message : 'The deployment could not be changed.',
+      error:
+        err instanceof Error
+          ? err.message
+          : 'The deployment could not be changed.',
     };
   }
 }

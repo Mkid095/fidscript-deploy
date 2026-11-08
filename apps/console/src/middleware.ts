@@ -62,7 +62,9 @@ export async function middleware(request: NextRequest) {
   // page would read the expired one.
   const carried = (request.headers.get('cookie') ?? '')
     .split('; ')
-    .filter((entry) => entry.length > 0 && !entry.startsWith(`${ACCESS_COOKIE}=`))
+    .filter(
+      (entry) => entry.length > 0 && !entry.startsWith(`${ACCESS_COOKIE}=`),
+    )
     .concat(`${ACCESS_COOKIE}=${renewed.accessToken}`)
     .join('; ');
   headers.set('cookie', carried);
@@ -93,7 +95,9 @@ export async function middleware(request: NextRequest) {
  */
 function hasExpired(token: string): boolean {
   try {
-    const payload = JSON.parse(decodeBase64Url(token.split('.')[1])) as { exp?: number };
+    const payload = JSON.parse(decodeBase64Url(token.split('.')[1])) as {
+      exp?: number;
+    };
     if (!payload.exp) return false;
     return payload.exp * 1000 <= Date.now();
   } catch {
@@ -104,7 +108,10 @@ function hasExpired(token: string): boolean {
 /** The payload of a JWT, which is base64url and is not always padded. */
 function decodeBase64Url(value: string): string {
   const base64 = value.replace(/-/g, '+').replace(/_/g, '/');
-  const padded = base64.padEnd(base64.length + ((4 - (base64.length % 4)) % 4), '=');
+  const padded = base64.padEnd(
+    base64.length + ((4 - (base64.length % 4)) % 4),
+    '=',
+  );
   return atob(padded);
 }
 
@@ -116,7 +123,9 @@ function decodeBase64Url(value: string): string {
  */
 async function refresh(
   refreshToken: string,
-): Promise<{ accessToken: string; refreshToken: string } | null | 'unreachable'> {
+): Promise<
+  { accessToken: string; refreshToken: string } | null | 'unreachable'
+> {
   try {
     const response = await fetch(new URL('/api/v1/auth/refresh', API_URL), {
       method: 'POST',

@@ -3,6 +3,7 @@ import { redirect } from 'next/navigation';
 import { Page } from '@/components/ui/page';
 
 import { getProject } from '@/lib/api/project';
+import { getDomains } from '@/lib/api/resources';
 import { Card } from '@/components/ui/card';
 import { DeploymentWizard } from '@/components/project/deployment-wizard';
 
@@ -27,13 +28,24 @@ export default async function NewDeploymentPage({
     redirect(`/projects/${project.slug}/overview`);
   }
 
+  const domains = await getDomains(project.id).catch(() => []);
+
   return (
     <Page
       title="New deployment"
       description={`Deploying into ${project.name}.`}
     >
       <Card className="p-4">
-        <DeploymentWizard projectId={project.id} projectSlug={project.slug} />
+        <DeploymentWizard
+          projectId={project.id}
+          projectSlug={project.slug}
+          domains={domains.map((domain) => ({
+            id: domain.id,
+            domain: domain.domain,
+            dnsStatus: domain.dnsStatus ?? 'pending',
+            attached: Boolean(domain.deploymentId),
+          }))}
+        />
       </Card>
     </Page>
   );

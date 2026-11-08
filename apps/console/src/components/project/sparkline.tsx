@@ -20,7 +20,10 @@ export function Sparkline({
 
   const max = Math.max(...values, 1);
   const gap = 1;
-  const barWidth = Math.max(1, (width - gap * (values.length - 1)) / values.length);
+  const barWidth = Math.max(
+    1,
+    (width - gap * (values.length - 1)) / values.length,
+  );
 
   return (
     <svg

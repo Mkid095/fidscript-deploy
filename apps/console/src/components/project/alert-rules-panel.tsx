@@ -30,9 +30,13 @@ export function AlertRulesPanel({
 }) {
   const [name, setName] = useState('');
   const [metric, setMetric] = useState('cpu_percent');
-  const [condition, setCondition] = useState<'above' | 'below' | 'equals'>('above');
+  const [condition, setCondition] = useState<'above' | 'below' | 'equals'>(
+    'above',
+  );
   const [threshold, setThreshold] = useState('80');
-  const [severity, setSeverity] = useState<'critical' | 'warning' | 'info'>('warning');
+  const [severity, setSeverity] = useState<'critical' | 'warning' | 'info'>(
+    'warning',
+  );
   const [channel, setChannel] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
@@ -75,12 +79,17 @@ export function AlertRulesPanel({
         ) : (
           <ul className="divide-y divide-rail">
             {rules.map((rule) => (
-              <li key={rule.id} className="flex items-center justify-between gap-4 px-4 py-3">
+              <li
+                key={rule.id}
+                className="flex items-center justify-between gap-4 px-4 py-3"
+              >
                 <div className="min-w-0">
                   <p className="truncate text-sm text-text">{rule.name}</p>
                   <p className="truncate text-xs text-text-dim">
                     {rule.metric} {rule.condition} {rule.threshold}
-                    {rule.durationSeconds ? ` for ${rule.durationSeconds}s` : ''}
+                    {rule.durationSeconds
+                      ? ` for ${rule.durationSeconds}s`
+                      : ''}
                   </p>
                 </div>
                 <div className="flex items-center gap-2">
@@ -95,7 +104,12 @@ export function AlertRulesPanel({
                   >
                     {rule.severity}
                   </Badge>
-                  <Button variant="ghost" size="sm" onClick={() => remove(rule.id)} loading={pending}>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => remove(rule.id)}
+                    loading={pending}
+                  >
                     Remove
                   </Button>
                 </div>
@@ -145,7 +159,9 @@ export function AlertRulesPanel({
               label="How loudly"
               value={severity}
               onChange={(event) =>
-                setSeverity(event.target.value as 'critical' | 'warning' | 'info')
+                setSeverity(
+                  event.target.value as 'critical' | 'warning' | 'info',
+                )
               }
               options={[
                 { value: 'critical', label: 'Critical' },
@@ -161,7 +177,10 @@ export function AlertRulesPanel({
             onChange={(event) => setChannel(event.target.value)}
             options={[
               { value: '', label: 'Nowhere yet' },
-              ...channels.map((entry) => ({ value: entry.id, label: entry.name })),
+              ...channels.map((entry) => ({
+                value: entry.id,
+                label: entry.name,
+              })),
             ]}
           />
 

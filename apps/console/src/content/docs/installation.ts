@@ -3,7 +3,8 @@ import type { DocPage } from './types';
 export const installation: DocPage = {
   slug: 'installation',
   title: 'Installation',
-  description: 'The one wizard, from an empty machine to a platform that serves.',
+  description:
+    'The one wizard, from an empty machine to a platform that serves.',
   group: 'Start',
   blocks: [
     {
@@ -43,12 +44,36 @@ export const installation: DocPage = {
       table: {
         head: ['Application', 'What it powers', 'How the platform treats it'],
         rows: [
-          ['Instant BaaS', 'The realtime backend', 'Link out — FIDScript provisions the app and deep-links to its console'],
-          ['Deployment engine', 'Git push to a running app', 'Native — it is the platform’s own'],
-          ['Stalwart', 'Mail on your own domain', 'Wrapped — the mail server stays invisible'],
-          ['Verdaccio', 'A private npm registry', 'Wrapped — the console is the only face of it'],
-          ['Viventure', 'WhatsApp channels', 'Both — instances inside the project, the console for the rest'],
-          ['Observability', 'Metrics, logs, dashboards', 'Wrapped — Grafana for the power users'],
+          [
+            'Instant BaaS',
+            'The realtime backend',
+            'Link out — FIDScript provisions the app and deep-links to its console',
+          ],
+          [
+            'Deployment engine',
+            'Git push to a running app',
+            'Native — it is the platform’s own',
+          ],
+          [
+            'Stalwart',
+            'Mail on your own domain',
+            'Wrapped — the mail server stays invisible',
+          ],
+          [
+            'Verdaccio',
+            'A private npm registry',
+            'Wrapped — the console is the only face of it',
+          ],
+          [
+            'Viventure',
+            'WhatsApp channels',
+            'Both — instances inside the project, the console for the rest',
+          ],
+          [
+            'Observability',
+            'Metrics, logs, dashboards',
+            'Wrapped — Grafana for the power users',
+          ],
           ['App runtime', 'The image registry', 'Invisible — health only'],
         ],
       },

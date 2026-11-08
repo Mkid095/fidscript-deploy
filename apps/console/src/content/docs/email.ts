@@ -3,7 +3,8 @@ import type { DocPage } from './types';
 export const email: DocPage = {
   slug: 'email',
   title: 'Email',
-  description: 'Mail on your own domain — domains, records, mailboxes, aliases and sending.',
+  description:
+    'Mail on your own domain — domains, records, mailboxes, aliases and sending.',
   group: 'Build',
   blocks: [
     {

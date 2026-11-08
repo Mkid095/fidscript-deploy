@@ -19,7 +19,11 @@ export interface Discovery {
   cloudflareTokenFound: boolean;
   cloudflareOAuthConfigured: boolean;
   existingCertificateFound: boolean;
-  existingInstallation: { version: string; projectCount: number; userCount: number } | null;
+  existingInstallation: {
+    version: string;
+    projectCount: number;
+    userCount: number;
+  } | null;
 }
 
 export interface StepValidation {
@@ -102,19 +106,38 @@ export async function configureInstallation(
     return { operationId: parsed.operationId };
   } catch (err) {
     return {
-      error: err instanceof Error ? err.message : 'The platform could not be configured.',
+      error:
+        err instanceof Error
+          ? err.message
+          : 'The platform could not be configured.',
     };
   }
 }
 
 /** The installs that are running, and the ones that just finished. */
 export async function listInstalls(): Promise<
-  Array<{ id: string; applicationId: string; status: string; error?: string | null }>
+  Array<{
+    id: string;
+    applicationId: string;
+    status: string;
+    error?: string | null;
+  }>
 > {
   const response = await api
     .get<{
-      installs: Array<{ id: string; applicationId: string; status: string; error?: string | null }>;
+      installs: Array<{
+        id: string;
+        applicationId: string;
+        status: string;
+        error?: string | null;
+      }>;
     }>('/applications/installs')
-    .catch(() => ({ installs: [] as Array<{ id: string; applicationId: string; status: string }> }));
+    .catch(() => ({
+      installs: [] as Array<{
+        id: string;
+        applicationId: string;
+        status: string;
+      }>,
+    }));
   return response.installs;
 }

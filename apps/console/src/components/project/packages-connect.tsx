@@ -9,7 +9,11 @@ import { CodeBlock } from '@/components/ui/code-block';
  * reads, the `settings.xml` Maven reads, the `repositories` block Gradle
  * reads. They are filled in with the registry's real address.
  */
-export function PackagesConnect({ registryUrl }: { registryUrl: string | null }) {
+export function PackagesConnect({
+  registryUrl,
+}: {
+  registryUrl: string | null;
+}) {
   if (!registryUrl) {
     return (
       <section>
@@ -51,15 +55,21 @@ export function PackagesConnect({ registryUrl }: { registryUrl: string | null })
       </section>
 
       <section>
-        <SectionHeader title="Publish" description="How a package leaves this machine." />
+        <SectionHeader
+          title="Publish"
+          description="How a package leaves this machine."
+        />
         <Card className="p-4">
           <ol className="space-y-2 text-sm text-text-muted">
             <li>
               <span className="text-text">1.</span> Sign in to the registry —{' '}
-              <code className="font-mono text-xs text-text">npm login --registry {registryUrl}</code>
+              <code className="font-mono text-xs text-text">
+                npm login --registry {registryUrl}
+              </code>
             </li>
             <li>
-              <span className="text-text">2.</span> Point the scope at it, in the package&apos;s own{' '}
+              <span className="text-text">2.</span> Point the scope at it, in
+              the package&apos;s own{' '}
               <code className="font-mono text-xs text-text">.npmrc</code>.
             </li>
             <li>
@@ -68,8 +78,10 @@ export function PackagesConnect({ registryUrl }: { registryUrl: string | null })
             </li>
           </ol>
           <p className="mt-4 text-xs leading-relaxed text-text-dim">
-            A scope of this project&apos;s own is not configured on this deployment — the
-            registry knows <code className="font-mono">{scope}</code> and the packages under it.
+            A scope of this project&apos;s own is not configured on this
+            deployment — the registry knows{' '}
+            <code className="font-mono">{scope}</code> and the packages under
+            it.
           </p>
         </Card>
       </section>

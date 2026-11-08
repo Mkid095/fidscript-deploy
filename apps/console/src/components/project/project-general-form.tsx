@@ -58,9 +58,17 @@ export function ProjectGeneralForm({
         label="Description"
         hint="What this project is for. Optional."
         value={values.description}
-        onChange={(event) => setValues({ ...values, description: event.target.value })}
+        onChange={(event) =>
+          setValues({ ...values, description: event.target.value })
+        }
       />
-      <Input label="Slug" value={slug} readOnly disabled hint="It is in every link to this project." />
+      <Input
+        label="Slug"
+        value={slug}
+        readOnly
+        disabled
+        hint="It is in every link to this project."
+      />
 
       {error ? <ErrorState message={error} /> : null}
       {saved ? <p className="text-xs text-success">Saved.</p> : null}

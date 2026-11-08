@@ -78,9 +78,16 @@ export function EmailAliasesSection({
                     {alias.localPart}
                     {alias.domain ? `@${alias.domain}` : ''}
                   </p>
-                  <p className="truncate text-xs text-text-dim">→ {alias.destination}</p>
+                  <p className="truncate text-xs text-text-dim">
+                    → {alias.destination}
+                  </p>
                 </div>
-                <Button variant="ghost" size="sm" onClick={() => remove(alias.id)} loading={pending}>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => remove(alias.id)}
+                  loading={pending}
+                >
                   Remove
                 </Button>
               </li>

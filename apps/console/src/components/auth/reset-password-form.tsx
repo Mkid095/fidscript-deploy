@@ -46,10 +46,15 @@ export function ResetPasswordForm() {
 
     setSubmitting(true);
     try {
-      await browserApi.post('/auth/password-reset', { token, newPassword: password });
+      await browserApi.post('/auth/password-reset', {
+        token,
+        newPassword: password,
+      });
       setDone(true);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'That link is no longer valid.');
+      setError(
+        err instanceof Error ? err.message : 'That link is no longer valid.',
+      );
     } finally {
       setSubmitting(false);
     }
@@ -58,10 +63,12 @@ export function ResetPasswordForm() {
   if (done) {
     return (
       <div className="space-y-4 text-center">
-        <h1 className="text-xl font-semibold tracking-tight text-text">Your password is changed</h1>
+        <h1 className="text-xl font-semibold tracking-tight text-text">
+          Your password is changed
+        </h1>
         <p className="text-sm leading-relaxed text-text-muted">
-          Every session on this account was signed out — including this one. Sign in with the new
-          password.
+          Every session on this account was signed out — including this one.
+          Sign in with the new password.
         </p>
         <Link
           href="/login"
@@ -76,7 +83,9 @@ export function ResetPasswordForm() {
   return (
     <form onSubmit={submit} className="space-y-4">
       <div>
-        <h1 className="text-xl font-semibold tracking-tight text-text">Choose a new password</h1>
+        <h1 className="text-xl font-semibold tracking-tight text-text">
+          Choose a new password
+        </h1>
         <p className="mt-1 text-sm text-text-muted">
           This link works once, and for an hour.
         </p>
@@ -104,7 +113,12 @@ export function ResetPasswordForm() {
 
       {error ? <ErrorState message={error} /> : null}
 
-      <Button type="submit" variant="primary" loading={submitting} className="w-full">
+      <Button
+        type="submit"
+        variant="primary"
+        loading={submitting}
+        className="w-full"
+      >
         {submitting ? 'Saving…' : 'Set my password'}
       </Button>
     </form>

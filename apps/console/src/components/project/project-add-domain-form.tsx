@@ -24,7 +24,9 @@ export function ProjectAddDomainForm({
 }) {
   const [domain, setDomain] = useState('');
   const [type, setType] = useState('DEPLOYMENT');
-  const [mode, setMode] = useState<'auto' | 'manual'>(canWrite ? 'auto' : 'manual');
+  const [mode, setMode] = useState<'auto' | 'manual'>(
+    canWrite ? 'auto' : 'manual',
+  );
   const [error, setError] = useState<string | null>(null);
   const [added, setAdded] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
@@ -72,7 +74,9 @@ export function ProjectAddDomainForm({
 
       {canWrite ? (
         <fieldset className="space-y-2">
-          <legend className="text-xs font-medium text-text-muted">Who points it at the platform</legend>
+          <legend className="text-xs font-medium text-text-muted">
+            Who points it at the platform
+          </legend>
           <label className="flex cursor-pointer items-start gap-2 rounded-lg border border-rail bg-surface-2 p-3">
             <input
               type="radio"
@@ -82,7 +86,9 @@ export function ProjectAddDomainForm({
               onChange={() => setMode('auto')}
             />
             <span>
-              <span className="block text-sm text-text">The platform writes the records</span>
+              <span className="block text-sm text-text">
+                The platform writes the records
+              </span>
               <span className="mt-0.5 block text-xs text-text-dim">
                 Your connected account is used. The domain must be in it.
               </span>
@@ -97,7 +103,9 @@ export function ProjectAddDomainForm({
               onChange={() => setMode('manual')}
             />
             <span>
-              <span className="block text-sm text-text">I will set the records</span>
+              <span className="block text-sm text-text">
+                I will set the records
+              </span>
               <span className="mt-0.5 block text-xs text-text-dim">
                 The records are shown, and you copy them into your registrar.
               </span>
@@ -119,7 +127,12 @@ export function ProjectAddDomainForm({
         </div>
       ) : null}
 
-      <Button variant="primary" onClick={add} loading={pending} disabled={!domain.trim()}>
+      <Button
+        variant="primary"
+        onClick={add}
+        loading={pending}
+        disabled={!domain.trim()}
+      >
         Add the domain
       </Button>
     </div>

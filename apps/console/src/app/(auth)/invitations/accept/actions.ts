@@ -15,13 +15,19 @@ export async function acceptInvitationAction(
   if (!token) return { error: 'That link has no invitation in it.' };
 
   try {
-    const response = await api.post<{ success: boolean; projectId: string }>('/invitations/accept', {
-      token,
-    });
+    const response = await api.post<{ success: boolean; projectId: string }>(
+      '/invitations/accept',
+      {
+        token,
+      },
+    );
     return { ok: true, projectId: response.projectId };
   } catch (err) {
     return {
-      error: err instanceof Error ? err.message : 'The invitation could not be accepted.',
+      error:
+        err instanceof Error
+          ? err.message
+          : 'The invitation could not be accepted.',
     };
   }
 }

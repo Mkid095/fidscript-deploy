@@ -10,7 +10,13 @@ import { useRef } from 'react';
  * The applications and the keys live **here**, not in the top bar: they are
  * settings, and a setting is not a destination a person returns to.
  */
-export function AccountMenu({ name, email }: { name: string | null; email: string }) {
+export function AccountMenu({
+  name,
+  email,
+}: {
+  name: string | null;
+  email: string;
+}) {
   const router = useRouter();
   const menu = useRef<HTMLDetailsElement>(null);
 

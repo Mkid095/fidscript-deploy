@@ -39,7 +39,8 @@ export function SetupAccountForm({
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
 
-  const set = (patch: Partial<typeof values>) => setValues({ ...values, ...patch });
+  const set = (patch: Partial<typeof values>) =>
+    setValues({ ...values, ...patch });
 
   const configure = () => {
     setError(null);
@@ -51,8 +52,12 @@ export function SetupAccountForm({
           serverIp: values.serverIp.trim(),
           adminEmail: values.adminEmail.trim(),
           authMethod: values.authMethod,
-          ...(values.authMethod === 'PASSWORD' ? { adminPassword: values.adminPassword } : {}),
-          ...(values.setupPassword ? { setupPassword: values.setupPassword } : {}),
+          ...(values.authMethod === 'PASSWORD'
+            ? { adminPassword: values.adminPassword }
+            : {}),
+          ...(values.setupPassword
+            ? { setupPassword: values.setupPassword }
+            : {}),
           ...(values.cloudflareApiToken
             ? { cloudflareApiToken: values.cloudflareApiToken.trim() }
             : {}),
@@ -98,7 +103,9 @@ export function SetupAccountForm({
         <Select
           label="How people sign in"
           value={values.authMethod}
-          onChange={(event) => set({ authMethod: event.target.value as 'PASSWORD' | 'MAGIC_CODE' })}
+          onChange={(event) =>
+            set({ authMethod: event.target.value as 'PASSWORD' | 'MAGIC_CODE' })
+          }
           options={[
             { value: 'PASSWORD', label: 'A password' },
             { value: 'MAGIC_CODE', label: 'A code sent to the email' },
@@ -142,7 +149,9 @@ export function SetupAccountForm({
             variant="primary"
             onClick={configure}
             loading={pending}
-            disabled={!values.platformDomain || !values.adminEmail || !setupToken}
+            disabled={
+              !values.platformDomain || !values.adminEmail || !setupToken
+            }
           >
             Configure the platform
           </Button>
