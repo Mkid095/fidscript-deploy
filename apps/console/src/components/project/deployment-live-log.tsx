@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from 'react';
 
 import { Card } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
 import { EmptyState } from '@/components/ui/feedback';
 
 import { browserApi } from '@/lib/api/browser';
@@ -23,16 +24,27 @@ export function DeploymentLiveLog({
 }) {
   const [lines, setLines] = useState<string[]>([]);
   const [following, setFollowing] = useState(true);
+  const [copied, setCopied] = useState(false);
   const bottom = useRef<HTMLDivElement>(null);
+
+  const copy = async () => {
+    try {
+      await navigator.clipboard.writeText(lines.join('\n'));
+      setCopied(true);
+      setTimeout(() => setCopied(false), 1500);
+    } catch {
+      /* the clipboard is not available — nothing to do */
+    }
+  };
 
   useEffect(() => {
     let cancelled = false;
 
     const read = async () => {
-      const container = `fidscript-${projectSlug}-${deploymentId}`;
-      const response = await browserApi.get<{ lines?: Array<{ line: string }> }>(
-        `/system/logs?container=${encodeURIComponent(container)}&limit=200`,
-      );
+      const container = `fidscript-${projectSlug}-${deploymentId.slice(0, 8)}`;
+      const response = await browserApi.get<{
+        lines?: Array<{ line: string }>;
+      }>(`/system/logs?container=${encodeURIComponent(container)}&limit=200`);
       if (cancelled) return;
       setLines((response.lines ?? []).map((entry) => entry.line).reverse());
     };
@@ -53,14 +65,23 @@ export function DeploymentLiveLog({
   return (
     <Card className="overflow-hidden">
       <div className="flex items-center justify-between gap-3 border-b border-rail px-4 py-2">
-        <p className="text-xs font-medium text-text-muted">The application&apos;s own log</p>
-        <button
-          type="button"
-          onClick={() => setFollowing(!following)}
-          className="text-[11px] text-text-dim transition-colors hover:text-text"
-        >
-          {following ? 'Following' : 'Following — click to stop'}
-        </button>
+        <p className="text-xs font-medium text-text-muted">
+          The application&apos;s own log · {lines.length} lines
+        </p>
+        <div className="flex items-center gap-3">
+          {lines.length > 0 ? (
+            <Button variant="ghost" size="sm" onClick={copy}>
+              {copied ? 'Copied' : 'Copy'}
+            </Button>
+          ) : null}
+          <button
+            type="button"
+            onClick={() => setFollowing(!following)}
+            className="text-[11px] text-text-dim transition-colors hover:text-text"
+          >
+            {following ? 'Following' : 'Following — click to stop'}
+          </button>
+        </div>
       </div>
 
       {lines.length === 0 ? (

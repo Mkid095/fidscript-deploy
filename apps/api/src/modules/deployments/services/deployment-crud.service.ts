@@ -1,15 +1,25 @@
-import { Injectable, NotFoundException, ForbiddenException, BadRequestException, Logger } from '@nestjs/common';
+import {
+  Injectable,
+  NotFoundException,
+  ForbiddenException,
+  BadRequestException,
+  Logger,
+} from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { PrismaService } from '@/prisma/prisma.service';
 import { EventService } from '@/modules/events/event.service';
 import { DeploymentWorkerService } from '@/modules/deployments/runner/deployment-worker.service';
-import { CreateDeploymentDto, UpdateBuildConfigDto } from '@/modules/deployments/dto/index';
+import {
+  CreateDeploymentDto,
+  UpdateBuildConfigDto,
+} from '@/modules/deployments/dto/index';
 import { NodeBuildpackProvider } from '@/modules/deployments/providers/node-buildpack.provider';
 import { DockerBuildWorkspaceService } from '@/modules/deployments/providers/docker-build-workspace.service';
 import { UserGithubService } from '@/modules/app-auth/services/user-github.service';
 import { DeploymentRoutesService } from '@/modules/deployments/services/deployment-routes.service';
 import { ProjectEnvVarsService } from '@/modules/deployments/services/project-env-vars.service';
 import { ProjectAccessService } from '@/modules/projects/services/project-access.service';
+import { join } from 'path';
 
 @Injectable()
 export class DeploymentCrudService {
@@ -34,29 +44,60 @@ export class DeploymentCrudService {
    * Clone a repo shallowly, run framework detection, and return a BuildPlan
    * — without deploying. Used by the wizard's "Auto-detect" step.
    */
- async detectFramework(userId: string, projectId: string, dto: { gitUrl: string; branch?: string; credentials?: string }) {
-  projectId = await this.checkAccessOrThrow(userId, projectId);
-  const ws = this.workspace.prepareWorkspace();
-  try {
-    // Use explicit credentials if provided, otherwise fall back to the user's
-    // connected GitHub token so private repos clone without prompting (which
-    // would fail in the non-TTY server environment and cause a 400 here).
-    const credentials = dto.credentials ?? (await this.github.getCloneCredentials(userId)) ?? undefined;
-    await this.workspace.fetchGitSource({
-      url: dto.gitUrl,
-      branch: dto.branch || 'main',
-      credentials,
-      workspace: ws,
-    });
-    const info = await this.buildpackProvider.detectFramework(ws);
-    return this.buildpackProvider.toBuildPlan(info);
-  } catch (err) {
-    const message = err instanceof Error ? err.message : 'Framework detection failed';
-    throw new BadRequestException(message);
-  } finally {
-    this.workspace.cleanupWorkspace(ws);
+  async detectFramework(
+    userId: string,
+    projectId: string,
+    dto: { gitUrl: string; branch?: string; credentials?: string },
+  ) {
+    projectId = await this.checkAccessOrThrow(userId, projectId);
+    const ws = this.workspace.prepareWorkspace();
+    try {
+      // Use explicit credentials if provided, otherwise fall back to the user's
+      // connected GitHub token so private repos clone without prompting (which
+      // would fail in the non-TTY server environment and cause a 400 here).
+      const credentials =
+        dto.credentials ??
+        (await this.github.getCloneCredentials(userId)) ??
+        undefined;
+      await this.workspace.fetchGitSource({
+        url: dto.gitUrl,
+        branch: dto.branch || 'main',
+        credentials,
+        workspace: ws,
+      });
+      const info = await this.buildpackProvider.detectFramework(ws);
+      let plan = this.buildpackProvider.toBuildPlan(info);
+      // A repository that is more than one application says so now, with the
+      // list — the wizard offers them instead of the operator discovering a
+      // half-deployed application later.
+      const apps = plan.monorepo
+        ? await this.buildpackProvider.listMonorepoApps(ws)
+        : [];
+
+      // A monorepo root is not itself an application. When the root says
+      // "unknown" but applications live inside, the plan becomes the first one
+      // that actually runs — a web front end before a plain service — with the
+      // rest one press away on the finish screen.
+      if (plan.framework === 'unknown' && apps.length > 0) {
+        const preferred =
+          apps.find((a) => a.framework === 'next') ??
+          apps.find((a) => a.framework !== 'unknown') ??
+          apps[0];
+        const appInfo = await this.buildpackProvider.detectFramework(
+          join(ws, preferred.path),
+        );
+        plan = this.buildpackProvider.toBuildPlan(appInfo);
+        plan.buildTarget = preferred.path;
+      }
+      return { ...plan, apps };
+    } catch (err) {
+      const message =
+        err instanceof Error ? err.message : 'Framework detection failed';
+      throw new BadRequestException(message);
+    } finally {
+      this.workspace.cleanupWorkspace(ws);
+    }
   }
-}
 
   // ─── Deployment CRUD ───────────────────────────────────────────────────────
 
@@ -64,7 +105,9 @@ export class DeploymentCrudService {
     // The project is resolved first: the caller may name it by its slug, and
     // the rest of this method needs its id.
     projectId = await this.checkAccessOrThrow(userId, projectId);
-    const project = await this.prisma.project.findUnique({ where: { id: projectId } });
+    const project = await this.prisma.project.findUnique({
+      where: { id: projectId },
+    });
     if (!project) throw new NotFoundException('Project not found');
 
     // The environment variables are SAVED before anything is built.
@@ -90,17 +133,26 @@ export class DeploymentCrudService {
     // reaches the build runner (it was previously dropped).
     const dockerfilePath =
       dto.source?.archive?.dockerfilePath || dto.source?.git?.dockerfilePath;
-    const dockerQuery = dockerfilePath ? `?dockerfile=${encodeURIComponent(dockerfilePath)}` : '';
+    const dockerQuery = dockerfilePath
+      ? `?dockerfile=${encodeURIComponent(dockerfilePath)}`
+      : '';
 
     let sourceUrl: string | undefined;
-    if (dto.source?.type === 'archive' && dto.source.archive?.bucketId && dto.source.archive?.objectKey) {
+    if (
+      dto.source?.type === 'archive' &&
+      dto.source.archive?.bucketId &&
+      dto.source.archive?.objectKey
+    ) {
       sourceUrl = `archive://${dto.source.archive.bucketId}/${dto.source.archive.objectKey}${dockerQuery}`;
     } else {
-      sourceUrl = (dto.source?.git?.url) ? `${dto.source.git.url}${dockerQuery}` : undefined;
+      sourceUrl = dto.source?.git?.url
+        ? `${dto.source.git.url}${dockerQuery}`
+        : undefined;
     }
     const release = await this.prisma.release.create({
       data: {
-        projectId, version,
+        projectId,
+        version,
         commitSha: dto.commitSha || '',
         branch: dto.branch || project.sourceBranch || 'main',
         sourceUrl,
@@ -126,13 +178,30 @@ export class DeploymentCrudService {
     // Both are handled here so every client (dashboard, SDK, CLI, MCP)
     // gets the same behaviour: the Domain row is what backs the DNS
     // section, the health checks and the operator console.
-    await this.linkDeploymentDomain(projectId, deployment.id, project.slug, dto);
+    await this.linkDeploymentDomain(
+      projectId,
+      deployment.id,
+      project.slug,
+      dto,
+    );
 
     await this.eventService.emit(
       'deployments.deployment.created',
       projectId,
-      { deploymentId: deployment.id, releaseId: release.id, userId, branch: dto.branch, source: dto.source, envVars: dto.envVars },
-      { actorId: userId, actorType: 'user', resourceType: 'deployment', resourceId: deployment.id },
+      {
+        deploymentId: deployment.id,
+        releaseId: release.id,
+        userId,
+        branch: dto.branch,
+        source: dto.source,
+        envVars: dto.envVars,
+      },
+      {
+        actorId: userId,
+        actorType: 'user',
+        resourceType: 'deployment',
+        resourceId: deployment.id,
+      },
     );
 
     return this.formatDeployment(deployment);
@@ -162,7 +231,8 @@ export class DeploymentCrudService {
         const existing = await this.prisma.domain.findFirst({
           where: { id: dto.domainId, projectId },
         });
-        if (!existing) throw new NotFoundException('Domain not found in this project');
+        if (!existing)
+          throw new NotFoundException('Domain not found in this project');
         await this.prisma.domain.update({
           where: { id: existing.id },
           data: { deploymentId },
@@ -172,12 +242,20 @@ export class DeploymentCrudService {
 
       if (!dto.subdomain?.trim()) return;
 
-      const platformDomain = this.configService.get<string>('PLATFORM_DOMAIN', 'apps.local');
+      const platformDomain = this.configService.get<string>(
+        'PLATFORM_DOMAIN',
+        'apps.local',
+      );
       const fqdn = `${dto.subdomain.trim()}.apps.${platformDomain}`;
 
-      const already = await this.prisma.domain.findFirst({ where: { projectId, domain: fqdn } });
+      const already = await this.prisma.domain.findFirst({
+        where: { projectId, domain: fqdn },
+      });
       if (already) {
-        await this.prisma.domain.update({ where: { id: already.id }, data: { deploymentId } });
+        await this.prisma.domain.update({
+          where: { id: already.id },
+          data: { deploymentId },
+        });
         return;
       }
 
@@ -210,11 +288,19 @@ export class DeploymentCrudService {
       });
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
-      this.logger.warn(`[deployments] Could not link the deployment to its hostname: ${msg}`);
+      this.logger.warn(
+        `[deployments] Could not link the deployment to its hostname: ${msg}`,
+      );
     }
   }
 
-  async list(userId: string, projectId: string, page = 1, limit = 20, status?: string) {
+  async list(
+    userId: string,
+    projectId: string,
+    page = 1,
+    limit = 20,
+    status?: string,
+  ) {
     projectId = await this.checkAccessOrThrow(userId, projectId);
     const skip = (page - 1) * limit;
     // The SDK and the MCP tool both send a `status` filter; it used to be
@@ -233,7 +319,10 @@ export class DeploymentCrudService {
       }),
       this.prisma.deployment.count({ where }),
     ]);
-    return { deployments: deployments.map(d => this.formatDeployment(d, d.release)), pagination: { page, limit, total, pages: Math.ceil(total / limit) } };
+    return {
+      deployments: deployments.map((d) => this.formatDeployment(d, d.release)),
+      pagination: { page, limit, total, pages: Math.ceil(total / limit) },
+    };
   }
 
   async get(userId: string, projectId: string, deploymentId: string) {
@@ -242,53 +331,83 @@ export class DeploymentCrudService {
       where: { id: deploymentId },
       include: { release: true },
     });
-    if (!deployment || deployment.projectId !== projectId) throw new NotFoundException('Deployment not found');
+    if (!deployment || deployment.projectId !== projectId)
+      throw new NotFoundException('Deployment not found');
     return this.formatDeployment(deployment, deployment.release);
   }
 
   async getLogs(userId: string, projectId: string, deploymentId: string) {
     projectId = await this.checkAccessOrThrow(userId, projectId);
-    const deployment = await this.prisma.deployment.findUnique({ where: { id: deploymentId }, include: { release: true } });
-    if (!deployment || deployment.projectId !== projectId) throw new NotFoundException('Deployment not found');
+    const deployment = await this.prisma.deployment.findUnique({
+      where: { id: deploymentId },
+      include: { release: true },
+    });
+    if (!deployment || deployment.projectId !== projectId)
+      throw new NotFoundException('Deployment not found');
     return { logs: deployment.release?.buildLogs || '' };
   }
 
   async getBuildConfig(userId: string, projectId: string) {
     projectId = await this.checkAccessOrThrow(userId, projectId);
-    let config = await this.prisma.buildConfig.findUnique({ where: { projectId } });
-    if (!config) config = await this.prisma.buildConfig.create({ data: { projectId } });
+    let config = await this.prisma.buildConfig.findUnique({
+      where: { projectId },
+    });
+    if (!config)
+      config = await this.prisma.buildConfig.create({ data: { projectId } });
     return this.formatBuildConfig(config);
   }
 
-  async updateBuildConfig(userId: string, projectId: string, dto: UpdateBuildConfigDto) {
+  async updateBuildConfig(
+    userId: string,
+    projectId: string,
+    dto: UpdateBuildConfigDto,
+  ) {
     projectId = await this.checkAccessOrThrow(userId, projectId);
-    let config = await this.prisma.buildConfig.findUnique({ where: { projectId } });
-    if (!config) config = await this.prisma.buildConfig.create({ data: { projectId } });
+    let config = await this.prisma.buildConfig.findUnique({
+      where: { projectId },
+    });
+    if (!config)
+      config = await this.prisma.buildConfig.create({ data: { projectId } });
     config = await this.prisma.buildConfig.update({
       where: { projectId },
       data: {
         ...(dto.buildTarget !== undefined && { buildTarget: dto.buildTarget }),
-        ...(dto.startupTimeoutSeconds !== undefined && { startupTimeoutSeconds: dto.startupTimeoutSeconds }),
-        ...(dto.requiredEnvVars !== undefined && { requiredEnvVars: dto.requiredEnvVars }),
+        ...(dto.startupTimeoutSeconds !== undefined && {
+          startupTimeoutSeconds: dto.startupTimeoutSeconds,
+        }),
+        ...(dto.requiredEnvVars !== undefined && {
+          requiredEnvVars: dto.requiredEnvVars,
+        }),
       },
     });
     return this.formatBuildConfig(config);
   }
 
   async stop(userId: string, projectId: string, deploymentId: string) {
-    projectId = await this.checkAccessOrThrow(userId, projectId, ['developer', 'admin', 'owner']);
+    projectId = await this.checkAccessOrThrow(userId, projectId, [
+      'developer',
+      'admin',
+      'owner',
+    ]);
     await this.worker.stopDeployment(deploymentId, userId);
     return this.get(userId, projectId, deploymentId);
   }
 
   async restart(userId: string, projectId: string, deploymentId: string) {
-    projectId = await this.checkAccessOrThrow(userId, projectId, ['developer', 'admin', 'owner']);
+    projectId = await this.checkAccessOrThrow(userId, projectId, [
+      'developer',
+      'admin',
+      'owner',
+    ]);
     await this.worker.restartDeployment(deploymentId, userId);
     return this.get(userId, projectId, deploymentId);
   }
 
   async destroy(userId: string, projectId: string, deploymentId: string) {
-    projectId = await this.checkAccessOrThrow(userId, projectId, ['admin', 'owner']);
+    projectId = await this.checkAccessOrThrow(userId, projectId, [
+      'admin',
+      'owner',
+    ]);
     await this.worker.destroyDeployment(deploymentId, userId);
     // Its custom-domain routes have to go with it, or Traefik keeps
     // routing the hostname to a container that no longer exists.
@@ -296,18 +415,43 @@ export class DeploymentCrudService {
     return { success: true };
   }
 
-  async rollback(userId: string, projectId: string, deploymentId: string, targetDeploymentId?: string) {
-    projectId = await this.checkAccessOrThrow(userId, projectId, ['admin', 'owner']);
-    const deployment = await this.prisma.deployment.findUnique({ where: { id: deploymentId } });
-    if (!deployment || deployment.projectId !== projectId) throw new NotFoundException('Deployment not found');
-    if (deployment.status !== 'SUCCESS') throw new BadRequestException('Can only rollback successful deployments');
+  async rollback(
+    userId: string,
+    projectId: string,
+    deploymentId: string,
+    targetDeploymentId?: string,
+  ) {
+    projectId = await this.checkAccessOrThrow(userId, projectId, [
+      'admin',
+      'owner',
+    ]);
+    const deployment = await this.prisma.deployment.findUnique({
+      where: { id: deploymentId },
+    });
+    if (!deployment || deployment.projectId !== projectId)
+      throw new NotFoundException('Deployment not found');
+    if (deployment.status !== 'SUCCESS')
+      throw new BadRequestException('Can only rollback successful deployments');
     if (targetDeploymentId) {
-      const target = await this.prisma.deployment.findUnique({ where: { id: targetDeploymentId } });
-      if (!target || target.projectId !== projectId) throw new NotFoundException('Rollback target deployment not found');
-      if (target.status !== 'SUCCESS') throw new BadRequestException('Can only roll back to a successful deployment');
-      if (target.id === deploymentId) throw new BadRequestException('A deployment cannot be rolled back to itself');
+      const target = await this.prisma.deployment.findUnique({
+        where: { id: targetDeploymentId },
+      });
+      if (!target || target.projectId !== projectId)
+        throw new NotFoundException('Rollback target deployment not found');
+      if (target.status !== 'SUCCESS')
+        throw new BadRequestException(
+          'Can only roll back to a successful deployment',
+        );
+      if (target.id === deploymentId)
+        throw new BadRequestException(
+          'A deployment cannot be rolled back to itself',
+        );
     }
-    await this.worker.rollbackToPreviousImage(deploymentId, userId, targetDeploymentId);
+    await this.worker.rollbackToPreviousImage(
+      deploymentId,
+      userId,
+      targetDeploymentId,
+    );
     return this.get(userId, projectId, deploymentId);
   }
 
@@ -324,7 +468,11 @@ export class DeploymentCrudService {
    * which knows about the workspaces as well as the memberships — this file
    * used to carry its own copy, and it knew only the id.
    */
-  private async checkAccessOrThrow(userId: string, projectId: string, minRoles?: string[]): Promise<string> {
+  private async checkAccessOrThrow(
+    userId: string,
+    projectId: string,
+    minRoles?: string[],
+  ): Promise<string> {
     // API-key callers already passed ProjectMemberGuard — allow through.
     if (userId === 'api-key') {
       const project = await this.prisma.project.findFirst({
@@ -340,7 +488,9 @@ export class DeploymentCrudService {
     return project.id;
   }
 
-  private generateVersion() { return `${Date.now().toString(36)}-${Math.random().toString(36).substring(2, 6)}`; }
+  private generateVersion() {
+    return `${Date.now().toString(36)}-${Math.random().toString(36).substring(2, 6)}`;
+  }
 
   private formatDeployment(d: any, release?: any) {
     return {
@@ -360,8 +510,11 @@ export class DeploymentCrudService {
       // the value exposed to the frontend — callers see a clean git URL or
       // the raw object key for archive sources.
       sourceUrl: this.cleanSourceUrlForApi(release?.sourceUrl),
-      sourceType: release?.sourceUrl?.startsWith('archive://') ? 'archive'
-        : release?.sourceUrl ? 'git' : null,
+      sourceType: release?.sourceUrl?.startsWith('archive://')
+        ? 'archive'
+        : release?.sourceUrl
+          ? 'git'
+          : null,
       version: release?.version || null,
     };
   }

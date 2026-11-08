@@ -21,7 +21,7 @@
  * before they commit to deploying.
  */
 import { Injectable, Logger } from '@nestjs/common';
-import { existsSync, readFileSync, writeFileSync } from 'fs';
+import { existsSync, readFileSync, readdirSync, writeFileSync } from 'fs';
 import { join } from 'path';
 import {
   BuildProvider,
@@ -55,6 +55,15 @@ export interface BuildPlan {
   port: number;
   runtime: string;
   monorepo?: string;
+  /** The monorepo app this plan is for, when the root itself is not one. */
+  buildTarget?: string;
+  /** The applications a monorepo holds, when it holds more than one. */
+  apps?: Array<{
+    path: string;
+    name: string;
+    framework: string;
+    frameworkLabel: string;
+  }>;
   detectedAt: string;
 }
 
@@ -72,14 +81,14 @@ interface FrameworkInfo {
 
 // Map framework IDs to human-readable labels + package names for version lookup
 const FRAMEWORK_META: Record<string, { label: string; pkg: string }> = {
-  next:      { label: 'Next.js',   pkg: 'next' },
-  nuxt:      { label: 'Nuxt',      pkg: 'nuxt' },
-  astro:     { label: 'Astro',     pkg: 'astro' },
+  next: { label: 'Next.js', pkg: 'next' },
+  nuxt: { label: 'Nuxt', pkg: 'nuxt' },
+  astro: { label: 'Astro', pkg: 'astro' },
   sveltekit: { label: 'SvelteKit', pkg: '@sveltejs/kit' },
-  vite:      { label: 'Vite',      pkg: 'vite' },
-  node:      { label: 'Node.js',   pkg: '' },
-  static:    { label: 'Static',    pkg: '' },
-  unknown:   { label: 'Unknown',   pkg: '' },
+  vite: { label: 'Vite', pkg: 'vite' },
+  node: { label: 'Node.js', pkg: '' },
+  static: { label: 'Static', pkg: '' },
+  unknown: { label: 'Unknown', pkg: '' },
 };
 
 @Injectable()
@@ -119,6 +128,107 @@ export class NodeBuildpackProvider implements BuildProvider {
     };
   }
 
+  /**
+   * The applications a monorepo holds.
+   *
+   * A repository that is more than one application — a web front end and an
+   * API behind it — is detected as one, and this is where the rest are
+   * found: the workspace globs are expanded, and every directory with a
+   * package.json is asked what it is. The wizard offers them, so a
+   * repository that needs a front end AND a backend leaves the wizard as
+   * two deployments instead of half an application.
+   */
+  async listMonorepoApps(ws: string): Promise<
+    Array<{
+      path: string;
+      name: string;
+      framework: string;
+      frameworkLabel: string;
+    }>
+  > {
+    const tool = this.detectMonorepo(ws);
+    if (!tool) return [];
+
+    const globs: string[] = [];
+    if (tool === 'pnpm') {
+      // pnpm-workspace.yaml: `packages:` — a small YAML list; parse the
+      // entries without pulling in a YAML dependency.
+      try {
+        const yaml = readFileSync(join(ws, 'pnpm-workspace.yaml'), 'utf-8');
+        const inPackages = yaml.split('\n').reduce<string[]>((acc, row) => {
+          const match = /^\s*-\s*['"]?([^\s'"]+)['"]?\s*$/.exec(row);
+          if (match) acc.push(match[1]);
+          return acc;
+        }, []);
+        globs.push(...inPackages);
+      } catch {
+        /* no readable pnpm-workspace.yaml */
+      }
+    }
+    const pkg = this.readPackage(ws);
+    if (Array.isArray(pkg?.workspaces)) globs.push(...pkg.workspaces);
+    else if (
+      pkg?.workspaces &&
+      typeof pkg.workspaces === 'object' &&
+      Array.isArray((pkg.workspaces as any).packages)
+    ) {
+      globs.push(...(pkg.workspaces as any).packages);
+    }
+
+    // Expand the globs. Only the shapes that actually appear in the wild:
+    // a literal directory, or one `*` level under a literal root.
+    const dirs = new Set<string>();
+    for (const pattern of globs) {
+      const clean = pattern.replace(/\/+$/, '');
+      if (!clean.includes('*')) {
+        if (existsSync(join(ws, clean, 'package.json'))) dirs.add(clean);
+        continue;
+      }
+      const [root, leaf] = clean.split('*');
+      try {
+        for (const entry of readdirSync(join(ws, root || '.'), {
+          withFileTypes: true,
+        })) {
+          if (!entry.isDirectory()) continue;
+          if (
+            leaf &&
+            leaf !== '/' &&
+            !leaf
+              .replace(/^\/+/, '')
+              .split('/')
+              .every((part) => !part || part === '*')
+          )
+            continue;
+          const rel = `${root}${entry.name}`;
+          if (existsSync(join(ws, rel, 'package.json'))) dirs.add(rel);
+        }
+      } catch {
+        /* the glob's root does not exist */
+      }
+    }
+
+    const found = await Promise.all(
+      Array.from(dirs)
+        .sort()
+        .map(async (rel) => {
+          const appWs = join(ws, rel);
+          const appPkg = this.readPackage(appWs);
+          const detected = await this.detect(appWs);
+          const meta =
+            FRAMEWORK_META[detected.framework] ?? FRAMEWORK_META.unknown;
+          return {
+            path: rel,
+            name: appPkg?.name ?? rel.split('/').pop() ?? rel,
+            framework: detected.framework,
+            frameworkLabel: meta.label,
+          };
+        }),
+    );
+    // A workspace member that runs nothing is a library, not an application
+    // — the picker is for the things that answer.
+    return found.filter((app) => app.framework !== 'unknown');
+  }
+
   // ─── Public BuildProvider interface ────────────────────────────────────────
 
   async validate(context: BuildContext): Promise<void> {
@@ -127,11 +237,13 @@ export class NodeBuildpackProvider implements BuildProvider {
     if (detected.framework === 'unknown') {
       throw new Error(
         'Could not detect a supported framework. ' +
-        'Ensure your repository has one of: next.config.js, nuxt.config.ts, astro.config.mjs, vite.config.ts, package.json, or an index.html file. ' +
-        'Alternatively, add a Dockerfile and specify its path in Advanced settings.',
+          'Ensure your repository has one of: next.config.js, nuxt.config.ts, astro.config.mjs, vite.config.ts, package.json, or an index.html file. ' +
+          'Alternatively, add a Dockerfile and specify its path in Advanced settings.',
       );
     }
-    this.logger.log(`[NodeBuildpackProvider] Validate OK — detected: ${detected.framework} (port=${detected.port}, outputDir=${detected.outputDir})`);
+    this.logger.log(
+      `[NodeBuildpackProvider] Validate OK — detected: ${detected.framework} (port=${detected.port}, outputDir=${detected.outputDir})`,
+    );
   }
 
   async build(context: BuildContext): Promise<BuildResult> {
@@ -139,7 +251,10 @@ export class NodeBuildpackProvider implements BuildProvider {
     const startTime = Date.now();
     const logs: string[] = [];
 
-    const addLog = (l: string) => { logs.push(l); onLog(l); };
+    const addLog = (l: string) => {
+      logs.push(l);
+      onLog(l);
+    };
 
     try {
       const detected = await this.detect(ws);
@@ -149,20 +264,37 @@ export class NodeBuildpackProvider implements BuildProvider {
       // the runtime stage for apps that read .env at startup.
       if (envVars.length > 0) {
         const envPath = join(ws, '.fidscript.env');
-        writeFileSync(envPath, envVars.map(e => `${e.key}=${e.value}`).join('\n'), { mode: 0o600 });
-        addLog(`[NodeBuildpackProvider] Wrote ${envVars.length} env vars to .fidscript.env`);
+        writeFileSync(
+          envPath,
+          envVars.map((e) => `${e.key}=${e.value}`).join('\n'),
+          { mode: 0o600 },
+        );
+        addLog(
+          `[NodeBuildpackProvider] Wrote ${envVars.length} env vars to .fidscript.env`,
+        );
       }
 
       const dockerfile = this.generateDockerfile(detected, context.buildTarget);
       const dfPath = join(ws, 'Dockerfile');
       writeFileSync(dfPath, dockerfile, { mode: 0o644 });
-      addLog(`[NodeBuildpackProvider] Detected framework: ${detected.framework} (${JSON.stringify({ port: detected.port, outputDir: detected.outputDir, buildCmd: detected.buildCommand, startCmd: detected.startCommand, monorepo: detected.monorepo })})`);
-      addLog(`[NodeBuildpackProvider] Generated Dockerfile for ${detected.framework}`);
+      addLog(
+        `[NodeBuildpackProvider] Detected framework: ${detected.framework} (${JSON.stringify({ port: detected.port, outputDir: detected.outputDir, buildCmd: detected.buildCommand, startCmd: detected.startCommand, monorepo: detected.monorepo })})`,
+      );
+      addLog(
+        `[NodeBuildpackProvider] Generated Dockerfile for ${detected.framework}`,
+      );
 
       const imageTag = `fidscript/${context.projectSlug}:${context.releaseVersion}`;
-      const buildArgs = detected.monorepo ? ` --build-arg BUILD_TARGET=${context.buildTarget || 'web'}` : '';
-      const envSecret = envVars.length > 0 ? ` --secret id=envfile,src="${join(ws, '.fidscript.env')}"` : '';
-      addLog(`[NodeBuildpackProvider] docker build${buildArgs} -t "${imageTag}" -f "${dfPath}" "${ws}"`);
+      const buildArgs = detected.monorepo
+        ? ` --build-arg BUILD_TARGET=${context.buildTarget || 'web'}`
+        : '';
+      const envSecret =
+        envVars.length > 0
+          ? ` --secret id=envfile,src="${join(ws, '.fidscript.env')}"`
+          : '';
+      addLog(
+        `[NodeBuildpackProvider] docker build${buildArgs} -t "${imageTag}" -f "${dfPath}" "${ws}"`,
+      );
 
       // Asynchronous and streaming: a build can run for ten minutes, and
       // blocking the api for that long stops every other request — including
@@ -195,7 +327,6 @@ export class NodeBuildpackProvider implements BuildProvider {
     }
   }
 
-
   // ─── Framework detection ───────────────────────────────────────────────────
 
   /**
@@ -213,7 +344,8 @@ export class NodeBuildpackProvider implements BuildProvider {
     if (this.hasConfigFile(ws, 'astro.config')) return this.detectAstro(ws);
 
     // 4. SvelteKit (svelte.config + @sveltejs/kit dependency)
-    if (this.hasConfigFile(ws, 'svelte.config')) return this.detectSvelteKit(ws);
+    if (this.hasConfigFile(ws, 'svelte.config'))
+      return this.detectSvelteKit(ws);
 
     // 5. Vite
     if (this.hasConfigFile(ws, 'vite.config')) return this.detectVite(ws);
@@ -229,28 +361,53 @@ export class NodeBuildpackProvider implements BuildProvider {
       if (allScripts.includes('astro ')) return this.detectAstro(ws);
       if (allScripts.includes('vite ')) return this.detectVite(ws);
       // React Native / Expo — treat as node (expo has its own build system)
-      if (allScripts.includes('expo ') || pkg?.dependencies?.['expo'] || pkg?.devDependencies?.['expo']) {
+      if (
+        allScripts.includes('expo ') ||
+        pkg?.dependencies?.['expo'] ||
+        pkg?.devDependencies?.['expo']
+      ) {
         return this.detectNode(ws);
       }
       // Plain Node.js with build/start/dev scripts
-      if (scripts.dev || scripts.start || scripts.build) return this.detectNode(ws);
+      if (scripts.dev || scripts.start || scripts.build)
+        return this.detectNode(ws);
     }
 
     // 7. Static HTML — last resort before unknown
     if (existsSync(join(ws, 'index.html'))) return this.detectStatic();
 
-    return { framework: 'unknown', startCommand: '', port: 3000, outputDir: '' };
+    // 8. A monorepo root is not itself an application — it holds them. Say
+    // so, so the caller can look inside instead of giving up.
+    const monorepo = this.detectMonorepo(ws);
+    if (monorepo)
+      return {
+        framework: 'unknown',
+        startCommand: '',
+        port: 3000,
+        outputDir: '',
+        monorepo,
+      };
+
+    return {
+      framework: 'unknown',
+      startCommand: '',
+      port: 3000,
+      outputDir: '',
+    };
   }
 
   /** Check if any of .js/.mjs/.ts/.cjs variants of a config file exist. */
   private hasConfigFile(ws: string, baseName: string): boolean {
-    return ['.js', '.mjs', '.ts', '.cjs'].some(ext =>
+    return ['.js', '.mjs', '.ts', '.cjs'].some((ext) =>
       existsSync(join(ws, `${baseName}${ext}`)),
     );
   }
 
   /** Extract a version string from package.json dependencies/devDependencies. */
-  private getVersion(pkg: Record<string, any> | null, depName: string): string | undefined {
+  private getVersion(
+    pkg: Record<string, any> | null,
+    depName: string,
+  ): string | undefined {
     if (!pkg || !depName) return undefined;
     const raw = pkg.dependencies?.[depName] || pkg.devDependencies?.[depName];
     if (!raw) return undefined;
@@ -389,7 +546,10 @@ export class NodeBuildpackProvider implements BuildProvider {
 
   // ─── Dockerfile generation ─────────────────────────────────────────────────
 
-  private generateDockerfile(info: FrameworkInfo, buildTarget?: string): string {
+  private generateDockerfile(
+    info: FrameworkInfo,
+    buildTarget?: string,
+  ): string {
     switch (info.framework) {
       case 'next':
         return this.dockerfileNext(info, buildTarget);
@@ -449,7 +609,10 @@ CMD ["sh", "-c", "${info.startCommand}"]
 `;
   }
 
-  private dockerfileNextMonorepo(info: FrameworkInfo, buildTarget?: string): string {
+  private dockerfileNextMonorepo(
+    info: FrameworkInfo,
+    buildTarget?: string,
+  ): string {
     const isPnpm = info.monorepo === 'pnpm';
     const target = buildTarget || 'web';
     const installCmd = isPnpm
@@ -458,8 +621,12 @@ CMD ["sh", "-c", "${info.startCommand}"]
     const activatePnpm = isPnpm
       ? `corepack enable && corepack prepare pnpm@latest --activate`
       : 'true';
-    const buildCmd = isPnpm ? `pnpm run build` : `${info.buildCommand || 'npm run build'}`;
-    const depsCopy = isPnpm ? 'COPY . .' : 'COPY package.json package-lock.json* ./';
+    const buildCmd = isPnpm
+      ? `pnpm run build`
+      : `${info.buildCommand || 'npm run build'}`;
+    const depsCopy = isPnpm
+      ? 'COPY . .'
+      : 'COPY package.json package-lock.json* ./';
     return `
 # ─── Stage 1: Install monorepo deps ─────────────────────────────────────
 FROM node:20-alpine AS deps

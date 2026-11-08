@@ -2,6 +2,7 @@ import Link from 'next/link';
 import { redirect } from 'next/navigation';
 
 import { getProject } from '@/lib/api/project';
+import { getDomains } from '@/lib/api/resources';
 import { getDeployment, getDeploymentLogs } from '@/lib/api/resources';
 import { Card, SectionHeader } from '@/components/ui/card';
 import { Page } from '@/components/ui/page';
@@ -9,6 +10,8 @@ import { Badge } from '@/components/ui/feedback';
 import { Button } from '@/components/ui/button';
 import { DeploymentActions } from '@/components/project/deployment-actions';
 import { DeploymentLiveLog } from '@/components/project/deployment-live-log';
+import { DeploymentBuildSection } from '@/components/project/deployment-build-section';
+import { DeploymentDomains } from '@/components/project/deployment-domains';
 
 export const metadata = { title: 'Deployment' };
 
@@ -36,6 +39,7 @@ export default async function DeploymentPage({
   }
 
   const logs = await getDeploymentLogs(project.id, deploymentId);
+  const domains = await getDomains(project.id).catch(() => []);
   const base = `/projects/${project.slug}`;
 
   return (
@@ -116,6 +120,26 @@ export default async function DeploymentPage({
 
       <section>
         <SectionHeader
+          title="The names it answers on"
+          description="Its own address under the platform's domain, and any name of the project's that is pointed here."
+        />
+        <Card className="p-4">
+          <DeploymentDomains
+            projectId={project.id}
+            deploymentId={deployment.id}
+            domains={domains.map((entry) => ({
+              id: entry.id,
+              domain: entry.domain,
+              deploymentId:
+                (entry as { deploymentId?: string | null }).deploymentId ??
+                null,
+            }))}
+          />
+        </Card>
+      </section>
+
+      <section>
+        <SectionHeader
           title="The application's log"
           description="What it writes while it runs."
         />
@@ -126,18 +150,16 @@ export default async function DeploymentPage({
       </section>
 
       <section>
-        <SectionHeader title="The build log" />
-        <Card className="p-4">
-          {logs ? (
-            <pre className="max-h-96 overflow-auto text-xs leading-relaxed text-text-muted">
-              {logs}
-            </pre>
-          ) : (
-            <p className="text-sm text-text-muted">
-              There is no build log for this deployment.
-            </p>
-          )}
-        </Card>
+        <SectionHeader
+          title="The build log"
+          description="What the build said, while it says it — and why it ended the way it ended."
+        />
+        <DeploymentBuildSection
+          projectId={project.id}
+          deploymentId={deployment.id}
+          initialStatus={deployment.status}
+          initialLogs={logs ?? ''}
+        />
       </section>
     </Page>
   );

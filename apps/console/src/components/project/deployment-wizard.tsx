@@ -10,6 +10,7 @@ import { DeploymentProgressStep } from '@/components/project/deployment-progress
 import {
   createDeploymentAction,
   detectBuildPlanAction,
+  updateBuildTargetAction,
   type BuildPlan,
 } from '@/app/(project)/projects/[projectId]/deployments/new/actions';
 
@@ -33,8 +34,11 @@ export function DeploymentWizard({
   const [gitUrl, setGitUrl] = useState('');
   const [branch, setBranch] = useState('main');
   const [plan, setPlan] = useState<BuildPlan | null>(null);
-  const [envVars, setEnvVars] = useState<Array<{ key: string; value: string }>>([]);
+  const [envVars, setEnvVars] = useState<Array<{ key: string; value: string }>>(
+    [],
+  );
   const [subdomain, setSubdomain] = useState('');
+  const [buildTarget, setBuildTarget] = useState<string | null>(null);
   const [deploymentId, setDeploymentId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
@@ -58,6 +62,18 @@ export function DeploymentWizard({
       const variables: Record<string, string> = {};
       for (const entry of envVars) {
         if (entry.key.trim()) variables[entry.key.trim()] = entry.value;
+      }
+      // A monorepo app is named before it is built: the platform builds the
+      // directory this deployment said it is.
+      if (buildTarget) {
+        const configured = await updateBuildTargetAction(
+          projectId,
+          buildTarget,
+        );
+        if (configured.error) {
+          setError(configured.error);
+          return;
+        }
       }
       const result = await createDeploymentAction(projectId, {
         gitUrl,
@@ -88,8 +104,12 @@ export function DeploymentWizard({
             >
               {index + 1}
             </span>
-            <span className={index === step ? 'text-text' : 'text-text-dim'}>{label}</span>
-            {index < STEPS.length - 1 ? <span className="text-text-dim">·</span> : null}
+            <span className={index === step ? 'text-text' : 'text-text-dim'}>
+              {label}
+            </span>
+            {index < STEPS.length - 1 ? (
+              <span className="text-text-dim">·</span>
+            ) : null}
           </li>
         ))}
       </ol>
@@ -106,7 +126,12 @@ export function DeploymentWizard({
               setBranch(next.branch);
             }}
           />
-          <Button variant="primary" onClick={detect} loading={pending} disabled={!gitUrl.trim()}>
+          <Button
+            variant="primary"
+            onClick={detect}
+            loading={pending}
+            disabled={!gitUrl.trim()}
+          >
             Next — read the repository
           </Button>
         </>
@@ -127,6 +152,8 @@ export function DeploymentWizard({
             plan={plan}
             envVars={envVars}
             subdomain={subdomain}
+            buildTarget={buildTarget}
+            onBuildTarget={setBuildTarget}
             onEnvVars={setEnvVars}
             onSubdomain={setSubdomain}
           />
@@ -146,6 +173,15 @@ export function DeploymentWizard({
           projectId={projectId}
           projectSlug={projectSlug}
           deploymentId={deploymentId}
+          remainingApps={(plan?.apps ?? []).filter(
+            (app) => app.path !== buildTarget,
+          )}
+          onDeployAnother={(path) => {
+            setBuildTarget(path);
+            setDeploymentId(null);
+            setSubdomain('');
+            setStep(2);
+          }}
         />
       ) : null}
     </div>

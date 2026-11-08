@@ -38,6 +38,21 @@ export class DomainsService {
     return this.crud.getInstructions(userId, projectId, domainId);
   }
 
+  /** Point a domain at a deployment — or take it off one (`null`). */
+  attachDeployment(
+    userId: string,
+    projectId: string,
+    domainId: string,
+    deploymentId: string | null,
+  ) {
+    return this.crud.attachDeployment(
+      userId,
+      projectId,
+      domainId,
+      deploymentId,
+    );
+  }
+
   connectCloudflare(userId: string, projectId: string, apiToken: string) {
     return this.dns.connectCloudflare(userId, projectId, apiToken);
   }

@@ -1,6 +1,17 @@
 import {
-  Controller, Get, Post, Patch, Delete, Body, Param, Query, UseGuards,
-  Req, HttpCode, HttpStatus, NotFoundException,
+  Controller,
+  Get,
+  Post,
+  Patch,
+  Delete,
+  Body,
+  Param,
+  Query,
+  UseGuards,
+  Req,
+  HttpCode,
+  HttpStatus,
+  NotFoundException,
 } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { JwtAuthGuard } from '@/modules/auth/jwt-auth.guard';
@@ -18,7 +29,10 @@ import { DomainDnsDetectionService } from '@/modules/domains/services/domain-dns
 import { DomainEmailKeyService } from '@/modules/domains/services/domain-email-key.service';
 import { DomainEmailRecordsService } from '@/modules/domains/services/domain-email-records.service';
 import { DomainPropagationService } from '@/modules/domains/services/domain-propagation.service';
-import { UpdateRepairPolicyDto, TriggerRepairDto } from '@/modules/domains/dto/domain-repair.dto';
+import {
+  UpdateRepairPolicyDto,
+  TriggerRepairDto,
+} from '@/modules/domains/dto/domain-repair.dto';
 import { AddDomainDto } from '@/modules/domains/dto/add-domain.dto';
 import { Request } from 'express';
 
@@ -50,7 +64,9 @@ export class DomainsController {
 
   @Get('detect')
   @RequireScope('domains:read')
-  @ApiOperation({ summary: 'Detect DNS provider for a domain by querying its nameservers' })
+  @ApiOperation({
+    summary: 'Detect DNS provider for a domain by querying its nameservers',
+  })
   async detectDnsProvider(@Query('domain') domain: string) {
     return this.dnsDetection.detect(domain);
   }
@@ -58,8 +74,15 @@ export class DomainsController {
   @Post()
   @RequireScope('domains:write')
   @HttpCode(HttpStatus.CREATED)
-  @ApiOperation({ summary: 'Add a domain to a deployment (Mode A: manual DNS or Mode B: Cloudflare auto)' })
-  async add(@Req() req: Request, @Param('projectId') projectId: string, @Body() dto: AddDomainDto) {
+  @ApiOperation({
+    summary:
+      'Add a domain to a deployment (Mode A: manual DNS or Mode B: Cloudflare auto)',
+  })
+  async add(
+    @Req() req: Request,
+    @Param('projectId') projectId: string,
+    @Body() dto: AddDomainDto,
+  ) {
     const user = req.user as { userId: string };
     return this.domainsService.add(user.userId, projectId, dto);
   }
@@ -67,16 +90,30 @@ export class DomainsController {
   @Get(':id/instructions')
   @RequireScope('domains:read')
   @ApiOperation({ summary: 'Get DNS instructions for a domain (Mode A)' })
-  async getInstructions(@Req() req: Request, @Param('projectId') projectId: string, @Param('id') domainId: string) {
+  async getInstructions(
+    @Req() req: Request,
+    @Param('projectId') projectId: string,
+    @Param('id') domainId: string,
+  ) {
     const user = req.user as { userId: string };
-    return this.domainsService.getInstructions(user.userId, projectId, domainId);
+    return this.domainsService.getInstructions(
+      user.userId,
+      projectId,
+      domainId,
+    );
   }
 
   @Post(':id/verify')
   @RequireScope('domains:write')
   @HttpCode(HttpStatus.OK)
-  @ApiOperation({ summary: 'Verify domain: DNS resolution + HTTP routing check' })
-  async verify(@Req() req: Request, @Param('projectId') projectId: string, @Param('id') domainId: string) {
+  @ApiOperation({
+    summary: 'Verify domain: DNS resolution + HTTP routing check',
+  })
+  async verify(
+    @Req() req: Request,
+    @Param('projectId') projectId: string,
+    @Param('id') domainId: string,
+  ) {
     const user = req.user as { userId: string };
     return this.domainsService.verify(user.userId, projectId, domainId);
   }
@@ -85,15 +122,26 @@ export class DomainsController {
   @RequireScope('domains:write')
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Connect Cloudflare account for Mode B auto-DNS' })
-  async connectCloudflare(@Req() req: Request, @Param('projectId') projectId: string, @Body() body: { apiToken: string }) {
+  async connectCloudflare(
+    @Req() req: Request,
+    @Param('projectId') projectId: string,
+    @Body() body: { apiToken: string },
+  ) {
     const user = req.user as { userId: string };
-    return this.domainsService.connectCloudflare(user.userId, projectId, body.apiToken);
+    return this.domainsService.connectCloudflare(
+      user.userId,
+      projectId,
+      body.apiToken,
+    );
   }
 
   @Get('connection')
   @RequireScope('domains:read')
   @ApiOperation({ summary: 'Get the active DNS connection for this project' })
-  async getConnection(@Req() req: Request, @Param('projectId') projectId: string) {
+  async getConnection(
+    @Req() req: Request,
+    @Param('projectId') projectId: string,
+  ) {
     const user = req.user as { userId: string };
     return this.domainsService.getConnection(user.userId, projectId);
   }
@@ -122,16 +170,58 @@ export class DomainsController {
   @Get(':id')
   @RequireScope('domains:read')
   @ApiOperation({ summary: 'Get one domain of the project' })
-  async get(@Req() req: Request, @Param('projectId') projectId: string, @Param('id') id: string) {
+  async get(
+    @Req() req: Request,
+    @Param('projectId') projectId: string,
+    @Param('id') id: string,
+  ) {
     const user = req.user as { userId: string };
     return this.domainsService.get(user.userId, projectId, id);
+  }
+
+  /**
+   * Point a domain at a deployment, or take it off one.
+   *
+   * The body is `{ deploymentId }` — `null` detaches. The routing is
+   * rewritten from the event this emits, so the answer goes live the
+   * moment the call returns.
+   */
+  @Post(':id/attach')
+  @RequireScope('domains:write')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({
+    summary: 'Point a domain at a deployment (or detach it with null)',
+  })
+  async attach(
+    @Req() req: Request,
+    @Param('projectId') projectId: string,
+    @Param('id') domainId: string,
+    @Body() body: { deploymentId?: string | null },
+  ) {
+    const user = req.user as { userId: string };
+    const deploymentId =
+      body.deploymentId === null ||
+      body.deploymentId === undefined ||
+      body.deploymentId === ''
+        ? null
+        : body.deploymentId;
+    return this.domainsService.attachDeployment(
+      user.userId,
+      projectId,
+      domainId,
+      deploymentId,
+    );
   }
 
   @Delete(':id')
   @RequireScope('domains:delete')
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Delete a domain and clean up DNS records' })
-  async delete(@Req() req: Request, @Param('projectId') projectId: string, @Param('id') domainId: string) {
+  async delete(
+    @Req() req: Request,
+    @Param('projectId') projectId: string,
+    @Param('id') domainId: string,
+  ) {
     const user = req.user as { userId: string };
     return this.domainsService.delete(user.userId, projectId, domainId);
   }
@@ -139,7 +229,11 @@ export class DomainsController {
   @Get(':id/health')
   @RequireScope('domains:read')
   @ApiOperation({ summary: 'Get the latest health check result for a domain' })
-  async getHealth(@Req() req: Request, @Param('projectId') projectId: string, @Param('id') domainId: string) {
+  async getHealth(
+    @Req() req: Request,
+    @Param('projectId') projectId: string,
+    @Param('id') domainId: string,
+  ) {
     const user = req.user as { userId: string };
     return this.domainsService.getHealth(user.userId, projectId, domainId);
   }
@@ -148,15 +242,29 @@ export class DomainsController {
   @RequireScope('domains:write')
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Trigger a new health check for a domain' })
-  async triggerHealthCheck(@Req() req: Request, @Param('projectId') projectId: string, @Param('id') domainId: string) {
+  async triggerHealthCheck(
+    @Req() req: Request,
+    @Param('projectId') projectId: string,
+    @Param('id') domainId: string,
+  ) {
     const user = req.user as { userId: string };
-    return this.domainsService.triggerHealthCheck(user.userId, projectId, domainId);
+    return this.domainsService.triggerHealthCheck(
+      user.userId,
+      projectId,
+      domainId,
+    );
   }
 
   @Get(':id/dns-records')
   @RequireScope('domains:read')
-  @ApiOperation({ summary: 'Get all required DNS records for a domain (deployment + email)' })
-  async getDnsRecords(@Req() req: Request, @Param('projectId') projectId: string, @Param('id') domainId: string) {
+  @ApiOperation({
+    summary: 'Get all required DNS records for a domain (deployment + email)',
+  })
+  async getDnsRecords(
+    @Req() req: Request,
+    @Param('projectId') projectId: string,
+    @Param('id') domainId: string,
+  ) {
     const user = req.user as { userId: string };
     return this.domainsService.getDnsRecords(user.userId, projectId, domainId);
   }
@@ -164,31 +272,57 @@ export class DomainsController {
   @Post(':id/dns-records/auto-configure')
   @RequireScope('domains:write')
   @HttpCode(HttpStatus.OK)
-  @ApiOperation({ summary: 'Auto-configure DNS records via Cloudflare (Mode B)' })
-  async autoConfigureDnsRecords(@Req() req: Request, @Param('projectId') projectId: string, @Param('id') domainId: string) {
+  @ApiOperation({
+    summary: 'Auto-configure DNS records via Cloudflare (Mode B)',
+  })
+  async autoConfigureDnsRecords(
+    @Req() req: Request,
+    @Param('projectId') projectId: string,
+    @Param('id') domainId: string,
+  ) {
     const user = req.user as { userId: string };
-    return this.domainsService.autoConfigureDnsRecords(user.userId, projectId, domainId);
+    return this.domainsService.autoConfigureDnsRecords(
+      user.userId,
+      projectId,
+      domainId,
+    );
   }
 
   @Post(':id/email-records/auto-configure')
   @RequireScope('domains:write')
   @HttpCode(HttpStatus.OK)
-  @ApiOperation({ summary: 'Auto-configure email DNS records (MX, SPF, DKIM, DMARC)' })
-  async autoConfigureEmailRecords(@Req() req: Request, @Param('projectId') projectId: string, @Param('id') domainId: string) {
+  @ApiOperation({
+    summary: 'Auto-configure email DNS records (MX, SPF, DKIM, DMARC)',
+  })
+  async autoConfigureEmailRecords(
+    @Req() req: Request,
+    @Param('projectId') projectId: string,
+    @Param('id') domainId: string,
+  ) {
     const user = req.user as { userId: string };
     await this.accessService.ensureAccess(user.userId, projectId);
-    const domain = await this.prisma.domain.findFirst({ where: { id: domainId, projectId } });
+    const domain = await this.prisma.domain.findFirst({
+      where: { id: domainId, projectId },
+    });
     if (!domain) throw new NotFoundException('Domain not found');
     return this.emailRecordsService.autoConfigureEmailRecords(domainId);
   }
 
   @Get(':id/email-records/status')
   @RequireScope('domains:read')
-  @ApiOperation({ summary: 'Check status of email DNS records (MX, SPF, DKIM, DMARC)' })
-  async getEmailRecordsStatus(@Req() req: Request, @Param('projectId') projectId: string, @Param('id') domainId: string) {
+  @ApiOperation({
+    summary: 'Check status of email DNS records (MX, SPF, DKIM, DMARC)',
+  })
+  async getEmailRecordsStatus(
+    @Req() req: Request,
+    @Param('projectId') projectId: string,
+    @Param('id') domainId: string,
+  ) {
     const user = req.user as { userId: string };
     await this.accessService.ensureAccess(user.userId, projectId);
-    const domain = await this.prisma.domain.findFirst({ where: { id: domainId, projectId } });
+    const domain = await this.prisma.domain.findFirst({
+      where: { id: domainId, projectId },
+    });
     if (!domain) throw new NotFoundException('Domain not found');
     return this.emailRecordsService.checkEmailRecords(domainId);
   }
@@ -196,11 +330,19 @@ export class DomainsController {
   @Post(':id/dkim/rotate')
   @RequireScope('domains:write')
   @HttpCode(HttpStatus.OK)
-  @ApiOperation({ summary: 'Rotate DKIM key for a domain (generates new key + selector)' })
-  async rotateDkim(@Req() req: Request, @Param('projectId') projectId: string, @Param('id') domainId: string) {
+  @ApiOperation({
+    summary: 'Rotate DKIM key for a domain (generates new key + selector)',
+  })
+  async rotateDkim(
+    @Req() req: Request,
+    @Param('projectId') projectId: string,
+    @Param('id') domainId: string,
+  ) {
     const user = req.user as { userId: string };
     await this.accessService.ensureAccess(user.userId, projectId);
-    const domain = await this.prisma.domain.findFirst({ where: { id: domainId, projectId } });
+    const domain = await this.prisma.domain.findFirst({
+      where: { id: domainId, projectId },
+    });
     if (!domain) throw new NotFoundException('Domain not found');
     return this.emailKeyService.rotateKey(domainId, domain.domain);
   }
@@ -208,7 +350,11 @@ export class DomainsController {
   @Get(':id/ssl')
   @RequireScope('domains:read')
   @ApiOperation({ summary: 'Get SSL certificate info for a domain' })
-  async getSsl(@Req() req: Request, @Param('projectId') projectId: string, @Param('id') domainId: string) {
+  async getSsl(
+    @Req() req: Request,
+    @Param('projectId') projectId: string,
+    @Param('id') domainId: string,
+  ) {
     const user = req.user as { userId: string };
     return this.domainsService.getSsl(user.userId, projectId, domainId);
   }
@@ -217,7 +363,11 @@ export class DomainsController {
   @RequireScope('domains:write')
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Renew SSL certificate for a domain' })
-  async renewSsl(@Req() req: Request, @Param('projectId') projectId: string, @Param('id') domainId: string) {
+  async renewSsl(
+    @Req() req: Request,
+    @Param('projectId') projectId: string,
+    @Param('id') domainId: string,
+  ) {
     const user = req.user as { userId: string };
     return this.domainsService.renewSsl(user.userId, projectId, domainId);
   }
@@ -225,8 +375,14 @@ export class DomainsController {
   @Post(':id/ssl/reissue')
   @RequireScope('domains:write')
   @HttpCode(HttpStatus.OK)
-  @ApiOperation({ summary: 'Reissue SSL certificate for a domain (force new cert)' })
-  async reissueSsl(@Req() req: Request, @Param('projectId') projectId: string, @Param('id') domainId: string) {
+  @ApiOperation({
+    summary: 'Reissue SSL certificate for a domain (force new cert)',
+  })
+  async reissueSsl(
+    @Req() req: Request,
+    @Param('projectId') projectId: string,
+    @Param('id') domainId: string,
+  ) {
     const user = req.user as { userId: string };
     return this.domainsService.reissueSsl(user.userId, projectId, domainId);
   }
@@ -234,7 +390,11 @@ export class DomainsController {
   @Get(':id/history')
   @RequireScope('domains:read')
   @ApiOperation({ summary: 'Get verification run history for a domain' })
-  async getHistory(@Req() req: Request, @Param('projectId') projectId: string, @Param('id') domainId: string) {
+  async getHistory(
+    @Req() req: Request,
+    @Param('projectId') projectId: string,
+    @Param('id') domainId: string,
+  ) {
     const user = req.user as { userId: string };
     await this.accessService.ensureAccess(user.userId, projectId);
     return this.reconciliationService.getVerificationHistory(domainId);
@@ -243,7 +403,11 @@ export class DomainsController {
   @Get(':id/incidents')
   @RequireScope('domains:read')
   @ApiOperation({ summary: 'Get incidents for a domain' })
-  async getIncidents(@Req() req: Request, @Param('projectId') projectId: string, @Param('id') domainId: string) {
+  async getIncidents(
+    @Req() req: Request,
+    @Param('projectId') projectId: string,
+    @Param('id') domainId: string,
+  ) {
     const user = req.user as { userId: string };
     await this.accessService.ensureAccess(user.userId, projectId);
     return this.reconciliationService.getIncidents(domainId);
@@ -264,8 +428,15 @@ export class DomainsController {
 
   @Get('wizard/:id')
   @RequireScope('domains:read')
-  @ApiOperation({ summary: 'Get DNS Wizard status for a domain — required records, propagation status, and step progress' })
-  async getWizardStatus(@Req() req: Request, @Param('projectId') projectId: string, @Param('id') domainId: string) {
+  @ApiOperation({
+    summary:
+      'Get DNS Wizard status for a domain — required records, propagation status, and step progress',
+  })
+  async getWizardStatus(
+    @Req() req: Request,
+    @Param('projectId') projectId: string,
+    @Param('id') domainId: string,
+  ) {
     const user = req.user as { userId: string };
     await this.accessService.ensureAccess(user.userId, projectId);
     const status = await this.wizardService.getWizardStatus(domainId);
@@ -278,7 +449,11 @@ export class DomainsController {
   @Get(':id/repair-policy')
   @RequireScope('domains:read')
   @ApiOperation({ summary: 'Get the repair policy for a domain' })
-  async getRepairPolicy(@Req() req: Request, @Param('projectId') projectId: string, @Param('id') domainId: string) {
+  async getRepairPolicy(
+    @Req() req: Request,
+    @Param('projectId') projectId: string,
+    @Param('id') domainId: string,
+  ) {
     const user = req.user as { userId: string };
     await this.accessService.ensureAccess(user.userId, projectId);
     return this.repairService.getPolicy(domainId);
@@ -286,7 +461,10 @@ export class DomainsController {
 
   @Patch(':id/repair-policy')
   @RequireScope('domains:write')
-  @ApiOperation({ summary: 'Update the repair policy for a domain — controls which repairs run automatically' })
+  @ApiOperation({
+    summary:
+      'Update the repair policy for a domain — controls which repairs run automatically',
+  })
   async updateRepairPolicy(
     @Req() req: Request,
     @Param('projectId') projectId: string,
@@ -301,7 +479,11 @@ export class DomainsController {
   @Get(':id/repairs')
   @RequireScope('domains:read')
   @ApiOperation({ summary: 'Get recent repair runs for a domain' })
-  async listRepairs(@Req() req: Request, @Param('projectId') projectId: string, @Param('id') domainId: string) {
+  async listRepairs(
+    @Req() req: Request,
+    @Param('projectId') projectId: string,
+    @Param('id') domainId: string,
+  ) {
     const user = req.user as { userId: string };
     await this.accessService.ensureAccess(user.userId, projectId);
     return this.repairService.listRepairs(domainId);
@@ -309,7 +491,10 @@ export class DomainsController {
 
   @Get(':id/repair-plan')
   @RequireScope('domains:read')
-  @ApiOperation({ summary: 'Get the repair plan for a domain or incident — shows what would be repaired' })
+  @ApiOperation({
+    summary:
+      'Get the repair plan for a domain or incident — shows what would be repaired',
+  })
   async getRepairPlan(
     @Req() req: Request,
     @Param('projectId') projectId: string,
@@ -323,7 +508,10 @@ export class DomainsController {
   @Post(':id/repair')
   @RequireScope('domains:write')
   @HttpCode(HttpStatus.OK)
-  @ApiOperation({ summary: 'Trigger a repair for a domain — queues or executes based on policy' })
+  @ApiOperation({
+    summary:
+      'Trigger a repair for a domain — queues or executes based on policy',
+  })
   async triggerRepair(
     @Req() req: Request,
     @Param('projectId') projectId: string,
@@ -351,7 +539,11 @@ export class DomainsController {
 
     // If specific record provided, check just that one
     if (recordType && recordName && expectedValue) {
-      return this.propagationService.checkPropagation(recordName, recordType, expectedValue);
+      return this.propagationService.checkPropagation(
+        recordName,
+        recordType,
+        expectedValue,
+      );
     }
 
     // Otherwise check all managed records for the domain

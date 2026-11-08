@@ -15,14 +15,20 @@ export async function detectBuildPlanAction(
   input: { gitUrl: string; branch: string },
 ): Promise<{ ok?: boolean; plan?: BuildPlan; error?: string }> {
   try {
-    const plan = await api.post<BuildPlan>(`/projects/${projectId}/deployments/detect`, {
-      gitUrl: input.gitUrl,
-      branch: input.branch || 'main',
-    });
+    const plan = await api.post<BuildPlan>(
+      `/projects/${projectId}/deployments/detect`,
+      {
+        gitUrl: input.gitUrl,
+        branch: input.branch || 'main',
+      },
+    );
     return { ok: true, plan };
   } catch (err) {
     return {
-      error: err instanceof Error ? err.message : 'The repository could not be read.',
+      error:
+        err instanceof Error
+          ? err.message
+          : 'The repository could not be read.',
     };
   }
 }
@@ -37,7 +43,32 @@ export interface BuildPlan {
   port: number;
   runtime: string;
   monorepo?: string;
+  /** The applications a monorepo holds, when it holds more than one. */
+  apps?: Array<{
+    path: string;
+    name: string;
+    framework: string;
+    frameworkLabel: string;
+  }>;
   detectedAt: string;
+}
+
+/** Name the monorepo app this project's deployments build. */
+export async function updateBuildTargetAction(
+  projectId: string,
+  buildTarget: string,
+): Promise<{ ok?: boolean; error?: string }> {
+  try {
+    await api.patch(`/projects/${projectId}/build-config`, { buildTarget });
+    return { ok: true };
+  } catch (err) {
+    return {
+      error:
+        err instanceof Error
+          ? err.message
+          : 'The application could not be set.',
+    };
+  }
 }
 
 /** Start the deployment. */
@@ -59,16 +90,23 @@ export async function createDeploymentAction(
           git: { url: input.gitUrl, branch: input.branch || 'main' },
         },
         branch: input.branch || 'main',
-        ...(Object.keys(input.envVars).length > 0 ? { envVars: input.envVars } : {}),
+        ...(Object.keys(input.envVars).length > 0
+          ? { envVars: input.envVars }
+          : {}),
         ...(input.subdomain ? { subdomain: input.subdomain } : {}),
       },
     );
     revalidatePath(`/projects/${projectId}/deployments`);
     const id = result.deployment?.id ?? result.id;
-    return id ? { ok: true, deploymentId: id } : { error: 'The deployment did not start.' };
+    return id
+      ? { ok: true, deploymentId: id }
+      : { error: 'The deployment did not start.' };
   } catch (err) {
     return {
-      error: err instanceof Error ? err.message : 'The deployment could not be started.',
+      error:
+        err instanceof Error
+          ? err.message
+          : 'The deployment could not be started.',
     };
   }
 }

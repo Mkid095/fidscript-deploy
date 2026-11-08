@@ -14,27 +14,83 @@ export function DeploymentConfigureStep({
   plan,
   envVars,
   subdomain,
+  buildTarget,
+  onBuildTarget,
   onEnvVars,
   onSubdomain,
 }: {
   plan: BuildPlan;
   envVars: Array<{ key: string; value: string }>;
   subdomain: string;
+  /** The monorepo app this deployment builds, when the repository holds several. */
+  buildTarget: string | null;
+  onBuildTarget: (next: string | null) => void;
   onEnvVars: (next: Array<{ key: string; value: string }>) => void;
   onSubdomain: (next: string) => void;
 }) {
-  const set = (index: number, patch: Partial<{ key: string; value: string }>) => {
-    onEnvVars(envVars.map((entry, position) => (position === index ? { ...entry, ...patch } : entry)));
+  const set = (
+    index: number,
+    patch: Partial<{ key: string; value: string }>,
+  ) => {
+    onEnvVars(
+      envVars.map((entry, position) =>
+        position === index ? { ...entry, ...patch } : entry,
+      ),
+    );
   };
+
+  const apps = plan.apps ?? [];
 
   return (
     <div className="space-y-5">
       <dl className="grid grid-cols-2 gap-3 rounded-lg border border-rail bg-surface-2 p-3 text-xs">
-        <Fact term="Framework" value={`${plan.frameworkLabel}${plan.frameworkVersion ? ` ${plan.frameworkVersion}` : ''}`} />
+        <Fact
+          term="Framework"
+          value={`${plan.frameworkLabel}${plan.frameworkVersion ? ` ${plan.frameworkVersion}` : ''}`}
+        />
         <Fact term="Build" value={plan.buildCommand} />
         <Fact term="Start" value={plan.startCommand} />
         <Fact term="Port" value={String(plan.port)} />
       </dl>
+
+      {apps.length > 1 ? (
+        <fieldset className="space-y-2">
+          <legend className="text-xs font-medium text-text-muted">
+            This repository holds {apps.length} applications — which one is this
+            deployment?
+          </legend>
+          {apps.map((app) => (
+            <label
+              key={app.path}
+              className={`flex cursor-pointer items-start gap-2 rounded-lg border p-3 ${
+                (buildTarget ?? '') === app.path
+                  ? 'border-accent bg-accent/5'
+                  : 'border-rail bg-surface-2'
+              }`}
+            >
+              <input
+                type="radio"
+                name="build-target"
+                className="mt-0.5 size-3.5 accent-[var(--accent)]"
+                checked={(buildTarget ?? '') === app.path}
+                onChange={() => onBuildTarget(app.path)}
+              />
+              <span className="min-w-0">
+                <span className="block truncate text-sm text-text">
+                  {app.name}
+                </span>
+                <span className="mt-0.5 block truncate text-xs text-text-dim">
+                  {app.frameworkLabel} · {app.path}
+                </span>
+              </span>
+            </label>
+          ))}
+          <p className="text-xs text-text-dim">
+            The others stay available after this deployment — the finish screen
+            offers them.
+          </p>
+        </fieldset>
+      ) : null}
 
       <Input
         label="Subdomain"
@@ -45,7 +101,9 @@ export function DeploymentConfigureStep({
       />
 
       <div className="space-y-2">
-        <p className="text-xs font-medium text-text-muted">Environment variables</p>
+        <p className="text-xs font-medium text-text-muted">
+          Environment variables
+        </p>
         {envVars.map((entry, index) => (
           <div key={index} className="flex items-end gap-2">
             <Input
@@ -63,7 +121,9 @@ export function DeploymentConfigureStep({
             <Button
               variant="ghost"
               size="sm"
-              onClick={() => onEnvVars(envVars.filter((_, position) => position !== index))}
+              onClick={() =>
+                onEnvVars(envVars.filter((_, position) => position !== index))
+              }
             >
               Remove
             </Button>
