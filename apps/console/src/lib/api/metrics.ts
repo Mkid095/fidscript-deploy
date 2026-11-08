@@ -22,12 +22,23 @@ export interface Sample {
   value: number;
 }
 
+/**
+ * The observability back-ends, read the way the API and the registry are:
+ * over the shared network when the deployment says where they are, and
+ * only through the public edge when it does not. The read goes through an
+ * opaque alias so the internal addresses survive the build (a plain
+ * `process.env.X ?? …` chain folds to the build-time literal).
+ */
+const env = process.env;
+
 async function prometheusUrl(): Promise<string | null> {
+  if (env.PROMETHEUS_INTERNAL_URL) return env.PROMETHEUS_INTERNAL_URL;
   const domain = await getPlatformDomain();
   return domain ? `https://prometheus.${domain}` : null;
 }
 
 async function lokiUrl(): Promise<string | null> {
+  if (env.LOKI_INTERNAL_URL) return env.LOKI_INTERNAL_URL;
   const domain = await getPlatformDomain();
   return domain ? `https://loki.${domain}` : null;
 }

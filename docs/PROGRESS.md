@@ -562,3 +562,28 @@ is §11._
 _Written 2026-11-07. The hand-over session's part is §7; the deployment
 and the interface are §9; the SSL lifecycle is §10; the interface's
 behaviour is §11; the project's numbers are §12. The platform is live._
+
+## 13. The registry and the observability numbers, on the short way round
+
+- **The package page's catalogue was fetched the long way round, and the
+  long way is slow.** `registry.fidscript.com` is Cloudfront-fronted and
+  its full-catalogue answer (`/-/all`, every package in the store) took a
+  quarter of a minute to stream — longer than the page's abort, so the page
+  read "did not answer" every time. The dashboard now joins the registry's
+  own network and fetches `REGISTRY_INTERNAL_URL` directly, and the
+  catalogue is kept **warm** in the server process: fresh for five
+  minutes, the stale list served at once while the new one is fetched on
+  its own, and asked for at boot so no person's page is the one that waits
+  for the first slow answer.
+- **The machine's own numbers were read through the edge, too.** Loki and
+  Prometheus are on the shared network the whole time; the console reached
+  them by their public names and paid the round-trip on the logs page's
+  "what the containers wrote" and every metric. They are now read from
+  `LOKI_INTERNAL_URL` / `PROMETHEUS_INTERNAL_URL` when the deployment says
+  where they are, and only through the edge when it does not.
+
+---
+
+_Written 2026-11-07 through 11-08. §12 is the project's numbers; §13 is
+the short way round to the registry and the machine's own numbers. The
+platform is live._

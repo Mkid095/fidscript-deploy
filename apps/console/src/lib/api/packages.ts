@@ -52,16 +52,28 @@ export async function getRegistryFetchUrl(): Promise<string | null> {
  *
  * The list comes from the registry itself, so it is what is really
  * published — not what the platform remembers.
+ *
+ * And the list is kept **warm**: the registry's `/-/all` reads every
+ * package in its store, and on this machine that answer takes a quarter
+ * of a minute. A page's fetch does not wait for it twice, and not even
+ * once: the server asks for it on its own (the startup's call, and the
+ * stale's), and a page that finds it still unfinished only waits what a
+ * page may wait, and says so honestly when the answer is not there yet.
  */
-export async function getPublishedPackages(
-  registryUrl: string,
-): Promise<{ packages: RegistryPackage[]; reachable: boolean }> {
+
+type Catalogue = { packages: RegistryPackage[]; at: number };
+const CATALOGUE_TTL = 5 * 60_000;
+const COLD_WAIT = 15_000;
+let catalogue: Catalogue | null = null;
+let inFlight: Promise<void> | null = null;
+
+async function fetchCatalogue(registryUrl: string): Promise<void> {
   try {
     const response = await fetch(`${registryUrl}/-/all`, {
       cache: 'no-store',
-      signal: AbortSignal.timeout(8000),
+      signal: AbortSignal.timeout(60_000),
     });
-    if (!response.ok) return { packages: [], reachable: false };
+    if (!response.ok) return;
 
     const body = (await response.json()) as Record<
       string,
@@ -73,20 +85,77 @@ export async function getPublishedPackages(
       }
     >;
 
-    const packages: RegistryPackage[] = Object.values(body)
-      .filter((entry) => entry?.name)
-      .map((entry) => ({
-        name: entry.name as string,
-        description: entry.description,
-        latest: entry['dist-tags']?.latest,
-        versions: Object.keys(entry.versions ?? {}),
-      }))
-      .sort((a, b) => a.name.localeCompare(b.name));
-
-    return { packages, reachable: true };
+    catalogue = {
+      at: Date.now(),
+      packages: Object.values(body)
+        .filter((entry) => entry?.name)
+        .map((entry) => ({
+          name: entry.name as string,
+          description: entry.description,
+          latest: entry['dist-tags']?.latest,
+          versions: Object.keys(entry.versions ?? {}),
+        }))
+        .sort((a, b) => a.name.localeCompare(b.name)),
+    };
   } catch {
-    return { packages: [], reachable: false };
+    /* The registry did not answer this round; the next one asks again. */
   }
+}
+
+/** The one in-flight fetch: a second caller joins it instead of doubling. */
+function startRefresh(registryUrl: string): Promise<void> {
+  inFlight ??= fetchCatalogue(registryUrl).finally(() => {
+    inFlight = null;
+  });
+  return inFlight;
+}
+
+export async function getPublishedPackages(
+  registryUrl: string,
+): Promise<{ packages: RegistryPackage[]; reachable: boolean }> {
+  const age = catalogue ? Date.now() - catalogue.at : Number.POSITIVE_INFINITY;
+
+  if (age < CATALOGUE_TTL) {
+    return { packages: catalogue!.packages, reachable: true };
+  }
+
+  // Stale: the last true list goes out at once, and the new one is fetched
+  // on its own — nobody's page waits for a quarter of a minute it does not
+  // need to.
+  if (catalogue) {
+    void startRefresh(registryUrl);
+    return { packages: catalogue.packages, reachable: true };
+  }
+
+  // Cold, on the server's first minutes: wait for the answer that is
+  // already being fetched, for as long as a page may wait.
+  await Promise.race([
+    startRefresh(registryUrl),
+    new Promise((resolve) => setTimeout(resolve, COLD_WAIT)),
+  ]);
+  // The race may have finished the fetch; read the answer through a
+  // function, because the compiler does not see the mutation through an
+  // awaited promise.
+  const finished = readCatalogue();
+  if (finished) return { packages: finished.packages, reachable: true };
+  return { packages: [], reachable: false };
+}
+
+/** The catalogue as it stands, read at this moment. */
+function readCatalogue(): Catalogue | null {
+  return catalogue;
+}
+
+/**
+ * The startup's ask: the catalogue's first answer takes a quarter of a
+ * minute, so the one who starts the server is the one who waits for it —
+ * no person's page does.
+ */
+export function warmRegistryCatalogue(): void {
+  void (async () => {
+    const url = await getRegistryFetchUrl();
+    if (url) await startRefresh(url);
+  })();
 }
 
 /**

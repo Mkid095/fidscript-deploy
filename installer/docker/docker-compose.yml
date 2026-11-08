@@ -607,6 +607,10 @@ services:
       # The npm registry's own address on the shared network: the page's
       # catalogue fetch takes the short way round instead of the public edge.
       REGISTRY_INTERNAL_URL: http://nextmavens-verdaccio:4873
+      # Observability, on the shared network: the page's reads stop paying
+      # the public round-trip the same way the API's do.
+      LOKI_INTERNAL_URL: http://fidscript_loki:3100
+      PROMETHEUS_INTERNAL_URL: http://fidscript_prometheus:9090
     networks:
       - fidscript-deployment
       # The registry runs on the other product's network; the dashboard
