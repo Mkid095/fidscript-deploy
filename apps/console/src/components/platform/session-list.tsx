@@ -10,6 +10,7 @@ import {
   revokeOtherSessionsAction,
   revokeSessionAction,
 } from '@/app/(platform)/settings/actions';
+import { useToast } from '@/components/ui/toast';
 
 interface OpenSession {
   id: string;
@@ -28,12 +29,18 @@ export function SessionList({ sessions }: { sessions: OpenSession[] }) {
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
   const [ended, setEnded] = useState<number | null>(null);
+  const toast = useToast();
 
   const end = (sessionId: string) => {
     setError(null);
     startTransition(async () => {
       const result = await revokeSessionAction(sessionId);
-      if (result.error) setError(result.error);
+      if (result.error) {
+        setError(result.error);
+        toast.error('The session is still open', result.error);
+        return;
+      }
+      toast.success('The session was ended.');
     });
   };
 
@@ -41,8 +48,17 @@ export function SessionList({ sessions }: { sessions: OpenSession[] }) {
     setError(null);
     startTransition(async () => {
       const result = await revokeOtherSessionsAction();
-      if (result.error) setError(result.error);
-      else setEnded(result.revoked ?? 0);
+      if (result.error) {
+        setError(result.error);
+        toast.error('The other sessions are still open', result.error);
+        return;
+      }
+      setEnded(result.revoked ?? 0);
+      toast.success(
+        result.revoked === 1
+          ? '1 other session was ended.'
+          : (result.revoked ?? 0) + ' other sessions were ended.',
+      );
     });
   };
 

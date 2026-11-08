@@ -8,6 +8,7 @@ import {
   attachDomainAction,
   detachDomainAction,
 } from '@/app/(project)/projects/[projectId]/deployments/[deploymentId]/actions';
+import { useToast } from '@/components/ui/toast';
 
 /**
  * The names this deployment answers on.
@@ -29,6 +30,7 @@ export function DeploymentDomains({
   const [chosen, setChosen] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
+  const toast = useToast();
 
   const attached = domains.filter(
     (entry) => entry.deploymentId === deploymentId,
@@ -42,7 +44,15 @@ export function DeploymentDomains({
     if (!chosen) return;
     startTransition(async () => {
       const result = await attachDomainAction(projectId, deploymentId, chosen);
-      if (result.error) setError(result.error);
+      if (result.error) {
+        setError(result.error);
+        toast.error('The domain was not pointed here', result.error);
+        return;
+      }
+      toast.success(
+        'The domain now answers here.',
+        'Its certificate is secured automatically.',
+      );
     });
   };
 
@@ -50,7 +60,12 @@ export function DeploymentDomains({
     setError(null);
     startTransition(async () => {
       const result = await detachDomainAction(projectId, domainId);
-      if (result.error) setError(result.error);
+      if (result.error) {
+        setError(result.error);
+        toast.error('The domain is still attached', result.error);
+        return;
+      }
+      toast.info('The domain was taken off this deployment.');
     });
   };
 

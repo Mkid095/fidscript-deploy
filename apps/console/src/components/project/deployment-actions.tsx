@@ -6,6 +6,8 @@ import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Switch } from '@/components/ui/switch';
 import { ErrorState } from '@/components/ui/feedback';
+import { ConfirmDialog } from '@/components/ui/dialog';
+import { useToast } from '@/components/ui/toast';
 
 import {
   destroyDeploymentAction,
@@ -40,8 +42,8 @@ export function DeploymentActions({
   branch?: string | null;
 }) {
   const router = useRouter();
+  const toast = useToast();
   const [error, setError] = useState<string | null>(null);
-  const [notice, setNotice] = useState<string | null>(null);
   const [confirming, setConfirming] = useState(false);
   const [pending, startTransition] = useTransition();
 
@@ -50,14 +52,15 @@ export function DeploymentActions({
     message?: string,
   ) => {
     setError(null);
-    setNotice(null);
     startTransition(async () => {
       const result = await action();
-      if (result.error) setError(result.error);
-      else {
-        if (message) setNotice(message);
-        router.refresh();
+      if (result.error) {
+        setError(result.error);
+        toast.error('That did not work', result.error);
+        return;
       }
+      if (message) toast.success(message);
+      router.refresh();
     });
   };
 
@@ -129,33 +132,20 @@ export function DeploymentActions({
         </Button>
       </div>
 
-      {confirming ? (
-        <div className="rounded-md border border-danger/40 bg-danger/5 p-3">
-          <p className="text-xs text-text-muted">
-            The container, the image and the record are gone. This cannot be
-            undone.
-          </p>
-          <div className="mt-2 flex items-center gap-2">
-            <Button
-              variant="danger"
-              size="sm"
-              loading={pending}
-              onClick={() =>
-                run(() => destroyDeploymentAction(projectId, deploymentId))
-              }
-            >
-              Remove it for good
-            </Button>
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => setConfirming(false)}
-            >
-              Keep it
-            </Button>
-          </div>
-        </div>
-      ) : null}
+      <ConfirmDialog
+        open={confirming}
+        onClose={() => setConfirming(false)}
+        onConfirm={() =>
+          run(
+            () => destroyDeploymentAction(projectId, deploymentId),
+            'The deployment was removed.',
+          )
+        }
+        title="Remove this deployment?"
+        body="The container, the image and the record are gone. This cannot be undone."
+        confirmLabel="Remove it for good"
+        pending={pending}
+      />
 
       <Switch
         label="Deploy on every push"
@@ -165,7 +155,6 @@ export function DeploymentActions({
       />
 
       {error ? <ErrorState message={error} /> : null}
-      {notice ? <p className="text-xs text-success">{notice}</p> : null}
     </div>
   );
 }

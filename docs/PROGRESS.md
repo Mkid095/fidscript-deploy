@@ -479,5 +479,36 @@ one live target, exactly as the one-production-target rule says.
 
 ---
 
+## 11. The interface's behaviour — how the console feels
+
+_The layer that makes every page and every action feel the same._
+
+- **A toast for every action's result.** One primitive
+  (`ui/toast.tsx`): a small panel in the screen's corner, in the tone of
+  the news — success, error, info — that arrives with a slide, stays long
+  enough to read, and goes by itself. Wired into the deployment actions
+  (stop, start, rollback, redeploy, remove), the domain actions (write the
+  records, check them, point a name at a deployment, take it off), the DNS
+  account (connect, disconnect), and the sessions (end one, end the
+  others). No more result paragraphs buried in the card an action
+  happened in.
+- **A bar that says a navigation is happening**
+  (`ui/navigation-progress.tsx`): it starts on any internal link's click,
+  crawls while the server answers, and finishes when the route lands. A
+  click no longer feels dead.
+- **Loading shapes that match the pages they become**: the skeletons were
+  re-anchored to the frame (left edge, sticky bar included) and gained
+  list and detail variants; every deep segment — one deployment, the
+  system page, each settings section — has its own `loading.tsx`, so
+  navigation shows the page's silhouette instead of the old one freezing.
+- **A confirm dialog for the acts that cannot be undone**: removing a
+  deployment, disconnecting the DNS account — the same centred dialog with
+  the consequences named, over a blurred page.
+- **Content settles** instead of snapping: a short fade-and-rise on the
+  page's body (skipped for `prefers-reduced-motion`).
+
+---
+
 _Written 2026-11-07. The hand-over session's part is §7; the deployment and
-the interface are §9; the SSL lifecycle is §10._
+the interface are §9; the SSL lifecycle is §10; the interface's behaviour
+is §11._

@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Badge, ErrorState } from '@/components/ui/feedback';
 import type { DnsRecord } from '@/lib/api/domains';
+import { useToast } from '@/components/ui/toast';
 
 import {
   autoConfigureDnsAction,
@@ -49,6 +50,7 @@ export function DomainCard({
   // The API returns these lowercase; the checks want a shape they can trust.
   const status = statusRaw?.toLowerCase() ?? 'pending';
   const sslStatus = sslStatusRaw?.toLowerCase() ?? 'pending';
+  const toast = useToast();
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
@@ -61,8 +63,13 @@ export function DomainCard({
     setNotice(null);
     startTransition(async () => {
       const result = await action();
-      if (result.error) setError(result.error);
-      else setNotice(message);
+      if (result.error) {
+        setError(result.error);
+        toast.error('That did not work', result.error);
+        return;
+      }
+      setNotice(message);
+      toast.success(message);
     });
   };
 

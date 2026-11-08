@@ -11,6 +11,8 @@ import {
   connectDnsProviderAction,
   disconnectDnsProviderAction,
 } from '@/app/(project)/projects/[projectId]/domains/actions';
+import { ConfirmDialog } from '@/components/ui/dialog';
+import { useToast } from '@/components/ui/toast';
 
 /**
  * The account that holds the domain.
@@ -37,14 +39,21 @@ export function DnsConnectionCard({
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
+  const [confirming, setConfirming] = useState(false);
+  const toast = useToast();
 
   const disconnect = () => {
     setError(null);
     setNotice(null);
     startTransition(async () => {
       const result = await disconnectDnsProviderAction(projectId);
-      if (result.error) setError(result.error);
-      else setNotice('The account is disconnected. The token went with it.');
+      if (result.error) {
+        setError(result.error);
+        toast.error('The account is still connected', result.error);
+        return;
+      }
+      setConfirming(false);
+      toast.info('The DNS account was disconnected.');
     });
   };
 
@@ -55,6 +64,7 @@ export function DnsConnectionCard({
       const result = await connectDnsProviderAction(projectId, token);
       if (result.error) {
         setError(result.error);
+        toast.error('The account could not be connected', result.error);
         return;
       }
       setToken('');
@@ -86,8 +96,7 @@ export function DnsConnectionCard({
             <Button
               variant="ghost"
               size="sm"
-              onClick={disconnect}
-              loading={pending}
+              onClick={() => setConfirming(true)}
             >
               Disconnect
             </Button>
@@ -99,6 +108,15 @@ export function DnsConnectionCard({
           </div>
         ) : null}
         {notice ? <p className="mt-3 text-xs text-success">{notice}</p> : null}
+        <ConfirmDialog
+          open={confirming}
+          onClose={() => setConfirming(false)}
+          onConfirm={disconnect}
+          title="Disconnect the DNS account?"
+          body="The token is thrown away with the connection. The domains stay — they are the project's, and the records that are already set stay set. Writing records automatically stops until an account is connected again."
+          confirmLabel="Disconnect"
+          pending={pending}
+        />
       </Card>
     );
   }
