@@ -1,6 +1,7 @@
 'use client';
 
-import { useEffect, type ReactNode } from 'react';
+import { useEffect, useState, type ReactNode } from 'react';
+import { createPortal } from 'react-dom';
 
 import { Button } from '@/components/ui/button';
 
@@ -11,6 +12,11 @@ import { Button } from '@/components/ui/button';
  * way: it sits on a dimmed page, closes on Escape or on the dimmed ground,
  * holds the page still while it is open, and carries its title, its body
  * and its actions in the same places.
+ *
+ * It is **ported to the document's body** and floats centred over
+ * everything — the sticky header included. A dialog that renders where it
+ * is declared inherits whatever its ancestors do to positioning, and ends
+ * up fitted inside a bar it was meant to cover.
  */
 export function Dialog({
   open,
@@ -30,6 +36,12 @@ export function Dialog({
   /** For panels that genuinely need the room — a wizard, a form with columns. */
   wide?: boolean;
 }) {
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
   useEffect(() => {
     if (!open) return;
     const onKey = (event: KeyboardEvent) => {
@@ -43,22 +55,22 @@ export function Dialog({
     };
   }, [open, onClose]);
 
-  if (!open) return null;
+  if (!open || !mounted) return null;
 
-  return (
+  return createPortal(
     <div
       role="dialog"
       aria-modal="true"
       aria-label={title}
-      className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-black/70 p-4 pt-16 backdrop-blur-sm sm:pt-24"
+      className="fixed inset-0 z-[60] flex items-center justify-center overflow-y-auto bg-black/70 p-4 backdrop-blur-sm sm:p-8"
       onClick={(event) => {
         if (event.target === event.currentTarget) onClose();
       }}
     >
       <div
-        className={`w-full ${wide ? 'max-w-2xl' : 'max-w-lg'} rounded-xl border border-rail bg-surface shadow-2xl`}
+        className={`my-auto w-full ${wide ? 'max-w-2xl' : 'max-w-lg'} max-h-full overflow-y-auto rounded-xl border border-rail bg-surface shadow-2xl`}
       >
-        <div className="flex items-start justify-between gap-4 border-b border-rail px-5 py-4">
+        <div className="sticky top-0 z-10 flex items-start justify-between gap-4 border-b border-rail bg-surface px-5 py-4">
           <div className="min-w-0">
             <h2 className="text-base font-semibold tracking-tight text-text">
               {title}
@@ -95,12 +107,13 @@ export function Dialog({
         <div className="px-5 py-4">{children}</div>
 
         {footer ? (
-          <div className="flex items-center justify-end gap-2 border-t border-rail px-5 py-3">
+          <div className="sticky bottom-0 flex items-center justify-end gap-2 border-t border-rail bg-surface px-5 py-3">
             {footer}
           </div>
         ) : null}
       </div>
-    </div>
+    </div>,
+    document.body,
   );
 }
 
