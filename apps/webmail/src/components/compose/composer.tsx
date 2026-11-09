@@ -19,7 +19,15 @@ interface Identity {
   id: string;
   name: string;
   email: string;
-  isDefault: boolean;
+  isDefault?: boolean;
+}
+
+interface Template {
+  id: string;
+  name: string;
+  category: string;
+  html: string;
+  text: string;
 }
 
 interface Attachment {
@@ -50,9 +58,11 @@ function toBase64(buffer: ArrayBuffer): string {
 export function Composer({
   prefill,
   identities,
+  templates,
 }: {
   prefill: ComposePrefill;
   identities: Identity[];
+  templates: Template[];
 }) {
   const router = useRouter();
   const [to, setTo] = useState(prefill.to.join(', '));
@@ -60,6 +70,7 @@ export function Composer({
   const [subject, setSubject] = useState(prefill.subject);
   const [text, setText] = useState(prefill.quoted);
   const [htmlMode, setHtmlMode] = useState(false);
+  const [activeTemplate, setActiveTemplate] = useState('');
   const [attachments, setAttachments] = useState<Attachment[]>([]);
   const [uploading, setUploading] = useState(false);
   const [draftId, setDraftId] = useState<string | null>(null);
@@ -254,6 +265,37 @@ export function Composer({
       </div>
 
       <section className="mt-4 space-y-3 rounded-lg border border-rail bg-surface p-4">
+        {templates.length > 0 ? (
+          <div className="flex items-center gap-2">
+            <span className="text-xs font-medium text-text-muted">Template</span>
+            <select
+              value={activeTemplate}
+              onChange={(event) => {
+                const id = event.target.value;
+                setActiveTemplate(id);
+                const template = templates.find((entry) => entry.id === id);
+                if (!template) return;
+                if (template.html) {
+                  setHtmlMode(true);
+                  setText(template.html);
+                } else if (template.text) {
+                  setHtmlMode(false);
+                  setText(template.text);
+                }
+              }}
+              className="rounded border border-rail bg-surface px-2 py-1.5 text-sm text-text"
+            >
+              <option value="">
+                Start from a template…
+              </option>
+              {templates.map((template) => (
+                <option key={template.id} value={template.id}>
+                  {template.name} ({template.category})
+                </option>
+              ))}
+            </select>
+          </div>
+        ) : null}
         <div className="grid gap-3 sm:grid-cols-2">
           <Field label="From">
             <select

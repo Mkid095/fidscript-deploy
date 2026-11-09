@@ -119,6 +119,12 @@ export function MailShell({
         </nav>
         <div className="space-y-1 border-t border-rail p-2">
           <Link
+            href="/templates"
+            className="block rounded px-2 py-1.5 text-sm text-text-muted hover:bg-surface-2 hover:text-text"
+          >
+            Templates
+          </Link>
+          <Link
             href="/contacts"
             className="block rounded px-2 py-1.5 text-sm text-text-muted hover:bg-surface-2 hover:text-text"
           >

@@ -2,6 +2,7 @@ import { redirect } from 'next/navigation';
 
 import { currentSession, currentSessionToken, sessionCredential } from '@/lib/auth/session';
 import { getMessage, listIdentities } from '@/lib/stalwart/mail';
+import { listTemplates } from '@/lib/templates';
 import { Composer } from '@/components/compose/composer';
 
 /**
@@ -91,5 +92,12 @@ export default async function ComposePage({
     identities = [];
   }
 
-  return <Composer prefill={prefill} identities={identities} />;
+  let templates: Awaited<ReturnType<typeof listTemplates>> = [];
+  try {
+    templates = await listTemplates();
+  } catch {
+    templates = [];
+  }
+
+  return <Composer prefill={prefill} identities={identities} templates={templates} />;
 }
