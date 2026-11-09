@@ -64,7 +64,7 @@ export function EmailAliasesSection({
         {aliases.length === 0 ? (
           <EmptyState
             title="No alias yet"
-            body="An alias is an address that forwards somewhere else — to a mailbox, or to another address."
+            body="An alias is an address that forwards somewhere else — to a mailbox, or to another address. It has no password of its own; make a mailbox for an address that can be signed into."
           />
         ) : (
           <ul className="divide-y divide-rail">
@@ -120,6 +120,11 @@ export function EmailAliasesSection({
               value={destination}
               onChange={(event) => setDestination(event.target.value)}
             />
+            <p className="text-xs text-text-dim">
+              An alias only forwards — it has no password. For an address that
+              can be signed into (with credentials and a webmail link), make a
+              mailbox instead.
+            </p>
 
             {error ? <ErrorState message={error} /> : null}
 

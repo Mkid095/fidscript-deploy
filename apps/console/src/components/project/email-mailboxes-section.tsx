@@ -38,6 +38,10 @@ export function EmailMailboxesSection({
   const [pending, startTransition] = useTransition();
   const [resetting, setResetting] = useState<string | null>(null);
   const [newPassword, setNewPassword] = useState('');
+  const [created, setCreated] = useState<{
+    address: string;
+    password: string;
+  } | null>(null);
 
   const strength = passwordStrength(password);
 
@@ -62,8 +66,13 @@ export function EmailMailboxesSection({
       });
       if (result.error) setError(result.error);
       else {
+        setCreated({
+          address: `${localPart.trim()}@${domain}`,
+          password,
+        });
         setLocalPart('');
         setPassword('');
+        setShowPassword(false);
       }
     });
   };
@@ -237,7 +246,95 @@ export function EmailMailboxesSection({
           </Button>
         </div>
       </Card>
+
+      {created ? <CredentialsPanel address={created.address} password={created.password} onDismiss={() => setCreated(null)} /> : null}
     </div>
+  );
+}
+
+/**
+ * The credentials a mailbox was made with — the address, the password (one
+ * more time, with the copy), and the door into the mail itself.
+ *
+ * The link goes to the webmail. From the dashboard it is a signed hand-off
+ * that lands signed in; straight to the webmail, the same address and
+ * password are the way in.
+ */
+function CredentialsPanel({
+  address,
+  password,
+  onDismiss,
+}: {
+  address: string;
+  password: string;
+  onDismiss: () => void;
+}) {
+  const [copied, setCopied] = useState(false);
+  const webmailUrl =
+    process.env.NEXT_PUBLIC_WEBMAIL_URL ?? 'https://webmail.fidscript.com';
+
+  const copy = () => {
+    void navigator.clipboard?.writeText(password);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 1500);
+  };
+
+  return (
+    <Card className="border-success/40 bg-success/5">
+      <div className="space-y-3 p-4">
+        <div className="flex items-center justify-between gap-3">
+          <p className="text-sm font-medium text-text">
+            {address} is ready
+          </p>
+          <button
+            type="button"
+            className="text-xs text-text-dim hover:text-text"
+            onClick={onDismiss}
+          >
+            Dismiss
+          </button>
+        </div>
+        <p className="text-xs text-text-dim">
+          Use these to sign in. The password is shown now and not again.
+        </p>
+        <div className="grid gap-2 sm:grid-cols-2">
+          <div className="rounded-md border border-rail bg-surface p-3">
+            <p className="text-[11px] font-medium uppercase tracking-wide text-text-dim">
+              Address
+            </p>
+            <p className="mt-0.5 truncate font-mono text-sm text-text">
+              {address}
+            </p>
+          </div>
+          <div className="rounded-md border border-rail bg-surface p-3">
+            <div className="flex items-center justify-between">
+              <p className="text-[11px] font-medium uppercase tracking-wide text-text-dim">
+                Password
+              </p>
+              <button
+                type="button"
+                className="text-[11px] text-accent hover:underline"
+                onClick={copy}
+              >
+                {copied ? 'Copied' : 'Copy'}
+              </button>
+            </div>
+            <p className="mt-0.5 truncate font-mono text-sm text-text">
+              {password}
+            </p>
+          </div>
+        </div>
+        <a
+          href={webmailUrl}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="inline-flex items-center gap-1 text-sm text-accent hover:underline"
+        >
+          Open the mailbox in webmail
+          <span aria-hidden>→</span>
+        </a>
+      </div>
+    </Card>
   );
 }
 

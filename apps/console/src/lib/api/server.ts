@@ -32,6 +32,53 @@ const API_URL =
   env.NEXT_PUBLIC_API_URL ??
   'http://localhost:3001';
 
+const REFRESH_COOKIE = 'fidscript_refresh';
+/** The access token's life, in the browser's own clock — the middleware's. */
+const ACCESS_MAX_AGE = 15 * 60;
+const REFRESH_MAX_AGE = 7 * 24 * 60 * 60;
+
+function cookieOptions(maxAge: number) {
+  return {
+    httpOnly: true,
+    sameSite: 'lax' as const,
+    path: '/',
+    secure: process.env.NODE_ENV === 'production',
+    maxAge,
+  };
+}
+
+/**
+ * The access token is short-lived, and the middleware renews it on the
+ * page's way in. An action's call that still carries an expired token is a
+ * 401 the person should not see: the session is still good, the token is
+ * only old. The refresh spends the session's refresh token once — the new
+ * pair replaces the cookies, and the call is made one more time.
+ */
+async function renewSession(
+  refreshToken: string,
+): Promise<{ accessToken: string; refreshToken: string } | null> {
+  try {
+    const response = await fetch(`${API_URL}/api/v1/auth/refresh`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ refreshToken }),
+      cache: 'no-store',
+    });
+    if (!response.ok) return null;
+    const body = (await response.json()) as {
+      accessToken?: string;
+      refreshToken?: string;
+    };
+    if (!body.accessToken) return null;
+    return {
+      accessToken: body.accessToken,
+      refreshToken: body.refreshToken ?? refreshToken,
+    };
+  } catch {
+    return null;
+  }
+}
+
 async function serverRequest<T>(
   path: string,
   options: {
@@ -41,6 +88,7 @@ async function serverRequest<T>(
     /** Headers the API needs and the session does not carry — the setup token. */
     headers?: Record<string, string>;
   } = {},
+  retried = false,
 ): Promise<T> {
   const { method = 'GET', body, query, headers } = options;
 
@@ -50,7 +98,8 @@ async function serverRequest<T>(
   }
   const suffix = search.toString() ? `?${search}` : '';
 
-  const access = (await cookies()).get(ACCESS_COOKIE)?.value;
+  const store = await cookies();
+  const access = store.get(ACCESS_COOKIE)?.value;
 
   const response = await fetch(`${API_URL}/api/v1${path}${suffix}`, {
     method,
@@ -67,6 +116,48 @@ async function serverRequest<T>(
   const payload = text ? safeJson(text) : null;
 
   if (!response.ok) {
+    if (response.status === 401 && !retried) {
+      // The token the call carried is not good. If the session itself is
+      // still good, the refresh makes a new pair and the call is made
+      // once more; the person is never asked to sign in for an old token.
+      const refreshValue = store.get(REFRESH_COOKIE)?.value;
+      if (refreshValue) {
+        const renewed = await renewSession(refreshValue);
+        if (renewed) {
+          try {
+            store.set(ACCESS_COOKIE, renewed.accessToken, cookieOptions(ACCESS_MAX_AGE));
+            store.set(
+              REFRESH_COOKIE,
+              renewed.refreshToken,
+              cookieOptions(REFRESH_MAX_AGE),
+            );
+          } catch {
+            // The context does not allow the cookies to change. The spent
+            // refresh token means the session cannot be kept, and a half
+            // session is worse than a clean sign-in: take both off.
+            try {
+              store.delete(ACCESS_COOKIE);
+              store.delete(REFRESH_COOKIE);
+            } catch {
+              // The response carries what it carries.
+            }
+            throw new ApiError('Your session has ended. Sign in again.', 401);
+          }
+          return serverRequest<T>(path, options, true);
+        }
+        // The refresh is refused: the session is genuinely over, and the
+        // old pair stays only until the next page's way in takes it off.
+        try {
+          store.delete(ACCESS_COOKIE);
+          store.delete(REFRESH_COOKIE);
+        } catch {
+          // The response carries what it carries.
+        }
+        throw new ApiError('Your session has ended. Sign in again.', 401);
+      }
+      throw new ApiError('Your session has ended. Sign in again.', 401);
+    }
+
     const { message, code } = messageFrom(payload, response.status);
     throw new ApiError(message, response.status, code);
   }

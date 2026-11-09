@@ -1,11 +1,13 @@
 'use client';
 
-import { useState, useTransition } from 'react';
+import { useEffect, useState, useTransition } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card } from '@/components/ui/card';
+import { Dialog } from '@/components/ui/dialog';
 import { Badge, EmptyState, ErrorState } from '@/components/ui/feedback';
 import { useToast } from '@/components/ui/toast';
 import type {
@@ -101,8 +103,37 @@ export function EmailDomainsCard({
   canWriteDns: boolean;
 }) {
   const toast = useToast();
+  const router = useRouter();
   const [pending, startTransition] = useTransition();
   const [working, setWorking] = useState(false);
+  const [adding, setAdding] = useState(false);
+
+  const waiting = domains.some((domain) => !isDomainActive(domain));
+
+  /**
+   * While the records are not all confirmed, the screen asks the public DNS
+   * for the truth itself — every half minute, until every record is
+   * verified. A re-check that fails (the session rolled, the DNS not
+   * resolvable yet) is not the end of the world: the next tick tries
+   * again, and the numbers the screen shows are still the last true ones.
+   */
+  useEffect(() => {
+    if (!waiting) return;
+    const tick = () => {
+      void (async () => {
+        for (const domain of domains) {
+          if (isDomainActive(domain)) continue;
+          const result = await verifyEmailDomainAction(projectId, domain.id);
+          if (!result.error) {
+            await router.refresh();
+            return; // the new data decides whether there is a next tick
+          }
+        }
+      })();
+    };
+    const interval = setInterval(tick, 30_000);
+    return () => clearInterval(interval);
+  }, [waiting, domains, projectId, router]);
 
   return (
     <div className="space-y-4">
@@ -111,6 +142,7 @@ export function EmailDomainsCard({
           <EmptyState
             title="No mail domain yet"
             body="A mail domain is the address your mail comes from and goes to. It needs four DNS records before a message can leave."
+            action={<AddDomainButton onOpen={() => setAdding(true)} />}
           />
         </Card>
       ) : (
@@ -242,24 +274,60 @@ export function EmailDomainsCard({
                     you
                   </Link>
                 )}
+                {waiting ? (
+                  <span className="text-xs text-text-dim">
+                    Checking again every half minute until everything is
+                    confirmed.
+                  </span>
+                ) : null}
               </div>
             </Card>
           );
         })
       )}
 
-      <AddDomain projectId={projectId} />
+      <div className="flex items-center justify-between gap-3">
+        <p className="text-xs text-text-dim">
+          The project&apos;s name is the one the mail rides on; another is
+          only for mail that belongs to something else.
+        </p>
+        <AddDomainButton onOpen={() => setAdding(true)} />
+      </div>
+
+      <AddDomainDialog
+        projectId={projectId}
+        open={adding}
+        onClose={() => setAdding(false)}
+      />
     </div>
   );
 }
 
+function AddDomainButton({ onOpen }: { onOpen: () => void }) {
+  return (
+    <Button variant="secondary" size="sm" onClick={onOpen}>
+      Add another domain
+    </Button>
+  );
+}
+
 /**
- * A second domain, when the project wants one.
+ * A second domain, when the project wants one — a panel over the page, not
+ * another card at the end of the scroll.
  *
  * The platform answers with the records to set; the owner sets them where
  * they live, and the records get checked on the same card.
  */
-function AddDomain({ projectId }: { projectId: string }) {
+function AddDomainDialog({
+  projectId,
+  open,
+  onClose,
+}: {
+  projectId: string;
+  open: boolean;
+  onClose: () => void;
+}) {
+  const router = useRouter();
   const [domain, setDomain] = useState('');
   const [steps, setSteps] = useState<string[] | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -274,19 +342,40 @@ function AddDomain({ projectId }: { projectId: string }) {
       else {
         setSteps(result.steps ?? []);
         setDomain('');
+        await router.refresh();
       }
     });
   };
 
+  const close = () => {
+    setSteps(null);
+    setError(null);
+    onClose();
+  };
+
   return (
-    <Card>
-      <div className="max-w-xl space-y-4 p-4">
-        <p className="text-sm font-medium text-text">Add another domain</p>
+    <Dialog
+      open={open}
+      onClose={close}
+      title="Add another domain"
+      description="The domain the mail will be sent and received for."
+      footer={
+        <Button
+          variant="primary"
+          onClick={add}
+          loading={pending}
+          disabled={!/^[a-z0-9.-]+\.[a-z]{2,}$/i.test(domain.trim())}
+        >
+          Add the domain
+        </Button>
+      }
+    >
+      <div className="space-y-4">
         <Input
           placeholder="store.example.com"
           value={domain}
           onChange={(event) => setDomain(event.target.value)}
-          hint="The domain the mail will be sent and received for."
+          autoFocus
         />
         {error ? <ErrorState message={error} /> : null}
         {steps && steps.length > 0 ? (
@@ -303,17 +392,8 @@ function AddDomain({ projectId }: { projectId: string }) {
             </ul>
           </div>
         ) : null}
-        <Button
-          variant="primary"
-          size="sm"
-          onClick={add}
-          loading={pending}
-          disabled={!/^[a-z0-9.-]+\.[a-z]{2,}$/i.test(domain.trim())}
-        >
-          Add the domain
-        </Button>
       </div>
-    </Card>
+    </Dialog>
   );
 }
 
