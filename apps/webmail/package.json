@@ -1,0 +1,30 @@
+{
+  "name": "@fidscript/webmail",
+  "version": "0.1.0",
+  "private": true,
+  "description": "A self-hosted webmail and mail-management platform on Stalwart. Stalwart is the mail server; this application is the complete user-facing experience: dashboard, inbox, compose, folders, spam, contacts, settings, admin account and domain management, and a mail-health & deliverability module. Runs standalone on any VPS; FIDScript integration is one deployment mode, not a dependency.",
+  "scripts": {
+    "dev": "next dev -p 3100",
+    "build": "next build",
+    "start": "next start -p 3000",
+    "typecheck": "tsc --noEmit",
+    "db:generate": "prisma generate",
+    "db:migrate": "prisma migrate deploy",
+    "db:push": "prisma db push"
+  },
+  "dependencies": {
+    "@prisma/client": "^6.16.0",
+    "next": "15.5.4",
+    "react": "19.1.0",
+    "react-dom": "19.1.0"
+  },
+  "devDependencies": {
+    "@tailwindcss/postcss": "^4.1.0",
+    "@types/node": "^22",
+    "@types/react": "^19",
+    "@types/react-dom": "^19",
+    "prisma": "^6.16.0",
+    "tailwindcss": "^4.1.0",
+    "typescript": "^5"
+  }
+}

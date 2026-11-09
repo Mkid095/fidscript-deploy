@@ -1,0 +1,83 @@
+// The webmail application's own store.
+//
+// What is here is ONLY what Stalwart does not own: the application's own
+// users and sessions, the audit trail, and the mail-flow protections
+// (suppression, send stats, templates). Messages, mailboxes, identities,
+// filters and spam state live in Stalwart — they are read from it, never
+// mirrored here. That is the boundary that keeps this a real integration.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model AdminUser {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  passHash  String
+  createdAt DateTime @default(now())
+}
+
+model Session {
+  id        String   @id @default(cuid())
+  // 'admin' — the platform admin; 'mailbox' — a Stalwart mailbox signed in.
+  kind      String
+  email     String
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+
+  @@index([email])
+}
+
+model AuditLog {
+  id     String   @id @default(cuid())
+  at     DateTime @default(now())
+  actor  String
+  action String
+  // A JSON document: what happened, for which mailbox/domain.
+  detail String   @default("{}")
+  ip     String   @default("")
+
+  @@index([action])
+}
+
+// ── Templates (HTML email authoring; campaign-ready) ──────────────────
+
+model AppTemplate {
+  id        String   @id @default(cuid())
+  name      String
+  // business | receipt | invoice | notification | newsletter | announcement
+  category  String   @default("business")
+  html      String
+  text      String   @default("")
+  createdBy String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+// ── Outbound abuse protection (app-enforced at the submission proxy) ───
+
+model SuppressedAddress {
+  // The recipient address that is never sent to again.
+  address  String   @id
+  // hard-bounce | soft-bounce-repeat | complaint | admin
+  reason   String
+  untilAt  DateTime?
+  note     String   @default("")
+  recordedAt DateTime @default(now())
+}
+
+model SendStat {
+  id       String   @id @default(cuid())
+  mailbox  String
+  // Bounded to the hour, e.g. "2026-11-09T14" — the rate-limit window.
+  bucket   String
+  sent     Int      @default(0)
+  rejected Int      @default(0)
+
+  @@unique([mailbox, bucket])
+}

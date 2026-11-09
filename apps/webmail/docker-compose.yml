@@ -1,0 +1,43 @@
+# Standalone self-hosted deployment of the webmail application.
+#
+# This container only builds and runs the webmail app. Point STALWART_URL
+# at your Stalwart (http://host:port for its HTTP listener). In the
+# FIDScript stack this same image is added to the platform compose file
+# instead — same code, one extra service.
+services:
+  webmail:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: fidscript-webmail:latest
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:3100:3000"
+    environment:
+      # The Stalwart HTTP listener (JMAP + admin). Internal address when
+      # this and Stalwart share a network; the host port otherwise.
+      STALWART_URL: ${STALWART_URL:-http://stalwart:8080}
+      STALWART_ADMIN_USER: ${STALWART_ADMIN_USER}
+      STALWART_ADMIN_PASSWORD: ${STALWART_ADMIN_PASSWORD}
+      # The application admin; created on first boot.
+      WEBMAIL_ADMIN_EMAIL: ${WEBMAIL_ADMIN_EMAIL:-admin@localhost}
+      WEBMAIL_ADMIN_PASSWORD: ${WEBMAIL_ADMIN_PASSWORD:-}
+      # Where the app answers, for links.
+      WEBMAIL_BASE_URL: ${WEBMAIL_BASE_URL:-http://127.0.0.1:3100}
+      # The database is SQLite on this volume by default.
+      DATABASE_URL: file:/data/webmail.db
+    volumes:
+      - webmail-data:/data
+    healthcheck:
+      # Next's own listen; the node image has no curl, so a node one-liner
+      # is the check.
+      test:
+        - "CMD-SHELL"
+        - "node -e \"fetch('http://127.0.0.1:3000/login').then(r=>{if(!r.ok)process.exit(1)}).catch(()=>process.exit(1))\""
+      interval: 30s
+      timeout: 6s
+      retries: 5
+      start_period: 20s
+
+volumes:
+  webmail-data:
