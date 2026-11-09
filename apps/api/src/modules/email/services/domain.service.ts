@@ -143,6 +143,9 @@ export class EmailDomainService {
     // until this says otherwise.
     const checks = await this.mailDnsService.verifyEmailDns(projectId, name);
     const allVerified = checks.dkim && checks.spf && checks.dmarc && checks.mx;
+    // VERIFIED is a claim: it means the records were written and are
+    // waiting for confirmation. A write that failed is not a claim — the
+    // domain stays PENDING, and what failed is said out loud below.
     emailDomain = await this.prisma.emailDomain.update({
       where: { id: emailDomain.id },
       data: {
@@ -150,7 +153,12 @@ export class EmailDomainService {
         spfVerified: checks.spf,
         dmarcVerified: checks.dmarc,
         mxVerified: checks.mx,
-        status: allVerified ? 'ACTIVE' : emailDomain.status === 'PENDING' ? 'VERIFIED' : emailDomain.status,
+        status:
+          allVerified
+            ? 'ACTIVE'
+            : setupError === null && emailDomain.status === 'PENDING'
+              ? 'VERIFIED'
+              : emailDomain.status,
         ...(allVerified ? { verifiedAt: new Date() } : {}),
       },
     });
@@ -169,6 +177,11 @@ export class EmailDomainService {
       spf: checks.spf,
       dkim: checks.dkim,
       dmarc: checks.dmarc,
+      // The records' own truth: whether they were written at all, and what
+      // stopped a write that did not go through. A record that was not
+      // written is not "verified" — the screen says so.
+      recordsWritten: setupError === null,
+      ...(setupError ? { error: setupError } : {}),
     };
   }
 

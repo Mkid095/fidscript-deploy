@@ -50,22 +50,33 @@ export class EmailBootstrapService implements OnApplicationBootstrap {
       // domain by name before creating EmailMessage rows.
       // Use upsert so this is idempotent — same domain is re-registered on
       // every boot (safe; preserves existing status/verified flags).
-      const PLATFORM_PROJECT_ID = this.config.get<string>('PLATFORM_PROJECT_ID', '00000000-0000-0000-0000-000000000000');
-      await this.prisma.emailDomain.upsert({
-        where: { projectId_domain: { projectId: PLATFORM_PROJECT_ID, domain } },
-        create: {
-          projectId: PLATFORM_PROJECT_ID,
-          domain,
-          status: 'ACTIVE',
-          dkimVerified: false,
-          spfVerified: false,
-          dmarcVerified: false,
-          mxVerified: false,
-          dkimSelector: null,
-        },
-        update: {}, // keep existing verified flags if already set
-      });
-      this.logger.log(`Platform domain ${domain} registered in platform DB`);
+      //
+      // The row belongs to the platform's own project, resolved live — the
+      // row carries a foreign key, and a made-up id would fail it and drop
+      // the whole bootstrap (including the system mailboxes).
+      const platformProjectId = await this.resolvePlatformProject();
+      if (platformProjectId) {
+        await this.prisma.emailDomain.upsert({
+          where: { projectId_domain: { projectId: platformProjectId, domain } },
+          create: {
+            projectId: platformProjectId,
+            domain,
+            status: 'ACTIVE',
+            dkimVerified: false,
+            spfVerified: false,
+            dmarcVerified: false,
+            mxVerified: false,
+            dkimSelector: null,
+          },
+          update: {}, // keep existing verified flags if already set
+        });
+        this.logger.log(`Platform domain ${domain} registered in platform DB`);
+      } else {
+        this.logger.warn(
+          `No platform project found — the ${domain} row is skipped; ` +
+            'Stalwart still has the domain and the system mailboxes.',
+        );
+      }
       const password = this.resolvePassword();
       // The order matters: mailboxes require the domain to exist first.
       // We re-issue ensures on every boot so a fresh deployment auto-creates
@@ -93,6 +104,28 @@ export class EmailBootstrapService implements OnApplicationBootstrap {
       // Non-fatal: Stalwart may be down or unreachable. Retry on next boot.
       this.logger.warn(`Email bootstrap skipped: ${(err as Error).message}`);
     }
+  }
+
+  /**
+   * The platform's own project, resolved from the database: the id the
+   * operator gave, or the project by the platform's name. Never a guess —
+   * a foreign key to a project that does not exist is the fault that
+   * dropped this bootstrap, and it is what this resolver exists to remove.
+   */
+  private async resolvePlatformProject(): Promise<string | null> {
+    const byId = this.config.get<string>('PLATFORM_PROJECT_ID');
+    if (byId) {
+      const found = await this.prisma.project.findUnique({ where: { id: byId } });
+      if (found) return found.id;
+      this.logger.warn(
+        `PLATFORM_PROJECT_ID ${byId} does not name a project — falling back to the platform's name`,
+      );
+    }
+    const byName = this.config.get<string>('PLATFORM_PROJECT_NAME', 'Fidscript');
+    const found = await this.prisma.project.findFirst({ where: { name: byName } });
+    if (found) return found.id;
+    this.logger.warn(`No project named "${byName}" — the platform domain row cannot be written`);
+    return null;
   }
 
   /**
