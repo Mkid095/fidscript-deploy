@@ -2,6 +2,8 @@
 
 Companion to `DISCOVERY.md` (the survey findings). This is the plan the
 implementation follows. Decisions are stated as decisions; open ones are marked.
+`STATUS.md` is where the implementation stands: what is built, what was
+verified against the live Stalwart, the backup drill, the license.
 
 ## 1. What we are building
 
