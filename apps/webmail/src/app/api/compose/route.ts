@@ -5,6 +5,7 @@ import {
   sendMessage,
   uploadAttachment,
 } from '@/lib/stalwart/mail';
+import { decideSend, recordSend } from '@/lib/abuse/outbound';
 
 /**
  * The composer's back end. One route, three verbs by "op":
@@ -48,10 +49,31 @@ export async function POST(request: Request) {
       }
 
       case 'send': {
+        const to = Array.isArray(body.to) ? (body.to as string[]) : [];
+        const cc = Array.isArray(body.cc) ? (body.cc as string[]) : [];
+        const bcc = Array.isArray(body.bcc) ? (body.bcc as string[]) : [];
+        const recipients = [...to, ...cc, ...bcc];
+
+        // The abuse bar: suppression and per-account volume, decided
+        // before anything is queued.
+        const decision = await decideSend(context.cred, recipients);
+        if (!decision.ok) {
+          return NextResponse.json(
+            {
+              error: decision.blocked?.reason ?? 'The send was blocked.',
+              suppressed: decision.suppressed,
+            },
+            { status: 429 },
+          );
+        }
+
+        const kept = (list: string[]) =>
+          list.filter((address) => decision.allowed.includes(address.toLowerCase()));
+
         const messageId = await sendMessage(context.cred, {
-          to: Array.isArray(body.to) ? (body.to as string[]) : [],
-          cc: Array.isArray(body.cc) ? (body.cc as string[]) : [],
-          bcc: Array.isArray(body.bcc) ? (body.bcc as string[]) : [],
+          to: kept(to),
+          cc: kept(cc),
+          bcc: kept(bcc),
           subject: body.subject ? String(body.subject) : undefined,
           text: body.text ? String(body.text) : undefined,
           html: body.html ? String(body.html) : undefined,
@@ -65,7 +87,14 @@ export async function POST(request: Request) {
               }>)
             : undefined,
         });
-        return NextResponse.json({ messageId });
+
+        // Keep the counters real: one sent, and the suppressed recipients
+        // counted as rejected.
+        await recordSend(context.cred.user, 1, decision.suppressed.length);
+        return NextResponse.json({
+          messageId,
+          suppressed: decision.suppressed,
+        });
       }
 
       case 'draft': {

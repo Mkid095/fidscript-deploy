@@ -126,6 +126,9 @@ export function AdminPanel({ email }: { email: string }) {
           <span className="text-xs text-text-dim">{email}</span>
         </div>
         <div className="flex items-center gap-3">
+          <Link href="/admin/health" className="text-sm text-accent hover:underline">
+            Mail health
+          </Link>
           <Link href="/" className="text-sm text-accent hover:underline">
             Dashboard
           </Link>
