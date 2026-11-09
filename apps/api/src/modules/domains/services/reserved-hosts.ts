@@ -17,7 +17,7 @@ const RESERVED_LABELS = new Set([
   'app', 'api', 'grafana', 'prometheus', 'loki', 'maven', 'registry',
   'files', 'storage', 'whatsapp', 'whatsappapi', 'realtime', 'instant',
   'apiinstant', 'cliinstant', 'instantmcp', 'mail', 'smtp', 'imap',
-  'minio', 'stalwart-admin', 'dashboard',
+  'minio', 'stalwart-admin', 'dashboard', 'webmail',
 ]);
 
 /**
