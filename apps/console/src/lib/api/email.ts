@@ -41,19 +41,6 @@ export interface EmailStatus {
   jmapUrl: string | null;
 }
 
-export interface EmailDomain {
-  id: string;
-  domain: string;
-  status: string;
-  ownershipToken: string | null;
-  dkimVerified: boolean;
-  spfVerified: boolean;
-  dmarcVerified: boolean;
-  mxVerified: boolean;
-  dkimSelector: string | null;
-  createdAt: string;
-}
-
 export interface EmailAlias {
   id: string;
   domainId: string;
@@ -142,6 +129,19 @@ export interface EmailWebhook {
   isActive?: boolean;
 }
 
+/** The catch-all rule of a domain: where unmatched mail lands. */
+export interface EmailCatchAll {
+  id: string;
+  domainId: string;
+  target: {
+    type: 'mailbox' | 'external' | 'webhook';
+    mailboxId?: string;
+    address?: string;
+    url?: string;
+  };
+  isActive: boolean;
+}
+
 /** The webhooks — the places the mail's story is told. */
 export async function getEmailWebhooks(
   projectId: string,
@@ -156,6 +156,16 @@ export async function getEmailWebhooks(
       subscriptions: [] as EmailWebhook[],
     }));
   return response.webhooks ?? response.subscriptions ?? [];
+}
+
+/** The catch-all rule for a domain — where unmatched mail lands. */
+export async function getEmailCatchAll(
+  projectId: string,
+  domainId: string,
+): Promise<EmailCatchAll | null> {
+  return api
+    .get<EmailCatchAll>(`/projects/${projectId}/email/domains/${domainId}/catch-all`)
+    .catch(() => null);
 }
 
 /** The aliases — an address that forwards somewhere else. */

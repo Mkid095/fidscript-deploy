@@ -33,10 +33,24 @@ export function EmailMailboxesSection({
   const [domain, setDomain] = useState(domains[0] ?? '');
   const [localPart, setLocalPart] = useState('');
   const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
   const [resetting, setResetting] = useState<string | null>(null);
   const [newPassword, setNewPassword] = useState('');
+
+  const strength = passwordStrength(password);
+
+  function generate() {
+    const chars =
+      'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz23456789!@#$%';
+    const next = Array.from(
+      { length: 16 },
+      () => chars[Math.floor(Math.random() * chars.length)],
+    ).join('');
+    setPassword(next);
+    setShowPassword(true);
+  }
 
   const create = () => {
     setError(null);
@@ -182,13 +196,34 @@ export function EmailMailboxesSection({
               placeholder="support"
             />
           </div>
-          <Input
-            label="Password"
-            type="password"
-            hint="At least eight characters. It is shown once, and never again."
-            value={password}
-            onChange={(event) => setPassword(event.target.value)}
-          />
+
+          <div className="space-y-2">
+            <div className="flex flex-wrap items-end gap-2">
+              <div className="grow">
+                <Input
+                  label="Password"
+                  type={showPassword ? 'text' : 'password'}
+                  hint="At least eight characters. It is shown once, and never again."
+                  value={password}
+                  onChange={(event) => setPassword(event.target.value)}
+                />
+              </div>
+              <div className="flex items-center gap-2 pb-7">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  type="button"
+                  onClick={() => setShowPassword((show) => !show)}
+                >
+                  {showPassword ? 'Hide' : 'Show'}
+                </Button>
+                <Button variant="ghost" size="sm" type="button" onClick={generate}>
+                  Generate
+                </Button>
+              </div>
+            </div>
+            <StrengthMeter password={password} strength={strength} />
+          </div>
 
           {error ? <ErrorState message={error} /> : null}
 
@@ -202,6 +237,52 @@ export function EmailMailboxesSection({
           </Button>
         </div>
       </Card>
+    </div>
+  );
+}
+
+function passwordStrength(pw: string): { score: number; label: string } {
+  let score = 0;
+  if (pw.length >= 8) score += 1;
+  if (pw.length >= 12) score += 1;
+  if (/[A-Z]/.test(pw) && /[a-z]/.test(pw)) score += 1;
+  if (/\d/.test(pw) && /[^A-Za-z0-9]/.test(pw)) score += 1;
+  return { score, label: ['Too short', 'Weak', 'Fair', 'Good', 'Strong'][score] };
+}
+
+/**
+ * How strong the password reads — four segments, the fourth only for a
+ * password that mixes case, digits and a symbol.
+ */
+function StrengthMeter({
+  password,
+  strength,
+}: {
+  password: string;
+  strength: { score: number; label: string };
+}) {
+  if (password.length === 0) return null;
+  const tone =
+    strength.score >= 3
+      ? 'bg-success'
+      : strength.score === 2
+        ? 'bg-warning'
+        : 'bg-danger';
+  return (
+    <div className="flex items-center gap-2">
+      <div className="flex flex-1 gap-1">
+        {[0, 1, 2, 3].map((segment) => (
+          <span
+            key={segment}
+            className={`h-1 flex-1 rounded-full ${
+              segment < strength.score ? tone : 'bg-surface-2'
+            }`}
+          />
+        ))}
+      </div>
+      <span className="w-14 text-right text-[11px] text-text-dim">
+        {strength.label}
+      </span>
     </div>
   );
 }

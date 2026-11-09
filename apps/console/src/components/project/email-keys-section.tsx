@@ -6,6 +6,8 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card } from '@/components/ui/card';
 import { EmptyState, ErrorState } from '@/components/ui/feedback';
+import { Dialog } from '@/components/ui/dialog';
+import { CodeBlock } from '@/components/ui/code-block';
 
 import {
   createEmailKeyAction,
@@ -16,7 +18,8 @@ import {
  * The keys that send mail.
  *
  * A key is shown once, when it is made — the platform keeps only its hash,
- * so it cannot be shown again.
+ * so it cannot be shown again. The show-once panel is a dialog: it stands
+ * over the page, and the key is copied from there.
  */
 export function EmailKeysSection({
   projectId,
@@ -98,17 +101,6 @@ export function EmailKeysSection({
 
           {error ? <ErrorState message={error} /> : null}
 
-          {made ? (
-            <div className="rounded-md border border-success/40 bg-success/5 p-3">
-              <p className="text-xs font-medium text-success">
-                The key is shown once. Copy it now.
-              </p>
-              <p className="mt-1 break-all font-mono text-xs text-text">
-                {made}
-              </p>
-            </div>
-          ) : null}
-
           <Button
             variant="primary"
             onClick={create}
@@ -119,6 +111,20 @@ export function EmailKeysSection({
           </Button>
         </div>
       </Card>
+
+      <Dialog
+        open={made !== null}
+        onClose={() => setMade(null)}
+        title="Copy your key now"
+        description="It is shown once and cannot be recovered. Store it somewhere safe."
+        footer={
+          <Button variant="primary" onClick={() => setMade(null)}>
+            I have saved it
+          </Button>
+        }
+      >
+        {made !== null ? <CodeBlock code={made} label="The key" /> : null}
+      </Dialog>
     </div>
   );
 }

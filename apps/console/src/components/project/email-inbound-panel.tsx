@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Input, Select } from '@/components/ui/input';
 import { Card } from '@/components/ui/card';
 import { Badge, EmptyState, ErrorState } from '@/components/ui/feedback';
-import type { EmailDomain, EmailMailbox } from '@/lib/api/email';
+import type { EmailCatchAll, EmailDomain, EmailMailbox } from '@/lib/api/email';
 
 import {
   createWebhookAction,
@@ -34,6 +34,7 @@ export function EmailInboundPanel({
   domains,
   mailboxes,
   webhooks,
+  catchAll,
 }: {
   projectId: string;
   domains: EmailDomain[];
@@ -44,6 +45,7 @@ export function EmailInboundPanel({
     events: string[];
     isActive?: boolean;
   }>;
+  catchAll: EmailCatchAll | null;
 }) {
   const [url, setUrl] = useState('');
   const [events, setEvents] = useState<string[]>(['message.received']);
@@ -158,6 +160,20 @@ export function EmailInboundPanel({
             >
               Set it
             </Button>
+
+            {catchAll ? (
+              <p className="text-xs text-text-dim">
+                Currently sending unmatched mail to{' '}
+                <span className="font-mono text-text">
+                  {catchAllTarget(catchAll, mailboxes)}
+                </span>
+                .
+              </p>
+            ) : (
+              <p className="text-xs text-text-dim">
+                No rule yet — unmatched mail is not delivered anywhere.
+              </p>
+            )}
           </div>
         </Card>
       ) : null}
@@ -263,4 +279,25 @@ export function EmailInboundPanel({
       </Card>
     </div>
   );
+}
+
+/**
+ * What the catch-all sends to, said in the person's words.
+ */
+function catchAllTarget(
+  rule: EmailCatchAll,
+  mailboxes: EmailMailbox[],
+): string {
+  switch (rule.target.type) {
+    case 'mailbox': {
+      const mailbox = mailboxes.find((entry) => entry.id === rule.target.mailboxId);
+      return mailbox ? mailbox.localPart : 'a mailbox of this project';
+    }
+    case 'external':
+      return rule.target.address ?? 'an address of your own';
+    case 'webhook':
+      return rule.target.url ?? 'a webhook';
+    default:
+      return 'one place';
+  }
 }
