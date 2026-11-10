@@ -308,6 +308,34 @@ export class NodeBuildpackProvider implements BuildProvider {
         );
       }
 
+      // The npm registry the install resolves through, when the deployment
+      // carries a token. The platform's own registry proxies the public one
+      // and holds the private scopes, so one .npmrc serves both: an
+      // application that depends on a platform-private package installs
+      // exactly like it does on the machine of whoever published it. Without
+      // a token nothing is written — a public application builds as before.
+      const npmToken = envVars.find((e) => e.key === 'NPM_TOKEN')?.value;
+      if (npmToken) {
+        const registryUrl = (
+          envVars.find((e) => e.key === 'NPM_REGISTRY_URL')?.value ||
+          process.env.PLATFORM_REGISTRY_URL ||
+          'https://registry.fidscript.com'
+        ).replace(/\/+$/, '');
+        const registryHost = registryUrl.replace(/^https?:\/\//, '');
+        writeFileSync(
+          join(ws, '.npmrc'),
+          [
+            `registry=${registryUrl}/`,
+            `//${registryHost}/:_authToken=${npmToken}`,
+            'always-auth=true',
+          ].join('\n'),
+          { mode: 0o600 },
+        );
+        addLog(
+          `[NodeBuildpackProvider] Wrote .npmrc — the install resolves through ${registryHost}`,
+        );
+      }
+
       const dockerfile = this.generateDockerfile(plan, context.buildTarget);
       const dfPath = join(ws, 'Dockerfile');
       writeFileSync(dfPath, dockerfile, { mode: 0o644 });

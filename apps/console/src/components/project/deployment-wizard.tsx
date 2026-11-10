@@ -99,12 +99,18 @@ export function DeploymentWizard({
     return () => clearTimeout(timer);
   }, [step, detectStep]);
 
-  const detect = () => {
+  // The detection reads the repository the step names — the one the person
+  // pressed, when they pressed it, so a click on a repository goes straight
+  // to the reading without a stop at the next button.
+  const detect = (url = gitUrl, repoBranch = branch) => {
     setError(null);
     setDetectStep(0);
     setStep(1);
     startTransition(async () => {
-      const result = await detectBuildPlanAction(projectId, { gitUrl, branch });
+      const result = await detectBuildPlanAction(projectId, {
+        gitUrl: url,
+        branch: repoBranch,
+      });
       if (result.error || !result.plan) {
         setError(result.error ?? 'The repository could not be read.');
         setStep(0);
@@ -198,10 +204,11 @@ export function DeploymentWizard({
               setGitUrl(next.gitUrl);
               setBranch(next.branch);
             }}
+            onPick={(pick) => detect(pick.gitUrl, pick.branch)}
           />
           <Button
             variant="primary"
-            onClick={detect}
+            onClick={() => detect()}
             loading={pending}
             disabled={!gitUrl.trim()}
           >

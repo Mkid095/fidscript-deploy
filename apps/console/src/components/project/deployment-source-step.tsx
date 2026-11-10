@@ -27,10 +27,17 @@ export function DeploymentSourceStep({
   gitUrl,
   branch,
   onChange,
+  onPick,
 }: {
   gitUrl: string;
   branch: string;
   onChange: (next: { gitUrl: string; branch: string }) => void;
+  /**
+   * Pressing a repository — it goes straight to the reading of it. A
+   * repository chosen from the list should not also have to find the next
+   * button; the click is the choice.
+   */
+  onPick?: (pick: { gitUrl: string; branch: string }) => void;
 }) {
   const [repos, setRepos] = useState<Repo[]>([]);
   const [account, setAccount] = useState<string | null>(null);
@@ -133,12 +140,14 @@ export function DeploymentSourceStep({
                 <li key={repo.full_name}>
                   <button
                     type="button"
-                    onClick={() =>
-                      onChange({
+                    onClick={() => {
+                      const pick = {
                         gitUrl: `https://github.com/${repo.full_name}`,
                         branch: repo.default_branch ?? 'main',
-                      })
-                    }
+                      };
+                      onChange(pick);
+                      onPick?.(pick);
+                    }}
                     className={`flex w-full items-center justify-between gap-3 px-3 py-2 text-left transition-colors hover:bg-surface-2 ${
                       gitUrl === `https://github.com/${repo.full_name}`
                         ? 'bg-surface-3'
