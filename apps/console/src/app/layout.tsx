@@ -1,17 +1,20 @@
 import type { Metadata } from 'next';
-import { Geist, Geist_Mono } from 'next/font/google';
+import { JetBrains_Mono, Plus_Jakarta_Sans } from 'next/font/google';
 import { cookies } from 'next/headers';
 
 import { AppProviders } from '@/components/ui/app-providers';
 
 import './globals.css';
 
-const geistSans = Geist({
+// The guide's typefaces. The CSS variable names are kept from the previous
+// setup, so every component that already reads var(--font-geist-sans) /
+// var(--font-geist-mono) picks up the new families without a change.
+const geistSans = Plus_Jakarta_Sans({
   variable: '--font-geist-sans',
   subsets: ['latin'],
 });
 
-const geistMono = Geist_Mono({
+const geistMono = JetBrains_Mono({
   variable: '--font-geist-mono',
   subsets: ['latin'],
 });

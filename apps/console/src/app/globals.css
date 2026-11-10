@@ -18,14 +18,15 @@
 
 :root {
   /* The surfaces, from the page up. */
-  --canvas: #f6f7f9;
+  --canvas: #f4f5f7;
   --surface: #ffffff;
-  --surface-2: #f0f2f5;
-  --surface-3: #e7eaee;
+  --surface-2: #f4f5f7;
+  --surface-3: #eceef1;
+  --well: #eef0f3;
 
   /* The lines. */
-  --rail: #dfe3e8;
-  --rail-light: #c8cdd4;
+  --rail: #e4e7ec;
+  --rail-light: #cfd4dc;
 
   /* The words. */
   --text: #16181d;
@@ -33,8 +34,9 @@
   --text-dim: #878d97;
 
   /* The meanings. */
-  --accent: #c2410c;
-  --accent-hover: #9a3412;
+  --accent: #f2611d;
+  --accent-hover: #d94f12;
+  --accent-soft: #e0692f;
   --success: #0f8a52;
   --warning: #b45309;
   --danger: #c62828;
@@ -47,7 +49,7 @@
   --radius-sm: 4px;
   --radius-md: 6px;
   --radius-lg: 10px;
-  --radius-xl: 14px;
+  --radius-xl: 12px;
   --radius-full: 9999px;
 
   /* The elevations. */
@@ -72,20 +74,22 @@
 }
 
 .dark {
-  --canvas: #0b0c0f;
-  --surface: #111318;
-  --surface-2: #171a20;
-  --surface-3: #1e222a;
+  --canvas: #08090d;
+  --surface: #0e1118;
+  --surface-2: #141824;
+  --surface-3: #181e2e;
+  --well: #07080c;
 
-  --rail: #262a33;
-  --rail-light: #363c47;
+  --rail: #1e2433;
+  --rail-light: #232838;
 
-  --text: #edeef1;
-  --text-muted: #9aa0ab;
-  --text-dim: #6d737e;
+  --text: #e2e8f0;
+  --text-muted: #94a3b8;
+  --text-dim: #64748b;
 
-  --accent: #f97316;
-  --accent-hover: #fb8c3c;
+  --accent: #ff6a1a;
+  --accent-hover: #ff782e;
+  --accent-soft: #ff8d4d;
   --success: #34d399;
   --warning: #fbbf24;
   --danger: #f87171;
@@ -109,6 +113,8 @@
 
   --color-accent: var(--accent);
   --color-accent-hover: var(--accent-hover);
+  --color-accent-soft: var(--accent-soft);
+  --color-well: var(--well);
   --color-success: var(--success);
   --color-warning: var(--warning);
   --color-danger: var(--danger);

@@ -12,6 +12,7 @@
     "test:watch": "vitest"
   },
   "dependencies": {
+    "lucide-react": "^1.71.0",
     "next": "15.5.4",
     "qrcode.react": "^4.2.0",
     "react": "19.1.0",

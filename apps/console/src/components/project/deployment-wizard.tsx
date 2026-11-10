@@ -2,7 +2,6 @@
 
 import { useEffect, useRef, useState, useTransition } from 'react';
 
-import { Button } from '@/components/ui/button';
 import { ErrorState } from '@/components/ui/feedback';
 import { DeploymentSourceStep } from '@/components/project/deployment-source-step';
 import {
@@ -85,7 +84,7 @@ export function DeploymentWizard({
   const [deploymentId, setDeploymentId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [confirmReplace, setConfirmReplace] = useState(false);
-  const [pending, startTransition] = useTransition();
+  const [, startTransition] = useTransition();
   const [detectStep, setDetectStep] = useState(0);
   const deployRef = useRef<(() => void) | undefined>(undefined);
 
@@ -196,25 +195,16 @@ export function DeploymentWizard({
       {error ? <ErrorState message={error} /> : null}
 
       {step === 0 ? (
-        <>
-          <DeploymentSourceStep
-            gitUrl={gitUrl}
-            branch={branch}
-            onChange={(next) => {
-              setGitUrl(next.gitUrl);
-              setBranch(next.branch);
-            }}
-            onPick={(pick) => detect(pick.gitUrl, pick.branch)}
-          />
-          <Button
-            variant="primary"
-            onClick={() => detect()}
-            loading={pending}
-            disabled={!gitUrl.trim()}
-          >
-            Next — read the repository
-          </Button>
-        </>
+        <DeploymentSourceStep
+          gitUrl={gitUrl}
+          branch={branch}
+          onChange={(next) => {
+            setGitUrl(next.gitUrl);
+            setBranch(next.branch);
+          }}
+          onPick={(pick) => detect(pick.gitUrl, pick.branch)}
+          onImport={(url, br) => detect(url, br)}
+        />
       ) : null}
 
       {step === 1 ? (
@@ -284,6 +274,7 @@ export function DeploymentWizard({
           projectSlug={projectSlug}
           deploymentId={deploymentId}
           deployLabel={confirmReplace ? `replacing ${liveDeploymentLabel}` : undefined}
+          frameworkLabel={plan?.frameworkLabel}
           onRetry={deploy}
           remainingApps={(plan?.apps ?? []).filter(
             (app) => app.path !== buildTarget,
@@ -319,37 +310,44 @@ function DetectChecklist({
   failed: boolean;
 }) {
   return (
-    <div className="rounded-lg border border-rail bg-surface p-5">
-      <p className="text-sm font-medium text-text">Reading the repository</p>
+    <div className="rounded-xl border border-rail bg-surface p-6">
+      <p className="text-base font-semibold tracking-tight text-text">
+        Reading the repository
+      </p>
       <p className="mt-0.5 truncate text-xs text-text-dim">{repoLabel}</p>
-      <ul className="mt-4 space-y-2.5">
-        {DETECT_STEPS.map((label, index) => (
-          <li key={label} className="flex items-center gap-2.5 text-sm">
-            {index < current ? (
-              <span className="text-success" aria-hidden>
-                ✓
-              </span>
-            ) : index === current && !failed ? (
-              <span
-                className="inline-block size-3.5 animate-spin rounded-full border-2 border-accent border-t-transparent"
-                aria-hidden
-              />
-            ) : (
-              <span className="size-2 rounded-full bg-surface-2" aria-hidden />
-            )}
-            <span
-              className={
-                index < current
-                  ? 'text-text'
-                  : index === current && !failed
-                    ? 'text-text'
-                    : 'text-text-dim'
-              }
+      <ul className="mt-4 space-y-2.5 font-mono text-xs">
+        {DETECT_STEPS.map((label, index) => {
+          const done = !failed && index < current;
+          const active = !failed && index === current;
+          return (
+            <li
+              key={label}
+              className={`flex items-center gap-3 rounded-lg border p-3 ${
+                done
+                  ? 'border-success/30 bg-success/10 text-success'
+                  : active
+                    ? 'border-accent/40 bg-surface-3 text-accent-soft'
+                    : 'border-rail bg-surface-2 text-text-dim'
+              }`}
             >
-              {label}
-            </span>
-          </li>
-        ))}
+              {done ? (
+                <span className="flex size-4 flex-shrink-0 items-center justify-center rounded-full bg-success/20 text-[10px] font-bold">
+                  ✓
+                </span>
+              ) : active ? (
+                <span
+                  className="inline-block size-4 flex-shrink-0 animate-spin rounded-full border-2 border-accent border-t-transparent"
+                  aria-hidden
+                />
+              ) : (
+                <span className="size-4 flex-shrink-0 text-center text-rail-light">
+                  ·
+                </span>
+              )}
+              <span>{label}</span>
+            </li>
+          );
+        })}
       </ul>
       {failed ? (
         <p className="mt-3 text-xs text-danger">

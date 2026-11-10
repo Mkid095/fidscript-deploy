@@ -376,7 +376,8 @@ export function DeploymentConfigureStep({
       <div className="space-y-2 border-t border-rail pt-4">
         <Button
           variant="primary"
-          className="w-full"
+          size="lg"
+          className="w-full shadow-lg shadow-accent/20"
           onClick={onDeploy}
           disabled={!canDeploy}
         >
@@ -386,7 +387,7 @@ export function DeploymentConfigureStep({
           </kbd>
         </Button>
         <div className="flex items-center justify-between gap-3">
-          <span className="text-xs text-text-dim">
+          <span className={`text-xs ${issueCount > 0 ? 'text-warning' : 'text-text-dim'}`}>
             {issueCount > 0
               ? `Fix ${issueCount} ${issueCount === 1 ? 'issue' : 'issues'} to continue.`
               : subState === 'checking'
@@ -430,7 +431,7 @@ function OverridesAccordion({
     overrides[key] ? (overrideValues[key] ?? detected[key]) : detected[key];
 
   return (
-    <div className="rounded-lg border border-rail bg-surface">
+    <div className="rounded-xl border border-rail bg-surface">
       <button
         type="button"
         aria-expanded={open}
@@ -558,7 +559,7 @@ function EnvSection({
   const count = rows.filter((row) => row.key).length;
 
   return (
-    <div className="rounded-lg border border-rail bg-surface">
+    <div className="rounded-xl border border-rail bg-surface">
       <button
         type="button"
         aria-expanded={open}

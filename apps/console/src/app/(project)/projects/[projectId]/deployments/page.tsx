@@ -56,11 +56,21 @@ export default async function ProjectDeploymentsPage({
           />
         ) : (
           <ul className="divide-y divide-rail">
-            {deployments.map((deployment) => (
+            {deployments.map((deployment) => {
+              const isLive = project.activeDeploymentId === deployment.id;
+              return (
               <li
                 key={deployment.id}
-                className="flex flex-wrap items-center justify-between gap-3 px-4 py-3"
+                className={`relative flex flex-wrap items-center justify-between gap-3 px-4 py-3 ${
+                  isLive ? 'bg-surface-2/60' : ''
+                }`}
               >
+                {isLive ? (
+                  <span
+                    aria-hidden
+                    className="absolute inset-y-0 left-0 w-0.5 bg-accent"
+                  />
+                ) : null}
                 <div className="min-w-0">
                   <Link
                     href={`/projects/${project.slug}/deployments/${deployment.id}`}
@@ -91,7 +101,8 @@ export default async function ProjectDeploymentsPage({
                   ) : null}
                 </div>
               </li>
-            ))}
+              );
+            })}
           </ul>
         )}
       </Card>

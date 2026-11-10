@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useMemo, useRef, useState } from 'react';
+import { Terminal } from 'lucide-react';
 
 import { Button } from '@/components/ui/button';
 
@@ -89,29 +90,36 @@ export function BuildLogViewer({
       : null;
 
   return (
-    <div className="overflow-hidden rounded-lg border border-rail bg-surface-2">
-      <div className="flex flex-wrap items-center justify-between gap-2 border-b border-rail px-3 py-2">
+    <div className="overflow-hidden rounded-xl border border-rail bg-well">
+      <div className="flex flex-wrap items-center justify-between gap-2 border-b border-rail bg-surface px-3 py-2">
         <div className="flex flex-wrap items-center gap-2 text-xs">
+          <Terminal className="size-3.5 text-accent" aria-hidden />
+          <span className="font-mono text-text-dim">runner.stdout</span>
+          <span className="text-text-dim">·</span>
           {active ? (
-            <span className="flex items-center gap-1.5 text-warning">
+            <span className="flex items-center gap-1.5 font-mono text-warning">
               <span className="inline-block size-1.5 animate-pulse rounded-full bg-warning" />
               building
             </span>
           ) : failed ? (
-            <span className="text-danger">failed</span>
+            <span className="font-mono text-danger">failed</span>
           ) : succeeded ? (
-            <span className="text-success">
+            <span className="font-mono text-success">
               built{seconds ? ` in ${seconds}` : ''}
             </span>
           ) : (
-            <span className="text-text-dim">{status.toLowerCase()}</span>
+            <span className="font-mono text-text-dim">
+              {status.toLowerCase()}
+            </span>
           )}
-          <span className="text-text-dim">· {allLines.length} lines</span>
+          <span className="font-mono text-text-dim">
+            · {allLines.length} lines
+          </span>
           {hiddenCount > 0 ? (
             <button
               type="button"
               onClick={() => setShowAll(true)}
-              className="text-accent transition-colors hover:underline"
+              className="text-accent-soft transition-colors hover:underline"
             >
               {hiddenCount} earlier lines hidden — show all
             </button>
@@ -137,7 +145,7 @@ export function BuildLogViewer({
           ) : null}
           {allLines.length > 0 ? (
             <Button variant="ghost" size="sm" onClick={copy}>
-              {copied ? 'Copied' : 'Copy'}
+              {copied ? 'Copied' : 'Copy logs'}
             </Button>
           ) : null}
         </div>
@@ -150,7 +158,7 @@ export function BuildLogViewer({
             : 'There is no build log for this deployment.'}
         </div>
       ) : (
-        <div className="max-h-96 overflow-y-auto px-3 py-2">
+        <div className="scroll-area max-h-96 overflow-y-auto px-3 py-2">
           <pre className="font-mono text-xs leading-relaxed">
             {visibleLines.map((line, index) => {
               const realIndex = index + hiddenCount;

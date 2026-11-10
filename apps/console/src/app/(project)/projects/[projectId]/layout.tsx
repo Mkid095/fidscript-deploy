@@ -1,8 +1,10 @@
 import { redirect } from 'next/navigation';
 
 import { getProject, getProjectResources } from '@/lib/api/project';
+import { getDeployments } from '@/lib/api/resources';
 import { buildProjectMenu, type ProjectRole } from '@/lib/project/menu';
 import { ProjectSidebar } from '@/components/project/project-sidebar';
+import { ProjectTopbar } from '@/components/project/project-topbar';
 import { ResponsiveSidebar } from '@/components/shell/responsive-sidebar';
 
 /**
@@ -36,8 +38,9 @@ export default async function ProjectLayout({
   }));
 
   const role = (project.role ?? 'viewer').toLowerCase() as ProjectRole;
+  const projectPath = `/projects/${project.slug}`;
   const items = buildProjectMenu({
-    projectPath: `/projects/${project.slug}`,
+    projectPath,
     shape: project.shape ?? 'DEPLOYMENT',
     deploymentOn: project.deploymentOn ?? true,
     capabilities: {
@@ -60,16 +63,46 @@ export default async function ProjectLayout({
     role,
   });
 
+  // What is up on the platform right now, for the top bar's live chip —
+  // the project's active deployment, read where it is kept.
+  const deployments = await getDeployments(project.id).catch(() => []);
+  const active =
+    deployments.find((deployment) => deployment.id === project.activeDeploymentId) ??
+    deployments[0] ??
+    null;
+  let liveUrl: string | null = null;
+  let liveState: 'live' | 'building' | 'none' = 'none';
+  if (active) {
+    if (active.status === 'SUCCESS' && active.deploymentUrl) {
+      liveUrl = active.deploymentUrl;
+      liveState = 'live';
+    } else if (
+      ['QUEUED', 'PENDING', 'BUILDING', 'DEPLOYING'].includes(active.status)
+    ) {
+      liveState = 'building';
+    }
+  }
+
   return (
     <div className="flex h-screen overflow-hidden bg-canvas">
       <ResponsiveSidebar>
         <ProjectSidebar
           projectName={project.name}
           projectStatus={project.status}
+          projectSlug={project.slug}
+          projectPath={projectPath}
+          deploymentOn={project.deploymentOn ?? true}
           items={items}
         />
       </ResponsiveSidebar>
       <div className="flex min-w-0 flex-1 flex-col overflow-hidden">
+        <ProjectTopbar
+          projectName={project.name}
+          projectPath={projectPath}
+          liveUrl={liveUrl}
+          liveState={liveState}
+          deploymentOn={project.deploymentOn ?? true}
+        />
         <main className="scroll-area flex-1 overflow-y-auto">{children}</main>
       </div>
     </div>

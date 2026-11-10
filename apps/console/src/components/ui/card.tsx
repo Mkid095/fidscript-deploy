@@ -13,7 +13,7 @@ export function Card({
 }: HTMLAttributes<HTMLDivElement> & { children: ReactNode }) {
   return (
     <div
-      className={`rounded-lg border border-rail bg-surface ${className}`}
+      className={`rounded-xl border border-rail bg-surface shadow-sm ${className}`}
       {...rest}
     >
       {children}
