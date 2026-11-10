@@ -134,17 +134,14 @@ export function DeploymentWizard({
       }
       // The build's own settings are said before the deployment starts, so
       // the runner reads one config: the monorepo app, and the commands and
-      // the port that were overridden, if they were.
+      // the port. A switch that is off sends an empty value — an override
+      // that was set before is genuinely cleared, not silently kept.
       const configured = await updateBuildConfigAction(projectId, {
         ...(buildTarget ? { buildTarget } : {}),
-        ...(overrides.install
-          ? { installCommand: overrideValues.install }
-          : {}),
-        ...(overrides.build ? { buildCommand: overrideValues.build } : {}),
-        ...(overrides.start ? { startCommand: overrideValues.start } : {}),
-        ...(overrides.port
-          ? { port: Number(overrideValues.port) || undefined }
-          : {}),
+        installCommand: overrides.install ? overrideValues.install : '',
+        buildCommand: overrides.build ? overrideValues.build : '',
+        startCommand: overrides.start ? overrideValues.start : '',
+        port: overrides.port ? Number(overrideValues.port) || null : null,
       });
       if (configured.error) {
         setError(configured.error);

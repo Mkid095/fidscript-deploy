@@ -77,7 +77,7 @@ export async function updateBuildConfigAction(
     installCommand?: string;
     buildCommand?: string;
     startCommand?: string;
-    port?: number;
+    port?: number | null;
   },
 ): Promise<{ ok?: boolean; error?: string }> {
   try {
