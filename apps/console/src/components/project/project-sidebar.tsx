@@ -209,10 +209,10 @@ export function ProjectSidebar({
                       <Link
                         href={item.href}
                         aria-current={active ? 'page' : undefined}
-                        className={`flex items-center gap-2.5 rounded-lg border-l-2 py-1.5 pl-3 pr-2 text-sm transition-colors ${
+                        className={`flex items-center gap-2.5 rounded-lg py-1.5 pl-3 pr-2 text-sm transition-colors ${
                           active
-                            ? 'border-accent bg-surface-3 font-medium text-text'
-                            : 'border-transparent text-text-muted hover:bg-surface-2 hover:text-text'
+                            ? 'bg-surface-3 font-medium text-text'
+                            : 'text-text-muted hover:bg-surface-2 hover:text-text'
                         }`}
                       >
                         {Icon ? (

@@ -56,15 +56,14 @@ export function Page({
 
   return (
     <>
-      {/* The bar spans the content area from the sidebar's edge — it does not
-          float to the middle of a wide screen. Its title starts where the
-          body's content starts, at the same padding, so the header and the
-          work read as one thing rather than two mis-fitted columns. */}
-      <div className="sticky top-0 z-20 border-b border-rail bg-surface/95 backdrop-blur supports-[backdrop-filter]:bg-surface/80">
+      {/* The bar sits at the top of the work and scrolls with it. When the
+          shell above it already carries a pinned app bar, this is a quiet
+          line under it — not a second pinned header. */}
+      <div className="border-b border-rail">
         {/* The left padding makes room for the shell's menu button on a
             small screen; on a wide one the sidebar is back and it is not
             there. */}
-        <div className="w-full py-3.5 pl-16 pr-4 lg:px-6">
+        <div className="w-full py-4 pl-16 pr-4 lg:px-6">
           <PageHeader
             title={title}
             description={description}
