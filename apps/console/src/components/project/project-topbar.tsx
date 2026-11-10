@@ -2,34 +2,18 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
-import { usePathname } from 'next/navigation';
 import { Check, Copy, Plus, ShieldCheck } from 'lucide-react';
-
-/** The section a path names, in the words the menu uses. */
-const SECTION_LABELS: Record<string, string> = {
-  overview: 'Overview',
-  members: 'Members',
-  activity: 'Activity',
-  backend: 'Backend',
-  connect: 'Connect',
-  deployments: 'Deployments',
-  domains: 'Domains',
-  functions: 'Functions',
-  databases: 'Databases',
-  email: 'Email',
-  whatsapp: 'WhatsApp',
-  packages: 'Packages',
-  monitoring: 'Monitoring',
-  logs: 'Logs',
-  settings: 'Settings',
-};
 
 /**
  * The project's top bar.
  *
- * It is the place the work lives: where in the project the person is, what is
- * live on the platform right now, and the one button that matters — a new
- * deployment. It sits above the screen, and the screen scrolls beneath it.
+ * It is the place the work lives: which project, what is live on the
+ * platform right now, and the one button that matters — a new deployment.
+ * It sits above the screen; the screen scrolls beneath it.
+ *
+ * It names the **project**, not the screen: the screen's own title is the
+ * page's, so this bar and the page are one bar a level apart, not one
+ * title said twice.
  */
 export function ProjectTopbar({
   projectName,
@@ -46,12 +30,7 @@ export function ProjectTopbar({
   liveState: 'live' | 'building' | 'none';
   deploymentOn: boolean;
 }) {
-  const pathname = usePathname();
   const [copied, setCopied] = useState(false);
-
-  const section = pathname.split('/').filter(Boolean).pop() ?? '';
-  const sectionLabel =
-    SECTION_LABELS[section] ?? section.charAt(0).toUpperCase() + section.slice(1);
 
   const copy = async () => {
     if (!liveUrl) return;
@@ -65,23 +44,20 @@ export function ProjectTopbar({
   };
 
   return (
-    <div className="border-b border-rail bg-surface/95 px-4 py-3 backdrop-blur sm:px-6">
+    <div className="border-b border-rail bg-surface px-4 py-3 sm:px-6">
       <div className="mx-auto flex w-full max-w-5xl items-center justify-between gap-4">
-        {/* Where in the product the person is. */}
-        <nav aria-label="Breadcrumb" className="flex min-w-0 items-center gap-2 text-xs font-mono text-text-dim">
+        {/* Which project, and the way back to them all. */}
+        <nav
+          aria-label="Breadcrumb"
+          className="flex min-w-0 items-center gap-2 text-xs font-mono text-text-dim"
+        >
           <Link href="/projects" className="transition-colors hover:text-text">
             Projects
           </Link>
           <span aria-hidden>/</span>
-          <span className="truncate text-text">{projectName}</span>
-          {sectionLabel ? (
-            <>
-              <span aria-hidden>/</span>
-              <span className="shrink-0 font-semibold text-accent-soft">
-                {sectionLabel}
-              </span>
-            </>
-          ) : null}
+          <span className="truncate text-sm font-semibold text-text">
+            {projectName}
+          </span>
         </nav>
 
         {/* What is live, and the way to the next deployment. */}
@@ -130,3 +106,4 @@ export function ProjectTopbar({
     </div>
   );
 }
+
