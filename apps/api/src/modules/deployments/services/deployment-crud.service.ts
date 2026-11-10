@@ -19,6 +19,7 @@ import { UserGithubService } from '@/modules/app-auth/services/user-github.servi
 import { DeploymentRoutesService } from '@/modules/deployments/services/deployment-routes.service';
 import { ProjectEnvVarsService } from '@/modules/deployments/services/project-env-vars.service';
 import { ProjectAccessService } from '@/modules/projects/services/project-access.service';
+import { reservedHostReason } from '@/modules/domains/services/reserved-hosts';
 import { join } from 'path';
 
 @Injectable()
@@ -378,9 +379,61 @@ export class DeploymentCrudService {
         ...(dto.requiredEnvVars !== undefined && {
           requiredEnvVars: dto.requiredEnvVars,
         }),
+        // The commands and the port are overrides: null means "what the
+        // repository says". An empty string clears an override.
+        ...(dto.installCommand !== undefined && {
+          installCommand: dto.installCommand.trim() || null,
+        }),
+        ...(dto.buildCommand !== undefined && {
+          buildCommand: dto.buildCommand.trim() || null,
+        }),
+        ...(dto.startCommand !== undefined && {
+          startCommand: dto.startCommand.trim() || null,
+        }),
+        ...(dto.port !== undefined && { port: dto.port || null }),
       },
     });
     return this.formatBuildConfig(config);
+  }
+
+  /**
+   * Whether a subdomain of the platform's own application zone is free.
+   *
+   * The name has to read as a hostname label, it cannot be one of the
+   * names the platform answers on itself, and no other project's domain
+   * row may already hold it. The answer says which of the three it is, so
+   * the wizard can say "taken" instead of failing at deploy time.
+   */
+  async checkSubdomain(
+    userId: string,
+    projectId: string,
+    subdomain: string,
+  ): Promise<{ available: boolean; reason?: string }> {
+    await this.checkAccessOrThrow(userId, projectId);
+    const sub = subdomain.trim().toLowerCase();
+    if (!/^[a-z0-9]([a-z0-9-]{0,30}[a-z0-9])?$/.test(sub)) {
+      return {
+        available: false,
+        reason: 'Use lowercase letters, numbers and hyphens (max 32).',
+      };
+    }
+    const platformDomain = this.configService.get<string>(
+      'PLATFORM_DOMAIN',
+      'apps.local',
+    );
+    const reserved = reservedHostReason(`${sub}.${platformDomain}`, platformDomain);
+    if (reserved) {
+      return { available: false, reason: 'That name is reserved.' };
+    }
+    const fqdn = `${sub}.apps.${platformDomain}`;
+    const taken = await this.prisma.domain.findFirst({
+      where: { domain: fqdn, projectId: { not: projectId } },
+      select: { id: true },
+    });
+    if (taken) {
+      return { available: false, reason: 'That name is already in use.' };
+    }
+    return { available: true };
   }
 
   async stop(userId: string, projectId: string, deploymentId: string) {
@@ -539,6 +592,11 @@ export class DeploymentCrudService {
       buildTarget: c.buildTarget || null,
       startupTimeoutSeconds: c.startupTimeoutSeconds ?? 120,
       requiredEnvVars: c.requiredEnvVars ?? [],
+      // The overrides, as they stand: null means "what the repository says".
+      installCommand: c.installCommand || null,
+      buildCommand: c.buildCommand || null,
+      startCommand: c.startCommand || null,
+      port: c.port ?? null,
       createdAt: c.createdAt,
       updatedAt: c.updatedAt,
     };

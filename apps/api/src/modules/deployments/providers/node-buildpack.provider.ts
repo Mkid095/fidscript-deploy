@@ -272,6 +272,27 @@ export class NodeBuildpackProvider implements BuildProvider {
     try {
       const detected = await this.detect(ws);
 
+      // What the person overrode wins over what the repository says; an
+      // absent override lets the buildpack's own detection stand. The
+      // Dockerfile generators read the plan's commands, so the override
+      // propagates through whichever framework was found.
+      const plan: FrameworkInfo = {
+        ...detected,
+        ...(context.buildCommand ? { buildCommand: context.buildCommand } : {}),
+        ...(context.installCommand ? { installCommand: context.installCommand } : {}),
+        ...(context.startCommand ? { startCommand: context.startCommand } : {}),
+        ...(context.port ? { port: context.port } : {}),
+      };
+      if (
+        plan.buildCommand !== detected.buildCommand ||
+        plan.startCommand !== detected.startCommand ||
+        plan.installCommand !== detected.installCommand
+      ) {
+        addLog(
+          `[NodeBuildpackProvider] Build settings overridden: install="${plan.installCommand ?? ''}" build="${plan.buildCommand}" start="${plan.startCommand}"`,
+        );
+      }
+
       // Write .env file if env vars are present — passed as a build secret
       // so values aren't exposed in build args/logs, and also COPY'd into
       // the runtime stage for apps that read .env at startup.
@@ -287,14 +308,14 @@ export class NodeBuildpackProvider implements BuildProvider {
         );
       }
 
-      const dockerfile = this.generateDockerfile(detected, context.buildTarget);
+      const dockerfile = this.generateDockerfile(plan, context.buildTarget);
       const dfPath = join(ws, 'Dockerfile');
       writeFileSync(dfPath, dockerfile, { mode: 0o644 });
       addLog(
-        `[NodeBuildpackProvider] Detected framework: ${detected.framework} (${JSON.stringify({ port: detected.port, outputDir: detected.outputDir, buildCmd: detected.buildCommand, startCmd: detected.startCommand, monorepo: detected.monorepo })})`,
+        `[NodeBuildpackProvider] Detected framework: ${plan.framework} (${JSON.stringify({ port: plan.port, outputDir: plan.outputDir, buildCmd: plan.buildCommand, startCmd: plan.startCommand, monorepo: plan.monorepo })})`,
       );
       addLog(
-        `[NodeBuildpackProvider] Generated Dockerfile for ${detected.framework}`,
+        `[NodeBuildpackProvider] Generated Dockerfile for ${plan.framework}`,
       );
 
       const imageTag = `fidscript/${context.projectSlug}:${context.releaseVersion}`;
@@ -323,9 +344,10 @@ export class NodeBuildpackProvider implements BuildProvider {
         buildDurationMs: Date.now() - startTime,
         buildLogs: logs.join('\n'),
         success: true,
-        // The port the app was detected to listen on. The deployment
-        // profile's default is only right for Next.js and static sites.
-        port: detected.port,
+        // The port the app listens on — the override when one was set, else
+        // the detection. The deployment profile's default is only right for
+        // Next.js and static sites.
+        port: plan.port,
       };
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);

@@ -323,6 +323,12 @@ export class DeploymentStateService implements OnModuleInit {
           source,
           envVars: runtimeEnv,
           buildTarget: buildConfig?.buildTarget || undefined,
+          buildOverrides: {
+            installCommand: buildConfig?.installCommand || undefined,
+            buildCommand: buildConfig?.buildCommand || undefined,
+            startCommand: buildConfig?.startCommand || undefined,
+            port: buildConfig?.port || undefined,
+          },
           startupTimeoutSeconds: buildConfig?.startupTimeoutSeconds ?? 120,
           onLog,
           onDeploy: async () => {

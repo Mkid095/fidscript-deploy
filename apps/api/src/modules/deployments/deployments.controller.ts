@@ -112,6 +112,18 @@ export class DeploymentsController {
     return this.deploymentsService.detectFramework(user.userId, projectId, dto);
   }
 
+  @Get('deployments/subdomain-available')
+  @RequireScope('deployments:read')
+  @ApiOperation({ summary: 'Whether a subdomain of the platform app zone is free' })
+  async subdomainAvailable(
+    @Req() req: Request,
+    @Param('projectId') projectId: string,
+    @Query('sub') sub: string,
+  ) {
+    const user = req.user as { userId: string };
+    return this.deploymentsService.checkSubdomain(user.userId, projectId, sub ?? '');
+  }
+
   @Get('deployments/:id')
   @RequireScope('deployments:read')
   @ApiOperation({ summary: 'Get deployment details' })

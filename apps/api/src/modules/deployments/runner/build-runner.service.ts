@@ -18,6 +18,17 @@ export interface BuildAndDeployOptions {
   startupTimeoutSeconds: number;
   /** Monorepo app root (e.g. "apps/web") — passed to NodeBuildpackProvider for turbo monorepos */
   buildTarget?: string;
+  /**
+   * The commands and the port the person overrode, when they did. Absent
+   * fields mean "what the repository says" — the buildpack's own detection
+   * stands, and a deployment that nobody configured still works.
+   */
+  buildOverrides?: {
+    installCommand?: string;
+    buildCommand?: string;
+    startCommand?: string;
+    port?: number;
+  };
   onLog: (line: string) => void;
   /**
    * Called after the image is built and before the container is started,
@@ -64,7 +75,7 @@ export class BuildRunnerService {
       this.log(onLog, `[runner] Validating source with ${provider.name} provider…`);
       await provider.validate({
         deploymentId, releaseId, projectId: opts.projectId, projectSlug, projectType, releaseVersion,
-        source, buildCommand: undefined, outputDirectory: undefined, buildTarget: opts.buildTarget,
+        source, ...this.overridesFor(opts), buildTarget: opts.buildTarget,
         envVars, onLog, workspace: ws,
       });
 
@@ -72,7 +83,7 @@ export class BuildRunnerService {
       this.log(onLog, `[runner] Building image…`);
       const buildResult = await provider.build({
         deploymentId, releaseId, projectId: opts.projectId, projectSlug, projectType, releaseVersion,
-        source, buildCommand: undefined, outputDirectory: undefined, buildTarget: opts.buildTarget,
+        source, ...this.overridesFor(opts), buildTarget: opts.buildTarget,
         envVars, onLog, workspace: ws,
       });
 
@@ -101,15 +112,37 @@ export class BuildRunnerService {
       if (opts.onDeploy) await opts.onDeploy();
       const deployResult = await this.dockerRun.deployContainer({
         imageTag: buildResult.imageTag, deploymentId, projectSlug, envVars, profile, startupTimeoutSeconds, onLog,
-        // The provider detected the port the app really listens on; the
-        // profile default is only a guess.
-        port: buildResult.port,
+        // The person's own port wins over both the provider's detection and
+        // the profile's guess — they said what the application listens on.
+        port: opts.buildOverrides?.port ?? buildResult.port,
       });
 
       return { buildResult, deployResult };
     } finally {
       this.workspace.cleanupWorkspace(ws);
     }
+  }
+
+  /**
+   * The overrides as build-context fields. Only the fields the person
+   * actually set are carried — an absent field lets the provider's own
+   * detection stand.
+   */
+  private overridesFor(opts: BuildAndDeployOptions): {
+    buildCommand?: string;
+    installCommand?: string;
+    startCommand?: string;
+    port?: number;
+    outputDirectory?: undefined;
+  } {
+    const o = opts.buildOverrides;
+    if (!o) return { buildCommand: undefined, outputDirectory: undefined };
+    return {
+      ...(o.buildCommand?.trim() ? { buildCommand: o.buildCommand.trim() } : {}),
+      ...(o.installCommand?.trim() ? { installCommand: o.installCommand.trim() } : {}),
+      ...(o.startCommand?.trim() ? { startCommand: o.startCommand.trim() } : {}),
+      ...(o.port ? { port: o.port } : {}),
+    };
   }
 
   /**

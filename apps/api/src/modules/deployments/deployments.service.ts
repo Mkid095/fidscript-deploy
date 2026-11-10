@@ -18,4 +18,5 @@ export class DeploymentsService {
   getBuildConfig(userId: string, projectId: string) { return this.crud.getBuildConfig(userId, projectId); }
   updateBuildConfig(userId: string, projectId: string, dto: any) { return this.crud.updateBuildConfig(userId, projectId, dto); }
   detectFramework(userId: string, projectId: string, dto: any) { return this.crud.detectFramework(userId, projectId, dto); }
+  checkSubdomain(userId: string, projectId: string, subdomain: string) { return this.crud.checkSubdomain(userId, projectId, subdomain); }
 }
