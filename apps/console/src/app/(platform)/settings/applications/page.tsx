@@ -1,10 +1,12 @@
 import Link from 'next/link';
 
 import { applications } from '@/lib/api/platform';
+import { registryScopes } from '@/lib/api/registry';
 import { Card, SectionHeader } from '@/components/ui/card';
 import { Page } from '@/components/ui/page';
 import { Badge, EmptyState, ErrorState } from '@/components/ui/feedback';
 import { SettingsNav } from '@/components/platform/settings-nav';
+import { RegistryScopeAccess } from '@/components/platform/registry-scope-access';
 
 /**
  * The applications.
@@ -21,7 +23,10 @@ const IN_THE_CONSOLE = ['deployment', 'email', 'package-manager'];
 export const metadata = { title: 'Applications · Settings' };
 
 export default async function ApplicationsSettingsPage() {
-  const apps = await applications().catch(() => null);
+  const [apps, scopes] = await Promise.all([
+    applications().catch(() => null),
+    registryScopes().catch(() => []),
+  ]);
 
   return (
     <Page
@@ -102,6 +107,8 @@ export default async function ApplicationsSettingsPage() {
           </div>
         </section>
       )}
+
+      <RegistryScopeAccess scopes={scopes} />
     </Page>
   );
 }

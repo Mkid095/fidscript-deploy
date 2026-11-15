@@ -550,6 +550,30 @@ model Credential {
   @@schema("infrastructure")
 }
 
+/// One registry scope's access rule — who may read its packages without a
+/// token.
+///
+/// The platform's npm registry (Verdaccio) is shared: it proxies the public
+/// registry and holds the platform's own packages and a customer's private
+/// scopes. A scope whose packages a plain deployment must install without
+/// carrying a token is opened here: `anonymousRead` turns its access rule
+/// from `$authenticated` to `$all`, and the change is written into the
+/// registry's config and the container is restarted so the registry honours
+/// it. Publishing stays authenticated either way — opening a scope only
+/// lets the world read, not write.
+model RegistryScopeAccess {
+  id            String   @id @default(uuid())
+  // The npm scope, e.g. '@soostori' or '@fidscript-deploy'.
+  scope         String   @unique @db.VarChar(128)
+  // Whether the scope's packages are readable without a token.
+  anonymousRead Boolean  @default(false) @map("anonymous_read")
+  createdAt     DateTime @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt     DateTime @updatedAt @map("updated_at") @db.Timestamptz
+
+  @@map("registry_scope_access")
+  @@schema("infrastructure")
+}
+
 /// What a project is for.
 ///
 /// BACKEND — the application's data, users, permissions and files live in

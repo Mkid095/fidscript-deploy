@@ -249,3 +249,31 @@ export async function newRecoveryCodesAction(): Promise<{
     };
   }
 }
+
+/**
+ * Open a registry scope for anonymous reads — or close it again.
+ *
+ * The rule is written into the registry's own config, and the registry is
+ * restarted to honour it: a few seconds, and installs through it pause
+ * while it comes back.
+ */
+export async function setScopeAccessAction(
+  scope: string,
+  anonymousRead: boolean,
+): Promise<{ ok?: boolean; error?: string }> {
+  try {
+    await api.post('/applications/package-manager/scopes/access', {
+      scope,
+      anonymousRead,
+    });
+    revalidatePath('/settings/applications');
+    return { ok: true };
+  } catch (err) {
+    return {
+      error:
+        err instanceof Error
+          ? err.message
+          : 'The scope access rule could not be saved.',
+    };
+  }
+}

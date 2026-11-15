@@ -9,6 +9,7 @@ import { ApplicationInstallService } from './services/application-install.servic
 import { ApplicationDnsService } from './services/application-dns.service';
 import { ApplicationJobsService } from './services/application-jobs.service';
 import { ApplicationRuntimeService } from './services/application-runtime.service';
+import { RegistryConfigService } from './services/registry-config.service';
 import { PlatformCredentialsService } from './services/platform-credentials.service';
 import { ApplicationsController } from './controllers/applications.controller';
 import { PlatformCredentialsController } from './controllers/platform-credentials.controller';
@@ -43,6 +44,9 @@ import { PlatformCredentialsController } from './controllers/platform-credential
     ApplicationDnsService,
     ApplicationJobsService,
     ApplicationRuntimeService,
+    // The registry's scope access rules: who may read a scope without a
+    // token, and the config rewrite that makes the registry honour it.
+    RegistryConfigService,
     // The credentials screen: what each application answers with, and the
     // way to make it answer with the platform's own identity.
     PlatformCredentialsService,

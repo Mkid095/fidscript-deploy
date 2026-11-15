@@ -55,6 +55,21 @@ npm publish`,
       },
     },
     {
+      heading: 'Installing in a deployment',
+      paragraphs: [
+        'A deployment that depends on a private package installs through the registry with its own credentials: the token is a variable on the project, and the build reads it from there. It never touches the repository, and it is not in the image that is built.',
+      ],
+      list: [
+        'In the project: add NPM_TOKEN with your registry token.',
+        'The next deployment installs through the platform registry, with it.',
+      ],
+      note: {
+        kind: 'note',
+        title: 'A scope can be open to anonymous reads',
+        body: 'The registry’s owner opens a scope on the platform’s Applications screen. An open scope needs no token at all: the repository carries a .npmrc with the scope’s address only, and the build installs from it. Publishing stays closed either way — the rule decides who reads, not who writes.',
+      },
+    },
+    {
       heading: 'Maven and Gradle',
       paragraphs: [
         'The registry serves Maven artifacts as well. The repository goes in the settings, and the same token authenticates it.',

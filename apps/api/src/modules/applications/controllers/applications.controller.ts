@@ -1,4 +1,5 @@
 import {
+  Body,
   Controller,
   Get,
   Param,
@@ -13,6 +14,8 @@ import { Public } from '@/modules/auth/decorators/public.decorator';
 import { ApplicationCatalogueService } from '../services/application-catalogue.service';
 import { ApplicationInstallService } from '../services/application-install.service';
 import { RegistryCatalogueService } from '../services/registry-catalogue.service';
+import { RegistryConfigService } from '../services/registry-config.service';
+import { SetScopeAccessDto } from '../dto/set-scope-access.dto';
 
 /**
  * The applications on this platform.
@@ -30,6 +33,7 @@ export class ApplicationsController {
     private catalogue: ApplicationCatalogueService,
     private installs: ApplicationInstallService,
     private registry: RegistryCatalogueService,
+    private registryConfig: RegistryConfigService,
   ) {}
 
   /**
@@ -57,6 +61,30 @@ export class ApplicationsController {
   @ApiOperation({ summary: 'The package manager: its console, its token page and its packages' })
   async packageManager() {
     return this.registry.catalogue();
+  }
+
+  /**
+   * The registry's per-scope access rules.
+   *
+   * A scope opened for anonymous reads is one whose packages a plain
+   * deployment can install without a registry token — the rule is written
+   * into the registry's own config when it is changed.
+   */
+  @Get('package-manager/scopes')
+  @ApiOperation({ summary: 'The registry scopes, and which of them answer without a token' })
+  async registryScopes() {
+    return { scopes: await this.registryConfig.listScopes() };
+  }
+
+  @Post('package-manager/scopes/access')
+  @UseGuards(PlatformAdminGuard)
+  @SetMetadata(ROLES_KEY, ['ADMIN', 'OWNER'])
+  @ApiOperation({
+    summary:
+      'Set a scope access rule — open it for anonymous reads, or close it again. Restarts the registry',
+  })
+  async setScopeAccess(@Body() dto: SetScopeAccessDto) {
+    return this.registryConfig.setScopeAccess(dto.scope, dto.anonymousRead);
   }
 
   @Get('installs')

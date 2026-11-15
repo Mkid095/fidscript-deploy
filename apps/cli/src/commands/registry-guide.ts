@@ -48,6 +48,15 @@ const GUIDES: Guide[] = [
     ],
   },
   {
+    tool: 'fidscript',
+    summary: 'Let a FIDScript deployment install private packages.',
+    steps: [
+      'In the project: Settings → Environment variables',
+      'Add NPM_TOKEN with your registry token — the build installs through the platform registry with it, and the variable is a secret: it is not in the repository, and not in the image that is built',
+      'Or, when the scope is open for anonymous reads: commit a .npmrc with @your-scope:registry=https://registry.fidscript.com and no token — the build installs from it',
+    ],
+  },
+  {
     tool: 'github-actions',
     summary: 'Let a workflow install private packages.',
     steps: [
