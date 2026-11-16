@@ -37,4 +37,16 @@ export class AddDomainDto {
   @IsBoolean()
   @IsOptional()
   sslEnabled?: boolean;
+
+  @ApiPropertyOptional({
+    description:
+      'Take the name over from the other project that has it. Only meaningful ' +
+      'when the name is already registered by another project; the platform ' +
+      'moves it here and releases it there. Off by default — the answer is a ' +
+      'conflict, not a silent takeover.',
+    default: false,
+  })
+  @IsBoolean()
+  @IsOptional()
+  takeOver?: boolean;
 }

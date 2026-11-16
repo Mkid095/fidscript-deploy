@@ -745,6 +745,14 @@ model BuildConfig {
   /// one of these fails BEFORE the build starts, naming the variable — so a
   /// half-configured application never reaches the build stage.
   requiredEnvVars       String[] @default([]) @map("required_env_vars")
+  /// The commands a deployment runs, when the person overrides what the
+  /// platform detected. Null means "use what the repository says" — the
+  /// buildpack reads package.json and asks for nothing more.
+  installCommand        String?  @map("install_command") @db.VarChar(500)
+  buildCommand          String?  @map("build_command") @db.VarChar(500)
+  startCommand          String?  @map("start_command") @db.VarChar(500)
+  /// The port the application listens on, when the platform's guess is wrong.
+  port                  Int?
   createdAt             DateTime @default(now()) @map("created_at") @db.Timestamptz
   updatedAt             DateTime @updatedAt @map("updated_at") @db.Timestamptz
 
@@ -935,6 +943,13 @@ model ManagedDnsRecord {
   source           String    @default("deployment") @db.VarChar(20) // deployment | email | verification | wildcard | manual
   // Content checksum for drift detection (SHA-256 of type:name:value)
   checksum         String    @db.VarChar(64)
+  // What was at (type,name) before the platform overwrote it. NULL = there
+  // was nothing, so releasing the domain deletes the record; set = the
+  // customer's value, written back when the domain is released.
+  originalValue    String?   @map("original_value")
+  originalTtl      Int?      @map("original_ttl")
+  originalPriority Int?      @map("original_priority")
+  originalProxied  Boolean?  @map("original_proxied")
   lastSyncedAt     DateTime? @map("last_synced_at") @db.Timestamptz
   createdAt        DateTime  @default(now()) @map("created_at") @db.Timestamptz
   updatedAt        DateTime  @updatedAt @map("updated_at") @db.Timestamptz

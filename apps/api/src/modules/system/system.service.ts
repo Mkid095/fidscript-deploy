@@ -1,4 +1,5 @@
 import { Injectable, Logger } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { execFileSync } from 'child_process';
 import axios from 'axios';
 
@@ -52,6 +53,7 @@ const CACHE_MS = 5_000;
 @Injectable()
 export class SystemService {
   private readonly logger = new Logger(SystemService.name);
+  constructor(private readonly config: ConfigService) {}
   private cached: { state: SystemState; at: number } | null = null;
 
   /**

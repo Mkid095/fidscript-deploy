@@ -28,13 +28,10 @@ services:
     # The metrics Prometheus scrapes: the requests per router and per
     # service — which is how the console knows how much traffic each of the
     # platform's own sites is carrying.
-    # The Prometheus exporter, and the entrypoint that serves it. The
-    # requests each router carried are what the console's System screen
-    # shows — which entrypoint serves them is the one named "traefik".
     command:
       - traefik
       - --metrics.prometheus=true
-      - --entrypoints.traefik.observability.metrics=true
+      - --metrics.prometheus.addEntryPointsLabels=true
       - --metrics.prometheus.addRoutersLabels=true
       - --metrics.prometheus.addServicesLabels=true
     deploy:
@@ -359,9 +356,7 @@ services:
     # context (it copies package.json, pnpm-lock.yaml, packages/ and
     # apps/api/), which is why the context is ../.. and not .
     build:
-      # The platform's home is the console's repository — the API, the
-      # packages, the CLI and the installer all live there.
-      context: /home/ken/projects/apps/fidscript-deploy
+      context: ../..
       dockerfile: apps/api/Dockerfile
     image: fidscript-api:latest
     container_name: fidscript_api
@@ -398,10 +393,9 @@ services:
       PGBOUNCER_PORT: "6432"
       REDIS_URL: redis://:${REDIS_PASSWORD}@redis:6379
       NATS_URL: nats://nats:4222
-      # The WhatsApp platform's API — the Evolution API. The api joins the
-      # `evolution` network below and reaches it directly, rather than
-      # bouncing the request out through the edge and back.
-      EVOLUTION_API_URL: http://platform-api:8080
+      # Override the image-baked EVOLUTION_API_URL (http://fidscript_whatsapp_api:8080)
+      # since the WhatsApp API container listens on port 3099, not 8080.
+      EVOLUTION_API_URL: http://fidscript_whatsapp_api:3099
       MINIO_ENDPOINT: minio:9000
       MINIO_PORT: "9000"
       # Public MinIO endpoint used for signed URLs returned to clients.
@@ -427,9 +421,14 @@ services:
       # so the base must be the HTTP listener root (port 8080),
       # NOT the /jmap path. The trailing slash is required.
       STALWART_JMAP_URL: http://fidscript_stalwart:8080/
-      # JMAP auth: the SHA-256 hash of the admin password (from STALWART_RECOVERY_ADMIN).
-      # The API sends this as Basic Auth password on the /jmap endpoint.
-      STALWART_JMAP_PASSWORD: ${STALWART_RECOVERY_ADMIN}
+      # JMAP auth: the mail administrator's name and password — the platform's
+      # own identity (the same credential the operator signs into the mail
+      # console with). STALWART_JMAP_PASSWORD is the plain password; it is
+      # separate from STALWART_RECOVERY_ADMIN because the recovery pair is
+      # "name:password" and a password that is not 64 hex chars would not
+      # split out of it.
+      STALWART_JMAP_USER: ${STALWART_JMAP_USER:-}
+      STALWART_JMAP_PASSWORD: ${STALWART_JMAP_PASSWORD:-}
       STALWART_ADMIN_TOKEN_FILE: /run/secrets/stalwart_admin_token
       STALWART_SMTP_HOST: fidscript_stalwart
       STALWART_SMTP_PORT: "465"
@@ -469,6 +468,10 @@ services:
       # Where the installer lives, as seen by this container. The platform
       # runs the installer's own scripts from here to install an application.
       INSTALLER_DIR: /opt/fidscript-deploy/installer
+      # Where the applications' directories live, as seen by this container.
+      # The registry's own config file is among them — a scope access rule is
+      # a change to that file plus a registry restart.
+      APPLICATIONS_DIR: /opt/fidscript-deploy/applications
       # ── Instant BaaS — the project's data plane ──────────────────────────
       # The server-side URL is the add-on's container on the shared network,
       # so the api does not bounce the request out through the edge. The
@@ -479,6 +482,22 @@ services:
       # The superuser's personal access token. It is OPTIONAL — without it
       # the api reports Instant as unavailable rather than failing to start.
       INSTANT_SUPERUSER_TOKEN_FILE: /run/secrets/instant_superuser_token
+      # The Instant account the superuser token belongs to — what the
+      # credentials screen shows, and the account magic codes go to.
+      INSTANT_SUPERUSER_EMAIL: ${INSTANT_SUPERUSER_EMAIL:-}
+      # ── The credentials screen ───────────────────────────────────────────
+      # What the operator's applications answer with, and what the platform
+      # can reach them with. Grafana is applied over its own API with the
+      # credential below; Stalwart's administrator is the recovery pair and
+      # changes with the installer (see STALWART_* above).
+      GRAFANA_URL: ${GRAFANA_URL:-http://fidscript_grafana:3000}
+      GRAFANA_ADMIN_USER: ${GRAFANA_ADMIN_USER:-}
+      GRAFANA_ADMIN_PASSWORD_FILE: /run/secrets/observability_grafana_password
+      # ── WhatsApp — the platform's own key ───────────────────────────────
+      # With it, a project's WhatsApp identity (its own instance) is created
+      # with the project rather than when somebody pastes a key. Optional:
+      # without it, provisioning records why and the screen offers the retry.
+      EVOLUTION_API_KEY_FILE: /run/secrets/evolution_api_key
     # NOTE: no Docker-secrets block for the api. The Docker-secrets mechanism
     # mounts the secret files with root-0400 perms, which the api (running as
     # `node`, uid 1000) cannot read ("Permission denied"). Instead, we bind-
@@ -500,6 +519,10 @@ services:
       # the two paths differ, the daemon is told to mount a file that does
       # not exist on the host, and the container never starts.
       - ..:/opt/fidscript-deploy/installer:rw
+      # The applications' directories, writable: the registry's config is
+      # one of the files in them, and a scope access rule is a change to
+      # that file plus a registry restart.
+      - ../../applications:/opt/fidscript-deploy/applications:rw
       # The ONE-LINE installer — the guided flow that asks for the domain,
       # the admin account and the Cloudflare token — lives at the
       # repository root, not in installer/scripts/. The api serves THAT
@@ -526,6 +549,13 @@ services:
       # The WhatsApp platform's own network, so the Evolution API is one
       # hop away instead of a round trip through the internet.
       - evolution
+      # The Instant BaaS as it is actually deployed here: the self-hosting
+      # stack's own network (declared external below), where its server
+      # answers as `server` on port 8888. The api provisions apps and reads
+      # configs from it directly — the server publishes nothing the api
+      # could reach otherwise, so without this the platform reports Instant
+      # as unreachable.
+      - self-hosting
     depends_on:
       postgres:
         condition: service_healthy
@@ -559,7 +589,7 @@ services:
     # keeps pointing at the same place.
     build:
       context: /home/ken/projects/apps/fidscript-deploy
-      dockerfile: apps/console/Dockerfile
+      dockerfile: Dockerfile
       args:
         NEXT_PUBLIC_API_URL: https://api.${DOMAIN}
     # Explicit tag so the image has a stable name (matching the API
@@ -574,8 +604,26 @@ services:
     environment:
       NEXT_PUBLIC_PLATFORM_DOMAIN: ${DOMAIN}
       NEXT_PUBLIC_API_URL: https://api.${DOMAIN}
+      # The dashboard's server-side fetches (the registry, the API) resolve
+      # to IPv6 first from inside the container, and the container has no
+      # IPv6 route — every such fetch timed out. IPv4 first, at the runtime.
+      NODE_OPTIONS: --max-old-space-size=2048 --dns-result-order=ipv4first
+      # The console's server components call the API over the shared
+      # network instead of through the edge: a page's fetches stop paying
+      # the public round-trip.
+      API_INTERNAL_URL: http://fidscript_api:3001
+      # The npm registry's own address on the shared network: the page's
+      # catalogue fetch takes the short way round instead of the public edge.
+      REGISTRY_INTERNAL_URL: http://nextmavens-verdaccio:4873
+      # Observability, on the shared network: the page's reads stop paying
+      # the public round-trip the same way the API's do.
+      LOKI_INTERNAL_URL: http://fidscript_loki:3100
+      PROMETHEUS_INTERNAL_URL: http://fidscript_prometheus:9090
     networks:
       - fidscript-deployment
+      # The registry runs on the other product's network; the dashboard
+      # joins it so it can ask the registry directly.
+      - registry
     depends_on:
       - api
     healthcheck:

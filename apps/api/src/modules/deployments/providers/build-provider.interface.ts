@@ -53,6 +53,12 @@ export interface BuildContext {
     archiveObjectKey?: string;
   };
   buildCommand?: string;
+  /** The dependency install the person overrode (buildpacks read it). */
+  installCommand?: string;
+  /** The start command the person overrode (buildpacks read it). */
+  startCommand?: string;
+  /** The port the person said the application listens on. */
+  port?: number;
   outputDirectory?: string;
   /** For monorepos: the app/workspace name to build/deploy (e.g. "apps/web", "packages/frontend") */
   buildTarget?: string;

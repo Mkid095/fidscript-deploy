@@ -1,10 +1,16 @@
-import { Injectable, Logger, NotFoundException, ConflictException } from '@nestjs/common';
+import {
+  Injectable,
+  Logger,
+  NotFoundException,
+  ConflictException,
+} from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { PrismaService } from '@/prisma/prisma.service';
 import { EventService } from '@/modules/events/event.service';
 import { DomainChecksService } from './domain-checks.service';
 import { DomainAccessService } from './domain-access.service';
 import { DomainDnsService } from './domain-dns.service';
+import { reservedHostReason } from './reserved-hosts';
 
 @Injectable()
 export class DomainHealthService {
@@ -25,7 +31,10 @@ export class DomainHealthService {
       include: { deployment: { select: { deploymentUrl: true } } },
     });
     if (!domain) return;
-    if (!['TLS_PENDING', 'ACTIVE', 'BROKEN'].includes(domain.dnsStatus as string)) return;
+    if (
+      !['TLS_PENDING', 'ACTIVE', 'BROKEN'].includes(domain.dnsStatus as string)
+    )
+      return;
 
     const start = Date.now();
     let dnsOk = false;
@@ -58,7 +67,8 @@ export class DomainHealthService {
     const checks = { dnsOk, routingOk, sslOk, emailOk };
     const weights = { dnsOk: 30, routingOk: 20, sslOk: 30, emailOk: 20 };
     const healthScore = Object.entries(checks).reduce(
-      (score, [key, ok]) => score + (ok ? weights[key as keyof typeof weights] : 0),
+      (score, [key, ok]) =>
+        score + (ok ? weights[key as keyof typeof weights] : 0),
       0,
     );
 
@@ -84,10 +94,11 @@ export class DomainHealthService {
       where: { id: domainId },
       data: {
         sslLastCheckedAt: new Date(),
-        sslExpiresAt: sslExpiresInDays != null
-          ? new Date(Date.now() + sslExpiresInDays * 86_400_000)
-          : undefined,
-        sslLastError: sslOk ? null : (errorMessage || 'SSL check failed'),
+        sslExpiresAt:
+          sslExpiresInDays != null
+            ? new Date(Date.now() + sslExpiresInDays * 86_400_000)
+            : undefined,
+        sslLastError: sslOk ? null : errorMessage || 'SSL check failed',
       },
     });
 
@@ -96,10 +107,19 @@ export class DomainHealthService {
     if (sslOk && currentStatus === 'TLS_PENDING') {
       await this.prisma.domain.update({
         where: { id: domainId },
-        data: { dnsStatus: 'ACTIVE', sslStatus: 'ACTIVE', sslIssuedAt: new Date() },
+        data: {
+          dnsStatus: 'ACTIVE',
+          sslStatus: 'ACTIVE',
+          sslIssuedAt: new Date(),
+        },
       });
-      await this.emit(domainId, domain.projectId, '', 'domains.verified', { domain: domain.domain, score: healthScore });
-      this.logger.log(`[domains] Domain ${domain.domain} reached ACTIVE (SSL confirmed)`);
+      await this.emit(domainId, domain.projectId, '', 'domains.verified', {
+        domain: domain.domain,
+        score: healthScore,
+      });
+      this.logger.log(
+        `[domains] Domain ${domain.domain} reached ACTIVE (SSL confirmed)`,
+      );
       return;
     }
 
@@ -108,8 +128,16 @@ export class DomainHealthService {
         where: { id: domainId },
         data: { dnsStatus: 'BROKEN' },
       });
-      await this.emit(domainId, domain.projectId, '', 'domains.health_changed', { domain: domain.domain, status: 'broken', score: healthScore });
-      this.logger.warn(`[domains] Domain ${domain.domain} went BROKEN: ${errorMessage}`);
+      await this.emit(
+        domainId,
+        domain.projectId,
+        '',
+        'domains.health_changed',
+        { domain: domain.domain, status: 'broken', score: healthScore },
+      );
+      this.logger.warn(
+        `[domains] Domain ${domain.domain} went BROKEN: ${errorMessage}`,
+      );
       return;
     }
 
@@ -118,20 +146,40 @@ export class DomainHealthService {
         where: { id: domainId },
         data: { dnsStatus: 'ACTIVE' },
       });
-      await this.emit(domainId, domain.projectId, '', 'domains.recovered', { domain: domain.domain, score: healthScore });
+      await this.emit(domainId, domain.projectId, '', 'domains.recovered', {
+        domain: domain.domain,
+        score: healthScore,
+      });
       this.logger.log(`[domains] Domain ${domain.domain} recovered to ACTIVE`);
     } else {
       // Emit health_changed for any status change
-      await this.emit(domainId, domain.projectId, '', 'domains.health_changed', { domain: domain.domain, status: healthStatus, score: healthScore });
+      await this.emit(
+        domainId,
+        domain.projectId,
+        '',
+        'domains.health_changed',
+        { domain: domain.domain, status: healthStatus, score: healthScore },
+      );
     }
   }
 
-  private async emit(domainId: string, projectId: string, userId: string, type: string, payload: Record<string, unknown>) {
+  private async emit(
+    domainId: string,
+    projectId: string,
+    userId: string,
+    type: string,
+    payload: Record<string, unknown>,
+  ) {
     await this.eventService.emit(
       type as any,
       projectId,
       { domainId, ...payload },
-      { actorId: userId || undefined, actorType: 'user', resourceType: 'domain', resourceId: domainId },
+      {
+        actorId: userId || undefined,
+        actorType: 'user',
+        resourceType: 'domain',
+        resourceId: domainId,
+      },
     );
   }
 
@@ -171,14 +219,22 @@ export class DomainHealthService {
     };
   }
 
-  async triggerHealthCheck(userId: string, projectId: string, domainId: string) {
+  async triggerHealthCheck(
+    userId: string,
+    projectId: string,
+    domainId: string,
+  ) {
     await this.access.ensureAccess(userId, projectId);
-    const domain = await this.prisma.domain.findFirst({ where: { id: domainId, projectId } });
+    const domain = await this.prisma.domain.findFirst({
+      where: { id: domainId, projectId },
+    });
     if (!domain) throw new NotFoundException('Domain not found');
     // Fire-and-forget async check
     setTimeout(() => {
-      this.checkHealth(domainId).catch(err => {
-        this.logger.error(`Health check failed for domain ${domainId}: ${err.message}`);
+      this.checkHealth(domainId).catch((err) => {
+        this.logger.error(
+          `Health check failed for domain ${domainId}: ${err.message}`,
+        );
       });
     }, 0);
     return { status: 'checking', message: 'Health check triggered' };
@@ -188,13 +244,21 @@ export class DomainHealthService {
     await this.access.ensureAccess(userId, projectId);
     const domain = await this.prisma.domain.findFirst({
       where: { id: domainId, projectId },
-      include: { deployment: { select: { deploymentUrl: true } }, dnsConnection: true },
+      include: {
+        deployment: { select: { deploymentUrl: true } },
+        dnsConnection: true,
+      },
     });
     if (!domain) throw new NotFoundException('Domain not found');
 
     const records: Array<{
-      type: string; name: string; value: string; priority?: number;
-      ttl?: number; status: 'ok' | 'missing' | 'pending'; category: 'deployment' | 'email' | 'verification';
+      type: string;
+      name: string;
+      value: string;
+      priority?: number;
+      ttl?: number;
+      status: 'ok' | 'missing' | 'pending';
+      category: 'deployment' | 'email' | 'verification';
     }> = [];
     const isApex = domain.apexDomain;
 
@@ -211,7 +275,15 @@ export class DomainHealthService {
         category: 'deployment',
       });
     } else {
-      const slug = this.extractSlug(domain.deployment?.deploymentUrl ?? domain.domain);
+      // The CNAME points at the PROJECT's host (D14) — the domain's first
+      // label says nothing about which project it belongs to.
+      const project = await this.prisma.project.findUnique({
+        where: { id: projectId },
+        select: { slug: true },
+      });
+      const slug =
+        project?.slug ??
+        this.extractSlug(domain.deployment?.deploymentUrl ?? domain.domain);
       // The platform's own domain — not a literal. A record that points at
       // "apps.local" is a record that points nowhere.
       records.push({
@@ -223,53 +295,107 @@ export class DomainHealthService {
         category: 'deployment',
       });
     }
-    records.push({ type: 'TXT', name: `_fidscript-verification.${domain.domain}`, value: `FIDScript verified ${domainId}`, ttl: 300, status: 'pending', category: 'verification' });
+    records.push({
+      type: 'TXT',
+      name: `_fidscript-verification.${domain.domain}`,
+      value: `FIDScript verified ${domainId}`,
+      ttl: 300,
+      status: 'pending',
+      category: 'verification',
+    });
 
     // Email records (MX)
-    records.push({ type: 'MX', name: '@', value: `mx1.${domain.domain}`, priority: 10, ttl: 300, status: 'pending', category: 'email' });
-    records.push({ type: 'MX', name: '@', value: `mx2.${domain.domain}`, priority: 20, ttl: 300, status: 'pending', category: 'email' });
+    records.push({
+      type: 'MX',
+      name: '@',
+      value: `mx1.${domain.domain}`,
+      priority: 10,
+      ttl: 300,
+      status: 'pending',
+      category: 'email',
+    });
+    records.push({
+      type: 'MX',
+      name: '@',
+      value: `mx2.${domain.domain}`,
+      priority: 20,
+      ttl: 300,
+      status: 'pending',
+      category: 'email',
+    });
 
     // SPF record
     records.push({
-      type: 'TXT', name: '@',
+      type: 'TXT',
+      name: '@',
       value: `v=spf1 mx include:${domain.domain} ~all`,
-      ttl: 300, status: 'pending', category: 'email',
+      ttl: 300,
+      status: 'pending',
+      category: 'email',
     });
 
     // DKIM record
     records.push({
-      type: 'TXT', name: `default._domainkey.${domain.domain}`,
+      type: 'TXT',
+      name: `default._domainkey.${domain.domain}`,
       value: 'v=DKIM1; k=ed25519; p=...',
-      ttl: 300, status: 'pending', category: 'email',
+      ttl: 300,
+      status: 'pending',
+      category: 'email',
     });
 
     // DMARC record
     records.push({
-      type: 'TXT', name: '_dmarc',
+      type: 'TXT',
+      name: '_dmarc',
       value: 'v=DMARC1; p=quarantine; rua=mailto:dmarc@deploy.fidscript.com',
-      ttl: 300, status: 'pending', category: 'email',
+      ttl: 300,
+      status: 'pending',
+      category: 'email',
     });
 
     return { domainId, domain: domain.domain, records };
   }
 
-  async autoConfigureDnsRecords(userId: string, projectId: string, domainId: string) {
+  async autoConfigureDnsRecords(
+    userId: string,
+    projectId: string,
+    domainId: string,
+  ) {
     await this.access.ensureAccess(userId, projectId);
     const domain = await this.prisma.domain.findFirst({
       where: { id: domainId, projectId },
-      include: { deployment: { select: { deploymentUrl: true } }, dnsConnection: true },
+      include: {
+        deployment: { select: { deploymentUrl: true } },
+        dnsConnection: true,
+      },
     });
     if (!domain) throw new NotFoundException('Domain not found');
-    if (domain.dnsMode !== 'cloudflare_auto') throw new ConflictException('Domain is not in Cloudflare auto mode');
-    if (!domain.dnsConnection) throw new ConflictException('No Cloudflare connection found for this domain');
+    if (domain.dnsMode !== 'cloudflare_auto') {
+      throw new ConflictException('Domain is not in Cloudflare auto mode');
+    }
+
+    // A name the platform answers on is not a project's to write records for.
+    const reason = reservedHostReason(
+      domain.domain,
+      this.config.get<string>('PLATFORM_DOMAIN', 'apps.local'),
+    );
+    if (reason) throw new ConflictException(reason);
+
+    // The project's own account — the one the person connected with.
+    const provider = await this.dns.getProjectProvider(projectId);
+    if (!provider) {
+      throw new ConflictException(
+        'This project has no DNS account connected — connect one and the records can be written for you.',
+      );
+    }
 
     return this.dns.cloudflareAutoSetup(
       domainId,
       domain.domain,
-      domain.deployment?.deploymentUrl ?? null,
+      await this.dns.targetHost(projectId),
       domain.apexDomain,
-      async (d: string) => { return ''; },
-      async () => { return {}; },
+      provider,
     );
   }
 
@@ -280,8 +406,13 @@ export class DomainHealthService {
 
   private extractSlug(deploymentUrl: string): string {
     try {
-      const host = deploymentUrl.replace('https://', '').replace('http://', '').split(':')[0];
+      const host = deploymentUrl
+        .replace('https://', '')
+        .replace('http://', '')
+        .split(':')[0];
       return host.split('.')[0];
-    } catch { return 'app'; }
+    } catch {
+      return 'app';
+    }
   }
 }

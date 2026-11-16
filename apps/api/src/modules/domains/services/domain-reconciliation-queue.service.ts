@@ -1,5 +1,11 @@
 import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
-import { NatsConnection, JetStreamClient, JetStreamManager, AckPolicy, headers } from 'nats';
+import {
+  NatsConnection,
+  JetStreamClient,
+  JetStreamManager,
+  AckPolicy,
+  headers,
+} from 'nats';
 import { EventService } from '@/modules/events/event.service';
 
 const DOMAIN_RECON_STREAM = 'DOMAIN_RECON';
@@ -22,6 +28,19 @@ export interface DomainVerificationJob {
   attempt?: number;
 }
 
+/**
+ * A terminal failure: the domain the job was about no longer exists (it was
+ * released). Retrying a job for a gone domain is what burned a CPU core and
+ * dragged the platform's health — so the worker drops these instead of
+ * re-enqueuing them forever.
+ */
+export class DomainGoneError extends Error {
+  constructor(domainId: string) {
+    super(`Domain ${domainId} no longer exists`);
+    this.name = 'DomainGoneError';
+  }
+}
+
 @Injectable()
 export class DomainReconciliationQueueService implements OnModuleInit {
   private readonly logger = new Logger(DomainReconciliationQueueService.name);
@@ -32,10 +51,12 @@ export class DomainReconciliationQueueService implements OnModuleInit {
   constructor(private readonly eventService: EventService) {}
 
   async onModuleInit() {
-    await new Promise<void>(resolve => setTimeout(resolve, 2000));
+    await new Promise<void>((resolve) => setTimeout(resolve, 2000));
     this.nc = this.eventService.getNatsConnection();
     if (!this.nc) {
-      this.logger.warn('NATS not connected — domain reconciliation queue will not function');
+      this.logger.warn(
+        'NATS not connected — domain reconciliation queue will not function',
+      );
       return;
     }
     this.js = this.nc.jetstream();
@@ -57,7 +78,9 @@ export class DomainReconciliationQueueService implements OnModuleInit {
       this.logger.log('DOMAIN_RECON stream created/verified');
     } catch (err: unknown) {
       if (!(err as Error).message?.includes('already exists')) {
-        this.logger.warn(`DOMAIN_RECON stream setup: ${(err as Error).message}`);
+        this.logger.warn(
+          `DOMAIN_RECON stream setup: ${(err as Error).message}`,
+        );
       }
     }
 
@@ -69,12 +92,38 @@ export class DomainReconciliationQueueService implements OnModuleInit {
         ack_wait: 120,
         max_deliver: 3,
         max_ack_pending: 10,
-        filter_subject: DOMAIN_RECON_SUBJECT,
+        filter_subject: `${DOMAIN_RECON_SUBJECT}.>`,
       });
       this.logger.log('DOMAIN_RECON durable consumer created/verified');
     } catch (err: unknown) {
-      if (!(err as Error).message?.includes('already exists')) {
-        this.logger.warn(`DOMAIN_RECON consumer setup: ${(err as Error).message}`);
+      // A consumer that already exists may carry an old, wrong filter — one
+      // that matches nothing and silences the whole worker. Replace it once
+      // on boot, so the setup is the truth.
+      if ((err as Error).message?.includes('already exists')) {
+        try {
+          await this.jsm.consumers.delete(
+            DOMAIN_RECON_STREAM,
+            DOMAIN_RECON_DURABLE,
+          );
+          await this.jsm.consumers.add(DOMAIN_RECON_STREAM, {
+            name: DOMAIN_RECON_DURABLE,
+            durable_name: DOMAIN_RECON_DURABLE,
+            ack_policy: AckPolicy.Explicit,
+            ack_wait: 120,
+            max_deliver: 3,
+            max_ack_pending: 10,
+            filter_subject: `${DOMAIN_RECON_SUBJECT}.>`,
+          });
+          this.logger.log('DOMAIN_RECON durable consumer replaced');
+        } catch (replaceErr: unknown) {
+          this.logger.warn(
+            `DOMAIN_RECON consumer replace failed: ${(replaceErr as Error).message}`,
+          );
+        }
+      } else {
+        this.logger.warn(
+          `DOMAIN_RECON consumer setup: ${(err as Error).message}`,
+        );
       }
     }
   }
@@ -85,13 +134,18 @@ export class DomainReconciliationQueueService implements OnModuleInit {
    * @param reason Why verification was triggered
    * @param delaySeconds Optional delay (for retries)
    */
-  async enqueue(domainId: string, reason: VerificationReason, delaySeconds?: number): Promise<{ seq: number }> {
+  async enqueue(
+    domainId: string,
+    reason: VerificationReason,
+    delaySeconds?: number,
+    attempt = 1,
+  ): Promise<{ seq: number }> {
     if (!this.js) throw new Error('JetStream not connected');
     const job: DomainVerificationJob = {
       domainId,
       reason,
       enqueuedAt: new Date().toISOString(),
-      attempt: 1,
+      attempt,
     };
     const body = JSON.stringify(job);
     const h = headers();
@@ -100,20 +154,55 @@ export class DomainReconciliationQueueService implements OnModuleInit {
     if (delaySeconds && delaySeconds > 0) {
       h.set('Nats-Delay', String(Math.floor(delaySeconds * 1_000_000_000)));
     }
-    const pa = await this.js.publish(`${DOMAIN_RECON_SUBJECT}.${domainId}`, body, { headers: h });
-    this.logger.debug(`[domain-recon] enqueued domainId=${domainId} reason=${reason} seq=${pa.seq}`);
+    const pa = await this.js.publish(
+      `${DOMAIN_RECON_SUBJECT}.${domainId}`,
+      body,
+      { headers: h },
+    );
+    this.logger.debug(
+      `[domain-recon] enqueued domainId=${domainId} reason=${reason} seq=${pa.seq}`,
+    );
     return { seq: pa.seq };
   }
 
   async getConsumer() {
     if (!this.js) return null;
     try {
-      return await this.js.consumers.get(DOMAIN_RECON_STREAM, DOMAIN_RECON_DURABLE);
+      return await this.js.consumers.get(
+        DOMAIN_RECON_STREAM,
+        DOMAIN_RECON_DURABLE,
+      );
     } catch {
-      return null;
+      // The durable consumer does not exist yet — a fresh install, or it was
+      // removed. Create it, rather than sleeping forever: the scheduler has
+      // been enqueueing into a stream nobody read.
+      try {
+        this.logger.warn(
+          '[domain-recon] durable consumer missing — creating it',
+        );
+        await this.jsm?.consumers.add(DOMAIN_RECON_STREAM, {
+          durable_name: DOMAIN_RECON_DURABLE,
+          ack_policy: 'explicit' as any,
+          ack_wait: 2 * 60 * 1_000_000_000,
+          max_deliver: 5,
+        });
+        return await this.js.consumers.get(
+          DOMAIN_RECON_STREAM,
+          DOMAIN_RECON_DURABLE,
+        );
+      } catch (err) {
+        this.logger.error(
+          `[domain-recon] could not create the consumer: ${err instanceof Error ? err.message : String(err)}`,
+        );
+        return null;
+      }
     }
   }
 
-  getStreamName() { return DOMAIN_RECON_STREAM; }
-  getDurableName() { return DOMAIN_RECON_DURABLE; }
+  getStreamName() {
+    return DOMAIN_RECON_STREAM;
+  }
+  getDurableName() {
+    return DOMAIN_RECON_DURABLE;
+  }
 }

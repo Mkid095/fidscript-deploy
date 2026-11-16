@@ -20,6 +20,7 @@ export class DomainsService {
   list(userId: string, projectId: string) { return this.crud.list(userId, projectId); }
   add(userId: string, projectId: string, dto: any) { return this.crud.add(userId, projectId, dto); }
   getInstructions(userId: string, projectId: string, domainId: string) { return this.crud.getInstructions(userId, projectId, domainId); }
+  attachDeployment(userId: string, projectId: string, domainId: string, deploymentId: string | null) { return this.crud.attachDeployment(userId, projectId, domainId, deploymentId); }
   delete(userId: string, projectId: string, domainId: string) { return this.cleanup.delete(userId, projectId, domainId); }
   connectCloudflare(userId: string, projectId: string, apiToken: string) { return this.dns.connectCloudflare(userId, projectId, apiToken); }
   verify(userId: string, projectId: string, domainId: string) { return this.verification.verify(userId, projectId, domainId); }

@@ -71,6 +71,8 @@ http:
       tls: { certResolver: letsencrypt-dns }
     whatsapp-api:
       rule: 'Host(`whatsappapi.fidscript.com`)'
+      # The fidscript-api router claims /api on every host; this wins for its own.
+      priority: 100
       service: whatsapp-api
       entryPoints: [websecure]
       tls: { certResolver: letsencrypt-dns }

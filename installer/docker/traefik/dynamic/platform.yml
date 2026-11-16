@@ -91,6 +91,8 @@ http:
         certResolver: letsencrypt-dns
     jmap:
       rule: 'Host(`jmap.fidscript.com`)'
+      # The API router claims /api on every host; this wins for its own.
+      priority: 100
       service: fidscript-jmap
       middlewares:
         - security-headers
@@ -100,7 +102,20 @@ http:
         certResolver: letsencrypt-dns
     stalwart-admin:
       rule: 'Host(`stalwart-admin.fidscript.com`)'
+      # The API router claims /api on every host; this wins for its own.
+      priority: 100
       service: fidscript-jmap
+      middlewares:
+        - security-headers
+      entryPoints:
+        - websecure
+      tls:
+        certResolver: letsencrypt-dns
+    webmail:
+      rule: 'Host(`webmail.fidscript.com`)'
+      # The API router claims /api on every host; this wins for its own.
+      priority: 100
+      service: fidscript-webmail
       middlewares:
         - security-headers
       entryPoints:
@@ -131,6 +146,12 @@ http:
       loadBalancer:
         servers:
           - url: http://fidscript_stalwart:8080
+    fidscript-webmail:
+      loadBalancer:
+        servers:
+          # The integrated deployment runs on the host (systemd); the
+          # host loopback is reached through host-gateway.
+          - url: http://host.docker.internal:3100
     fidscript-acme:
       loadBalancer:
         servers:

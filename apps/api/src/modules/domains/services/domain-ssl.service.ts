@@ -2,6 +2,8 @@ import { Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '@/prisma/prisma.service';
 import { EventService } from '@/modules/events/event.service';
 import { DomainAccessService } from './domain-access.service';
+import { DomainChecksService } from './domain-checks.service';
+import { DomainReconciliationQueueService } from './domain-reconciliation-queue.service';
 
 @Injectable()
 export class DomainSslService {
@@ -11,11 +13,15 @@ export class DomainSslService {
     private prisma: PrismaService,
     private eventService: EventService,
     private access: DomainAccessService,
+    private checks: DomainChecksService,
+    private reconciliation: DomainReconciliationQueueService,
   ) {}
 
   async getSsl(userId: string, projectId: string, domainId: string) {
     await this.access.ensureAccess(userId, projectId);
-    const domain = await this.prisma.domain.findFirst({ where: { id: domainId, projectId } });
+    const domain = await this.prisma.domain.findFirst({
+      where: { id: domainId, projectId },
+    });
     if (!domain) throw new NotFoundException('Domain not found');
 
     return {
@@ -32,79 +38,95 @@ export class DomainSslService {
 
   async renewSsl(userId: string, projectId: string, domainId: string) {
     await this.access.ensureAccess(userId, projectId);
-    const domain = await this.prisma.domain.findFirst({ where: { id: domainId, projectId } });
+    const domain = await this.prisma.domain.findFirst({
+      where: { id: domainId, projectId },
+    });
     if (!domain) throw new NotFoundException('Domain not found');
 
-    if (!domain.sslEnabled) throw new NotFoundException('SSL is not enabled for this domain');
+    if (!domain.sslEnabled)
+      throw new NotFoundException('SSL is not enabled for this domain');
 
-    // Mark as ISSUING — actual ACME renewal would happen async via a worker
+    // Traefik is the only ACME client. What this does: knock on the domain
+    // so the request starts (or the renewal happens), then ask the
+    // reconciler to verify — the real HTTPS check writes what is true, and
+    // nothing here claims a certificate that was not confirmed.
     await this.prisma.domain.update({
       where: { id: domainId },
       data: { sslStatus: 'ISSUING', sslLastError: null },
     });
 
-    await this.emit(domainId, projectId, userId, 'domains.ssl_renewing', { domain: domain.domain });
+    await this.emit(domainId, projectId, userId, 'domains.ssl_renewing', {
+      domain: domain.domain,
+    });
 
-    // Fire-and-forget: real implementation would call LetsEncrypt ACME server
-    setTimeout(() => {
-      this.completeSslRenewal(domainId, domain.domain, projectId, userId).catch(err => {
-        this.logger.error(`SSL renewal failed for ${domainId}: ${err.message}`);
-      });
-    }, 0);
+    await this.checks.prewarmCertificate(domain.domain);
+    try {
+      await this.reconciliation.enqueue(domainId, 'ssl_expiry');
+    } catch (err) {
+      this.logger.warn(
+        `Could not enqueue SSL verification for ${domainId}: ${err instanceof Error ? err.message : String(err)}`,
+      );
+    }
 
-    return { status: 'renewing', message: 'SSL renewal initiated — certificate will be issued shortly' };
+    return {
+      status: 'renewing',
+      message:
+        'Renewal asked for — the domain is verified against its live certificate, and the state says what was found.',
+    };
   }
 
   async reissueSsl(userId: string, projectId: string, domainId: string) {
     await this.access.ensureAccess(userId, projectId);
-    const domain = await this.prisma.domain.findFirst({ where: { id: domainId, projectId } });
+    const domain = await this.prisma.domain.findFirst({
+      where: { id: domainId, projectId },
+    });
     if (!domain) throw new NotFoundException('Domain not found');
 
-    if (!domain.sslEnabled) throw new NotFoundException('SSL is not enabled for this domain');
+    if (!domain.sslEnabled)
+      throw new NotFoundException('SSL is not enabled for this domain');
 
     await this.prisma.domain.update({
       where: { id: domainId },
       data: { sslStatus: 'ISSUING', sslLastError: null },
     });
 
-    await this.emit(domainId, projectId, userId, 'domains.ssl_reissued', { domain: domain.domain });
-
-    setTimeout(() => {
-      this.completeSslRenewal(domainId, domain.domain, projectId, userId).catch(err => {
-        this.logger.error(`SSL reissue failed for ${domainId}: ${err.message}`);
-      });
-    }, 0);
-
-    return { status: 'reissuing', message: 'SSL reissue initiated — new certificate will be issued shortly' };
-  }
-
-  private async completeSslRenewal(domainId: string, domainName: string, projectId: string, userId: string) {
-    const expiresAt = new Date(Date.now() + 90 * 86_400_000); // 90 days from now
-
-    await this.prisma.domain.update({
-      where: { id: domainId },
-      data: {
-        sslStatus: 'ACTIVE',
-        sslIssuedAt: new Date(),
-        sslExpiresAt: expiresAt,
-        sslLastError: null,
-      },
+    await this.emit(domainId, projectId, userId, 'domains.ssl_reissued', {
+      domain: domain.domain,
     });
 
-    await this.emit(domainId, projectId, userId, 'domains.ssl_issued', {
-      domain: domainName,
-      expiresAt: expiresAt.toISOString(),
-    });
+    await this.checks.prewarmCertificate(domain.domain);
+    try {
+      await this.reconciliation.enqueue(domainId, 'manual');
+    } catch (err) {
+      this.logger.warn(
+        `Could not enqueue SSL verification for ${domainId}: ${err instanceof Error ? err.message : String(err)}`,
+      );
+    }
 
-    this.logger.log(`[domains] SSL certificate issued for ${domainName}, expires ${expiresAt.toISOString()}`);
+    return {
+      status: 'reissuing',
+      message:
+        'Reissue asked for — the domain is verified against its live certificate, and the state says what was found.',
+    };
   }
 
-  private async emit(domainId: string, projectId: string, userId: string, type: string, payload: Record<string, unknown>) {
+  private async emit(
+    domainId: string,
+    projectId: string,
+    userId: string,
+    type: string,
+    payload: Record<string, unknown>,
+  ) {
     await this.eventService.emit(
       type as any,
       projectId,
       { domainId, ...payload },
-      { actorId: userId, actorType: 'user', resourceType: 'domain', resourceId: domainId },
+      {
+        actorId: userId,
+        actorType: 'user',
+        resourceType: 'domain',
+        resourceId: domainId,
+      },
     );
   }
 }

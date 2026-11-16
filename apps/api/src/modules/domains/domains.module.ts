@@ -71,6 +71,10 @@ import { AuthModule } from '@/modules/auth/auth.module';
     DomainDnsService,
     DomainMxService,
     DomainChecksService,
+    // The deployment engine asks for a domain's verification the moment its
+    // container is healthy — the certificate check should not wait for the
+    // schedule.
+    DomainReconciliationQueueService,
     DomainCloudflareAutoService,
     DomainAccessService,
     DomainConnectionService,

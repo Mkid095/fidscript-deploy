@@ -78,6 +78,7 @@ export type EventType =
   | 'projects.project.provisioned'
   | 'projects.project.provision_failed'
   | 'projects.whatsapp.connected'
+  | 'projects.whatsapp.identity_provisioned'
   | 'projects.whatsapp.disconnected'
   | 'projects.member.added'
   | 'projects.member.removed'
@@ -137,6 +138,7 @@ export type EventType =
   | 'domain.verified'
   | 'domain.failed'
   | 'domain.deleted'
+  | 'domain.taken_over'
   // Function events
   | 'function.created'
   | 'function.deployed'
@@ -199,6 +201,7 @@ export type EventType =
   | 'email.domain_added'
   | 'email.domain_deleted'
   | 'email.domain_verified'
+  | 'email.domain_setup'
   | 'email.domain_recovery_started'
   | 'email.alias_created'
   | 'email.alias_deleted'
@@ -359,4 +362,9 @@ export interface EventFilter {
 }
 
 // ── Event emitter utilities ──────────────────────────────────────────────────
-export { resolveEventType, isKnownEventType, validatePayload, buildPlatformEvent } from './event-emitter.js';
+export {
+  resolveEventType,
+  isKnownEventType,
+  validatePayload,
+  buildPlatformEvent,
+} from './event-emitter.js';

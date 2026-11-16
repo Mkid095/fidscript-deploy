@@ -36,21 +36,31 @@ export class ProjectCloudflareProvider implements DnsProvider {
     this.zoneIdHint = zoneIdHint;
   }
 
+  /**
+   * The zone a domain lives in.
+   *
+   * A zone is the registrable domain — `fidscript.com` — and the domain
+   * may be a name inside it (`app.fidscript.com`). So the labels are
+   * walked up until one of them is a zone the account actually has.
+   */
   private async resolveZoneId(domain: string): Promise<string> {
     if (this.zoneIdHint) return this.zoneIdHint;
     const cached = this.zoneIdCache.get(domain);
     if (cached) return cached;
-    const res = await this.client.get('/zones', { params: { name: domain } });
-    const zones = res.data?.result as Array<{ id: string; name: string }> | undefined;
-    if (!zones || zones.length === 0) {
-      throw new Error(`No Cloudflare zone found for ${domain}`);
+
+    const labels = domain.split('.');
+    for (let i = 0; i < labels.length - 1; i++) {
+      const name = labels.slice(i).join('.');
+      const res = await this.client.get('/zones', { params: { name, per_page: 50 } });
+      const zones = res.data?.result as Array<{ id: string; name: string }> | undefined;
+      const match = zones?.find((zone) => zone.name === name);
+      if (match) {
+        this.zoneIdCache.set(domain, match.id);
+        return match.id;
+      }
     }
-    const match = zones
-      .filter((z) => domain === z.name || domain.endsWith(`.${z.name}`))
-      .sort((a, b) => b.name.length - a.name.length)[0];
-    if (!match) throw new Error(`No matching Cloudflare zone for ${domain}`);
-    this.zoneIdCache.set(domain, match.id);
-    return match.id;
+
+    throw new Error(`No Cloudflare zone found for ${domain}`);
   }
 
   async getZoneId(domain: string): Promise<string | null> {
@@ -62,8 +72,12 @@ export class ProjectCloudflareProvider implements DnsProvider {
   }
 
   async createRecord(opts: CreateRecordOpts): Promise<DnsRecord> {
-    const zoneId = await this.resolveZoneId(opts.name.split('.').slice(-2).join('.'));
-    const res = await this.client.post(`/zones/${zoneId}/dns_records`, opts);
+    // The zone is given — the caller's zone, which was resolved by walking
+    // the labels up. Guessing it from the record's last two labels gets
+    // `example.co.ke` wrong (it would guess `co.ke`).
+    const zoneId = opts.zoneId || (await this.resolveZoneId(opts.name));
+    const { zoneId: _ignored, ...body } = opts;
+    const res = await this.client.post(`/zones/${zoneId}/dns_records`, body);
     if (!res.data?.success) {
       throw new Error(`Cloudflare createRecord failed: ${JSON.stringify(res.data?.errors)}`);
     }

@@ -228,6 +228,12 @@ export class DeploymentStateService implements OnModuleInit {
           projectSlug: deployment.project.slug, projectType,
           source, envVars: runtimeEnv,
           buildTarget: buildConfig?.buildTarget || undefined,
+          buildOverrides: {
+            installCommand: buildConfig?.installCommand || undefined,
+            buildCommand: buildConfig?.buildCommand || undefined,
+            startCommand: buildConfig?.startCommand || undefined,
+            port: buildConfig?.port || undefined,
+          },
           startupTimeoutSeconds: buildConfig?.startupTimeoutSeconds ?? 120, onLog,
           onDeploy: async () => {
             // The image is built; the container is about to start. This state

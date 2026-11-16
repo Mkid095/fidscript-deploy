@@ -1,4 +1,4 @@
-import { Controller, Get, Param, UseGuards } from '@nestjs/common';
+import { Controller, Get, Post, Body, Param, UseGuards } from '@nestjs/common';
 import { ApiKeyOrJwtGuard } from '@/modules/auth/guards/api-key-or-jwt.guard';
 import { ProjectMemberGuard } from '@/modules/auth/guards/project-member.guard';
 import { InfrastructureService } from '@/modules/infrastructure/infrastructure.service';
@@ -28,7 +28,23 @@ export class EmailStatusController {
   @Get('status')
   async status(@Param('projectId') projectId: string) {
     const infra = await this.infra.getProjectInfrastructure(projectId);
-    const email = infra.email;
+    // The mail follows the project's own name: the infrastructure record, or
+    // the email domain the project registered (what one-click "Set up" made).
+    const infraEmail = infra.email;
+    const registered = infraEmail ? null : await this.emailDomain.firstEmailDomain(projectId);
+    const email:
+      | { domain: string; status: string | null; dkimSelector?: string | null; dkimPublicKey?: string | null }
+      | null =
+      infraEmail ??
+      (registered
+        ? {
+            domain: registered.domain,
+            status: registered.status,
+            dkimSelector: registered.dkimSelector,
+            dkimPublicKey: registered.dkimPublicKey,
+          }
+        : null);
+
     const liveChecks = email
       ? await this.mailDns.verifyEmailDns(projectId, email.domain)
       : { dkim: false, spf: false, dmarc: false, mx: false };
@@ -49,9 +65,22 @@ export class EmailStatusController {
         zoneId: infra.cloudflare.zoneId,
       },
       status: email?.status ?? 'NOT_CONFIGURED',
-      smtpHost: email?.smtpHost ?? null,
-      imapHost: email?.imapHost ?? null,
-      jmapUrl: email?.jmapUrl ?? null,
+      smtpHost: (email as { smtpHost?: string } | null)?.smtpHost ?? null,
+      imapHost: (email as { imapHost?: string } | null)?.imapHost ?? null,
+      jmapUrl: (email as { jmapUrl?: string } | null)?.jmapUrl ?? null,
     };
+  }
+
+  /**
+   * One click: write the project's mail records (MX/SPF/DKIM/DMARC) for the
+   * name the project already registered, and report which are confirmed.
+   * The optional body's `domain` overrides the registered name.
+   */
+  @Post('setup')
+  async setup(
+    @Param('projectId') projectId: string,
+    @Body() body: { domain?: string } | undefined,
+  ) {
+    return this.emailDomain.setup(projectId, body?.domain);
   }
 }

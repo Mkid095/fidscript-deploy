@@ -1,5 +1,5 @@
 import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
-import { DomainReconciliationQueueService, DomainVerificationJob } from './domain-reconciliation-queue.service';
+import { DomainReconciliationQueueService, DomainVerificationJob, DomainGoneError } from './domain-reconciliation-queue.service';
 import { DomainReconciliationService } from './domain-reconciliation.service';
 
 const MAX_DELIVER = 3;
@@ -68,6 +68,13 @@ export class DomainReconciliationWorker implements OnModuleInit {
         );
         await msg.ack();
       } catch (err) {
+        // A released domain is the end of the line: nothing to verify, and
+        // re-enqueuing it forever is what spins a core and drags the health.
+        if (err instanceof DomainGoneError) {
+          this.logger.log(`[domain-recon] ${job.domainId} is gone — dropping the job`);
+          await msg.ack();
+          continue;
+        }
         const errMsg = err instanceof Error ? err.message : String(err);
         this.logger.error(
           `[domain-recon] failed domainId=${job.domainId} attempt=${attempt}: ${errMsg}`,
@@ -75,8 +82,9 @@ export class DomainReconciliationWorker implements OnModuleInit {
 
         if (attempt < MAX_DELIVER) {
           const delay = BASE_RETRY_DELAY * Math.pow(2, attempt - 1);
-          await this.queueService.enqueue(job.domainId, job.reason, delay);
-          this.logger.warn(`[domain-recon] re-enqueued domainId=${job.domainId} delay=${delay}s`);
+          // Carry the attempt forward so the cap is actually reachable.
+          await this.queueService.enqueue(job.domainId, job.reason, delay, attempt + 1);
+          this.logger.warn(`[domain-recon] re-enqueued domainId=${job.domainId} delay=${delay}s attempt=${attempt + 1}`);
         } else {
           this.logger.error(
             `[domain-recon] giving up on domainId=${job.domainId} after ${MAX_DELIVER} attempts: ${errMsg}`,
