@@ -469,8 +469,8 @@ services:
       # runs the installer's own scripts from here to install an application.
       INSTALLER_DIR: /opt/fidscript-deploy/installer
       # Where the applications' directories live, as seen by this container.
-      # The registry's own config file is among them — a scope access rule is
-      # a change to that file plus a registry restart.
+      # The registry's own config file is among them — the scope access rules
+      # are written there and the registry restarted to honour them.
       APPLICATIONS_DIR: /opt/fidscript-deploy/applications
       # ── Instant BaaS — the project's data plane ──────────────────────────
       # The server-side URL is the add-on's container on the shared network,
@@ -521,7 +521,8 @@ services:
       - ..:/opt/fidscript-deploy/installer:rw
       # The applications' directories, writable: the registry's config is
       # one of the files in them, and a scope access rule is a change to
-      # that file plus a registry restart.
+      # that file plus a registry restart. The relative path resolves on
+      # the host, the same way the installer's does.
       - ../../applications:/opt/fidscript-deploy/applications:rw
       # The ONE-LINE installer — the guided flow that asks for the domain,
       # the admin account and the Cloudflare token — lives at the

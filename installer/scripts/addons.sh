@@ -22,7 +22,9 @@ set -Eeuo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 INSTALLER_DIR="$(cd "${SCRIPT_DIR}/.." && pwd)"
 DOCKER_DIR="${INSTALLER_DIR}/docker"
-ADDONS_DIR="${INSTALLER_DIR}/addons"
+# The add-ons live in the repository's applications/ directory — the
+# platform's integration for each application the operator can install.
+ADDONS_DIR="${INSTALLER_DIR}/../applications"
 ENV_FILE="${DOCKER_DIR}/.env"
 SECRETS_DIR="${DOCKER_DIR}/secrets"
 CORE_COMPOSE="${DOCKER_DIR}/docker-compose.yml"

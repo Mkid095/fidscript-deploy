@@ -108,6 +108,13 @@ COPY --from=build /app/deploy/ ./
 # /app/node_modules/@prisma/client/ — replacing the stub with a working copy.
 RUN prisma generate --schema=prisma/schema.prisma
 
+# The build workspace clones whatever it is pointed at — including
+# repositories mounted on the host whose owner is not the user the api
+# runs as. Git refuses those ("dubious ownership") unless the repository
+# is marked safe, and per-invocation `-c` is deliberately ignored for
+# this setting. The system config is where it takes hold.
+RUN git config --system --add safe.directory '*'
+
 # Copy entrypoint from installer (DO NOT copy entire installer directory)
 COPY installer/docker/api-entrypoint.sh /usr/local/bin/api-entrypoint.sh
 RUN chmod +x /usr/local/bin/api-entrypoint.sh

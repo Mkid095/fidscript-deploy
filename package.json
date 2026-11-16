@@ -6,6 +6,7 @@
   "packageManager": "pnpm@9.0.0",
   "scripts": {
     "dev": "turbo dev",
+    "dev:console": "pnpm --filter @fidscript/console dev",
     "build": "turbo build",
     "lint": "turbo lint",
     "test": "turbo test",

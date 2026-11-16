@@ -12,7 +12,10 @@ import { AuthMagicCodeService } from '@/modules/auth/services/auth-magic-code.se
 import { AuthMagicCodeVerifyService } from '@/modules/auth/services/auth-magic-code-verify.service';
 import { AuthVerificationService } from '@/modules/auth/services/auth-verification.service';
 
-export { AuthSessionService, AuthResponse } from '@/modules/auth/services/auth-session.service';
+export {
+  AuthSessionService,
+  AuthResponse,
+} from '@/modules/auth/services/auth-session.service';
 
 @Injectable()
 export class AuthService {
@@ -37,7 +40,10 @@ export class AuthService {
     // never empty on first login. Failures are swallowed inside the onboarding
     // service; we still ship the auth tokens so the user can sign in and try
     // provisioning manually (or a background job can reconcile later).
-    const onboarding = await this.authRegister.provisionForNewUser(user.id, user.email);
+    const onboarding = await this.authRegister.provisionForNewUser(
+      user.id,
+      user.email,
+    );
     const sess = await this.session.createSession(user.id, ip, ua);
     const response = this.session.buildAuthResponse(user, sess);
     return {
@@ -48,14 +54,23 @@ export class AuthService {
 
   async login(dto: any, ip?: string, ua?: string) {
     const result = await this.authLogin.login(dto, ip, ua);
-    if (result.mfaToken) return { mfaRequired: true, mfaToken: result.mfaToken };
+    if (result.mfaToken)
+      return { mfaRequired: true, mfaToken: result.mfaToken };
     const sess = await this.session.createSession(result.user.id, ip, ua);
     return this.session.buildAuthResponse(result.user, sess);
   }
 
-  logout(sessionId: string, userId: string) { return this.authLogin.logout(sessionId, userId); }
+  logout(sessionId: string, userId: string) {
+    return this.authLogin.logout(sessionId, userId);
+  }
 
-  changePassword(userId: string, sessionId: string | undefined, dto: { currentPassword: string; newPassword: string }, ip?: string, ua?: string) {
+  changePassword(
+    userId: string,
+    sessionId: string | undefined,
+    dto: { currentPassword: string; newPassword: string },
+    ip?: string,
+    ua?: string,
+  ) {
     return this.password.changePassword(userId, sessionId, dto, ip, ua);
   }
 
@@ -63,20 +78,33 @@ export class AuthService {
     return this.magicCodeService.requestCode(dto, ip, ua);
   }
 
-  verifyMagicCode(dto: { email: string; code: string }, ip?: string, ua?: string) {
+  verifyMagicCode(
+    dto: { email: string; code: string },
+    ip?: string,
+    ua?: string,
+  ) {
     return this.magicCodeVerify.verifyCode(dto, ip, ua);
   }
 
   async refreshToken(token: string) {
     const { user, oldSession } = await this.authToken.refreshToken(token);
-    const sess = await this.session.createSession(user.id, oldSession?.ipAddress ?? undefined);
+    const sess = await this.session.createSession(
+      user.id,
+      oldSession?.ipAddress ?? undefined,
+    );
     return this.session.buildAuthResponse(user, sess);
   }
 
-  createSession(userId: string, ip?: string, ua?: string) { return this.session.createSession(userId, ip, ua); }
-  buildAuthResponse(user: any, session: any) { return this.session.buildAuthResponse(user, session); }
+  createSession(userId: string, ip?: string, ua?: string) {
+    return this.session.createSession(userId, ip, ua);
+  }
+  buildAuthResponse(user: any, session: any) {
+    return this.session.buildAuthResponse(user, session);
+  }
 
-  getProfile(userId: string) { return this.profile.getProfile(userId); }
+  getProfile(userId: string) {
+    return this.profile.getProfile(userId);
+  }
 
   /**
    * Marks the first-time journey as finished.
@@ -92,16 +120,35 @@ export class AuthService {
     });
     return { onboarded: true };
   }
-  updateProfile(userId: string, dto: any) { return this.profile.updateProfile(userId, dto); }
+  updateProfile(userId: string, dto: any) {
+    return this.profile.updateProfile(userId, dto);
+  }
 
-  getSessions(userId: string) { return this.sessions.getSessions(userId); }
-  revokeSession(userId: string, sessionId: string) { return this.sessions.revokeSession(userId, sessionId); }
-  revokeAllSessions(userId: string) { return this.sessions.revokeAllSessions(userId); }
+  getSessions(userId: string) {
+    return this.sessions.getSessions(userId);
+  }
+  revokeSession(userId: string, sessionId: string) {
+    return this.sessions.revokeSession(userId, sessionId);
+  }
+  revokeAllSessions(userId: string) {
+    return this.sessions.revokeAllSessions(userId);
+  }
+  revokeOtherSessions(userId: string, currentSessionId?: string) {
+    return this.sessions.revokeOtherSessions(userId, currentSessionId);
+  }
 
-  createApiKey(userId: string, dto: any) { return this.apiKeys.createApiKey(userId, dto); }
-  getApiKeys(userId: string) { return this.apiKeys.getApiKeys(userId); }
-  revokeApiKey(userId: string, keyId: string) { return this.apiKeys.revokeApiKey(userId, keyId); }
-  validateApiKey(key: string) { return this.apiKeys.validateApiKey(key); }
+  createApiKey(userId: string, dto: any) {
+    return this.apiKeys.createApiKey(userId, dto);
+  }
+  getApiKeys(userId: string) {
+    return this.apiKeys.getApiKeys(userId);
+  }
+  revokeApiKey(userId: string, keyId: string) {
+    return this.apiKeys.revokeApiKey(userId, keyId);
+  }
+  validateApiKey(key: string) {
+    return this.apiKeys.validateApiKey(key);
+  }
 
   /**
    * Which sign-in method this platform uses.
@@ -127,7 +174,14 @@ export class AuthService {
   }
 
   // Phase 5.1 — Verification flows
-  sendVerification(dto: { email: string; type: 'EMAIL_VERIFY' | 'PASSWORD_RESET' | 'MAGIC_LINK' }, ip?: string, ua?: string) {
+  sendVerification(
+    dto: {
+      email: string;
+      type: 'EMAIL_VERIFY' | 'PASSWORD_RESET' | 'MAGIC_LINK';
+    },
+    ip?: string,
+    ua?: string,
+  ) {
     return this.verification.sendVerification(dto, ip, ua);
   }
 
@@ -135,7 +189,11 @@ export class AuthService {
     return this.verification.verifyEmail(dto, ip, ua);
   }
 
-  confirmPasswordReset(dto: { token: string; newPassword: string }, ip?: string, ua?: string) {
+  confirmPasswordReset(
+    dto: { token: string; newPassword: string },
+    ip?: string,
+    ua?: string,
+  ) {
     return this.verification.confirmPasswordReset(dto, ip, ua);
   }
 

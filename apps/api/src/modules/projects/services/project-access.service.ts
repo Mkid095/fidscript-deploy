@@ -1,4 +1,8 @@
-import { Injectable, NotFoundException, ForbiddenException } from '@nestjs/common';
+import {
+  Injectable,
+  NotFoundException,
+  ForbiddenException,
+} from '@nestjs/common';
 import { PrismaService } from '@/prisma/prisma.service';
 
 /**
@@ -30,11 +34,16 @@ export class ProjectAccessService {
       const keyProjectId = await this.resolveProjectId(callerKeyProjectId);
       const targetProjectId = await this.resolveProjectId(projectId);
       if (!keyProjectId || keyProjectId !== targetProjectId) {
-        throw new ForbiddenException('This API key is not valid for this project');
+        throw new ForbiddenException(
+          'This API key is not valid for this project',
+        );
       }
       const project = await this.prisma.project.findUnique({
         where: { id: keyProjectId },
-        include: { owner: { select: { id: true, email: true, name: true } } },
+        include: {
+          owner: { select: { id: true, email: true, name: true } },
+          settings: { select: { activeDeploymentId: true } },
+        },
       });
       if (!project) throw new NotFoundException('Project not found');
       return project;
@@ -44,12 +53,18 @@ export class ProjectAccessService {
     // Try slug first for prettier URLs, fall back to UUID for backwards compat.
     let project = await this.prisma.project.findUnique({
       where: { slug: projectId },
-      include: { owner: { select: { id: true, email: true, name: true } } },
+      include: {
+        owner: { select: { id: true, email: true, name: true } },
+        settings: { select: { activeDeploymentId: true } },
+      },
     });
     if (!project) {
       project = await this.prisma.project.findUnique({
         where: { id: projectId },
-        include: { owner: { select: { id: true, email: true, name: true } } },
+        include: {
+          owner: { select: { id: true, email: true, name: true } },
+          settings: { select: { activeDeploymentId: true } },
+        },
       });
     }
     if (!project) throw new NotFoundException('Project not found');
@@ -61,11 +76,17 @@ export class ProjectAccessService {
     // makes it the team's project and not one person's.
     const inWorkspace = project.organizationId
       ? await this.prisma.organizationMember.findUnique({
-          where: { organizationId_userId: { organizationId: project.organizationId, userId } },
+          where: {
+            organizationId_userId: {
+              organizationId: project.organizationId,
+              userId,
+            },
+          },
           select: { id: true },
         })
       : null;
-    if (!isOwner && !isMember && !inWorkspace) throw new ForbiddenException('Access denied');
+    if (!isOwner && !isMember && !inWorkspace)
+      throw new ForbiddenException('Access denied');
     return project;
   }
 
@@ -81,15 +102,21 @@ export class ProjectAccessService {
       const keyProjectId = await this.resolveProjectId(callerKeyProjectId);
       const targetProjectId = await this.resolveProjectId(projectId);
       if (!keyProjectId || keyProjectId !== targetProjectId) {
-        throw new ForbiddenException('This API key is not valid for this project');
+        throw new ForbiddenException(
+          'This API key is not valid for this project',
+        );
       }
       return;
     }
 
     // Accept both slug and UUID — same dual-lookup as findProjectWithAccess.
-    let project = await this.prisma.project.findUnique({ where: { slug: projectId } });
+    let project = await this.prisma.project.findUnique({
+      where: { slug: projectId },
+    });
     if (!project) {
-      project = await this.prisma.project.findUnique({ where: { id: projectId } });
+      project = await this.prisma.project.findUnique({
+        where: { id: projectId },
+      });
     }
     if (!project) throw new NotFoundException('Project not found');
 
@@ -107,7 +134,12 @@ export class ProjectAccessService {
     // A team member acts with the team's own role on a team project.
     if (project.organizationId) {
       const inWorkspace = await this.prisma.organizationMember.findUnique({
-        where: { organizationId_userId: { organizationId: project.organizationId, userId } },
+        where: {
+          organizationId_userId: {
+            organizationId: project.organizationId,
+            userId,
+          },
+        },
         include: { role: { select: { name: true } } },
       });
       const orgRole = (inWorkspace?.role?.name ?? '').toLowerCase();
@@ -118,7 +150,9 @@ export class ProjectAccessService {
   }
 
   /** A project's id, from a slug or a UUID. */
-  private async resolveProjectId(raw: string | undefined): Promise<string | null> {
+  private async resolveProjectId(
+    raw: string | undefined,
+  ): Promise<string | null> {
     if (!raw) return null;
     const byId = await this.prisma.project.findUnique({
       where: { id: raw },

@@ -12,7 +12,10 @@ export class DockerCommandService {
   /** Run a shell command string (used for simple piped commands like `docker logs … | tail`). */
   exec(cmd: string): string {
     try {
-      return execSync(cmd, { timeout: 60_000, stdio: 'pipe' } as any).toString();
+      return execSync(cmd, {
+        timeout: 60_000,
+        stdio: 'pipe',
+      } as any).toString();
     } catch (err) {
       throw new Error(extractMsg(err));
     }
@@ -26,7 +29,10 @@ export class DockerCommandService {
    */
   execDocker(args: string[]): string {
     try {
-      return execFileSync('docker', args, { timeout: 60_000, stdio: 'pipe' } as any).toString();
+      return execFileSync('docker', args, {
+        timeout: 60_000,
+        stdio: 'pipe',
+      } as any).toString();
     } catch (err) {
       throw new Error(extractMsg(err));
     }
@@ -38,19 +44,39 @@ export class DockerCommandService {
    * `docker exec curl` into the user's image — many images (alpine, distroless)
    * don't include curl, which would report a false-negative health failure.
    */
-  async waitForHealth(containerName: string, healthCheckPath: string, port: number, timeoutMs: number): Promise<boolean> {
+  async waitForHealth(
+    containerName: string,
+    healthCheckPath: string,
+    port: number,
+    timeoutMs: number,
+  ): Promise<boolean> {
     const deadline = Date.now() + timeoutMs;
     while (Date.now() < deadline) {
       try {
-        const status = this.exec(`docker inspect -f '{{.State.Running}}' ${containerName} 2>/dev/null`).trim();
+        const status = this.exec(
+          `docker inspect -f '{{.State.Running}}' ${containerName} 2>/dev/null`,
+        ).trim();
         if (status !== 'true') return false;
-        const ip = this.exec(`docker inspect -f '{{range .NetworkSettings.Networks}}{{.IPAddress}} {{end}}' ${containerName} 2>/dev/null`).trim().split(' ')[0];
+        const ip = this.exec(
+          `docker inspect -f '{{range .NetworkSettings.Networks}}{{.IPAddress}} {{end}}' ${containerName} 2>/dev/null`,
+        )
+          .trim()
+          .split(' ')[0];
         if (ip) {
-          const code = this.exec(`curl -sf -m 3 -o /dev/null -w '%{http_code}' http://${ip}:${port}${healthCheckPath} 2>/dev/null || true`).trim();
-          if (code === '200' || code.startsWith('3')) return true;
+          // The configured path first — an application that says where its
+          // health lives is believed. The root is the fallback, because most
+          // applications answer there and have never heard of /health.
+          for (const path of [healthCheckPath, '/']) {
+            const code = this.exec(
+              `curl -sf -m 3 -o /dev/null -w '%{http_code}' http://${ip}:${port}${path} 2>/dev/null || true`,
+            ).trim();
+            if (code === '200' || code.startsWith('3')) return true;
+          }
         }
-      } catch { /* not ready yet */ }
-      await new Promise(resolve => setTimeout(resolve, 2000));
+      } catch {
+        /* not ready yet */
+      }
+      await new Promise((resolve) => setTimeout(resolve, 2000));
     }
     return false;
   }
@@ -58,5 +84,7 @@ export class DockerCommandService {
 
 function extractMsg(err: unknown): string {
   const e = err as { message?: string; stderr?: Buffer | string };
-  return typeof e.stderr === 'string' ? e.stderr : e.stderr?.toString() || e.message || String(err);
+  return typeof e.stderr === 'string'
+    ? e.stderr
+    : e.stderr?.toString() || e.message || String(err);
 }

@@ -15,23 +15,67 @@ export class AuthSessionMgmtService {
     // so it used to be listed as if it were still open.
     return this.prisma.session.findMany({
       where: { userId, expiresAt: { gt: new Date() } },
-      select: { id: true, expiresAt: true, ipAddress: true, userAgent: true, createdAt: true },
+      select: {
+        id: true,
+        expiresAt: true,
+        ipAddress: true,
+        userAgent: true,
+        createdAt: true,
+      },
       orderBy: { createdAt: 'desc' },
     });
   }
 
   async revokeSession(userId: string, sessionId: string) {
-    const session = await this.prisma.session.findFirst({ where: { id: sessionId, userId } });
+    const session = await this.prisma.session.findFirst({
+      where: { id: sessionId, userId },
+    });
     if (!session) throw new NotFoundException('Session not found');
 
-    await this.prisma.session.update({ where: { id: sessionId }, data: { expiresAt: new Date(0) } });
+    await this.prisma.session.update({
+      where: { id: sessionId },
+      data: { expiresAt: new Date(0) },
+    });
 
-    await this.eventService.emit('identity.session.revoked', null, { sessionId });
+    await this.eventService.emit('identity.session.revoked', null, {
+      sessionId,
+    });
+  }
+
+  /** Every session of the account except the one asking — the others end. */
+  async revokeOtherSessions(
+    userId: string,
+    currentSessionId: string | undefined,
+  ) {
+    const where = currentSessionId
+      ? { userId, id: { not: currentSessionId } }
+      : { userId };
+    const sessions = await this.prisma.session.findMany({
+      where,
+      select: { id: true },
+    });
+    if (sessions.length === 0) return { revoked: 0 };
+    await this.prisma.session.updateMany({
+      where: { id: { in: sessions.map((session) => session.id) } },
+      data: { expiresAt: new Date(0) },
+    });
+    await this.eventService.emit('identity.session.revoked', null, {
+      all: false,
+      others: true,
+      sessionCount: sessions.length,
+    });
+    return { revoked: sessions.length };
   }
 
   async revokeAllSessions(userId: string) {
-    const sessions = await this.prisma.session.findMany({ where: { userId }, select: { id: true } });
-    await this.prisma.session.updateMany({ where: { userId }, data: { expiresAt: new Date(0) } });
+    const sessions = await this.prisma.session.findMany({
+      where: { userId },
+      select: { id: true },
+    });
+    await this.prisma.session.updateMany({
+      where: { userId },
+      data: { expiresAt: new Date(0) },
+    });
 
     await this.eventService.emit('identity.session.revoked', null, {
       all: true,

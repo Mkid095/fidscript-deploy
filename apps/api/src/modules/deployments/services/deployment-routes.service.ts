@@ -4,6 +4,7 @@ import { promises as fs } from 'fs';
 import { join } from 'path';
 import { PrismaService } from '@/prisma/prisma.service';
 import { EventService } from '@/modules/events/event.service';
+import { deploymentContainerName } from '../runner/container-name';
 
 /**
  * Writes the Traefik routers that publish a deployment's CUSTOM domains.
@@ -45,8 +46,12 @@ export class DeploymentRoutesService {
    * otherwise depend on each other in a cycle.
    */
   onModuleInit(): void {
-    this.eventService.on('domain.added', () => { void this.sync(); });
-    this.eventService.on('domain.deleted', () => { void this.sync(); });
+    this.eventService.on('domain.added', () => {
+      void this.sync();
+    });
+    this.eventService.on('domain.deleted', () => {
+      void this.sync();
+    });
   }
 
   /**
@@ -81,11 +86,15 @@ export class DeploymentRoutesService {
         // The default hostname is Traefik's Docker provider's job.
         const defaultHost = this.defaultHost(deployment.project.slug);
         const custom = (deployment.domains ?? []).filter(
-          (d) => d.domain && d.domain !== defaultHost && d.sslStatus !== 'FAILED',
+          (d) =>
+            d.domain && d.domain !== defaultHost && d.sslStatus !== 'FAILED',
         );
         if (custom.length === 0) continue;
 
-        const container = `fidscript-${deployment.project.slug}-${deployment.id}`;
+        const container = deploymentContainerName(
+          deployment.project.slug,
+          deployment.id,
+        );
 
         for (const domain of custom) {
           const key = this.routeKey(deployment.id, domain.domain);
@@ -120,7 +129,9 @@ export class DeploymentRoutesService {
       await fs.writeFile(tmp, yaml, 'utf8');
       await fs.rename(tmp, file);
       const count = Object.keys(routers).length;
-      this.logger.log(`[deployments] Traefik deployment routes written (${count} custom domain${count === 1 ? '' : 's'})`);
+      this.logger.log(
+        `[deployments] Traefik deployment routes written (${count} custom domain${count === 1 ? '' : 's'})`,
+      );
     } catch (err) {
       // A failure here means the custom domains are not reachable, but the
       // deployment itself is fine — never fail a deployment over it.
@@ -135,12 +146,18 @@ export class DeploymentRoutesService {
     const detected = deployment.release?.runtimePort;
     if (typeof detected === 'number' && detected > 0) return detected;
     // Fall back to the platform's default for the project type.
-    const port = this.configService.get<number>('DEPLOYMENT_DEFAULT_PORT', 3000);
+    const port = this.configService.get<number>(
+      'DEPLOYMENT_DEFAULT_PORT',
+      3000,
+    );
     return port > 0 ? port : null;
   }
 
   private defaultHost(slug: string): string {
-    const platformDomain = this.configService.get<string>('PLATFORM_DOMAIN', 'apps.local');
+    const platformDomain = this.configService.get<string>(
+      'PLATFORM_DOMAIN',
+      'apps.local',
+    );
     return `${slug}.apps.${platformDomain}`;
   }
 
@@ -151,7 +168,9 @@ export class DeploymentRoutesService {
    * domain the customer set up themselves.
    */
   private certResolver(domain: any): string {
-    return domain.dnsMode === 'cloudflare_auto' ? 'letsencrypt-dns' : 'letsencrypt-http';
+    return domain.dnsMode === 'cloudflare_auto'
+      ? 'letsencrypt-dns'
+      : 'letsencrypt-http';
   }
 
   /** A Traefik-safe identifier for the router and its service. */
@@ -174,12 +193,15 @@ export class DeploymentRoutesService {
    * So the sections that have nothing in them are left out entirely, and a
    * file with no routers at all is a file of comments.
    */
-  private render(routers: Record<string, unknown>, services: Record<string, unknown>): string {
+  private render(
+    routers: Record<string, unknown>,
+    services: Record<string, unknown>,
+  ): string {
     const header = [
       '# Managed by the FIDScript platform — do not edit manually.',
       '#',
-      '# The routers that publish a deployment\'s CUSTOM domains. The default',
-      '# {slug}.apps.{platformDomain} hostname is published by Traefik\'s Docker',
+      "# The routers that publish a deployment's CUSTOM domains. The default",
+      "# {slug}.apps.{platformDomain} hostname is published by Traefik's Docker",
       '# provider from the container labels; this file covers the rest.',
     ];
 
@@ -216,7 +238,8 @@ export class DeploymentRoutesService {
   /** Renders a scalar as YAML. Strings are quoted; everything else is not. */
   private scalar(value: unknown): string {
     if (typeof value === 'string') return JSON.stringify(value);
-    if (Array.isArray(value)) return `[${value.map(v => this.scalar(v)).join(', ')}]`;
+    if (Array.isArray(value))
+      return `[${value.map((v) => this.scalar(v)).join(', ')}]`;
     if (value && typeof value === 'object') {
       return `{${Object.entries(value as Record<string, unknown>)
         .map(([k, v]) => `${k}: ${this.scalar(v)}`)

@@ -1,4 +1,10 @@
-import { Injectable, Inject, Logger, forwardRef } from '@nestjs/common';
+import {
+  Injectable,
+  Inject,
+  Logger,
+  forwardRef,
+  ConflictException,
+} from '@nestjs/common';
 import * as bcrypt from 'bcrypt';
 import * as crypto from 'crypto';
 import { PrismaService } from '@/prisma/prisma.service';
@@ -6,7 +12,12 @@ import { EventService } from '@/modules/events/event.service';
 import { StorageService } from '@/modules/storage/services/storage.service';
 import { RealtimeService } from '@/modules/realtime/realtime.service';
 import { DbCrudService } from '@/modules/databases/services/db-crud.service';
-import { DatabaseProvider, DATABASE_PROVIDER } from '@/modules/databases/providers/index';
+import {
+  DatabaseProvider,
+  DATABASE_PROVIDER,
+} from '@/modules/databases/providers/index';
+import { InstantProvisioningService } from '@/modules/instant/services/instant-provisioning.service';
+import { WhatsappService } from '@/modules/whatsapp/whatsapp.service';
 
 const BCRYPT_ROUNDS = 12;
 const PROJECT_API_KEY_BYTES = 24;
@@ -18,6 +29,10 @@ export interface ProvisionedResources {
   channelId?: string;
   apiKeyId?: string;
   apiKey?: string;
+  /** The project's Instant app — its data plane, made with the project. */
+  instantAppId?: string;
+  /** The project's WhatsApp instance — its identity, made with the project. */
+  whatsappInstance?: string;
   errors: string[];
 }
 
@@ -30,20 +45,78 @@ export class ProjectProvisionService {
     private eventService: EventService,
     private storage: StorageService,
     private realtime: RealtimeService,
+    private instant: InstantProvisioningService,
+    private whatsapp: WhatsappService,
     @Inject(forwardRef(() => DbCrudService)) private dbCrud: DbCrudService,
     @Inject(DATABASE_PROVIDER) private dbProvider: DatabaseProvider,
   ) {}
 
-  async provisionDefaults(projectId: string, ownerId: string, projectName: string): Promise<ProvisionedResources> {
+  async provisionDefaults(
+    projectId: string,
+    ownerId: string,
+    projectName: string,
+  ): Promise<ProvisionedResources> {
     const result: ProvisionedResources = { errors: [] };
+
+    // The shape decides whether the project gets a backend now: a project
+    // that is only deployments has nothing for Instant to hold.
+    const project = await this.prisma.project.findUnique({
+      where: { id: projectId },
+      select: { shape: true },
+    });
+    const wantsBackend =
+      project?.shape === 'BACKEND' || project?.shape === 'BOTH';
+
     const tasks: Promise<void>[] = [
-      this.safeProvision('database', () => this.provisionDatabase(projectId, projectName).then((id) => { result.databaseId = id; })),
-      this.safeProvision('bucket', () => this.provisionBucket(ownerId, projectId, projectName).then((id) => { result.bucketId = id; })),
-      this.safeProvision('channel', () => this.provisionChannel(projectId, projectName).then((id) => { result.channelId = id; })),
-      this.safeProvision('apiKey', () => this.provisionApiKey(projectId).then(({ id, key }) => {
-        result.apiKeyId = id;
-        result.apiKey = key;
-      })),
+      this.safeProvision('database', () =>
+        this.provisionDatabase(projectId, projectName).then((id) => {
+          result.databaseId = id;
+        }),
+      ),
+      this.safeProvision('bucket', () =>
+        this.provisionBucket(ownerId, projectId, projectName).then((id) => {
+          result.bucketId = id;
+        }),
+      ),
+      this.safeProvision('channel', () =>
+        this.provisionChannel(projectId, projectName).then((id) => {
+          result.channelId = id;
+        }),
+      ),
+      this.safeProvision('apiKey', () =>
+        this.provisionApiKey(projectId).then(({ id, key }) => {
+          result.apiKeyId = id;
+          result.apiKey = key;
+        }),
+      ),
+      // The project's data plane and its WhatsApp identity are made with the
+      // project (P5.6) — never by a later, separate step a person has to
+      // find. A failure is recorded and can be re-tried from the screens.
+      this.safeProvision('instantApp', async () => {
+        if (!wantsBackend) return;
+        try {
+          const app = await this.instant.provision(
+            projectId,
+            ownerId,
+            projectName,
+          );
+          result.instantAppId = app.appId;
+        } catch (err) {
+          // The app being there already is the last attempt's success.
+          if (err instanceof ConflictException) {
+            const existing = await this.instant.get(projectId);
+            result.instantAppId = existing?.appId;
+            return;
+          }
+          throw err;
+        }
+      }),
+      this.safeProvision('whatsapp', () =>
+        this.whatsapp.provisionIdentity(ownerId, projectId).then((identity) => {
+          if (identity.created || !identity.reason)
+            result.whatsappInstance = identity.instanceName;
+        }),
+      ),
     ];
 
     await Promise.allSettled(tasks);
@@ -60,7 +133,10 @@ export class ProjectProvisionService {
     return result;
   }
 
-  private async safeProvision(name: string, fn: () => Promise<void>): Promise<void> {
+  private async safeProvision(
+    name: string,
+    fn: () => Promise<void>,
+  ): Promise<void> {
     try {
       await fn();
     } catch (err) {
@@ -71,27 +147,59 @@ export class ProjectProvisionService {
     }
   }
 
-  private async provisionDatabase(projectId: string, projectName: string): Promise<string> {
-    const safeName = projectName.toLowerCase().replace(/[^a-z0-9_]+/g, '_').substring(0, 30) || 'default';
-    const database = await this.dbCrud.createDatabase(this.dbProvider, projectId, {
-      name: `${safeName}__default`,
-      type: 'postgresql',
-      version: '15',
-      size: 'small',
-      maxConnections: 20,
-      environment: 'production',
-    });
+  private async provisionDatabase(
+    projectId: string,
+    projectName: string,
+  ): Promise<string> {
+    const safeName =
+      projectName
+        .toLowerCase()
+        .replace(/[^a-z0-9_]+/g, '_')
+        .substring(0, 30) || 'default';
+    const database = await this.dbCrud.createDatabase(
+      this.dbProvider,
+      projectId,
+      {
+        name: `${safeName}__default`,
+        type: 'postgresql',
+        version: '15',
+        size: 'small',
+        maxConnections: 20,
+        environment: 'production',
+      },
+    );
     return (database as { id: string }).id;
   }
 
-  private async provisionBucket(ownerId: string, projectId: string, projectName: string): Promise<string> {
-    const safeName = projectName.toLowerCase().replace(/[^a-z0-9-]+/g, '-').substring(0, 30) || 'default';
-    const bucket = await this.storage.createBucket(ownerId, projectId, `${safeName}-assets`, false, 'internal');
+  private async provisionBucket(
+    ownerId: string,
+    projectId: string,
+    projectName: string,
+  ): Promise<string> {
+    const safeName =
+      projectName
+        .toLowerCase()
+        .replace(/[^a-z0-9-]+/g, '-')
+        .substring(0, 30) || 'default';
+    const bucket = await this.storage.createBucket(
+      ownerId,
+      projectId,
+      `${safeName}-assets`,
+      false,
+      'internal',
+    );
     return (bucket as { id: string }).id;
   }
 
-  private async provisionChannel(projectId: string, projectName: string): Promise<string> {
-    const safeName = projectName.toLowerCase().replace(/[^a-z0-9-_]+/g, '-').substring(0, 40) || 'default';
+  private async provisionChannel(
+    projectId: string,
+    projectName: string,
+  ): Promise<string> {
+    const safeName =
+      projectName
+        .toLowerCase()
+        .replace(/[^a-z0-9-_]+/g, '-')
+        .substring(0, 40) || 'default';
     const channel = await this.realtime.createChannel(projectId, {
       name: `${safeName}-default`,
       isPrivate: false,
@@ -100,7 +208,9 @@ export class ProjectProvisionService {
     return channel.id;
   }
 
-  private async provisionApiKey(projectId: string): Promise<{ id: string; key: string }> {
+  private async provisionApiKey(
+    projectId: string,
+  ): Promise<{ id: string; key: string }> {
     const key = `fpk_${crypto.randomBytes(PROJECT_API_KEY_BYTES).toString('base64url')}`;
     const body = key.slice(4);
     // Use bcrypt to match validateProjectApiKey (which does bcrypt.compare

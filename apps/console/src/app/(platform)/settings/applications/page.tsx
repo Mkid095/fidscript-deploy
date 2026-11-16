@@ -1,0 +1,114 @@
+import Link from 'next/link';
+
+import { applications } from '@/lib/api/platform';
+import { registryScopes } from '@/lib/api/registry';
+import { Card, SectionHeader } from '@/components/ui/card';
+import { Page } from '@/components/ui/page';
+import { Badge, EmptyState, ErrorState } from '@/components/ui/feedback';
+import { SettingsNav } from '@/components/platform/settings-nav';
+import { RegistryScopeAccess } from '@/components/platform/registry-scope-access';
+
+/**
+ * The applications.
+ *
+ * The one-time thing, revisited: what this platform has, and whether it is
+ * healthy. It is not in the top bar — it is a setting.
+ *
+ * Three of them are the console's own capabilities — the deployment
+ * engine, the mail and the registry. They have no console of their own:
+ * they live inside every project, and the screen says where they are.
+ */
+
+const IN_THE_CONSOLE = ['deployment', 'email', 'package-manager'];
+export const metadata = { title: 'Applications · Settings' };
+
+export default async function ApplicationsSettingsPage() {
+  const [apps, scopes] = await Promise.all([
+    applications().catch(() => null),
+    registryScopes().catch(() => []),
+  ]);
+
+  return (
+    <Page
+      title="Applications"
+      description="What this platform has, and whether it is healthy."
+    >
+      <SettingsNav />
+
+      {!apps ? (
+        <ErrorState
+          title="The platform did not answer"
+          message="The applications could not be loaded. The platform may be restarting — try again in a moment."
+        />
+      ) : apps.length === 0 ? (
+        <Card>
+          <EmptyState
+            title="No applications"
+            body="The platform reports none."
+          />
+        </Card>
+      ) : (
+        <section>
+          <SectionHeader title="Installed and installable" />
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+            {apps.map((app) => (
+              <Card key={app.id} className="p-4">
+                <div className="flex items-center justify-between gap-2">
+                  <span className="truncate text-sm font-medium text-text">
+                    {app.title}
+                  </span>
+                  <Badge tone={app.installed ? 'success' : 'neutral'}>
+                    {app.installed ? 'Installed' : 'Not installed'}
+                  </Badge>
+                </div>
+                <p className="mt-1.5 text-xs leading-relaxed text-text-muted">
+                  {app.summary}
+                </p>
+                <div className="mt-3 flex flex-wrap items-center gap-3">
+                  {IN_THE_CONSOLE.includes(app.id) ? (
+                    <>
+                      <Link
+                        href="/projects"
+                        className="text-xs text-accent hover:underline"
+                      >
+                        It is in every project
+                      </Link>
+                      {app.url ? (
+                        <a
+                          href={app.url}
+                          className="text-xs text-text-dim hover:text-text"
+                        >
+                          Read about it
+                        </a>
+                      ) : null}
+                    </>
+                  ) : app.url ? (
+                    <a
+                      href={app.url}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="text-xs text-accent hover:underline"
+                    >
+                      Open the console
+                    </a>
+                  ) : app.installed ? (
+                    <span className="text-xs text-text-dim">
+                      No console — health only
+                    </span>
+                  ) : null}
+                  {app.requires.length > 0 ? (
+                    <span className="text-xs text-text-dim">
+                      Needs {app.requires.join(', ')}
+                    </span>
+                  ) : null}
+                </div>
+              </Card>
+            ))}
+          </div>
+        </section>
+      )}
+
+      <RegistryScopeAccess scopes={scopes} />
+    </Page>
+  );
+}

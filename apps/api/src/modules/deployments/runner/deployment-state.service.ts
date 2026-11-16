@@ -9,6 +9,9 @@ import { DockerLifecycleService } from './docker-lifecycle.service';
 import { UserGithubService } from '@/modules/app-auth/services/user-github.service';
 import { BuildConcurrencyService } from './build-concurrency.service';
 import { InstantAppConfigService } from '@/modules/instant/services/instant-app-config.service';
+import { scrubSecrets } from './scrub-secrets';
+import { DomainReconciliationQueueService } from '@/modules/domains/services/domain-reconciliation-queue.service';
+import { deploymentContainerName } from './container-name';
 
 @Injectable()
 export class DeploymentStateService implements OnModuleInit {
@@ -25,14 +28,20 @@ export class DeploymentStateService implements OnModuleInit {
     private github: UserGithubService,
     private buildQueue: BuildConcurrencyService,
     private instantConfig: InstantAppConfigService,
+    private domainVerification: DomainReconciliationQueueService,
   ) {}
 
   onModuleInit() {
-    this.eventService.on('deployments.deployment.created', this.handleDeploymentCreated.bind(this));
+    this.eventService.on(
+      'deployments.deployment.created',
+      this.handleDeploymentCreated.bind(this),
+    );
     // Fallback: re-process any PENDING deployments that were orphaned before a fix or
     // missed due to a handler error. Idempotent — runDeployment skips if not PENDING.
-    this.recoverStuckDeployments().catch(err =>
-      this.logger.warn(`[worker] Stuck deployment recovery failed: ${err.message}`),
+    this.recoverStuckDeployments().catch((err) =>
+      this.logger.warn(
+        `[worker] Stuck deployment recovery failed: ${err.message}`,
+      ),
     );
   }
 
@@ -56,12 +65,14 @@ export class DeploymentStateService implements OnModuleInit {
       }
     }
     await Promise.allSettled(
-      stuck.map(d =>
+      stuck.map((d) =>
         this.runDeployment(d.id, d.projectId, '').catch(async (err) => {
           // A recovery that fails must SAY so. Swallowed, the deployment sat
           // in BUILDING for ever with nothing running and nothing logged.
           const msg = err instanceof Error ? err.message : String(err);
-          this.logger.error(`[worker] Deployment ${d.id} could not be recovered: ${msg}`);
+          this.logger.error(
+            `[worker] Deployment ${d.id} could not be recovered: ${msg}`,
+          );
           await this.markFailed(d.id, d.projectId, msg);
         }),
       ),
@@ -85,7 +96,12 @@ export class DeploymentStateService implements OnModuleInit {
     }
     this.logger.log(`[worker] Processing deployment ${deploymentId}`);
     try {
-      await this.runDeployment(deploymentId, projectId, userId as string || '', envVars);
+      await this.runDeployment(
+        deploymentId,
+        projectId,
+        (userId as string) || '',
+        envVars,
+      );
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
       this.logger.error(`[worker] Deployment ${deploymentId} threw: ${msg}`);
@@ -93,30 +109,70 @@ export class DeploymentStateService implements OnModuleInit {
     }
   }
 
-  async runDeployment(deploymentId: string, projectId: string, userId: string, deployEnvVars?: Record<string, string>) {
+  async runDeployment(
+    deploymentId: string,
+    projectId: string,
+    userId: string,
+    deployEnvVars?: Record<string, string>,
+  ) {
     const deployment = await this.prisma.deployment.findUnique({
       where: { id: deploymentId },
       include: { project: true, release: true },
     });
-    if (!deployment) { this.logger.error(`[worker] Deployment ${deploymentId} not found`); return; }
-    if (deployment.status !== 'PENDING') { this.logger.warn(`[worker] Deployment ${deploymentId} is ${deployment.status}, skipping`); return; }
+    if (!deployment) {
+      this.logger.error(`[worker] Deployment ${deploymentId} not found`);
+      return;
+    }
+    if (deployment.status !== 'PENDING') {
+      this.logger.warn(
+        `[worker] Deployment ${deploymentId} is ${deployment.status}, skipping`,
+      );
+      return;
+    }
 
-    const settings = await this.prisma.projectSettings.findUnique({ where: { projectId } });
+    const settings = await this.prisma.projectSettings.findUnique({
+      where: { projectId },
+    });
     if (settings?.activeDeploymentId) {
-      const active = await this.prisma.deployment.findUnique({ where: { id: settings.activeDeploymentId } });
-      if (active && ['QUEUED', 'BUILDING', 'DEPLOYING'].includes(active.status)) {
-        await this.prisma.deployment.update({ where: { id: deploymentId }, data: { status: 'BLOCKED' } });
-        await this.emit(deploymentId, projectId, userId, 'deployments.deployment.blocked', { blockedBy: settings.activeDeploymentId });
+      const active = await this.prisma.deployment.findUnique({
+        where: { id: settings.activeDeploymentId },
+      });
+      if (
+        active &&
+        ['QUEUED', 'BUILDING', 'DEPLOYING'].includes(active.status)
+      ) {
+        await this.prisma.deployment.update({
+          where: { id: deploymentId },
+          data: { status: 'BLOCKED' },
+        });
+        await this.emit(
+          deploymentId,
+          projectId,
+          userId,
+          'deployments.deployment.blocked',
+          { blockedBy: settings.activeDeploymentId },
+        );
         return;
       }
     }
 
     await this.prisma.projectSettings.upsert({
-      where: { projectId }, create: { projectId, activeDeploymentId: deploymentId }, update: { activeDeploymentId: deploymentId },
+      where: { projectId },
+      create: { projectId, activeDeploymentId: deploymentId },
+      update: { activeDeploymentId: deploymentId },
     });
 
-    await this.prisma.deployment.update({ where: { id: deploymentId }, data: { status: 'QUEUED' } });
-    await this.emit(deploymentId, projectId, userId, 'deployments.deployment.queued', {});
+    await this.prisma.deployment.update({
+      where: { id: deploymentId },
+      data: { status: 'QUEUED' },
+    });
+    await this.emit(
+      deploymentId,
+      projectId,
+      userId,
+      'deployments.deployment.queued',
+      {},
+    );
 
     // Wait for a build slot. A build is heavy, and the box is often a small
     // one — two at once fight each other and can push the machine into swap,
@@ -124,11 +180,65 @@ export class DeploymentStateService implements OnModuleInit {
     // in QUEUED, which is what that state is for.
     const releaseSlot = await this.buildQueue.acquire();
 
-    try {
-      await this.prisma.deployment.update({ where: { id: deploymentId }, data: { status: 'BUILDING' } });
-      await this.emit(deploymentId, projectId, userId, 'deployments.deployment.building', {});
+    // The build log, and the way it is persisted: lines are appended in
+    // memory, fanned out as events, and written through to the release every
+    // few seconds — so the console can poll the log and see the build while
+    // it happens. Declared here, above the try, so the catch can flush what
+    // the build said before the failure is recorded.
+    const logs: string[] = [];
+    let flushTimer: ReturnType<typeof setTimeout> | null = null;
+    let lastFlushedLength = 0;
+    const flushLogs = async () => {
+      const currentLength = logs.length;
+      if (currentLength === lastFlushedLength || !deployment.releaseId) return;
+      lastFlushedLength = currentLength;
+      try {
+        await this.prisma.release.update({
+          where: { id: deployment.releaseId },
+          data: { buildLogs: logs.join('\n') },
+        });
+      } catch {
+        /* non-fatal — will retry on next flush */
+      }
+    };
+    const onLog = (line: string) => {
+      // A credential that reaches a log is a credential that has leaked —
+      // build tools echo their arguments, and clone errors quote the URL.
+      const safe = scrubSecrets(line);
+      logs.push(safe);
+      // Realtime: fan out each build log line to project:<id> so the deployment
+      // LogViewer can subscribe via socket instead of polling GET /deployments/:id/logs.
+      // Fire-and-forget — emit() returns void; failures must not block the build.
+      void this.emit(
+        deploymentId,
+        projectId,
+        userId,
+        'deployments.deployment.log',
+        { line: safe, index: logs.length - 1 },
+      );
+      // Debounce: schedule a flush 3s from now, or reset if one is pending
+      if (flushTimer) clearTimeout(flushTimer);
+      flushTimer = setTimeout(() => {
+        flushLogs().catch(() => {});
+      }, 3000);
+    };
 
-      const projectEnv = await this.prisma.projectEnv.findMany({ where: { projectId } });
+    try {
+      await this.prisma.deployment.update({
+        where: { id: deploymentId },
+        data: { status: 'BUILDING' },
+      });
+      await this.emit(
+        deploymentId,
+        projectId,
+        userId,
+        'deployments.deployment.building',
+        {},
+      );
+
+      const projectEnv = await this.prisma.projectEnv.findMany({
+        where: { projectId },
+      });
       const runtimeEnv = this.decryptEnvVars(projectEnv);
 
       // Link the deployment to the project's data plane. An application's
@@ -141,7 +251,9 @@ export class DeploymentStateService implements OnModuleInit {
       const instantEnv = await this.instantConfig.environmentFor(projectId);
       if (instantEnv) {
         const set = new Set(runtimeEnv.map((e) => e.key));
-        const linked = Object.entries(instantEnv).filter(([key]) => !set.has(key));
+        const linked = Object.entries(instantEnv).filter(
+          ([key]) => !set.has(key),
+        );
         for (const [key, value] of linked) runtimeEnv.push({ key, value });
         if (linked.length) {
           this.logger.log(
@@ -153,31 +265,20 @@ export class DeploymentStateService implements OnModuleInit {
       // Merge deploy-time env vars (from the wizard) on top of project env vars.
       // Deploy-time values take precedence so users can override without editing project settings.
       if (deployEnvVars && Object.keys(deployEnvVars).length > 0) {
-        const existing = new Map(runtimeEnv.map(e => [e.key, e.value]));
+        const existing = new Map(runtimeEnv.map((e) => [e.key, e.value]));
         for (const [key, value] of Object.entries(deployEnvVars)) {
           existing.set(key, value);
         }
         const merged = Array.from(existing, ([key, value]) => ({ key, value }));
-        this.logger.log(`[worker] Merged ${Object.keys(deployEnvVars).length} deploy-time env var(s) onto ${runtimeEnv.length} project env var(s)`);
+        this.logger.log(
+          `[worker] Merged ${Object.keys(deployEnvVars).length} deploy-time env var(s) onto ${runtimeEnv.length} project env var(s)`,
+        );
         runtimeEnv.length = 0;
         runtimeEnv.push(...merged);
       }
-      const buildConfig = await this.prisma.buildConfig.findUnique({ where: { projectId } });
-
-      // A build that cannot run without a variable fails BEFORE it starts,
-      // naming the variable. Otherwise the operator reads a build log that
-      // says "DATABASE_URL is not defined" three hundred lines in, after
-      // three minutes of compiling.
-      const missing = (buildConfig?.requiredEnvVars ?? []).filter(
-        (key) => !runtimeEnv.some((e) => e.key === key),
-      );
-      if (missing.length > 0) {
-        const names = missing.join(', ');
-        const message = `Missing required environment variable${missing.length === 1 ? '' : 's'}: ${names}`;
-        this.logger.error(`[worker] Deployment ${deploymentId} cannot build — ${message}`);
-        await this.markFailed(deploymentId, projectId, message);
-        return;
-      }
+      const buildConfig = await this.prisma.buildConfig.findUnique({
+        where: { projectId },
+      });
 
       // Resolve the project owner's connected GitHub token so private repos clone
       // without prompting (parseSource reconstructs the URL from release.sourceUrl
@@ -186,33 +287,24 @@ export class DeploymentStateService implements OnModuleInit {
         ? await this.github.getCloneCredentials(deployment.project.ownerId)
         : null;
       const source = this.parseSource(deployment, githubCreds ?? undefined);
-      const logs: string[] = [];
-      // Incremental log persistence: debounce-write to the DB every 3 seconds
-      // so the dashboard can poll GET /deployments/:id/logs and see live progress
-      // during builds (instead of waiting for the build to complete).
-      let flushTimer: ReturnType<typeof setTimeout> | null = null;
-      let lastFlushedLength = 0;
-      const flushLogs = async () => {
-        const currentLength = logs.length;
-        if (currentLength === lastFlushedLength || !deployment.releaseId) return;
-        lastFlushedLength = currentLength;
-        try {
-          await this.prisma.release.update({
-            where: { id: deployment.releaseId },
-            data: { buildLogs: logs.join('\n') },
-          });
-        } catch { /* non-fatal — will retry on next flush */ }
-      };
-      const onLog = (line: string) => {
-        logs.push(line);
-        // Realtime: fan out each build log line to project:<id> so the deployment
-        // LogViewer can subscribe via socket instead of polling GET /deployments/:id/logs.
-        // Fire-and-forget — emit() returns void; failures must not block the build.
-        void this.emit(deploymentId, projectId, userId, 'deployments.deployment.log', { line, index: logs.length - 1 });
-        // Debounce: schedule a flush 3s from now, or reset if one is pending
-        if (flushTimer) clearTimeout(flushTimer);
-        flushTimer = setTimeout(() => { flushLogs().catch(() => {}); }, 3000);
-      };
+
+      // A build that cannot run without a variable fails BEFORE it starts,
+      // naming the variable — in the build log, where the person will read it,
+      // not only in the api's own logs. Otherwise the operator reads a build
+      // log that says "DATABASE_URL is not defined" three hundred lines in,
+      // after three minutes of compiling — or reads nothing at all.
+      const missing = (buildConfig?.requiredEnvVars ?? []).filter(
+        (key) => !runtimeEnv.some((e) => e.key === key),
+      );
+      if (missing.length > 0) {
+        const names = missing.join(', ');
+        const message = `Missing required environment variable${missing.length === 1 ? '' : 's'}: ${names}`;
+        this.logger.error(
+          `[worker] Deployment ${deploymentId} cannot build — ${message}`,
+        );
+        await this.markFailed(deploymentId, projectId, message);
+        return;
+      }
 
       const projectType = deployment.project.type || 'DOCKER';
       const buildProvider = this.buildProviderFactory.getProvider(
@@ -221,12 +313,15 @@ export class DeploymentStateService implements OnModuleInit {
         deployment.project.slug,
       );
 
-      const { buildResult, deployResult } = await this.buildRunner.buildAndDeploy(
-        buildProvider,
-        {
-          deploymentId, releaseId: deployment.releaseId!, projectId,
-          projectSlug: deployment.project.slug, projectType,
-          source, envVars: runtimeEnv,
+      const { buildResult, deployResult } =
+        await this.buildRunner.buildAndDeploy(buildProvider, {
+          deploymentId,
+          releaseId: deployment.releaseId!,
+          projectId,
+          projectSlug: deployment.project.slug,
+          projectType,
+          source,
+          envVars: runtimeEnv,
           buildTarget: buildConfig?.buildTarget || undefined,
           buildOverrides: {
             installCommand: buildConfig?.installCommand || undefined,
@@ -234,15 +329,24 @@ export class DeploymentStateService implements OnModuleInit {
             startCommand: buildConfig?.startCommand || undefined,
             port: buildConfig?.port || undefined,
           },
-          startupTimeoutSeconds: buildConfig?.startupTimeoutSeconds ?? 120, onLog,
+          startupTimeoutSeconds: buildConfig?.startupTimeoutSeconds ?? 120,
+          onLog,
           onDeploy: async () => {
             // The image is built; the container is about to start. This state
             // existed in the enum but was never written.
-            await this.prisma.deployment.update({ where: { id: deploymentId }, data: { status: 'DEPLOYING' } });
-            await this.emit(deploymentId, projectId, userId, 'deployments.deployment.deploying', {});
+            await this.prisma.deployment.update({
+              where: { id: deploymentId },
+              data: { status: 'DEPLOYING' },
+            });
+            await this.emit(
+              deploymentId,
+              projectId,
+              userId,
+              'deployments.deployment.deploying',
+              {},
+            );
           },
-        },
-      );
+        });
 
       // Final flush of all logs (cancel any pending debounce timer)
       if (flushTimer) clearTimeout(flushTimer);
@@ -264,32 +368,133 @@ export class DeploymentStateService implements OnModuleInit {
       if (deployResult.success) {
         await this.prisma.deployment.update({
           where: { id: deploymentId },
-          data: { status: 'SUCCESS', deploymentUrl: deployResult.deploymentUrl, completedAt: new Date() },
+          data: {
+            status: 'SUCCESS',
+            deploymentUrl: deployResult.deploymentUrl,
+            completedAt: new Date(),
+          },
         });
-        await this.prisma.project.update({ where: { id: projectId }, data: { lastDeployAt: new Date() } });
-        await this.emit(deploymentId, projectId, userId, 'deployments.deployment.succeeded', { deploymentUrl: deployResult.deploymentUrl, duration: deployResult.deployDurationMs });
+        await this.prisma.project.update({
+          where: { id: projectId },
+          data: { lastDeployAt: new Date() },
+        });
+        await this.emit(
+          deploymentId,
+          projectId,
+          userId,
+          'deployments.deployment.succeeded',
+          {
+            deploymentUrl: deployResult.deploymentUrl,
+            duration: deployResult.deployDurationMs,
+          },
+        );
 
         // Publish the deployment's custom domains to Traefik. The default
         // hostname is published by Traefik's Docker provider from the
         // container labels; this covers the rest.
         await this.routes.sync();
 
+        // The project has ONE production target: the names that pointed at
+        // the previous deployment follow the new one — that is what "the
+        // deployment replaced the live one" means to a person's domain.
+        await this.prisma.domain.updateMany({
+          where: { projectId, deploymentId: { not: deploymentId } },
+          data: { deploymentId },
+        });
+
+        // And ask for their verification now: the routes exist, the
+        // container is healthy — the certificate pre-warm and the HTTPS
+        // check should run this minute, not on the next schedule tick.
+        const attachedDomains = await this.prisma.domain.findMany({
+          where: { projectId, deploymentId },
+          select: { id: true },
+        });
+        for (const domain of attachedDomains) {
+          try {
+            await this.domainVerification.enqueue(domain.id, 'recovery');
+          } catch {
+            /* the queue is best-effort — the schedule still runs */
+          }
+        }
+
         // Clean up the previous deployment's container + image to prevent disk bloat.
         // We keep the container name convention from docker-run.service.ts: fidscript-{slug}-{deploymentId}
-        await this.cleanupPreviousDeployment(projectId, deploymentId, deployment.project.slug);
+        await this.cleanupPreviousDeployment(
+          projectId,
+          deploymentId,
+          deployment.project.slug,
+        );
       } else {
-        await this.markFailed(deploymentId, projectId, deployResult.error || 'Deploy failed');
+        await this.markFailed(
+          deploymentId,
+          projectId,
+          deployResult.error || 'Deploy failed',
+        );
       }
 
       await this.releaseLock(projectId, deploymentId);
+    } catch (err) {
+      // The in-memory log lines were debounced; a pending flush would race
+      // the failure line that markFailed is about to append. Flush what the
+      // build said, clear the timer, then let the failure be recorded.
+      if (flushTimer) clearTimeout(flushTimer);
+      await flushLogs().catch(() => {});
+      throw err;
     } finally {
       releaseSlot();
     }
   }
 
+  /**
+   * A deployment that failed, recorded everywhere the failure is read.
+   *
+   * The status says it failed; the **build log says why** — the error is
+   * appended to the release's stored log (scrubbed of credentials first), so
+   * a person opening the deployment reads the reason where they are already
+   * looking, not only in the api's own logs.
+   */
   async markFailed(deploymentId: string, projectId: string, error: string) {
-    await this.prisma.deployment.update({ where: { id: deploymentId }, data: { status: 'FAILED', completedAt: new Date() } });
-    await this.emit(deploymentId, projectId, '', 'deployments.deployment.failed', { error });
+    const safe = scrubSecrets(error);
+    await this.prisma.deployment.update({
+      where: { id: deploymentId },
+      data: { status: 'FAILED', completedAt: new Date() },
+    });
+
+    try {
+      const deployment = await this.prisma.deployment.findUnique({
+        where: { id: deploymentId },
+        select: { releaseId: true },
+      });
+      if (deployment?.releaseId) {
+        const release = await this.prisma.release.findUnique({
+          where: { id: deployment.releaseId },
+          select: { buildLogs: true },
+        });
+        const line = `[error] ${safe}`;
+        const existing = release?.buildLogs ?? '';
+        await this.prisma.release.update({
+          where: { id: deployment.releaseId },
+          data: { buildLogs: existing ? `${existing}\n${line}` : line },
+        });
+        void this.emit(
+          deploymentId,
+          projectId,
+          '',
+          'deployments.deployment.log',
+          { line },
+        );
+      }
+    } catch {
+      /* never fail a failure report */
+    }
+
+    await this.emit(
+      deploymentId,
+      projectId,
+      '',
+      'deployments.deployment.failed',
+      { error: safe },
+    );
     await this.releaseLock(projectId, deploymentId);
   }
 
@@ -303,7 +508,11 @@ export class DeploymentStateService implements OnModuleInit {
    * Rollback still works because it re-deploys an existing image; if the
    * image was GC'd, the user needs to rebuild.
    */
-  private async cleanupPreviousDeployment(projectId: string, newDeploymentId: string, projectSlug: string): Promise<void> {
+  private async cleanupPreviousDeployment(
+    projectId: string,
+    newDeploymentId: string,
+    projectSlug: string,
+  ): Promise<void> {
     try {
       // Find the previous successful deployment (before this one)
       const previous = await this.prisma.deployment.findFirst({
@@ -318,8 +527,13 @@ export class DeploymentStateService implements OnModuleInit {
 
       if (!previous) return;
 
-      const oldContainerName = `fidscript-${projectSlug}-${previous.id}`;
-      this.logger.log(`[worker] Cleaning up previous deployment ${previous.id} (container: ${oldContainerName})`);
+      const oldContainerName = deploymentContainerName(
+        projectSlug,
+        previous.id,
+      );
+      this.logger.log(
+        `[worker] Cleaning up previous deployment ${previous.id} (container: ${oldContainerName})`,
+      );
 
       // Stop + remove the old container
       await this.dockerLifecycle.teardown(oldContainerName);
@@ -336,13 +550,19 @@ export class DeploymentStateService implements OnModuleInit {
       // working for at least one version back.
     } catch (err) {
       // Cleanup failure shouldn't fail the deployment
-      this.logger.warn(`[worker] Previous deployment cleanup failed (non-fatal): ${err instanceof Error ? err.message : String(err)}`);
+      this.logger.warn(
+        `[worker] Previous deployment cleanup failed (non-fatal): ${err instanceof Error ? err.message : String(err)}`,
+      );
     }
   }
 
   private decryptEnvVars(envVars: { key: string; value: string }[]) {
     return envVars.map(({ key, value }) => {
-      try { return { key, value: this.cryptoService.decrypt(value) }; } catch { return { key, value }; }
+      try {
+        return { key, value: this.cryptoService.decrypt(value) };
+      } catch {
+        return { key, value };
+      }
     });
   }
 
@@ -356,7 +576,8 @@ export class DeploymentStateService implements OnModuleInit {
     // `credentials` (resolved by the caller from the owner's GitHub connection)
     // is threaded into git sources so private repos clone without prompting.
     const release = deployment.release;
-    if (!release) return { type: 'git' as const, url: '', branch: 'main', credentials };
+    if (!release)
+      return { type: 'git' as const, url: '', branch: 'main', credentials };
 
     const rawUrl: string = release.sourceUrl || '';
     const dockerfilePath = this.extractQuery(rawUrl, 'dockerfile');
@@ -374,11 +595,31 @@ export class DeploymentStateService implements OnModuleInit {
 
     // Git source — strip any query string before passing the URL to git clone.
     const gitUrl = rawUrl.split('?')[0];
-    if (gitUrl) return { type: 'git' as const, url: gitUrl, branch: release.branch || 'main', dockerfilePath, credentials };
+    if (gitUrl)
+      return {
+        type: 'git' as const,
+        url: gitUrl,
+        branch: release.branch || 'main',
+        dockerfilePath,
+        credentials,
+      };
     // Fallback: platform-level sourceRepo from cloned projects
     const project = deployment.project;
-    if (project?.sourceRepo) return { type: 'git' as const, url: project.sourceRepo, branch: release.branch || 'main', dockerfilePath, credentials };
-    return { type: 'git' as const, url: '', branch: release.branch || 'main', dockerfilePath, credentials };
+    if (project?.sourceRepo)
+      return {
+        type: 'git' as const,
+        url: project.sourceRepo,
+        branch: release.branch || 'main',
+        dockerfilePath,
+        credentials,
+      };
+    return {
+      type: 'git' as const,
+      url: '',
+      branch: release.branch || 'main',
+      dockerfilePath,
+      credentials,
+    };
   }
 
   /** Extract a query param from a URL-like string. Returns undefined if absent. */
@@ -391,15 +632,29 @@ export class DeploymentStateService implements OnModuleInit {
   }
 
   private async releaseLock(projectId: string, deploymentId: string) {
-    await this.prisma.projectSettings.updateMany({ where: { projectId, activeDeploymentId: deploymentId }, data: { activeDeploymentId: null } });
+    await this.prisma.projectSettings.updateMany({
+      where: { projectId, activeDeploymentId: deploymentId },
+      data: { activeDeploymentId: null },
+    });
   }
 
-  private async emit(deploymentId: string, projectId: string, userId: string, type: string, payload: Record<string, any>) {
+  private async emit(
+    deploymentId: string,
+    projectId: string,
+    userId: string,
+    type: string,
+    payload: Record<string, any>,
+  ) {
     await this.eventService.emit(
       type as any,
       projectId,
       { deploymentId, ...payload },
-      { actorId: userId || undefined, actorType: 'user', resourceType: 'deployment', resourceId: deploymentId },
+      {
+        actorId: userId || undefined,
+        actorType: 'user',
+        resourceType: 'deployment',
+        resourceId: deploymentId,
+      },
     );
   }
 }

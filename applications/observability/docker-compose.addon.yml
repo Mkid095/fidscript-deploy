@@ -1,0 +1,214 @@
+# Observability add-on — metrics, dashboards and logs.
+#
+# Relative paths resolve against the CORE compose file's directory
+# (installer/docker/), so a config that lives next to this fragment is
+# mounted as ../../applications/observability/<path>.
+#
+# The three services the operator opens — Grafana, Prometheus and Loki —
+# are published by HOSTNAME through Traefik's labels below, not by a port:
+# grafana.{domain}, prometheus.{domain}, loki.{domain}. Only cAdvisor keeps
+# a host port, and it can be moved with OBSERVABILITY_CADVISOR_PORT.
+
+services:
+  prometheus:
+    image: prom/prometheus:v2.53.0
+    container_name: fidscript_prometheus
+    restart: unless-stopped
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--storage.tsdb.retention.time=${OBSERVABILITY_RETENTION:-30d}'
+      - '--web.enable-lifecycle'
+      - '--web.enable-admin-api'
+    volumes:
+      - ../../applications/observability/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      # The token the platform's metrics endpoint requires. The metrics name
+      # every project, so the scrape is a credential.
+      - ./secrets/observability_prometheus_token.txt:/etc/prometheus/scrape_token:ro
+      - fidscript_prometheus_data:/prometheus
+    networks:
+      - fidscript-deployment
+    # The stack is published by hostname, not by port: prometheus.{domain}
+    # is what the operator (and a dashboard) uses. The labels are how
+    # Traefik's Docker provider learns about the container.
+    labels:
+      - traefik.enable=true
+      - traefik.docker.network=fidscript-deployment
+      - traefik.http.routers.fidscript-observability-prometheus.rule=Host(`prometheus.${DOMAIN}`)
+      - traefik.http.routers.fidscript-observability-prometheus.entrypoints=websecure
+      - traefik.http.routers.fidscript-observability-prometheus.tls=true
+      - traefik.http.routers.fidscript-observability-prometheus.tls.certresolver=letsencrypt-dns
+      - traefik.http.services.fidscript-observability-prometheus.loadbalancer.server.port=9090
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:9090/-/healthy"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+    logging:
+      driver: json-file
+      options:
+        max-size: '10m'
+        max-file: '3'
+
+  cadvisor:
+    image: gcr.io/cadvisor/cadvisor:v0.51.0
+    container_name: fidscript_cadvisor
+    restart: unless-stopped
+    # cAdvisor is a diagnostic tool rather than a console: it stays on the
+    # host, on a port nothing else in the platform uses. Prometheus reaches it
+    # by container name, and the port can be moved with the env override.
+    ports:
+      - "${OBSERVABILITY_CADVISOR_PORT:-8082}:8080"
+    volumes:
+      - /:/rootfs:ro
+      - /var/run:/var/run:ro
+      - /sys:/sys:ro
+      - /var/lib/docker/:/var/lib/docker:ro
+      - /dev/disk/:/dev/disk:ro
+    networks:
+      - fidscript-deployment
+    command:
+      - --housekeeping_interval=15s
+      - --docker_only=true
+      - --store_container_labels=false
+      - --allow_dynamic_housekeeping=true
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:8080/healthz"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+    logging:
+      driver: json-file
+      options:
+        max-size: '10m'
+        max-file: '3'
+
+  postgres-exporter:
+    image: prometheuscommunity/postgres-exporter:latest
+    container_name: fidscript_postgres_exporter
+    restart: unless-stopped
+    environment:
+      # This exporter version takes the whole DSN in DATA_SOURCE_NAME;
+      # the split DATA_SOURCE_URI/USER/PASSWORD form is ignored, and
+      # --pg.conn-string is not a flag.
+      DATA_SOURCE_NAME: "postgresql://fidscript:${POSTGRES_PASSWORD}@postgres:5432/fidscript?sslmode=disable"
+    networks:
+      - fidscript-deployment
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:9187/metrics"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+    logging:
+      driver: json-file
+      options:
+        max-size: '10m'
+        max-file: '3'
+
+  loki:
+    image: grafana/loki:3.1.1
+    container_name: fidscript_loki
+    restart: unless-stopped
+    command: -config.file=/etc/loki/loki-config.yml
+    volumes:
+      - ../../applications/observability/loki/loki-config.yml:/etc/loki/loki-config.yml:ro
+      - fidscript_loki_data:/loki
+    networks:
+      - fidscript-deployment
+    labels:
+      - traefik.enable=true
+      - traefik.docker.network=fidscript-deployment
+      - traefik.http.routers.fidscript-observability-loki.rule=Host(`loki.${DOMAIN}`)
+      - traefik.http.routers.fidscript-observability-loki.entrypoints=websecure
+      - traefik.http.routers.fidscript-observability-loki.tls=true
+      - traefik.http.routers.fidscript-observability-loki.tls.certresolver=letsencrypt-dns
+      - traefik.http.services.fidscript-observability-loki.loadbalancer.server.port=3100
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:3100/ready"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+    logging:
+      driver: json-file
+      options:
+        max-size: '10m'
+        max-file: '3'
+
+  promtail:
+    image: grafana/promtail:3.1.1
+    container_name: fidscript_promtail
+    restart: unless-stopped
+    command: -config.file=/etc/promtail/promtail-config.yml
+    volumes:
+      - ../../applications/observability/promtail/promtail-config.yml:/etc/promtail/promtail-config.yml:ro
+      - /var/lib/docker/containers:/var/lib/docker/containers:ro
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    networks:
+      - fidscript-deployment
+    depends_on:
+      - loki
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://127.0.0.1:9080/ready >/dev/null || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+    logging:
+      driver: json-file
+      options:
+        max-size: '10m'
+        max-file: '3'
+
+  grafana:
+    image: grafana/grafana:11.4.0
+    container_name: fidscript_grafana
+    restart: unless-stopped
+    environment:
+      GF_SECURITY_ADMIN_USER: kennedygithinjioffice@gmail.com
+      GF_SECURITY_ADMIN_PASSWORD__FILE: /run/secrets/observability_grafana_password
+      GF_USERS_ALLOW_SIGN_UP: "false"
+      GF_FEATURE_TOGGLES_ENABLE: publicDashboards
+      # The dashboard and the Prometheus datasource are provisioned from
+      # files, so there is nothing to click through on first boot.
+      GF_DASHBOARDS_DEFAULT_HOME_DASHBOARD_PATH: /var/lib/grafana/dashboards/platform-overview.json
+    volumes:
+      - ../../applications/observability/grafana/provisioning:/etc/grafana/provisioning:ro
+      - ../../applications/observability/grafana/dashboards:/var/lib/grafana/dashboards:ro
+      - fidscript_grafana_data:/var/lib/grafana
+    secrets:
+      - observability_grafana_password
+    networks:
+      - fidscript-deployment
+    # Grafana is the stack's console: grafana.{domain}.
+    labels:
+      - traefik.enable=true
+      - traefik.docker.network=fidscript-deployment
+      - traefik.http.routers.fidscript-observability-grafana.rule=Host(`grafana.${DOMAIN}`)
+      - traefik.http.routers.fidscript-observability-grafana.entrypoints=websecure
+      - traefik.http.routers.fidscript-observability-grafana.tls=true
+      - traefik.http.routers.fidscript-observability-grafana.tls.certresolver=letsencrypt-dns
+      - traefik.http.services.fidscript-observability-grafana.loadbalancer.server.port=3000
+    depends_on:
+      - prometheus
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://127.0.0.1:3000/api/health >/dev/null || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+    logging:
+      driver: json-file
+      options:
+        max-size: '10m'
+        max-file: '3'
+
+volumes:
+  fidscript_prometheus_data:
+    name: fidscript_prometheus_data
+  fidscript_grafana_data:
+    name: fidscript_grafana_data
+  fidscript_loki_data:
+    name: fidscript_loki_data
+
+secrets:
+  observability_grafana_password:
+    file: ./secrets/observability_grafana_password.txt

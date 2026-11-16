@@ -21,8 +21,15 @@
  * before they commit to deploying.
  */
 import { Injectable, Logger } from '@nestjs/common';
-import { existsSync, readFileSync, readdirSync, writeFileSync } from 'fs';
-import { join } from 'path';
+import {
+  existsSync,
+  mkdirSync,
+  readFileSync,
+  readdirSync,
+  rmSync,
+  writeFileSync,
+} from 'fs';
+import { dirname, join } from 'path';
 import {
   BuildProvider,
   BuildContext,
@@ -85,6 +92,19 @@ interface FrameworkInfo {
   monorepo?: string;
   /** Version extracted from package.json deps (e.g. "15.2.0") */
   version?: string;
+}
+
+/**
+ * What the generated Dockerfile knows about the build context — the files
+ * the provider itself put there, so the right stages copy them in (the
+ * .npmrc the install resolves through) and drop them again (the same file,
+ * once the build no longer needs it).
+ */
+interface DockerfileContext {
+  /** A .npmrc is in the build context — either the provider's or the repository's. */
+  npmrcInContext?: boolean;
+  /** The provider generated the .npmrc (it holds a token) — it must not ship in the image. */
+  npmrcWritten?: boolean;
 }
 
 // Map framework IDs to human-readable labels + package names for version lookup
@@ -293,18 +313,24 @@ export class NodeBuildpackProvider implements BuildProvider {
         );
       }
 
-      // Write .env file if env vars are present — passed as a build secret
-      // so values aren't exposed in build args/logs, and also COPY'd into
-      // the runtime stage for apps that read .env at startup.
-      if (envVars.length > 0) {
-        const envPath = join(ws, '.fidscript.env');
+      // Write .env file if env vars are present — outside the build context:
+      // a `COPY . .` stage must not be able to ship the project's variables
+      // into the image. It reaches docker build as the envfile secret; at
+      // runtime the container gets its variables from its own environment
+      // (docker run -e), so no stage needs the file.
+      const envFileWritten = envVars.length > 0;
+      let envFile = '';
+      if (envFileWritten) {
+        const envDir = `${ws}-env`;
+        mkdirSync(envDir, { recursive: true, mode: 0o700 });
+        envFile = join(envDir, '.fidscript.env');
         writeFileSync(
-          envPath,
+          envFile,
           envVars.map((e) => `${e.key}=${e.value}`).join('\n'),
           { mode: 0o600 },
         );
         addLog(
-          `[NodeBuildpackProvider] Wrote ${envVars.length} env vars to .fidscript.env`,
+          `[NodeBuildpackProvider] Wrote ${envVars.length} env vars to the build secret`,
         );
       }
 
@@ -314,6 +340,7 @@ export class NodeBuildpackProvider implements BuildProvider {
       // application that depends on a platform-private package installs
       // exactly like it does on the machine of whoever published it. Without
       // a token nothing is written — a public application builds as before.
+      let npmrcWritten = false;
       const npmToken = envVars.find((e) => e.key === 'NPM_TOKEN')?.value;
       if (npmToken) {
         const registryUrl = (
@@ -331,12 +358,21 @@ export class NodeBuildpackProvider implements BuildProvider {
           ].join('\n'),
           { mode: 0o600 },
         );
+        npmrcWritten = true;
         addLog(
           `[NodeBuildpackProvider] Wrote .npmrc — the install resolves through ${registryHost}`,
         );
       }
 
-      const dockerfile = this.generateDockerfile(plan, context.buildTarget);
+      // What reaches the install stage is what the generated Dockerfile
+      // copies in. A repository that commits its own token-less .npmrc
+      // (a scope the registry serves anonymously) installs from it; a
+      // deployment that carries NPM_TOKEN gets the one written above.
+      const npmrcInContext = npmrcWritten || existsSync(join(ws, '.npmrc'));
+      const dockerfile = this.generateDockerfile(plan, context.buildTarget, {
+        npmrcInContext,
+        npmrcWritten,
+      });
       const dfPath = join(ws, 'Dockerfile');
       writeFileSync(dfPath, dockerfile, { mode: 0o644 });
       addLog(
@@ -350,22 +386,26 @@ export class NodeBuildpackProvider implements BuildProvider {
       const buildArgs = detected.monorepo
         ? ` --build-arg BUILD_TARGET=${context.buildTarget || 'web'}`
         : '';
-      const envSecret =
-        envVars.length > 0
-          ? ` --secret id=envfile,src="${join(ws, '.fidscript.env')}"`
-          : '';
+      const envSecret = envFile
+        ? ` --secret id=envfile,src="${envFile}"`
+        : '';
       addLog(
         `[NodeBuildpackProvider] docker build${buildArgs} -t "${imageTag}" -f "${dfPath}" "${ws}"`,
       );
 
-      // Asynchronous and streaming: a build can run for ten minutes, and
-      // blocking the api for that long stops every other request — including
-      // the one watching this build.
-      await this.shell.runStreaming(
-        `docker build${buildArgs}${envSecret} -t "${imageTag}" -f "${dfPath}" "${ws}"`,
-        addLog,
-        { timeout: 600_000 },
-      );
+      try {
+        // Asynchronous and streaming: a build can run for ten minutes, and
+        // blocking the api for that long stops every other request —
+        // including the one watching this build.
+        await this.shell.runStreaming(
+          `docker build${buildArgs}${envSecret} -t "${imageTag}" -f "${dfPath}" "${ws}"`,
+          addLog,
+          { timeout: 600_000 },
+        );
+      } finally {
+        // The secret leaves the machine either way the build went.
+        if (envFile) rmSync(dirname(envFile), { recursive: true, force: true });
+      }
 
       return {
         imageTag,
@@ -759,36 +799,62 @@ export class NodeBuildpackProvider implements BuildProvider {
   private generateDockerfile(
     info: FrameworkInfo,
     buildTarget?: string,
+    ctx?: DockerfileContext,
   ): string {
     switch (info.framework) {
       case 'next':
-        return this.dockerfileNext(info, buildTarget);
+        return this.dockerfileNext(info, buildTarget, ctx);
       case 'nuxt':
-        return this.dockerfileNuxt(info);
+        return this.dockerfileNuxt(info, ctx);
       case 'astro':
-        return this.dockerfileStaticLike(info);
+        return this.dockerfileStaticLike(info, ctx);
       case 'sveltekit':
-        return this.dockerfileSvelteKit(info);
+        return this.dockerfileSvelteKit(info, ctx);
       case 'vite':
-        return this.dockerfileVite(info);
+        return this.dockerfileVite(info, ctx);
       case 'static':
-        return this.dockerfileStatic();
+        return this.dockerfileStatic(ctx);
       case 'django':
       case 'flask':
       case 'fastapi':
       case 'python':
-        return this.dockerfilePython(info);
+        return this.dockerfilePython(info, ctx);
       case 'node':
       default:
-        return this.dockerfileNode(info);
+        return this.dockerfileNode(info, ctx);
     }
+  }
+
+  /**
+   * The .npmrc into the install stage, when one is in the build context.
+   * A stage that copies only the manifests would otherwise install through
+   * the default registry, and a private scoped package 404s there — the
+   * token in the .npmrc matters exactly in that case.
+   */
+  private npmrcCopy(ctx?: DockerfileContext): string {
+    return ctx?.npmrcInContext ? 'COPY .npmrc ./\n' : '';
+  }
+
+  /**
+   * The build-only files a stage that carries the whole context must drop
+   * before the image takes its final shape: the .npmrc the provider
+   * generated (it holds the registry token). The environment file is
+   * never in the context, and a repository's own committed .npmrc is not
+   * a secret — only the one the provider wrote is.
+   */
+  private scrubBuildFiles(ctx?: DockerfileContext): string {
+    return ctx?.npmrcWritten ? 'RUN rm -f .npmrc\n' : '';
   }
 
   // ── Next.js ──
 
-  private dockerfileNext(info: FrameworkInfo, buildTarget?: string): string {
+  private dockerfileNext(
+    info: FrameworkInfo,
+    buildTarget?: string,
+    ctx?: DockerfileContext,
+  ): string {
     if (info.monorepo === 'turbo' || info.monorepo === 'pnpm') {
-      return this.dockerfileNextMonorepo(info, buildTarget);
+      return this.dockerfileNextMonorepo(info, buildTarget, ctx);
     }
     const installCmd = `npm ci || npm install --legacy-peer-deps`;
     return `
@@ -796,6 +862,7 @@ export class NodeBuildpackProvider implements BuildProvider {
 FROM node:20-alpine AS deps
 WORKDIR /app
 COPY package.json package-lock.json* ./
+${this.npmrcCopy(ctx)}
 RUN ${installCmd}
 
 # ─── Stage 2: Build ──────────────────────────────────────────────────────
@@ -827,6 +894,7 @@ CMD ["sh", "-c", "${info.startCommand}"]
   private dockerfileNextMonorepo(
     info: FrameworkInfo,
     buildTarget?: string,
+    ctx?: DockerfileContext,
   ): string {
     const isPnpm = info.monorepo === 'pnpm';
     const target = buildTarget || 'web';
@@ -839,14 +907,20 @@ CMD ["sh", "-c", "${info.startCommand}"]
     const buildCmd = isPnpm
       ? `pnpm run build`
       : `${info.buildCommand || 'npm run build'}`;
+    // The pnpm build copies the context whole (workspaces need it), so the
+    // .npmrc rides along; the npm build copies only the root manifests,
+    // which get the .npmrc on its own line.
     const depsCopy = isPnpm
       ? 'COPY . .'
       : 'COPY package.json package-lock.json* ./';
+    const depsNpmrc = isPnpm ? '' : this.npmrcCopy(ctx);
+    const scrub = this.scrubBuildFiles(ctx);
     return `
 # ─── Stage 1: Install monorepo deps ─────────────────────────────────────
 FROM node:20-alpine AS deps
 WORKDIR /app
 ${depsCopy}
+${depsNpmrc}
 RUN ${installCmd}
 
 # ─── Stage 2: Build ──────────────────────────────────────────────────────
@@ -857,6 +931,7 @@ COPY . .
 RUN ${activatePnpm} && \\
     npx next telemetry disable 2>/dev/null || true && \\
     ${buildCmd}
+${scrub}
 
 # ─── Stage 3: Runtime ────────────────────────────────────────────────────
 FROM node:20-alpine AS runner
@@ -875,13 +950,14 @@ CMD ["sh", "-c", "${info.startCommand}"]
 
   // ── Nuxt ──
 
-  private dockerfileNuxt(info: FrameworkInfo): string {
+  private dockerfileNuxt(info: FrameworkInfo, ctx?: DockerfileContext): string {
     const installCmd = `npm ci || npm install --legacy-peer-deps`;
     return `
 # ─── Stage 1: Dependencies ───────────────────────────────────────────────
 FROM node:20-alpine AS deps
 WORKDIR /app
 COPY package.json package-lock.json* ./
+${this.npmrcCopy(ctx)}
 RUN ${installCmd}
 
 # ─── Stage 2: Build ──────────────────────────────────────────────────────
@@ -909,13 +985,17 @@ CMD ["sh", "-c", "${info.startCommand}"]
 
   // ── Astro (static output → served by `serve`) ──
 
-  private dockerfileStaticLike(info: FrameworkInfo): string {
+  private dockerfileStaticLike(
+    info: FrameworkInfo,
+    ctx?: DockerfileContext,
+  ): string {
     const installCmd = `npm ci || npm install --legacy-peer-deps`;
     return `
 # ─── Stage 1: Dependencies ───────────────────────────────────────────────
 FROM node:20-alpine AS deps
 WORKDIR /app
 COPY package.json package-lock.json* ./
+${this.npmrcCopy(ctx)}
 RUN ${installCmd}
 
 # ─── Stage 2: Build ──────────────────────────────────────────────────────
@@ -943,13 +1023,17 @@ CMD ["sh", "-c", "npx serve -s . -l ${info.port}"]
 
   // ── SvelteKit (adapter-node → node server) ──
 
-  private dockerfileSvelteKit(info: FrameworkInfo): string {
+  private dockerfileSvelteKit(
+    info: FrameworkInfo,
+    ctx?: DockerfileContext,
+  ): string {
     const installCmd = `npm ci || npm install --legacy-peer-deps`;
     return `
 # ─── Stage 1: Dependencies ───────────────────────────────────────────────
 FROM node:20-alpine AS deps
 WORKDIR /app
 COPY package.json package-lock.json* ./
+${this.npmrcCopy(ctx)}
 RUN ${installCmd}
 
 # ─── Stage 2: Build ──────────────────────────────────────────────────────
@@ -978,13 +1062,14 @@ CMD ["sh", "-c", "node ${info.outputDir}/index.js"]
 
   // ── Vite ──
 
-  private dockerfileVite(info: FrameworkInfo): string {
+  private dockerfileVite(info: FrameworkInfo, ctx?: DockerfileContext): string {
     const installCmd = `npm ci || npm install --legacy-peer-deps`;
     return `
 # ─── Stage 1: Dependencies ───────────────────────────────────────────────
 FROM node:20-alpine AS deps
 WORKDIR /app
 COPY package.json package-lock.json* ./
+${this.npmrcCopy(ctx)}
 RUN ${installCmd}
 
 # ─── Stage 2: Build ──────────────────────────────────────────────────────
@@ -1012,7 +1097,7 @@ CMD ["sh", "-c", "npx serve -s . -l ${info.port}"]
 
   // ── Node.js custom ──
 
-  private dockerfileNode(info: FrameworkInfo): string {
+  private dockerfileNode(info: FrameworkInfo, ctx?: DockerfileContext): string {
     const installCmd = `npm ci || npm install --legacy-peer-deps`;
     const buildStep = info.buildCommand ? `RUN ${info.buildCommand}` : '';
     return `
@@ -1020,8 +1105,10 @@ FROM node:20-alpine
 WORKDIR /app
 ENV NODE_ENV=production
 COPY package.json package-lock.json* ./
+${this.npmrcCopy(ctx)}
 RUN ${installCmd}
 COPY . .
+${this.scrubBuildFiles(ctx)}
 ${buildStep}
 EXPOSE ${info.port}
 HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \\
@@ -1038,7 +1125,7 @@ CMD ["sh", "-c", "${info.startCommand}"]
    * image, dependencies, the process bound to the port the platform
    * health-checks.
    */
-  private dockerfilePython(info: FrameworkInfo): string {
+  private dockerfilePython(info: FrameworkInfo, ctx?: DockerfileContext): string {
     return `
 FROM python:3.12-slim
 WORKDIR /app
@@ -1046,6 +1133,7 @@ ENV PYTHONUNBUFFERED=1 PYTHONDONTWRITEBYTECODE=1 PORT=${info.port}
 COPY requirements.txt* pyproject.toml* Pipfile* ./
 RUN ${info.installCommand ?? 'pip install --no-cache-dir -r requirements.txt'}
 COPY . .
+${this.scrubBuildFiles(ctx)}
 EXPOSE ${info.port}
 HEALTHCHECK --interval=30s --timeout=5s --start-period=15s --retries=3 \
   CMD python -c "import urllib.request; urllib.request.urlopen('http://localhost:${'${PORT:-8000}'}')" || exit 1
@@ -1062,13 +1150,14 @@ CMD ["sh", "-c", "${info.startCommand}"]
 
   // ── Static HTML ──
 
-  private dockerfileStatic(): string {
+  private dockerfileStatic(ctx?: DockerfileContext): string {
     return `
 FROM node:20-alpine
 WORKDIR /app
 ENV NODE_ENV=production
 RUN npm install -g serve
 COPY . .
+${this.scrubBuildFiles(ctx)}
 EXPOSE 8080
 HEALTHCHECK --interval=30s --timeout=5s --start-period=5s --retries=3 \\
   CMD wget -qO- http://localhost:8080/ || exit 1

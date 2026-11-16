@@ -36,3 +36,7 @@ installer/addons/*/*.env
 # Stalwart config — committed, not generated. Stalwart v0.16 reads a
 # bootstrap config.json containing only the data-store location; every
 # other setting is managed through the JMAP management API.
+
+# The console's own build output.
+apps/console/.next/
+apps/console/out/
