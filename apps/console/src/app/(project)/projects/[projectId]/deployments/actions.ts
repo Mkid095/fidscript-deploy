@@ -139,6 +139,30 @@ export async function setAutoDeployAction(
   }
 }
 
+/**
+ * Register the GitHub webhook again.
+ *
+ * For when GitHub lost it — the owner cleaned up hooks, the repo moved,
+ * the token was replaced. The platform re-registers it with the owner's
+ * own connection; the old registration goes with it.
+ */
+export async function reconnectWebhookAction(
+  projectId: string,
+): Promise<{ ok?: boolean; error?: string }> {
+  try {
+    await api.post(`/projects/${projectId}/git-integration/webhook/reconnect`);
+    revalidatePath(`/projects/${projectId}/deployments`);
+    return { ok: true };
+  } catch (err) {
+    return {
+      error:
+        err instanceof Error
+          ? err.message
+          : 'The webhook could not be re-registered.',
+    };
+  }
+}
+
 async function act(
   projectId: string,
   deploymentId: string,

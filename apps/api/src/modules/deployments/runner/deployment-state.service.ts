@@ -389,45 +389,79 @@ export class DeploymentStateService implements OnModuleInit {
           },
         );
 
-        // The project has ONE production target: the names that pointed at
-        // the previous deployment follow the new one — that is what "the
-        // deployment replaced the live one" means to a person's domain.
-        await this.prisma.domain.updateMany({
-          where: { projectId, deploymentId: { not: deploymentId } },
-          data: { deploymentId },
-        });
-
-        // Publish the deployment's custom domains to Traefik — and ONLY
-        // after the names followed the new deployment: a sync before the
-        // re-link writes the previous deployment's router, and that
-        // container is torn down a moment later, so the domain serves a
-        // 502 until the next sync, which never comes on its own. The
-        // default hostname is published by Traefik's Docker provider from
-        // the container labels; this covers the rest.
-        await this.routes.sync();
-
-        // And ask for their verification now: the routes exist, the
-        // container is healthy — the certificate pre-warm and the HTTPS
-        // check should run this minute, not on the next schedule tick.
-        const attachedDomains = await this.prisma.domain.findMany({
-          where: { projectId, deploymentId },
+        // A build that finishes BEHIND a newer success must not move
+        // production backwards: the version is recorded as SUCCESS (it
+        // did succeed), but the names, the active pointer and the
+        // deployed-commit reference stay on the newer one.
+        const superseded = !!(await this.prisma.deployment.findFirst({
+          where: {
+            projectId,
+            id: { not: deploymentId },
+            status: 'SUCCESS',
+            createdAt: { gt: deployment.createdAt },
+          },
           select: { id: true },
-        });
-        for (const domain of attachedDomains) {
-          try {
-            await this.domainVerification.enqueue(domain.id, 'recovery');
-          } catch {
-            /* the queue is best-effort — the schedule still runs */
+        }));
+
+        if (superseded) {
+          this.logger.log(
+            `[runner] ${deploymentId} succeeded behind a newer success — production stays where it is`,
+          );
+        } else {
+          // The project has ONE production target: the names that pointed
+          // at the previous deployment follow the new one — that is what
+          // "the deployment replaced the live one" means to a person's
+          // domain.
+          await this.prisma.domain.updateMany({
+            where: { projectId, deploymentId: { not: deploymentId } },
+            data: { deploymentId },
+          });
+
+          // Publish the deployment's custom domains to Traefik — and ONLY
+          // after the names followed the new deployment: a sync before the
+          // re-link writes the previous deployment's router, and that
+          // container is torn down a moment later, so the domain serves a
+          // 502 until the next sync, which never comes on its own. The
+          // default hostname is published by Traefik's Docker provider
+          // from the container labels; this covers the rest.
+          await this.routes.sync();
+
+          // The commit production now runs — the push gate's dedup key.
+          if (deployment.release?.commitSha) {
+            await this.prisma.project.update({
+              where: { id: projectId },
+              data: { lastDeployedCommit: deployment.release.commitSha },
+            });
+          }
+
+          // And ask for their verification now: the routes exist, the
+          // container is healthy — the certificate pre-warm and the HTTPS
+          // check should run this minute, not on the next schedule tick.
+          const attachedDomains = await this.prisma.domain.findMany({
+            where: { projectId, deploymentId },
+            select: { id: true },
+          });
+          for (const domain of attachedDomains) {
+            try {
+              await this.domainVerification.enqueue(domain.id, 'recovery');
+            } catch {
+              /* the queue is best-effort — the schedule still runs */
+            }
           }
         }
 
-        // Clean up the previous deployment's container + image to prevent disk bloat.
-        // We keep the container name convention from docker-run.service.ts: fidscript-{slug}-{deploymentId}
-        await this.cleanupPreviousDeployment(
-          projectId,
-          deploymentId,
-          deployment.project.slug,
-        );
+        // Clean up the previous deployment's container + image to prevent
+        // disk bloat — and only when THIS deployment owns production: a
+        // superseded success must not tear down the newer container that
+        // replaced it. We keep the container name convention from
+        // docker-run.service.ts: fidscript-{slug}-{deploymentId}
+        if (!superseded) {
+          await this.cleanupPreviousDeployment(
+            projectId,
+            deploymentId,
+            deployment.project.slug,
+          );
+        }
       } else {
         await this.markFailed(
           deploymentId,

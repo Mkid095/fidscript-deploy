@@ -1,6 +1,7 @@
 import { Module, forwardRef } from '@nestjs/common';
 import { DeploymentsController } from './deployments.controller';
 import { GithubWebhookController } from './controllers/github-webhook.controller';
+import { GitIntegrationController } from './controllers/git-integration.controller';
 import { DeploymentsService } from './deployments.service';
 import { DeploymentCrudService } from './services/deployment-crud.service';
 import { DeploymentRoutesService } from './services/deployment-routes.service';
@@ -8,6 +9,8 @@ import { DeploymentDetectService } from './services/deployment-detect.service';
 import { DeploymentDetectController } from './controllers/deployment-detect.controller';
 import { ProjectEnvVarsService } from './services/project-env-vars.service';
 import { GithubWebhookService } from './services/github-webhook.service';
+import { GitIntegrationService } from './services/git-integration.service';
+import { DeploymentIdentityService } from './services/deployment-identity.service';
 import { BuildRunnerService } from './runner/build-runner.service';
 import { DockerRunService } from './runner/docker-run.service';
 import { DeploymentWorkerService } from './runner/deployment-worker.service';
@@ -48,6 +51,7 @@ import { DomainsModule } from '@/modules/domains/domains.module';
   controllers: [
     DeploymentsController,
     GithubWebhookController,
+    GitIntegrationController,
     DeploymentDetectController,
   ],
   providers: [
@@ -57,6 +61,8 @@ import { DomainsModule } from '@/modules/domains/domains.module';
     ProjectEnvVarsService,
     DeploymentDetectService,
     GithubWebhookService,
+    GitIntegrationService,
+    DeploymentIdentityService,
     BuildRunnerService,
     DockerRunService,
     DeploymentWorkerService,

@@ -3,6 +3,8 @@ import { PrismaService } from '@/prisma/prisma.service';
 import { EventService } from '@/modules/events/event.service';
 import { BuildRunnerService } from './build-runner.service';
 import { CryptoService } from '@/modules/crypto/crypto.service';
+import { DeploymentIdentityService } from '../services/deployment-identity.service';
+import { DeploymentRoutesService } from '../services/deployment-routes.service';
 import { getProfile } from '../types/deployment-profile';
 
 @Injectable()
@@ -14,6 +16,8 @@ export class DeploymentRollbackService {
     private eventService: EventService,
     private buildRunner: BuildRunnerService,
     private cryptoService: CryptoService,
+    private identity: DeploymentIdentityService,
+    private routes: DeploymentRoutesService,
   ) {}
 
   /**
@@ -97,6 +101,35 @@ export class DeploymentRollbackService {
       where: { id: rollbackDeployment.id },
       data: { status: deployResult.success ? 'SUCCESS' : 'FAILED', deploymentUrl: deployResult.deploymentUrl, completedAt: new Date() },
     });
+
+    // The rollback is a deliberate version change: when it succeeded, the
+    // names follow it, the way a successful deployment's names do. A
+    // FAILED rollback leaves production exactly where it was.
+    if (deployResult.success) {
+      // The rollback's version lives under the project's one identity —
+      // the same row every push and deploy attached to. No second
+      // identity, nothing new to initialize.
+      await this.identity.establish(target.projectId, rollbackRelease.id);
+
+      // The names that pointed at the deployment we rolled back from now
+      // answer for the rolled-back version.
+      await this.prisma.domain.updateMany({
+        where: { projectId: target.projectId, deploymentId: { not: rollbackDeployment.id } },
+        data: { deploymentId: rollbackDeployment.id },
+      });
+      await this.routes.sync();
+
+      // The commit production runs again — the push gate's dedup key. A
+      // push of the rolled-back commit is recognized as a duplicate, not
+      // rebuilt.
+      if (previous.release.commitSha) {
+        await this.prisma.project.update({
+          where: { id: target.projectId },
+          data: { lastDeployedCommit: previous.release.commitSha },
+        });
+      }
+    }
+
     await this.prisma.deployment.update({ where: { id: targetDeploymentId }, data: { status: 'ROLLED_BACK' } });
 
     await this.emit(rollbackDeployment.id, target.projectId, userId, 'deployments.deployment.succeeded', { deploymentUrl: deployResult.deploymentUrl, rolledBackToId: targetDeploymentId });

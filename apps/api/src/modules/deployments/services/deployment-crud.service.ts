@@ -19,6 +19,7 @@ import { UserGithubService } from '@/modules/app-auth/services/user-github.servi
 import { DeploymentRoutesService } from '@/modules/deployments/services/deployment-routes.service';
 import { ProjectEnvVarsService } from '@/modules/deployments/services/project-env-vars.service';
 import { ProjectAccessService } from '@/modules/projects/services/project-access.service';
+import { DeploymentIdentityService } from './deployment-identity.service';
 import { reservedHostReason } from '@/modules/domains/services/reserved-hosts';
 import { join } from 'path';
 
@@ -37,6 +38,7 @@ export class DeploymentCrudService {
     private routes: DeploymentRoutesService,
     private envVars: ProjectEnvVarsService,
     private access: ProjectAccessService,
+    private identity: DeploymentIdentityService,
   ) {}
 
   // ─── Framework detection (pre-deploy) ──────────────────────────────────────
@@ -166,6 +168,13 @@ export class DeploymentCrudService {
     const deployment = await this.prisma.deployment.create({
       data: { projectId, releaseId: release.id, status: 'PENDING' },
     });
+
+    // The project's ONE deployment identity: this release builds under it.
+    // The first call establishes it; every later call — a redeploy, a
+    // push-triggered version, a rollback's new build — attaches to the
+    // same one. The database allows no second, and a race between two
+    // first-time calls settles on the one that committed first.
+    await this.identity.establish(projectId, release.id);
 
     // Point the deployment at its hostname.
     //

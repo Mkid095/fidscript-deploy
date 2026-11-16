@@ -66,7 +66,13 @@ export class GithubWebhookController {
     // Load the full project (need webhookSecret for verification)
     const fullProject = await this.prisma.project.findUnique({
       where: { id: project.id },
-      select: { id: true, webhookSecret: true, sourceBranch: true, autoDeploy: true },
+      select: {
+        id: true,
+        webhookSecret: true,
+        sourceBranch: true,
+        autoDeploy: true,
+        lastDeployedCommit: true,
+      },
     });
     if (!fullProject) return { status: 'error' };
 
@@ -77,16 +83,39 @@ export class GithubWebhookController {
       return { status: 'invalid_signature' };
     }
 
+    // Every delivery is tracked by its id: GitHub retries a delivery it did
+    // not see answered with the SAME id, so the id is the dedup key, and the
+    // row is the record that says what we did with it.
+    const deliveryId =
+      (req.headers['x-github-delivery'] as string) ||
+      `local-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+
     // Check if the pushed branch matches the project's deploy branch
     if (payload.branch !== fullProject.sourceBranch) {
       this.logger.log(`Push to ${payload.branch} but project deploys ${fullProject.sourceBranch} — ignoring`);
+      await this.webhookService.recordOutcome(fullProject.id, payload.commitSha, deliveryId, 'branch_mismatch');
       return { status: 'branch_mismatch' };
     }
 
     // Check autoDeploy is enabled
     if (!fullProject.autoDeploy) {
       this.logger.log(`Auto-deploy disabled for project ${project.id} — ignoring`);
+      await this.webhookService.recordOutcome(fullProject.id, payload.commitSha, deliveryId, 'auto_deploy_off');
       return { status: 'auto_deploy_disabled' };
+    }
+
+    // The gate: a resended delivery, the already-live commit, or a commit
+    // that a newer build superseded is recorded and dropped — it does not
+    // take the queue.
+    const gate = await this.webhookService.evaluatePush(
+      fullProject,
+      payload,
+      deliveryId,
+      new Date(),
+    );
+    if (gate.outcome !== 'accepted') {
+      this.logger.log(`Push of ${payload.commitSha.slice(0, 7)} dropped: ${gate.outcome}`);
+      return { status: gate.outcome };
     }
 
     // Trigger a new deployment (async — return 200 immediately)

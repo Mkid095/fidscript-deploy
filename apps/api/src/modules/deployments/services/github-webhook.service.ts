@@ -140,7 +140,7 @@ export class GithubWebhookService {
    * Find a project by its source repo URL. Matches either the full GitHub URL
    * or the owner/repo shorthand.
    */
-  async findProjectByRepo(repoFullName: string): Promise<{ id: string; sourceBranch: string; autoDeploy: boolean } | null> {
+  async findProjectByRepo(repoFullName: string): Promise<{ id: string; sourceBranch: string; autoDeploy: boolean; lastDeployedCommit: string | null } | null> {
     const urlVariants = [
       `https://github.com/${repoFullName}`,
       `https://github.com/${repoFullName}.git`,
@@ -154,8 +154,100 @@ export class GithubWebhookService {
         ],
         deletedAt: null,
       },
-      select: { id: true, sourceBranch: true, autoDeploy: true },
+      select: {
+        id: true,
+        sourceBranch: true,
+        autoDeploy: true,
+        lastDeployedCommit: true,
+      },
     });
     return project ?? null;
+  }
+
+  /**
+   * Record a delivery the gate turned away (wrong branch, auto-deploy
+   * off) — the same delivery row an accepted one gets, so a resend is
+   * still recognized even when the first one was ignored.
+   */
+  async recordOutcome(
+    projectId: string,
+    commitSha: string,
+    deliveryId: string,
+    outcome: string,
+  ): Promise<void> {
+    await this.prisma.webhookDelivery
+      .create({
+        data: { deliveryId, projectId, commitSha, outcome },
+      })
+      .catch(() => {
+        /* a resended delivery already has its row — the resend is dropped,
+           which is exactly what the dedup is for */
+      });
+  }
+
+  /**
+   * The push gate — what a push event may do, decided before any work is
+   * enqueued. Every outcome is recorded on a WebhookDelivery row, so a
+   * delivery GitHub resends is recognized, and a duplicate or an older
+   * commit is dropped instead of building.
+   *
+   *   duplicate_delivery — GitHub retried a delivery we already answered
+   *   duplicate_commit   — the pushed commit is the one production runs
+   *   superseded         — a newer commit is already in flight or live;
+   *                        this older build must not replace it
+   *   accepted           — enqueue the deployment
+   */
+  async evaluatePush(
+    project: { id: string; lastDeployedCommit: string | null },
+    payload: Pick<PushEventPayload, 'commitSha'>,
+    deliveryId: string,
+    receivedAt: Date,
+  ): Promise<{ outcome: string }> {
+    const seen = await this.prisma.webhookDelivery.findUnique({
+      where: { deliveryId },
+    });
+    if (seen) {
+      this.logger.log(
+        `Delivery ${deliveryId} already processed (${seen.outcome}) — skipping the resend`,
+      );
+      return { outcome: 'duplicate_delivery' };
+    }
+
+    let outcome = 'accepted';
+    if (project.lastDeployedCommit && project.lastDeployedCommit === payload.commitSha) {
+      // The pushed commit is what production already runs — a duplicate
+      // push, a retry, or a force-push back. Nothing to build.
+      outcome = 'duplicate_commit';
+    } else {
+      // A commit received AFTER this one is already in flight (or
+      // succeeded while we waited): pushing it would take production
+      // backwards. The newer build owns the name.
+      const newerInFlight = await this.prisma.deployment.findFirst({
+        where: {
+          projectId: project.id,
+          createdAt: { gt: receivedAt },
+          status: { in: ['QUEUED', 'BUILDING', 'DEPLOYING', 'SUCCESS'] },
+          // A commit that is neither this one nor empty: releases without
+          // a commit (manual zips) don't count as newer versions.
+          release: {
+            NOT: {
+              OR: [{ commitSha: payload.commitSha }, { commitSha: '' }],
+            },
+          },
+        },
+        select: { id: true },
+      });
+      if (newerInFlight) outcome = 'superseded';
+    }
+
+    await this.prisma.webhookDelivery.create({
+      data: {
+        deliveryId,
+        projectId: project.id,
+        commitSha: payload.commitSha,
+        outcome,
+      },
+    });
+    return { outcome };
   }
 }

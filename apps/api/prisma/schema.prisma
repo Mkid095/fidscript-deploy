@@ -361,6 +361,10 @@ model Project {
   githubHookId       Int?          @map("github_hook_id")
   autoDeploy         Boolean       @default(true) @map("auto_deploy")
   lastDeployAt       DateTime?     @map("last_deploy_at") @db.Timestamptz
+  // The commit SHA the production branch last deployed successfully.
+  // Pushes of that commit are no-ops; a build that finishes behind a
+  // newer success is not promoted over it.
+  lastDeployedCommit String?       @map("last_deployed_commit") @db.VarChar(40)
   deletedAt          DateTime?     @map("deleted_at") @db.Timestamptz
   createdAt          DateTime      @default(now()) @map("created_at") @db.Timestamptz
   updatedAt          DateTime      @updatedAt @map("updated_at") @db.Timestamptz
@@ -373,6 +377,8 @@ model Project {
   deployments          Deployment[]
   buildConfig          BuildConfig?
   releases             Release[]
+  deploymentIdentity   DeploymentIdentity?
+  webhookDeliveries    WebhookDelivery[]
   domains              Domain[]
   appUsers             AppUser[]
   emailDomains         EmailDomain[]
@@ -712,13 +718,20 @@ model Release {
   // 4321), and Traefik has to route to the real one.
   runtimePort     Int?     @map("runtime_port")
   createdBy       String?  @map("created_by") // userId or "system"
+  // Every release belongs to the project's one deployment identity; null
+  // only on rows from before the identity existed (the migration links
+  // them all).
+  deploymentIdentityId String? @map("deployment_identity_id")
   createdAt       DateTime @default(now()) @map("created_at") @db.Timestamptz
 
-  project     Project      @relation(fields: [projectId], references: [id], onDelete: Cascade)
-  deployments Deployment[]
+  project          Project            @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  deploymentIdentity DeploymentIdentity? @relation(fields: [deploymentIdentityId], references: [id], onDelete: SetNull)
+  initialFor       DeploymentIdentity? @relation("InitialRelease")
+  deployments      Deployment[]
 
   @@unique([projectId, version])
   @@index([projectId, createdAt])
+  @@index([deploymentIdentityId])
   @@map("releases")
   @@schema("projects")
 }
@@ -757,6 +770,57 @@ enum DeploymentStatus {
   ROLLED_BACK
 
   @@schema("public")
+}
+
+/// The project's ONE deployment identity.
+///
+/// Vercel's model: a project is not a pile of deployments, it is one
+/// application that has a deployment history. The identity is established
+/// by the first deployment and belongs to the project for life — later
+/// versions build, replace and roll back within it, and a second
+/// independent identity under the same project is impossible: the
+/// database refuses it (project_id is unique), and a race between two
+/// first-time initializations settles on the one that committed first.
+///
+/// `initialReleaseId` is the version that established the identity; it
+/// stays set even if that version later fails — the identity is the
+/// establishment, not the success, so a failed first attempt is retried
+/// as the next version instead of locking the project.
+model DeploymentIdentity {
+  id               String    @id @default(uuid())
+  projectId        String    @unique @map("project_id")
+  initialReleaseId String?   @unique @map("initial_release_id")
+  initializedAt    DateTime? @map("initialized_at") @db.Timestamptz
+  createdAt        DateTime  @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt        DateTime  @updatedAt @map("updated_at") @db.Timestamptz
+
+  project        Project     @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  releases       Release[]
+  initialRelease Release?    @relation("InitialRelease", fields: [initialReleaseId], references: [id], onDelete: SetNull)
+
+  @@map("deployment_identities")
+  @@schema("projects")
+}
+
+/// One GitHub webhook delivery the platform saw.
+///
+/// GitHub retries a delivery that is not answered quickly with the SAME
+/// delivery id, so the id is the dedup key: a delivery the platform has
+/// already accepted is never processed twice, no matter how many times
+/// GitHub resends it.
+model WebhookDelivery {
+  id          String   @id @default(uuid())
+  deliveryId  String   @unique @map("delivery_id") @db.VarChar(100)
+  projectId   String   @map("project_id")
+  commitSha   String   @map("commit_sha") @db.VarChar(40)
+  outcome     String   @default("accepted") @map("outcome") @db.VarChar(20) // accepted | duplicate_delivery | duplicate_commit | superseded | branch_mismatch | auto_deploy_off
+  processedAt DateTime @default(now()) @map("processed_at") @db.Timestamptz
+
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@index([projectId, commitSha])
+  @@map("webhook_deliveries")
+  @@schema("projects")
 }
 
 model BuildConfig {

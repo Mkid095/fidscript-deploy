@@ -167,3 +167,45 @@ export async function getProjectEvents(
   );
   return response;
 }
+
+/** The shape the API's Git integration status reports. */
+export interface GitIntegrationStatus {
+  /** A GitHub connection exists for the project's owner. */
+  connected: boolean;
+  account: string | null;
+  tokenHealthy: boolean;
+  tokenNote: string | null;
+  repository: string | null;
+  branch: string;
+  autoDeploy: boolean;
+  /**
+   * `registered` is true only when a hook id is stored on the project —
+   * the status is never assumed, and a failed registration reads as
+   * not registered.
+   */
+  webhook: { registered: boolean; hookId: number | null };
+  lastCommit: {
+    sha: string;
+    message: string;
+    at: string;
+  } | null;
+  lastSuccess: {
+    id: string;
+    deploymentUrl: string | null;
+    completedAt: string | null;
+  } | null;
+  /** The commit production runs — the push gate's dedup key. */
+  lastDeployedCommit: string | null;
+  /** The ONE-deployment-identity rule, in the UI's words. */
+  deploymentInitialized: boolean;
+}
+
+/** The project's Git integration: what is connected, what is live. */
+export async function getGitIntegration(
+  projectId: string,
+): Promise<GitIntegrationStatus | null> {
+  const response = await api.get<GitIntegrationStatus>(
+    `/projects/${projectId}/git-integration`,
+  );
+  return response;
+}
