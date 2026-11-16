@@ -63,4 +63,20 @@ describe("the deployment routes file", () => {
     expect(written).toContain('custom.example.com');
     expect(written).toContain('services:');
   });
+
+  it('routes a domain whose certificate has not landed yet — a degraded domain is not an unrouted one', async () => {
+    const { service } = makeService([
+      {
+        id: '91b1df51-b321-4afc-b5d6-60b7c04436ca',
+        deploymentUrl: 'https://app.example.com',
+        project: { slug: 'kennedy-test' },
+        release: { runtimePort: 3000 },
+        domains: [{ domain: 'custom.example.com', dnsMode: 'cloudflare_auto', sslStatus: 'FAILED' }],
+      },
+    ]);
+    await service.sync();
+    const written = await fs.readFile(path.join(dir, 'dynamic-deployments.yml'), 'utf8');
+    expect(written).toContain('custom.example.com');
+    expect(written).toContain('fidscript-kennedy-test-91b1df51');
+  });
 });

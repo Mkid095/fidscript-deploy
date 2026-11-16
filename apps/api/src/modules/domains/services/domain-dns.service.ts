@@ -142,6 +142,34 @@ export class DomainDnsService {
           domainId,
         });
 
+    // A subdomain the project publishes (shop.soostori.com, api.soostori.com)
+    // rides on the same zone: one CNAME to the deployment's host each,
+    // written the moment the apex is opened — so the name a person typed in
+    // the wizard answers without a second visit to the domain screen.
+    const root = await this.prisma.domain.findUnique({
+      where: { id: domainId },
+      select: { projectId: true },
+    });
+    const subdomains = root
+      ? await this.prisma.domain.findMany({
+          where: {
+            projectId: root.projectId,
+            apexDomain: false,
+            domain: { endsWith: `.${domain}` },
+          },
+          select: { id: true, domain: true },
+        })
+      : [];
+    for (const sub of subdomains) {
+      await this.writeRecord(provider, zoneId, {
+        zoneId, type: 'CNAME',
+        name: sub.domain,
+        content: targetHost,
+        ttl: 300, proxied: false,
+        domainId: sub.id,
+      });
+    }
+
     await this.prisma.domain.update({
       where: { id: domainId },
       data: { dnsStatus: 'OWNERSHIP_PENDING' },

@@ -6,6 +6,7 @@ import { getProject } from '@/lib/api/project';
 import { getDomains, getDeployments } from '@/lib/api/resources';
 import { Card } from '@/components/ui/card';
 import { DeploymentWizard } from '@/components/project/deployment-wizard';
+import { QuickRedeploy } from '@/components/project/deployment-quick-redeploy';
 
 export const metadata = { title: 'New deployment' };
 
@@ -44,11 +45,34 @@ export default async function NewDeploymentPage({
       : 'your live deployment'
     : null;
 
+  // The quick path: a project that has deployed before is not made to redo
+  // the wizard for the same source — the newest attempt is one press away.
+  const latest = deployments[0] ?? null;
+  const quick =
+    latest?.release?.sourceUrl
+      ? {
+          version: latest.release.version ?? 'the last deployment',
+          lastFailed: latest.status.toUpperCase() === 'FAILED',
+          gitUrl: latest.release.sourceUrl,
+          branch: latest.release.branch ?? 'main',
+        }
+      : null;
+
   return (
     <Page
       title="New deployment"
       description={`Deploying into ${project.name}.`}
     >
+      {quick ? (
+        <QuickRedeploy
+          projectId={project.id}
+          projectSlug={project.slug}
+          version={quick.version}
+          lastFailed={quick.lastFailed}
+          gitUrl={quick.gitUrl}
+          branch={quick.branch}
+        />
+      ) : null}
       <Card className="p-4">
         <DeploymentWizard
           projectId={project.id}

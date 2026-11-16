@@ -389,11 +389,6 @@ export class DeploymentStateService implements OnModuleInit {
           },
         );
 
-        // Publish the deployment's custom domains to Traefik. The default
-        // hostname is published by Traefik's Docker provider from the
-        // container labels; this covers the rest.
-        await this.routes.sync();
-
         // The project has ONE production target: the names that pointed at
         // the previous deployment follow the new one — that is what "the
         // deployment replaced the live one" means to a person's domain.
@@ -401,6 +396,15 @@ export class DeploymentStateService implements OnModuleInit {
           where: { projectId, deploymentId: { not: deploymentId } },
           data: { deploymentId },
         });
+
+        // Publish the deployment's custom domains to Traefik — and ONLY
+        // after the names followed the new deployment: a sync before the
+        // re-link writes the previous deployment's router, and that
+        // container is torn down a moment later, so the domain serves a
+        // 502 until the next sync, which never comes on its own. The
+        // default hostname is published by Traefik's Docker provider from
+        // the container labels; this covers the rest.
+        await this.routes.sync();
 
         // And ask for their verification now: the routes exist, the
         // container is healthy — the certificate pre-warm and the HTTPS

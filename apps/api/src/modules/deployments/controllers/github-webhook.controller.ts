@@ -110,6 +110,16 @@ export class GithubWebhookController {
     });
     if (!project) return;
 
+    // The hostname follows the deployment. A push that created the
+    // deployment without it would leave the name pointing at the previous
+    // container — which the success path tears down — and the domain
+    // would serve a 502 from that moment on.
+    const current = await this.prisma.domain.findFirst({
+      where: { projectId },
+      orderBy: [{ isPrimary: 'desc' }, { createdAt: 'desc' }],
+      select: { id: true, isCustom: true, domain: true },
+    });
+
     await this.crudService.create(project.ownerId, projectId, {
       source: {
         type: SourceType.GIT,
@@ -121,6 +131,11 @@ export class GithubWebhookController {
       branch: payload.branch,
       commitSha: payload.commitSha,
       commitMessage: payload.commitMessage.slice(0, 200),
+      ...(current?.isCustom
+        ? { domainId: current.id }
+        : current
+          ? { subdomain: current.domain.split('.')[0] }
+          : {}),
     } as any);
   }
 }

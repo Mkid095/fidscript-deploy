@@ -85,9 +85,12 @@ export class DeploymentRoutesService {
 
         // The default hostname is Traefik's Docker provider's job.
         const defaultHost = this.defaultHost(deployment.project.slug);
+        // A domain whose certificate has not landed yet still gets its
+        // router: an unrouted hostname answers the platform's default, and
+        // no later sync brings the router back on its own. The cert
+        // resolver keeps trying while the router is up.
         const custom = (deployment.domains ?? []).filter(
-          (d) =>
-            d.domain && d.domain !== defaultHost && d.sslStatus !== 'FAILED',
+          (d) => d.domain && d.domain !== defaultHost,
         );
         if (custom.length === 0) continue;
 
