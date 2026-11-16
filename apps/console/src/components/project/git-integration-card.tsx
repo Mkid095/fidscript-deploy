@@ -10,6 +10,7 @@ import { Switch } from '@/components/ui/switch';
 import type { GitIntegrationStatus } from '@/lib/api/resources';
 import {
   reconnectWebhookAction,
+  redeployAction,
   setAutoDeployAction,
 } from '@/app/(project)/projects/[projectId]/deployments/actions';
 
@@ -18,10 +19,13 @@ import {
  *
  * What is connected and what is live: the account, the repository and
  * branch, the last commit, what production runs, whether pushes deploy,
- * and whether the webhook that carries them is registered. The switch
- * and the re-registration are the two controls; the status is read, not
- * assumed — a webhook says registered only when the platform stores the
- * hook id GitHub gave it.
+ * and whether the webhook that carries them is registered. Every line is
+ * the platform's own answer, not a guess — a webhook says registered only
+ * when the platform stores the hook id GitHub gave it, and "not
+ * connected" points at the screen that connects it.
+ *
+ * The controls: the auto-deploy switch, the webhook (re-)registration,
+ * and the one-press deploy of the newest commit on the branch.
  */
 export function GitIntegrationCard({
   projectId,
@@ -60,6 +64,18 @@ export function GitIntegrationCard({
     });
   };
 
+  const deployNow = () => {
+    setError(null);
+    startTransition(async () => {
+      const result = await redeployAction(projectId, {
+        gitUrl: status.repository!,
+        branch: status.branch,
+      });
+      if (result.error) setError(result.error);
+      else window.location.reload();
+    });
+  };
+
   return (
     <Card className="mb-4 p-4">
       <div className="flex flex-wrap items-center justify-between gap-2">
@@ -91,7 +107,14 @@ export function GitIntegrationCard({
               </a>
             ) : (
               <span className="text-text-dim">
-                Not connected — connect GitHub to deploy by push.
+                Not connected —{' '}
+                <Link
+                  href="/settings/integrations"
+                  className="text-accent hover:underline"
+                >
+                  connect GitHub
+                </Link>{' '}
+                to deploy by push.
               </span>
             )}
           </dd>
@@ -109,9 +132,9 @@ export function GitIntegrationCard({
             {status.lastCommit ? (
               <>
                 <Link
-                  href={repoUrl
-                    ? `${repoUrl}/commit/${status.lastCommit.sha}`
-                    : '#'}
+                  href={
+                    repoUrl ? `${repoUrl}/commit/${status.lastCommit.sha}` : '#'
+                  }
                   target="_blank"
                   rel="noreferrer"
                   className="text-accent hover:underline"
@@ -149,7 +172,7 @@ export function GitIntegrationCard({
         </div>
       </dl>
 
-      <div className="mt-4 flex items-center justify-between gap-3 border-t border-rail-light pt-3">
+      <div className="mt-4 flex flex-wrap items-center justify-between gap-3 border-t border-rail-light pt-3">
         <Switch
           label="Deploy on push"
           description={`Every push to ${status.branch} builds and replaces the live deployment.`}
@@ -157,19 +180,36 @@ export function GitIntegrationCard({
           onChange={setAutoDeploy}
           disabled={pending || !repo}
         />
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           {status.repository ? (
-            <Button variant="ghost" size="sm" onClick={reconnect} disabled={pending}>
-              {status.webhook.registered
-                ? 'Re-register webhook'
-                : 'Register webhook'}
-            </Button>
+            <>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={deployNow}
+                disabled={pending}
+              >
+                {pending && error === null
+                  ? 'Queuing…'
+                  : 'Deploy newest'}
+              </Button>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={reconnect}
+                disabled={pending}
+              >
+                {status.webhook.registered
+                  ? 'Re-register webhook'
+                  : 'Register webhook'}
+              </Button>
+            </>
           ) : null}
           <Link
-            href={`/projects/${projectSlug}/deployments/new`}
+            href={`/projects/${projectSlug}/deployments`}
             className="text-xs text-accent hover:underline"
           >
-            Deploy now
+            The deployments
           </Link>
         </div>
       </div>

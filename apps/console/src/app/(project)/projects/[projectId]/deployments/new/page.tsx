@@ -1,4 +1,3 @@
-import Link from 'next/link';
 import { redirect } from 'next/navigation';
 
 import { Page } from '@/components/ui/page';
@@ -12,6 +11,7 @@ import {
 import { Card } from '@/components/ui/card';
 import { DeploymentWizard } from '@/components/project/deployment-wizard';
 import { QuickRedeploy } from '@/components/project/deployment-quick-redeploy';
+import { DeploymentAlreadyInitialized } from '@/components/project/deployment-already-initialized';
 
 export const metadata = { title: 'New deployment' };
 
@@ -20,11 +20,12 @@ export const metadata = { title: 'New deployment' };
  *
  * From a repository to a running application, in four steps.
  *
- * A project is initialized once: this screen is the initializer while the
- * project has no deployment yet, and the version screen afterwards. The
- * platform enforces the one-deployment rule itself — a second identity is
- * impossible — and the screen says so instead of letting the wizard
- * pretend a new deployment would make a new one.
+ * This route is the initializer. A project is initialized once — the
+ * platform enforces the one-deployment rule in the database — so a project
+ * that is already initialized (and has a Git source to build the next
+ * version from) is not shown the initializer: it reads what happened,
+ * and lands on the deployments screen, where the next version is one
+ * press away.
  */
 export default async function NewDeploymentPage({
   params,
@@ -46,9 +47,27 @@ export default async function NewDeploymentPage({
     getGitIntegration(project.id).catch(() => null),
   ]);
 
-  // Initialized when the project has a deployment identity — which the
-  // first deployment created and nothing since can replace.
   const initialized = git?.deploymentInitialized ?? deployments.length > 0;
+
+  // The latest attempt's source — what the next version builds from.
+  const latest = deployments[0] ?? null;
+  const latestSourceUrl =
+    latest?.release?.sourceUrl?.startsWith('http') ? latest.release.sourceUrl : null;
+
+  const backHref = `/projects/${project.slug}/deployments`;
+
+  // Already initialized, and a Git source to build the next version from:
+  // the initializer is not the screen this person is on.
+  if (initialized && latestSourceUrl) {
+    return (
+      <Page
+        title="Deploy new version"
+        description={`The next version of ${project.name}’s deployment.`}
+      >
+        <DeploymentAlreadyInitialized backHref={backHref} />
+      </Page>
+    );
+  }
 
   // What is up right now, if anything. A new deployment replaces it, so
   // the wizard says so and asks for the plain yes before it takes the
@@ -64,14 +83,13 @@ export default async function NewDeploymentPage({
 
   // The quick path: a project that has deployed before is not made to redo
   // the wizard for the same source — the newest attempt is one press away.
-  const latest = deployments[0] ?? null;
   const quick =
-    latest?.release?.sourceUrl
+    latestSourceUrl
       ? {
-          version: latest.release.version ?? 'the last deployment',
-          lastFailed: latest.status.toUpperCase() === 'FAILED',
-          gitUrl: latest.release.sourceUrl,
-          branch: latest.release.branch ?? 'main',
+          version: latest!.release!.version ?? 'the last deployment',
+          lastFailed: latest!.status.toUpperCase() === 'FAILED',
+          gitUrl: latestSourceUrl,
+          branch: latest!.release!.branch ?? 'main',
         }
       : null;
 
@@ -80,27 +98,10 @@ export default async function NewDeploymentPage({
       title={initialized ? 'Deploy new version' : 'Initialize deployment'}
       description={
         initialized
-          ? `The next version of ${project.name}’s deployment.`
+          ? `The next version of ${project.name}’s deployment — the source, the branch or the settings change.`
           : `The first deployment of ${project.name} — the one it will keep, with every push a new version of it.`
       }
     >
-      {initialized ? (
-        <Card className="mb-3 p-4">
-          <p className="text-sm text-text">
-            This project has already been initialized with a deployment. New
-            deployments will update the existing project deployment rather
-            than create a separate deployment.
-          </p>
-          <Link
-            href={`/projects/${project.slug}/deployments`}
-            className="mt-2 inline-block text-xs text-accent hover:underline"
-          >
-            Back to the deployments — the current one, the history, the
-            rollback
-          </Link>
-        </Card>
-      ) : null}
-
       {quick ? (
         <QuickRedeploy
           projectId={project.id}

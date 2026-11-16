@@ -10,6 +10,7 @@ import {
 } from '@/lib/api/resources';
 import { DeploymentHistory } from '@/components/project/deployment-history';
 import { GitIntegrationCard } from '@/components/project/git-integration-card';
+import { DeployNewVersionButton } from '@/components/project/deploy-new-version-button';
 import { Button } from '@/components/ui/button';
 
 export const metadata = { title: 'Deployments' };
@@ -24,7 +25,7 @@ export const metadata = { title: 'Deployments' };
  * A project is initialized once: the first deployment sets up its
  * deployment — the name it answers on, the production it runs, the
  * history it keeps. After that, every deployment on this screen is a
- * version of it. The button above says which one this is.
+ * version of it, and the button above says which one this is.
  */
 export default async function ProjectDeploymentsPage({
   params,
@@ -43,6 +44,35 @@ export default async function ProjectDeploymentsPage({
 
   const initialized = git?.deploymentInitialized ?? deployments.length > 0;
 
+  // The latest attempt's source — the next version builds from it.
+  const latest = deployments[0] ?? null;
+  const latestSourceUrl =
+    latest?.release?.sourceUrl?.startsWith('http') ? latest.release.sourceUrl : null;
+
+  let actions;
+  if (!initialized || !latestSourceUrl) {
+    // Uninitialized — or initialized with no Git source yet: the
+    // initializer is the screen that fits.
+    actions = (
+      <Link href={`/projects/${project.slug}/deployments/new`}>
+        <Button variant="primary" size="sm">
+          {initialized ? 'Deploy new version' : 'Initialize deployment'}
+        </Button>
+      </Link>
+    );
+  } else {
+    // Initialized with a Git source: the next version is one press.
+    actions = (
+      <DeployNewVersionButton
+        projectId={project.id}
+        version={latest!.release!.version ?? 'the last deployment'}
+        lastFailed={latest!.status.toUpperCase() === 'FAILED'}
+        gitUrl={latestSourceUrl}
+        branch={latest!.release!.branch ?? 'main'}
+      />
+    );
+  }
+
   return (
     <Page
       title="Deployments"
@@ -51,13 +81,7 @@ export default async function ProjectDeploymentsPage({
           ? 'Initialize the deployment to put the project live.'
           : `${deployments.length} so far.`
       }
-      actions={
-        <Link href={`/projects/${project.slug}/deployments/new`}>
-          <Button variant="primary" size="sm">
-            {initialized ? 'Deploy new version' : 'Initialize deployment'}
-          </Button>
-        </Link>
-      }
+      actions={actions}
     >
       {git ? (
         <GitIntegrationCard
