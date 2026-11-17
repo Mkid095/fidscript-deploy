@@ -10,7 +10,6 @@ import { Switch } from '@/components/ui/switch';
 import type { GitIntegrationStatus } from '@/lib/api/resources';
 import {
   reconnectWebhookAction,
-  redeployAction,
   setAutoDeployAction,
 } from '@/app/(project)/projects/[projectId]/deployments/actions';
 
@@ -18,14 +17,15 @@ import {
  * The project's Git, on the deployments screen.
  *
  * What is connected and what is live: the account, the repository and
- * branch, the last commit, what production runs, whether pushes deploy,
+ * branch, the last commit, the commit that is live, whether pushes deploy,
  * and whether the webhook that carries them is registered. Every line is
  * the platform's own answer, not a guess — a webhook says registered only
  * when the platform stores the hook id GitHub gave it, and "not
  * connected" points at the screen that connects it.
  *
- * The controls: the auto-deploy switch, the webhook (re-)registration,
- * and the one-press deploy of the newest commit on the branch.
+ * The controls: the auto-deploy switch, and the webhook (re-)registration.
+ * New versions are not deployed by hand here — a push to the branch
+ * builds them, and this card says whether that is on.
  */
 export function GitIntegrationCard({
   projectId,
@@ -59,18 +59,6 @@ export function GitIntegrationCard({
     setError(null);
     startTransition(async () => {
       const result = await reconnectWebhookAction(projectId);
-      if (result.error) setError(result.error);
-      else window.location.reload();
-    });
-  };
-
-  const deployNow = () => {
-    setError(null);
-    startTransition(async () => {
-      const result = await redeployAction(projectId, {
-        gitUrl: status.repository!,
-        branch: status.branch,
-      });
       if (result.error) setError(result.error);
       else window.location.reload();
     });
@@ -151,6 +139,31 @@ export function GitIntegrationCard({
           </dd>
         </div>
         <div>
+          <dt className="text-text-dim">What is live</dt>
+          <dd className="mt-0.5 text-text">
+            {status.lastDeployedCommit ? (
+              <>
+                <span className="font-mono">
+                  {status.lastDeployedCommit.slice(0, 7)}
+                </span>{' '}
+                is live
+                {status.lastCommit &&
+                status.lastCommit.sha !== status.lastDeployedCommit ? (
+                  <span className="block text-warning">
+                    the newest commit,{' '}
+                    <span className="font-mono">
+                      {status.lastCommit.sha.slice(0, 7)}
+                    </span>
+                    , is ahead of it
+                  </span>
+                ) : null}
+              </>
+            ) : (
+              <span className="text-text-dim">Nothing built yet.</span>
+            )}
+          </dd>
+        </div>
+        <div>
           <dt className="text-text-dim">Webhook</dt>
           <dd className="mt-0.5 text-text">
             {status.webhook.registered ? (
@@ -182,28 +195,16 @@ export function GitIntegrationCard({
         />
         <div className="flex flex-wrap items-center gap-2">
           {status.repository ? (
-            <>
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={deployNow}
-                disabled={pending}
-              >
-                {pending && error === null
-                  ? 'Queuing…'
-                  : 'Deploy newest'}
-              </Button>
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={reconnect}
-                disabled={pending}
-              >
-                {status.webhook.registered
-                  ? 'Re-register webhook'
-                  : 'Register webhook'}
-              </Button>
-            </>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={reconnect}
+              disabled={pending}
+            >
+              {status.webhook.registered
+                ? 'Re-register webhook'
+                : 'Register webhook'}
+            </Button>
           ) : null}
           <Link
             href={`/projects/${projectSlug}/deployments`}

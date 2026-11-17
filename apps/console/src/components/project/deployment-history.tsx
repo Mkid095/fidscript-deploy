@@ -254,7 +254,6 @@ export function DeploymentHistory({
       <ProductionCard
         deps={deps}
         activeId={activeId}
-        newHref={newHref}
         onViewFailed={(d) => actions.open(d, 'logs')}
       />
 
@@ -310,16 +309,16 @@ export function DeploymentHistory({
   );
 }
 
-/* What is live, and how healthy the recent builds have been. */
+/* What is live, and how healthy the recent builds have been.
+   New versions come from pushes to the connected branch — this card
+   says what is live, and when nothing is, where a new one comes from. */
 function ProductionCard({
   deps,
   activeId,
-  newHref,
   onViewFailed,
 }: {
   deps: DeploymentItem[];
   activeId: string | null;
-  newHref: string;
   onViewFailed: (d: DeploymentItem) => void;
 }) {
   if (deps.length === 0) return null;
@@ -355,20 +354,17 @@ function ProductionCard({
           </p>
           <p className="mt-0.5 text-xs text-text-muted">
             {failed
-              ? 'The latest build failed — open it to see what went wrong, then deploy again.'
-              : 'Deploy a repository to get a live address.'}
+              ? 'The latest build failed — open it to see what went wrong, then push again to build it.'
+              : 'Push a new commit to the connected branch to build a live address.'}
           </p>
         </div>
-        <div className="flex flex-wrap items-center gap-2">
-          {failed ? (
+        {failed ? (
+          <div className="flex flex-wrap items-center gap-2">
             <Button variant="ghost" size="sm" onClick={() => onViewFailed(failed)}>
               View the failed build
             </Button>
-          ) : null}
-          <Link href={newHref}>
-            <Button variant="primary" size="sm">Deploy new version</Button>
-          </Link>
-        </div>
+          </div>
+        ) : null}
       </div>
     );
   }
