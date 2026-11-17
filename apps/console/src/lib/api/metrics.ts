@@ -147,6 +147,28 @@ export async function getSystemState(): Promise<SystemState | null> {
 }
 
 /**
+ * The deletion cleanups that have not finished: a failed one, with what
+ * failed, or one still running past its stall window. Each can be retried
+ * from the system screen.
+ */
+export interface DeletionTask {
+  projectId: string;
+  projectSlug: string | null;
+  state: string;
+  lastError: string | null;
+  attempts: number;
+  updatedAt: string;
+}
+
+export async function getDeletionTasks(): Promise<DeletionTask[]> {
+  const { serverApi: api } = await import('./server');
+  const res = await api
+    .get<{ tasks: DeletionTask[] }>('/system/deletion-tasks')
+    .catch(() => null);
+  return res?.tasks ?? [];
+}
+
+/**
  * The machine's CPU, over the last hour.
  *
  * The collector sees the machine itself — the containers it cannot read are

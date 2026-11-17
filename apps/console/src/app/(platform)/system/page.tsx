@@ -7,9 +7,11 @@ import {
   getSiteTraffic,
   getSystemLogs,
   getSystemState,
+  getDeletionTasks,
 } from '@/lib/api/metrics';
 import { getPlatformDomain } from '@/lib/api/platform';
 import { AreaChart, BarList, Meter } from '@/components/system/system-charts';
+import { DeletionTasksCard } from '@/components/system/deletion-tasks-card';
 
 export const metadata = { title: 'System' };
 
@@ -21,14 +23,16 @@ export const metadata = { title: 'System' };
  * not from anything the console remembers.
  */
 export default async function SystemPage() {
-  const [state, machine, cpu, logs, traffic, domain] = await Promise.all([
-    getSystemState(),
-    getMachineState(),
-    getMachineCpu(),
-    getSystemLogs(),
-    getSiteTraffic(),
-    getPlatformDomain(),
-  ]);
+  const [state, machine, cpu, logs, traffic, domain, deletionTasks] =
+    await Promise.all([
+      getSystemState(),
+      getMachineState(),
+      getMachineCpu(),
+      getSystemLogs(),
+      getSiteTraffic(),
+      getPlatformDomain(),
+      getDeletionTasks(),
+    ]);
 
   const grafanaUrl = domain ? `https://grafana.${domain}` : null;
   const containers = state?.containers ?? [];
@@ -238,6 +242,8 @@ export default async function SystemPage() {
           )}
         </Card>
       </section>
+
+      <DeletionTasksCard tasks={deletionTasks} />
     </Page>
   );
 }

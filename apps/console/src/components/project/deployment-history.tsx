@@ -366,7 +366,7 @@ function ProductionCard({
             </Button>
           ) : null}
           <Link href={newHref}>
-            <Button variant="primary" size="sm">New deployment</Button>
+            <Button variant="primary" size="sm">Deploy new version</Button>
           </Link>
         </div>
       </div>
@@ -663,7 +663,7 @@ function ListBody({
         </p>
         <div className="mt-4">
           <Link href={newHref}>
-            <Button variant="primary" size="sm">New deployment</Button>
+            <Button variant="primary" size="sm">Initialize deployment</Button>
           </Link>
         </div>
       </div>

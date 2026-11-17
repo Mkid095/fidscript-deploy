@@ -13,7 +13,7 @@ import { DeploymentWizard } from '@/components/project/deployment-wizard';
 import { QuickRedeploy } from '@/components/project/deployment-quick-redeploy';
 import { DeploymentAlreadyInitialized } from '@/components/project/deployment-already-initialized';
 
-export const metadata = { title: 'New deployment' };
+export const metadata = { title: 'Deployment' };
 
 /**
  * A new deployment.

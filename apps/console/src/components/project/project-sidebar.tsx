@@ -72,6 +72,7 @@ export function ProjectSidebar({
   projectSlug,
   projectPath,
   deploymentOn,
+  initialized,
   items,
 }: {
   projectName: string;
@@ -80,8 +81,11 @@ export function ProjectSidebar({
   projectSlug: string;
   /** Where this project lives — the CTA's target. */
   projectPath: string;
-  /** The deployment service is on — the foot's "New deployment" shows. */
+  /** The deployment service is on — the foot's CTA shows. */
   deploymentOn: boolean;
+  /** A deployment already exists — the CTA then offers a new version of it,
+   * not another deployment. */
+  initialized: boolean;
   items: MenuItem[];
 }) {
   const pathname = usePathname();
@@ -242,7 +246,7 @@ export function ProjectSidebar({
             className="flex items-center justify-center gap-1.5 rounded-lg bg-accent px-3 py-2 text-xs font-semibold text-white shadow-sm transition-colors hover:bg-accent-hover"
           >
             <Plus className="size-3.5" aria-hidden />
-            New deployment
+            {initialized ? 'Deploy new version' : 'Initialize deployment'}
           </Link>
         ) : null}
         <div className="flex items-center justify-between px-1 font-mono text-[11px] text-text-dim">

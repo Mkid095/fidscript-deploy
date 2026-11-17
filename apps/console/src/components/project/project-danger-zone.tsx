@@ -67,7 +67,10 @@ export function ProjectDangerZone({
       <div className="rounded-lg border border-danger/40 bg-danger/5 p-4">
         <p className="text-sm font-medium text-danger">Delete this project</p>
         <p className="mt-0.5 text-xs leading-relaxed text-text-muted">
-          The project, its deployments, its data and its secrets are gone. Type{' '}
+          Deleting this project stops its live site and removes its project-owned
+          hosting resources. Its records are kept for 30 days, so you can restore
+          the project and relight its deployment from the stored build; after that
+          everything is removed. Type{' '}
           <strong className="font-medium text-text">{name}</strong> to confirm.
         </p>
 

@@ -21,6 +21,7 @@ export function ProjectTopbar({
   liveUrl,
   liveState,
   deploymentOn,
+  initialized,
 }: {
   projectName: string;
   /** `/projects/<slug>`. */
@@ -29,6 +30,9 @@ export function ProjectTopbar({
   liveUrl: string | null;
   liveState: 'live' | 'building' | 'none';
   deploymentOn: boolean;
+  /** The project has a deployment already — the button then offers a new
+   * version of it, not another deployment. */
+  initialized: boolean;
 }) {
   const [copied, setCopied] = useState(false);
 
@@ -98,7 +102,7 @@ export function ProjectTopbar({
               className="flex items-center gap-1.5 rounded-lg bg-accent px-3.5 py-2 text-xs font-semibold text-white shadow-sm transition-colors hover:bg-accent-hover"
             >
               <Plus className="size-3.5" aria-hidden />
-              New deployment
+              {initialized ? 'Deploy new version' : 'Initialize deployment'}
             </Link>
           ) : null}
         </div>

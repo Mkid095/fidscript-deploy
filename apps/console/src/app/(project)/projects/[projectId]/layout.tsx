@@ -92,6 +92,7 @@ export default async function ProjectLayout({
           projectSlug={project.slug}
           projectPath={projectPath}
           deploymentOn={project.deploymentOn ?? true}
+          initialized={resources.deployments > 0}
           items={items}
         />
       </ResponsiveSidebar>
@@ -102,6 +103,7 @@ export default async function ProjectLayout({
           liveUrl={liveUrl}
           liveState={liveState}
           deploymentOn={project.deploymentOn ?? true}
+          initialized={resources.deployments > 0}
         />
         <main className="scroll-area flex-1 overflow-y-auto">{children}</main>
       </div>
