@@ -2,14 +2,15 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
-import { Check, Copy, Plus, ShieldCheck } from 'lucide-react';
+import { Check, Copy, ShieldCheck } from 'lucide-react';
 
 /**
  * The project's top bar.
  *
- * It is the place the work lives: which project, what is live on the
- * platform right now, and the one button that matters — a new deployment.
- * It sits above the screen; the screen scrolls beneath it.
+ * It is the place the work lives: which project, and what is live on the
+ * platform right now. It sits above the screen; the screen scrolls beneath
+ * it. The way to the next deployment is the deployments screen itself —
+ * the bar does not duplicate it.
  *
  * It names the **project**, not the screen: the screen's own title is the
  * page's, so this bar and the page are one bar a level apart, not one
@@ -17,22 +18,13 @@ import { Check, Copy, Plus, ShieldCheck } from 'lucide-react';
  */
 export function ProjectTopbar({
   projectName,
-  projectPath,
   liveUrl,
   liveState,
-  deploymentOn,
-  initialized,
 }: {
   projectName: string;
-  /** `/projects/<slug>`. */
-  projectPath: string;
   /** The project's live application's address, when one is up. */
   liveUrl: string | null;
   liveState: 'live' | 'building' | 'none';
-  deploymentOn: boolean;
-  /** The project has a deployment already — the button then offers a new
-   * version of it, not another deployment. */
-  initialized: boolean;
 }) {
   const [copied, setCopied] = useState(false);
 
@@ -94,16 +86,6 @@ export function ProjectTopbar({
             <span className="hidden font-mono text-xs text-warning sm:inline">
               building…
             </span>
-          ) : null}
-
-          {deploymentOn ? (
-            <Link
-              href={`${projectPath}/deployments/new`}
-              className="flex items-center gap-1.5 rounded-lg bg-accent px-3.5 py-2 text-xs font-semibold text-white shadow-sm transition-colors hover:bg-accent-hover"
-            >
-              <Plus className="size-3.5" aria-hidden />
-              {initialized ? 'Deploy new version' : 'Initialize deployment'}
-            </Link>
           ) : null}
         </div>
       </div>

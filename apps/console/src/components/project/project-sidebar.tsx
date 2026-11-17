@@ -13,7 +13,6 @@ import {
   Mail,
   MessageCircle,
   Package,
-  Plus,
   Rocket,
   Settings,
   Server,
@@ -70,22 +69,12 @@ export function ProjectSidebar({
   projectName,
   projectStatus,
   projectSlug,
-  projectPath,
-  deploymentOn,
-  initialized,
   items,
 }: {
   projectName: string;
   projectStatus: string;
-  /** The project's path segment — the switcher and the new-deployment link walk from it. */
+  /** The project's path segment — the switcher walks from it. */
   projectSlug: string;
-  /** Where this project lives — the CTA's target. */
-  projectPath: string;
-  /** The deployment service is on — the foot's CTA shows. */
-  deploymentOn: boolean;
-  /** A deployment already exists — the CTA then offers a new version of it,
-   * not another deployment. */
-  initialized: boolean;
   items: MenuItem[];
 }) {
   const pathname = usePathname();
@@ -115,8 +104,6 @@ export function ProjectSidebar({
       cancelled = true;
     };
   }, [projectSlug]);
-
-  const newDeploymentHref = `${projectPath}/deployments/new`;
 
   return (
     <aside className="flex h-full w-full flex-col border-r border-rail bg-surface">
@@ -238,17 +225,9 @@ export function ProjectSidebar({
         </div>
       </nav>
 
-      {/* The foot: the way to the next deployment, and back to the platform. */}
+      {/* The foot: which project this is, and the way back to the platform.
+          The deployments menu item is the only way to the next deployment. */}
       <div className="flex-shrink-0 space-y-2.5 border-t border-rail bg-surface-2 p-4">
-        {deploymentOn ? (
-          <Link
-            href={newDeploymentHref}
-            className="flex items-center justify-center gap-1.5 rounded-lg bg-accent px-3 py-2 text-xs font-semibold text-white shadow-sm transition-colors hover:bg-accent-hover"
-          >
-            <Plus className="size-3.5" aria-hidden />
-            {initialized ? 'Deploy new version' : 'Initialize deployment'}
-          </Link>
-        ) : null}
         <div className="flex items-center justify-between px-1 font-mono text-[11px] text-text-dim">
           <span className="truncate">{projectName}</span>
           <span className="shrink-0">*.apps.{PLATFORM_DOMAIN}</span>

@@ -90,20 +90,14 @@ export default async function ProjectLayout({
           projectName={project.name}
           projectStatus={project.status}
           projectSlug={project.slug}
-          projectPath={projectPath}
-          deploymentOn={project.deploymentOn ?? true}
-          initialized={resources.deployments > 0}
           items={items}
         />
       </ResponsiveSidebar>
       <div className="flex min-w-0 flex-1 flex-col overflow-hidden">
         <ProjectTopbar
           projectName={project.name}
-          projectPath={projectPath}
           liveUrl={liveUrl}
           liveState={liveState}
-          deploymentOn={project.deploymentOn ?? true}
-          initialized={resources.deployments > 0}
         />
         <main className="scroll-area flex-1 overflow-y-auto">{children}</main>
       </div>
