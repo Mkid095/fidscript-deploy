@@ -42,7 +42,11 @@ import { ProjectsModule } from '@/modules/projects/projects.module';
  */
 @Module({
   imports: [
-    EmailModule,
+    // forwardRef: the email and projects modules reach back into this
+    // module's cluster (through deployments, which the projects module
+    // imports for the purge path), so a hard import would leave a binding
+    // undefined when the module files load mid-cycle.
+    forwardRef(() => EmailModule),
     // forwardRef: ProjectsModule reaches back here through the deployment
     // teardown (the purge path releases project resources), so the edge
     // must not be a hard import.

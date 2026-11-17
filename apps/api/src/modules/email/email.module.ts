@@ -38,7 +38,10 @@ import { emailProviders } from './email-module.providers';
     forwardRef(() => StorageModule),
     InfrastructureModule,
     forwardRef(() => AuthModule),
-    ProjectsModule,
+    // forwardRef: the projects module reaches back into this cluster
+    // (through deployments, which it imports for the purge path), so a
+    // hard import would leave a binding undefined mid-cycle.
+    forwardRef(() => ProjectsModule),
     RealtimeModule,
     RedisModule,
   ],
