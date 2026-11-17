@@ -43,7 +43,10 @@ import { DomainsModule } from '@/modules/domains/domains.module';
   imports: [
     InstantModule,
     StorageModule,
-    AppAuthModule,
+    // forwardRef: AppAuthModule reaches back to ProjectsModule, and
+    // ProjectsModule reaches here (the purge path) — a hard import closes
+    // the circle and the module graph fails to resolve.
+    forwardRef(() => AppAuthModule),
     forwardRef(() => AuthModule),
     // When a deployment succeeds, its domains are verified immediately —
     // the certificate should not wait for the reconciliation schedule.

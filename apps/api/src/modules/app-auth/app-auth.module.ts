@@ -1,4 +1,4 @@
-import { Module } from '@nestjs/common';
+import { Module, forwardRef } from '@nestjs/common';
 import { JwtModule } from '@nestjs/jwt';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { EmailModule } from '@/modules/email/email.module';
@@ -43,7 +43,10 @@ import { ProjectsModule } from '@/modules/projects/projects.module';
 @Module({
   imports: [
     EmailModule,
-    ProjectsModule,
+    // forwardRef: ProjectsModule reaches back here through the deployment
+    // teardown (the purge path releases project resources), so the edge
+    // must not be a hard import.
+    forwardRef(() => ProjectsModule),
     PassportModule.register({ defaultStrategy: 'app-jwt' }),
     JwtModule.registerAsync({
       imports: [ConfigModule],

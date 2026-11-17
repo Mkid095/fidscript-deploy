@@ -46,7 +46,9 @@ else
             ;;
         *"failed migrations"*)
             echo "[entrypoint] Failed migrations detected — resolving as rolled-back..."
-            _failed=$(echo "$_status" | grep 'migration.*failed' | sed 's/.*migration "\([^"]*\)".*/\1/' | tr '\n' ' ')
+            # Prisma reports them as "The `NAME` migration started ... failed"
+            # (backtick-quoted; older builds said "migration "NAME"").
+            _failed=$(echo "$_status" | grep 'migration.*failed' | grep -oE '`[^`]+`|"[^"]+"' | tr -d '\`"' | tr '\n' ' ')
             for _m in $_failed; do
                 echo "[entrypoint] Rolling back failed migration: $_m"
                 prisma migrate resolve --rolled-back "$_m" --schema=prisma/schema.prisma 2>/dev/null || true
