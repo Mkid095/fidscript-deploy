@@ -534,7 +534,13 @@ export class NodeBuildpackProvider implements BuildProvider {
     if (monorepo === 'turbo' || monorepo === 'pnpm') {
       return {
         framework: 'next',
-        buildCommand: scripts.build || 'npm run build',
+        // Run the script BY NAME: the raw script content ("turbo build",
+        // "next build") names a binary that lives in node_modules/.bin,
+        // which is not on a Docker stage's PATH. `npm run build` executes
+        // the app's own script through the package manager, which puts
+        // .bin on the PATH. A pnpm monorepo's generator swaps in
+        // `pnpm run build` for its stage.
+        buildCommand: 'npm run build',
         startCommand: 'npx next start',
         port: 3000,
         outputDir: '.next',
@@ -545,8 +551,10 @@ export class NodeBuildpackProvider implements BuildProvider {
 
     return {
       framework: 'next',
-      buildCommand: scripts.build || 'npm run build',
-      startCommand: scripts.start || 'npx next start',
+      buildCommand: 'npm run build',
+      // `next start` as a raw RUN/CMD fails for the same PATH reason —
+      // the runner stage runs it through npm, which resolves the .bin.
+      startCommand: scripts.start ? 'npm start' : 'npx next start',
       port: 3000,
       outputDir: '.next',
       monorepo,
@@ -559,8 +567,11 @@ export class NodeBuildpackProvider implements BuildProvider {
     const scripts = pkg?.scripts || {};
     return {
       framework: 'nuxt',
-      buildCommand: scripts.build || 'nuxt build',
-      startCommand: scripts.start || 'node .output/server/index.mjs',
+      buildCommand: scripts.build ? 'npm run build' : 'npx nuxt build',
+      // The nuxt runner is self-contained (.output + node) — a raw
+      // `nuxt start` has nothing to resolve in that stage. The default
+      // start script IS this, so the fallback and the common case agree.
+      startCommand: 'node .output/server/index.mjs',
       port: 3000,
       outputDir: '.output',
       version: this.getVersion(pkg, 'nuxt'),
@@ -572,7 +583,7 @@ export class NodeBuildpackProvider implements BuildProvider {
     const scripts = pkg?.scripts || {};
     return {
       framework: 'astro',
-      buildCommand: scripts.build || 'astro build',
+      buildCommand: scripts.build ? 'npm run build' : 'npx astro build',
       startCommand: scripts.preview || 'npx astro preview --host --port 4321',
       port: 4321,
       outputDir: 'dist',
@@ -585,7 +596,7 @@ export class NodeBuildpackProvider implements BuildProvider {
     const scripts = pkg?.scripts || {};
     return {
       framework: 'sveltekit',
-      buildCommand: scripts.build || 'vite build',
+      buildCommand: scripts.build ? 'npm run build' : 'npx svelte-kit sync && npx vite build',
       startCommand: scripts.preview || 'npx vite preview --host --port 5173',
       port: 5173,
       outputDir: 'build',
@@ -598,7 +609,7 @@ export class NodeBuildpackProvider implements BuildProvider {
     const scripts = pkg?.scripts || {};
     return {
       framework: 'vite',
-      buildCommand: scripts.build || 'npm run build',
+      buildCommand: scripts.build ? 'npm run build' : 'npx vite build',
       startCommand: scripts.preview || 'npx vite preview --host',
       port: 4173,
       outputDir: 'dist',
@@ -611,7 +622,9 @@ export class NodeBuildpackProvider implements BuildProvider {
     const scripts = pkg?.scripts || {};
     return {
       framework: 'node',
-      buildCommand: scripts.build,
+      // A generic node app's build script names .bin tools (tsc, …) —
+      // run it by name so the package manager puts them on the PATH.
+      buildCommand: scripts.build ? 'npm run build' : undefined,
       startCommand: scripts.start ? 'npm start' : 'node server.js',
       port: 3000,
       outputDir: '.',

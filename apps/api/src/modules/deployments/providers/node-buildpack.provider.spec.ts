@@ -228,3 +228,55 @@ describe('the buildpack and the npm registry', () => {
     expect(cmd).toContain(' -t "fidscript/demo:v1"');
   });
 });
+
+describe('the build commands the generated Dockerfile runs', () => {
+  let ws: string;
+
+  afterEach(() => {
+    if (ws) rmSync(ws, { recursive: true, force: true });
+    jest.restoreAllMocks();
+  });
+
+  it("runs a next app's scripts by name — the binaries live in node_modules/.bin", async () => {
+    // The app's build script is "next build" and its start script is
+    // "next start": neither binary is on a stage's PATH. A raw
+    // `RUN next build` exits 127 (the 2026-11-17 cerenity outage). The
+    // package manager is what puts .bin on the PATH, so the scripts are
+    // invoked by NAME through it.
+    ws = makeWorkspace(SingleNextFiles);
+    const { provider } = makeProvider();
+
+    await provider.build(makeContext(ws));
+
+    const dockerfile = readFileSync(join(ws, 'Dockerfile'), 'utf-8');
+    expect(dockerfile).toContain('RUN npm run build');
+    expect(dockerfile).not.toMatch(/RUN next build/);
+    expect(dockerfile).toContain('npm start');
+    expect(dockerfile).not.toContain('"next start"');
+  });
+
+  it('falls back to the npm-run defaults for a next app without build scripts', async () => {
+    ws = makeWorkspace({
+      'next.config.js': 'module.exports = {};\n',
+      'package.json': JSON.stringify({ name: 'demo' }),
+    });
+    const { provider } = makeProvider();
+
+    await provider.build(makeContext(ws));
+
+    const dockerfile = readFileSync(join(ws, 'Dockerfile'), 'utf-8');
+    expect(dockerfile).toContain('RUN npm run build');
+    expect(dockerfile).toContain('npx next start');
+  });
+
+  it('builds a pnpm monorepo through pnpm, which its own stage activates', async () => {
+    ws = makeWorkspace(PnpmMonorepoFiles);
+    const { provider } = makeProvider();
+
+    await provider.build(makeContext(ws));
+
+    const dockerfile = readFileSync(join(ws, 'Dockerfile'), 'utf-8');
+    expect(dockerfile).toContain('pnpm run build');
+    expect(dockerfile).not.toMatch(/RUN next build/);
+  });
+});
