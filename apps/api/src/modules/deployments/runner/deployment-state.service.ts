@@ -130,6 +130,23 @@ export class DeploymentStateService implements OnModuleInit {
       return;
     }
 
+    // A deleted project's build must not finish: its containers were torn
+    // down at the delete, and a success that lands after the delete would
+    // redeploy a project that no longer exists — and re-own the name.
+    // (The teardown already stopped what was in flight; this is the second
+    // line for anything that reached PENDING in between.)
+    if (deployment.project?.deletedAt) {
+      this.logger.log(
+        `[worker] Deployment ${deploymentId} belongs to a deleted project — not running it`,
+      );
+      await this.markFailed(
+        deploymentId,
+        projectId,
+        'The project was deleted before this build could run',
+      );
+      return;
+    }
+
     const settings = await this.prisma.projectSettings.findUnique({
       where: { projectId },
     });

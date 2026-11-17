@@ -24,6 +24,24 @@ export class DockerLifecycleService implements OnModuleDestroy {
     } catch { /* ignore — image may be referenced by another container */ }
   }
 
+  /**
+   * Remove every image under a tag prefix — a purged project's whole
+   * `fidscript/<slug>/*` line. Force, because a leftover container may
+   * still reference one; the teardown that ran at delete time already
+   * took the containers down.
+   */
+  async removeImagesByPrefix(prefix: string): Promise<void> {
+    try {
+      const ids = this.exec(
+        `docker images -q --filter "reference=${prefix}:*" 2>/dev/null || true`,
+      ).trim();
+      for (const id of ids.split('\n').map(s => s.trim()).filter(Boolean)) {
+        this.exec(`docker rmi -f ${id} 2>/dev/null || true`);
+      }
+      this.logger.log(`Removed images under ${prefix}:*`);
+    } catch { /* nothing to remove */ }
+  }
+
   async restart(containerName: string): Promise<void> {
     this.exec(`docker restart ${containerName}`);
   }

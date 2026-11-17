@@ -71,12 +71,43 @@ describe("the deployment routes file", () => {
         deploymentUrl: 'https://app.example.com',
         project: { slug: 'kennedy-test' },
         release: { runtimePort: 3000 },
-        domains: [{ domain: 'custom.example.com', dnsMode: 'cloudflare_auto', sslStatus: 'FAILED' }],
+        domains: [{ domain: 'custom.example.com', dnsMode: 'manual', sslStatus: 'FAILED' }],
       },
     ]);
     await service.sync();
     const written = await fs.readFile(path.join(dir, 'dynamic-deployments.yml'), 'utf8');
     expect(written).toContain('custom.example.com');
     expect(written).toContain('fidscript-kennedy-test-91b1df51');
+  });
+
+  it('drops a deleted project\'s routers on the next sync — the teardown\'s rewrite cannot be undone by someone else\'s success', async () => {
+    // What the database answers for `where: { project: { deletedAt: null } }`:
+    // the live project's deployment, and nothing from the deleted one.
+    const findMany = jest.fn(async () => [
+      {
+        id: '11111111-0000-0000-0000-000000000001',
+        deploymentUrl: 'https://live.example.com',
+        project: { slug: 'still-here', deletedAt: null },
+        release: { runtimePort: 3000 },
+        domains: [{ domain: 'live.example.com', dnsMode: 'manual', sslStatus: 'ACTIVE' }],
+      },
+    ]);
+    const service = new DeploymentRoutesService(
+      { deployment: { findMany } } as any,
+      { get: jest.fn((key: string, fallback?: unknown) => fallback) } as any,
+      { on: jest.fn(), emit: jest.fn(async () => undefined) } as any,
+    );
+    await service.sync();
+    const written = await fs.readFile(path.join(dir, 'dynamic-deployments.yml'), 'utf8');
+    // The live project keeps its router…
+    expect(written).toContain('live.example.com');
+    // …and no deleted project's name can be written back into it.
+    expect(written).not.toContain('gone.example.com');
+    // The query itself asks only for un-deleted projects.
+    expect(findMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({ project: { deletedAt: null } }),
+      }),
+    );
   });
 });

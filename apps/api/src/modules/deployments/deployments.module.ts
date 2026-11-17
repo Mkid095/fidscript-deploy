@@ -11,6 +11,7 @@ import { ProjectEnvVarsService } from './services/project-env-vars.service';
 import { GithubWebhookService } from './services/github-webhook.service';
 import { GitIntegrationService } from './services/git-integration.service';
 import { DeploymentIdentityService } from './services/deployment-identity.service';
+import { DeploymentTeardownService } from './services/deployment-teardown.service';
 import { BuildRunnerService } from './runner/build-runner.service';
 import { DockerRunService } from './runner/docker-run.service';
 import { DeploymentWorkerService } from './runner/deployment-worker.service';
@@ -63,6 +64,7 @@ import { DomainsModule } from '@/modules/domains/domains.module';
     GithubWebhookService,
     GitIntegrationService,
     DeploymentIdentityService,
+    DeploymentTeardownService,
     BuildRunnerService,
     DockerRunService,
     DeploymentWorkerService,

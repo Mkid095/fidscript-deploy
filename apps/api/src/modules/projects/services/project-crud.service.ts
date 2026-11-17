@@ -181,7 +181,9 @@ export class ProjectCrudService {
 
     // Hard delete — cascade handles members, deployments, etc.
     await this.prisma.project.delete({ where: { id: projectId } });
-    await this.eventService.emit('projects.project.purged', projectId, {});
+    // The slug rides the event: the teardown's image removal needs it,
+    // and the row it lived in is gone by now.
+    await this.eventService.emit('projects.project.purged', projectId, { slug: project.slug });
 
     return { success: true };
   }

@@ -9,14 +9,25 @@ import { DeploymentStateService } from './deployment-state.service';
  * of the newer container that already owns the name.
  */
 describe('a success behind a newer success', () => {
-  function makeService({ newerSuccess = false }: { newerSuccess?: boolean }) {
+  function makeService({
+    newerSuccess = false,
+    projectDeleted = false,
+  }: {
+    newerSuccess?: boolean;
+    projectDeleted?: boolean;
+  }) {
     const deployment = {
       id: 'deployment-1',
       projectId: 'project-1',
       status: 'PENDING',
       releaseId: 'release-1',
       createdAt: new Date('2026-11-16T00:00:00Z'),
-      project: { slug: 'soostori', type: 'NODE', ownerId: 'owner-1' },
+      project: {
+        slug: 'soostori',
+        type: 'NODE',
+        ownerId: 'owner-1',
+        ...(projectDeleted ? { deletedAt: new Date() } : {}),
+      },
       release: {
         id: 'release-1',
         commitSha: 'abc123',
@@ -86,7 +97,7 @@ describe('a success behind a newer success', () => {
       domainVerification as never,
     );
 
-    return { service, prisma, routes, domainVerification };
+    return { service, prisma, routes, domainVerification, buildRunner };
   }
 
   /** What project.update was called with, per call. */
@@ -148,5 +159,25 @@ describe('a success behind a newer success', () => {
       expect.objectContaining({ orderBy: expect.anything() }),
     );
     expect(domainVerification.enqueue).not.toHaveBeenCalled();
+  });
+
+  it('never runs a deleted project\'s queued build — the delete wins, and the record says why', async () => {
+    const { service, prisma, buildRunner, routes } = makeService({
+      projectDeleted: true,
+    });
+
+    await service.runDeployment('deployment-1', 'project-1', 'owner-1');
+
+    // No build, no deploy, no promotion: the project is gone.
+    expect(buildRunner.buildAndDeploy).not.toHaveBeenCalled();
+    expect(routes.sync).not.toHaveBeenCalled();
+    const deploymentUpdates = (prisma as Record<string, any>).deployment.update.mock.calls.map(
+      (call: unknown[]) =>
+        (call[0] as { data?: Record<string, unknown> } | undefined)?.data ?? {},
+    ) as Array<Record<string, unknown>>;
+    // The attempt is recorded failed with the reason a person can read.
+    expect(deploymentUpdates.some((data) => data.status === 'FAILED')).toBe(
+      true,
+    );
   });
 });

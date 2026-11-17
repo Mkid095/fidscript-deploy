@@ -71,7 +71,15 @@ export class DeploymentRoutesService {
 
     try {
       const deployments = await this.prisma.deployment.findMany({
-        where: { status: 'SUCCESS', deploymentUrl: { not: null } },
+        where: {
+          status: 'SUCCESS',
+          deploymentUrl: { not: null },
+          // A deleted project's routers must not survive a re-sync: the
+          // teardown rewrote the file without them, and any later sync —
+          // another project's success, a domain change — would put them
+          // back on names whose containers are gone, 502ing the edge.
+          project: { deletedAt: null },
+        },
         include: {
           project: true,
           release: true,
