@@ -320,7 +320,7 @@ export class OrganizationService {
     });
 
     // Send invitation email
-    const baseUrl = process.env['APP_URL'] ?? 'https://app.fidscript.com';
+    const baseUrl = process.env['APP_URL'] ?? 'https://fidscript.com';
     const acceptUrl = `${baseUrl}/auth/invitation/accept?token=${token}`;
 
     const org = await this.prisma.organization.findUnique({ where: { id: orgId } });

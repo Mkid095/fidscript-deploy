@@ -143,27 +143,31 @@ the workspace it belongs to, and nothing else changes.
 **What is still owed:** the _hosted_ variant's billing, and whether a
 workspace may be nested. Neither is read by this platform.
 
-### D12 — `app.fidscript.com` is the console's, and stays the console's
+### D12 — The console answers on one name, the apex; `app.` stays reserved
 
-**What:** the console answers on **two** names — `fidscript.com` (the root)
-and `app.fidscript.com` (the alias) — and the alias is **not** available to
-a project. A project's domain must be a name the platform does not already
-answer on.
+**What:** the console answers on a single name — the platform's own domain
+(`fidscript.com`). The `app.fidscript.com` alias that once routed to the
+same service is removed from the routing: one name for the console, the
+apex. The name stays **not available** to a project; a project's domain
+must be a name the platform neither answers on nor answered on.
 
-**Why:** the alias is written into the platform's own routing (`products.yml`)
-and its own certificate. A project that took it would have two routers for
-one host, and the console would answer on the same address as the customer's
-application — with the console's certificate. The alias is a convenience;
-the root is the platform's real address.
+**Why:** the alias was a second door to the same console, and the apex is
+the platform's real address. While it answered it had to be reserved —
+a project that took it would have two routers for one host, and the
+customer's application would answer on the same address as the console.
+Removing the route does not free the name: it is now an edge 404, and a
+name the platform used is still a name the platform keeps.
 
-**How it is enforced:** `reservedHostReason()` in
+**How it is enforced:** two parts. `reservedHostReason()` in
 `apps/api/src/modules/domains/services/reserved-hosts.ts` — the platform's
 root domain, and the subdomains the platform's own services use (`app`,
 `api`, `grafana`, `prometheus`, `loki`, `maven`, `registry`, `files`,
 `storage`, `whatsapp`, `instant`, …) — refuses a domain at the moment it is
 added, **and** at the moment its records would be written, so a domain added
 before this rule cannot take a platform name either. The refusal says what
-the name is and what to do instead.
+the name is and what to do instead. And in the routing itself
+(`installer/docker/traefik/dynamic/platform.yml`): only `dashboard-root`
+points at the console service — the `dashboard-app` router is gone.
 
 **What the project uses instead:** a zone from the operator's own Cloudflare
 account, or a subdomain of one that is not the platform's.

@@ -97,7 +97,8 @@ npx jest                                       # 25 suites, 167 tests
 cd apps/console && npx tsc --noEmit -p tsconfig.json   # clean
 ```
 
-The console is served at `https://fidscript.com` (and `app.fidscript.com`).
+The console is served at `https://fidscript.com` (the apex is the only
+console name; the former `app.fidscript.com` alias was removed — D12).
 The API at `https://api.fidscript.com/api/v1`.
 
 ---

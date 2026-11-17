@@ -2,11 +2,15 @@
  * The names the platform answers on, and the ones a project may not take.
  *
  * The platform publishes itself on names of a shape: the console at
- * `app.<domain>`, the API at `api.<domain>`, the dashboards at
- * `grafana.<domain>`, and the applications it hosts on names of the same
- * kind. A project's domain is a name that points at this platform — so a
- * project that took one of the platform's own names would take the
- * platform's door off its hinges.
+ * the root of its own domain, the API at `api.<domain>`, the
+ * dashboards at `grafana.<domain>`, and the applications it hosts on
+ * names of the same kind. A project's domain is a name that points at
+ * this platform — so a project that took one of the platform's own
+ * names would take the platform's door off its hinges.
+ *
+ * `app` stays reserved even though it no longer routes: a name the
+ * platform once answered on is a name the platform keeps, not one a
+ * project may take.
  *
  * The check is here, on its own, because two places need it: adding a
  * domain, and writing the records for one that is already there.

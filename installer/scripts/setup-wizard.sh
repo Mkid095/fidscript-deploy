@@ -599,17 +599,9 @@ http:
     compress:
       compress: {}
   routers:
-    # ── Dashboard (app subdomain) — must come BEFORE wildcard ─────────────────
-    dashboard-app:
-      rule: 'Host(`app.__DOMAIN__`)'
-      service: dashboard
-      middlewares:
-        - security-headers
-        - compress
-      tls:
-        certResolver: __CERT_RESOLVER__
-      priority: 20
-    # ── Landing / marketing (root domain) ────────────────────────────────────
+    # ── Console (root domain) — must come BEFORE the wildcard ────────────────
+    # The console answers on the platform's own domain. The `app.` alias is
+    # deliberately not routed: one name for the console, the apex.
     dashboard-root:
       rule: 'Host(`__DOMAIN__`)'
       service: dashboard

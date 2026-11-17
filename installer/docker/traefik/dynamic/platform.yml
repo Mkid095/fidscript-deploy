@@ -13,16 +13,6 @@ http:
     compress:
       compress: {}
   routers:
-    dashboard-app:
-      rule: 'Host(`app.fidscript.com`)'
-      service: fidscript-dashboard
-      middlewares:
-        - security-headers
-        - compress
-      entryPoints:
-        - websecure
-      tls:
-        certResolver: letsencrypt-dns
     dashboard-root:
       rule: 'Host(`fidscript.com`)'
       service: fidscript-dashboard
