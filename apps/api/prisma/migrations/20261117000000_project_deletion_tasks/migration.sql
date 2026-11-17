@@ -39,8 +39,9 @@ ALTER TABLE "projects"."project_deletion_tasks" ADD CONSTRAINT "project_deletion
 -- Projects already deleted (soft) before this table existed need the
 -- same guarantee: their surface was never taken down, and the sweep
 -- picks them up. Backfill one REQUESTED task per deleted project.
-INSERT INTO "projects"."project_deletion_tasks" ("id", "project_id", "state")
-SELECT gen_random_uuid(), p.id, 'REQUESTED'
+INSERT INTO "projects"."project_deletion_tasks"
+    ("id", "project_id", "state", "resources", "last_error", "attempts", "created_at", "updated_at")
+SELECT gen_random_uuid(), p.id, 'REQUESTED', '{}'::jsonb, NULL, 0, now(), now()
 FROM "projects"."projects" p
 WHERE p."deleted_at" IS NOT NULL
   AND NOT EXISTS (SELECT 1 FROM "projects"."project_deletion_tasks" t WHERE t."project_id" = p.id);
