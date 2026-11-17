@@ -89,6 +89,9 @@ import { DomainsModule } from '@/modules/domains/domains.module';
     DeploymentCrudService,
     DeploymentRoutesService,
     GithubWebhookService,
+    // The purge path (projects module) releases a project's domains and
+    // webhook through the teardown, while the rows still exist.
+    DeploymentTeardownService,
     BuildProviderFactory,
     // The applications module installs an application by running the
     // installer's own commands, and needs the same shell runner.

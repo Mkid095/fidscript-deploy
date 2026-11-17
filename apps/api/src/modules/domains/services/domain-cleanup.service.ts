@@ -53,6 +53,56 @@ export class DomainCleanupService {
   }
 
   /**
+   * Release every domain the project owns — no user-level check, because
+   * the project is going away and this is the LAST chance to put the
+   * customer's captured DNS records back. Runs on `projects.project.purging`,
+   * before the hard delete that would cascade the rows away.
+   *
+   * The project's DNS connections go with it: they have no Prisma
+   * relation to Project, so the hard delete would orphan them.
+   */
+  async releaseForProject(
+    projectId: string,
+    actorId = 'system',
+  ): Promise<{ released: number; skipped: number }> {
+    const domains = await this.prisma.domain.findMany({
+      where: { projectId },
+      include: { managedRecords: { where: { managedBy: 'platform' } } },
+    });
+    let released = 0;
+    let skipped = 0;
+    for (const domain of domains) {
+      try {
+        await this.releaseRecords(projectId, domain);
+        await this.prisma.emailDomain
+          .updateMany({
+            where: { projectId, domain: domain.domain },
+            data: { status: 'PENDING', verifiedAt: null },
+          })
+          .catch(() => undefined);
+        await this.prisma.domain.delete({ where: { id: domain.id } });
+        await this.emit(domain.id, projectId, actorId, 'domain.deleted', {
+          domain: domain.domain,
+          released: true,
+        });
+        released++;
+      } catch (err) {
+        skipped++;
+        this.logger.warn(
+          `[domains] Could not release ${domain.domain} at project deletion: ${err instanceof Error ? err.message : err}`,
+        );
+      }
+    }
+    await this.prisma.domainConnection
+      .deleteMany({ where: { projectId } })
+      .catch(() => undefined);
+    this.logger.log(
+      `[domains] Project ${projectId}: ${released} domain(s) released, ${skipped} skipped`,
+    );
+    return { released, skipped };
+  }
+
+  /**
    * Put a released domain's zone back: restore the originals the platform
    * overwrote, remove the records the platform created.
    */

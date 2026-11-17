@@ -1,6 +1,7 @@
 import { Injectable, NotFoundException, ForbiddenException } from '@nestjs/common';
 import { PrismaService } from '@/prisma/prisma.service';
 import { EventService } from '@/modules/events/event.service';
+import { DeploymentTeardownService } from '@/modules/deployments/services/deployment-teardown.service';
 import { ProjectAccessService } from './project-access.service';
 import { ProjectFormatService } from './project-format.service';
 import { ProjectCreateService } from './project-create.service';
@@ -16,6 +17,7 @@ export class ProjectCrudService {
     private format: ProjectFormatService,
     private createService: ProjectCreateService,
     private workspace: ProjectWorkspaceService,
+    private teardown: DeploymentTeardownService,
   ) {}
 
   async create(userId: string, dto: any) {
@@ -110,6 +112,14 @@ export class ProjectCrudService {
 
     // Soft delete: set deletedAt, keep the record for 30-day recovery window
     await this.prisma.project.update({ where: { id: projectId }, data: { deletedAt: new Date() } });
+    // The deletion task is the state machine the cleanup runs through:
+    // REQUESTED now, and the teardown takes it IN_PROGRESS → CLEANED (or
+    // CLEANUP_FAILED, which the sweep retries).
+    await this.prisma.projectDeletionTask.upsert({
+      where: { projectId },
+      update: {},
+      create: { projectId, state: 'REQUESTED' },
+    });
     await this.eventService.emit('projects.project.deleted', projectId, {
       soft: true,
     });
@@ -179,7 +189,20 @@ export class ProjectCrudService {
       data: { verificationCode: null, verificationCodeExpiresAt: null },
     });
 
-    // Hard delete — cascade handles members, deployments, etc.
+    // Release what the project owns in the outside world, while the rows
+    // still exist: custom domains (restore the customer's captured DNS
+    // records, stand the mailboxes down) and the GitHub webhook. This is
+    // the LAST chance — after the hard delete the Domain, ManagedDnsRecord
+    // and connection rows are gone. Awaited, not event-driven: a
+    // fire-and-forget listener would race the hard delete.
+    await this.teardown.releaseExternal({
+      projectId,
+      sourceRepo: project.sourceRepo,
+      githubHookId: project.githubHookId,
+      ownerId: project.ownerId,
+    });
+
+    // Hard delete — cascade handles members, deployments, domains, etc.
     await this.prisma.project.delete({ where: { id: projectId } });
     // The slug rides the event: the teardown's image removal needs it,
     // and the row it lived in is gone by now.

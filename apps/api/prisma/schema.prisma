@@ -378,6 +378,7 @@ model Project {
   buildConfig          BuildConfig?
   releases             Release[]
   deploymentIdentity   DeploymentIdentity?
+  deletionTask         ProjectDeletionTask?
   webhookDeliveries    WebhookDelivery[]
   domains              Domain[]
   appUsers             AppUser[]
@@ -799,6 +800,22 @@ model DeploymentIdentity {
   initialRelease Release?    @relation("InitialRelease", fields: [initialReleaseId], references: [id], onDelete: SetNull)
 
   @@map("deployment_identities")
+  @@schema("projects")
+}
+
+model ProjectDeletionTask {
+  id        String   @id @default(uuid())
+  projectId String   @unique @map("project_id")
+  state     String   @default("REQUESTED") @map("state") @db.VarChar(20)
+  resources Json     @default("{}") @map("resources")
+  lastError String?  @map("last_error") @db.Text
+  attempts  Int      @default(0) @map("attempts")
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz
+
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@map("project_deletion_tasks")
   @@schema("projects")
 }
 

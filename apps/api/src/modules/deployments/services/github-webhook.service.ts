@@ -100,6 +100,68 @@ export class GithubWebhookService {
   }
 
   /**
+   * Delete the platform's webhook from GitHub when the project goes away.
+   * Best-effort by design: a hook with no matching project is inert
+   * (findProjectByRepo excludes deleted projects), so a failure here leaves
+   * a harmless registration behind, never a live pipeline.
+   *
+   * Takes the project's fields, not the row — at `purging` time the caller
+   * may be about to hard-delete the project, and the owner's connection is
+   * user-scoped (it outlives the project).
+   */
+  async unregisterWebhook(ctx: {
+    projectId: string;
+    sourceRepo: string | null;
+    githubHookId: number | null;
+    ownerId: string | null;
+  }): Promise<'unregistered' | 'nothing' | 'failed'> {
+    const { sourceRepo, githubHookId, ownerId } = ctx;
+    if (!sourceRepo?.includes('github.com') || !githubHookId || !ownerId) return 'nothing';
+
+    const connection = await this.prisma.githubConnection.findUnique({ where: { userId: ownerId } });
+    if (!connection?.encryptedToken) {
+      this.logger.log(`[webhook] No GitHub connection for the owner of ${ctx.projectId} — hook #${githubHookId} stays, inert`);
+      return 'nothing';
+    }
+
+    let token: string;
+    try {
+      token = this.cryptoService.decrypt(connection.encryptedToken);
+    } catch {
+      this.logger.warn(`[webhook] Could not decrypt the owner's token for ${ctx.projectId} — hook #${githubHookId} stays, inert`);
+      return 'nothing';
+    }
+
+    const repoFullName = sourceRepo
+      .replace(/^https:\/\/github\.com\//, '')
+      .replace(/^git@github\.com:/, '')
+      .replace(/\.git$/, '');
+
+    try {
+      const res = await fetch(`${GITHUB_API}/repos/${repoFullName}/hooks/${githubHookId}`, {
+        method: 'DELETE',
+        headers: {
+          Authorization: `Bearer ${token}`,
+          Accept: 'application/vnd.github+json',
+          'X-GitHub-Api-Version': '2022-11-28',
+        },
+      });
+      if (!res.ok) {
+        this.logger.warn(`[webhook] GitHub refused to delete hook #${githubHookId} on ${repoFullName} (${res.status}) — it stays, inert`);
+        return 'failed';
+      }
+      await this.prisma.project
+        .updateMany({ where: { id: ctx.projectId }, data: { githubHookId: null, webhookSecret: null } })
+        .catch(() => undefined); // the row may already be gone
+      this.logger.log(`[webhook] Unregistered hook #${githubHookId} on ${repoFullName} (project ${ctx.projectId})`);
+      return 'unregistered';
+    } catch (err) {
+      this.logger.warn(`[webhook] Could not reach GitHub to delete hook #${githubHookId}: ${err instanceof Error ? err.message : err}`);
+      return 'failed';
+    }
+  }
+
+  /**
    * Verify the X-Hub-Signature-256 header against the project's stored secret.
    * Uses timingSafeEqual to prevent timing attacks.
    */

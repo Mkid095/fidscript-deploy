@@ -1,5 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { execFileSync } from 'child_process';
+import { PrismaService } from '@/prisma/prisma.service';
+import { DeploymentTeardownService } from '@/modules/deployments/services/deployment-teardown.service';
 
 /**
  * What the machine is running, and what each of them is using.
@@ -52,6 +54,53 @@ const CACHE_MS = 5_000;
 export class SystemService {
   private readonly logger = new Logger(SystemService.name);
   private cached: { state: SystemState; at: number } | null = null;
+
+  constructor(
+    private prisma: PrismaService,
+    private teardown: DeploymentTeardownService,
+  ) {}
+
+  /**
+   * The deletion cleanups that are not finished: a failed one (and what
+   * failed), or one still running past its stall window. This is the
+   * operator's queue for "a project was deleted but its surface did not
+   * come down", and a press to retry is one call away.
+   */
+  async deletionTasks(): Promise<
+    Array<{
+      projectId: string;
+      projectSlug: string | null;
+      state: string;
+      lastError: string | null;
+      attempts: number;
+      updatedAt: string;
+    }>
+  > {
+    const staleBefore = new Date(Date.now() - 30 * 60 * 1000);
+    const tasks = await this.prisma.projectDeletionTask.findMany({
+      where: {
+        OR: [
+          { state: 'CLEANUP_FAILED' },
+          { state: 'IN_PROGRESS', updatedAt: { lt: staleBefore } },
+        ],
+      },
+      include: { project: { select: { slug: true } } },
+      orderBy: { updatedAt: 'desc' },
+    });
+    return tasks.map((t) => ({
+      projectId: t.projectId,
+      projectSlug: t.project?.slug ?? null,
+      state: t.state,
+      lastError: t.lastError,
+      attempts: t.attempts,
+      updatedAt: t.updatedAt.toISOString(),
+    }));
+  }
+
+  /** Re-run the cleanup for a failed task. Idempotent — the finished steps are recorded. */
+  async retryDeletion(projectId: string): Promise<void> {
+    await this.teardown.retry(projectId);
+  }
 
   /**
    * The containers, with what they are using.

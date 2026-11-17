@@ -20,6 +20,7 @@ import { DatabasesModule } from '@/modules/databases/databases.module';
 import { AuthModule } from '@/modules/auth/auth.module';
 import { InstantModule } from '@/modules/instant/instant.module';
 import { WhatsappModule } from '@/modules/whatsapp/whatsapp.module';
+import { DeploymentsModule } from '@/modules/deployments/deployments.module';
 
 @Module({
   controllers: [
@@ -36,6 +37,11 @@ import { WhatsappModule } from '@/modules/whatsapp/whatsapp.module';
     // project (P5.6), so the project's create path needs both services.
     forwardRef(() => InstantModule),
     forwardRef(() => WhatsappModule),
+    // The purge path releases a deleted project's domains and webhook
+    // through the deployment teardown, before the rows are gone.
+    // forwardRef: the deployments module reaches back to projects
+    // (through app-auth / storage / auth).
+    forwardRef(() => DeploymentsModule),
   ],
   providers: [
     ProjectsService,
