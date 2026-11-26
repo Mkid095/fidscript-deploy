@@ -40,9 +40,14 @@ export class MinioProvider implements StorageProvider, OnModuleInit {
   async testConnection(): Promise<ConnectionTestResult> {
     await this.ensureClient();
     try {
-      // listBuckets is the cheapest authenticated probe — returns [] when healthy.
-      await this.client.listBuckets();
-      return { ok: true, detail: `MinIO reachable at ${this.internalEndpoint}.` };
+      // A HEAD against a sentinel bucket: it proves the store answers AND
+      // that these credentials are accepted. `listBuckets` is not usable as
+      // the probe — the platform's object store is RustFS, and the minio
+      // client's ListAllMyBuckets probe misparses its answer ("Invalid
+      // bucket name"). A resolved answer, `true` or `false`, is success:
+      // the store spoke, which is the question this test asks.
+      await this.client.bucketExists('fidscript-probe');
+      return { ok: true, detail: `Object storage reachable at ${this.internalEndpoint}.` };
     } catch (err: unknown) {
       const message = (err as Error).message ?? String(err);
       this.logger.warn(`MinIO testConnection failed: ${message}`);
