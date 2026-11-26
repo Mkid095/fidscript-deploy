@@ -55,15 +55,17 @@ export class DeploymentsController {
    * The trigger bucket, per project: every mutating route consumes from it
    * before it does its work, and a full bucket answers 429 — the caller
    * slows down, the project's build lane stays theirs. The body carries
-   * `retryAfter` so the caller knows when to try again.
+   * `retryAfter` (for the console) and the `Retry-After` header is set too,
+   * so a CLI or a script that reads only the header gets it as well.
    */
-  private async guardTrigger(projectId: string): Promise<void> {
+  private async guardTrigger(req: Request, projectId: string): Promise<void> {
     const result = await this.rateLimiter.consume(
       `rl:deploy:${projectId}`,
       DEPLOY_TRIGGER_LIMIT,
       DEPLOY_TRIGGER_WINDOW_SEC,
     );
-    if (!result.allowed)
+    if (!result.allowed) {
+      req.res?.setHeader('Retry-After', String(result.retryAfter));
       throw new HttpException(
         {
           message: 'Too many deployment actions for this project right now.',
@@ -71,6 +73,7 @@ export class DeploymentsController {
         },
         HttpStatus.TOO_MANY_REQUESTS,
       );
+    }
   }
 
   @Get('deployments')
@@ -102,7 +105,7 @@ export class DeploymentsController {
     @Param('projectId') projectId: string,
     @Body() dto: CreateDeploymentDto,
   ) {
-    await this.guardTrigger(projectId);
+    await this.guardTrigger(req, projectId);
     const user = req.user as { userId: string };
     const result = await this.deploymentsService.create(user.userId, projectId, dto);
 
@@ -194,7 +197,7 @@ export class DeploymentsController {
     @Param('projectId') projectId: string,
     @Param('id') deploymentId: string,
   ) {
-    await this.guardTrigger(projectId);
+    await this.guardTrigger(req, projectId);
     const user = req.user as { userId: string };
     return this.deploymentsService.stop(user.userId, projectId, deploymentId);
   }
@@ -208,7 +211,7 @@ export class DeploymentsController {
     @Param('projectId') projectId: string,
     @Param('id') deploymentId: string,
   ) {
-    await this.guardTrigger(projectId);
+    await this.guardTrigger(req, projectId);
     const user = req.user as { userId: string };
     return this.deploymentsService.restart(user.userId, projectId, deploymentId);
   }
@@ -222,7 +225,7 @@ export class DeploymentsController {
     @Param('projectId') projectId: string,
     @Param('id') deploymentId: string,
   ) {
-    await this.guardTrigger(projectId);
+    await this.guardTrigger(req, projectId);
     const user = req.user as { userId: string };
     return this.deploymentsService.destroy(user.userId, projectId, deploymentId);
   }
@@ -237,7 +240,7 @@ export class DeploymentsController {
     @Param('id') deploymentId: string,
     @Body() body: { targetDeploymentId?: string } | undefined,
   ) {
-    await this.guardTrigger(projectId);
+    await this.guardTrigger(req, projectId);
     const user = req.user as { userId: string };
     return this.deploymentsService.rollback(user.userId, projectId, deploymentId, body?.targetDeploymentId);
   }
@@ -253,7 +256,7 @@ export class DeploymentsController {
     @Req() req: Request,
     @Param('projectId') projectId: string,
   ) {
-    await this.guardTrigger(projectId);
+    await this.guardTrigger(req, projectId);
     const user = req.user as { userId: string };
     return this.deploymentsService.applyBuildConfig(user.userId, projectId);
   }

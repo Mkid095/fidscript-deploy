@@ -31,8 +31,9 @@ describe('the deployment trigger bucket', () => {
       {} as never, // crypto
       rateLimiter as never,
     );
-    const req = { user: { userId: 'user-1' }, res: {} } as never;
-    return { controller, deploymentsService, rateLimiter, req };
+    const res = { setHeader: jest.fn() };
+    const req = { user: { userId: 'user-1' }, res } as never;
+    return { controller, deploymentsService, rateLimiter, req, res };
   }
 
   it('lets a trigger through while the bucket has room', async () => {
@@ -47,13 +48,15 @@ describe('the deployment trigger bucket', () => {
   });
 
   it('answers 429 with a retryAfter when the bucket is full', async () => {
-    const { controller, deploymentsService, req } = makeController(false);
+    const { controller, deploymentsService, req, res } = makeController(false);
     await expect(controller.create(req, 'project-1', {} as never)).rejects.toMatchObject({
       status: 429,
       response: expect.objectContaining({ retryAfter: 1200 }),
     });
     // The trigger never reached the service.
     expect(deploymentsService.create).not.toHaveBeenCalled();
+    // And the header a non-console caller reads is set alongside the body.
+    expect(res.setHeader).toHaveBeenCalledWith('Retry-After', '1200');
   });
 
   it('guards every mutating route with the same bucket', async () => {
