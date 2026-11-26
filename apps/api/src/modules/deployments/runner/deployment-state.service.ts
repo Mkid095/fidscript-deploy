@@ -345,6 +345,9 @@ export class DeploymentStateService implements OnModuleInit {
             buildCommand: buildConfig?.buildCommand || undefined,
             startCommand: buildConfig?.startCommand || undefined,
             port: buildConfig?.port || undefined,
+            // The project's own ceilings; absent, the platform's own apply.
+            memoryLimitMb: buildConfig?.memoryLimitMb ?? undefined,
+            cpuLimitMillicpu: buildConfig?.cpuLimitMillicpu ?? undefined,
           },
           startupTimeoutSeconds: buildConfig?.startupTimeoutSeconds ?? 120,
           onLog,

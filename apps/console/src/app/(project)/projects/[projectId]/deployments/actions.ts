@@ -163,6 +163,67 @@ export async function reconnectWebhookAction(
   }
 }
 
+/**
+ * The application's ceilings: how much memory and how much CPU its
+ * container may claim. The host runs the platform and every project on it,
+ * so the values have a floor and a ceiling — the platform's own.
+ */
+export async function saveBuildResourcesAction(
+  projectId: string,
+  input: { memoryLimitMb?: number; cpuLimitMillicpu?: number },
+): Promise<{ ok?: boolean; error?: string }> {
+  try {
+    await api.patch(`/projects/${projectId}/build-config`, {
+      ...(input.memoryLimitMb !== undefined && Number.isFinite(input.memoryLimitMb)
+        ? { memoryLimitMb: Math.round(input.memoryLimitMb) }
+        : {}),
+      ...(input.cpuLimitMillicpu !== undefined && Number.isFinite(input.cpuLimitMillicpu)
+        ? { cpuLimitMillicpu: Math.round(input.cpuLimitMillicpu) }
+        : {}),
+    });
+    revalidatePath(`/projects/${projectId}/deployments`);
+    return { ok: true };
+  } catch (err) {
+    return {
+      error:
+        err instanceof Error
+          ? err.message
+          : 'The settings could not be saved.',
+    };
+  }
+}
+
+/**
+ * Apply the saved settings to what is running **now**: the live container
+ * is re-run from the same image under the new ceilings. Not a new version —
+ * the envelope changes, the application does not.
+ */
+export async function applyBuildConfigAction(
+  projectId: string,
+): Promise<{ ok?: boolean; error?: string; applied?: boolean }> {
+  try {
+    const result = await api.post<{ success?: boolean; error?: string }>(
+      `/projects/${projectId}/deployments/apply-build-config`,
+    );
+    revalidatePath(`/projects/${projectId}/deployments`);
+    if (result && result.success === false) {
+      return {
+        error:
+          result.error ??
+          'The application came back up, but not under the new settings.',
+      };
+    }
+    return { ok: true, applied: true };
+  } catch (err) {
+    return {
+      error:
+        err instanceof Error
+          ? err.message
+          : 'The settings could not be applied.',
+    };
+  }
+}
+
 async function act(
   projectId: string,
   deploymentId: string,

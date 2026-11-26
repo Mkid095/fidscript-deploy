@@ -201,6 +201,21 @@ export class DeploymentsController {
     return this.deploymentsService.rollback(user.userId, projectId, deploymentId, body?.targetDeploymentId);
   }
 
+  @Post('deployments/apply-build-config')
+  @RequireScope('deployments:write')
+  @HttpCode(HttpStatus.ACCEPTED)
+  @ApiOperation({
+    summary:
+      'Re-run the live container under the project\'s current build settings (applies resource ceilings now, without a new version)',
+  })
+  async applyBuildConfig(
+    @Req() req: Request,
+    @Param('projectId') projectId: string,
+  ) {
+    const user = req.user as { userId: string };
+    return this.deploymentsService.applyBuildConfig(user.userId, projectId);
+  }
+
   @Get('build-config')
   @RequireScope('deployments:read')
   @ApiOperation({ summary: 'Get build configuration' })

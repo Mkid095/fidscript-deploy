@@ -60,4 +60,28 @@ export class UpdateBuildConfigDto {
   @Max(65535)
   @IsOptional()
   port?: number;
+
+  /**
+   * The container's ceilings. The host runs the platform and every project
+   * on it, so a project's application gets a ceiling, not a promise: unset
+   * means the platform default (512 MB / one core), and the bounds here are
+   * the most a project may ever claim.
+   */
+  @ApiPropertyOptional({
+    description: 'Container memory ceiling, in MB (128–8192). Unset: the platform default (512).',
+  })
+  @IsNumber()
+  @Min(128)
+  @Max(8192)
+  @IsOptional()
+  memoryLimitMb?: number;
+
+  @ApiPropertyOptional({
+    description: 'Container CPU ceiling, in millicpus (50–8000; 1000 = one core). Unset: the platform default (1000).',
+  })
+  @IsNumber()
+  @Min(50)
+  @Max(8000)
+  @IsOptional()
+  cpuLimitMillicpu?: number;
 }

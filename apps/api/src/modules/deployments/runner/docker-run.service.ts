@@ -35,6 +35,10 @@ export class DockerRunService {
     onLog: (line: string) => void;
     /** The port the app listens on, when the build provider detected it. */
     port?: number;
+    /** The project's own memory ceiling (MB); absent means the platform default. */
+    memoryLimitMb?: number;
+    /** The project's own CPU ceiling (millicpus); absent means the platform default. */
+    cpuLimitMillicpu?: number;
   }): Promise<DeployResult> {
     const {
       imageTag,
@@ -69,6 +73,8 @@ export class DockerRunService {
         profile,
         domain,
         port,
+        memoryLimitMb: opts.memoryLimitMb,
+        cpuLimitMillicpu: opts.cpuLimitMillicpu,
       });
       addLog(`[runner] Starting container: ${containerName}`);
       if (profile.requiresRoute)
@@ -110,6 +116,10 @@ export class DockerRunService {
     onLog: (line: string) => void;
     /** The port the app listens on, when the build provider detected it. */
     port?: number;
+    /** The project's own memory ceiling (MB); absent means the platform default. */
+    memoryLimitMb?: number;
+    /** The project's own CPU ceiling (millicpus); absent means the platform default. */
+    cpuLimitMillicpu?: number;
   }): Promise<DeployResult> {
     const {
       imageTag,
@@ -148,6 +158,9 @@ export class DockerRunService {
         envVars,
         profile,
         domain,
+        port,
+        memoryLimitMb: opts.memoryLimitMb,
+        cpuLimitMillicpu: opts.cpuLimitMillicpu,
       });
       addLog(`[runner] Rollback: re-running ${imageTag} (no rebuild)`);
       this.cmd.execDocker(runArgs);

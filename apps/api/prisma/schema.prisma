@@ -858,6 +858,13 @@ model BuildConfig {
   startCommand          String?  @map("start_command") @db.VarChar(500)
   /// The port the application listens on, when the platform's guess is wrong.
   port                  Int?
+  /// The container's memory ceiling, in MB. Null means the platform default
+  /// (512). The host stays the host: nothing a project runs may take the
+  /// machine down with it.
+  memoryLimitMb         Int? @map("memory_limit_mb")
+  /// The container's CPU ceiling, in millicpus (1000 = one core). Null means
+  /// the platform default (1000).
+  cpuLimitMillicpu      Int? @map("cpu_limit_millicpu")
   createdAt             DateTime @default(now()) @map("created_at") @db.Timestamptz
   updatedAt             DateTime @updatedAt @map("updated_at") @db.Timestamptz
 

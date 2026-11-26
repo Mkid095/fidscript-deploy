@@ -19,15 +19,18 @@ export interface BuildAndDeployOptions {
   /** Monorepo app root (e.g. "apps/web") — passed to NodeBuildpackProvider for turbo monorepos */
   buildTarget?: string;
   /**
-   * The commands and the port the person overrode, when they did. Absent
-   * fields mean "what the repository says" — the buildpack's own detection
-   * stands, and a deployment that nobody configured still works.
+   * The commands, the port, and the resource ceilings the person set, when
+   * they did. Absent fields mean "what the repository says" (or the
+   * platform's own ceiling) — the buildpack's own detection stands, and a
+   * deployment that nobody configured still works.
    */
   buildOverrides?: {
     installCommand?: string;
     buildCommand?: string;
     startCommand?: string;
     port?: number;
+    memoryLimitMb?: number;
+    cpuLimitMillicpu?: number;
   };
   onLog: (line: string) => void;
   /**
@@ -115,6 +118,9 @@ export class BuildRunnerService {
         // The person's own port wins over both the provider's detection and
         // the profile's guess — they said what the application listens on.
         port: opts.buildOverrides?.port ?? buildResult.port,
+        // The project's own ceilings, when set; otherwise the platform's.
+        memoryLimitMb: opts.buildOverrides?.memoryLimitMb,
+        cpuLimitMillicpu: opts.buildOverrides?.cpuLimitMillicpu,
       });
 
       return { buildResult, deployResult };

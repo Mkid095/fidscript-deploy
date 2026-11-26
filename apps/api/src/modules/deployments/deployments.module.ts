@@ -18,6 +18,7 @@ import { DeploymentWorkerService } from './runner/deployment-worker.service';
 import { DeploymentStateService } from './runner/deployment-state.service';
 import { DeploymentLifecycleService } from './runner/deployment-lifecycle.service';
 import { DeploymentRollbackService } from './runner/deployment-rollback.service';
+import { DeploymentApplyService } from './runner/deployment-apply.service';
 import { DockerLifecycleService } from './runner/docker-lifecycle.service';
 import { DockerBuildArgsService } from './runner/docker-build-args.service';
 import { DockerCommandService } from './runner/docker-command.service';
@@ -74,6 +75,7 @@ import { DomainsModule } from '@/modules/domains/domains.module';
     DeploymentStateService,
     DeploymentLifecycleService,
     DeploymentRollbackService,
+    DeploymentApplyService,
     DockerLifecycleService,
     DockerBuildArgsService,
     DockerCommandService,

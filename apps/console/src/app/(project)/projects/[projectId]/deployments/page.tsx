@@ -7,10 +7,12 @@ import { getProject } from '@/lib/api/project';
 import {
   getDeployments,
   getGitIntegration,
+  getBuildConfig,
 } from '@/lib/api/resources';
 import { DeploymentHistory } from '@/components/project/deployment-history';
 import { DeploymentProjectHeader } from '@/components/project/deployment-project-header';
 import { GitIntegrationCard } from '@/components/project/git-integration-card';
+import { ResourcesCard } from '@/components/project/resources-card';
 import { DeployNewVersionButton } from '@/components/project/deploy-new-version-button';
 import { Button } from '@/components/ui/button';
 
@@ -41,9 +43,10 @@ export default async function ProjectDeploymentsPage({
   const project = await getProject(projectId).catch(() => null);
   if (!project) redirect('/projects');
 
-  const [deployments, git] = await Promise.all([
+  const [deployments, git, buildConfig] = await Promise.all([
     getDeployments(project.id).catch(() => []),
     getGitIntegration(project.id).catch(() => null),
+    getBuildConfig(project.id),
   ]);
 
   const initialized = git?.deploymentInitialized ?? deployments.length > 0;
@@ -127,6 +130,7 @@ export default async function ProjectDeploymentsPage({
           status={git}
         />
       ) : null}
+      <ResourcesCard projectId={project.id} buildConfig={buildConfig} />
       <DeploymentHistory
         projectId={project.id}
         projectSlug={project.slug}

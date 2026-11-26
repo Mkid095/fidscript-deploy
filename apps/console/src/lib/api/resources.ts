@@ -209,3 +209,32 @@ export async function getGitIntegration(
   );
   return response;
 }
+
+/**
+ * The application's build settings: the commands and the port a person
+ * overrode, and the container's resource ceilings. A null ceiling means the
+ * platform's own default (512 MB, one core).
+ */
+export interface BuildConfig {
+  buildTarget: string | null;
+  startupTimeoutSeconds: number;
+  requiredEnvVars: string[];
+  installCommand: string | null;
+  buildCommand: string | null;
+  startCommand: string | null;
+  port: number | null;
+  /** The container's memory ceiling in MB; null means the platform default (512). */
+  memoryLimitMb: number | null;
+  /** The container's CPU ceiling in millicpus; null means the platform default (1000). */
+  cpuLimitMillicpu: number | null;
+}
+
+export async function getBuildConfig(
+  projectId: string,
+): Promise<BuildConfig | null> {
+  try {
+    return await api.get<BuildConfig>(`/projects/${projectId}/build-config`);
+  } catch {
+    return null;
+  }
+}

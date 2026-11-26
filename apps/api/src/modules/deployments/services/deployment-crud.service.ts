@@ -9,6 +9,7 @@ import { ConfigService } from '@nestjs/config';
 import { PrismaService } from '@/prisma/prisma.service';
 import { EventService } from '@/modules/events/event.service';
 import { DeploymentWorkerService } from '@/modules/deployments/runner/deployment-worker.service';
+import { DeploymentApplyService } from '@/modules/deployments/runner/deployment-apply.service';
 import {
   CreateDeploymentDto,
   UpdateBuildConfigDto,
@@ -39,6 +40,7 @@ export class DeploymentCrudService {
     private envVars: ProjectEnvVarsService,
     private access: ProjectAccessService,
     private identity: DeploymentIdentityService,
+    private apply: DeploymentApplyService,
   ) {}
 
   // ─── Framework detection (pre-deploy) ──────────────────────────────────────
@@ -400,6 +402,15 @@ export class DeploymentCrudService {
           startCommand: dto.startCommand.trim() || null,
         }),
         ...(dto.port !== undefined && { port: dto.port || null }),
+        // The ceilings: once set they bind every future container for the
+        // project. There is no "back to default" — the default is the floor
+        // of safety, and a person who raised it does not quietly lower it.
+        ...(dto.memoryLimitMb !== undefined && {
+          memoryLimitMb: dto.memoryLimitMb,
+        }),
+        ...(dto.cpuLimitMillicpu !== undefined && {
+          cpuLimitMillicpu: dto.cpuLimitMillicpu,
+        }),
       },
     });
     return this.formatBuildConfig(config);
@@ -518,6 +529,22 @@ export class DeploymentCrudService {
   }
 
   /**
+   * Re-run the live container under the project's current build settings.
+   *
+   * Ceilings are fixed when a container is created, so a limit that changed
+   * sits in the build config until the next deploy. This applies it now: the
+   * same image, same release, a new envelope. The access rule matches
+   * rollback — the person must be able to manage the project's deployments.
+   */
+  async applyBuildConfig(userId: string, projectId: string) {
+    projectId = await this.checkAccessOrThrow(userId, projectId, [
+      'admin',
+      'owner',
+    ]);
+    return this.apply.applyBuildConfig(projectId);
+  }
+
+  /**
    * Check that the caller may act on the project, and answer with the
    * project's **id**.
    *
@@ -606,6 +633,9 @@ export class DeploymentCrudService {
       buildCommand: c.buildCommand || null,
       startCommand: c.startCommand || null,
       port: c.port ?? null,
+      // The ceilings, as they stand: null means the platform default.
+      memoryLimitMb: c.memoryLimitMb ?? null,
+      cpuLimitMillicpu: c.cpuLimitMillicpu ?? null,
       createdAt: c.createdAt,
       updatedAt: c.updatedAt,
     };
