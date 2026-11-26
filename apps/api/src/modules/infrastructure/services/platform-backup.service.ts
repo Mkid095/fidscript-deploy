@@ -36,6 +36,11 @@ export interface BackupManifest {
   checksum: string;
   retentionDays: number;
   components: string[];
+  /**
+   * How many rows of each entity the backup carries — what a restore
+   * verification compares the restored database against.
+   */
+  tableCounts: Record<string, number>;
 }
 
 export interface BackupResult {
@@ -87,7 +92,7 @@ export class PlatformBackupService {
       const pgGzFile = `${pgFile}.gz`;
 
       // 2. Build JSON manifest
-      const manifestData = await this.buildManifestJson(backupId);
+      const { buffer: manifestData, tableCounts } = await this.buildManifestJson(backupId);
 
       // 3. Encrypt
       const encPg = await this.encryptLargeFile(pgGzFile);
@@ -115,6 +120,7 @@ export class PlatformBackupService {
         checksum,
         retentionDays: this.retentionDays,
         components: ['postgres', 'manifest'],
+        tableCounts,
       };
 
       // 6. Enforce retention
@@ -163,7 +169,9 @@ export class PlatformBackupService {
     await this.execProcess(spawn('gzip', ['-f', outputFile]));
   }
 
-  private async buildManifestJson(backupId: string): Promise<Buffer> {
+  private async buildManifestJson(
+    backupId: string,
+  ): Promise<{ buffer: Buffer; tableCounts: Record<string, number> }> {
     const [projects, cronJobs, domains, users, orgs, deployments, credentials] = await Promise.all([
       this.prisma.project.findMany({
         select: { id: true, name: true, slug: true, type: true, status: true, ownerId: true, region: true, subdomain: true, customDomains: true, createdAt: true, updatedAt: true },
@@ -196,9 +204,23 @@ export class PlatformBackupService {
       backupId, createdAt: new Date().toISOString(), version: 1,
       retentionDays: this.retentionDays,
       projects, cronJobs, domains, users, organizations: orgs, deployments, credentials,
+      // What a restore verification compares against: how many rows of each
+      // entity this backup carries.
+      tableCounts: {
+        projects: projects.length,
+        cronJobs: cronJobs.length,
+        domains: domains.length,
+        users: users.length,
+        organizations: orgs.length,
+        deployments: deployments.length,
+        credentials: credentials.length,
+      },
     };
 
-    return Buffer.from(JSON.stringify(manifest, null, 2), 'utf8');
+    return {
+      buffer: Buffer.from(JSON.stringify(manifest, null, 2), 'utf8'),
+      tableCounts: manifest.tableCounts,
+    };
   }
 
   /**
@@ -253,8 +275,13 @@ export class PlatformBackupService {
       for (const key of keys) {
         try {
           const data = await this.minio.download(key);
-          backups.push(JSON.parse(data.toString('utf8')));
-        } catch { /* corrupt — skip */ }
+          // The manifest is stored encrypted (see encryptManifest); the
+          // bytes on the wire are not the JSON. Decrypt, then parse — the
+          // old code parsed the ciphertext, threw, swallowed it, and
+          // retention deleted nothing.
+          const plain = this.cryptoService.decrypt(data.toString('utf8'));
+          backups.push(JSON.parse(plain));
+        } catch { /* corrupt or unreadable — skip */ }
       }
     } catch { /* bucket missing */ }
     return backups.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
