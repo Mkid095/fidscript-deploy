@@ -83,8 +83,13 @@ RUN apt-get update -y && apt-get install -y ca-certificates curl gnupg git unzip
     curl -fsSL https://download.docker.com/linux/debian/gpg | gpg --dearmor -o /etc/apt/keyrings/docker.gpg && \
     chmod a+r /etc/apt/keyrings/docker.gpg && \
     echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.gpg] https://download.docker.com/linux/debian $(. /etc/os-release && echo "$VERSION_CODENAME") stable" > /etc/apt/sources.list.d/docker.list && \
-    apt-get update -y && apt-get install -y openssl curl docker-ce-cli docker-buildx-plugin docker-compose-plugin apache2-utils && \
+    apt-get update -y && apt-get install -y openssl curl docker-ce-cli docker-buildx-plugin docker-compose-plugin apache2-utils postgresql-client && \
     apt-get clean && rm -rf /var/lib/apt/lists/*
+
+# postgresql-client supplies pg_dump / pg_restore / gunzip: the platform
+# backup and the per-database restore both shell out to them, and the image
+# had neither. Every scheduled backup failed with "spawn pg_dump ENOENT"
+# until this was here — the archive existed only in the operator's head.
 
 # apache2-utils is here for htpasswd: the platform installs an application
 # by running the installer's OWN scripts, and an add-on whose secret is a
