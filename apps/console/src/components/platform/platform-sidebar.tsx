@@ -1,9 +1,9 @@
 'use client';
 
-import Image from 'next/image';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 
+import { Brand } from '@/components/brand/brand';
 import { AccountMenu } from './account-menu';
 
 /**
@@ -36,22 +36,7 @@ export function PlatformSidebar({
     <aside className="flex h-screen w-60 flex-shrink-0 flex-col border-r border-rail bg-surface">
       {/* The head: what this is. */}
       <div className="flex-shrink-0 border-b border-rail px-4 py-4">
-        <Link
-          href="/overview"
-          className="flex items-center gap-2.5"
-          aria-label="FIDScript"
-        >
-          <Image
-            src="/logo.png"
-            alt=""
-            width={24}
-            height={24}
-            className="rounded-md"
-          />
-          <span className="text-sm font-bold uppercase tracking-widest text-text">
-            fidscript
-          </span>
-        </Link>
+        <Brand href="/overview" label="FIDScript" />
       </div>
 
       {/* The menu: it scrolls, on its own. */}

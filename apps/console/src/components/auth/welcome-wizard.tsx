@@ -74,7 +74,7 @@ export function WelcomeWizard({ name }: { name: string | null }) {
       {step === 0 ? (
         <div className="space-y-5">
           <div>
-            <h1 className="text-lg font-semibold tracking-tight text-text">
+            <h1 className="text-xl font-semibold tracking-tight text-text">
               What FIDScript is
             </h1>
             <p className="mt-2 text-sm leading-relaxed text-text-muted">
@@ -113,7 +113,7 @@ export function WelcomeWizard({ name }: { name: string | null }) {
       {step === 1 ? (
         <div className="space-y-5">
           <div>
-            <h1 className="text-lg font-semibold tracking-tight text-text">
+            <h1 className="text-xl font-semibold tracking-tight text-text">
               What to call you
             </h1>
             <p className="mt-1 text-sm text-text-muted">
@@ -141,7 +141,7 @@ export function WelcomeWizard({ name }: { name: string | null }) {
       {step === 2 ? (
         <div className="space-y-5">
           <div>
-            <h1 className="text-lg font-semibold tracking-tight text-text">
+            <h1 className="text-xl font-semibold tracking-tight text-text">
               Your first project
             </h1>
             <p className="mt-1 text-sm text-text-muted">
@@ -161,7 +161,7 @@ export function WelcomeWizard({ name }: { name: string | null }) {
       {step === 3 && project ? (
         <div className="space-y-5">
           <div>
-            <h1 className="text-lg font-semibold tracking-tight text-text">
+            <h1 className="text-xl font-semibold tracking-tight text-text">
               Three things to do next
             </h1>
             <p className="mt-1 text-sm text-text-muted">

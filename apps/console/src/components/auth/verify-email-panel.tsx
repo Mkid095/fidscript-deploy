@@ -82,22 +82,29 @@ export function VerifyEmailPanel() {
         <h1 className="text-xl font-semibold tracking-tight text-text">
           Your email is confirmed
         </h1>
-        <Link
-          href="/login"
-          className="inline-flex rounded-md bg-accent px-4 py-2 text-sm font-medium text-white transition hover:bg-accent-hover"
-        >
-          Sign in
-        </Link>
+        <p className="text-sm text-text-muted">
+          The address is verified, and the account is ready.
+        </p>
+        <div>
+          <Link href="/login">
+            <Button variant="primary">Sign in</Button>
+          </Link>
+        </div>
       </div>
     );
   }
 
   return (
     <div className="space-y-4">
-      <h1 className="text-xl font-semibold tracking-tight text-text">
-        Confirm your email
-      </h1>
-      <ErrorState message={message} />
+      <div>
+        <h1 className="text-xl font-semibold tracking-tight text-text">
+          Confirm your email
+        </h1>
+        <p className="mt-1 text-sm text-text-muted">
+          That link could not confirm the address — a new one can.
+        </p>
+      </div>
+      {message ? <ErrorState message={message} /> : null}
       {resent ? (
         <p className="text-sm text-text-muted">
           If that address has an account, a new link is on its way.
@@ -112,7 +119,7 @@ export function VerifyEmailPanel() {
             placeholder="you@example.com"
             autoComplete="username"
           />
-          <Button variant="secondary" onClick={resend} className="w-full">
+          <Button variant="primary" onClick={resend} className="w-full">
             Send it again
           </Button>
         </div>

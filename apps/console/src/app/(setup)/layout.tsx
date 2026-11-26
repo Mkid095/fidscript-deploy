@@ -1,4 +1,4 @@
-import Link from 'next/link';
+import { Brand } from '@/components/brand/brand';
 
 /**
  * The shell the setup sits in.
@@ -14,12 +14,7 @@ export default function SetupLayout({
   return (
     <div className="min-h-screen bg-canvas">
       <header className="border-b border-rail px-4 py-3">
-        <Link
-          href="/"
-          className="text-sm font-bold uppercase tracking-widest text-text"
-        >
-          fidscript
-        </Link>
+        <Brand />
       </header>
       <main className="mx-auto max-w-3xl px-4 py-8">{children}</main>
     </div>

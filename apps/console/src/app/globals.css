@@ -253,4 +253,11 @@ body {
   main > * {
     animation: content-enter 0.18s ease-out;
   }
+
+  /* A panel that arrives on its own — the sign-in's password-and-code
+     switch, the code boxes that wait for their email — settles like the
+     page's content instead of appearing. */
+  .panel-enter {
+    animation: content-enter 0.22s ease-out;
+  }
 }

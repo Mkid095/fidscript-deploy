@@ -6,6 +6,7 @@ import Link from 'next/link';
 import { browserApi } from '@/lib/api/browser';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { ErrorState } from '@/components/ui/feedback';
 
 /**
  * Asking for a reset.
@@ -54,16 +55,16 @@ export function ForgotPasswordForm() {
           hour.
         </p>
         <p className="text-xs text-text-dim">
-          Nothing there? Check the spam folder, or{' '}
-          <button
-            type="button"
-            onClick={() => setSent(false)}
-            className="text-text-muted underline transition hover:text-text"
-          >
-            try again
-          </button>
-          .
+          Nothing there? Check the spam folder.
         </p>
+        <Button
+          type="button"
+          variant="ghost"
+          size="sm"
+          onClick={() => setSent(false)}
+        >
+          Try again
+        </Button>
         <Link
           href="/login"
           className="inline-block text-xs text-text-muted transition hover:text-text"
@@ -96,11 +97,7 @@ export function ForgotPasswordForm() {
         required
       />
 
-      {error ? (
-        <p role="alert" className="text-sm text-danger">
-          {error}
-        </p>
-      ) : null}
+      {error ? <ErrorState message={error} /> : null}
 
       <Button
         type="submit"

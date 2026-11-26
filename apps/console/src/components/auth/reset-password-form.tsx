@@ -70,12 +70,11 @@ export function ResetPasswordForm() {
           Every session on this account was signed out — including this one.
           Sign in with the new password.
         </p>
-        <Link
-          href="/login"
-          className="inline-flex rounded-md bg-accent px-4 py-2 text-sm font-medium text-white transition hover:bg-accent-hover"
-        >
-          Sign in
-        </Link>
+        <div>
+          <Link href="/login">
+            <Button variant="primary">Sign in</Button>
+          </Link>
+        </div>
       </div>
     );
   }
@@ -121,6 +120,12 @@ export function ResetPasswordForm() {
       >
         {submitting ? 'Saving…' : 'Set my password'}
       </Button>
+
+      <p className="pt-1 text-center text-xs text-text-muted">
+        <Link href="/login" className="transition hover:text-text">
+          Back to sign in
+        </Link>
+      </p>
     </form>
   );
 }

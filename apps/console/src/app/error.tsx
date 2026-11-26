@@ -3,6 +3,7 @@
 import { useEffect } from 'react';
 
 import { Button } from '@/components/ui/button';
+import { Brand } from '@/components/brand/brand';
 
 /**
  * When a screen falls over.
@@ -23,9 +24,10 @@ export default function Error({
   }, [error]);
 
   return (
-    <div className="flex min-h-[60vh] items-center justify-center px-4">
-      <div className="w-full max-w-md text-center">
-        <p className="text-[11px] font-semibold uppercase tracking-widest text-danger">
+    <div className="flex min-h-[60vh] items-center justify-center bg-canvas px-4">
+      <div className="flex w-full max-w-md flex-col items-center text-center">
+        <Brand />
+        <p className="mt-6 text-[11px] font-semibold uppercase tracking-widest text-danger">
           Something went wrong
         </p>
         <h1 className="mt-3 text-xl font-semibold tracking-tight text-text">

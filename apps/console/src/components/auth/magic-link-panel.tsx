@@ -5,6 +5,8 @@ import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
 
 import { browserApi } from '@/lib/api/browser';
+import { Button, Spinner } from '@/components/ui/button';
+import { ErrorState } from '@/components/ui/feedback';
 
 /**
  * Signing in from a magic link.
@@ -51,18 +53,20 @@ export function MagicLinkPanel() {
         <h1 className="text-xl font-semibold tracking-tight text-text">
           That link has expired
         </h1>
-        <p role="alert" className="text-sm text-danger">
-          {error}
-        </p>
-        <Link
-          href="/login"
-          className="inline-flex rounded-md bg-accent px-4 py-2 text-sm font-medium text-white transition hover:bg-accent-hover"
-        >
-          Sign in with a code
-        </Link>
+        <ErrorState message={error} />
+        <div>
+          <Link href="/login">
+            <Button variant="primary">Sign in</Button>
+          </Link>
+        </div>
       </div>
     );
   }
 
-  return <p className="text-sm text-text-muted">Signing you in…</p>;
+  return (
+    <div className="flex items-center justify-center py-4 text-sm text-text-muted">
+      <Spinner />
+      <span className="ml-2">Signing you in…</span>
+    </div>
+  );
 }

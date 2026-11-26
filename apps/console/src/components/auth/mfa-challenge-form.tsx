@@ -7,7 +7,11 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { browserApi } from '@/lib/api/browser';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { CodeInput } from '@/components/ui/code-input';
+import { Segmented } from '@/components/ui/segmented';
 import { ErrorState } from '@/components/ui/feedback';
+
+type Kind = 'code' | 'recovery';
 
 /**
  * The second factor.
@@ -16,24 +20,35 @@ import { ErrorState } from '@/components/ui/feedback';
  * session, and the proxy kept that challenge in a cookie. This form sends
  * the code; the proxy attaches the challenge; the session lands in cookies.
  *
- * A **recovery code** works here too, for the person whose phone is gone.
+ * A **recovery code** works here too, for the person whose phone is gone:
+ * one of the twelve the account printed the day it enrolled.
  */
 export function MfaChallengeForm() {
   const router = useRouter();
   const params = useSearchParams();
   const next = params.get('next') ?? '/overview';
 
+  const [kind, setKind] = useState<Kind>('code');
   const [code, setCode] = useState('');
-  const [useRecovery, setUseRecovery] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
+
+  const switchKind = (nextKind: Kind) => {
+    setKind(nextKind);
+    setError(null);
+    setCode('');
+  };
 
   async function submit(event: React.FormEvent) {
     event.preventDefault();
     setError(null);
 
     if (!code.trim()) {
-      setError('Enter the code from your authenticator.');
+      setError(
+        kind === 'recovery'
+          ? 'Enter one of your recovery codes.'
+          : 'Enter the code from your authenticator app.',
+      );
       return;
     }
 
@@ -58,22 +73,47 @@ export function MfaChallengeForm() {
           Two-factor authentication
         </h1>
         <p className="mt-1 text-sm text-text-muted">
-          {useRecovery
+          {kind === 'recovery'
             ? 'Enter one of your recovery codes.'
             : 'Enter the code from your authenticator app to finish signing in.'}
         </p>
       </div>
 
-      <Input
-        label={useRecovery ? 'Recovery code' : 'Code'}
-        value={code}
-        onChange={(event) => setCode(event.target.value)}
-        placeholder={useRecovery ? 'abcd1234-efgh56' : '123456'}
-        autoComplete="one-time-code"
-        inputMode={useRecovery ? 'text' : 'numeric'}
-        autoFocus
-        required
+      <Segmented
+        ariaLabel="How to verify"
+        value={kind}
+        onChange={switchKind}
+        options={[
+          { value: 'code', label: 'Code' },
+          { value: 'recovery', label: 'Recovery code' },
+        ]}
       />
+
+      <div key={kind} className="panel-enter">
+        {kind === 'code' ? (
+          <div>
+            <p className="mb-1.5 text-xs font-medium text-text-muted">Code</p>
+            <CodeInput
+              value={code}
+              onChange={setCode}
+              autoFocus
+              disabled={submitting}
+              label="The two-factor code"
+            />
+          </div>
+        ) : (
+          <Input
+            label="Recovery code"
+            value={code}
+            onChange={(event) => setCode(event.target.value)}
+            placeholder="abcd1234-efgh56"
+            autoComplete="off"
+            inputMode="text"
+            autoFocus
+            required
+          />
+        )}
+      </div>
 
       {error ? <ErrorState message={error} /> : null}
 
@@ -86,25 +126,11 @@ export function MfaChallengeForm() {
         {submitting ? 'Checking…' : 'Verify'}
       </Button>
 
-      <div className="flex items-center justify-between pt-1 text-xs">
-        <button
-          type="button"
-          onClick={() => {
-            setUseRecovery((value) => !value);
-            setError(null);
-            setCode('');
-          }}
-          className="text-text-muted transition hover:text-text"
-        >
-          {useRecovery ? 'Use your authenticator app' : 'Use a recovery code'}
-        </button>
-        <Link
-          href="/login"
-          className="text-text-muted transition hover:text-text"
-        >
-          Use a different account
+      <p className="pt-1 text-center text-xs text-text-muted">
+        <Link href="/login" className="transition hover:text-text">
+          Back to sign in
         </Link>
-      </div>
+      </p>
     </form>
   );
 }

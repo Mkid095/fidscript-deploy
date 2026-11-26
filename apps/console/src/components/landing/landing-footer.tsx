@@ -1,5 +1,7 @@
 import Link from 'next/link';
 
+import { Brand } from '@/components/brand/brand';
+
 /**
  * The footer's links.
  *
@@ -47,9 +49,7 @@ export function LandingFooter() {
       <div className="mx-auto max-w-6xl px-6">
         <div className="grid grid-cols-2 gap-8 sm:grid-cols-4">
           <div>
-            <p className="text-sm font-bold uppercase tracking-widest text-text">
-              fidscript
-            </p>
+            <Brand />
             <p className="mt-2 max-w-xs text-[13px] leading-relaxed text-text-dim">
               A control plane for your own hardware. Self-hosted, open source,
               and yours.

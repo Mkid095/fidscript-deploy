@@ -1,5 +1,6 @@
 import Link from 'next/link';
 
+import { Brand } from '@/components/brand/brand';
 import { Button } from '@/components/ui/button';
 
 /**
@@ -11,8 +12,9 @@ import { Button } from '@/components/ui/button';
 export default function NotFound() {
   return (
     <div className="flex min-h-screen items-center justify-center bg-canvas px-4">
-      <div className="w-full max-w-md text-center">
-        <p className="text-[11px] font-semibold uppercase tracking-widest text-text-dim">
+      <div className="flex w-full max-w-md flex-col items-center text-center">
+        <Brand />
+        <p className="mt-6 text-[11px] font-semibold uppercase tracking-widest text-text-dim">
           404
         </p>
         <h1 className="mt-3 text-xl font-semibold tracking-tight text-text">
