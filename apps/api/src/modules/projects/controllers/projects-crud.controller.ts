@@ -43,9 +43,12 @@ export class ProjectsCrudController {
   @RequireScope('projects:write')
   async create(@Req() req: Request, @Body() dto: CreateProjectDto) {
     const user = req.user as AuthUser;
-    // A key cannot own a project: the owner is a person.
-    if (user.isApiKey) {
-      throw new ForbiddenException('An API key cannot create a project');
+    // A *project* key cannot own a project: the owner is a person. An
+    // account key is the exception — it acts as the person it belongs to,
+    // so it creates under that person's ownership. The `projects:write`
+    // scope above still gates which account keys may do it.
+    if (user.isApiKey && user.keyType !== 'account') {
+      throw new ForbiddenException('A project API key cannot create a project');
     }
     return this.projects.create(user.userId, dto);
   }

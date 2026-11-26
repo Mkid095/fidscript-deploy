@@ -46,6 +46,9 @@ export const SCOPE_ALLOWLIST = [
   'marketplace:write',
   'marketplace:submit',
   'marketplace:admin',
+  // Registry (the package registry's own account, linked to the user)
+  'registry:read',
+  'registry:write',
   // Auth / sessions (account-level)
   'auth:read',
   'auth:write',

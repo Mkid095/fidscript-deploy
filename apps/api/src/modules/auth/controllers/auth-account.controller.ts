@@ -12,10 +12,12 @@ import {
 } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { JwtAuthGuard } from '@/modules/auth/jwt-auth.guard';
+import { ApiKeyOrJwtGuard } from '@/modules/auth/guards/api-key-or-jwt.guard';
 import { CurrentUser } from '@/modules/auth/current-user.decorator';
 import { AuthService } from '@/modules/auth/services/auth.service';
 import { UpdateProfileDto } from '@/modules/auth/dto/profile.dto';
 import { CreateApiKeyDto } from '@/modules/auth/dto/api-key.dto';
+import { SCOPE_ALLOWLIST } from '@/modules/auth/constants/scope-allowlist';
 
 /**
  * The account: the profile, the sessions and the API keys.
@@ -111,6 +113,18 @@ export class AuthAccountController {
   async revokeAllSessions(@CurrentUser('userId') userId: string) {
     await this.authService.revokeAllSessions(userId);
     return { success: true };
+  }
+
+  /**
+   * The scopes a token can be restricted to. Reference data, not an action:
+   * both the dashboard's token picker and the CLI's `--scope` help read it.
+   */
+  @Get('scope-catalogue')
+  @UseGuards(ApiKeyOrJwtGuard)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Every scope the platform knows, for token pickers' })
+  scopeCatalogue() {
+    return { scopes: [...SCOPE_ALLOWLIST] };
   }
 
   @Get('api-keys')

@@ -419,6 +419,9 @@ services:
       SERVER_IP: ${SERVER_IP}
       PLATFORM_DOMAIN: ${PLATFORM_DOMAIN:-deploy.fidscript.com}
       PLATFORM_PUBLIC_URL: https://api.${PLATFORM_DOMAIN:-deploy.fidscript.com}
+      # The npm registry on the shared network: the registry-account link
+      # takes the short way round instead of a public-edge round trip.
+      REGISTRY_INTERNAL_URL: http://nextmavens-verdaccio:4873
       CLOUDFLARE_API_TOKEN_FILE: /run/secrets/cf_api_token
       # Stalwart / Email
       # StalwartJmapService appends '/jmap' to baseURL on every call,

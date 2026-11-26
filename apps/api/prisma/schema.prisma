@@ -50,6 +50,7 @@ model User {
   mfaRecoveryCodes   MfaRecoveryCode[]
   orgMemberships    OrganizationMember[]
   teamMemberships   TeamMember[]
+  registryCredentials UserRegistryCredential[]
 
   @@map("users")
   @@schema("identity")
@@ -245,6 +246,28 @@ model ApiKey {
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@map("api_keys")
+  @@schema("identity")
+}
+
+/// The package registry's own account, linked to a platform user so that one
+/// login reaches both. The registry (Verdaccio) is a separate identity, so the
+/// platform keeps the registry password it generated, encrypted. The registry
+/// token is handed to the CLI once and lives on the user's machine, not here.
+model UserRegistryCredential {
+  id          String    @id @default(uuid())
+  userId      String    @unique @map("user_id")
+  /// The registry username the platform created — the user's email.
+  registryUser String   @map("registry_user") @db.VarChar(255)
+  /// The platform-generated registry password, encrypted. Never returned in
+  /// the clear; it is only ever used to mint a fresh registry token.
+  passwordEnc String    @map("password_enc")
+  linkedAt    DateTime  @default(now()) @map("linked_at") @db.Timestamptz
+  lastUsedAt  DateTime? @map("last_used_at") @db.Timestamptz
+  createdAt   DateTime  @default(now()) @map("created_at") @db.Timestamptz
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("user_registry_credentials")
   @@schema("identity")
 }
 

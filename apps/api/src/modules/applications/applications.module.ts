@@ -10,9 +10,11 @@ import { ApplicationDnsService } from './services/application-dns.service';
 import { ApplicationJobsService } from './services/application-jobs.service';
 import { ApplicationRuntimeService } from './services/application-runtime.service';
 import { RegistryConfigService } from './services/registry-config.service';
+import { RegistryAccountService } from './services/registry-account.service';
 import { PlatformCredentialsService } from './services/platform-credentials.service';
 import { ApplicationsController } from './controllers/applications.controller';
 import { PlatformCredentialsController } from './controllers/platform-credentials.controller';
+import { AuthRegistryController } from './controllers/auth-registry.controller';
 
 /**
  * The applications an operator can have on a platform.
@@ -36,7 +38,7 @@ import { PlatformCredentialsController } from './controllers/platform-credential
     // the client that proves the platform's token works.
     InstantModule,
   ],
-  controllers: [ApplicationsController, PlatformCredentialsController],
+  controllers: [ApplicationsController, PlatformCredentialsController, AuthRegistryController],
   providers: [
     ApplicationCatalogueService,
     RegistryCatalogueService,
@@ -47,6 +49,9 @@ import { PlatformCredentialsController } from './controllers/platform-credential
     // The registry's scope access rules: who may read a scope without a
     // token, and the config rewrite that makes the registry honour it.
     RegistryConfigService,
+    // The registry's own account, linked to the platform's user: the password
+    // the platform generates, encrypted, and the token it mints with it.
+    RegistryAccountService,
     // The credentials screen: what each application answers with, and the
     // way to make it answer with the platform's own identity.
     PlatformCredentialsService,
