@@ -11,6 +11,7 @@ import { ApplicationJobsService } from './services/application-jobs.service';
 import { ApplicationRuntimeService } from './services/application-runtime.service';
 import { RegistryConfigService } from './services/registry-config.service';
 import { RegistryAccountService } from './services/registry-account.service';
+import { VerdaccioRegistryProvider } from './services/registry-provider/verdaccio.provider';
 import { PlatformCredentialsService } from './services/platform-credentials.service';
 import { ApplicationsController } from './controllers/applications.controller';
 import { PlatformCredentialsController } from './controllers/platform-credentials.controller';
@@ -52,6 +53,10 @@ import { AuthRegistryController } from './controllers/auth-registry.controller';
     // The registry's own account, linked to the platform's user: the password
     // the platform generates, encrypted, and the token it mints with it.
     RegistryAccountService,
+    // The registry's wire protocol behind the provider seam: the platform's
+    // one concrete registry is Verdaccio, and the account service speaks to
+    // it only through this.
+    VerdaccioRegistryProvider,
     // The credentials screen: what each application answers with, and the
     // way to make it answer with the platform's own identity.
     PlatformCredentialsService,
