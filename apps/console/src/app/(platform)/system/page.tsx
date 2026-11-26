@@ -9,9 +9,10 @@ import {
   getSystemState,
   getDeletionTasks,
 } from '@/lib/api/metrics';
-import { getPlatformDomain } from '@/lib/api/platform';
+import { getPlatformDomain, getPlatformBackupStatus } from '@/lib/api/platform';
 import { AreaChart, BarList, Meter } from '@/components/system/system-charts';
 import { DeletionTasksCard } from '@/components/system/deletion-tasks-card';
+import { BackupsCard } from '@/components/system/backups-card';
 
 export const metadata = { title: 'System' };
 
@@ -23,7 +24,7 @@ export const metadata = { title: 'System' };
  * not from anything the console remembers.
  */
 export default async function SystemPage() {
-  const [state, machine, cpu, logs, traffic, domain, deletionTasks] =
+  const [state, machine, cpu, logs, traffic, domain, deletionTasks, backup] =
     await Promise.all([
       getSystemState(),
       getMachineState(),
@@ -32,6 +33,9 @@ export default async function SystemPage() {
       getSiteTraffic(),
       getPlatformDomain(),
       getDeletionTasks(),
+      // The backup card is admin-only; a non-admin session gets nothing,
+      // not an error.
+      getPlatformBackupStatus().catch(() => null),
     ]);
 
   const grafanaUrl = domain ? `https://grafana.${domain}` : null;
@@ -244,6 +248,8 @@ export default async function SystemPage() {
       </section>
 
       <DeletionTasksCard tasks={deletionTasks} />
+
+      <BackupsCard status={backup} />
     </Page>
   );
 }

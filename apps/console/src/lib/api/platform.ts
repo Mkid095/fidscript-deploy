@@ -166,3 +166,83 @@ export async function applyPlatformCredentials(
 }> {
   return api.post('/admin/platform-credentials/apply', { email, password });
 }
+
+// ── The platform's own backups (disaster recovery) ──────────────────────
+// Where the platform's data outlives the machine that made it: an
+// off-server destination, the last backup, and whether the last one
+// still restores.
+
+export interface BackupDestinationConfig {
+  endpoint: string;
+  region?: string;
+  accessKey: string;
+  secretKey: string;
+  bucket: string;
+  useSsl?: boolean;
+}
+
+export interface PlatformBackupStatus {
+  destination: {
+    kind: 'internal' | 's3';
+    description: string;
+    configured: boolean;
+  };
+  retentionDays: number;
+  lastBackup: {
+    backupId: string;
+    createdAt: string;
+    postgresSize: number;
+    manifestSize: number;
+    tableCounts: Record<string, number> | undefined;
+  } | null;
+  lastVerify: {
+    checkedAt: string;
+    ok: boolean;
+    backupId: string | null;
+    error?: string;
+    mismatchCount?: number;
+  } | null;
+}
+
+/** Where the backups go, the newest one, and whether it still restores. */
+export async function getPlatformBackupStatus(): Promise<PlatformBackupStatus> {
+  return api.get<PlatformBackupStatus>('/admin/platform-backup');
+}
+
+/** Run a backup now. */
+export async function runPlatformBackup(): Promise<{
+  backupId: string;
+  bytesStored: number;
+  destination: { kind: string; description: string };
+}> {
+  return api.post('/admin/platform-backup/run');
+}
+
+/** Prove the newest backup restores. */
+export async function verifyPlatformRestore(): Promise<{
+  ok: boolean;
+  backupId: string | null;
+  countsVerified: boolean;
+  error?: string;
+}> {
+  return api.post('/admin/platform-backup/verify-restore');
+}
+
+/** Probe a destination without saving it. */
+export async function testBackupDestination(
+  config: BackupDestinationConfig,
+): Promise<{ ok: boolean; detail?: string; error?: string }> {
+  return api.post('/admin/platform-backup/destination/test', config);
+}
+
+/** Save a destination — only once it answered the probe. */
+export async function saveBackupDestination(
+  config: BackupDestinationConfig,
+): Promise<void> {
+  await api.post('/admin/platform-backup/destination', config);
+}
+
+/** Back to the platform's own MinIO. */
+export async function clearBackupDestination(): Promise<void> {
+  await api.delete('/admin/platform-backup/destination');
+}

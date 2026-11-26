@@ -40,6 +40,11 @@ describe('retention of encrypted backups', () => {
     const admin = { pgEnv: () => ({}) };
     const redis = { acquireLock: jest.fn().mockResolvedValue(true), releaseLock: jest.fn() };
     const config = { get: jest.fn((_k: string, d: unknown) => d) };
+    const secrets = {
+      tryGet: jest.fn().mockResolvedValue(null),
+      set: jest.fn().mockResolvedValue(undefined),
+      delete: jest.fn().mockResolvedValue(true),
+    };
 
     const service = new PlatformBackupService(
       prisma as never,
@@ -48,13 +53,17 @@ describe('retention of encrypted backups', () => {
       admin as never,
       redis as never,
       config as never,
+      secrets as never,
     );
 
-    const retention = (service as unknown as { enforceRetention(): Promise<number> }).enforceRetention.bind(service);
+    // Retention now runs against the store the backups live in — here the
+    // internal one, with the same surface the S3 store has.
+    const store = { ...minio, kind: 'internal', description: 'test store' } as never;
+    const retention = (service as unknown as { enforceRetention(s: unknown): Promise<number> }).enforceRetention.bind(service);
     // Retention days come from the config default; force the fixture's value.
     (service as unknown as { retentionDays: number }).retentionDays = retentionDays;
 
-    return { service, minio, deletions, retention };
+    return { service, minio, store, deletions, retention: (s: unknown = store) => retention(s) };
   }
 
   function manifestJson(createdAt: string) {
