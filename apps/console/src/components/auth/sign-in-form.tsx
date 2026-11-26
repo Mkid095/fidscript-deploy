@@ -187,8 +187,7 @@ export function SignInForm() {
         {mode === 'code' && codeSent ? (
           <>
             <p className="text-xs leading-relaxed text-text-muted">
-              The code is on its way to <span className="text-text">{email}</span>
-              . It works for ten minutes.
+              Check your inbox — the six-digit code works for ten minutes.
             </p>
             <div>
               <p className="mb-1.5 text-xs font-medium text-text-muted">
