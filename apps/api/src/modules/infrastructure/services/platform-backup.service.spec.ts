@@ -121,9 +121,15 @@ describe('retention of encrypted backups', () => {
     (service as unknown as { prisma: unknown }).prisma = prisma;
     const built = await (
       service as unknown as {
-        buildManifestJson(id: string): Promise<{ buffer: Buffer; tableCounts: Record<string, number> }>;
+        buildManifestJson(
+          id: string,
+          refs: { postgresFile: string; manifestFile: string },
+        ): Promise<{ buffer: Buffer; tableCounts: Record<string, number> }>;
       }
-    ).buildManifestJson('backup-1');
+    ).buildManifestJson('backup-1', {
+      postgresFile: 'postgres/x.dump.gz.enc',
+      manifestFile: 'manifests/x.json.enc',
+    });
     expect(built.tableCounts).toEqual({
       projects: 3,
       cronJobs: 0,
@@ -133,5 +139,11 @@ describe('retention of encrypted backups', () => {
       deployments: 2,
       credentials: 4,
     });
+    // The wire manifest must name its own files: retention deletes them and
+    // verify-restore reads the dump back out of it. The manifest that once
+    // omitted them made both of those silently no-ops.
+    const wire = JSON.parse(built.buffer.toString('utf8'));
+    expect(wire.postgresFile).toBe('postgres/x.dump.gz.enc');
+    expect(wire.manifestFile).toBe('manifests/x.json.enc');
   });
 });

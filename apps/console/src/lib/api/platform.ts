@@ -191,8 +191,6 @@ export interface PlatformBackupStatus {
   lastBackup: {
     backupId: string;
     createdAt: string;
-    postgresSize: number;
-    manifestSize: number;
     tableCounts: Record<string, number> | undefined;
   } | null;
   lastVerify: {

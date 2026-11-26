@@ -60,16 +60,16 @@ export const BACKUP_EVENTS_KEY = 'platform-backup-events';
  */
 export interface BackupManifest {
   version: 1;
-  platformVersion: string;
+  platformVersion?: string;
   createdAt: string;
   backupId: string;
   postgresFile: string;
-  postgresSize: number;
+  postgresSize?: number;
   manifestFile: string;
-  manifestSize: number;
-  checksum: string;
+  manifestSize?: number;
+  checksum?: string;
   retentionDays: number;
-  components: string[];
+  components?: string[];
   tableCounts?: Record<string, number>;
 }
 
@@ -151,6 +151,11 @@ export class PlatformBackupService {
     const backupId = crypto.randomUUID();
     const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
     const pgFile = `/tmp/${backupId}.dump`; // pg_dump writes here; gzip adds .gz
+    // Where this backup's files live on the destination. Known up front so
+    // the manifest that gets encrypted can name them — which is what
+    // retention and restore-verification later read back out of it.
+    const pgKey = `postgres/${timestamp}_${backupId}.dump.gz.enc`;
+    const manifestKey = `manifests/${timestamp}_${backupId}.json.enc`;
 
     try {
       this.logger.log(`[backup] Starting backup ${backupId} → ${store.description}`);
@@ -159,8 +164,13 @@ export class PlatformBackupService {
       await this.runPgDump(pgFile);
       const pgGzFile = `${pgFile}.gz`;
 
-      // 2. Build JSON manifest
-      const { buffer: manifestData, tableCounts } = await this.buildManifestJson(backupId);
+      // 2. Build the JSON manifest. It names its own files: a backup that
+      //    is read back later (retention, verify-restore, the console) is
+      //    the manifest on the wire, and it must carry the keys.
+      const { buffer: manifestData, tableCounts } = await this.buildManifestJson(backupId, {
+        postgresFile: pgKey,
+        manifestFile: manifestKey,
+      });
 
       // 3. Encrypt
       const encPg = await this.encryptLargeFile(pgGzFile);
@@ -170,8 +180,6 @@ export class PlatformBackupService {
       const checksum = crypto.createHash('sha256').update(encManifest).digest('hex');
 
       // 5. Upload to the destination
-      const pgKey = `postgres/${timestamp}_${backupId}.dump.gz.enc`;
-      const manifestKey = `manifests/${timestamp}_${backupId}.json.enc`;
       await store.makeBucket();
       await store.upload(pgKey, encPg);
       await store.upload(manifestKey, encManifest);
@@ -282,7 +290,6 @@ export class PlatformBackupService {
     const tmpGz = `/tmp/verify_${latest.backupId}.dump.gz`;
     const tmpDump = `/tmp/verify_${latest.backupId}.dump`;
     let pool: Pool | null = null;
-    let scratchCreated = false;
 
     try {
       const admin = this.adminCreds();
@@ -296,7 +303,6 @@ export class PlatformBackupService {
       // 2. A scratch database in the same cluster — it never touches the
       //    live data, and it is dropped in `finally` no matter what.
       await this.admin.execute(`CREATE DATABASE "${scratch}"`);
-      scratchCreated = true;
 
       // 3. Restore into it. The scratch database is pristine, so no
       //    `--clean` (there is nothing to drop) — only `--if-exists`, which
@@ -433,8 +439,6 @@ export class PlatformBackupService {
         ? {
             backupId: manifests[0].backupId,
             createdAt: manifests[0].createdAt,
-            postgresSize: manifests[0].postgresSize,
-            manifestSize: manifests[0].manifestSize,
             tableCounts: manifests[0].tableCounts,
           }
         : null,
@@ -487,6 +491,7 @@ export class PlatformBackupService {
 
   private async buildManifestJson(
     backupId: string,
+    fileRefs: { postgresFile: string; manifestFile: string },
   ): Promise<{ buffer: Buffer; tableCounts: Record<string, number> }> {
     const [projects, cronJobs, domains, users, orgs, deployments, credentials] = await Promise.all([
       this.prisma.project.findMany({
@@ -519,6 +524,12 @@ export class PlatformBackupService {
     const manifest = {
       backupId, createdAt: new Date().toISOString(), version: 1,
       retentionDays: this.retentionDays,
+      // Where this backup's files live on the destination. Retention and
+      // verify-restore read the manifest back later, so the keys have to
+      // be on it — they were the whole reason the wire manifest once
+      // deleted (and restored) nothing.
+      postgresFile: fileRefs.postgresFile,
+      manifestFile: fileRefs.manifestFile,
       projects, cronJobs, domains, users, organizations: orgs, deployments, credentials,
       // What a restore verification compares against: how many rows of each
       // entity this backup carries.

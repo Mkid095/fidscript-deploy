@@ -116,7 +116,7 @@ function LastBackupRow({ status }: { status: PlatformBackupStatus }) {
         </p>
         {last ? (
           <p className="mt-0.5 text-xs text-text-dim">
-            {when(last.createdAt)} · {bytes(last.postgresSize + last.manifestSize)}
+            {when(last.createdAt)}
             {last.tableCounts
               ? ` · ${Object.values(last.tableCounts).reduce((a, b) => a + b, 0)} rows across ${Object.keys(last.tableCounts).length} tables`
               : ''}
@@ -383,10 +383,4 @@ function when(iso: string): string {
   } catch {
     return iso;
   }
-}
-
-function bytes(n: number): string {
-  if (n >= 1024 ** 3) return `${(n / 1024 ** 3).toFixed(1)} GB`;
-  if (n >= 1024 ** 2) return `${(n / 1024 ** 2).toFixed(1)} MB`;
-  return `${Math.ceil(n / 1024)} KB`;
 }
