@@ -3,11 +3,8 @@ import * as fsp from 'fs/promises';
 
 jest.mock('fs/promises', () => ({
   readFile: jest.fn(),
-  stat: jest.fn(),
-  writeFile: jest.fn(),
-  chown: jest.fn(),
-  chmod: jest.fn(),
-  rename: jest.fn(),
+  copyFile: jest.fn(),
+  open: jest.fn(),
   readdir: jest.fn(),
   rm: jest.fn(),
 }));
@@ -124,11 +121,23 @@ describe('VerdaccioRegistryProvider.provision', () => {
 });
 
 describe('VerdaccioRegistryProvider.revoke', () => {
-  const USERDB = '/opt/nextmavens-registry/storage/htpasswd';
+  const USERDB = '/registry-userdb/htpasswd';
   const FILE = `admin:$2a$10$hashline1:autocreated 2026-01-01\nop.example.com:$2a$10$hashline2:autocreated 2026-02-02\nother.example.com:$2a$10$hashline3:autocreated 2026-03-03\n`;
+  const KEPT = `admin:$2a$10$hashline1:autocreated 2026-01-01\nother.example.com:$2a$10$hashline3:autocreated 2026-03-03\n`;
+
+  function handleOk() {
+    return {
+      writeFile: jest.fn().mockResolvedValue(undefined),
+      close: jest.fn().mockResolvedValue(undefined),
+    };
+  }
 
   beforeEach(() => {
-    jest.resetAllMocks();
+    jest.clearAllMocks();
+    (fsp.open as jest.Mock).mockResolvedValue(handleOk());
+    (fsp.copyFile as jest.Mock).mockResolvedValue(undefined);
+    (fsp.rm as jest.Mock).mockResolvedValue(undefined);
+    (fsp.readdir as jest.Mock).mockResolvedValue([]);
   });
 
   it('without the user database, revocation is reported as user-side-only — never faked', async () => {
@@ -137,34 +146,36 @@ describe('VerdaccioRegistryProvider.revoke', () => {
     await expect(provider.revoke('op.example.com')).resolves.toMatchObject({ ok: false, unsupported: true });
   });
 
-  it('with the user database, revocation removes the entry and keeps every other user', async () => {
+  it('with the user database, revocation removes the entry in place and keeps every other user', async () => {
     const { provider } = makeProvider({ userdbFile: USERDB });
     expect(provider.revocation).toBe('supported');
-    (fsp.readFile as jest.Mock).mockResolvedValue(FILE);
-    (fsp.stat as jest.Mock).mockResolvedValue({ uid: 10001, gid: 65533, mode: 0o644 });
-    (fsp.writeFile as jest.Mock).mockResolvedValue(undefined);
-    (fsp.chown as jest.Mock).mockResolvedValue(undefined);
-    (fsp.chmod as jest.Mock).mockResolvedValue(undefined);
-    (fsp.rename as jest.Mock).mockResolvedValue(undefined);
+    const handle = handleOk();
+    (fsp.open as jest.Mock).mockResolvedValue(handle);
+    (fsp.readFile as jest.Mock)
+      .mockResolvedValueOnce(FILE) // the read
+      .mockResolvedValueOnce(KEPT); // the read-back
+    (fsp.copyFile as jest.Mock).mockResolvedValue(undefined);
+    (fsp.rm as jest.Mock).mockResolvedValue(undefined);
     (fsp.readdir as jest.Mock).mockResolvedValue([]);
 
     const result = await provider.revoke('op.example.com');
     expect(result).toEqual({ ok: true });
 
-    const written = (fsp.writeFile as jest.Mock).mock.calls[0][1] as string;
-    expect(written).not.toContain('op.example.com:');
-    expect(written).toContain('admin:');
-    expect(written).toContain('other.example.com:');
-    // The registry's own user keeps write access to the file it must append to.
-    expect((fsp.chown as jest.Mock).mock.calls[0]).toEqual([expect.stringContaining('.revoke-'), 10001, 65533]);
-    expect((fsp.chmod as jest.Mock).mock.calls[0]).toEqual([expect.stringContaining('.revoke-'), 0o644]);
+    // Written through the same open handle, in place: the inode (and its
+    // ownership) is untouched, which a rename would not be.
+    expect(handle.writeFile).toHaveBeenCalledWith(KEPT, 'utf8');
+    // No other user's line survives into the rewrite.
+    expect(KEPT).not.toContain('op.example.com:');
+    expect(KEPT).toContain('admin:');
+    expect(KEPT).toContain('other.example.com:');
   });
 
   it('revoking a user that is not in the database is a quiet success', async () => {
     const { provider } = makeProvider({ userdbFile: USERDB });
     (fsp.readFile as jest.Mock).mockResolvedValue(FILE);
     await expect(provider.revoke('nobody.example.com')).resolves.toEqual({ ok: true });
-    expect(fsp.writeFile).not.toHaveBeenCalled();
+    expect(fsp.open).not.toHaveBeenCalled();
+    expect(fsp.copyFile).not.toHaveBeenCalled();
   });
 
   it('a user database the platform may not read is reported, not guessed', async () => {
@@ -176,14 +187,33 @@ describe('VerdaccioRegistryProvider.revoke', () => {
     expect(result.error).toMatch(/could not be read/);
   });
 
-  it('a failed rewrite is reported, so the caller does not claim what it did not do', async () => {
+  it('a failed write is reported with a kept snapshot, so the caller does not claim what it did not do', async () => {
     const { provider } = makeProvider({ userdbFile: USERDB });
+    const handle = handleOk();
+    handle.writeFile.mockRejectedValue(new Error('EACCES: permission denied'));
+    (fsp.open as jest.Mock).mockResolvedValue(handle);
     (fsp.readFile as jest.Mock).mockResolvedValue(FILE);
-    (fsp.stat as jest.Mock).mockResolvedValue({ uid: 0, gid: 0, mode: 0o644 });
-    (fsp.writeFile as jest.Mock).mockRejectedValue(new Error('EACCES: permission denied'));
-    (fsp.rm as jest.Mock).mockResolvedValue(undefined);
+    (fsp.copyFile as jest.Mock).mockResolvedValue(undefined);
+
     const result = await provider.revoke('op.example.com');
     expect(result.ok).toBe(false);
     expect(result.error).toMatch(/could not be updated/);
+    expect(result.error).toMatch(/snapshot was kept/);
+    expect(fsp.rm).not.toHaveBeenCalled();
+  });
+
+  it('a rewrite that does not read back is a failure with the snapshot to recover from', async () => {
+    const { provider } = makeProvider({ userdbFile: USERDB });
+    const handle = handleOk();
+    (fsp.open as jest.Mock).mockResolvedValue(handle);
+    (fsp.readFile as jest.Mock)
+      .mockResolvedValueOnce(FILE) // the read
+      .mockResolvedValueOnce('something else'); // the read-back disagrees
+    (fsp.copyFile as jest.Mock).mockResolvedValue(undefined);
+
+    const result = await provider.revoke('op.example.com');
+    expect(result.ok).toBe(false);
+    expect(result.error).toMatch(/did not verify/);
+    expect(fsp.rm).not.toHaveBeenCalled();
   });
 });

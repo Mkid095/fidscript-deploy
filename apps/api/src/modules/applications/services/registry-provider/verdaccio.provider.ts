@@ -1,6 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { chmod, chown, readdir, rm, stat, writeFile, rename, readFile } from 'fs/promises';
+import { constants } from 'fs';
+import { copyFile, open, readdir, readFile, rm } from 'fs/promises';
 import { basename, dirname } from 'path';
 import { RegistryCatalogueService } from '../registry-catalogue.service';
 import {
@@ -32,6 +33,11 @@ import {
  * token minted for that user stops authenticating, and the registry keeps
  * working for everyone else. Without the file, revocation is reported as
  * user-side-only rather than faked.
+ *
+ * The file is edited in place, never renamed over: the deployment
+ * bind-mounts it, a bind mount pins the mount point's inode, and a rename
+ * onto it is EBUSY. In-place also keeps the inode's ownership — the
+ * registry's own user stays the writer — which a rename would not.
  */
 @Injectable()
 export class VerdaccioRegistryProvider implements RegistryProvider {
@@ -132,49 +138,62 @@ export class VerdaccioRegistryProvider implements RegistryProvider {
     } catch (err) {
       return { ok: false, error: `the registry user database could not be read: ${(err as Error).message}` };
     }
+    // A file ending in a newline splits into a trailing empty element;
+    // drop it so the rewrite re-joins to the same shape.
+    if (lines.length && lines[lines.length - 1] === '') lines.pop();
     const prefix = `${name}:`;
     if (!lines.some((line) => line.startsWith(prefix))) {
       // Nothing to revoke: the user is not in the database (already gone,
       // or was never made). Revoke is idempotent — that is success.
       return { ok: true };
     }
-    // Rewrite through a sibling temp file and rename, so a failure midway
-    // never leaves the database truncated. Then hand the file back to the
-    // registry's own user: it must stay able to append new users.
     const kept = lines.filter((line) => !line.startsWith(prefix));
-    const target = await this.rewriteAtomically(file, kept.join('\n') + '\n');
-    if (!target.ok) {
-      return target;
+    const content = kept.length ? kept.join('\n') + '\n' : '';
+    const result = await this.rewriteInPlace(file, content);
+    if (!result.ok) {
+      return result;
     }
     this.logger.log(`Revoked registry user ${name} (htpasswd entry removed)`);
     return { ok: true };
   }
 
-  private async rewriteAtomically(
+  private async rewriteInPlace(
     file: string,
     content: string,
   ): Promise<{ ok: boolean; error?: string }> {
-    const dir = dirname(file);
-    const original = await stat(file).catch(() => null);
-    const temp = `${file}.revoke-${process.pid}-${Date.now()}`;
+    // A bind-mounted file cannot be renamed over (EBUSY), so the edit is
+    // in place: a sibling snapshot first (a bad rewrite is recoverable),
+    // truncate-and-write, then a read-back before anything is claimed.
+    const snapshot = `${file}.snapshot-${Date.now()}`;
     try {
-      await writeFile(temp, content, 'utf8');
-      if (original) {
-        // Preserve ownership and mode so the registry process (its own
-        // uid, often not the platform's) can keep writing the file.
-        await chown(temp, original.uid, original.gid).catch(() => undefined);
-        await chmod(temp, original.mode & 0o777).catch(() => undefined);
+      await copyFile(file, snapshot);
+      const handle = await open(file, constants.O_WRONLY | constants.O_TRUNC);
+      try {
+        await handle.writeFile(content, 'utf8');
+      } finally {
+        await handle.close();
       }
-      await rename(temp, file);
+      const readback = await readFile(file, 'utf8');
+      if (readback !== content) {
+        return {
+          ok: false,
+          error: `the registry user database did not verify after the rewrite; recover from ${snapshot}`,
+        };
+      }
+      await rm(snapshot, { force: true });
     } catch (err) {
-      await rm(temp, { force: true }).catch(() => undefined);
-      return { ok: false, error: `the registry user database could not be updated: ${(err as Error).message}` };
+      return {
+        ok: false,
+        error: `the registry user database could not be updated: ${(err as Error).message} (a snapshot was kept at ${snapshot})`,
+      };
     }
-    // Sweep stale temp files from earlier attempts that died midway.
+    // Sweep stale snapshots from earlier attempts that failed midway.
+    const dir = dirname(file);
+    const marker = `${basename(file)}.snapshot-`;
     const entries = await readdir(dir).catch(() => [] as string[]);
     await Promise.all(
       entries
-        .filter((entry) => entry.startsWith(`${basename(file)}.revoke-`) && entry !== `${basename(file)}.revoke-${process.pid}-${Date.now()}`)
+        .filter((entry) => entry.startsWith(marker))
         .map((entry) => rm(`${dir}/${entry}`, { force: true }).catch(() => undefined)),
     );
     return { ok: true };
