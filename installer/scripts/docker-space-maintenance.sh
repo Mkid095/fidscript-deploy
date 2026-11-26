@@ -22,12 +22,15 @@
 # Usage:
 #   installer/scripts/docker-space-maintenance.sh [LOG_DIR]
 #
-# LOG_DIR defaults to /var/log/fidscript. Run daily from cron:
+# LOG_DIR defaults to the install's own logs/ directory (writable by the
+# operator; /var/log is root's and a non-root crontab cannot use it).
+# Run daily from cron:
 #   30 3 * * * root /opt/fidscript-deploy/installer/scripts/docker-space-maintenance.sh
 
 set -u
 
-LOG_DIR=${1:-/var/log/fidscript}
+INSTALL_ROOT=$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)
+LOG_DIR=${1:-"$INSTALL_ROOT/logs"}
 LOG="$LOG_DIR/docker-space.log"
 ALERT_PCT=${DOCKER_SPACE_ALERT_PCT:-90}
 

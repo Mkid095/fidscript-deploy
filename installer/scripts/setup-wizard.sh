@@ -817,7 +817,7 @@ EOF
 # backstop, and it is what a future install keeps getting.
 install_space_maintenance() {
   local script="$SCRIPT_DIR/docker-space-maintenance.sh"
-  local cron_line="30 3 * * * root $script >>/var/log/fidscript/docker-space.log 2>&1"
+  local cron_line="30 3 * * * root $script"
 
   if [ "$(id -u)" -eq 0 ]; then
     if [ -f /etc/cron.d/fidscript-space ]; then
@@ -830,7 +830,7 @@ install_space_maintenance() {
   else
     # Not root: the operator's own crontab, with the docker group, the
     # same shape this install's other maintenance jobs take.
-    local user_cron="30 3 * * * sg docker -c \"$script >>/var/log/fidscript/docker-space.log 2>&1\""
+    local user_cron="30 3 * * * sg docker -c \"$script\""
     if crontab -l 2>/dev/null | grep -qF "$script"; then
       echo -e "  ${DIM}space maintenance: already in the operator's crontab${NC}"
       return 0
