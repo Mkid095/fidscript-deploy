@@ -304,14 +304,15 @@ export class PlatformBackupService {
       //    live data, and it is dropped in `finally` no matter what.
       await this.admin.execute(`CREATE DATABASE "${scratch}"`);
 
-      // 3. Restore into it. The scratch database is pristine, so no
-      //    `--clean` (there is nothing to drop) — only `--if-exists`, which
-      //    is a no-op on an empty database.
+      // 3. Restore into it. The scratch database is pristine, but
+      //    `--if-exists` is only legal together with `--clean` — pg_restore
+      //    refuses the flag otherwise and restores nothing — so the pair
+      //    goes in, the same way a customer's database restores.
       //
       //    The exit code is diagnostic, not the verdict: `pg_restore` can
-      //    exit 1 over "Invalid object name" noise even when every row
-      //    lands. What proves the backup is the row counts below. Only a
-      //    hard "could not run at all" (-1: spawn/ENOENT/connection) is a
+      //    exit 1 over "Invalid object name" clean-noise even when every
+      //    row lands. What proves the backup is the row counts below. Only
+      //    a hard "could not run at all" (-1: spawn/ENOENT/connection) is a
       //    failure on its own.
       const restoreExit = await this.spawnExit(spawn('pg_restore', [
         '-h', admin.host,
@@ -319,6 +320,7 @@ export class PlatformBackupService {
         '-U', admin.username,
         '-d', scratch,
         '--format=custom',
+        '--clean',
         '--if-exists',
         tmpDump,
       ], { env: this.admin.pgEnv({ ...admin, database: scratch }) }));
