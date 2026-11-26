@@ -37,6 +37,7 @@ import { WhatsappAuthModule } from './modules/whatsapp-auth/whatsapp-auth.module
 import { InfrastructureModule } from './modules/infrastructure/infrastructure.module';
 import { InstantModule } from './modules/instant/instant.module';
 import { ApplicationsModule } from './modules/applications/applications.module';
+import { ProjectHealthModule } from './modules/project-health/project-health.module';
 
 @Module({
   imports: [
@@ -75,6 +76,7 @@ import { ApplicationsModule } from './modules/applications/applications.module';
     InfrastructureModule,
     InstantModule,
     ApplicationsModule,
+    ProjectHealthModule,
   ],
   providers: [
     // Global guard: every authenticated request must have a verified email

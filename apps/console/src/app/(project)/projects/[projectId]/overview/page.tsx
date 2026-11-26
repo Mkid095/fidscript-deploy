@@ -2,6 +2,7 @@ import {
   getInstantApp,
   getProject,
   getProjectBuckets,
+  getProjectHealth,
   getProjectMembers,
   getProjectResources,
 } from '@/lib/api/project';
@@ -52,6 +53,7 @@ export default async function ProjectOverviewPage({
     databases,
     functions,
     events,
+    health,
   ] = await Promise.all([
     getInstantApp(project.id).catch(() => null),
     getDeployments(project.id).catch(() => []),
@@ -68,6 +70,7 @@ export default async function ProjectOverviewPage({
     getDatabases(project.id).catch(() => []),
     getFunctions(project.id).catch(() => []),
     getProjectEvents(project.id).catch(() => []),
+    getProjectHealth(project.id),
   ]);
 
   // The owner is in the project whether or not they are on the members list.
@@ -94,6 +97,7 @@ export default async function ProjectOverviewPage({
         memberCount={memberCount}
         whatsapp={false}
         events={events}
+        health={health}
       />
     </Page>
   );

@@ -1,4 +1,9 @@
-import { Injectable, Logger, OnApplicationBootstrap } from '@nestjs/common';
+import {
+  Injectable,
+  Logger,
+  OnApplicationBootstrap,
+  OnModuleDestroy,
+} from '@nestjs/common';
 import * as cron from 'cron';
 import { SchedulerQueueService } from './scheduler-queue.service';
 import { RedisService } from '@/modules/redis/redis.service';
@@ -6,10 +11,22 @@ import { PrismaService } from '@/prisma/prisma.service';
 import { EventService } from '@/modules/events/event.service';
 import { SchedulerExecutionRequest } from './scheduler-queue.service';
 
+/**
+ * Liveness signal for the scheduler: a single TTL key in Redis, written on
+ * every tick. Readers (the project-health report) treat a missing or stale
+ * key as "the scheduler is not responding". One key, no records, no
+ * evaluator — a heartbeat, not a monitoring system.
+ */
+export const SCHEDULER_HEARTBEAT_KEY = 'scheduler:heartbeat';
+export const SCHEDULER_HEARTBEAT_STALE_MS = 3 * 60 * 1000;
+
 @Injectable()
-export class CronJobSchedulerService implements OnApplicationBootstrap {
+export class CronJobSchedulerService
+  implements OnApplicationBootstrap, OnModuleDestroy
+{
   private readonly logger = new Logger(CronJobSchedulerService.name);
   private readonly runningJobs = new Map<string, cron.CronJob>();
+  private heartbeatTimer: ReturnType<typeof setInterval> | null = null;
 
   constructor(
     private schedulerQueueService: SchedulerQueueService,
@@ -31,6 +48,28 @@ export class CronJobSchedulerService implements OnApplicationBootstrap {
       console.log('[CronJobScheduler] bootstrap complete');
     } catch (err) {
       console.error('[CronJobScheduler] bootstrap error:', err);
+    }
+    // The heartbeat starts even when no job is enabled: it says "the
+    // scheduler is alive", which is the question the reader asks.
+    this.beat();
+    this.heartbeatTimer = setInterval(() => this.beat(), 60_000);
+    this.heartbeatTimer.unref?.();
+  }
+
+  onModuleDestroy() {
+    if (this.heartbeatTimer) {
+      clearInterval(this.heartbeatTimer);
+      this.heartbeatTimer = null;
+    }
+  }
+
+  private async beat() {
+    try {
+      // TTL outlives the staleness threshold so a late reader can still see
+      // *when* the scheduler last spoke, instead of a bare absence.
+      await this.redisService.set(SCHEDULER_HEARTBEAT_KEY, new Date().toISOString(), 300);
+    } catch {
+      // The store itself is down; the reader's ping() will say so.
     }
   }
 

@@ -11,6 +11,12 @@ import type {
   Function,
   ProjectEvent,
 } from '@/lib/api/resources';
+import type {
+  HealthServiceName,
+  ProjectHealthReport,
+  ServiceHealth,
+  ServiceState,
+} from '@/lib/api/project';
 import { sayEvent, sayWhen } from '@/lib/events';
 
 /**
@@ -35,6 +41,7 @@ export function ProjectOverview({
   memberCount,
   whatsapp,
   events,
+  health,
 }: {
   projectSlug: string;
   shape: ProjectShape;
@@ -54,6 +61,8 @@ export function ProjectOverview({
   /** The WhatsApp platform is a property of the machine, not the project. */
   whatsapp: boolean;
   events: ProjectEvent[];
+  /** The platform's live answer to "is each service actually working?". */
+  health: ProjectHealthReport | null;
 }) {
   const base = `/projects/${projectSlug}`;
   const hasBackend = shape === 'BACKEND' || shape === 'BOTH';
@@ -269,6 +278,28 @@ export function ProjectOverview({
         </section>
       ) : null}
 
+      {health ? (
+        <section>
+          <SectionHeader
+            title="Health"
+            description="What the platform can verify, right now — not what the records say."
+          />
+          <Card className="divide-y divide-rail">
+            <div className="flex flex-wrap items-center justify-between gap-2 px-4 py-3">
+              <div className="flex items-center gap-2">
+                <Badge tone={overallTone(health.overall)}>{health.overall}</Badge>
+                <span className="text-xs text-text-dim">
+                  Checked {sayWhen(health.checkedAt)}
+                </span>
+              </div>
+            </div>
+            {health.services.map((service) => (
+              <HealthRow key={service.service} base={base} service={service} />
+            ))}
+          </Card>
+        </section>
+      ) : null}
+
       <section>
         <SectionHeader
           title="Services"
@@ -409,6 +440,107 @@ function serviceTone(
   if (state === 'broken') return 'danger';
   if (state === 'idle') return 'warning';
   return 'neutral';
+}
+
+/** The service names, said the way the operator says them. */
+const SERVICE_LABELS: Record<HealthServiceName, string> = {
+  deployment: 'Deployment',
+  database: 'Database',
+  instantdb: 'Backend',
+  domains: 'Domains',
+  email: 'Mail',
+  cron: 'Scheduled jobs',
+  functions: 'Functions',
+  storage: 'Storage',
+};
+
+/** The overall answer, as a badge tone. */
+function overallTone(overall: 'healthy' | 'degraded' | 'unhealthy') {
+  if (overall === 'healthy') return 'success';
+  if (overall === 'degraded') return 'warning';
+  return 'danger';
+}
+
+/** One of the five service states, as a badge tone. */
+function healthTone(state: ServiceState) {
+  switch (state) {
+    case 'healthy':
+      return 'success';
+    case 'degraded':
+      return 'warning';
+    case 'unhealthy':
+      return 'danger';
+    case 'unknown':
+      return 'info';
+    case 'not_configured':
+    default:
+      return 'neutral';
+  }
+}
+
+/** The one word a health state becomes on a row. */
+function healthLabel(state: ServiceState) {
+  switch (state) {
+    case 'healthy':
+      return 'Healthy';
+    case 'degraded':
+      return 'Degraded';
+    case 'unhealthy':
+      return 'Unhealthy';
+    case 'unknown':
+      return 'Unknown';
+    case 'not_configured':
+      return 'Not configured';
+  }
+}
+
+/**
+ * One service on the health report: its state, its reason, when it was last
+ * checked, and where to go from here. A service the project does not use
+ * says so plainly and links nowhere.
+ */
+function HealthRow({
+  base,
+  service,
+}: {
+  base: string;
+  service: ServiceHealth;
+}) {
+  const configured = service.state !== 'not_configured';
+  const stamp = service.lastFailureAt ?? service.lastGoodAt;
+  const stampWord = service.lastFailureAt ? 'last failed' : 'last checked';
+  const href = configured ? `${base}${service.link}` : null;
+
+  return (
+    <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1 px-4 py-3">
+      <div className="flex min-w-0 items-center gap-2">
+        <Badge tone={healthTone(service.state)}>{healthLabel(service.state)}</Badge>
+        <span className="text-sm font-medium text-text">
+          {SERVICE_LABELS[service.service] ?? service.service}
+        </span>
+      </div>
+      <div className="flex min-w-0 flex-1 items-center justify-end gap-3 text-right">
+        {service.reason ? (
+          <p className="truncate text-xs text-text-dim" title={service.reason}>
+            {service.reason}
+          </p>
+        ) : null}
+        {stamp ? (
+          <span className="shrink-0 text-[11px] text-text-muted">
+            {stampWord} {sayWhen(stamp)}
+          </span>
+        ) : null}
+        {href ? (
+          <Link
+            href={href}
+            className="shrink-0 text-xs text-accent hover:underline"
+          >
+            Open
+          </Link>
+        ) : null}
+      </div>
+    </div>
+  );
 }
 
 /**

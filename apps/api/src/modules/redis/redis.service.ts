@@ -53,6 +53,20 @@ export class RedisService implements OnModuleDestroy {
     }
   }
 
+  /**
+   * True when Redis answered, false when it is unavailable (or was never
+   * configured). Callers that must distinguish "key absent" from "store
+   * down" use this: a null `get` is ambiguous without it.
+   */
+  async ping(): Promise<boolean> {
+    if (!this.client) return false;
+    try {
+      return (await this.client.ping()) === 'PONG';
+    } catch {
+      return false;
+    }
+  }
+
   async del(key: string): Promise<void> {
     if (!this.client) return;
     try {

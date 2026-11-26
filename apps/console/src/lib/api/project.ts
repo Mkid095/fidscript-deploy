@@ -24,6 +24,50 @@ export interface ProjectWithResources {
   resources: ProjectResources;
 }
 
+/**
+ * The live service-health report.
+ *
+ * The platform's own answer to "is this actually working?", rolled up over
+ * each service's real source of truth. A service that is not configured is
+ * *not* unhealthy; a check that could not finish is *unknown* — never
+ * silently healthy. The overview renders this rather than guessing.
+ */
+export type HealthServiceName =
+  | 'deployment'
+  | 'database'
+  | 'instantdb'
+  | 'domains'
+  | 'email'
+  | 'cron'
+  | 'functions'
+  | 'storage';
+
+export type ServiceState =
+  | 'healthy'
+  | 'degraded'
+  | 'unhealthy'
+  | 'not_configured'
+  | 'unknown';
+
+export interface ServiceHealth {
+  service: HealthServiceName;
+  configured: boolean;
+  state: ServiceState;
+  reason?: string;
+  lastGoodAt?: string | null;
+  lastFailureAt?: string | null;
+  /** A path under the project, e.g. "/deployments". */
+  link: string;
+}
+
+export interface ProjectHealthReport {
+  projectId: string;
+  checkedAt: string;
+  /** The worst state of any configured service. */
+  overall: 'healthy' | 'degraded' | 'unhealthy';
+  services: ServiceHealth[];
+}
+
 /** The project itself. */
 export async function getProject(projectId: string): Promise<Project> {
   return api.get<Project>(`/projects/${projectId}`);
@@ -59,6 +103,15 @@ export async function getProjectResources(
     domains: domains.domains.length,
     emailDomains: emailDomains.length,
   };
+}
+
+/** The project's live service-health report, or null when it could not be read. */
+export async function getProjectHealth(
+  projectId: string,
+): Promise<ProjectHealthReport | null> {
+  return api
+    .get<ProjectHealthReport>(`/projects/${projectId}/health`)
+    .catch(() => null);
 }
 
 /** The project's storage buckets. */
