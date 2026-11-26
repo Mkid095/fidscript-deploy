@@ -45,9 +45,11 @@ export class RegistryAccountService {
   async link(userId: string) {
     const user = await this.prisma.user.findUnique({ where: { id: userId } });
     if (!user) throw new ServiceUnavailableException('Unknown user');
-    // The registry username is the user's email: one identity, one account,
-    // and the link is auditable from either side.
-    const name = user.email;
+    // The registry username is the user's email with @ read as a dot: one
+    // identity, one account, and the link is auditable from either side.
+    // The @ cannot stand — it is reserved in the npm user protocol and the
+    // registry rejects it — but the dot keeps the name unique per domain.
+    const name = user.email.replace('@', '.');
 
     const existing = await this.prisma.userRegistryCredential.findUnique({ where: { userId } });
     let token: string;

@@ -57,19 +57,20 @@ describe('registry account link', () => {
     const result = await service.link('u1');
     expect(result).toEqual({
       registryUrl: 'https://registry.example.com',
-      registryUser: 'op@example.com',
+      registryUser: 'op.example.com',
       registryToken: 'verdaccio.token.here',
       linked: true,
     });
-    // The platform kept the password, encrypted.
+    // The platform kept the password, encrypted, under the registry's own
+    // spelling of the name (the @ is not a legal registry username).
     const created = prisma.userRegistryCredential.create.mock.calls[0][0].data;
-    expect(created.registryUser).toBe('op@example.com');
+    expect(created.registryUser).toBe('op.example.com');
     expect(created.passwordEnc).toMatch(/^enc:/);
     // The password itself is nowhere in the answer.
     expect(JSON.stringify(result)).not.toContain(created.passwordEnc.slice(4));
     // A first link asks the provider to create, not to sign in.
     const [name, password, login] = provider.provision.mock.calls[0];
-    expect(name).toBe('op@example.com');
+    expect(name).toBe('op.example.com');
     expect(password).toHaveLength(32);
     expect(login).toBe(false);
   });
@@ -84,7 +85,7 @@ describe('registry account link', () => {
     expect(prisma.userRegistryCredential.update).toHaveBeenCalled();
     // The stored password, decrypted, is what signs the account in.
     const [name, password, login] = provider.provision.mock.calls[0];
-    expect(name).toBe('op@example.com');
+    expect(name).toBe('op.example.com');
     expect(password).toBe('stored');
     expect(login).toBe(true);
   });

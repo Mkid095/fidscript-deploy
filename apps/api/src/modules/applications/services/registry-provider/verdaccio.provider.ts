@@ -69,7 +69,15 @@ export class VerdaccioRegistryProvider implements RegistryProvider {
       return { ok: true, token: body.token };
     }
     if (response.status === 409 && !login) {
-      return { ok: false, alreadyRegistered: true };
+      // Two different 409s: the name is taken by someone else (a registry
+      // fact) versus the name being illegal for this registry (a bug in
+      // what we sent). Only the first is `alreadyRegistered`.
+      const body = (await response.json().catch(() => null)) as { error?: unknown } | null;
+      const error = typeof body?.error === 'string' ? body.error : String(body?.error ?? response.status);
+      if (/already registered/i.test(error)) {
+        return { ok: false, alreadyRegistered: true };
+      }
+      return { ok: false, error: `the registry at ${base} refused the name: ${error}` };
     }
     if (response.status === 401 || response.status === 403) {
       return { ok: false, rejected: true, error: `the registry rejected the credentials` };

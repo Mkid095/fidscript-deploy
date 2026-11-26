@@ -66,6 +66,17 @@ describe('VerdaccioRegistryProvider', () => {
     expect(result.ok).toBe(false);
   });
 
+  it('does not read a bad name as a taken one — the 409 kinds are different failures', async () => {
+    const { provider } = makeProvider({
+      fetchImpl: async () =>
+        new Response(JSON.stringify({ error: 'username should not contain non-uri-safe characters' }), { status: 409 }),
+    });
+    const result = await provider.provision('op@x.com', 'pw', false);
+    expect(result.ok).toBe(false);
+    expect(result.alreadyRegistered).toBeUndefined();
+    expect(result.error).toMatch(/refused the name/);
+  });
+
   it('falls back to the public address when no internal one is set', async () => {
     const { provider, fetch } = makeProvider({ fetchImpl: async () => ok201() });
     await provider.provision('op@example.com', 'pw', false);
