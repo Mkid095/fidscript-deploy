@@ -10,6 +10,7 @@ describe('applying the build config to the live container', () => {
   function makeService(overrides: {
     settings?: unknown;
     activeDeployment?: unknown;
+    latestSuccess?: unknown;
     buildConfig?: unknown;
     redeploy?: (opts: Record<string, unknown>) => Promise<Record<string, unknown>>;
   }) {
@@ -27,6 +28,7 @@ describe('applying the build config to the live container', () => {
       },
       deployment: {
         findUnique: jest.fn().mockResolvedValue(overrides.activeDeployment ?? null),
+        findFirst: jest.fn().mockResolvedValue(overrides.latestSuccess ?? null),
         update: jest.fn().mockResolvedValue({}),
       },
       buildConfig: {
@@ -128,6 +130,34 @@ describe('applying the build config to the live container', () => {
     expect(prisma.deployment.update).toHaveBeenCalledWith({
       where: { id: 'deployment-live' },
       data: { status: 'FAILED' },
+    });
+  });
+
+  it('when the active-deployment field is empty, applies to the newest successful deployment', async () => {
+    // Nothing in the deployment flow writes ProjectSettings.activeDeploymentId
+    // — so a project that has a running container but an empty field must
+    // still be applyable, via the newest successful deployment.
+    const { service, seen, prisma } = makeService({
+      settings: { activeDeploymentId: null },
+      latestSuccess: {
+        id: 'deployment-newest-success',
+        release: { imageTag: 'fidscript/soostori:v7', runtimePort: 3000 },
+      },
+      buildConfig: { memoryLimitMb: 256, cpuLimitMillicpu: 500 },
+    });
+
+    const result = await service.applyBuildConfig('project-1');
+
+    expect(result.success).toBe(true);
+    expect(result.memoryLimitMb).toBe(256);
+    expect(seen.redeploy.deploymentId).toBe('deployment-newest-success');
+    expect(seen.redeploy.imageTag).toBe('fidscript/soostori:v7');
+    expect(seen.redeploy.port).toBe(3000);
+    // The fallback query: newest SUCCESS deployment of the project.
+    expect(prisma.deployment.findFirst).toHaveBeenCalledWith({
+      where: { projectId: 'project-1', status: 'SUCCESS' },
+      orderBy: { createdAt: 'desc' },
+      include: { release: true },
     });
   });
 });

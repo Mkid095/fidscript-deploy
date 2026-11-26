@@ -44,12 +44,22 @@ export class DeploymentApplyService {
     const settings = await this.prisma.projectSettings.findUnique({
       where: { projectId },
     });
-    const active = settings?.activeDeploymentId
+    let active = settings?.activeDeploymentId
       ? await this.prisma.deployment.findUnique({
           where: { id: settings.activeDeploymentId },
           include: { release: true },
         })
       : null;
+    if (!active?.release) {
+      // The settings field is not written by the deployment flow — when it
+      // is empty, the newest successful deployment is what has the
+      // container that is running now.
+      active = await this.prisma.deployment.findFirst({
+        where: { projectId, status: 'SUCCESS' },
+        orderBy: { createdAt: 'desc' },
+        include: { release: true },
+      });
+    }
     if (!active?.release) {
       throw new Error('Nothing is running yet — apply the settings on the next deploy.');
     }
