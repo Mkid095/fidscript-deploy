@@ -47,6 +47,19 @@ export class DockerLifecycleService implements OnModuleDestroy {
   }
 
   async stop(containerName: string): Promise<void> {
+    // Stopping is a desired state, not an event: when the container is
+    // already gone (torn down, crashed without restart, deleted project),
+    // the desired state is achieved and the stop is a no-op, not an error.
+    // The caller marks the deployment stopped either way — that is the
+    // truth about the record.
+    const status = this.exec(
+      `docker inspect -f '{{.State.Status}}' ${containerName} 2>/dev/null || echo missing`,
+    ).trim();
+    if (status === 'missing') {
+      this.logger.log(`Stop ${containerName}: no such container — already stopped`);
+      return;
+    }
+    // `docker stop` on an exited container is a harmless no-op.
     this.exec(`docker stop ${containerName}`);
   }
 

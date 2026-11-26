@@ -809,14 +809,47 @@ providers:
 EOF
 
 # ── Done ──────────────────────────────────────────────────────────────────────
+# Space management: a daily sweep of the Docker space the daemon itself
+# calls reclaimable (dangling images, stopped containers, unused
+# networks, unreferenced build cache) — measured against the disk, and
+# loud when the disk is high and nothing was left to take. The platform's
+# 6-hour GC does the same sweep from inside; this is the host's own
+# backstop, and it is what a future install keeps getting.
+install_space_maintenance() {
+  local script="$SCRIPT_DIR/docker-space-maintenance.sh"
+  local cron_line="30 3 * * * root $script >>/var/log/fidscript/docker-space.log 2>&1"
+
+  if [ "$(id -u)" -eq 0 ]; then
+    if [ -f /etc/cron.d/fidscript-space ]; then
+      echo -e "  ${DIM}space maintenance: /etc/cron.d/fidscript-space already in place${NC}"
+      return 0
+    fi
+    umask 022
+    echo "$cron_line" > /etc/cron.d/fidscript-space
+    echo -e "  ${GREEN}space maintenance: daily sweep scheduled (root, 03:30)${NC}"
+  else
+    # Not root: the operator's own crontab, with the docker group, the
+    # same shape this install's other maintenance jobs take.
+    local user_cron="30 3 * * * sg docker -c \"$script >>/var/log/fidscript/docker-space.log 2>&1\""
+    if crontab -l 2>/dev/null | grep -qF "$script"; then
+      echo -e "  ${DIM}space maintenance: already in the operator's crontab${NC}"
+      return 0
+    fi
+    ( crontab -l 2>/dev/null; echo "$user_cron" ) | crontab -
+    echo -e "  ${GREEN}space maintenance: daily sweep scheduled in the operator's crontab (03:30)${NC}"
+  fi
+}
+
 echo ""
-echo -e "${BOLD}${GREEN}╔════════════════════════════════════════════════════════════════╗${NC}"
-echo -e "${BOLD}${GREEN}║${NC}  ${BOLD}${WHITE}Configuration saved — ready to deploy${NC}"
-echo -e "${BOLD}${GREEN}╚════════════════════════════════════════════════════════════════╝${NC}"
+echo -e "${BOLD}${GREEN}╔══════════════════════════════════════════════════════════════╗${NC}"
+echo -e "${BOLD}${GREEN}║${NC}  ${BOLD}${WHITE}Configuration saved — ready to deploy${NC}                            ${NC}${BOLD}${GREEN}║${NC}"
+echo -e "${BOLD}${GREEN}╚══════════════════════════════════════════════════════════════╝${NC}"
 echo ""
 echo -e "  ${DIM}To start the platform:${NC}"
 echo -e "  ${CYAN}  cd $DOCKER_DIR && sudo docker compose up -d --build${NC}"
 echo ""
+
+install_space_maintenance
 
 # The links. The operator is told to open the dashboard, so it comes first.
 print_summary "$DOMAIN" "${SELECTED_ADDONS[@]}"

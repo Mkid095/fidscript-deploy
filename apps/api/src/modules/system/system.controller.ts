@@ -3,6 +3,7 @@ import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 
 import { PlatformAdminGuard } from '@/modules/auth/guards/platform-admin.guard';
 import { SystemService } from './system.service';
+import { DockerSpaceService } from './docker-space.service';
 
 /**
  * The machine.
@@ -15,7 +16,10 @@ import { SystemService } from './system.service';
 @UseGuards(PlatformAdminGuard)
 @ApiBearerAuth()
 export class SystemController {
-  constructor(private readonly system: SystemService) {}
+  constructor(
+    private readonly system: SystemService,
+    private readonly space: DockerSpaceService,
+  ) {}
 
   @Get('traffic')
   @ApiOperation({ summary: 'The requests each site carried' })
@@ -44,5 +48,23 @@ export class SystemController {
   async retryDeletionTask(@Param('projectId') projectId: string) {
     await this.system.retryDeletion(projectId);
     return { success: true };
+  }
+
+  @Get('space')
+  @ApiOperation({
+    summary:
+      'Where the machine’s disk goes: the root filesystem, and what the Docker daemon reports per category — including what it honestly calls reclaimable.',
+  })
+  async spaceReport() {
+    return this.space.report();
+  }
+
+  @Post('space/reclaim')
+  @ApiOperation({
+    summary:
+      'Reclaim what is actually reclaimable — dangling images, stopped containers, unused networks, and build cache nothing references. Volumes, tagged images and running containers are never touched.',
+  })
+  async spaceReclaim() {
+    return this.space.reclaim();
   }
 }
