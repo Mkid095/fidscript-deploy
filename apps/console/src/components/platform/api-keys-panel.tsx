@@ -278,7 +278,7 @@ function RegistryCard({ registry }: { registry: RegistryStatus }) {
           <p className="text-sm font-medium text-text">Registry</p>
           <p className="mt-0.5 text-xs text-text-dim">
             {registry.linked
-              ? `Linked as ${registry.registryUser} — one login reaches the platform and the npm registry.`
+              ? `Linked as ${registry.registryUser} — one login reaches the platform and the npm registry. Unlinking revokes the registry tokens issued under it; it does not touch the account keys above.`
               : 'Not linked. Link it and a single login covers the registry too.'}
           </p>
         </div>

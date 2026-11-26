@@ -44,14 +44,23 @@ export function registerRegistryAccountCommands(registry: Command, ctx: CliConte
 
   registry
     .command('unlink')
-    .description('Forget the linked registry account (the remote account is kept)')
+    .description('Unlink the registry account and revoke its issued tokens')
     .action(async () => {
       const apiKey = ctx.getApiKey() ?? die('Not logged in — run `fidscript login` first');
       if (!ctx.apiUrl) die('No API URL configured — run `fidscript configure`');
       const client = new FidscriptClient({ apiKey, baseURL: ctx.apiUrl });
-      await client.delete('/api/v1/auth/registry').catch((e) => die(`Unlink failed: ${(e as Error).message}`));
+      const result = await client
+        .delete<{ linked: boolean; revoked: boolean; registryUser?: string; note?: string }>('/api/v1/auth/registry')
+        .catch((e) => die(`Unlink failed: ${(e as Error).message}`));
       clearRegistryCredential();
-      console.log('Registry account unlinked; the local token was cleared.');
+      if (result?.revoked) {
+        console.log(`Registry account ${result.registryUser ?? ''} unlinked — its issued tokens were revoked and the local copy cleared.`);
+      } else {
+        console.log('Registry account unlinked on the platform and the local copy cleared.');
+      }
+      if (result?.note) {
+        console.log(`Note: ${result.note}`);
+      }
     });
 
   registry

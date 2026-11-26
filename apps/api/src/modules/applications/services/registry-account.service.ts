@@ -1,5 +1,6 @@
 import { Injectable, Inject, Logger, ServiceUnavailableException } from '@nestjs/common';
 import { randomBytes } from 'crypto';
+import { Prisma } from '@prisma/client';
 import { PrismaService } from '@/prisma/prisma.service';
 import { CryptoService } from '@/modules/crypto/crypto.service';
 import { RegistryProvider } from './registry-provider/registry-provider';
@@ -20,6 +21,16 @@ import { VerdaccioRegistryProvider } from './registry-provider/verdaccio.provide
  *     user's machine (`~/.fidscript/registry.json`), and re-mintable any
  *     time from the stored password.
  *
+ * Lifecycle, said plainly:
+ *   - link: create the registry user, or sign the existing one in and
+ *     re-mint; the token is the only thing that leaves;
+ *   - unlink: revoke the registry user (every token minted for it stops
+ *     working) and forget the password. Revocation the registry cannot
+ *     drive is reported as not revoked, never faked;
+ *   - account deletion: the credential row cascades with the user; the
+ *     registry side is `revoke()`'s to kill, and a flow that deletes
+ *     users must call it before the cascade.
+ *
  * The registry is spoken to only through the provider seam
  * (registry-provider/): the wire protocol lives there, not here.
  */
@@ -38,6 +49,11 @@ export class RegistryAccountService {
     return this.provider.address().registryUrl;
   }
 
+  /** What the registry can and cannot do about revocation, in one word. */
+  revocation(): 'supported' | 'user-side-only' {
+    return this.provider.revocation;
+  }
+
   /**
    * Link the user's registry account. Returns the registry token — the one
    * secret the user's machine should keep. The password stays here, encrypted.
@@ -45,17 +61,15 @@ export class RegistryAccountService {
   async link(userId: string) {
     const user = await this.prisma.user.findUnique({ where: { id: userId } });
     if (!user) throw new ServiceUnavailableException('Unknown user');
-    // The registry username is the user's email with @ read as a dot: one
-    // identity, one account, and the link is auditable from either side.
-    // The @ cannot stand — it is reserved in the npm user protocol and the
-    // registry rejects it — but the dot keeps the name unique per domain.
-    const name = user.email.replace('@', '.');
 
     const existing = await this.prisma.userRegistryCredential.findUnique({ where: { userId } });
+    let name: string;
     let token: string;
     if (existing) {
-      // Already linked: sign the account in with the stored password and
-      // mint a fresh token.
+      // Already linked: the stored registry user is canonical — the email
+      // was only the seed for the first link, and may have changed since.
+      // Sign the account in with the stored password and mint a fresh token.
+      name = existing.registryUser;
       let password: string;
       try {
         password = this.crypto.decrypt(existing.passwordEnc);
@@ -83,7 +97,26 @@ export class RegistryAccountService {
         data: { lastUsedAt: new Date() },
       });
     } else {
-      // First link: the platform generates the registry password.
+      // First link: the registry username is the user's email with @ read
+      // as a dot — one identity, one account, auditable from either side.
+      // The @ cannot stand (it is reserved in the npm user protocol); the
+      // dot keeps the name one-to-one with the email in practice.
+      name = user.email.replace('@', '.');
+
+      // The mapping is not injective: a@b.co.uk and a.b@co.uk both land on
+      // a.b.co.uk. One registry user belongs to exactly one platform
+      // account — if another account already holds this name, the claim
+      // fails with the reason, not a silent second owner.
+      const holder = await this.prisma.userRegistryCredential.findUnique({
+        where: { registryUser: name },
+      });
+      if (holder && holder.userId !== userId) {
+        throw new ServiceUnavailableException(
+          `The registry username this email maps to (${name}) is already in use by another ` +
+            'platform account. Coordinate with the holder, or unlink it there first.',
+        );
+      }
+
       const password = randomBytes(24).toString('base64url');
       const result = await this.provider.provision(name, password, false);
       if (result.alreadyRegistered) {
@@ -100,13 +133,25 @@ export class RegistryAccountService {
         throw this.registryDown(result.error);
       }
       token = result.token!;
-      await this.prisma.userRegistryCredential.create({
-        data: {
-          userId,
-          registryUser: name,
-          passwordEnc: this.crypto.encrypt(password),
-        },
-      });
+      try {
+        await this.prisma.userRegistryCredential.create({
+          data: {
+            userId,
+            registryUser: name,
+            passwordEnc: this.crypto.encrypt(password),
+          },
+        });
+      } catch (err) {
+        // Lost the race on the unique index: two accounts mapped to one
+        // name. The row must not land — say why.
+        if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === 'P2002') {
+          throw new ServiceUnavailableException(
+            `The registry username this email maps to (${name}) was taken by another account ` +
+              'a moment ago. Coordinate with the holder, or unlink it there first.',
+          );
+        }
+        throw err;
+      }
       this.logger.log(`Linked registry account for ${name}`);
     }
 
@@ -134,16 +179,64 @@ export class RegistryAccountService {
   }
 
   /**
-   * Unlink: forget the platform's copy of the registry password. The
-   * registry account itself (if any) and any tokens already handed out
-   * keep working — unlinking the link is not deleting the account. Token
-   * revocation, where the registry allows it at all, is the user's call
-   * on the registry's own token page (see the provider's `revocation`).
+   * Unlink: revoke the registry user — every token ever minted for it
+   * stops authenticating — and forget the platform's copy of the password.
+   *
+   * The halves stay distinct on purpose: a revocation the registry cannot
+   * drive is reported as not revoked, and the link is not claimed unlinked
+   * on the registry side. A revocation that merely failed (a file the
+   * platform may not write) leaves the row in place rather than
+   * pretending.
    */
   async unlink(userId: string) {
-    await this.prisma.userRegistryCredential.deleteMany({ where: { userId } });
-    this.logger.log(`Unlinked registry account for user ${userId}`);
-    return { linked: false };
+    const row = await this.prisma.userRegistryCredential.findUnique({ where: { userId } });
+    if (!row) {
+      return { linked: false, revoked: false };
+    }
+    const result = await this.provider.revoke(row.registryUser);
+    if (result.ok || result.unsupported) {
+      await this.prisma.userRegistryCredential.deleteMany({ where: { userId } });
+      this.logger.log(
+        result.ok
+          ? `Unlinked and revoked registry account ${row.registryUser} for user ${userId}`
+          : `Unlinked registry account ${row.registryUser} for user ${userId} — revocation is user-side-only on this registry`,
+      );
+      return {
+        linked: false,
+        revoked: result.ok,
+        registryUser: row.registryUser,
+        note: result.unsupported ? result.error : undefined,
+      };
+    }
+    // The registry refused the revocation: the tokens may still be live, so
+    // the link must stay where it is and say so.
+    throw new ServiceUnavailableException(
+      `The registry could not be revoked: ${result.error}. The link stays in place; ` +
+        'ask the registry admin to delete the user, or retry.',
+    );
+  }
+
+  /**
+   * Kill the registry side of a link without removing the row: the step an
+   * account-deletion flow runs before the Prisma cascade takes the row.
+   * Best-effort by contract — a deletion is not blocked by the registry,
+   * and the result is the caller's to surface.
+   */
+  async revoke(userId: string): Promise<{ revoked: boolean; note?: string }> {
+    const row = await this.prisma.userRegistryCredential.findUnique({ where: { userId } });
+    if (!row) {
+      return { revoked: false };
+    }
+    const result = await this.provider.revoke(row.registryUser);
+    if (result.ok) {
+      this.logger.log(`Revoked registry account ${row.registryUser} for user ${userId} (deletion path)`);
+      return { revoked: true };
+    }
+    this.logger.warn(
+      `Could not revoke registry account ${row.registryUser} for user ${userId}: ` +
+        `${result.unsupported ? 'user-side-only on this registry' : result.error}`,
+    );
+    return { revoked: false, note: result.error };
   }
 
   private registryDown(detail?: string) {

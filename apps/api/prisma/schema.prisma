@@ -256,8 +256,13 @@ model ApiKey {
 model UserRegistryCredential {
   id          String    @id @default(uuid())
   userId      String    @unique @map("user_id")
-  /// The registry username the platform created — the user's email.
-  registryUser String   @map("registry_user") @db.VarChar(255)
+  /// The registry username the platform created — the user's email with @
+  /// read as a dot, since @ is not a legal npm username. The mapping is
+  /// not injective (a@b.co.uk and a.b@co.uk both land on a.b.co.uk), and
+  /// one registry user belongs to exactly one platform account, so this
+  /// is unique: the first account to link owns the name, and the service
+  /// says so to any other.
+  registryUser String   @unique @map("registry_user") @db.VarChar(255)
   /// The platform-generated registry password, encrypted. Never returned in
   /// the clear; it is only ever used to mint a fresh registry token.
   passwordEnc String    @map("password_enc")

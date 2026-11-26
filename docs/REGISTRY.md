@@ -172,7 +172,70 @@ must never leak through the proxy to the public registry.
 
 ---
 
-*Last updated: 2026-11-06 — the CLI registry command group; the packages
-republished from this repository (`types` 1.0.2, `events` 1.0.3, `sdk` 1.0.5,
-`cli` 1.1.4, `mcp-server` 1.0.8); the SDK's broken 1.0.0–1.0.3 withdrawn; the
-published dependencies are ranges, not exact versions.*
+## 7. The platform's link into the registry
+
+One platform login reaches the registry too: the platform mints the user's
+registry account (a password it generates and keeps encrypted) and hands
+the user's machine the registry **token**. The two credentials are
+independent — the platform token (`fsk_…`) and the registry token are
+different secrets with different lifecycles, and revoking one never
+invalidates the other.
+
+### The provider seam
+
+The API never speaks Verdaccio directly. It speaks a `RegistryProvider`
+interface (`apps/api/src/modules/applications/services/registry-provider/`),
+and the platform's one concrete provider today is
+`VerdaccioRegistryProvider`. The seam exposes the capabilities a registry
+backend can have:
+
+| Capability | What it is | Verdaccio today |
+|---|---|---|
+| `provision(name, password, login)` | create a user, or sign one in and mint a token | the npm couchdb user endpoint, **PUT** only |
+| `revoke(name)` | make the user — and every token minted for it — stop working | deleting the user's entry in the user database (htpasswd), when the platform may edit it (`REGISTRY_USERDB_FILE`); otherwise `user-side-only` |
+| `revocation` | whether the platform can drive revocation | `supported` with the user database mounted; `user-side-only` without it |
+| `address()` | the registry's public address | `https://registry.fidscript.com` |
+
+Publishing and installing are **not** on the seam: they run from the user's
+machine straight to the registry over the npm protocol, with the token the
+provider minted. A different registry backend is one new provider
+implementation; nothing above the seam changes.
+
+### The credential lifecycle, exactly
+
+| Event | What happens | Tokens afterwards |
+|---|---|---|
+| **First link** (`fidscript login` / `registry link` / dashboard "Link registry") | the platform generates a registry password, creates the user via `PUT /-/user/org.couchdb.user:<name>`, stores the password encrypted (`user_registry_credentials`), returns the minted token | one live token, kept on the user's machine |
+| **Re-link** (any time) | signs the existing user in with the stored password (Basic-authenticated `PUT`) and mints a **fresh** token; the old one stays valid | two live tokens |
+| **Unlink** (`fidscript registry unlink` / dashboard "Unlink") | the registry user's htpasswd entry is deleted (when revocation is `supported`) and the platform forgets the password; the user's own published packages are unaffected | **every token minted for that user stops authenticating** |
+| **Unlink, revocation `user-side-only`** | the platform forgets the password and says so; the registry account and its tokens remain active until the registry admin deletes the user | tokens still live — and the answer says that |
+| **Unlink, registry refuses** | the link stays in place; the error names the refusal | unchanged |
+| **Platform account deleted** | the credential row cascades with the user; a deletion flow must call `registryAccount.revoke(userId)` first, which kills the registry user the same way unlink does | every token for the dead account stops working |
+| **Platform account disabled** | nothing in the registry knows about the platform's account state: the registry credentials keep working until explicitly unlinked or revoked | unchanged — by design, the identities are separate |
+| **Username collision** | `user@domain` maps to `user.domain` (the `@` is not a legal npm username). The mapping is not injective — `a@b.co.uk` and `a.b@co.uk` both land on `a.b.co.uk` — so one registry user belongs to exactly one platform account (a unique index on `registry_user`), and a second account claiming a taken name is told, not silently queued | — |
+
+Two wire facts the lifecycle leans on, verified against the running
+registry (Verdaccio 6.10.5, htpasswd): the user endpoint answers only to
+**PUT** (POST/DELETE 404), and there is **no** password rotation on the
+wire (a `PUT` with changed credentials is rejected 401; the token page's
+reset endpoint does not exist). Revocation is therefore user deletion, not
+secret rotation.
+
+### A known soft spot, owned by the registry operator
+
+`GET /-/whoami` on this registry answers **200 to anonymous callers**
+(legacy security mode), so it cannot be used to prove a token is valid —
+validity is proven on a scope the registry gates (`@nextmavens/*` answers
+401 anonymous, 404 with a good token). The token page's **reset** flow is
+also dead (its `/-/admin/reset` endpoint 404s). Both are the registry
+operator's configuration, and both are recommendations rather than
+changes: tighten `security.api.legacy` and wire the reset endpoint, or
+accept that token-page users can only get fresh tokens by signing in.
+
+---
+
+*Last updated: 2026-11-26 — section 7: the provider seam and the credential
+lifecycle (link, re-link, unlink-revocation, account deletion, collision
+handling); registry usernames are emails with `@` read as `.`; revocation
+works by deleting the htpasswd entry when `REGISTRY_USERDB_FILE` is
+mounted.*

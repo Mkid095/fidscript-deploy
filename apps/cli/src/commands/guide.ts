@@ -25,8 +25,11 @@ HOW CREDENTIALS WORK
      projects, deploy, publish, and reach WhatsApp/Instant. Project-scoped
      access is still enforced by the platform, not trusted here.
    - The registry (npm) account is linked by the same login, so you do not keep
-     a second set of credentials. \`fidscript registry link\` / \`registry unlink\`
-     re-link or break that tie on demand.
+     a second set of credentials. \`fidscript registry link\` mints (or re-mints)
+     the registry token; \`fidscript registry unlink\` breaks the tie and
+     revokes the tokens issued under it. The two credentials stay independent:
+     revoking the platform token never touches the registry token, and
+     unlinking the registry never touches the platform token.
    - Tokens are created, listed, and revoked from the dashboard; the CLI stores
      and uses one. \`fidscript login <key>\` stores a token the dashboard made.
 

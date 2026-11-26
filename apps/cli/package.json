@@ -1,6 +1,6 @@
 {
   "name": "@fidscript-deploy/cli",
-  "version": "1.2.0",
+  "version": "1.2.1",
   "description": "FIDScript Deploy CLI \u2014 manage projects, deployments, functions, and more from the terminal",
   "type": "module",
   "bin": {

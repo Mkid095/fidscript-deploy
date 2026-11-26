@@ -32,6 +32,21 @@ export interface RegistryProvisionResult {
   error?: string;
 }
 
+/**
+ * The outcome of a revocation.
+ *
+ * `ok` — the registry user is gone and every token ever minted for it no
+ * longer authenticates anywhere.
+ * `unsupported` — this registry has no mechanism the platform can drive;
+ * only the registry's own user or admin can revoke. Callers must say so,
+ * not pretend.
+ */
+export interface RegistryRevokeResult {
+  ok: boolean;
+  unsupported?: boolean;
+  error?: string;
+}
+
 export interface RegistryProvider {
   /**
    * Provision the registry account for `name`.
@@ -46,9 +61,20 @@ export interface RegistryProvider {
    */
   provision(name: string, password: string, login: boolean): Promise<RegistryProvisionResult>;
 
+  /**
+   * Revoke: make the registry user — and every token minted for it — stop
+   * working. The provider reports `unsupported` when the registry has no
+   * mechanism it can drive; callers must surface that, never fake it.
+   */
+  revoke(name: string): Promise<RegistryRevokeResult>;
+
   /** The registry's public address — what the user's machine talks to. */
   address(): { registryUrl: string; tokenUrl: string };
 
-  /** Can the platform revoke a token it minted? */
-  readonly revocation: 'supported' | 'user-side-only' | 'unsupported';
+  /**
+   * Can the platform revoke a token it minted, and how?
+   * `supported` — the provider can delete the registry user (tokens die
+   * with it); `user-side-only` — only the registry's user/admin can.
+   */
+  readonly revocation: 'supported' | 'user-side-only';
 }

@@ -66,7 +66,10 @@ export class AuthRegistryController {
   @Delete()
   @RequireScope('registry:write')
   @HttpCode(HttpStatus.OK)
-  @ApiOperation({ summary: 'Forget the linked registry account' })
+  @ApiOperation({
+    summary:
+      'Unlink the registry account: every token minted for it is revoked, and the platform forgets the password. When the registry cannot be revoked, it says so rather than claiming the link is broken on both sides.',
+  })
   async unlink(@Req() req: Request) {
     const user = req.user as RegistryUser;
     if (!user.userId || user.userId === 'api-key') {

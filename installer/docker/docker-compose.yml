@@ -422,6 +422,13 @@ services:
       # The npm registry on the shared network: the registry-account link
       # takes the short way round instead of a public-edge round trip.
       REGISTRY_INTERNAL_URL: http://nextmavens-verdaccio:4873
+      # Optional, and host-specific: the registry's user database file,
+      # bind-mounted into the api container. Only when the platform is
+      # allowed to edit it can unlinking a platform user revoke the
+      # registry user; without it, revocation is reported as user-side-only
+      # and the registry admin must delete the user. Leave unset on hosts
+      # where the registry belongs to someone else.
+      REGISTRY_USERDB_FILE: ${REGISTRY_USERDB_FILE:-}
       CLOUDFLARE_API_TOKEN_FILE: /run/secrets/cf_api_token
       # Stalwart / Email
       # StalwartJmapService appends '/jmap' to baseURL on every call,
