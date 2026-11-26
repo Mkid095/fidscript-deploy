@@ -78,18 +78,27 @@ FROM node:20-bookworm-slim AS runtime
 # repository and unpacks the archives they upload, and the runtime image had
 # neither. Every git deployment failed with "git: not found" and every .zip
 # with "unzip: not found" — the engine could not deploy anything.
+#
+# postgresql-client-16 (PGDG) — not the bookworm-default 15: pg_dump refuses
+# to read a server a major version ahead, and the platform pins
+# postgres:16. If the compose pin moves to a newer major, this line moves
+# with it.
 RUN apt-get update -y && apt-get install -y ca-certificates curl gnupg git unzip && \
     install -m 0755 -d /etc/apt/keyrings && \
+    curl -fsSL https://www.postgresql.org/media/keys/ACCC4CF8.asc | gpg --dearmor -o /etc/apt/keyrings/postgresql.gpg && \
+    chmod a+r /etc/apt/keyrings/postgresql.gpg && \
+    echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/postgresql.gpg] http://apt.postgresql.org/pub/repos/apt $(. /etc/os-release && echo "$VERSION_CODENAME")-pgdg main" > /etc/apt/sources.list.d/pgdg.list && \
     curl -fsSL https://download.docker.com/linux/debian/gpg | gpg --dearmor -o /etc/apt/keyrings/docker.gpg && \
     chmod a+r /etc/apt/keyrings/docker.gpg && \
     echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.gpg] https://download.docker.com/linux/debian $(. /etc/os-release && echo "$VERSION_CODENAME") stable" > /etc/apt/sources.list.d/docker.list && \
-    apt-get update -y && apt-get install -y openssl curl docker-ce-cli docker-buildx-plugin docker-compose-plugin apache2-utils postgresql-client && \
+    apt-get update -y && apt-get install -y openssl curl docker-ce-cli docker-buildx-plugin docker-compose-plugin apache2-utils postgresql-client-16 && \
     apt-get clean && rm -rf /var/lib/apt/lists/*
 
-# postgresql-client supplies pg_dump / pg_restore / gunzip: the platform
-# backup and the per-database restore both shell out to them, and the image
-# had neither. Every scheduled backup failed with "spawn pg_dump ENOENT"
-# until this was here — the archive existed only in the operator's head.
+# apache2-utils is here for htpasswd: the platform installs an application
+# by running the installer's OWN scripts, and an add-on whose secret is a
+# basic-auth password needs a real bcrypt hash. The image has neither
+# python3 nor htpasswd, so the install died with "command not found" the
+# first time an application was installed from the Applications screen.
 
 # apache2-utils is here for htpasswd: the platform installs an application
 # by running the installer's OWN scripts, and an add-on whose secret is a
