@@ -30,19 +30,20 @@ export class AppJwtStrategy extends PassportStrategy(Strategy, 'app-jwt') {
     super({
       jwtFromRequest: ExtractJwt.fromAuthHeaderAsBearerToken(),
       ignoreExpiration: false,
-      // Same rotation model as the session strategy: the provider hands
-      // back whichever live secret the token's signature matches.
-      secretOrKey: ((token: string, cb: (err: Error | null, secret?: string) => void) => {
+      // Same rotation model as the session strategy, on passport-jwt's
+      // dynamic-secret hook: `secretOrKeyProvider` resolves a key per
+      // request, while `secretOrKey` is a fixed value that is never called.
+      secretOrKeyProvider: ((request: unknown, rawToken: string, done: (err: Error | null, secret?: string) => void) => {
         for (const secret of verifier.secrets()) {
           try {
-            jwt.verify(token, secret, { algorithms: ['HS256'] });
-            cb(null, secret);
+            jwt.verify(rawToken, secret, { algorithms: ['HS256'] });
+            done(null, secret);
             return;
           } catch {
             /* the next key in the rotation list */
           }
         }
-        cb(new UnauthorizedException('Invalid token signature'));
+        done(new UnauthorizedException('Invalid token signature'));
       }) as never,
     });
   }

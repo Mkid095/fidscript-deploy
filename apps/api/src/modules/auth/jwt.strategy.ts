@@ -22,21 +22,23 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
     super({
       jwtFromRequest: ExtractJwt.fromAuthHeaderAsBearerToken(),
       ignoreExpiration: false,
-      // The rotation model, on the passport side: the provider hands back
-      // whichever of the platform's live secrets the token's signature
-      // actually matches, and passport-jwt verifies with that one. A token
-      // that matches none of them fails here, not later.
-      secretOrKey: ((token: string, cb: (err: Error | null, secret?: string) => void) => {
+      // The rotation model, on the passport side. passport-jwt 4 has two
+      // different hooks: `secretOrKey` is a fixed value (a function passed
+      // there is returned AS the key, never called) and
+      // `secretOrKeyProvider(request, rawToken, done)` is the one that
+      // resolves a key per request. This hands back whichever of the
+      // platform's live secrets the token's signature actually matches.
+      secretOrKeyProvider: ((request: unknown, rawToken: string, done: (err: Error | null, secret?: string) => void) => {
         for (const secret of verifier.secrets()) {
           try {
-            jwt.verify(token, secret, { algorithms: ['HS256'] });
-            cb(null, secret);
+            jwt.verify(rawToken, secret, { algorithms: ['HS256'] });
+            done(null, secret);
             return;
           } catch {
             /* the next key in the rotation list */
           }
         }
-        cb(new UnauthorizedException('Invalid token signature'));
+        done(new UnauthorizedException('Invalid token signature'));
       }) as never,
     });
   }
