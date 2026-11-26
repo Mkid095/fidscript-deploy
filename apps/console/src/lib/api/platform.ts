@@ -80,10 +80,15 @@ export async function apiKeys(): Promise<ApiKey[]> {
 /** Mints a key. The key itself is shown once. */
 export async function createApiKey(
   name: string,
+  options?: { permissions?: string[]; expiresAt?: string },
 ): Promise<ApiKey & { key: string }> {
   const response = await api.post<{ apiKey: ApiKey & { key: string } }>(
     '/auth/api-keys',
-    { name },
+    {
+      name,
+      ...(options?.permissions?.length ? { permissions: options.permissions } : {}),
+      ...(options?.expiresAt ? { expiresAt: options.expiresAt } : {}),
+    },
   );
   return response.apiKey;
 }
@@ -91,6 +96,54 @@ export async function createApiKey(
 /** Ends a key. */
 export async function revokeApiKey(keyId: string): Promise<void> {
   await api.delete(`/auth/api-keys/${keyId}`);
+}
+
+/** Every scope the platform knows — what a key may be restricted to. */
+export async function scopeCatalogue(): Promise<string[]> {
+  const response = await api.get<{ scopes: string[] }>('/auth/scope-catalogue');
+  return response.scopes;
+}
+
+/** The registry account's link, if the platform has made one. */
+export interface RegistryStatus {
+  linked: boolean;
+  registryUser?: string;
+  linkedAt?: string;
+  lastUsedAt?: string | null;
+  registryUrl?: string;
+}
+
+export async function registryStatus(): Promise<RegistryStatus> {
+  return api.get<RegistryStatus>('/auth/registry');
+}
+
+/** Link the registry account; the token is returned once. */
+export async function registryLink(): Promise<{
+  registryUrl: string;
+  registryUser: string;
+  registryToken: string;
+}> {
+  return api.post('/auth/registry/link');
+}
+
+/** Forget the linked registry account. The remote account itself is kept. */
+export async function registryUnlink(): Promise<void> {
+  await api.delete('/auth/registry');
+}
+
+/** Turn the MCP server on for a key — an agent may reach it with the key. */
+export async function mcpEnable(keyId: string): Promise<void> {
+  await api.post(`/mcp/keys/${keyId}/enable`);
+}
+
+/** Turn the MCP server off for a key. */
+export async function mcpDisable(keyId: string): Promise<void> {
+  await api.post(`/mcp/keys/${keyId}/disable`);
+}
+
+/** Restrict which MCP tools a key may reach. An empty list is all. */
+export async function mcpSetScopes(keyId: string, scopes: string[]): Promise<void> {
+  await api.patch(`/mcp/keys/${keyId}/scopes`, { scopes });
 }
 
 /** The person's name. */

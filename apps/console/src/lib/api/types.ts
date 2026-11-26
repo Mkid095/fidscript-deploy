@@ -138,6 +138,10 @@ export interface ApiKey {
   lastUsedAt: string | null;
   expiresAt: string | null;
   createdAt: string;
+  /** Whether this key may be used with the MCP server. */
+  mcpEnabled: boolean;
+  /** Which MCP tools the key may reach. Empty = all. */
+  mcpScopes: string[];
 }
 
 /** A project's Instant app — its data plane. */

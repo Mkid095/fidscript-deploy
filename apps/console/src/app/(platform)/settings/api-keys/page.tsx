@@ -1,4 +1,9 @@
-import { apiKeys } from '@/lib/api/platform';
+import {
+  apiKeys,
+  scopeCatalogue,
+  registryStatus,
+  type RegistryStatus,
+} from '@/lib/api/platform';
 import { SectionHeader } from '@/components/ui/card';
 import { Page } from '@/components/ui/page';
 import { ErrorState } from '@/components/ui/feedback';
@@ -14,7 +19,11 @@ import { ApiKeysPanel } from '@/components/platform/api-keys-panel';
 export const metadata = { title: 'API keys · Settings' };
 
 export default async function ApiKeysSettingsPage() {
-  const keys = await apiKeys().catch(() => null);
+  const [keys, scopes, registry] = await Promise.all([
+    apiKeys().catch(() => null),
+    scopeCatalogue().catch(() => [] as string[]),
+    registryStatus().catch(() => ({ linked: false }) as RegistryStatus),
+  ]);
 
   return (
     <Page
@@ -34,7 +43,11 @@ export default async function ApiKeysSettingsPage() {
             message="The keys could not be loaded. The platform may be restarting — try again in a moment."
           />
         ) : (
-          <ApiKeysPanel keys={keys} />
+          <ApiKeysPanel
+            keys={keys}
+            scopes={scopes}
+            registry={registry}
+          />
         )}
       </section>
     </Page>

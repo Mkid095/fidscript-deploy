@@ -38,8 +38,15 @@ import {
   CREDENTIALS_FILE,
   loadConfig,
   loadCredentials,
+  resolveApiKey,
 } from '../config/index';
 import { die, loadSdk } from '../commands/cli-runtime-helpers';
+import { addLoginCommand } from '../commands/login';
+import { addConfigureCommand } from '../commands/configure';
+import { addGuideCommand } from '../commands/guide';
+import { registerWhatsappCommands } from '../commands/whatsapp';
+import { registerSkillCommands } from '../commands/skill';
+import { registerRegistryAccountCommands } from '../commands/registry-account';
 import { registerFunctionsCommands } from '../commands/functions';
 import { registerDatabasesCommands } from '../commands/databases';
 import { registerInstantCommands } from '../commands/instant';
@@ -56,7 +63,7 @@ import { addInitCommand } from '../commands/init';
 import { addLogsCommand } from '../commands/logs';
 
 function getApiKey(): string | undefined {
-  return loadCredentials().apiKey;
+  return resolveApiKey(loadCredentials());
 }
 
 async function run(argv: string[]): Promise<void> {
@@ -65,18 +72,16 @@ async function run(argv: string[]): Promise<void> {
   program
     .name('fidscript')
     .version(CLI_VERSION)
-    .option('-o, --output <fmt>', 'Output format: table|json|raw', cfg.outputFormat ?? 'table');
+    .option('-o, --output <fmt>', 'Output format: table|json|raw', cfg.outputFormat ?? 'table')
+    .addHelpText(
+      'after',
+      '\nQuick start: fidscript configure → fidscript login → fidscript projects list\n' +
+        'Full guide: fidscript guide\n',
+    );
 
-  // login <key>
-  program
-    .command('login <key>')
-    .description('Store your API key in ~/.fidscript/')
-    .action((key: string) => {
-      ensureDir();
-      writeFileSync(CREDENTIALS_FILE, JSON.stringify({ apiKey: key }), 'utf8');
-      chmodSync(CREDENTIALS_FILE, 0o600);
-      console.log('Credentials stored in ~/.fidscript/');
-    });
+  // login: `fidscript login` signs in with email + password;
+  // `fidscript login <key>` stores a token the dashboard made.
+  addLoginCommand(program, { apiUrl: cfg.apiUrl });
 
   // logout
   program.command('logout').description('Remove stored credentials').action(() => {
@@ -125,6 +130,11 @@ async function run(argv: string[]): Promise<void> {
   addInitCommand(program, ctx);
   addLogsCommand(program, ctx);
 
+  // The operator story: configure where, log in once, and read the guide.
+  addConfigureCommand(program, { apiUrl: cfg.apiUrl });
+  addGuideCommand(program);
+  registerSkillCommands(program);
+
   // ── COMMAND MODULES (register their own subcommands) ───────────────────
   registerFunctionsCommands(program, ctx);
   registerDatabasesCommands(program, ctx);
@@ -137,7 +147,12 @@ async function run(argv: string[]): Promise<void> {
   registerDeploymentsCommands(program, ctx);
   registerEmailCommands(program, ctx);
   registerInstantCommands(program, ctx);
+  registerWhatsappCommands(program, ctx);
   registerRegistryCommands(program, ctx);
+
+  // The registry's own account, tied to the platform user: link / unlink / status.
+  const registryCmd = program.commands.find((c) => c.name() === 'registry');
+  if (registryCmd) registerRegistryAccountCommands(registryCmd, ctx);
 
   await program.parseAsync(argv);
 }

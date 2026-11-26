@@ -124,19 +124,28 @@ export async function disconnectGithubAction(): Promise<{
 /** Make a key that acts as you. It is shown once. */
 export async function createApiKeyAction(
   name: string,
-): Promise<{ ok?: boolean; key?: string; error?: string }> {
+  options?: { permissions?: string[]; expiresAt?: string },
+): Promise<{ ok?: boolean; key?: string; id?: string; error?: string }> {
   const trimmed = name.trim();
   if (!trimmed) return { error: 'The key needs a name.' };
 
   try {
     const response = await api.post<{
       key?: string;
-      apiKey?: { key?: string };
+      apiKey?: { key?: string; id?: string };
     }>('/auth/api-keys', {
       name: trimmed,
+      ...(options?.permissions?.length
+        ? { permissions: options.permissions }
+        : {}),
+      ...(options?.expiresAt ? { expiresAt: options.expiresAt } : {}),
     });
     revalidatePath('/settings/api-keys');
-    return { ok: true, key: response.key ?? response.apiKey?.key };
+    return {
+      ok: true,
+      key: response.key ?? response.apiKey?.key,
+      id: response.apiKey?.id,
+    };
   } catch (err) {
     return {
       error: err instanceof Error ? err.message : 'The key could not be made.',
@@ -156,6 +165,90 @@ export async function revokeApiKeyAction(
     return {
       error:
         err instanceof Error ? err.message : 'The key could not be revoked.',
+    };
+  }
+}
+
+/**
+ * Link the registry account: one login reaches both the platform and the
+ * npm registry. The token is shown once, for the terminal.
+ */
+export async function registryLinkAction(): Promise<{
+  ok?: boolean;
+  token?: string;
+  error?: string;
+}> {
+  try {
+    const result = await api.post<{
+      registryUrl: string;
+      registryUser: string;
+      registryToken: string;
+    }>('/auth/registry/link');
+    revalidatePath('/settings/api-keys');
+    return { ok: true, token: result.registryToken };
+  } catch (err) {
+    return {
+      error:
+        err instanceof Error
+          ? err.message
+          : 'The registry account could not be linked.',
+    };
+  }
+}
+
+/** Forget the link. The remote account and any tokens already handed out keep working. */
+export async function registryUnlinkAction(): Promise<{
+  ok?: boolean;
+  error?: string;
+}> {
+  try {
+    await api.delete('/auth/registry');
+    revalidatePath('/settings/api-keys');
+    return { ok: true };
+  } catch (err) {
+    return {
+      error:
+        err instanceof Error
+          ? err.message
+          : 'The registry link could not be removed.',
+    };
+  }
+}
+
+/** Let an agent reach the platform through one of your keys. */
+export async function mcpToggleAction(
+  keyId: string,
+  enabled: boolean,
+): Promise<{ ok?: boolean; error?: string }> {
+  try {
+    await api.post(`/mcp/keys/${keyId}/${enabled ? 'enable' : 'disable'}`);
+    revalidatePath('/settings/api-keys');
+    return { ok: true };
+  } catch (err) {
+    return {
+      error:
+        err instanceof Error
+          ? err.message
+          : 'MCP could not be changed for this key.',
+    };
+  }
+}
+
+/** Narrow which MCP tools a key may reach. An empty list is all of them. */
+export async function mcpScopesAction(
+  keyId: string,
+  scopes: string[],
+): Promise<{ ok?: boolean; error?: string }> {
+  try {
+    await api.patch(`/mcp/keys/${keyId}/scopes`, { scopes });
+    revalidatePath('/settings/api-keys');
+    return { ok: true };
+  } catch (err) {
+    return {
+      error:
+        err instanceof Error
+          ? err.message
+          : 'The MCP scopes could not be saved.',
     };
   }
 }

@@ -58,6 +58,7 @@ import { InstallationModule } from './modules/installation';
 import { InstantModule } from './modules/instant';
 import { ApplicationsModule } from './modules/applications';
 import { OverviewModule } from './modules/overview';
+import { WhatsappModule } from './modules/whatsapp';
 import { NotificationsModule } from './modules/notifications';
 import {
   FidscriptError,
@@ -70,9 +71,10 @@ import {
 export { FidscriptClient, FidscriptClientOptions };
 export { FidscriptError, AuthError, NotFoundError, ValidationError, RateLimitError };
 export type { PlatformOverview, OverviewProject, OverviewDeployment, OverviewAlert, OverviewActivity } from './modules/overview';
-export { AuthModule, ProjectsModule, DeploymentsModule, StorageModule, DatabasesModule, DomainsModule, EmailModule, FunctionsModule, QueuesModule, CronModule, RealtimeModule, MonitoringModule, LoggingModule, TemplatesModule, GithubModule, InstallationModule, NotificationsModule, InstantModule, ApplicationsModule, OverviewModule };
+export { AuthModule, ProjectsModule, DeploymentsModule, StorageModule, DatabasesModule, DomainsModule, EmailModule, FunctionsModule, QueuesModule, CronModule, RealtimeModule, MonitoringModule, LoggingModule, TemplatesModule, GithubModule, InstallationModule, NotificationsModule, InstantModule, ApplicationsModule, OverviewModule, WhatsappModule };
 export type { Application, InstallJob } from './modules/applications';
 export type { InstantAppStatus, InstantClientConfig } from './modules/instant';
+export type { WhatsappInstance, WhatsappState } from './modules/whatsapp';
 export { AdminMailboxModule, AdminAttachmentConfigModule, AdminMailConnectionModule, type PlatformMailboxMessage, type PlatformMailboxSummary, type PlatformMailboxesResponse, type CreatePlatformMailboxResponse, type ListPlatformMessagesResponse, type AdminSendMailResponse, type AdminAttachmentConfig, type StorageBackend, type MailboxMessage, type EmailDomain, type EmailDomainCreated, type Mailbox, type EmailAlias, type MailConnectionInfo };
 export type { Domain, DnsConnection, DomainHealth, DomainHealthStatus, DnsRecord, DnsRecordCategory, DnsRecordStatus, DnsRecordsResponse, DomainSslInfo, DomainType, DomainCapabilities, DomainReconciliationStatus, DomainVerificationRun, DomainIncident } from './modules/domains-types';
 export type { DomainHealthTimelineEntry, DomainWizardStatus, WizardStage, WizardRecord, WizardRecordStatus } from './modules/domains-types-wizard';
@@ -104,6 +106,8 @@ export interface FidscriptSDK {
   /** The applications an operator can have on a platform. */
   applications: ApplicationsModule;
   overview: OverviewModule;
+  /** The WhatsApp platform, from the operator's side. */
+  whatsapp: WhatsappModule;
 }
 
 export function createFidscript(options: {
@@ -136,5 +140,6 @@ export function createFidscript(options: {
     instant: new InstantModule(client),
     applications: new ApplicationsModule(client),
     overview: new OverviewModule(client),
+    whatsapp: new WhatsappModule(client),
   };
 }

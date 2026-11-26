@@ -18,6 +18,16 @@ export interface CliConfig {
 }
 
 export interface CliCredentials {
+  /**
+   * v2 — named account keys, minted by `fidscript login` or created in the
+   * dashboard. `activeKey` selects which one the commands use.
+   */
+  keys?: Record<string, string>;
+  activeKey?: string;
+  /**
+   * v1 — a raw key pasted with `fidscript login <key>`. Kept so an existing
+   * install keeps working after an upgrade; a v2 key wins when present.
+   */
   apiKey?: string;
 }
 
@@ -79,8 +89,56 @@ export function saveCredentials(creds: CliCredentials): void {
   chmodSync(CREDENTIALS_FILE, 0o600);
 }
 
+/**
+ * The key the commands authenticate with.
+ *
+ * A v2 named key selected by `activeKey` wins; otherwise the v1 raw key.
+ * Both live in the same file, so an install from either era keeps working.
+ */
+export function resolveApiKey(creds: CliCredentials): string | undefined {
+  if (creds.activeKey && creds.keys?.[creds.activeKey]) return creds.keys[creds.activeKey];
+  return creds.apiKey;
+}
+
 export function getApiKey(): string | undefined {
-  return loadCredentials().apiKey;
+  return resolveApiKey(loadCredentials());
+}
+
+/** Store a named account key and make it the active one. */
+export function addKey(name: string, key: string): void {
+  const creds = loadCredentials();
+  creds.keys = { ...(creds.keys ?? {}), [name]: key };
+  creds.activeKey = name;
+  saveCredentials(creds);
+}
+
+/** Point the active selection at an existing named key. */
+export function setActiveKey(name: string): void {
+  const creds = loadCredentials();
+  if (creds.keys?.[name]) {
+    creds.activeKey = name;
+    saveCredentials(creds);
+  }
+}
+
+/** Drop a named key; clear the active pointer if it was the one in use. */
+export function removeKey(name: string): void {
+  const creds = loadCredentials();
+  if (creds.keys) {
+    delete creds.keys[name];
+    if (creds.activeKey === name) creds.activeKey = undefined;
+    if (Object.keys(creds.keys).length === 0) delete creds.keys;
+    saveCredentials(creds);
+  }
+}
+
+/** The named keys on this machine, and which is active. */
+export function listKeys(): Array<{ name: string; active: boolean }> {
+  const creds = loadCredentials();
+  const names = Object.keys(creds.keys ?? {});
+  const out = names.map((name) => ({ name, active: name === creds.activeKey }));
+  if (creds.apiKey) out.push({ name: '(raw)', active: out.length === 0 });
+  return out;
 }
 
 export function setApiKey(key: string): void {

@@ -28,7 +28,7 @@ import { ApiKeyOrJwtGuard } from '../auth/guards/api-key-or-jwt.guard';
 import { McpPermissionService, TOOL_PERMISSIONS, Permission } from './mcp-permission.service';
 
 interface AuthRequest extends Request {
-  user?: { id: string };
+  user?: { userId: string };
 }
 
 @Controller('mcp')
@@ -51,7 +51,7 @@ export class McpController {
   /** Get MCP info for a specific API key. */
   @Get('keys/:id')
   async getKey(@Param('id') id: string, @Req() req: AuthRequest) {
-    const userId = req.user?.id;
+    const userId = req.user?.userId;
     const key = await (this.prisma as any).apiKey.findUnique({
       where: { id },
       select: { id: true, name: true, userId: true, mcpEnabled: true, mcpScopes: true },
@@ -71,7 +71,7 @@ export class McpController {
   /** Update MCP scopes for a key. */
   @Patch('keys/:id/scopes')
   async updateScopes(@Param('id') id: string, @Body() body: { scopes: string[] }, @Req() req: AuthRequest) {
-    const userId = req.user?.id;
+    const userId = req.user?.userId;
 
     const key = await (this.prisma as any).apiKey.findUnique({
       where: { id },
@@ -99,7 +99,7 @@ export class McpController {
   /** Enable MCP on a key. */
   @Post('keys/:id/enable')
   async enableMcp(@Param('id') id: string, @Req() req: AuthRequest) {
-    const userId = req.user?.id;
+    const userId = req.user?.userId;
 
     const key = await (this.prisma as any).apiKey.findUnique({
       where: { id },
@@ -120,7 +120,7 @@ export class McpController {
   /** Disable MCP on a key. */
   @Post('keys/:id/disable')
   async disableMcp(@Param('id') id: string, @Req() req: AuthRequest) {
-    const userId = req.user?.id;
+    const userId = req.user?.userId;
 
     const key = await (this.prisma as any).apiKey.findUnique({
       where: { id },

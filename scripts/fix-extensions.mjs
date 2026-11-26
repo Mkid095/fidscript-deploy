@@ -26,6 +26,8 @@ async function getJsFiles(dir) {
 // Directories that exist in dist/ — anything not starting with @ or a known npm package name
 // is a relative path we need to fix
 function isRelativePath(spec, file) {
+  // A Node built-in, with or without a subpath (node:readline/promises, etc.)
+  if (spec.startsWith('node:')) return false;
   // Already has extension
   if (extname(spec)) return false;
   // Starts with ./ or ../ — always relative
