@@ -298,17 +298,42 @@ export class PlatformBackupService {
       await this.admin.execute(`CREATE DATABASE "${scratch}"`);
       scratchCreated = true;
 
-      // 3. Restore into it, the same way a customer's database restores.
-      await this.execProcess(spawn('pg_restore', [
+      // 3. Restore into it. The scratch database is pristine, so no
+      //    `--clean` (there is nothing to drop) — only `--if-exists`, which
+      //    is a no-op on an empty database.
+      //
+      //    The exit code is diagnostic, not the verdict: `pg_restore` can
+      //    exit 1 over "Invalid object name" noise even when every row
+      //    lands. What proves the backup is the row counts below. Only a
+      //    hard "could not run at all" (-1: spawn/ENOENT/connection) is a
+      //    failure on its own.
+      const restoreExit = await this.spawnExit(spawn('pg_restore', [
         '-h', admin.host,
         '-p', String(admin.port),
         '-U', admin.username,
         '-d', scratch,
         '--format=custom',
-        '--clean',
         '--if-exists',
         tmpDump,
       ], { env: this.admin.pgEnv({ ...admin, database: scratch }) }));
+      if (restoreExit < 0) {
+        const result = {
+          ...base,
+          backupId: latest.backupId,
+          backupCreatedAt: latest.createdAt,
+          scratchDatabase: scratch,
+          error: 'pg_restore could not run against the scratch database.',
+        };
+        await this.recordEvent(result);
+        this.logger.error(`[backup-verify] ${latest.backupId}: pg_restore failed to start`);
+        await this.notifyVerifyFailure(result);
+        return result;
+      }
+      if (restoreExit !== 0) {
+        this.logger.warn(
+          `[backup-verify] pg_restore exited ${restoreExit} (expected noise on a pristine scratch) — the counts decide`,
+        );
+      }
 
       // 4. The proof: what the manifest promised, and what is there.
       // The pool must be open for the counts, and closed before the DROP.
@@ -630,6 +655,18 @@ export class PlatformBackupService {
     return new Promise((resolve, reject) => {
       proc.on('exit', (code) => code === 0 ? resolve() : reject(new Error(`exit ${code}`)));
       proc.on('error', reject);
+    });
+  }
+
+  /**
+   * The companion for steps where a non-zero exit is not a verdict: it
+   * resolves the exit code, or -1 when the process could not run at all
+   * (ENOENT, spawn failure).
+   */
+  private spawnExit(proc: ReturnType<typeof spawn>): Promise<number> {
+    return new Promise((resolve) => {
+      proc.on('exit', (code) => resolve(code ?? -1));
+      proc.on('error', () => resolve(-1));
     });
   }
 }

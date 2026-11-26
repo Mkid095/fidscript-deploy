@@ -185,20 +185,44 @@ describe('verifying the newest backup restores', () => {
     expect(result.mismatches).toEqual({ users: { expected: 1, actual: 2 } });
   });
 
-  it('a dump that will not restore is a failed verification, and the scratch still drops', async () => {
-    const dump = encDump(Buffer.from('corrupt'));
+  it('a pg_restore that exits 1 is noise, not a verdict — the counts decide', async () => {
+    const dump = encDump(Buffer.from('a-custom-format-dump'));
     const store = storeReturning(encManifest(JSON.stringify(MANIFEST)), dump);
+    // pg_restore exits 1 (the known pristine-scratch noise); the rows still
+    // landed, so the counts match and the check passes.
     const { service, executeCalls } = makeService({
       store,
       spawnBehavior: (cmd) => (cmd === 'pg_restore' ? proc(1) : proc(0)),
+      poolQuery: async (sql) => ({ rows: [{ count: sql.includes('"users"') ? '1' : '3' }] }),
+    });
+
+    const result = await service.verifyLatestBackup();
+
+    expect(result.ok).toBe(true);
+    expect(result.countsVerified).toBe(true);
+    // And the scratch still drops on the way out.
+    expect(executeCalls[executeCalls.length - 1]).toMatch(/^DROP DATABASE IF EXISTS/);
+  });
+
+  it('a pg_restore that cannot start at all is a hard failure', async () => {
+    const dump = encDump(Buffer.from('corrupt'));
+    const store = storeReturning(encManifest(JSON.stringify(MANIFEST)), dump);
+    // Spawn error: the binary is missing, the connection refused — not a
+    // noise exit, no chance to count.
+    const { service } = makeService({
+      store,
+      spawnBehavior: (cmd) => {
+        if (cmd === 'gunzip') return proc(0);
+        const p = new EventEmitter();
+        setImmediate(() => p.emit('error', new Error('spawn pg_restore ENOENT')));
+        return p;
+      },
     });
 
     const result = await service.verifyLatestBackup();
 
     expect(result.ok).toBe(false);
-    expect(result.error).toMatch(/exit 1/);
-    // Even on failure the scratch database is dropped.
-    expect(executeCalls[executeCalls.length - 1]).toMatch(/^DROP DATABASE IF EXISTS/);
+    expect(result.error).toMatch(/could not run/);
   });
 
   it('a manifest without row counts still restores — it just cannot be compared', async () => {
