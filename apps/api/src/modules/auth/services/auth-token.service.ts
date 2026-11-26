@@ -1,7 +1,7 @@
 import { Injectable, UnauthorizedException } from '@nestjs/common';
-import { JwtService } from '@nestjs/jwt';
 import { PrismaService } from '@/prisma/prisma.service';
 import { EventService } from '@/modules/events/event.service';
+import { JwtTokenVerifier } from '@/common/jwt-token-verifier.service';
 import * as bcrypt from 'bcrypt';
 
 const ACCESS_TOKEN_TTL_SECONDS = 15 * 60;
@@ -12,14 +12,14 @@ export interface RefreshTokenPayload { sub: string; type: 'refresh'; sessionId: 
 export class AuthTokenService {
   constructor(
     private prisma: PrismaService,
-    private jwtService: JwtService,
+    private verifier: JwtTokenVerifier,
     private eventService: EventService,
   ) {}
 
   async refreshToken(refreshToken: string) {
     let payload: RefreshTokenPayload;
     try {
-      payload = this.jwtService.verify<RefreshTokenPayload>(refreshToken);
+      payload = this.verifier.verify(refreshToken) as RefreshTokenPayload;
     } catch {
       throw new UnauthorizedException('Invalid or expired refresh token');
     }

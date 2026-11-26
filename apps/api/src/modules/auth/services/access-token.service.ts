@@ -1,7 +1,7 @@
 import { Injectable, UnauthorizedException } from '@nestjs/common';
-import { JwtService } from '@nestjs/jwt';
 import { PrismaService } from '@/prisma/prisma.service';
 import { JwtBlocklistService } from '@/common/jwt-blocklist.service';
+import { JwtTokenVerifier } from '@/common/jwt-token-verifier.service';
 
 export interface AccessTokenPayload {
   sub: string;
@@ -36,7 +36,7 @@ export interface VerifiedCaller {
 export class AccessTokenService {
   constructor(
     private prisma: PrismaService,
-    private jwtService: JwtService,
+    private verifier: JwtTokenVerifier,
     private jwtBlocklist: JwtBlocklistService,
   ) {}
 
@@ -44,12 +44,14 @@ export class AccessTokenService {
    * Verify a bearer token and resolve the caller it names.
    *
    * Throws `UnauthorizedException` when the token is not an access token, is
-   * not valid, names no live session, or names a revoked one.
+   * not valid, names no live session, or names a revoked one. The signature
+   * is checked against the live secret list, so a token minted before a
+   * rotation still verifies through it.
    */
   async verify(token: string): Promise<VerifiedCaller> {
     let payload: AccessTokenPayload;
     try {
-      payload = await this.jwtService.verifyAsync<AccessTokenPayload>(token);
+      payload = (await this.verifier.verifyAsync(token)) as AccessTokenPayload;
     } catch {
       throw new UnauthorizedException('Invalid or expired token');
     }

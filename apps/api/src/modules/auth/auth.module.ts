@@ -29,6 +29,7 @@ import { OrganizationService } from '@/modules/auth/services/organization.servic
 import { TeamService } from '@/modules/auth/services/team.service';
 import { EmailModule } from '@/modules/email/email.module';
 import { JwtStrategy } from '@/modules/auth/jwt.strategy';
+import { JwtTokenVerifier } from '@/common/jwt-token-verifier.service';
 import { MfaService } from '@/modules/auth/mfa/mfa.service';
 import { JwtAuthGuard } from '@/modules/auth/jwt-auth.guard';
 import { PlatformAdminGuard } from '@/modules/auth/guards/platform-admin.guard';
@@ -62,6 +63,7 @@ import { ProjectsModule } from '@/modules/projects/projects.module';
     AuthSessionService,
     AuthRegisterService,
     AccessTokenService,
+    JwtTokenVerifier,
     AuthSetupPasswordService,
     AuthOnboardingService,
     AuthLoginService,
@@ -88,6 +90,6 @@ import { ProjectsModule } from '@/modules/projects/projects.module';
     EmailVerifiedGuard,
     ProjectApiKeyMintGuard,
   ],
-  exports: [AuthService, OrganizationService, TeamService, AccessTokenService, AuthApiKeyService, JwtAuthGuard, ApiKeyOrJwtGuard, ScopeGuard, ProjectApiKeyMintGuard, PlatformAdminGuard, InstallationGuard, ProjectMemberGuard, EmailVerifiedGuard, JwtModule, forwardRef(() => ProjectsModule)],
+  exports: [AuthService, OrganizationService, TeamService, AccessTokenService, JwtTokenVerifier, AuthApiKeyService, JwtAuthGuard, ApiKeyOrJwtGuard, ScopeGuard, ProjectApiKeyMintGuard, PlatformAdminGuard, InstallationGuard, ProjectMemberGuard, EmailVerifiedGuard, JwtModule, forwardRef(() => ProjectsModule)],
 })
 export class AuthModule {}

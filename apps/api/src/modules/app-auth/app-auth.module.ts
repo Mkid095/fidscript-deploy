@@ -17,6 +17,7 @@ import { GithubOAuthExchangeService } from '@/modules/app-auth/services/github-o
 import { GithubOAuthStateService } from '@/modules/app-auth/services/github-oauth-state.service';
 import { AppJwtStrategy } from '@/modules/app-auth/jwt/app-jwt.strategy';
 import { AppJwtGuard } from '@/modules/app-auth/jwt/app-jwt.guard';
+import { JwtTokenVerifier } from '@/common/jwt-token-verifier.service';
 import { ProjectsModule } from '@/modules/projects/projects.module';
 
 /**
@@ -74,6 +75,7 @@ import { ProjectsModule } from '@/modules/projects/projects.module';
     GithubOAuthStateService,
     AppJwtStrategy,
     AppJwtGuard,
+    JwtTokenVerifier,
   ],
   exports: [AppJwtGuard, AppAuthTokenService, UserGithubService, MagicCodeService],
 })

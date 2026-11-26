@@ -6,7 +6,7 @@ import { PrismaService } from '@/prisma/prisma.service';
 import { CryptoService } from '@/modules/crypto/crypto.service';
 import { EventService } from '@/modules/events/event.service';
 import { AuthRateLimiter } from '@/common/auth-rate-limiter.service';
-import { resolveJwtSecret } from '@/common/secrets';
+import { resolveJwtSecret, resolveJwtSecrets } from '@/common/secrets';
 import { generateSecret, verifySync, generateURI } from 'otplib';
 import * as bcrypt from 'bcrypt';
 import * as crypto from 'crypto';
@@ -61,9 +61,12 @@ export class MfaService {
     private jwtService: JwtService,
     private eventService: EventService,
     private rateLimiter: AuthRateLimiter,
-    configService: ConfigService,
+    private config: ConfigService,
   ) {
-    this.jwtSecret = resolveJwtSecret(configService);
+    // Signing uses the current secret; verification accepts the rotation
+    // list (current + the one being retired), read at verify time so a
+    // rotation is picked up without a second field.
+    this.jwtSecret = resolveJwtSecret(config);
   }
 
   // ── Enrollment ─────────────────────────────────────────────────────────────
@@ -267,7 +270,22 @@ export class MfaService {
   ): Promise<MfaUser> {
     let payload: { sub: string; type: string };
     try {
-      payload = this.jwtService.verify(challengeToken, { secret: this.jwtSecret });
+      // A challenge minted before a rotation is still owed its window, so
+      // the signature is accepted from any secret in the rotation list.
+      let matched: { sub: string; type: string } | null = null;
+      for (const secret of resolveJwtSecrets(this.config)) {
+        try {
+          matched = this.jwtService.verify<{ sub: string; type: string }>(
+            challengeToken,
+            { secret },
+          );
+          break;
+        } catch {
+          /* try the next secret in the list */
+        }
+      }
+      if (!matched) throw new Error('no secret matched');
+      payload = matched;
     } catch {
       throw new UnauthorizedException('Invalid or expired MFA challenge');
     }

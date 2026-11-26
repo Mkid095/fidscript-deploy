@@ -31,6 +31,57 @@ export function resolveJwtSecret(config: ConfigService): string {
 }
 
 /**
+ * Read one secret from the environment, or from the file the `*_FILE`
+ * sibling points at. Absent means absent — a missing previous secret is
+ * the common, healthy state, not an error.
+ */
+function readSecretVar(
+  config: ConfigService,
+  name: string,
+  fileVar: string,
+): string | null {
+  const direct = config.get<string>(name);
+  if (direct) return direct;
+  const file = config.get<string>(fileVar);
+  if (file) {
+    try {
+      return fs.readFileSync(file, 'utf8').trim();
+    } catch {
+      return null;
+    }
+  }
+  return null;
+}
+
+/**
+ * The secrets a bearer token may have been signed with, in the order to
+ * try them: the current one first, then the one being rotated out.
+ *
+ * Signing always uses only the current secret (`resolveJwtSecret`).
+ * Verification tries the whole list, so a token minted before a rotation
+ * keeps working until it would have expired anyway — the rotation itself
+ * logs nobody out. `JWT_SECRET_PREV` (or `JWT_SECRET_PREV_FILE`) is set
+ * to the old secret for the rotation window, then removed.
+ *
+ * Every verifier in the platform reads from this one place, so they can
+ * never disagree about which keys are live.
+ */
+export function resolveJwtSecrets(config: ConfigService): string[] {
+  const current = resolveJwtSecret(config);
+  const previous = readSecretVar(
+    config,
+    'JWT_SECRET_PREV',
+    'JWT_SECRET_PREV_FILE',
+  );
+  // A previous identical to the current adds nothing; a `change-me`
+  // previous is the placeholder the operator forgot to clear.
+  if (!previous || previous === current || previous === 'change-me') {
+    return [current];
+  }
+  return [current, previous];
+}
+
+/**
  * Resolve the platform's encryption key.
  *
  * Reads `ENCRYPTION_KEY` (base64 of exactly 32 bytes) or the file named by

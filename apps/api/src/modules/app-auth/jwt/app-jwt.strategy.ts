@@ -1,9 +1,9 @@
 import { Injectable, UnauthorizedException } from '@nestjs/common';
 import { PassportStrategy } from '@nestjs/passport';
 import { Strategy, ExtractJwt } from 'passport-jwt';
-import { ConfigService } from '@nestjs/config';
+import * as jwt from 'jsonwebtoken';
 import { PrismaService } from '@/prisma/prisma.service';
-import { resolveJwtSecret } from '@/common/secrets';
+import { JwtTokenVerifier } from '@/common/jwt-token-verifier.service';
 
 export interface AppAccessJwtPayload {
   scope: 'app';
@@ -23,11 +23,27 @@ export interface AppAuthUser {
 
 @Injectable()
 export class AppJwtStrategy extends PassportStrategy(Strategy, 'app-jwt') {
-  constructor(private prisma: PrismaService, configService: ConfigService) {
+  constructor(
+    private prisma: PrismaService,
+    verifier: JwtTokenVerifier,
+  ) {
     super({
       jwtFromRequest: ExtractJwt.fromAuthHeaderAsBearerToken(),
       ignoreExpiration: false,
-      secretOrKey: resolveJwtSecret(configService),
+      // Same rotation model as the session strategy: the provider hands
+      // back whichever live secret the token's signature matches.
+      secretOrKey: ((token: string, cb: (err: Error | null, secret?: string) => void) => {
+        for (const secret of verifier.secrets()) {
+          try {
+            jwt.verify(token, secret, { algorithms: ['HS256'] });
+            cb(null, secret);
+            return;
+          } catch {
+            /* the next key in the rotation list */
+          }
+        }
+        cb(new UnauthorizedException('Invalid token signature'));
+      }) as never,
     });
   }
 

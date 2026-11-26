@@ -405,6 +405,10 @@ services:
       MINIO_ACCESS_KEY: ${MINIO_ACCESS_KEY}
       MINIO_SECRET_KEY: ${MINIO_SECRET_KEY}
       JWT_SECRET_FILE: /run/secrets/jwt_secret
+      # The secret being rotated out, for the grace window only. Absent (the
+      # normal state) the entrypoint warns and skips; the API verifies tokens
+      # against the current secret and, when this file exists, the previous.
+      JWT_SECRET_PREV_FILE: /run/secrets/jwt_secret_prev
       ENCRYPTION_KEY_FILE: /run/secrets/encryption_key
       API_PORT: "3001"
       # Dashboard is served at https://${PLATFORM_DOMAIN} (root) via the
