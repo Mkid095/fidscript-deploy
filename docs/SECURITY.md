@@ -89,12 +89,33 @@ access tokens all verify through the same list. There is no log-out:
 existing tokens remain valid, new tokens sign under the new key.
 
 **What is *not* automated.** The `ENCRYPTION_KEY` (AES at-rest for the
-secret store and other encrypted fields) has no rotation path yet.
-Rotating it would require re-encrypting every `Secret.encrypted_value`
-and `DomainConnection.encryptedToken` row — a manual, offline migration
-over a DB dump. It is documented here so the absence is a decision, not
-an oversight. If a key leak is suspected, restore from a known-good
-backup and re-issue rather than rotate in place.
+secret store and other encrypted fields) has no rotation path yet, and
+this is a deliberate gap, not an oversight. Rotating it is riskier than
+the JWT rotation above, because it is not just signing — it is the key
+that can *read* every secret at rest, **and every encrypted backup**. A
+naive rotation renders all of those permanently undecryptable. It is
+therefore deferred until the migration strategy below exists. Until it
+does: if a key leak is suspected, restore from a known-good backup and
+re-issue rather than rotate in place.
+
+**The migration strategy, when we build it.** It must preserve access to
+data already encrypted, in two stages:
+
+1. **Dual-key decrypt.** Add `ENCRYPTION_KEY_PREV`, and the decrypt path
+   tries the current key first, then the previous — exactly the JWT
+   model. Nothing re-encrypted yet is lost, because the old key still
+   opens everything it ever sealed.
+2. **Re-encrypt, then retire.** A one-off pass re-encrypts every at-rest
+   row (`Secret.encrypted_value`, `DomainConnection.encryptedToken`,
+   `SmtpCredential.encryptedPassword`, installation settings) and every
+   stored backup (the PBKDF2-framed dumps and the CryptoService-format
+   manifests) from the old key to the new one. Only when a full scan finds
+   **zero** rows that still need the old key does `ENCRYPTION_KEY_PREV`
+   get deleted. The window is bounded, like the JWT one.
+
+The backups are the binding constraint: an old backup is only readable
+by the key that encrypted it, so the old key must stay until every
+retained backup has been re-encrypted or has aged out of retention.
 
 ---
 
