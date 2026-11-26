@@ -169,6 +169,47 @@ export async function getDeletionTasks(): Promise<DeletionTask[]> {
 }
 
 /**
+ * Where the machine's disk goes.
+ *
+ * The Docker daemon's own report — including its honest "reclaimable"
+ * column, which on a shared-store host can be zero even when the cache
+ * is huge. Reclaiming is a separate, conservative act: it touches only
+ * what the daemon calls reclaimable, and never volumes or running
+ * containers.
+ */
+export interface SpaceCategory {
+  total: number;
+  reclaimable: number;
+}
+
+export interface SpaceReport {
+  disk: { used: number; total: number; usedPercent: number };
+  docker: {
+    images: SpaceCategory;
+    buildCache: SpaceCategory;
+    containers: SpaceCategory;
+    volumes: SpaceCategory;
+  };
+  at: string;
+}
+
+export interface SpaceReclaimResult {
+  reclaimedBytes: number;
+  steps: string[];
+  report: SpaceReport;
+}
+
+export async function getSpace(): Promise<SpaceReport | null> {
+  const { serverApi: api } = await import('./server');
+  return api.get<SpaceReport>('/system/space').catch(() => null);
+}
+
+export async function reclaimSpace(): Promise<SpaceReclaimResult> {
+  const { serverApi: api } = await import('./server');
+  return api.post<SpaceReclaimResult>('/system/space/reclaim');
+}
+
+/**
  * The machine's CPU, over the last hour.
  *
  * The collector sees the machine itself — the containers it cannot read are

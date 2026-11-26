@@ -3,6 +3,7 @@
 import { revalidatePath } from 'next/cache';
 
 import { serverApi } from '@/lib/api/server';
+import { reclaimSpace } from '@/lib/api/metrics';
 import {
   saveBackupDestination,
   clearBackupDestination,
@@ -96,6 +97,27 @@ export async function clearBackupDestinationAction(): Promise<{
     return {
       error:
         err instanceof Error ? err.message : 'The destination could not be cleared.',
+    };
+  }
+}
+
+/**
+ * Reclaim what the Docker daemon itself calls reclaimable — dangling
+ * images, stopped containers, unused networks, build cache nothing
+ * references. Volumes, tagged images and running containers are never
+ * touched.
+ */
+export async function reclaimSpaceAction(): Promise<{
+  error?: string;
+  reclaimedBytes?: number;
+}> {
+  try {
+    const result = await reclaimSpace();
+    revalidatePath('/system');
+    return { reclaimedBytes: result.reclaimedBytes };
+  } catch (err) {
+    return {
+      error: err instanceof Error ? err.message : 'The space could not be reclaimed.',
     };
   }
 }

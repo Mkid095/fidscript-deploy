@@ -8,11 +8,13 @@ import {
   getSystemLogs,
   getSystemState,
   getDeletionTasks,
+  getSpace,
 } from '@/lib/api/metrics';
 import { getPlatformDomain, getPlatformBackupStatus } from '@/lib/api/platform';
 import { AreaChart, BarList, Meter } from '@/components/system/system-charts';
 import { DeletionTasksCard } from '@/components/system/deletion-tasks-card';
 import { BackupsCard } from '@/components/system/backups-card';
+import { SpaceCard } from '@/components/system/space-card';
 
 export const metadata = { title: 'System' };
 
@@ -24,7 +26,7 @@ export const metadata = { title: 'System' };
  * not from anything the console remembers.
  */
 export default async function SystemPage() {
-  const [state, machine, cpu, logs, traffic, domain, deletionTasks, backup] =
+  const [state, machine, cpu, logs, traffic, domain, deletionTasks, backup, space] =
     await Promise.all([
       getSystemState(),
       getMachineState(),
@@ -36,6 +38,9 @@ export default async function SystemPage() {
       // The backup card is admin-only; a non-admin session gets nothing,
       // not an error.
       getPlatformBackupStatus().catch(() => null),
+      // The disk/space card reads the daemon's own report; it is null (and
+      // hidden) for a session that may not see it.
+      getSpace().catch(() => null),
     ]);
 
   const grafanaUrl = domain ? `https://grafana.${domain}` : null;
@@ -92,6 +97,8 @@ export default async function SystemPage() {
           </div>
         </Card>
       </section>
+
+      <SpaceCard report={space} />
 
       <section>
         <SectionHeader
