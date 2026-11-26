@@ -17,8 +17,19 @@ import type { Request } from 'express';
 import { GithubWebhookService } from '../services/github-webhook.service';
 import { DeploymentCrudService } from '../services/deployment-crud.service';
 import { PrismaService } from '@/prisma/prisma.service';
+import { AuthRateLimiter } from '@/common/auth-rate-limiter.service';
+import { extractRequestContext } from '@/common/request-context';
 import { SourceType } from '../dto/create-deployment.dto';
 import { Public } from '@/modules/auth/decorators/public.decorator';
+
+/**
+ * The receiver is public — anyone who finds the URL can post to it — so it
+ * is throttled like the door it is: a bucket per address and a bucket per
+ * repository. The signature check still stands behind the limit; the
+ * limiter only keeps the abuse from being expensive.
+ */
+const WEBHOOK_IP_LIMIT = 120; // deliveries per hour, per address
+const WEBHOOK_REPO_LIMIT = 30; // pushes per hour, per repository
 
 @Controller('webhooks/github')
 export class GithubWebhookController {
@@ -28,6 +39,7 @@ export class GithubWebhookController {
     private webhookService: GithubWebhookService,
     private crudService: DeploymentCrudService,
     private prisma: PrismaService,
+    private rateLimiter: AuthRateLimiter,
   ) {}
 
   @Post()
@@ -35,6 +47,22 @@ export class GithubWebhookController {
   @Public()
   @HttpCode(HttpStatus.OK)
   async handleWebhook(@Req() req: Request): Promise<{ status: string }> {
+    // The door is throttled before anything else: an address may not flood
+    // the receiver, and a repository may not queue the build lane for an
+    // hour, whatever the address behind it is.
+    const { ipAddress } = extractRequestContext(req);
+    const ipCheck = await this.rateLimiter.consume(
+      `rl:webhook:ip:${ipAddress ?? 'unknown'}`,
+      WEBHOOK_IP_LIMIT,
+      3600,
+    );
+    if (!ipCheck.allowed)
+      return this.rateLimited(
+        req,
+        ipCheck.retryAfter,
+        'Too many deliveries from this address.',
+      );
+
     const event = req.headers['x-github-event'] as string | undefined;
     const signature = req.headers['x-hub-signature-256'] as string | undefined;
 
@@ -55,6 +83,20 @@ export class GithubWebhookController {
       this.logger.warn('Could not parse push event payload');
       return { status: 'error' };
     }
+
+    // The repository's own bucket: pushes from a well-behaved developer may
+    // not look the same as a script that retries every minute.
+    const repoCheck = await this.rateLimiter.consume(
+      `rl:webhook:repo:${payload.repoFullName}`,
+      WEBHOOK_REPO_LIMIT,
+      3600,
+    );
+    if (!repoCheck.allowed)
+      return this.rateLimited(
+        req,
+        repoCheck.retryAfter,
+        'Too many pushes for this repository.',
+      );
 
     // Find the project by repo URL
     const project = await this.webhookService.findProjectByRepo(payload.repoFullName);
@@ -125,6 +167,19 @@ export class GithubWebhookController {
 
     this.logger.log(`Auto-deploy triggered for project ${project.id} (commit ${payload.commitSha.slice(0, 7)})`);
     return { status: 'deploying' };
+  }
+
+  /**
+   * Say "too fast" in the shape GitHub understands: 429 and a Retry-After.
+   * The receiver answers fast either way, so GitHub will not keep retrying
+   * a throttled delivery.
+   */
+  private rateLimited(req: Request, retryAfter: number, note: string): { status: string; note?: string } {
+    req.res
+      ?.status(HttpStatus.TOO_MANY_REQUESTS)
+      .set('Retry-After', String(Math.max(1, retryAfter)));
+    this.logger.warn(`Webhook throttled: ${note}`);
+    return { status: 'rate_limited', note };
   }
 
   /**

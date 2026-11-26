@@ -11,6 +11,7 @@ import {
   Req,
   HttpCode,
   HttpStatus,
+  HttpException,
 } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { JwtAuthGuard } from '@/modules/auth/jwt-auth.guard';
@@ -23,7 +24,19 @@ import { GithubWebhookService } from './services/github-webhook.service';
 import { CreateDeploymentDto, UpdateBuildConfigDto, DetectFrameworkDto } from './dto/index';
 import { PrismaService } from '@/prisma/prisma.service';
 import { CryptoService } from '@/modules/crypto/crypto.service';
+import { AuthRateLimiter } from '@/common/auth-rate-limiter.service';
 import { Request } from 'express';
+
+/**
+ * How often one project's deployments may be made to move, per hour.
+ *
+ * The auth and scope guards decide WHO may trigger; this decides HOW FAST.
+ * A build takes minutes, so a legitimate operator is never caught by it —
+ * what it catches is the loop: a script that retries on a failure, a CI
+ * pipeline that fires on every comment, a leaked key being probed.
+ */
+const DEPLOY_TRIGGER_LIMIT = 30;
+const DEPLOY_TRIGGER_WINDOW_SEC = 3600;
 
 @ApiTags('deployments')
 @Controller('projects/:projectId')
@@ -35,7 +48,30 @@ export class DeploymentsController {
     private webhookService: GithubWebhookService,
     private prisma: PrismaService,
     private crypto: CryptoService,
+    private rateLimiter: AuthRateLimiter,
   ) {}
+
+  /**
+   * The trigger bucket, per project: every mutating route consumes from it
+   * before it does its work, and a full bucket answers 429 — the caller
+   * slows down, the project's build lane stays theirs. The body carries
+   * `retryAfter` so the caller knows when to try again.
+   */
+  private async guardTrigger(projectId: string): Promise<void> {
+    const result = await this.rateLimiter.consume(
+      `rl:deploy:${projectId}`,
+      DEPLOY_TRIGGER_LIMIT,
+      DEPLOY_TRIGGER_WINDOW_SEC,
+    );
+    if (!result.allowed)
+      throw new HttpException(
+        {
+          message: 'Too many deployment actions for this project right now.',
+          retryAfter: result.retryAfter,
+        },
+        HttpStatus.TOO_MANY_REQUESTS,
+      );
+  }
 
   @Get('deployments')
   @RequireScope('deployments:read')
@@ -66,6 +102,7 @@ export class DeploymentsController {
     @Param('projectId') projectId: string,
     @Body() dto: CreateDeploymentDto,
   ) {
+    await this.guardTrigger(projectId);
     const user = req.user as { userId: string };
     const result = await this.deploymentsService.create(user.userId, projectId, dto);
 
@@ -157,6 +194,7 @@ export class DeploymentsController {
     @Param('projectId') projectId: string,
     @Param('id') deploymentId: string,
   ) {
+    await this.guardTrigger(projectId);
     const user = req.user as { userId: string };
     return this.deploymentsService.stop(user.userId, projectId, deploymentId);
   }
@@ -170,6 +208,7 @@ export class DeploymentsController {
     @Param('projectId') projectId: string,
     @Param('id') deploymentId: string,
   ) {
+    await this.guardTrigger(projectId);
     const user = req.user as { userId: string };
     return this.deploymentsService.restart(user.userId, projectId, deploymentId);
   }
@@ -183,6 +222,7 @@ export class DeploymentsController {
     @Param('projectId') projectId: string,
     @Param('id') deploymentId: string,
   ) {
+    await this.guardTrigger(projectId);
     const user = req.user as { userId: string };
     return this.deploymentsService.destroy(user.userId, projectId, deploymentId);
   }
@@ -197,6 +237,7 @@ export class DeploymentsController {
     @Param('id') deploymentId: string,
     @Body() body: { targetDeploymentId?: string } | undefined,
   ) {
+    await this.guardTrigger(projectId);
     const user = req.user as { userId: string };
     return this.deploymentsService.rollback(user.userId, projectId, deploymentId, body?.targetDeploymentId);
   }
@@ -212,6 +253,7 @@ export class DeploymentsController {
     @Req() req: Request,
     @Param('projectId') projectId: string,
   ) {
+    await this.guardTrigger(projectId);
     const user = req.user as { userId: string };
     return this.deploymentsService.applyBuildConfig(user.userId, projectId);
   }
