@@ -156,6 +156,14 @@ export const eventSchemas: Record<string, EventSchema> = {
       title: { type: 'string', required: false },
     },
   },
+  'instant.app.linked': {
+    eventType: 'instant.app.linked',
+    currentVersion: '1.0',
+    fields: {
+      appId: { type: 'string', required: true },
+      title: { type: 'string', required: false },
+    },
+  },
   'instant.app.deleted': {
     eventType: 'instant.app.deleted',
     currentVersion: '1.0',

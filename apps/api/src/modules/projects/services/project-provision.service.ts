@@ -94,13 +94,30 @@ export class ProjectProvisionService {
       // find. A failure is recorded and can be re-tried from the screens.
       this.safeProvision('instantApp', async () => {
         if (!wantsBackend) return;
+        // If the operator has declared their own Instant session through the
+        // project's env vars, link to it instead of creating a duplicate
+        // app they would never use. This is the "we use an existing
+        // session" case — provisioning a second, empty app is exactly the
+        // stray that has to be cleaned up by hand today.
+        const operator = await this.instant.operatorInstantApp(projectId);
         try {
-          const app = await this.instant.provision(
-            projectId,
-            ownerId,
-            projectName,
-          );
-          result.instantAppId = app.appId;
+          if (operator?.appId && operator.adminToken) {
+            const app = await this.instant.link(
+              projectId,
+              ownerId,
+              operator.appId,
+              operator.adminToken,
+              projectName,
+            );
+            result.instantAppId = app.appId;
+          } else {
+            const app = await this.instant.provision(
+              projectId,
+              ownerId,
+              projectName,
+            );
+            result.instantAppId = app.appId;
+          }
         } catch (err) {
           // The app being there already is the last attempt's success.
           if (err instanceof ConflictException) {

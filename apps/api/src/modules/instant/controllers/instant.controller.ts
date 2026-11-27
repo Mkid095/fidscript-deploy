@@ -38,10 +38,17 @@ export class InstantController {
   @Get()
   @ApiOperation({ summary: "The project's Instant app, and whether Instant is available" })
   async get(@Param('projectId') projectId: string) {
+    const app = await this.instant.get(projectId);
+    // The app the operator points at through their own env vars (their
+    // existing session), and whether it has diverged from the app the
+    // platform linked — the "linked a duplicate, the app uses my own" case.
+    const operator = await this.instant.operatorInstantApp(projectId);
     return {
       available: this.appConfig.isConfigured(),
       dashboardUrl: this.appConfig.dashboardUrl(),
-      app: await this.instant.get(projectId),
+      app,
+      envAppId: operator?.appId ?? null,
+      mismatch: !!(operator?.appId && app && operator.appId !== app.appId),
     };
   }
 
@@ -54,6 +61,26 @@ export class InstantController {
   ) {
     const user = req.user as { userId: string };
     return this.instant.provision(projectId, user.userId, body.title);
+  }
+
+  @Post('link')
+  @ApiOperation({
+    summary:
+      'Point the project at an Instant app that already exists (the operator\'s own session), verified with its admin token',
+  })
+  async link(
+    @Req() req: Request,
+    @Param('projectId') projectId: string,
+    @Body() body: { appId: string; adminToken: string; title?: string },
+  ) {
+    const user = req.user as { userId: string };
+    return this.instant.link(
+      projectId,
+      user.userId,
+      body.appId,
+      body.adminToken,
+      body.title,
+    );
   }
 
   @Delete()

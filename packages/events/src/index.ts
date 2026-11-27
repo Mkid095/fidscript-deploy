@@ -132,6 +132,7 @@ export type EventType =
   | 'database.realtime_disabled'
   // Instant events (the project's data plane)
   | 'instant.app.provisioned'
+  | 'instant.app.linked'
   | 'instant.app.deleted'
   // Domain events
   | 'domain.added'

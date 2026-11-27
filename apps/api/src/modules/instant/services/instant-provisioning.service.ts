@@ -50,6 +50,97 @@ export class InstantProvisioningService {
   }
 
   /**
+   * The Instant app the operator points this project at through their own
+   * env vars (`INSTANT_APP_ID`, `INSTANT_ADMIN_TOKEN`) — their existing
+   * session, not one the platform created. Null when they have not brought
+   * one. Values are the AES-encrypted env rows, decrypted here; a value
+   * that will not decrypt is read back as-is, the same as the deploy flow.
+   */
+  async operatorInstantApp(
+    projectId: string,
+  ): Promise<{ appId: string; adminToken: string | null } | null> {
+    const rows = await this.prisma.projectEnv.findMany({
+      where: { projectId, key: { in: ['INSTANT_APP_ID', 'INSTANT_ADMIN_TOKEN'] } },
+    });
+    const read = (key: string): string | null => {
+      const row = rows.find((r) => r.key === key);
+      if (!row) return null;
+      try {
+        return this.crypto.decrypt(row.value);
+      } catch {
+        return row.value;
+      }
+    };
+    const appId = read('INSTANT_APP_ID');
+    if (!appId) return null;
+    return { appId, adminToken: read('INSTANT_ADMIN_TOKEN') };
+  }
+
+  /**
+   * Point the project's data plane at an Instant app that already exists —
+   * the operator's own session, verified against the dashboard API with its
+   * admin token before the link is stored. The link row is upserted: linking
+   * again replaces the app (and token) it held, so a stray app the platform
+   * auto-created earlier is superseded rather than left dangling.
+   */
+  async link(
+    projectId: string,
+    actorId: string,
+    appId: string,
+    adminToken: string,
+    title?: string,
+  ): Promise<InstantAppStatus> {
+    if (!appId || !adminToken) {
+      throw new ConflictException(
+        'Linking needs the app id and its admin token — the ones your application connects with.',
+      );
+    }
+
+    // Verify the token really belongs to this app: the dashboard answers an
+    // app read only when the bearer is a user of that app (its admin token).
+    // A token that is not this app's comes back as an error, so we never
+    // store a credential we cannot prove.
+    let verified;
+    try {
+      verified = await this.client.getApp(appId, adminToken);
+    } catch {
+      throw new ConflictException(
+        `The admin token is not valid for Instant app ${appId}.`,
+      );
+    }
+    if (!verified) {
+      throw new NotFoundException(`Instant app ${appId} not found.`);
+    }
+
+    const row = await this.prisma.projectInstantApp.upsert({
+      where: { projectId },
+      update: {
+        appId: verified.id,
+        title: verified.title || title || verified.id,
+        adminTokenEnc: this.crypto.encrypt(adminToken),
+        status: 'ACTIVE',
+      },
+      create: {
+        projectId,
+        appId: verified.id,
+        title: verified.title || title || verified.id,
+        adminTokenEnc: this.crypto.encrypt(adminToken),
+        status: 'ACTIVE',
+      },
+    });
+
+    this.emit('instant.app.linked', projectId, { appId: verified.id, title: row.title }, actorId);
+    this.logger.log(`[instant] Linked app ${verified.id} to project ${projectId}`);
+
+    return {
+      appId: row.appId,
+      title: row.title,
+      status: row.status,
+      createdAt: row.createdAt,
+    };
+  }
+
+  /**
    * Provision an Instant app for a project.
    *
    * The app id and the admin token are generated here, not by Instant,
@@ -109,7 +200,10 @@ export class InstantProvisioningService {
 
   /** Emit a platform event about an Instant app. */
   private emit(
-    type: 'instant.app.provisioned' | 'instant.app.deleted',
+    type:
+      | 'instant.app.provisioned'
+      | 'instant.app.linked'
+      | 'instant.app.deleted',
     projectId: string,
     payload: { appId: string; title?: string },
     actorId: string,
