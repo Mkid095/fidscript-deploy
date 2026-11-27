@@ -64,7 +64,13 @@ ${tls}
         - websecure
 ${tls}
     fidscript-api:
-      rule: 'PathPrefix(\`/api\`) && !Path(\`/install.sh\`)'
+      # Host-scoped: a hostless PathPrefix(/api) outranks every customer
+      # domain's Host(...) router, so it swallowed the customer app's own
+      # /api routes (the app's API answered 404 at the edge even though it
+      # served them fine inside the container). Pinning it to the platform's
+      # root host keeps fidscript.com/api and api.fidscript.com/api working
+      # while letting each customer domain reach its own /api.
+      rule: 'Host(\`${domain}\`) && PathPrefix(\`/api\`) && !Path(\`/install.sh\`)'
       service: fidscript-api
       middlewares:
         - security-headers

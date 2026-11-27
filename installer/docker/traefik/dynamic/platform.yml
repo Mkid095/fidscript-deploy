@@ -34,7 +34,9 @@ http:
       tls:
         certResolver: letsencrypt-dns
     fidscript-api:
-      rule: 'PathPrefix(`/api`) && !Path(`/install.sh`)'
+      # Host-scoped: a hostless PathPrefix(/api) outranked every customer
+      # domain's Host(...) router and swallowed the app's own /api routes.
+      rule: 'Host(`fidscript.com`) && PathPrefix(`/api`) && !Path(`/install.sh`)'
       service: fidscript-api
       middlewares:
         - security-headers
