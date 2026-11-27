@@ -8,6 +8,7 @@ import {
   getDeployments,
   getGitIntegration,
   getBuildConfig,
+  liveDeployment,
 } from '@/lib/api/resources';
 import { DeploymentHistory } from '@/components/project/deployment-history';
 import { DeploymentProjectHeader } from '@/components/project/deployment-project-header';
@@ -51,23 +52,20 @@ export default async function ProjectDeploymentsPage({
 
   const initialized = git?.deploymentInitialized ?? deployments.length > 0;
 
-  // What is live right now, for the header — the active deployment, the
-  // same read the top bar makes.
-  const active =
-    deployments.find((deployment) => deployment.id === project.activeDeploymentId) ??
-    deployments[0] ??
-    null;
+  // What is live right now, for the header — the newest successful
+  // deployment, the same read the top bar makes.
+  const live = liveDeployment(deployments);
+  const is = (s: string | null | undefined, w: string) => (s ?? '').toUpperCase() === w;
+  const inFlight = deployments.some((d) =>
+    ['QUEUED', 'PENDING', 'BUILDING', 'DEPLOYING'].some((s) => is(d.status, s)),
+  );
   let liveUrl: string | null = null;
   let liveState: 'live' | 'building' | 'none' = 'none';
-  if (active) {
-    if (active.status === 'SUCCESS' && active.deploymentUrl) {
-      liveUrl = active.deploymentUrl;
-      liveState = 'live';
-    } else if (
-      ['QUEUED', 'PENDING', 'BUILDING', 'DEPLOYING'].includes(active.status)
-    ) {
-      liveState = 'building';
-    }
+  if (live) {
+    liveUrl = live.deploymentUrl;
+    liveState = 'live';
+  } else if (inFlight) {
+    liveState = 'building';
   }
 
   // The latest attempt's source — where the next version builds from.
@@ -135,7 +133,7 @@ export default async function ProjectDeploymentsPage({
         projectId={project.id}
         projectSlug={project.slug}
         deployments={deployments}
-        activeId={project.activeDeploymentId ?? null}
+        activeId={live?.id ?? null}
       />
     </Page>
   );

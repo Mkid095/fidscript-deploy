@@ -86,6 +86,25 @@ export async function getDeployments(projectId: string): Promise<Deployment[]> {
   return response.deployments;
 }
 
+/**
+ * What is actually running, from a newest-first deployment list.
+ *
+ * The project's `activeDeploymentId` field is a build *lock* — set while a
+ * build is in flight and cleared when it finishes — so it is null between
+ * deploys and cannot answer "what is live." The running deployment is the
+ * newest one that SUCCEEDED and has an address; that is the same read the
+ * platform's own apply flow makes. Statuses are matched case-insensitively,
+ * because the API lower-cases them on the wire. A record that says the
+ * application was stopped wins: nothing is up then.
+ */
+export function liveDeployment(deployments: Deployment[]): Deployment | null {
+  const is = (status: string | null | undefined, want: string) =>
+    (status ?? '').toUpperCase() === want;
+  const newest = deployments[0];
+  if (newest && is(newest.status, 'STOPPED')) return null;
+  return deployments.find((d) => is(d.status, 'SUCCESS') && d.deploymentUrl) ?? null;
+}
+
 /** One deployment, with its release. */
 export async function getDeployment(
   projectId: string,

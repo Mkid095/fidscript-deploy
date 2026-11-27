@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from 'react';
 
+import { FileUp } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input, Select } from '@/components/ui/input';
 import { Badge } from '@/components/ui/feedback';
@@ -682,10 +683,12 @@ function EnvSection({
             >
               + Add more
             </Button>
-            <label className="cursor-pointer text-xs text-text-muted hover:text-text">
+            <label className="inline-flex cursor-pointer items-center gap-1.5 rounded-md border border-rail bg-surface px-3 py-1.5 text-xs font-medium text-text transition-colors hover:bg-surface-2">
+              <FileUp className="size-3.5 text-text-dim" aria-hidden />
               Import .env
               <input
                 type="file"
+                accept=".env,.env.*,env,.txt"
                 hidden
                 onChange={async (event) => {
                   const file = event.target.files?.[0];

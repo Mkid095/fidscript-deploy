@@ -1,7 +1,7 @@
 import { redirect } from 'next/navigation';
 
 import { getProject, getProjectResources } from '@/lib/api/project';
-import { getDeployments } from '@/lib/api/resources';
+import { getDeployments, liveDeployment } from '@/lib/api/resources';
 import { buildProjectMenu, type ProjectRole } from '@/lib/project/menu';
 import { ProjectSidebar } from '@/components/project/project-sidebar';
 import { ProjectTopbar } from '@/components/project/project-topbar';
@@ -64,23 +64,20 @@ export default async function ProjectLayout({
   });
 
   // What is up on the platform right now, for the top bar's live chip —
-  // the project's active deployment, read where it is kept.
+  // the newest successful deployment, not the build lock.
   const deployments = await getDeployments(project.id).catch(() => []);
-  const active =
-    deployments.find((deployment) => deployment.id === project.activeDeploymentId) ??
-    deployments[0] ??
-    null;
+  const live = liveDeployment(deployments);
+  const is = (s: string | null | undefined, w: string) => (s ?? '').toUpperCase() === w;
+  const inFlight = deployments.some((d) =>
+    ['QUEUED', 'PENDING', 'BUILDING', 'DEPLOYING'].some((s) => is(d.status, s)),
+  );
   let liveUrl: string | null = null;
   let liveState: 'live' | 'building' | 'none' = 'none';
-  if (active) {
-    if (active.status === 'SUCCESS' && active.deploymentUrl) {
-      liveUrl = active.deploymentUrl;
-      liveState = 'live';
-    } else if (
-      ['QUEUED', 'PENDING', 'BUILDING', 'DEPLOYING'].includes(active.status)
-    ) {
-      liveState = 'building';
-    }
+  if (live) {
+    liveUrl = live.deploymentUrl;
+    liveState = 'live';
+  } else if (inFlight) {
+    liveState = 'building';
   }
 
   return (

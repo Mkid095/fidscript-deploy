@@ -154,15 +154,27 @@ export class DeploymentCrudService {
         ? `${dto.source.git.url}${dockerQuery}`
         : undefined;
     }
+
+    // A manual deploy carries no commit — only a push does. Record the
+    // branch's HEAD anyway, so the Git card's "Last commit / What is live"
+    // and the push gate's lastDeployedCommit have a commit to talk about.
+    // Best-effort: when it cannot be read, the release goes out commit-less
+    // rather than the deploy being blocked by a GitHub hiccup.
+    let commitSha = dto.commitSha || '';
+    let commitMessage = dto.commitMessage || '';
+    if (!commitSha && sourceUrl?.startsWith('https://github.com/')) {
+      ({ commitSha, commitMessage } = await this.resolveBranchHead(project, sourceUrl, dto.branch));
+    }
+
     const release = await this.prisma.release.create({
       data: {
         projectId,
         version,
-        commitSha: dto.commitSha || '',
+        commitSha,
         branch: dto.branch || project.sourceBranch || 'main',
         sourceUrl,
         imageTag: `fidscript/${project.slug}:${version}`,
-        commitMessage: dto.commitMessage || '',
+        commitMessage,
         createdBy: userId,
       },
     });
@@ -606,6 +618,35 @@ export class DeploymentCrudService {
           : null,
       version: release?.version || null,
     };
+  }
+
+  /**
+   * The branch's HEAD commit, as the owner's GitHub connection reads it —
+   * for a manual deploy, which otherwise carries no commit. Best-effort:
+   * any failure (no connection, expired token, network) yields an empty
+   * commit rather than blocking the deploy.
+   */
+  private async resolveBranchHead(
+    project: { ownerId: string; sourceBranch: string | null },
+    sourceUrl: string,
+    branch: string | undefined,
+  ): Promise<{ commitSha: string; commitMessage: string }> {
+    try {
+      const repo = sourceUrl
+        .replace(/^https:\/\/github\.com\//, '')
+        .replace(/^git@github\.com:/, '')
+        .replace(/\.git$/, '')
+        .split('?')[0];
+      const name = branch || project.sourceBranch || 'main';
+      const branches = await this.github.listBranches(project.ownerId, repo);
+      const head = branches.find((b) => b.name === name)?.commit?.sha ?? '';
+      return { commitSha: head, commitMessage: '' };
+    } catch (err) {
+      this.logger.warn(
+        `[deployments] Could not record the branch HEAD commit: ${err instanceof Error ? err.message : String(err)}`,
+      );
+      return { commitSha: '', commitMessage: '' };
+    }
   }
 
   /**

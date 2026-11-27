@@ -158,6 +158,11 @@ export function GitIntegrationCard({
                   </span>
                 ) : null}
               </>
+            ) : status.lastSuccess ? (
+              <span className="text-text-dim">
+                A build is live — its commit was not recorded. The next
+                deployment records it.
+              </span>
             ) : (
               <span className="text-text-dim">Nothing built yet.</span>
             )}
