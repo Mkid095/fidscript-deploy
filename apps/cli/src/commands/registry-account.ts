@@ -13,7 +13,8 @@
 import { Command } from 'commander';
 import { FidscriptClient } from '@fidscript-deploy/sdk';
 import { die, CliContext } from './cli-runtime-helpers';
-import { saveRegistryCredential, clearRegistryCredential, registryUrl, readRegistryToken } from './registry-auth';
+import { saveRegistryCredential, clearRegistryCredential, registryUrl, readRegistryToken, loadRegistryCredential } from './registry-auth';
+import { configureNpmrc, removeNpmrcAuth, MANAGED_SCOPES } from './registry-npmrc';
 
 interface Linked {
   registryUrl: string;
@@ -38,8 +39,16 @@ export function registerRegistryAccountCommands(registry: Command, ctx: CliConte
         username: linked.registryUser,
         registryUrl: linked.registryUrl,
       });
+      // The link's other half: point npm itself at the registry, so a
+      // plain `npm install @fidscript-deploy/…` resolves from it, not from
+      // whatever default registry the machine has.
+      configureNpmrc(linked.registryUrl, linked.registryToken);
       console.log(`Registry linked as ${linked.registryUser} at ${linked.registryUrl}`);
       console.log('The token is stored where `fidscript registry publish` reads it.');
+      console.log(
+        `npm is now pointed at ${linked.registryUrl} for ${MANAGED_SCOPES.join(', ')} ` +
+          '(~/.npmrc) — plain npm installs resolve from the registry, not npmjs.',
+      );
     });
 
   registry
@@ -49,14 +58,22 @@ export function registerRegistryAccountCommands(registry: Command, ctx: CliConte
       const apiKey = ctx.getApiKey() ?? die('Not logged in — run `fidscript login` first');
       if (!ctx.apiUrl) die('No API URL configured — run `fidscript configure`');
       const client = new FidscriptClient({ apiKey, baseURL: ctx.apiUrl });
+      const linkedRegistry = loadRegistryCredential().registryUrl ?? registryUrl();
       const result = await client
         .delete<{ linked: boolean; revoked: boolean; registryUser?: string; note?: string }>('/api/v1/auth/registry')
         .catch((e) => die(`Unlink failed: ${(e as Error).message}`));
       clearRegistryCredential();
+      // The minted token is dead now: its auth line in ~/.npmrc goes with
+      // it. The scope routing stays — public packages still install, and a
+      // re-link rewrites the token.
+      const authRemoved = removeNpmrcAuth(linkedRegistry);
       if (result?.revoked) {
         console.log(`Registry account ${result.registryUser ?? ''} unlinked — its issued tokens were revoked and the local copy cleared.`);
       } else {
         console.log('Registry account unlinked on the platform and the local copy cleared.');
+      }
+      if (authRemoved) {
+        console.log(`The dead token was removed from ~/.npmrc (the ${MANAGED_SCOPES.join(', ')} routing stays — it works without a token for public packages).`);
       }
       if (result?.note) {
         console.log(`Note: ${result.note}`);

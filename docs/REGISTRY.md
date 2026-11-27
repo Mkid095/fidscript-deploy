@@ -38,11 +38,25 @@ machine, or in the CI secret `NPM_TOKEN` — **never in the repository**.
 //registry.fidscript.com/:_authToken=${NPM_TOKEN}
 ```
 
-Then:
+**On a fresh machine** the first install has to name the registry, because
+npm does not yet know it:
 
 ```bash
-npm install --registry=https://registry.fidscript.com @fidscript-deploy/sdk
-npm install -g --registry=https://registry.fidscript.com @fidscript-deploy/cli
+npm install -g @fidscript-deploy/cli --registry=https://registry.fidscript.com
+fidscript login      # mints the account token and links the registry
+```
+
+From then on npm itself is pointed at the registry: `fidscript login` and
+`fidscript registry link` write the two scope lines and the auth token into
+`~/.npmrc` (only the lines they own; everything else in the file is kept),
+so a plain `npm install @fidscript-deploy/…` — with no `--registry` flag —
+resolves from **this** registry, not from npmjs. Unlinking removes the now
+dead token line and keeps the scope routing (public packages install
+without a token).
+
+```bash
+npm install @fidscript-deploy/sdk            # now routes here, no flag needed
+npm install -g @fidscript-deploy/cli
 ```
 
 The repository's own `.npmrc` carries the scope mapping but **no token** —
@@ -79,7 +93,10 @@ Read in this order, and never written into a project:
 3. `~/.fidscript/registry.json` — written by `fidscript registry login`
 4. `~/.npmrc` — the token npm already has, if it is for this registry
 
-`fidscript registry logout` removes the stored one.
+`fidscript registry logout` removes the stored one. The same lines in
+`~/.npmrc` are written by `fidscript login` and `fidscript registry link`
+(scope routing + the minted token) and cleaned up by `fidscript registry
+unlink` (the token line; the routing stays) — see §2.
 
 ### Why publishing goes through npm
 

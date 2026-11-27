@@ -13,9 +13,12 @@ FIDSCRIPT CLI — OPERATOR GUIDE
 =============================
 
 GETTING STARTED (a fresh machine)
+  # npm does not know the registry yet, so the first install names it:
+  npm install -g @fidscript-deploy/cli --registry=https://registry.fidscript.com
   fidscript configure           # where is the platform + which project is "current"
   fidscript login               # email + password → a revocable token, and the
-                                # registry account links to the same login
+                                # registry account links to the same login — npm
+                                # itself gets pointed at the registry (~/.npmrc)
   fidscript whoami              # who am I, and what can I see
 
 HOW CREDENTIALS WORK
@@ -50,9 +53,13 @@ THE BACKEND + CHANNELS
   fidscript whatsapp state | connect | identity | disconnect  # the WhatsApp platform
 
 PUBLISHING TO THE REGISTRY
-  fidscript registry link                 # make sure the account is linked
+  fidscript registry link                 # link the account AND point npm at the
+                                          # registry: ~/.npmrc gets the scope routing
+                                          # (@fidscript-deploy, @fidscript) + the token
   fidscript registry whoami | list | search <q> | info <pkg>
   fidscript registry publish [dir] [--tag latest]   # publishes to registry.fidscript.com
+  fidscript registry unlink               # revokes the tokens, clears the local copy,
+                                          # and drops the token line from ~/.npmrc
   fidscript registry guide [tool]         # per-tool install/publish recipes
 
 FOR AN AI AGENT

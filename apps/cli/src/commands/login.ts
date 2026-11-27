@@ -18,6 +18,7 @@ import { createFidscript, FidscriptClient } from '@fidscript-deploy/sdk';
 import { ask, askSecret } from '../utils/prompt';
 import { loadConfig, saveConfig, addKey, setApiKey } from '../config/index';
 import { saveRegistryCredential } from './registry-auth';
+import { configureNpmrc, MANAGED_SCOPES } from './registry-npmrc';
 
 export interface LoginContext {
   apiUrl?: string;
@@ -103,7 +104,11 @@ export async function runInteractiveLogin(ctx: LoginContext, opts: LoginOpts): P
         username: linked.registryUser,
         registryUrl: linked.registryUrl,
       });
-      registryNote = `Registry: linked as ${linked.registryUser}`;
+      // The link's other half: point npm itself at the registry, so a plain
+      // `npm install @fidscript-deploy/…` resolves from it, not from
+      // whatever default registry the machine has.
+      configureNpmrc(linked.registryUrl, linked.registryToken);
+      registryNote = `Registry: linked as ${linked.registryUser} — npm (${MANAGED_SCOPES.join(', ')}) now resolves from ${linked.registryUrl}`;
     } catch (e) {
       registryNote = `Registry: not linked (${short(e)}). Later: fidscript registry link`;
     }

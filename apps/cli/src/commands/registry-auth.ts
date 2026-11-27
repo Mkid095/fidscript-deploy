@@ -17,7 +17,7 @@ import { join } from 'path';
 
 export const DEFAULT_REGISTRY_URL = 'https://registry.fidscript.com';
 export const REGISTRY_CREDENTIALS_FILE = join(homedir(), '.fidscript', 'registry.json');
-const NPMRC_FILE = join(homedir(), '.npmrc');
+export const NPMRC_FILE = join(homedir(), '.npmrc');
 
 export interface RegistryCredential {
   token?: string;
