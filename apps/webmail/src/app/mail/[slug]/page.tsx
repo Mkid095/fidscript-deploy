@@ -1,108 +1,61 @@
+import { Suspense } from 'react';
 import { notFound } from 'next/navigation';
 
 import { currentSession, currentSessionToken, sessionCredential } from '@/lib/auth/session';
-import { listMailboxes, type Mailbox } from '@/lib/stalwart/mail';
-import { MessageList } from '@/components/mail/message-list';
+import { listIdentities, listMailboxes, type Identity, type Mailbox } from '@/lib/stalwart/mail';
+import { MailboxApp } from '@/components/mailbox/mailbox-app';
 
 /**
- * A folder view. The slug is a standard folder name (inbox, sent, drafts,
- * spam, trash, archive, starred), or the name of a custom folder, or the
- * mailbox id prefixed with "id-".
+ * A folder view, the whole app mounted around it.
+ *
+ * The slug is the URL's source of truth for which folder is open; the
+ * selected message (?m=) is read here and handed down, so a deep link
+ * lands on the folder with the message open from the very first paint —
+ * the app keeps the live value in step with the URL afterwards. The
+ * server answers for the folder list and the identities too: cheap, and
+ * it keeps the guard honest, since the credential is the session's own.
  */
 export default async function MailboxPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ slug: string }>;
+  searchParams: Promise<Record<string, string | undefined>>;
 }) {
-  const { slug } = await params;
+  const [{ slug }, sp] = await Promise.all([params, searchParams]);
   const session = await currentSession();
   if (!session || session.kind !== 'mailbox') notFound();
   const token = await currentSessionToken();
   const cred = token ? sessionCredential(token) : null;
   if (!cred) notFound();
 
-  const mailboxes = await listMailboxes(cred).catch(() => [] as Mailbox[]);
+  // A folder that does not exist still gets the app, with an honest
+  // error in the list — the rail's other folders remain reachable.
+  const [mailboxes, identities] = await Promise.all([
+    listMailboxes(cred).catch(() => [] as Mailbox[]),
+    listIdentities(cred).catch(() => [] as Identity[]),
+  ]);
 
-  // Resolve the slug to a mailbox.
-  let mode: 'mailbox' | 'starred' | 'all' = 'mailbox';
-  let mailboxId: string | null = null;
-  let mailboxName = slug;
+  const initialMessageId =
+    typeof sp.m === 'string' && sp.m.length > 0 ? sp.m : null;
 
-  // This Stalwart build reports the inbox's role as "inbox", not the
-  // RFC-standard "all" — accept whichever it answers with.
-  const roleSlug: Record<string, string> = {
-    inbox: 'inbox',
-    sent: 'sent',
-    drafts: 'drafts',
-    spam: 'junk',
-    junk: 'junk',
-    trash: 'trash',
-    archive: 'archive',
-  };
-
-  let missing = false;
-  if (slug === 'starred') {
-    mode = 'starred';
-  } else if (slug === 'all') {
-    mode = 'all';
-  } else if (roleSlug[slug]) {
-    const role = roleSlug[slug];
-    const match =
-      mailboxes.find((m) => m.role === role) ??
-      (role === 'inbox' ? mailboxes.find((m) => m.role === 'all') : undefined);
-    if (match) {
-      mailboxId = match.id;
-      mailboxName = match.name;
-    } else {
-      missing = true;
-    }
-  } else if (slug.startsWith('id-')) {
-    const id = slug.slice(3);
-    const match = mailboxes.find((m) => m.id === id);
-    if (match) {
-      mailboxId = match.id;
-      mailboxName = match.name;
-    } else {
-      missing = true;
-    }
-  } else {
-    // A custom folder by slugified name.
-    const match = mailboxes.find(
-      (m) =>
-        m.name
-          .toLowerCase()
-          .replace(/[^a-z0-9]+/g, '-')
-          .replace(/^-|-$/g, '') === slug,
-    );
-    if (match) {
-      mailboxId = match.id;
-      mailboxName = match.name;
-    } else {
-      missing = true;
-    }
-  }
-
-  const queryMailbox =
-    mode === 'mailbox' && mailboxId ? mailboxId : mode === 'all' ? 'all' : null;
-
-  if (missing) {
-    return (
-      <div className="rounded-lg border border-dashed border-rail px-4 py-10 text-center">
-        <p className="text-sm font-medium text-text">No such folder</p>
-        <p className="mt-1 text-xs text-text-dim">
-          This account has no folder called "{slug}". Stalwart opens the
-          standard set on first use, or create a new one.
-        </p>
-      </div>
-    );
-  }
-
+  // The app reads the URL's search params; the boundary keeps that
+  // answerable on the first paint, in dev and in production alike.
   return (
-    <MessageList
-      title={mailboxName}
-      mailboxId={queryMailbox}
-      starred={mode === 'starred'}
-      mailboxes={mailboxes}
-    />
+    <Suspense
+      fallback={
+        <div className="flex h-dvh items-center justify-center bg-slate-50 dark:bg-slate-950">
+          <div className="h-6 w-6 animate-spin rounded-full border-2 border-orange-600 border-t-transparent" />
+        </div>
+      }
+    >
+      <MailboxApp
+        email={session.email}
+        mailboxes={mailboxes}
+        identities={identities}
+        folderSlug={slug}
+        initialMessageId={initialMessageId}
+      />
+    </Suspense>
   );
 }

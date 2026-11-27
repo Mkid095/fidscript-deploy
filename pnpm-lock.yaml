@@ -318,6 +318,9 @@ importers:
       '@prisma/client':
         specifier: ^6.16.0
         version: 6.19.3(prisma@6.19.3(magicast@0.3.5)(typescript@5.9.3))(typescript@5.9.3)
+      lucide-react:
+        specifier: ^1.71.0
+        version: 1.71.0(@types/react@19.2.17)(react@19.1.0)
       next:
         specifier: 15.5.4
         version: 15.5.4(@opentelemetry/api@1.9.1)(react-dom@19.1.0(react@19.1.0))(react@19.1.0)

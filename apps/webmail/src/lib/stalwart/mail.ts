@@ -6,7 +6,7 @@
  * see can come back. These are the calls the API routes run; the browser
  * never holds a JMAP credential.
  */
-import { resolveAccountId, userClient } from '@/lib/stalwart/jmap';
+import { resolveAccountId, StalwartError, userClient } from '@/lib/stalwart/jmap';
 
 export type Credential = { user: string; pass: string };
 
@@ -97,49 +97,33 @@ function summarize(row: StalwartMessage): MessageSummary {
 }
 
 /**
- * List a mailbox's messages, newest first, with optional search.
+ * List a mailbox's messages, newest first.
  *
- * `mailboxId` is a mailbox id, or "all" for every mailbox (the starred and
- * global-search views). A free-text search goes through JMAP's
- * `filterText` operator form — it and the boolean `filter` object are
- * mutually exclusive, so the two never mix.
+ * `mailboxId` is a mailbox id, or "all" for every mailbox (the starred
+ * view and the global list). The window is a plain `inMailbox` slice:
+ * this Stalwart build refuses the flag filter keys and answers JSearch
+ * text as if it were absent, so the app narrows a view — unread,
+ * starred, files, free text — itself, over the window this returns.
  */
 export async function queryMessages(
   cred: Credential,
   mailboxId: string,
-  options: {
-    filterText?: string;
-    unread?: boolean;
-    starred?: boolean;
-    limit?: number;
-    position?: number;
-  } = {},
+  options: { limit?: number; position?: number } = {},
 ): Promise<{ messages: MessageSummary[]; nextPosition: number | null; queryState: string | null }> {
   const client = userClient(cred.user, cred.pass);
   const accountId = await resolveAccountId(client, cred.user, cred.pass);
   const scope = mailboxId === 'all' ? null : mailboxId;
 
-  let queryArgs: Record<string, unknown>;
-  if (options.filterText) {
-    const clauses: string[] = [];
-    if (scope) clauses.push(`inMailbox has "${scope}"`);
-    if (options.unread) clauses.push('unread');
-    if (options.starred) clauses.push('starred');
-    clauses.push(options.filterText);
-    queryArgs = {
-      accountId: accountId,
-      filterText: clauses.join(' and '),
-    };
-  } else {
-    const filter: Record<string, unknown> = {};
-    if (scope) filter.inMailbox = scope;
-    if (options.unread) filter.unread = true;
-    if (options.starred) filter.starred = true;
-    queryArgs = {
-      accountId: accountId,
-      filter,
-    };
-  }
+  // This Stalwart build answers only `inMailbox` in the filter object —
+  // the flag keys and the JSearch text get refused ("unsupportedFilter",
+  // or matched as if absent) — so flag and text narrowing of a view
+  // happens in the app, over the window this window returns.
+  const filter: Record<string, unknown> = {};
+  if (scope) filter.inMailbox = scope;
+  const queryArgs: Record<string, unknown> = {
+    accountId: accountId,
+    ...(Object.keys(filter).length ? { filter } : {}),
+  };
   queryArgs.sort = [{ property: 'receivedAt', isAscending: false }];
   queryArgs.limit = options.limit ?? 50;
   if (options.position) queryArgs.position = options.position;
@@ -372,17 +356,22 @@ export async function sendMessage(
   const identityId =
     message.identityId ??
     (identities.find((i) => i.isDefault)?.id ?? identities[0]?.id ?? null);
+  const identity = identities.find((i) => i.id === identityId) ?? null;
 
-  // Build the body as a blob. HTML wins; plain text otherwise.
+  // Build the body as a blob. HTML wins, plain text otherwise.
   const bodyText = message.html ?? message.text ?? '';
   const isHtml = Boolean(message.html);
   const bodyBlob = bodyText
     ? await uploadBlob(client, accountId, bodyText, isHtml ? 'text/html' : 'text/plain')
     : null;
 
-  // Recipients are Person objects in this build.
+  // Recipients are Person objects in this build. The From is set on the
+  // message itself: this Stalwart build's identities carry no mailFrom,
+  // and a submission without a From header is RFC-noncompliant — Gmail
+  // and friends refuse it on sight (5.7.1).
   const to = message.to.map((entry) => ({ name: null, email: entry }));
   const create: Record<string, unknown> = {
+    from: [{ name: identity?.name ?? null, email: identity?.email ?? cred.user }],
     to,
     ...(message.cc?.length
       ? { cc: message.cc.map((entry) => ({ name: null, email: entry })) }
@@ -391,7 +380,9 @@ export async function sendMessage(
       ? { bcc: message.bcc.map((entry) => ({ name: null, email: entry })) }
       : {}),
     ...(message.subject ? { subject: message.subject } : {}),
-    mailboxIds: { [await draftsMailbox(client, cred)]: true },
+    // The sent copy lives where sent mail lives: the sent folder. It is
+    // what the user will find under "Sent Items" afterwards.
+    mailboxIds: { [await standardMailbox(client, cred, 'sent', 'Sent Items')]: true },
   };
   if (bodyBlob) {
     // A body part is a blob reference: no partId alongside a blobId.
@@ -426,7 +417,8 @@ export async function sendMessage(
     throw new Error('Stalwart did not return the message id');
   }
 
-  // Queue and deliver it.
+  // Queue and deliver it. The submitted copy stays in the sent folder;
+  // delivery runs on Stalwart's own loop.
   const submission: Record<string, unknown> = { emailId: messageId };
   if (identityId) submission.identityId = identityId;
   await client.one('EmailSubmission/set', {
@@ -434,32 +426,43 @@ export async function sendMessage(
     create: { newSubmission: submission },
   });
 
-  // The draft is now a sent message; clear it from the drafts folder.
-  await client.one('Email/set', {
-    accountId,
-    destroy: [messageId],
-  }).catch(() => {
-    // If the destroy fails the message just stays in drafts; not fatal to
-    // the send, which already went out.
-  });
   return messageId;
 }
 
-async function draftsMailbox(client: ReturnType<typeof userClient>, cred: Credential): Promise<string> {
+/**
+ * The account's standard mailbox for a role, opened on demand: a fresh
+ * account has the standard set, and if it does not, this one does.
+ */
+/**
+ * A JMAP `created` map's values are the created item, not its id. Stalwart
+ * answers Mailbox/set with the mailbox object, so the bare id has to be
+ * pulled off it; `createdId` copes with either a string or that object.
+ */
+function createdId(created: Record<string, unknown> | null | undefined): string | undefined {
+  const value = created ? Object.values(created)[0] : undefined;
+  if (value == null) return undefined;
+  return typeof value === 'string' ? value : (value as { id?: string })?.id;
+}
+
+async function standardMailbox(
+  client: ReturnType<typeof userClient>,
+  cred: Credential,
+  role: string,
+  name: string,
+): Promise<string> {
   const boxes = await listMailboxes(cred).catch(() => []);
-  const drafts = boxes.find((box) => box.role === 'drafts');
-  // A fresh account has the standard set; if not, create it.
-  if (drafts) return drafts.id;
+  const box = boxes.find((candidate) => candidate.role === role);
+  if (box) return box.id;
   const accountId = await resolveAccountId(client, cred.user, cred.pass);
-  const created = await client.one<{ created: Record<string, string> }>(
+  const created = await client.one<{ created: Record<string, unknown> }>(
     'Mailbox/set',
     {
       accountId,
-      create: { newMailbox: { name: 'Drafts', role: 'drafts' } },
+      create: { newMailbox: { name, role } },
     },
   );
-  const id = Object.values(created.created ?? {})[0];
-  if (!id) throw new Error('Could not find or create the drafts mailbox');
+  const id = createdId(created.created);
+  if (!id) throw new Error(`Could not find or create the ${role} mailbox`);
   return id;
 }
 
@@ -533,7 +536,7 @@ export async function saveDraft(
 
   const create: Record<string, unknown> = {
     to: (draft.to ?? []).map((entry) => ({ name: null, email: entry })),
-    mailboxIds: { [await draftsMailbox(client, cred)]: true },
+    mailboxIds: { [await standardMailbox(client, cred, 'drafts', 'Drafts')]: true },
   };
   if (draft.subject) create.subject = draft.subject;
   if (body) {
@@ -592,14 +595,15 @@ export async function createMailbox(
 ): Promise<string> {
   const client = userClient(cred.user, cred.pass);
   const accountId = await resolveAccountId(client, cred.user, cred.pass);
-  const result = await client.one<{ created: Record<string, string> }>(
+  const result = await client.one<{ created: Record<string, unknown> }>(
     'Mailbox/set',
     {
+      accountId,
       create: { newMailbox: { name, ...(parentId ? { parentId } : {}) } },
       onBehalfOf: null,
     },
   );
-  const id = Object.values(result.created ?? {})[0];
+  const id = createdId(result.created);
   if (!id) throw new Error('Stalwart did not return the new mailbox id');
   return id;
 }
@@ -612,6 +616,7 @@ export async function renameMailbox(
   const client = userClient(cred.user, cred.pass);
   const accountId = await resolveAccountId(client, cred.user, cred.pass);
   await client.one('Mailbox/set', {
+    accountId,
     update: { [mailboxId]: { name } },
     onBehalfOf: null,
   });
@@ -623,7 +628,10 @@ export async function destroyMailbox(
 ): Promise<void> {
   const client = userClient(cred.user, cred.pass);
   const accountId = await resolveAccountId(client, cred.user, cred.pass);
-  await client.one('Mailbox/set', { destroy: [mailboxId] }, );
+  await client.one('Mailbox/set', {
+    accountId,
+    destroy: [mailboxId],
+  });
 }
 
 // ── Identities and signatures ─────────────────────────────────────────
@@ -737,17 +745,41 @@ export async function setVacation(
 ): Promise<void> {
   const client = userClient(cred.user, cred.pass);
   const accountId = await resolveAccountId(client, cred.user, cred.pass);
+  // This resource replaces the whole singleton on an update, so every
+  // field is written each time — and its date fields take a full ISO-8601
+  // or null, never a bare "YYYY-MM-DD" or an empty string.
   const update: Record<string, unknown> = {
     isEnabled: state.enabled,
+    subject: state.subject ?? '',
+    textBody: state.text ?? '',
+    fromDate: toDateIso(state.startDate ?? '', false),
+    toDate: toDateIso(state.endDate ?? '', true),
   };
-  if (state.subject) update.subject = state.subject;
-  if (state.text) update.textBody = state.text;
-  if (state.startDate) update.fromDate = state.startDate;
-  if (state.endDate) update.toDate = state.endDate;
-  await client.one('VacationResponse/set', {
+  const result = await client.one<{
+    notUpdated?: Record<string, { type?: string; description?: string }>;
+  }>('VacationResponse/set', {
     accountId,
     update: { singleton: update },
   });
+  // A refused field rides back in notUpdated on an otherwise clean answer.
+  const failed = Object.values(result?.notUpdated ?? {})[0];
+  if (failed) {
+    throw new StalwartError(
+      'VacationResponse/set',
+      failed.type ?? 'rejected',
+      failed.description ?? 'The auto-reply did not save.',
+    );
+  }
+}
+
+/**
+ * The UI's date inputs hand over `YYYY-MM-DD`; this Stalwart wants ISO-8601.
+ * The end of the range covers the whole day; empty means "no limit".
+ */
+function toDateIso(value: string, endOfDay: boolean): string | null {
+  if (!value) return null;
+  if (value.includes('T')) return value;
+  return endOfDay ? `${value}T23:59:59Z` : `${value}T00:00:00Z`;
 }
 
 // ── Sieve filters ─────────────────────────────────────────────────────
@@ -801,26 +833,68 @@ export async function setSieveScript(
     }>('SieveScript/get', { accountId, ids: null });
     const id = result.list?.find((entry) => entry.name === SIEVE_SCRIPT_NAME)?.id;
     if (id) {
-      await client.one('SieveScript/set', {
-        accountId,
-        update: {
-          [id]: {
-            isActive: active,
-            blobId: blob.blobId,
-          },
-        },
-      });
+      await writeSieveUpdate(client, accountId, id, active, blob.blobId);
       return;
     }
   }
-  await client.one('SieveScript/set', {
+  const created = await client.one<{
+    notCreated?: Record<string, { type?: string; description?: string }>;
+  }>(
+    'SieveScript/set',
+    {
+      accountId,
+      create: {
+        newScript: {
+          name: SIEVE_SCRIPT_NAME,
+          isActive: active,
+          blobId: blob.blobId,
+        },
+      },
+    },
+  );
+  assertItemOk('create', created);
+}
+
+/**
+ * A SieveScript answer can succeed while the item itself was refused
+ * (the parser rejected the script) — the refusal rides back in
+ * `notUpdated`/`notCreated` on a healthy-looking response. Surface it.
+ */
+function assertItemOk(
+  kind: 'create' | 'update',
+  result: {
+    notCreated?: Record<string, { type?: string; description?: string }>;
+    notUpdated?: Record<string, { type?: string; description?: string }>;
+  },
+): void {
+  const failures = kind === 'create' ? result?.notCreated : result?.notUpdated;
+  const first = failures ? Object.values(failures)[0] : undefined;
+  if (first) {
+    throw new StalwartError(
+      'SieveScript/set',
+      first.type ?? 'rejected',
+      first.description ?? 'The script was not written.',
+    );
+  }
+}
+
+async function writeSieveUpdate(
+  client: ReturnType<typeof userClient>,
+  accountId: string,
+  id: string,
+  active: boolean,
+  blobId: string,
+): Promise<void> {
+  const result = await client.one<{
+    notUpdated?: Record<string, { type?: string; description?: string }>;
+  }>('SieveScript/set', {
     accountId,
-    create: {
-      newScript: {
-        name: SIEVE_SCRIPT_NAME,
+    update: {
+      [id]: {
         isActive: active,
-        blobId: blob.blobId,
+        blobId,
       },
     },
   });
+  assertItemOk('update', result);
 }

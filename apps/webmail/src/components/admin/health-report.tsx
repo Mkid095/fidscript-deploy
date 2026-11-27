@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import Link from 'next/link';
 
-import { Card } from '@/components/ui';
+import { Button, Card, ErrorState, Page } from '@/components/ui';
 
 interface Check {
   id: string;
@@ -61,24 +61,17 @@ export function HealthReport() {
   };
 
   return (
-    <main className="mx-auto max-w-4xl px-4 py-8">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-xl font-semibold text-text">Mail Health &amp; Deliverability</h1>
-          <p className="mt-1 text-sm text-text-muted">
-            Live checks against the network, run moments ago.
-          </p>
-        </div>
-        <button
-          type="button"
-          onClick={() => void load()}
-          className="rounded border border-rail bg-surface px-3 py-1.5 text-sm text-text-muted hover:bg-surface-2"
-        >
-          {loading ? 'Checking…' : 'Re-check'}
-        </button>
-      </div>
-
-      <div className="mt-4 rounded border border-rail bg-surface-2 p-3 text-xs text-text-muted">
+    <Page
+      title="Mail Health & Deliverability"
+      description="Live checks against the network, run moments ago."
+      width="wide"
+      actions={
+        <Button variant="outline" size="sm" onClick={() => void load()} loading={loading}>
+          Re-check
+        </Button>
+      }
+    >
+      <div className="rounded-lg border border-rail bg-surface-2 p-3 text-xs leading-relaxed text-text-muted">
         These are <strong>verified configuration</strong> checks — what the DNS,
         certificates and blocklists say right now. They do not predict{' '}
         <strong>inbox placement</strong>: that belongs to every receiving
@@ -87,7 +80,7 @@ export function HealthReport() {
         the inbox.
       </div>
 
-      {error ? <p className="mt-4 text-sm text-danger">{error}</p> : null}
+      {error ? <ErrorState message={error} /> : null}
 
       {reports.map((report) => (
         <Card key={report.domain} title={report.domain} className="mt-4">
@@ -130,16 +123,16 @@ export function HealthReport() {
       ))}
 
       {reports.length === 0 && !loading ? (
-        <p className="mt-4 text-sm text-text-dim">
+        <p className="text-sm text-text-dim">
           No domains to check yet. Add one in the admin area first.
         </p>
       ) : null}
 
-      <div className="mt-6">
+      <div className="mt-2">
         <Link href="/admin" className="text-sm text-accent hover:underline">
           Back to admin
         </Link>
       </div>
-    </main>
+    </Page>
   );
 }

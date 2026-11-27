@@ -81,3 +81,43 @@ model SendStat {
 
   @@unique([mailbox, bucket])
 }
+
+// ── Folder colours ─────────────────────────────────────────────────────
+// This Stalwart build's Mailbox objects take no colour property, so the
+// colour a folder wears in the rail is the app's own: one row per
+// (account, mailbox), rendered by the webmail. Stalwart keeps the folder;
+// we keep the paint.
+
+model MailboxColor {
+  email     String
+  mailboxId String
+  // A hex colour, e.g. "#ea580c".
+  color     String   @default("#ea580c")
+  updatedAt DateTime @updatedAt
+
+  @@unique([email, mailboxId])
+}
+
+// ── Filter rules ───────────────────────────────────────────────────────
+// This Stalwart build takes no structured filters — only a plain sieve
+// script, syntax-checked on write. So the rules are authored here, as
+// structured rows the webmail can render and edit; on every save the app
+// compiles them into the single "webmail" sieve script Stalwart runs.
+// Stalwart keeps the script; we keep the structure.
+
+model MailFilterRule {
+  id        String   @id @default(cuid())
+  email     String
+  // The row's order in the rail's rule list.
+  position  Int      @default(0)
+  // "from" | "subject" — which header the rule looks at.
+  matchKey  String   @default("from")
+  matchValue String
+  // "move" | "forward" | "junk" — what the rule does.
+  action    String   @default("move")
+  // move → mailbox id; forward → the forwarding address; junk → "".
+  target    String   @default("")
+  updatedAt DateTime @updatedAt
+
+  @@index([email, position])
+}

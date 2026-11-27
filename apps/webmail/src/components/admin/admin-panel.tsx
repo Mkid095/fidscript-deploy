@@ -5,13 +5,22 @@ import Link from 'next/link';
 
 import {
   Badge,
+  Button,
   Card,
   EmptyState,
+  ErrorState,
   Field,
-  PrimaryButton,
+  Page,
+  PasswordInput,
+  Segmented,
   TextInput,
+  FIELD_CLASS,
 } from '@/components/ui';
+import { Brand } from '@/components/brand';
 import { SignOut } from '@/components/sign-out';
+import { ThemeToggle } from '@/components/theme-toggle';
+
+const selectClass = `${FIELD_CLASS} cursor-pointer`;
 
 interface Account {
   id: string;
@@ -108,55 +117,43 @@ export function AdminPanel({ email }: { email: string }) {
     void load();
   }
 
-  const tabs: Array<[Tab, string]> = [
-    ['accounts', `Accounts (${accounts.length})`],
-    ['domains', `Domains (${domains.length})`],
-    ['aliases', `Aliases (${aliases.length})`],
-    ['audit', 'Audit'],
+  const tabs = [
+    { value: 'accounts' as Tab, label: `Accounts (${accounts.length})` },
+    { value: 'domains' as Tab, label: `Domains (${domains.length})` },
+    { value: 'aliases' as Tab, label: `Aliases (${aliases.length})` },
+    { value: 'audit' as Tab, label: 'Audit' },
   ];
 
   return (
-    <div className="min-h-screen">
-      <header className="flex items-center justify-between border-b border-rail bg-surface px-6 py-3">
-        <div className="flex items-center gap-3">
-          <Link href="/" className="text-sm font-semibold text-text">
-            Webmail
-          </Link>
-          <Badge tone="accent">admin</Badge>
-          <span className="text-xs text-text-dim">{email}</span>
-        </div>
-        <div className="flex items-center gap-3">
-          <Link href="/admin/health" className="text-sm text-accent hover:underline">
-            Mail health
-          </Link>
-          <Link href="/" className="text-sm text-accent hover:underline">
-            Dashboard
-          </Link>
+    <div className="flex min-h-screen flex-col bg-canvas">
+      <header className="flex flex-shrink-0 items-center justify-between border-b border-rail px-4 py-4 sm:px-6">
+        <Brand href="/" />
+        <div className="flex items-center gap-2">
+          <ThemeToggle />
           <SignOut />
         </div>
       </header>
 
-      <main className="mx-auto max-w-5xl px-4 py-6">
-        <h1 className="text-xl font-semibold text-text">Administration</h1>
-        <div className="mt-4 flex flex-wrap gap-1 border-b border-rail">
-          {tabs.map(([key, label]) => (
-            <button
-              key={key}
-              type="button"
-              onClick={() => setTab(key)}
-              className={`rounded-t px-3 py-1.5 text-sm ${
-                tab === key
-                  ? 'border border-b-0 border-rail bg-surface text-text'
-                  : 'text-text-muted hover:bg-surface-2'
-              }`}
-            >
-              {label}
-            </button>
-          ))}
-        </div>
+      <Page
+        title="Administration"
+        description={email}
+        eyebrow={<Badge tone="accent">admin</Badge>}
+        width="wide"
+        actions={
+          <div className="flex items-center gap-3">
+            <Link href="/admin/health" className="text-sm text-text-muted transition-colors hover:text-text">
+              Mail health
+            </Link>
+            <Link href="/" className="text-sm text-text-muted transition-colors hover:text-text">
+              Dashboard
+            </Link>
+          </div>
+        }
+      >
+        <Segmented options={tabs} value={tab} onChange={setTab} ariaLabel="Administration" />
 
-        <div className="mt-4">
-          {error ? <p className="mb-3 text-sm text-danger">{error}</p> : null}
+        <div>
+          {error ? <ErrorState message={error} /> : null}
           {notice ? <p className="mb-3 text-sm text-success">{notice}</p> : null}
 
           {tab === 'accounts' ? (
@@ -188,7 +185,7 @@ export function AdminPanel({ email }: { email: string }) {
                                 id: account.id,
                               }, account.isEnabled ? 'Suspended.' : 'Activated.')
                             }
-                            className="text-xs text-accent hover:underline"
+                            className="rounded px-1.5 py-0.5 text-xs font-medium text-text-muted transition-colors hover:bg-surface-2 hover:text-text"
                           >
                             {account.isEnabled ? 'Suspend' : 'Activate'}
                           </button>
@@ -204,7 +201,7 @@ export function AdminPanel({ email }: { email: string }) {
                                 }, 'Password set.');
                               }
                             }}
-                            className="text-xs text-accent hover:underline"
+                            className="rounded px-1.5 py-0.5 text-xs font-medium text-text-muted transition-colors hover:bg-surface-2 hover:text-text"
                           >
                             Reset password
                           </button>
@@ -215,7 +212,7 @@ export function AdminPanel({ email }: { email: string }) {
                                 void op('/api/admin/accounts', { op: 'delete', id: account.id }, 'Deleted.');
                               }
                             }}
-                            className="text-xs text-danger hover:underline"
+                            className="rounded px-1.5 py-0.5 text-xs font-medium text-danger transition-colors hover:bg-danger/10"
                           >
                             Delete
                           </button>
@@ -329,7 +326,7 @@ export function AdminPanel({ email }: { email: string }) {
             </Card>
           ) : null}
         </div>
-      </main>
+      </Page>
     </div>
   );
 }
@@ -386,7 +383,7 @@ function CreateAccount({
         <select
           value={domain}
           onChange={(e) => setDomain(e.target.value)}
-          className="w-full rounded border border-rail bg-surface px-3 py-1.5 text-sm"
+          className={selectClass}
         >
           {domains.map((d) => (
             <option key={d.id} value={d.name}>
@@ -396,13 +393,12 @@ function CreateAccount({
           {domains.length === 0 ? <option value="">(add a domain first)</option> : null}
         </select>
       </Field>
-      <Field label="Password" hint="At least 8 characters.">
-        <TextInput
-          type="password"
-          value={password}
-          onChange={(e) => setPassword(e.target.value)}
-        />
-      </Field>
+      <PasswordInput
+        label="Password"
+        hint="At least 8 characters."
+        value={password}
+        onChange={(e) => setPassword(e.target.value)}
+      />
       <Field label="Quota (GB)" hint="Optional.">
         <TextInput
           type="number"
@@ -412,15 +408,17 @@ function CreateAccount({
           placeholder="e.g. 10"
         />
       </Field>
-      {error ? <p className="text-sm text-danger">{error}</p> : null}
-      <PrimaryButton
+      {error ? <ErrorState message={error} /> : null}
+      <Button
         type="button"
+        variant="primary"
+        loading={busy}
         onClick={() => void create()}
-        disabled={busy || !name || !domain || password.length < 8}
+        disabled={!name || !domain || password.length < 8}
         className="w-full"
       >
-        {busy ? 'Creating…' : 'Create mailbox'}
-      </PrimaryButton>
+        Create mailbox
+      </Button>
     </div>
   );
 }
@@ -453,10 +451,17 @@ function CreateDomain({ onCreated }: { onCreated: (note: string) => void }) {
       <Field label="Domain" hint="The name mail arrives for.">
         <TextInput value={name} onChange={(e) => setName(e.target.value)} placeholder="fidscript.com" />
       </Field>
-      {error ? <p className="text-sm text-danger">{error}</p> : null}
-      <PrimaryButton type="button" onClick={() => void create()} disabled={busy || !name} className="w-full">
-        {busy ? 'Adding…' : 'Add domain'}
-      </PrimaryButton>
+      {error ? <ErrorState message={error} /> : null}
+      <Button
+        type="button"
+        variant="primary"
+        loading={busy}
+        onClick={() => void create()}
+        disabled={!name}
+        className="w-full"
+      >
+        Add domain
+      </Button>
     </div>
   );
 }
@@ -500,7 +505,7 @@ function CreateAlias({
         <select
           value={domain}
           onChange={(e) => setDomain(e.target.value)}
-          className="w-full rounded border border-rail bg-surface px-3 py-1.5 text-sm"
+          className={selectClass}
         >
           {domains.map((d) => (
             <option key={d.id} value={d.name}>
@@ -510,10 +515,17 @@ function CreateAlias({
           {domains.length === 0 ? <option value="">(add a domain first)</option> : null}
         </select>
       </Field>
-      {error ? <p className="text-sm text-danger">{error}</p> : null}
-      <PrimaryButton type="button" onClick={() => void create()} disabled={busy || !name || !domain} className="w-full">
-        {busy ? 'Creating…' : 'Create alias'}
-      </PrimaryButton>
+      {error ? <ErrorState message={error} /> : null}
+      <Button
+        type="button"
+        variant="primary"
+        loading={busy}
+        onClick={() => void create()}
+        disabled={!name || !domain}
+        className="w-full"
+      >
+        Create alias
+      </Button>
     </div>
   );
 }

@@ -31,3 +31,14 @@ export function stalwartConfigured(): boolean {
 export function baseUrl(): string {
   return process.env.WEBMAIL_BASE_URL ?? 'http://localhost:3100';
 }
+
+/**
+ * The hostname external mail clients (Outlook & co.) use for IMAP/SMTP.
+ * The Stalwart box publishes 993 (IMAPS) and 465 (SMTPS); this names the
+ * host that reaches it. Falls back to the app's own host.
+ */
+export function mailClientHost(): string {
+  const explicit = process.env.WEBMAIL_MAIL_CLIENT_HOST;
+  if (explicit) return explicit;
+  return new URL(baseUrl()).host;
+}
